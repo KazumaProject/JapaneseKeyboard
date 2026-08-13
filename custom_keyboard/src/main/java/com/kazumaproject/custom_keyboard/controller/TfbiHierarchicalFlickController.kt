@@ -9,7 +9,9 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
@@ -17,6 +19,8 @@ import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import java.util.ArrayDeque
@@ -101,6 +105,9 @@ class TfbiHierarchicalFlickController(
     private var currentHighlight: TfbiFlickDirection = TfbiFlickDirection.TAP
     private var isJitterGuardActive = false
     private var activeGestureConfig: GestureSessionConfig? = null
+    private var currentFingerPosition: TfbiGuideFingerPosition? = null
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
+    private var activeTfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     // ポップアップView関連
     private var popupView: TfbiFlickPopupView? = null
@@ -109,6 +116,14 @@ class TfbiHierarchicalFlickController(
     private var popupStyle = PopupViewStyle(100, 20f)
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var popupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private val guidePopupHost by lazy {
+        TfbiGuidePopupHost(context) { popupWindowAnchorProvider?.invoke() }
+    }
+    private var guideRootDirection = TfbiFlickDirection.TAP
+    private var guideSelectedOption: TfbiFlickDirection? = null
+    private var guideArrowDirection: TfbiFlickDirection? = null
+    private var guideStageJustOpened = false
 
     // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
     private var popupBackgroundColor: Int? = null
@@ -129,6 +144,7 @@ class TfbiHierarchicalFlickController(
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+        guidePopupHost.setColors(backgroundColor, highlightedColor, textColor)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -139,6 +155,20 @@ class TfbiHierarchicalFlickController(
             textColor = style.textColor
         )
         popupView?.applyPopupViewStyle(popupStyle)
+        guidePopupHost.applyPopupViewStyle(popupStyle)
+    }
+
+    fun setPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        if (popupPresentationMode == mode) return
+        popupWindow?.dismiss()
+        guidePopupHost.dismiss()
+        popupWindow = null
+        popupView = null
+        popupPresentationMode = mode
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
     }
 
     fun setModeSwitchAngleMargin(margin: Double) {
@@ -152,6 +182,7 @@ class TfbiHierarchicalFlickController(
     fun setInputTextTransform(transform: (String) -> String) {
         inputTextTransform = transform
         popupView?.setInputTextTransform(transform)
+        guidePopupHost.setInputTextTransform(transform)
     }
 
     /**
@@ -224,7 +255,19 @@ class TfbiHierarchicalFlickController(
         centerStack.push(event.x to event.y)
         mapStack.push(rMap)
         highlightStack.push(TfbiFlickDirection.TAP)
+        activeTfbiFlickStartPositionMode = tfbiFlickStartPositionMode
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = event.x,
+            downY = event.y
+        )
         currentHighlight = TfbiFlickDirection.TAP
+        guideRootDirection = TfbiFlickDirection.TAP
+        guideSelectedOption = null
+        guideArrowDirection = null
+        guideStageJustOpened = false
         val tapNode = currentMap?.get(TfbiFlickDirection.TAP)
         if (tapNode is TfbiFlickNode.Input) {
             listener?.onPress(tapNode.char)
@@ -235,13 +278,14 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
+        updateGuideFingerPosition(view, event)
         // 現在の中心座標とマップをスタックの先頭から取得
         val (centerX, centerY) = centerStack.peek() ?: return
         val currentM = currentMap ?: return
 
         val dx = event.x - centerX
         val dy = event.y - centerY
-        val enabledDirections = currentM.keys
+        val enabledDirections = effectiveStageMap(currentM).keys
 
         // 現在のフリック方向を計算
         val direction = calculateDirection(
@@ -279,6 +323,11 @@ class TfbiHierarchicalFlickController(
                     // 親のマップとハイライト状態を復元
                     currentMap = mapStack.peek()
                     currentHighlight = highlightStack.peek() // 親のハイライト(TAP)
+                    guideSelectedOption = currentHighlight.takeUnless {
+                        it == TfbiFlickDirection.TAP
+                    }
+                    guideArrowDirection = guideSelectedOption
+                    guideStageJustOpened = false
 
                     // UIを親マップに戻す
                     setupStageUI(currentMap!!)
@@ -303,14 +352,33 @@ class TfbiHierarchicalFlickController(
         // (TAP 以外の方向に動いたので、ジッターガードは解除)
         isJitterGuardActive = false
 
-        // ハイライト対象のノードを取得
-        val node = currentM[direction]
+        // ハイライト対象のノードを取得します。yoon の子階層では、親の同じ段にある
+        // じゃ／じゅ／じょの兄弟方向を継続候補として扱います。
+        var selectionMap = currentM
+        var node = currentM[direction]
+        if (node == null && parentContinuationNode(direction) != null) {
+            popCurrentStageForParentContinuation()
+            selectionMap = currentMap ?: return
+            node = selectionMap[direction]
+
+            // Parent-continuation input nodes are selected from the parent stage after the
+            // current child stage has been popped. Refresh the legacy popup before applying the
+            // new highlight; otherwise it keeps showing the child-stage labels.
+            if (popupPresentationMode == TfbiPopupPresentationMode.LEGACY_GRID) {
+                setupStageUI(selectionMap)
+            }
+        }
+        val depthBeforeSelection = mapStack.size
+        if (depthBeforeSelection == 1) {
+            guideRootDirection = direction
+        }
+        guideArrowDirection = direction
         if (direction == currentHighlight) {
             if (node is TfbiFlickNode.Input && isModeSwitchGestureConfident(
                     dx = dx,
                     dy = dy,
                     targetDirection = direction,
-                    currentMap = currentM
+                    currentMap = selectionMap
                 )
             ) {
                 updateInternalState(node.triggersMode, event)
@@ -325,9 +393,11 @@ class TfbiHierarchicalFlickController(
             is TfbiFlickNode.Input -> {
                 // 終端ノード（文字）の場合：ハイライトを更新
                 popupView?.highlightDirection(currentHighlight)
+                guideSelectedOption = direction
+                updateGuideForSelection(node.char, selectionMap)
 
                 // 状態更新
-                if (isModeSwitchGestureConfident(dx, dy, currentHighlight, currentM)) {
+                if (isModeSwitchGestureConfident(dx, dy, currentHighlight, selectionMap)) {
                     updateInternalState(node.triggersMode, event)
                 }
             }
@@ -344,6 +414,8 @@ class TfbiHierarchicalFlickController(
                 // ハイライトは開いた方向 (currentHighlight) を維持
                 // ただし、ジッターガードを有効にする
                 isJitterGuardActive = true
+                guideSelectedOption = null
+                guideStageJustOpened = true
 
                 // ポップアップをサブメニューの内容で更新
                 setupStageUI(currentMap!!)
@@ -353,6 +425,7 @@ class TfbiHierarchicalFlickController(
             null -> {
                 // マップにない無効な方向（主にTAPに戻る途中）
                 popupView?.highlightDirection(currentHighlight)
+                guideSelectedOption = direction
             }
 
             is TfbiFlickNode.StatefulKey -> {
@@ -363,6 +436,7 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun handleTouchUp(event: MotionEvent) {
+        attachedView?.let { updateGuideFingerPosition(it, event) }
         val currentM = currentMap ?: return
         val finalDirection = currentHighlight
         val node = currentM[finalDirection]
@@ -418,6 +492,46 @@ class TfbiHierarchicalFlickController(
                 (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
             else -> null
         }?.takeIf(String::isNotEmpty)
+    }
+
+    /**
+     * Returns the explicitly allowed sibling entries from the parent stage. Continuations
+     * are metadata on the currently open submenu, so unrelated parent directions never leak
+     * into an arbitrary child stage.
+     */
+    private fun parentContinuationNodes(): Map<TfbiFlickDirection, TfbiFlickNode> {
+        if (mapStack.size <= 1 || highlightStack.isEmpty()) return emptyMap()
+
+        val entryDirection = highlightStack.peek() ?: return emptyMap()
+        val parentMap = mapStack.elementAt(1)
+        val sourceNode = parentMap[entryDirection] as? TfbiFlickNode.SubMenu
+            ?: return emptyMap()
+
+        return sourceNode.parentContinuationDirections
+            .asSequence()
+            .filter { it != entryDirection }
+            .mapNotNull { direction ->
+                parentMap[direction]?.let { direction to it }
+            }
+            .toMap()
+    }
+
+    private fun effectiveStageMap(
+        map: Map<TfbiFlickDirection, TfbiFlickNode>
+    ): Map<TfbiFlickDirection, TfbiFlickNode> {
+        val continuations = parentContinuationNodes()
+        return if (continuations.isEmpty()) map else continuations + map
+    }
+
+    private fun parentContinuationNode(
+        direction: TfbiFlickDirection
+    ): TfbiFlickNode? = parentContinuationNodes()[direction]
+
+    private fun popCurrentStageForParentContinuation() {
+        if (mapStack.size <= 1) return
+        mapStack.pop()
+        highlightStack.pop()
+        currentMap = mapStack.peek()
     }
 
     private fun updateInternalState(newMode: KeyMode?, event: MotionEvent) {
@@ -565,41 +679,55 @@ class TfbiHierarchicalFlickController(
         anchorView: View,
         showPetals: Boolean
     ) {
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            showGuidePopup(anchorView, showPetals)
+        } else {
+            showLegacyPopup(anchorView, showPetals)
+        }
+    }
+
+    private fun showGuidePopup(
+        anchorView: View,
+        showPetals: Boolean
+    ) {
+        val rootM = rootMap ?: return
+        val tapCharacter = nodeDisplayText(rootM[TfbiFlickDirection.TAP])
+        val optionLabels = if (showPetals) {
+            rootM
+                .filterKeys { it != TfbiFlickDirection.TAP }
+                .mapValues { (_, node) -> guideOptionLabel(tapCharacter, nodeDisplayText(node)) }
+        } else {
+            emptyMap()
+        }
+        guidePopupHost.show(
+            anchor = anchorView,
+            state = TfbiGuidePopupState(
+                currentText = tapCharacter,
+                currentSlot = TfbiFlickDirection.TAP,
+                optionLabels = optionLabels,
+                fingerPosition = currentFingerPosition
+            ),
+            direction = null,
+            style = popupStyle,
+            inputTextTransform = inputTextTransform
+        )
+    }
+
+    private fun showLegacyPopup(
+        anchorView: View,
+        showPetals: Boolean
+    ) {
         if (popupWindow?.isShowing == true && !showPetals) return
         val rootM = rootMap ?: return
 
         // TAP（中央）に表示する文字
-        val tapCharacter = when (val tapNode = rootM[TfbiFlickDirection.TAP]) {
-            is TfbiFlickNode.Input -> tapNode.char
-            is TfbiFlickNode.SubMenu -> tapNode.label
-                ?: (tapNode.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char ?: ""
-
-            null -> ""
-            is TfbiFlickNode.StatefulKey -> {
-                Log.e(TAG, "Illegal state: StatefulKey found at TAP in root map.")
-                ""
-            }
-        }
+        val tapCharacter = nodeDisplayText(rootM[TfbiFlickDirection.TAP])
 
         // Petal（周囲）に表示する文字
         val petalChars = if (showPetals) {
             rootM
                 .filterKeys { it != TfbiFlickDirection.TAP }
-                .mapValues { (dir, node) ->
-                    when (node) {
-                        is TfbiFlickNode.Input -> node.char
-                        is TfbiFlickNode.SubMenu -> {
-                            node.label
-                                ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                                ?: ""
-                        }
-
-                        is TfbiFlickNode.StatefulKey -> {
-                            Log.e(TAG, "Illegal state: StatefulKey found at Petal in root map.")
-                            ""
-                        }
-                    }
-                }
+                .mapValues { (_, node) -> nodeDisplayText(node) }
         } else {
             emptyMap()
         }
@@ -638,44 +766,109 @@ class TfbiHierarchicalFlickController(
      * 第2階層以降のUI（ポップアップの内容）を設定します。
      */
     private fun setupStageUI(map: Map<TfbiFlickDirection, TfbiFlickNode>) {
+        val displayMap = effectiveStageMap(map)
         // 中央に表示する文字
-        val tapCharacter = when (val tapNode = map[TfbiFlickDirection.TAP]) {
-            is TfbiFlickNode.Input -> tapNode.char
-            is TfbiFlickNode.SubMenu -> tapNode.label
-                ?: (tapNode.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char ?: ""
-
-            null -> ""
-            is TfbiFlickNode.StatefulKey -> {
-                Log.e(TAG, "Illegal state: StatefulKey found at TAP in SubMenu map.")
-                ""
-            }
-        }
+        val tapCharacter = nodeDisplayText(displayMap[TfbiFlickDirection.TAP])
+        val stageBaseCharacter = stageBaseCharacter(displayMap, tapCharacter)
 
         // 周囲に表示する文字
-        val petalChars = map
+        val petalChars = displayMap
             .filterKeys { it != TfbiFlickDirection.TAP }
-            .mapValues { (dir, node) ->
-                when (node) {
-                    is TfbiFlickNode.Input -> node.char
-                    is TfbiFlickNode.SubMenu -> {
-                        node.label
-                            ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                            ?: ""
-                    }
-
-                    is TfbiFlickNode.StatefulKey -> {
-                        Log.e(TAG, "Illegal state: StatefulKey found at Petal in SubMenu map.")
-                        ""
-                    }
-                }
-            }
+            .mapValues { (_, node) -> nodeDisplayText(node) }
 
         popupView?.setCharacters(tapCharacter, petalChars)
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            val currentText = if (guideStageJustOpened) {
+                stageBaseCharacter
+            } else {
+                nodeDisplayText(displayMap[currentHighlight]).ifEmpty { stageBaseCharacter }
+            }
+            val currentSlot = if (mapStack.size > 1) guideRootDirection else currentHighlight
+            guidePopupHost.update(
+                state = TfbiGuidePopupState(
+                    currentText = currentText,
+                    currentSlot = currentSlot,
+                    optionLabels = petalChars.mapValues { (_, output) ->
+                        guideOptionLabel(stageBaseCharacter, output)
+                    },
+                    selectedOption = if (guideStageJustOpened) null else guideSelectedOption
+                ),
+                direction = guideArrowDirection
+            )
+            guideStageJustOpened = false
+        }
+    }
+
+    private fun updateGuideForSelection(
+        currentText: String,
+        map: Map<TfbiFlickDirection, TfbiFlickNode>
+    ) {
+        if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
+        val displayMap = effectiveStageMap(map)
+        val tapCharacter = nodeDisplayText(displayMap[TfbiFlickDirection.TAP])
+        val stageBaseCharacter = stageBaseCharacter(displayMap, tapCharacter)
+        val optionLabels = displayMap
+            .filterKeys { it != TfbiFlickDirection.TAP }
+            .mapValues { (_, node) -> guideOptionLabel(stageBaseCharacter, nodeDisplayText(node)) }
+        guidePopupHost.update(
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = if (mapStack.size > 1) guideRootDirection else currentHighlight,
+                optionLabels = optionLabels,
+                selectedOption = guideSelectedOption
+            ),
+            direction = guideArrowDirection
+        )
+    }
+
+    /**
+     * Some hierarchical stages intentionally omit TAP because the entry direction itself is
+     * the current character (for example な -> に -> にゅ).  The guide still needs a base label
+     * for that stage; otherwise an empty TAP node makes the active label disappear.
+     */
+    private fun stageBaseCharacter(
+        map: Map<TfbiFlickDirection, TfbiFlickNode>,
+        tapCharacter: String
+    ): String {
+        if (tapCharacter.isNotEmpty()) return tapCharacter
+        val entryDirection = highlightStack.peek() ?: currentHighlight
+        return nodeDisplayText(map[entryDirection])
+    }
+
+    private fun nodeDisplayText(node: TfbiFlickNode?): String {
+        return when (node) {
+            is TfbiFlickNode.Input -> node.char
+            is TfbiFlickNode.SubMenu -> node.label
+                ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char.orEmpty()
+
+            is TfbiFlickNode.StatefulKey -> ""
+            null -> ""
+        }
+    }
+
+    private fun guideOptionLabel(currentText: String, output: String): String {
+        if (output.isEmpty()) return ""
+        return output.removePrefix(currentText).ifEmpty { output }
+    }
+
+    private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
+        val (downX, downY) = centerStack.peek() ?: (event.x to event.y)
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = downX,
+            downY = downY
+        )
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            guidePopupHost.updateFingerPosition(currentFingerPosition)
+        }
     }
 
     private fun resetState() {
         attachedView?.removeCallbacks(longPressRunnable)
         popupWindow?.dismiss()
+        guidePopupHost.dismiss()
         popupWindow = null
         popupView = null
         centerStack.clear()
@@ -683,8 +876,13 @@ class TfbiHierarchicalFlickController(
         highlightStack.clear()
         currentMap = null
         currentHighlight = TfbiFlickDirection.TAP
+        guideRootDirection = TfbiFlickDirection.TAP
+        guideSelectedOption = null
+        guideArrowDirection = null
+        guideStageJustOpened = false
         isJitterGuardActive = false
         activeGestureConfig = null
+        currentFingerPosition = null
 
         if (currentMode != KeyMode.NORMAL) {
             currentMode = KeyMode.NORMAL
@@ -724,6 +922,12 @@ class TfbiHierarchicalFlickController(
         }
         if (enabledDirections.size <= 1 && enabledDirections.contains(TfbiFlickDirection.TAP)) {
             return TfbiFlickDirection.TAP
+        }
+
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            currentFingerPosition?.let { position ->
+                return resolveTfbiGuideGridDirection(position, enabledDirections)
+            }
         }
 
         val centerAngles = mapOf(

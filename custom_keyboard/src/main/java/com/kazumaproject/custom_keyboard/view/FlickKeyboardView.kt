@@ -30,8 +30,10 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -136,6 +138,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     )
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var tfbiPopupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
@@ -284,6 +288,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         stickyTfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         hierarchicalTfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+    }
+
+    fun setTfbiPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        tfbiPopupPresentationMode = mode
+        tfbiControllers.forEach { it.setPopupPresentationMode(mode) }
+        stickyTfbiControllers.forEach { it.setPopupPresentationMode(mode) }
+        hierarchicalTfbiControllers.forEach { it.setPopupPresentationMode(mode) }
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
+        tfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
+        stickyTfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
+        hierarchicalTfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
     }
 
     fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
@@ -2212,6 +2230,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiInputController.TfbiListener {
@@ -2380,6 +2400,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiStickyFlickController.TfbiListener {
@@ -2417,6 +2439,16 @@ class FlickKeyboardView @JvmOverloads constructor(
                         )
                     }
 
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
+
                     stickyTfbiControllers.add(controller)
                     return controller
                 }
@@ -2440,6 +2472,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
                         setInputTextTransform(::transformInputTextForDisplay)
                         setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)

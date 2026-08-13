@@ -43,7 +43,8 @@ sealed class FlickNodeDefinition {
     data class Branch(
         val label: String? = null,
         val stage: FlickStageDefinition,
-        val cancelOnTap: Boolean = true
+        val cancelOnTap: Boolean = true,
+        val parentContinuationDirections: Set<TfbiFlickDirection> = emptySet()
     ) : FlickNodeDefinition()
 }
 
@@ -101,7 +102,8 @@ object FlickKeyDefinitionTfbiMapper {
             is FlickNodeDefinition.Branch -> TfbiFlickNode.SubMenu(
                 nextMap = stage.toTfbiMap(),
                 label = label,
-                cancelOnTap = cancelOnTap
+                cancelOnTap = cancelOnTap,
+                parentContinuationDirections = parentContinuationDirections
             )
         }
     }
