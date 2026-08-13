@@ -3,6 +3,7 @@ package com.kazumaproject.custom_keyboard.controller
 import android.content.Context
 import android.view.MotionEvent
 import android.view.View
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
@@ -180,9 +181,63 @@ internal fun resolveTfbiGuideFingerPosition(
     anchor: View,
     event: MotionEvent
 ): TfbiGuideFingerPosition? {
-    if (anchor.width <= 0 || anchor.height <= 0) return null
+    return resolveTfbiGuideFingerPosition(
+        keyWidth = anchor.width,
+        keyHeight = anchor.height,
+        eventX = event.x,
+        eventY = event.y,
+        startPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT,
+        downX = event.x,
+        downY = event.y
+    )
+}
+
+/**
+ * Converts a key-local touch coordinate into the guide panel's normalized coordinate space.
+ *
+ * In KEY_CENTER mode the marker uses a virtual coordinate system. It starts at the key
+ * center and follows the displacement from the original ACTION_DOWN position. The raw touch
+ * displacement is still used by the controllers for the flick threshold, so touching an edge
+ * does not immediately produce a flick.
+ */
+internal fun resolveTfbiGuideFingerPosition(
+    anchor: View,
+    event: MotionEvent,
+    startPositionMode: TfbiFlickStartPositionMode,
+    downX: Float,
+    downY: Float
+): TfbiGuideFingerPosition? {
+    return resolveTfbiGuideFingerPosition(
+        keyWidth = anchor.width,
+        keyHeight = anchor.height,
+        eventX = event.x,
+        eventY = event.y,
+        startPositionMode = startPositionMode,
+        downX = downX,
+        downY = downY
+    )
+}
+
+internal fun resolveTfbiGuideFingerPosition(
+    keyWidth: Int,
+    keyHeight: Int,
+    eventX: Float,
+    eventY: Float,
+    startPositionMode: TfbiFlickStartPositionMode,
+    downX: Float,
+    downY: Float
+): TfbiGuideFingerPosition? {
+    if (keyWidth <= 0 || keyHeight <= 0) return null
+
+    val (x, y) = when (startPositionMode) {
+        TfbiFlickStartPositionMode.TOUCH_POINT -> eventX to eventY
+        TfbiFlickStartPositionMode.KEY_CENTER -> {
+            keyWidth / 2f + (eventX - downX) to
+                    keyHeight / 2f + (eventY - downY)
+        }
+    }
     return TfbiGuideFingerPosition(
-        x = (event.x / anchor.width.toFloat()).coerceIn(0f, 1f),
-        y = (event.y / anchor.height.toFloat()).coerceIn(0f, 1f)
+        x = (x / keyWidth.toFloat()).coerceIn(0f, 1f),
+        y = (y / keyHeight.toFloat()).coerceIn(0f, 1f)
     )
 }

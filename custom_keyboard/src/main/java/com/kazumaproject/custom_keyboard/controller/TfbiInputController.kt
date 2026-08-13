@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
@@ -82,6 +83,8 @@ class TfbiInputController(
     private var isLongPressModeActive = false
     private var activeGestureConfig: GestureSessionConfig? = null
     private var currentFingerPosition: TfbiGuideFingerPosition? = null
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
+    private var activeTfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
@@ -147,6 +150,10 @@ class TfbiInputController(
         popupWindow = null
         popupView = null
         popupPresentationMode = mode
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -218,7 +225,14 @@ class TfbiInputController(
         isTouchActive = true
         initialTouchX = event.x
         initialTouchY = event.y
-        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        activeTfbiFlickStartPositionMode = tfbiFlickStartPositionMode
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = initialTouchX,
+            downY = initialTouchY
+        )
         listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         showPopup(view, TfbiFlickDirection.TAP, false)
@@ -478,7 +492,13 @@ class TfbiInputController(
     }
 
     private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
-        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = initialTouchX,
+            downY = initialTouchY
+        )
         if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
             guidePopupHost.updateFingerPosition(currentFingerPosition)
         }
