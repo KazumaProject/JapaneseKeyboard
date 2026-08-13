@@ -1,14 +1,20 @@
 package com.kazumaproject.custom_keyboard.view
 
 import android.app.Activity
+import android.content.res.Configuration
+import android.graphics.Color
 import android.view.ContextThemeWrapper
 import android.view.MotionEvent
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
+import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
+import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
-import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -45,6 +51,60 @@ class FlickKeyboardViewTfbiAttachTest {
         assertEquals(11, controllersOf<TfbiHierarchicalFlickController>(keyboard).size)
         assertNotNull(
             keyboard.findControllerForLabel("な", TfbiHierarchicalFlickController::class.java)
+        )
+    }
+
+    @Test
+    fun stickyTfbiGuideReceivesCustomThemePopupColors() {
+        val keyboard = createView().apply {
+            setTfbiPopupPresentationMode(TfbiPopupPresentationMode.GUIDE_ABOVE_KEY)
+            applyKeyboardTheme(
+                themeMode = "custom",
+                currentNightMode = Configuration.UI_MODE_NIGHT_NO,
+                isDynamicColorEnabled = false,
+                customBgColor = Color.WHITE,
+                customKeyColor = 0xffd0d0d0.toInt(),
+                customSpecialKeyColor = 0xff204060.toInt(),
+                customKeyTextColor = Color.BLACK,
+                customSpecialKeyTextColor = 0xfff0e0d0.toInt(),
+                liquidGlassEnable = false,
+                customBorderEnable = false,
+                customBorderColor = Color.BLACK,
+                liquidGlassKeyAlphaEnable = 255,
+                borderWidth = 0
+            )
+            setKeyboard(createStickyLayout())
+        }
+
+        val controller = stickyControllersOf(keyboard).single()
+        assertEquals(
+            0xff204060.toInt(),
+            privateField(controller, "popupBackgroundColor")
+        )
+        assertEquals(
+            0xff264c73.toInt(),
+            privateField(controller, "popupHighlightedColor")
+        )
+        assertEquals(
+            0xfff0e0d0.toInt(),
+            privateField(controller, "popupTextColor")
+        )
+
+        val guideHost = controller::class.java.getDeclaredMethod("getGuidePopupHost")
+            .apply { isAccessible = true }
+            .invoke(controller)
+            ?: error("Sticky TFBi guide host was not initialized")
+        assertEquals(
+            0xff204060.toInt(),
+            privateField(guideHost, "configuredBackgroundColor")
+        )
+        assertEquals(
+            0xff264c73.toInt(),
+            privateField(guideHost, "configuredHighlightedColor")
+        )
+        assertEquals(
+            0xfff0e0d0.toInt(),
+            privateField(guideHost, "configuredTextColor")
         )
     }
 
@@ -398,6 +458,43 @@ class FlickKeyboardViewTfbiAttachTest {
         inputLayoutType = "flick",
         inputStyle = inputStyle
     )
+
+    private fun createStickyLayout(): KeyboardLayout {
+        val key = KeyData(
+            label = "sticky",
+            row = 0,
+            column = 0,
+            isFlickable = true,
+            action = KeyAction.Text("a"),
+            isSpecialKey = true,
+            keyId = "sticky",
+            keyType = KeyType.STICKY_TWO_STEP_FLICK
+        )
+        return KeyboardLayout(
+            keys = listOf(key),
+            flickKeyMaps = emptyMap(),
+            columnCount = 1,
+            rowCount = 1,
+            twoStepFlickKeyMaps = mapOf(
+                "sticky" to mapOf(
+                    TfbiFlickDirection.TAP to mapOf(
+                        TfbiFlickDirection.TAP to "a",
+                        TfbiFlickDirection.RIGHT to "b"
+                    )
+                )
+            )
+        )
+    }
+
+    private fun stickyControllersOf(keyboard: FlickKeyboardView): List<TfbiStickyFlickController> {
+        val field = FlickKeyboardView::class.java.getDeclaredField("stickyTfbiControllers")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        return field.get(keyboard) as List<TfbiStickyFlickController>
+    }
+
+    private fun privateField(instance: Any, name: String): Any? =
+        instance::class.java.getDeclaredField(name).apply { isAccessible = true }.get(instance)
 
     @Suppress("UNCHECKED_CAST")
     private inline fun <reified T> controllersOf(keyboard: FlickKeyboardView): List<T> {

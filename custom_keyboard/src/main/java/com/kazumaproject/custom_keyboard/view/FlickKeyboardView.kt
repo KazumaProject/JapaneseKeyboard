@@ -2439,6 +2439,16 @@ class FlickKeyboardView @JvmOverloads constructor(
                         )
                     }
 
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
+
                     stickyTfbiControllers.add(controller)
                     return controller
                 }
