@@ -360,6 +360,13 @@ class TfbiHierarchicalFlickController(
             popCurrentStageForParentContinuation()
             selectionMap = currentMap ?: return
             node = selectionMap[direction]
+
+            // Parent-continuation input nodes are selected from the parent stage after the
+            // current child stage has been popped. Refresh the legacy popup before applying the
+            // new highlight; otherwise it keeps showing the child-stage labels.
+            if (popupPresentationMode == TfbiPopupPresentationMode.LEGACY_GRID) {
+                setupStageUI(selectionMap)
+            }
         }
         val depthBeforeSelection = mapStack.size
         if (depthBeforeSelection == 1) {
