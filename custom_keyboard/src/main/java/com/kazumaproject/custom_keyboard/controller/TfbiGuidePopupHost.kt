@@ -175,7 +175,6 @@ internal class TfbiGuidePopupHost(
         const val DEFAULT_ARROW_COLOR: Int = 0xff1976d2.toInt()
     }
 }
-
 /** Converts a key-local touch coordinate into the guide panel's normalized coordinate space. */
 internal fun resolveTfbiGuideFingerPosition(
     anchor: View,
