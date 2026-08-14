@@ -46,6 +46,7 @@ import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettingsSource
+import com.kazumaproject.custom_keyboard.controller.CenterGuideFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
 import com.kazumaproject.custom_keyboard.controller.CancellableTask
@@ -117,6 +118,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var previewKeyData: KeyData? = null
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
+    private val centerGuideFlickControllers = mutableListOf<CenterGuideFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val flickLongPressControllers = mutableListOf<FlickLongPressInputController>()
     private val tapLongPressControllers = mutableListOf<TapLongPressInputController>()
@@ -277,6 +279,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         popupWindowAnchorProvider = provider
         flickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         crossFlickControllers.forEach { it.setPopupOverlayHostProvider(provider) }
+        centerGuideFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
 
         flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
@@ -305,6 +308,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach {
             it.applyPopupViewStyleSet(popupViewStyleSet.directional, popupViewStyleSet.cross)
         }
+        centerGuideFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         standardFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.standard) }
 
         flickLongPressControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
@@ -590,6 +594,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.cancel() }
         crossFlickControllers.clear()
 
+        centerGuideFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.clear()
+
         standardFlickControllers.forEach { it.cancel() }
         standardFlickControllers.clear()
 
@@ -751,6 +758,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val transform = ::transformInputTextForDisplay
         flickControllers.forEach { it.setInputTextTransform(transform) }
         crossFlickControllers.forEach { it.setInputTextTransform(transform) }
+        centerGuideFlickControllers.forEach { it.setInputTextTransform(transform) }
         standardFlickControllers.forEach { it.setInputTextTransform(transform) }
 
         flickLongPressControllers.forEach { it.setInputTextTransform(transform) }
@@ -2086,6 +2094,59 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
+            KeyType.CENTER_GUIDE_FLICK -> {
+                val flickActionMap = layout.flickKeyMaps[keyData.keyId]?.firstOrNull()
+                    ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                if (flickActionMap != null) {
+                    val stringMap = extractInputMap(flickActionMap)
+                    if (keyView is AutoSizeButton) {
+                        applyGuideLabels(keyView, keyData, stringMap)
+                    }
+
+                    val controller = CenterGuideFlickInputController(
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
+                    ).apply {
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
+                        applyPopupViewStyle(popupViewStyleSet.tfbi)
+                        listener = object : CenterGuideFlickInputController.Listener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(keyData, character)
+                            }
+
+                            override fun onCommit(character: String, isFlick: Boolean) {
+                                dispatchCommittedKeyAction(
+                                    keyData,
+                                    KeyAction.Text(character),
+                                    isFlick = isFlick
+                                )
+                            }
+
+                            override fun onSelectionChanged(
+                                character: String?,
+                                isFlick: Boolean
+                            ) = updateTextPreview(character, isFlick)
+
+                            override fun onCanceled() = cancelTextPreview()
+                        }
+
+                        attach(keyView, stringMap)
+                    }
+
+                    if (themeMode == "custom") {
+                        controller.setPopupColors(
+                            backgroundColor = customSpecialKeyColor,
+                            highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                            textColor = customSpecialKeyTextColor
+                        )
+                    }
+
+                    centerGuideFlickControllers.add(controller)
+                    return controller
+                }
+            }
+
             KeyType.NORMAL -> {
                 keyData.action?.let { action ->
                     Log.d("FlickKeyboardView KeyType.NORMAL", "key data: $keyData")
@@ -2363,6 +2424,11 @@ class FlickKeyboardView @JvmOverloads constructor(
             is CrossFlickInputController -> {
                 controller.cancel()
                 crossFlickControllers.remove(controller)
+            }
+
+            is CenterGuideFlickInputController -> {
+                controller.cancel()
+                centerGuideFlickControllers.remove(controller)
             }
 
             is StandardFlickInputController -> {
@@ -2809,6 +2875,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
 
         flickLongPressControllers.forEach { it.cancel() }
