@@ -4,6 +4,8 @@ import android.graphics.Color
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +53,25 @@ class TfbiGuidePopupViewTest {
         assertEquals(Color.RED, privateColor(view, "popupBackgroundColor"))
         assertEquals(Color.BLUE, privateColor(view, "activeColor"))
         assertEquals(Color.WHITE, privateColor(view, "popupTextColor"))
+    }
+
+    @Test
+    fun guideStoresTheCurrentPointerPositionInItsRenderState() {
+        val view = createView()
+        val position = TfbiGuideFingerPosition(x = 0.8f, y = 0.2f)
+
+        view.setState(
+            TfbiGuidePopupState(
+                currentText = "あ",
+                currentSlot = TfbiFlickDirection.TAP,
+                fingerPosition = position
+            )
+        )
+
+        val state = TfbiGuidePopupView::class.java.getDeclaredField("state").apply {
+            isAccessible = true
+        }.get(view) as TfbiGuidePopupState
+        assertEquals(position, state.fingerPosition)
     }
 
     private fun createView(): TfbiGuidePopupView = TfbiGuidePopupView(
