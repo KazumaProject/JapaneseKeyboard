@@ -70,9 +70,10 @@ fun Char.toRomajiQwertyOutputChar(
     useHankakuNumber: Boolean,
     useHankakuSymbol: Boolean
 ): Char {
+    val hankakuChar = toHankaku()
     return when {
-        useHankakuNumber && isAsciiDigitForRomajiQwerty() -> this
-        useHankakuSymbol && isAsciiSymbolForRomajiQwerty() -> this
+        useHankakuNumber && hankakuChar.isAsciiDigitForRomajiQwerty() -> hankakuChar
+        useHankakuSymbol && hankakuChar.isAsciiSymbolForRomajiQwerty() -> hankakuChar
         else -> toZenkaku()
     }
 }
