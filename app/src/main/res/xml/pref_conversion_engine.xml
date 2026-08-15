@@ -30,6 +30,13 @@
             android:title="@string/english_prediction_enable_title"
             app:iconSpaceReserved="false" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="english_reading_dictionary_enable_preference"
+            android:summary="@string/english_reading_dictionary_enable_summary"
+            android:title="@string/english_reading_dictionary_enable_title"
+            app:iconSpaceReserved="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/prediction_behavior_category_title">

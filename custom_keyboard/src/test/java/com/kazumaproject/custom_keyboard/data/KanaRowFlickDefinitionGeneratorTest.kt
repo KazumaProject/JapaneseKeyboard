@@ -39,6 +39,10 @@ class KanaRowFlickDefinitionGeneratorTest {
         assertEquals("か", statefulKey.label)
         assertNull(statefulKey.handakutenMap)
         assertEquals("きょう", normalKyo.input(TfbiFlickDirection.DOWN_LEFT).char)
+        assertEquals(
+            setOf(TfbiFlickDirection.UP, TfbiFlickDirection.RIGHT, TfbiFlickDirection.DOWN),
+            normalKiNode.nextMap.subMenu(TfbiFlickDirection.DOWN).parentContinuationDirections
+        )
         assertEquals("2", normalKo.input(TfbiFlickDirection.LEFT).char)
         assertFalse(normalKiNode.cancelOnTap)
         assertEquals("ぎ", gi.char)
@@ -49,6 +53,10 @@ class KanaRowFlickDefinitionGeneratorTest {
         assertEquals("く", kuFromDakuten.char)
         assertEquals(KeyMode.NORMAL, kuFromDakuten.triggersMode)
         assertEquals("ぎょう", dakutenGyo.input(TfbiFlickDirection.DOWN_LEFT).char)
+        assertEquals(
+            setOf(TfbiFlickDirection.UP, TfbiFlickDirection.RIGHT, TfbiFlickDirection.DOWN),
+            dakutenGi.subMenu(TfbiFlickDirection.DOWN).parentContinuationDirections
+        )
         assertEquals("ごう", dakutenGo.input(TfbiFlickDirection.RIGHT).char)
     }
 

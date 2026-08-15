@@ -13,6 +13,7 @@ enum class DictionaryCategory {
     READING_CORRECTION,
     KOTOWAZA,
     ENGLISH,
+    ENGLISH_READING,
     PERSON_NAME,
     PLACES,
     WIKI,
@@ -75,6 +76,9 @@ enum class DictionaryFileKey {
     ENGLISH_WORD,
     ENGLISH_TOKEN,
     ENGLISH_QWERTY_GLIDE_INDEX,
+    ENGLISH_READING_TANGO,
+    ENGLISH_READING_YOMI,
+    ENGLISH_READING_TOKEN,
     PERSON_NAME_TANGO,
     PERSON_NAME_YOMI,
     PERSON_NAME_TOKEN,
@@ -191,6 +195,10 @@ object DictionaryFileSpecs {
         triple(DictionaryFileKey.ENGLISH_TOKEN, DictionaryCategory.ENGLISH, DictionaryFileRole.ENGLISH_TOKEN, "english/token.dat.zip", DictionaryContentType.ENGLISH_TOKEN, R.string.external_dictionary_file_english_token, true),
         spec(DictionaryFileKey.ENGLISH_QWERTY_GLIDE_INDEX, DictionaryCategory.ENGLISH, DictionaryFileRole.ENGLISH_QWERTY_GLIDE_INDEX, "english/qwerty_glide_index.dat", DictionaryContentType.ENGLISH_QWERTY_GLIDE_INDEX, R.string.external_dictionary_file_english_word, false, false),
 
+        triple(DictionaryFileKey.ENGLISH_READING_TANGO, DictionaryCategory.ENGLISH_READING, DictionaryFileRole.TANGO, "english_reading/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, true),
+        triple(DictionaryFileKey.ENGLISH_READING_YOMI, DictionaryCategory.ENGLISH_READING, DictionaryFileRole.YOMI, "english_reading/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, true),
+        triple(DictionaryFileKey.ENGLISH_READING_TOKEN, DictionaryCategory.ENGLISH_READING, DictionaryFileRole.TOKEN, "english_reading/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, true),
+
         triple(DictionaryFileKey.PERSON_NAME_TANGO, DictionaryCategory.PERSON_NAME, DictionaryFileRole.TANGO, "person_name/tango_person_names.dat", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
         triple(DictionaryFileKey.PERSON_NAME_YOMI, DictionaryCategory.PERSON_NAME, DictionaryFileRole.YOMI, "person_name/yomi_person_names.dat", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
         triple(DictionaryFileKey.PERSON_NAME_TOKEN, DictionaryCategory.PERSON_NAME, DictionaryFileRole.TOKEN, "person_name/token_person_names.dat", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
@@ -266,6 +274,7 @@ fun DictionaryCategory.isDisableableBundledDictionary(): Boolean =
     this in setOf(
         DictionaryCategory.READING_CORRECTION,
         DictionaryCategory.KOTOWAZA,
+        DictionaryCategory.ENGLISH_READING,
         DictionaryCategory.PERSON_NAME,
         DictionaryCategory.PLACES,
         DictionaryCategory.WIKI,

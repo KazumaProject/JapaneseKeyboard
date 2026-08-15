@@ -228,6 +228,26 @@ class DictionaryOverrideCoreTest {
     }
 
     @Test
+    fun englishReadingDictionary_isEnabledByDefaultAndCanBeDisabled() {
+        val store = alwaysValidStore("english-reading-setting")
+        val resolver = sourceResolver(store)
+
+        assertTrue(store.isOptionalBundledEnabled(DictionaryCategory.ENGLISH_READING))
+        assertEquals(
+            DictionaryCategoryLoadState.Bundled,
+            resolver.resolveCategoryLoadState(DictionaryCategory.ENGLISH_READING),
+        )
+
+        store.setOptionalBundledEnabled(DictionaryCategory.ENGLISH_READING, false)
+
+        assertFalse(store.isOptionalBundledEnabled(DictionaryCategory.ENGLISH_READING))
+        assertEquals(
+            DictionaryCategoryLoadState.Disabled,
+            resolver.resolveCategoryLoadState(DictionaryCategory.ENGLISH_READING),
+        )
+    }
+
+    @Test
     fun revision_tripleDictionaryFinalSaveAutoEnableUsesSingleIncrementForThatSave() {
         val store = alwaysValidStore("revision-triple")
         store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
@@ -771,6 +791,18 @@ class DictionaryOverrideCoreTest {
         assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionId.dat"))
         assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionid.dat"))
         assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionId.dat.zip"))
+        assertEquals(
+            DictionaryFileKey.ENGLISH_READING_TANGO,
+            DictionaryZipEntryNameMapper.map("app/src/main/assets/english_reading/tango.dat.zip"),
+        )
+        assertEquals(
+            DictionaryFileKey.ENGLISH_READING_YOMI,
+            DictionaryZipEntryNameMapper.map("english_reading\\yomi.dat.zip"),
+        )
+        assertEquals(
+            DictionaryFileKey.ENGLISH_READING_TOKEN,
+            DictionaryZipEntryNameMapper.map("english_reading/token.dat.zip"),
+        )
         assertEquals(DictionaryFileKey.POS_TABLE, DictionaryZipEntryNameMapper.map("pos_table.dat"))
         assertEquals(DictionaryFileKey.ID_DEF, DictionaryZipEntryNameMapper.map("id.def"))
         assertNull(DictionaryZipEntryNameMapper.map("unknown.dat"))

@@ -1055,6 +1055,7 @@
     <string name="external_dictionary_category_emoticon">顔文字辞書</string>
     <string name="external_dictionary_category_symbol">記号辞書</string>
     <string name="external_dictionary_category_english">英語辞書</string>
+    <string name="external_dictionary_category_english_reading">英語読み辞書</string>
     <string name="external_dictionary_replace_with_external_file">外部ファイルで置き換える</string>
     <string name="external_dictionary_use_bundled_dictionary">内蔵辞書を使用</string>
     <string name="external_dictionary_use_dictionary_switch_title">この辞書を使用する</string>
@@ -1292,6 +1293,14 @@
     <string name="qwerty_popup_view_style_preference_summary">QWERTY/ローマ字のキー preview と長押し候補 PopupView のサイズと文字サイズを設定します</string>
     <string name="flick_keyboard_popup_view_style_preference_title">タップ・フリック PopupView のサイズ</string>
     <string name="flick_keyboard_popup_view_style_preference_summary">方向別・十字・サークル・2段/3段フリック PopupView のサイズと文字サイズを設定します</string>
+    <string name="tfbi_flick_start_position_title">TFBiフリック開始位置</string>
+    <string name="tfbi_flick_start_position_summary">ガイドカーソルを指の位置から始めるか、キー中央から始めるかを設定します</string>
+    <string name="tfbi_flick_start_position_dialog_title">TFBiフリック開始位置を選択</string>
+    <string name="tfbi_flick_start_position_touch_point">指を置いた位置を反映（従来）</string>
+    <string name="tfbi_flick_start_position_key_center">キー中央から開始</string>
+    <string name="tfbi_popup_presentation_title">TFBiポップアップ表示</string>
+    <string name="tfbi_popup_presentation_legacy">従来の3×3ポップアップ</string>
+    <string name="tfbi_popup_presentation_guide">キー上部ガイド</string>
     <string name="qwerty_number_key_flick_setting_preference_summary">QWERTY 数字キーの上・下フリックで出力する文字を設定します</string>
     <string name="qwerty_number_key_flick_setting_preference_title">数字キーのフリック設定</string>
     <string name="custom_keyboard_usage_number_title">数字入力欄で使用する</string>
@@ -1534,6 +1543,8 @@
     <string name="japanese_prediction_enable_summary">入力した読みより長い日本語候補を表示します。</string>
     <string name="english_prediction_enable_title">英語の予測変換</string>
     <string name="english_prediction_enable_summary">英語辞書の前方一致候補を表示します。OFFでも入力文字と大文字・小文字候補は残ります。</string>
+    <string name="english_reading_dictionary_enable_title">英語読み辞書</string>
+    <string name="english_reading_dictionary_enable_summary">「かー」から「car」のような英語候補を表示します。</string>
     <string name="system_dictionary_prediction_enable_title">システム辞書の予測変換</string>
     <string name="system_dictionary_prediction_enable_summary">内蔵システム辞書を日本語の前方一致予測に使用します。</string>
     <string name="system_user_dictionary_prediction_enable_title">システムユーザー辞書</string>

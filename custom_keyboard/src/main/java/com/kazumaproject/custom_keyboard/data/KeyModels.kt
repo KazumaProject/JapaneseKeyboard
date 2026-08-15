@@ -589,6 +589,9 @@ enum class KeyType {
 
     PETAL_FLICK,
 
+    /** Sumire guide popup with a cursor that starts at the key center. */
+    CENTER_GUIDE_FLICK,
+
     TWO_STEP_FLICK,
 
     STICKY_TWO_STEP_FLICK,

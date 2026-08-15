@@ -8,12 +8,20 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
+import com.kazumaproject.custom_keyboard.controller.TfbiGuidePopupHost
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
+import com.kazumaproject.custom_keyboard.controller.isTfbiGuideTapCell
+import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideGridDirection
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -74,6 +82,9 @@ class TfbiInputController(
     private var intermediateTouchY = 0f
     private var isLongPressModeActive = false
     private var activeGestureConfig: GestureSessionConfig? = null
+    private var currentFingerPosition: TfbiGuideFingerPosition? = null
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
+    private var activeTfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
@@ -85,6 +96,10 @@ class TfbiInputController(
     private var inputTextTransform: (String) -> String = { it }
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var popupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private val guidePopupHost by lazy {
+        TfbiGuidePopupHost(context) { popupWindowAnchorProvider?.invoke() }
+    }
 
     private var isTouchActive = false
     private val longPressRunnable = Runnable {
@@ -114,6 +129,7 @@ class TfbiInputController(
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+        guidePopupHost.setColors(backgroundColor, highlightedColor, textColor)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -124,6 +140,20 @@ class TfbiInputController(
             textColor = style.textColor
         )
         popupView?.applyPopupViewStyle(popupStyle)
+        guidePopupHost.applyPopupViewStyle(popupStyle)
+    }
+
+    fun setPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        if (popupPresentationMode == mode) return
+        popupWindow?.dismiss()
+        guidePopupHost.dismiss()
+        popupWindow = null
+        popupView = null
+        popupPresentationMode = mode
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -133,6 +163,7 @@ class TfbiInputController(
     fun setInputTextTransform(transform: (String) -> String) {
         inputTextTransform = transform
         popupView?.setInputTextTransform(transform)
+        guidePopupHost.setInputTextTransform(transform)
     }
 
     fun attach(
@@ -194,6 +225,14 @@ class TfbiInputController(
         isTouchActive = true
         initialTouchX = event.x
         initialTouchY = event.y
+        activeTfbiFlickStartPositionMode = tfbiFlickStartPositionMode
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = initialTouchX,
+            downY = initialTouchY
+        )
         listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         showPopup(view, TfbiFlickDirection.TAP, false)
@@ -202,6 +241,7 @@ class TfbiInputController(
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
+        updateGuideFingerPosition(view, event)
         if (flickState == FlickState.NEUTRAL) {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
@@ -221,17 +261,25 @@ class TfbiInputController(
                 setupSecondStageUI(firstFlickDirection)
                 popupView?.highlightDirection(determinedDirection)
                 currentSecondFlickDirection = determinedDirection
+                updateGuideSecondStage()
             }
         } else {
             val distanceFromInitial = hypot(
                 (event.x - initialTouchX).toDouble(),
                 (event.y - initialTouchY).toDouble()
             ).toFloat()
-            if (distanceFromInitial < CANCEL_THRESHOLD) {
+            val returnedToGuideCenter = popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY &&
+                    currentFingerPosition?.let(::isTfbiGuideTapCell) == true
+            if (returnedToGuideCenter || (
+                        popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY &&
+                                distanceFromInitial < CANCEL_THRESHOLD
+                    )) {
                 if (isLongPressModeActive) {
                     return
                 }
+                val fingerPosition = currentFingerPosition
                 resetState()
+                currentFingerPosition = fingerPosition
                 showPopup(view, TfbiFlickDirection.TAP, false)
                 listener?.onSelectionChanged(
                     TfbiFlickDirection.TAP,
@@ -254,6 +302,7 @@ class TfbiInputController(
             if (highlightTargetDirection != currentSecondFlickDirection) {
                 popupView?.highlightDirection(highlightTargetDirection)
                 currentSecondFlickDirection = highlightTargetDirection
+                updateGuideSecondStage()
             }
         }
         listener?.onSelectionChanged(
@@ -266,6 +315,7 @@ class TfbiInputController(
     private fun handleTouchUp(event: MotionEvent) {
         isTouchActive = false
         clearLongPressCallback(attachedView)
+        attachedView?.let { updateGuideFingerPosition(it, event) }
 
         var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
@@ -326,6 +376,45 @@ class TfbiInputController(
         baseDirection: TfbiFlickDirection,
         showPetals: Boolean
     ) {
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            showGuidePopup(anchorView, baseDirection, showPetals)
+        } else {
+            showLegacyPopup(anchorView, baseDirection, showPetals)
+        }
+    }
+
+    private fun showGuidePopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
+        val currentText = characterFor(baseDirection, TfbiFlickDirection.TAP)
+        val optionLabels = if (showPetals) {
+            getEnabledFirstFlickDirections().associateWith { direction ->
+                characterFor(direction, direction)
+            }.mapValues { (_, output) -> guideOptionLabel(currentText, output) }
+        } else {
+            emptyMap()
+        }
+        guidePopupHost.show(
+            anchor = anchorView,
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = TfbiFlickDirection.TAP,
+                optionLabels = optionLabels,
+                fingerPosition = currentFingerPosition
+            ),
+            direction = baseDirection.takeUnless { it == TfbiFlickDirection.TAP && !showPetals },
+            style = popupStyle,
+            inputTextTransform = inputTextTransform
+        )
+    }
+
+    private fun showLegacyPopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
         if (popupWindow?.isShowing == true && !showPetals) return
 
         val tapCharacter = characterFor(baseDirection, TfbiFlickDirection.TAP)
@@ -378,6 +467,43 @@ class TfbiInputController(
         popupView?.setCharacters(tapCharacter, petalChars)
     }
 
+    private fun updateGuideSecondStage() {
+        if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
+        val first = firstFlickDirection
+        val currentText = characterFor(first, currentSecondFlickDirection)
+            .ifEmpty { characterFor(first, TfbiFlickDirection.TAP) }
+        val options = getEnabledSecondFlickDirections(first).associateWith { direction ->
+            characterFor(first, direction)
+        }.mapValues { (_, output) -> guideOptionLabel(currentText, output) }
+        guidePopupHost.update(
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = first,
+                optionLabels = options,
+                selectedOption = currentSecondFlickDirection
+            ),
+            direction = currentSecondFlickDirection
+        )
+    }
+
+    private fun guideOptionLabel(currentText: String, output: String): String {
+        if (output.isEmpty()) return ""
+        return output.removePrefix(currentText).ifEmpty { output }
+    }
+
+    private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = initialTouchX,
+            downY = initialTouchY
+        )
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            guidePopupHost.updateFingerPosition(currentFingerPosition)
+        }
+    }
+
     private fun characterFor(first: TfbiFlickDirection, second: TfbiFlickDirection): String {
         val normal = characterMapProvider?.invoke(first, second).orEmpty()
         val longPress = longPressCharacterMapProvider?.invoke(first, second).orEmpty()
@@ -387,12 +513,14 @@ class TfbiInputController(
     private fun resetState() {
         clearLongPressCallback(attachedView)
         popupWindow?.dismiss()
+        guidePopupHost.dismiss()
         popupWindow = null
         popupView = null
         flickState = FlickState.NEUTRAL
         firstFlickDirection = TfbiFlickDirection.TAP
         currentSecondFlickDirection = TfbiFlickDirection.TAP
         isLongPressModeActive = false
+        currentFingerPosition = null
     }
 
     private fun clearLongPressCallback(view: View?) {
@@ -445,6 +573,12 @@ class TfbiInputController(
         }
         if (enabledDirections.isEmpty()) {
             return TfbiFlickDirection.TAP
+        }
+
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            currentFingerPosition?.let { position ->
+                return resolveTfbiGuideGridDirection(position, enabledDirections)
+            }
         }
 
         val centerAngles = mapOf(
