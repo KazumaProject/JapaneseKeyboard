@@ -168,13 +168,18 @@ class DictionaryOverrideStore private constructor(
     fun removeAllOverrides() {
         val fileChanged = directory.exists() && directory.deleteRecursively()
         val stateChanged = prefs.all.any { (key, value) -> isResetAllStateChange(key, value) }
-        if (fileChanged || stateChanged) {
+        val englishReadingPreferenceChanged =
+            defaultPrefs.contains(ENGLISH_READING_ENABLED_PREFERENCE)
+        if (fileChanged || stateChanged || englishReadingPreferenceChanged) {
             synchronized(this) {
                 val nextRevision = currentRevision + 1L
                 prefs.edit()
                     .clear()
                     .putLong(REVISION_PREF_KEY, nextRevision)
                     .apply()
+            }
+            if (englishReadingPreferenceChanged) {
+                defaultPrefs.edit().remove(ENGLISH_READING_ENABLED_PREFERENCE).apply()
             }
         }
         OptionalDictionaryMigration(defaultPrefs, prefs).migrateIfNeeded(force = true)
@@ -216,13 +221,22 @@ class DictionaryOverrideStore private constructor(
         prefs.getBoolean(keyExternalEnabledKey(key), false)
 
     fun isOptionalBundledEnabled(category: DictionaryCategory): Boolean =
-        prefs.getBoolean(
-            optionalBundledEnabledKey(category),
-            category in setOf(DictionaryCategory.READING_CORRECTION, DictionaryCategory.KOTOWAZA),
-        )
+        if (category == DictionaryCategory.ENGLISH_READING) {
+            defaultPrefs.getBoolean(ENGLISH_READING_ENABLED_PREFERENCE, true)
+        } else {
+            prefs.getBoolean(
+                optionalBundledEnabledKey(category),
+                category in setOf(DictionaryCategory.READING_CORRECTION, DictionaryCategory.KOTOWAZA),
+            )
+        }
 
     fun setOptionalBundledEnabled(category: DictionaryCategory, enabled: Boolean) {
         if (isOptionalBundledEnabled(category) == enabled) return
+        if (category == DictionaryCategory.ENGLISH_READING) {
+            defaultPrefs.edit().putBoolean(ENGLISH_READING_ENABLED_PREFERENCE, enabled).apply()
+            applyRevisionedEdit { true }
+            return
+        }
         applyRevisionedEdit {
             putBoolean(optionalBundledEnabledKey(category), enabled)
             true
@@ -281,6 +295,7 @@ class DictionaryOverrideStore private constructor(
         when (category) {
             DictionaryCategory.READING_CORRECTION,
             DictionaryCategory.KOTOWAZA -> true
+            DictionaryCategory.ENGLISH_READING -> true
             DictionaryCategory.PERSON_NAME ->
                 defaultPrefs.getBoolean("mozc_ut_person_name_preference", false)
             DictionaryCategory.PLACES ->
@@ -318,6 +333,8 @@ class DictionaryOverrideStore private constructor(
         private const val PREF_NAME = "dictionary_override_store"
         private const val DIRECTORY_NAME = "dictionary_overrides"
         const val REVISION_PREF_KEY = "dictionary_override_revision"
+        const val ENGLISH_READING_ENABLED_PREFERENCE =
+            "english_reading_dictionary_enable_preference"
         private val metadataType = object : TypeToken<DictionaryOverrideMetadata>() {}.type
 
         fun metadataPrefKey(key: DictionaryFileKey) = "metadata_${key.name}"

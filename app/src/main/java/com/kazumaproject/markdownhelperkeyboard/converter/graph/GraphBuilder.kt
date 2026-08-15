@@ -31,6 +31,7 @@ class GraphBuilder {
         val systemTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
         val systemUserTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
         val systemPrefixStates: Map<Int, Int>,
+        val englishReadingPrefixStates: Map<Int, Int>,
         val systemUserPrefixStates: Map<Int, Int>,
         val wikiPrefixStates: Map<Int, Int>,
         val webPrefixStates: Map<Int, Int>,
@@ -176,6 +177,14 @@ class GraphBuilder {
     private var systemUserSuccinctBitVectorTokenArray: SuccinctBitVector? = null
     private var systemUserSuccinctBitVectorTangoLBS: SuccinctBitVector? = null
 
+    private var englishReadingYomiTrie: LOUDSWithTermId? = null
+    private var englishReadingTangoTrie: LOUDS? = null
+    private var englishReadingTokenArray: TokenArray? = null
+    private var englishReadingSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var englishReadingSuccinctBitVectorIsLeafYomi: SuccinctBitVector? = null
+    private var englishReadingSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var englishReadingSuccinctBitVectorTangoLBS: SuccinctBitVector? = null
+
     fun updateSystemUserDictionary(
         yomiTrie: LOUDSWithTermId?,
         tangoTrie: LOUDS?,
@@ -193,6 +202,25 @@ class GraphBuilder {
         systemUserSuccinctBitVectorIsLeafYomi = succinctBitVectorIsLeafYomi
         systemUserSuccinctBitVectorTokenArray = succinctBitVectorTokenArray
         systemUserSuccinctBitVectorTangoLBS = succinctBitVectorTangoLBS
+    }
+
+    fun updateEnglishReadingDictionary(
+        yomiTrie: LOUDSWithTermId?,
+        tangoTrie: LOUDS?,
+        tokenArray: TokenArray?,
+        succinctBitVectorLBSYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector?,
+        succinctBitVectorTokenArray: SuccinctBitVector?,
+        succinctBitVectorTangoLBS: SuccinctBitVector?,
+    ) {
+        cachedGraph = null
+        englishReadingYomiTrie = yomiTrie
+        englishReadingTangoTrie = tangoTrie
+        englishReadingTokenArray = tokenArray
+        englishReadingSuccinctBitVectorLBSYomi = succinctBitVectorLBSYomi
+        englishReadingSuccinctBitVectorIsLeafYomi = succinctBitVectorIsLeafYomi
+        englishReadingSuccinctBitVectorTokenArray = succinctBitVectorTokenArray
+        englishReadingSuccinctBitVectorTangoLBS = succinctBitVectorTangoLBS
     }
 
     /**
@@ -332,6 +360,7 @@ class GraphBuilder {
 
         val signature = conversionSignature(
             yomiTrie = yomiTrie,
+            englishReadingYomiTrie = englishReadingYomiTrie,
             wikiYomiTrie = wikiYomiTrie,
             webYomiTrie = webYomiTrie,
             personYomiTrie = personYomiTrie,
@@ -371,6 +400,7 @@ class GraphBuilder {
         val systemTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
         val systemUserTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
         val systemPrefixStates = LinkedHashMap<Int, Int>()
+        val englishReadingPrefixStates = LinkedHashMap<Int, Int>()
         val systemUserPrefixStates = LinkedHashMap<Int, Int>()
         val wikiPrefixStates = LinkedHashMap<Int, Int>()
         val webPrefixStates = LinkedHashMap<Int, Int>()
@@ -884,6 +914,79 @@ class GraphBuilder {
                 }
             }
 
+            // 3.1 英語読み辞書
+            val localEnglishReadingYomiTrie = englishReadingYomiTrie
+            val localEnglishReadingTangoTrie = englishReadingTangoTrie
+            val localEnglishReadingTokenArray = englishReadingTokenArray
+            val localEnglishReadingLBSYomi = englishReadingSuccinctBitVectorLBSYomi
+            val localEnglishReadingIsLeafYomi = englishReadingSuccinctBitVectorIsLeafYomi
+            val localEnglishReadingTokenBitVector = englishReadingSuccinctBitVectorTokenArray
+            val localEnglishReadingTangoLBS = englishReadingSuccinctBitVectorTangoLBS
+            if (
+                localEnglishReadingYomiTrie != null &&
+                localEnglishReadingTangoTrie != null &&
+                localEnglishReadingTokenArray != null &&
+                localEnglishReadingLBSYomi != null &&
+                localEnglishReadingIsLeafYomi != null &&
+                localEnglishReadingTokenBitVector != null &&
+                localEnglishReadingTangoLBS != null
+            ) {
+                val commonPrefixSearchEnglishReading = prefixSearch(
+                    trie = localEnglishReadingYomiTrie,
+                    bitVector = localEnglishReadingLBSYomi,
+                    start = i,
+                    previousStates = reusable?.englishReadingPrefixStates,
+                    currentStates = englishReadingPrefixStates,
+                )
+                if (commonPrefixSearchEnglishReading.isNotEmpty()) foundInAnyDictionary = true
+                for (prefixResult in commonPrefixSearchEnglishReading) {
+                    val yomiStr = prefixResult.yomi
+                    val nodeIndex = prefixResult.nodeIndex
+                    if (nodeIndex <= 0) continue
+                    val termId = localEnglishReadingYomiTrie.getTermId(
+                        nodeIndex,
+                        localEnglishReadingIsLeafYomi,
+                    )
+                    val endIndex = i + yomiStr.length
+                    if (endIndex <= reusablePrefixLength) continue
+                    localEnglishReadingTokenArray.forEachDictionaryByYomiTermId(
+                        termId,
+                        localEnglishReadingTokenBitVector,
+                    ) { posTableIndex, wordCost, tokenNodeId ->
+                        val tango = when (tokenNodeId) {
+                            -2 -> yomiStr
+                            -1 -> yomiStr.hiraToKata()
+                            else -> localEnglishReadingTangoTrie.getLetter(
+                                tokenNodeId,
+                                succinctBitVector = localEnglishReadingTangoLBS,
+                            )
+                        }
+                        val leftId = localEnglishReadingTokenArray.leftIds[posTableIndex.toInt()]
+                        val cost = wordCost.toInt()
+                        addOrUpdateNode(
+                            graph,
+                            endIndex,
+                            Node(
+                                l = leftId,
+                                r = localEnglishReadingTokenArray.rightIds[posTableIndex.toInt()],
+                                score = cost,
+                                f = cost,
+                                g = cost,
+                                tango = tango,
+                                yomiUsed = yomiStr,
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(leftId),
+                            ),
+                            graphNodeDedupMode,
+                            graphNodeTrace,
+                            str,
+                            "ENGLISH_READING",
+                        )
+                    }
+                }
+            }
+
             // 3.x システム辞書 (Typo Correction Prefix)
             if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
                 val typoProgress = typoSearch(
@@ -1285,6 +1388,7 @@ class GraphBuilder {
             systemTypoProgress = systemTypoProgress,
             systemUserTypoProgress = systemUserTypoProgress,
             systemPrefixStates = systemPrefixStates,
+            englishReadingPrefixStates = englishReadingPrefixStates,
             systemUserPrefixStates = systemUserPrefixStates,
             wikiPrefixStates = wikiPrefixStates,
             webPrefixStates = webPrefixStates,
@@ -1352,6 +1456,7 @@ class GraphBuilder {
 
     private fun conversionSignature(
         yomiTrie: LOUDSWithTermId,
+        englishReadingYomiTrie: LOUDSWithTermId?,
         wikiYomiTrie: LOUDSWithTermId?,
         webYomiTrie: LOUDSWithTermId?,
         personYomiTrie: LOUDSWithTermId?,
@@ -1367,6 +1472,7 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
     ): Int {
         var result = System.identityHashCode(yomiTrie)
+        result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
         result = 31 * result + System.identityHashCode(wikiYomiTrie)
         result = 31 * result + System.identityHashCode(webYomiTrie)
         result = 31 * result + System.identityHashCode(personYomiTrie)
