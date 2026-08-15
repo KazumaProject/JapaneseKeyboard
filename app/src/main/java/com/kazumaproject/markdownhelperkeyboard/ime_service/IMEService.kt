@@ -202,6 +202,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayo
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaImageCapability
@@ -336,8 +337,10 @@ import com.kazumaproject.tenkey.extensions.isHiragana
 import com.kazumaproject.tenkey.extensions.isLatinAlphabet
 import com.kazumaproject.tenkey.extensions.toggleDakutenWithSeion
 import com.kazumaproject.tenkey.extensions.toggleHandakutenWithSeion
+import dagger.Lazy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -494,7 +497,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var inputMethodManager: InputMethodManager
 
     @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
+    lateinit var kanaKanjiEngineProvider: Lazy<KanaKanjiEngine>
+
+    private lateinit var kanaKanjiEngine: KanaKanjiEngine
+    private val kanaKanjiEngineReady = CompletableDeferred<KanaKanjiEngine>()
 
     @Inject
     lateinit var ngramRuleScorerManager: NgramRuleScorerManager
@@ -761,6 +767,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val selectedEditorTextRequestId = AtomicLong(0L)
     private val editorConnectionReadMutex = Mutex()
     private var systemUserDictionaryLoadJob: Job? = null
+    private var kanaKanjiEngineLoadJob: Job? = null
+    private var kanaKanjiEngineActivationJob: Job? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -1341,6 +1349,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var lastAppliedDictionaryOverrideRevision: Long = Long.MIN_VALUE
 
     @Volatile
+    private var lastAppliedEnglishReadingEnabled: Boolean? = null
+
+    @Volatile
     private var dictionaryOverrideApplyJob: Job? = null
 
     private var cachedEmoji: List<Emoji>? = null
@@ -1698,6 +1709,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var candidateTabVisibility: Boolean? = false
     private var conversionBackend: ConversionBackend = ConversionBackend.LEGACY
     private var predictionConfig: PredictionConfig = PredictionConfig()
+    @Volatile
     private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
     private val candidateRequestTracker = CandidateRequestTracker()
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
@@ -2138,6 +2150,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val symbolKeyboard: CustomSymbolKeyboardView?
     )
 
+    private fun startKanaKanjiEngineLoad() {
+        if (kanaKanjiEngineReady.isCompleted || kanaKanjiEngineLoadJob?.isActive == true) return
+        kanaKanjiEngineLoadJob = ioScope.launch {
+            val startedAt = System.nanoTime()
+            try {
+                val engine = kanaKanjiEngineProvider.get()
+                withContext(Dispatchers.Main.immediate) {
+                    kanaKanjiEngine = engine
+                }
+                kanaKanjiEngineReady.complete(engine)
+                Timber.d(
+                    "KanaKanjiEngine core dictionary load complete: " +
+                        "elapsed_ms=${(System.nanoTime() - startedAt) / 1_000_000.0} " +
+                        "thread=${Thread.currentThread().name}"
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Timber.e(throwable, "Failed to load core dictionaries asynchronously")
+                kanaKanjiEngineReady.completeExceptionally(throwable)
+            }
+        }
+    }
+
+    private suspend fun awaitKanaKanjiEngineOrNull(): KanaKanjiEngine? = try {
+        kanaKanjiEngineReady.await()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (throwable: Throwable) {
+        Timber.e(throwable, "KanaKanjiEngine is unavailable")
+        null
+    }
+
+    private fun activateKanaKanjiEngineWhenReady(
+        preferences: ImePreferencesSnapshot,
+        inputSessionId: Long,
+    ) {
+        kanaKanjiEngineActivationJob?.cancel()
+        kanaKanjiEngineActivationJob = scope.launch {
+            if (awaitKanaKanjiEngineOrNull() == null) return@launch
+            if (inputSessionId != flickPreviewEditorSessionId) return@launch
+            if (kanaKanjiConversionSession == null) {
+                startKanaKanjiConversionSession(preferences.conversionBackend)
+            }
+            initializeMozcDictionaries(preferences)
+            refreshCandidateStripContent()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -2150,6 +2211,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         runtimeInputPreferenceListenerRegistered = true
         syncRuntimeInputPreferences()
+        startKanaKanjiEngineLoad()
 
         if (AppVariantConfig.hasGemma) {
             scope.launch {
@@ -2401,9 +2463,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         )
         applyImePreferences(preferences)
-        startKanaKanjiConversionSession(preferences.conversionBackend)
+        conversionBackend = preferences.conversionBackend
+        kanaKanjiConversionSession = null
+        candidateRequestTracker.restart(preferences.conversionBackend)
+        candidateRefreshCoordinator.restart()
+        activateKanaKanjiEngineWhenReady(
+            preferences = preferences,
+            inputSessionId = flickPreviewEditorSessionId,
+        )
         resetKeyboard()
-        initializeMozcDictionaries(preferences)
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
@@ -2940,11 +3008,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyDictionaryOverrideRevisionIfNeeded() {
         val currentRevision = dictionaryOverrideStore.currentRevision
-        if (currentRevision == lastAppliedDictionaryOverrideRevision) return
+        val englishReadingEnabled =
+            dictionarySourceResolver.resolveCategoryLoadState(DictionaryCategory.ENGLISH_READING) !=
+                DictionaryCategoryLoadState.Disabled
+        if (currentRevision == lastAppliedDictionaryOverrideRevision &&
+            englishReadingEnabled == lastAppliedEnglishReadingEnabled
+        ) return
         if (dictionaryOverrideApplyJob?.isActive == true) return
 
+        // Asset opening and dictionary decoding must stay on IO. Only the lightweight candidate
+        // refresh at the end of this job is dispatched back to the main thread.
         dictionaryOverrideApplyJob = ioScope.launch {
             val revisionToApply = dictionaryOverrideStore.currentRevision
+            val englishReadingEnabledToApply =
+                dictionarySourceResolver.resolveCategoryLoadState(
+                    DictionaryCategory.ENGLISH_READING
+                ) != DictionaryCategoryLoadState.Disabled
             val initialOptionalStateOnly =
                 lastAppliedDictionaryOverrideRevision == Long.MIN_VALUE &&
                     !kanaKanjiEngine.isInitialOptionalDictionaryStateLoaded()
@@ -2970,8 +3049,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.w(it, "Failed to apply dictionary override revision $revisionToApply")
             }.isSuccess
 
-            if (success && dictionaryOverrideStore.currentRevision == revisionToApply) {
+            if (
+                success &&
+                dictionaryOverrideStore.currentRevision == revisionToApply &&
+                (
+                    dictionarySourceResolver.resolveCategoryLoadState(
+                        DictionaryCategory.ENGLISH_READING
+                    ) != DictionaryCategoryLoadState.Disabled
+                    ) == englishReadingEnabledToApply
+            ) {
                 lastAppliedDictionaryOverrideRevision = revisionToApply
+                lastAppliedEnglishReadingEnabled = englishReadingEnabledToApply
                 if (initialOptionalStateOnly) {
                     Timber.d(
                         "Initial optional dictionary state loaded without core reload: " +
@@ -2992,6 +3080,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             dictionarySourceResolver
                         ),
                     )
+                }
+            }
+
+            if (success) {
+                withContext(Dispatchers.Main.immediate) {
+                    if (isInputViewActive) {
+                        requestCandidateRefresh(CandidateShowFlag.Updating)
+                    }
                 }
             }
         }
@@ -4782,6 +4878,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyGlideInputCoordinator?.cancelPending()
         englishEngine.cancelQwertyGlideWarmup()
         clearZenzLiveSlot("onDestroy")
+        kanaKanjiEngineActivationJob?.cancel()
         suggestionAdapter?.release()
         suggestionAdapter = null
         shortcutAdapter = null
@@ -4798,12 +4895,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hasHardwareKeyboardConnected = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         filteredCandidateList = null
-        if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
-        if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
-        if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
-        if (mozcUTNeologd == true) kanaKanjiEngine.releaseNeologdDictionary()
-        if (mozcUTWeb == true) kanaKanjiEngine.releaseWebDictionary()
-        if (kanaKanjiEngine.isSystemUserDictionaryInitialized()) kanaKanjiEngine.releaseSystemUserDictionary()
+        if (::kanaKanjiEngine.isInitialized) {
+            if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
+            if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
+            if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
+            if (mozcUTNeologd == true) kanaKanjiEngine.releaseNeologdDictionary()
+            if (mozcUTWeb == true) kanaKanjiEngine.releaseWebDictionary()
+            if (kanaKanjiEngine.isSystemUserDictionaryInitialized()) {
+                kanaKanjiEngine.releaseSystemUserDictionary()
+            }
+        }
         isFlickOnlyMode = null
         isOmissionSearchEnable = null
         delayTime = null
@@ -20494,14 +20595,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
+        val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
                 val emojiDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolEmojiCandidates() }
                 val emoticonDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolEmoticonCandidates() }
                 val symbolDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolCandidates() }
                 cachedEmoji = emojiDeferred.await()
                 cachedEmoticons = emoticonDeferred.await()
                 cachedSymbols = symbolDeferred.await()
@@ -20524,14 +20626,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSymbolsClipboard(mainView: MainLayoutBinding) {
+        val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
                 val emojiDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolEmojiCandidates() }
                 val emoticonDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolEmoticonCandidates() }
                 val symbolDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolCandidates() }
                 cachedEmoji = emojiDeferred.await()
                 cachedEmoticons = emoticonDeferred.await()
                 cachedSymbols = symbolDeferred.await()
@@ -20554,14 +20657,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSymbolsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+        val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
                 val emojiDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolEmojiCandidates() }
                 val emoticonDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolEmoticonCandidates() }
                 val symbolDeferred =
-                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
+                    async(Dispatchers.Default) { engine.getSymbolCandidates() }
                 cachedEmoji = emojiDeferred.await()
                 cachedEmoticons = emoticonDeferred.await()
                 cachedSymbols = symbolDeferred.await()
@@ -23024,9 +23128,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         typoCorrectionJapaneseFlickEnabled: Boolean = false,
         typoCorrectionQwertyEnglishEnabled: Boolean = false,
     ): KanaKanjiQueryResult {
+        val engine = awaitKanaKanjiEngineOrNull()
+            ?: return KanaKanjiQueryResult(candidates = emptyList())
         awaitSystemUserDictionaryLoad()
         val session = kanaKanjiConversionSession ?: KanaKanjiConversionSession(
-            engine = kanaKanjiEngine,
+            engine = engine,
             backend = conversionBackend,
         ).also {
             kanaKanjiConversionSession = it

@@ -1055,6 +1055,7 @@
     <string name="external_dictionary_category_emoticon">顔文字辞書</string>
     <string name="external_dictionary_category_symbol">記号辞書</string>
     <string name="external_dictionary_category_english">英語辞書</string>
+    <string name="external_dictionary_category_english_reading">英語読み辞書</string>
     <string name="external_dictionary_replace_with_external_file">外部ファイルで置き換える</string>
     <string name="external_dictionary_use_bundled_dictionary">内蔵辞書を使用</string>
     <string name="external_dictionary_use_dictionary_switch_title">この辞書を使用する</string>
@@ -1542,6 +1543,8 @@
     <string name="japanese_prediction_enable_summary">入力した読みより長い日本語候補を表示します。</string>
     <string name="english_prediction_enable_title">英語の予測変換</string>
     <string name="english_prediction_enable_summary">英語辞書の前方一致候補を表示します。OFFでも入力文字と大文字・小文字候補は残ります。</string>
+    <string name="english_reading_dictionary_enable_title">英語読み辞書</string>
+    <string name="english_reading_dictionary_enable_summary">「かー」から「car」のような英語候補を表示します。</string>
     <string name="system_dictionary_prediction_enable_title">システム辞書の予測変換</string>
     <string name="system_dictionary_prediction_enable_summary">内蔵システム辞書を日本語の前方一致予測に使用します。</string>
     <string name="system_user_dictionary_prediction_enable_title">システムユーザー辞書</string>
