@@ -976,6 +976,7 @@
     <string name="external_dictionary_category_emoticon">Emoticon dictionary</string>
     <string name="external_dictionary_category_symbol">Symbol dictionary</string>
     <string name="external_dictionary_category_english">English dictionary</string>
+    <string name="external_dictionary_category_english_reading">English reading dictionary</string>
     <string name="external_dictionary_replace_with_external_file">Replace with external file</string>
     <string name="external_dictionary_use_bundled_dictionary">Use bundled dictionary</string>
     <string name="external_dictionary_use_dictionary_switch_title">Use this dictionary</string>
@@ -1582,6 +1583,8 @@
     <string name="japanese_prediction_enable_summary">Show Japanese candidates whose reading continues beyond the entered text.</string>
     <string name="english_prediction_enable_title">English prediction</string>
     <string name="english_prediction_enable_summary">Show English dictionary completions. Entered text and capitalization variants remain available when off.</string>
+    <string name="english_reading_dictionary_enable_title">English reading dictionary</string>
+    <string name="english_reading_dictionary_enable_summary">Use English candidates such as “car” for kana readings such as “かー”.</string>
     <string name="system_dictionary_prediction_enable_title">System dictionary prediction</string>
     <string name="system_dictionary_prediction_enable_summary">Use the built-in system dictionary for Japanese completion candidates.</string>
     <string name="system_user_dictionary_prediction_enable_title">System user dictionary</string>
