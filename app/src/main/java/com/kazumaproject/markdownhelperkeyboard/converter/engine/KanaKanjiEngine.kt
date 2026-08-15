@@ -247,6 +247,9 @@ class KanaKanjiEngine {
     @Volatile
     private var kotowazaDictionaryEnabled: Boolean = true
 
+    @Volatile
+    private var englishReadingDictionary: TripleDictionaryData? = null
+
     private var personYomiTrie: LOUDSWithTermId? = null
     private var personTangoTrie: LOUDS? = null
     private var personTokenArray: TokenArray? = null
@@ -463,6 +466,7 @@ class KanaKanjiEngine {
         val newEmoji = loadTripleDictionary(reader, DictionaryCategory.EMOJI)
         val newEmoticon = loadTripleDictionary(reader, DictionaryCategory.EMOTICON)
         val newSymbol = loadTripleDictionary(reader, DictionaryCategory.SYMBOL)
+        val newEnglishReading = loadEnglishReadingDictionary(reader)
 
         val readingCorrectionState =
             reader.resolveCategoryLoadState(DictionaryCategory.READING_CORRECTION)
@@ -494,6 +498,7 @@ class KanaKanjiEngine {
             assignEmojiDictionary(newEmoji)
             assignEmoticonDictionary(newEmoticon)
             assignSymbolDictionary(newSymbol)
+            assignEnglishReadingDictionary(newEnglishReading)
 
             if (newReadingCorrection != null) {
                 assignReadingCorrectionDictionary(newReadingCorrection)
@@ -533,7 +538,9 @@ class KanaKanjiEngine {
         val newWiki = loadOptionalTripleDictionary(reader, DictionaryCategory.WIKI)
         val newNeologd = loadOptionalTripleDictionary(reader, DictionaryCategory.NEOLOGD)
         val newWeb = loadOptionalTripleDictionary(reader, DictionaryCategory.WEB)
+        val newEnglishReading = loadEnglishReadingDictionary(reader)
         synchronized(this) {
+            assignEnglishReadingDictionary(newEnglishReading)
             assignPersonDictionary(newPerson)
             assignPlacesDictionary(newPlaces)
             assignWikiDictionary(newWiki)
@@ -554,6 +561,17 @@ class KanaKanjiEngine {
             loadTripleDictionary(reader, category)
         } else {
             null
+        }
+
+    private fun loadEnglishReadingDictionary(
+        reader: DictionaryBinaryReader,
+    ): TripleDictionaryData? =
+        if (reader.resolveCategoryLoadState(DictionaryCategory.ENGLISH_READING) ==
+            DictionaryCategoryLoadState.Disabled
+        ) {
+            null
+        } else {
+            loadTripleDictionary(reader, DictionaryCategory.ENGLISH_READING)
         }
 
     private fun loadTripleDictionary(
@@ -816,6 +834,20 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorIsLeafYomi = data.succinctBitVectorIsLeafYomi
         kotowazaSuccinctBitVectorTokenArray = data.succinctBitVectorTokenArray
         kotowazaSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
+    }
+
+    private fun assignEnglishReadingDictionary(data: TripleDictionaryData?) {
+        englishReadingDictionary = data
+        if (!::graphBuilder.isInitialized) return
+        graphBuilder.updateEnglishReadingDictionary(
+            yomiTrie = data?.yomiTrie,
+            tangoTrie = data?.tangoTrie,
+            tokenArray = data?.tokenArray,
+            succinctBitVectorLBSYomi = data?.succinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = data?.succinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = data?.succinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = data?.succinctBitVectorTangoLBS,
+        )
     }
 
     private fun assignPersonDictionary(data: TripleDictionaryData?) {
@@ -1593,7 +1625,8 @@ class KanaKanjiEngine {
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        val englishReadingDeferred = deferredEnglishReadingCandidates(input, resultList)
+        return resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
@@ -2129,7 +2162,7 @@ class KanaKanjiEngine {
                 compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
                     .thenBy { it.score }
                     .thenBy { it.string },
-            ) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            ) + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
@@ -2655,7 +2688,7 @@ class KanaKanjiEngine {
         )
 
         val finalList =
-            resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+            resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = finalList,
@@ -3172,7 +3205,7 @@ class KanaKanjiEngine {
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
     }
 
@@ -3672,7 +3705,7 @@ class KanaKanjiEngine {
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
@@ -4197,7 +4230,7 @@ class KanaKanjiEngine {
                 compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
                     .thenBy { it.score }
                     .thenBy { it.string },
-            ) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            ) + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
@@ -4999,6 +5032,46 @@ class KanaKanjiEngine {
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
                     )
                 )
+            }
+        }
+    }
+
+    private fun deferredEnglishReadingCandidates(
+        input: String,
+        existingCandidates: Iterable<Candidate>,
+    ): List<Candidate> {
+        val dictionary = englishReadingDictionary ?: return emptyList()
+        val nodeIndex = dictionary.yomiTrie.getNodeIndex(
+            input,
+            dictionary.succinctBitVectorLBSYomi,
+        )
+        if (nodeIndex <= 0) return emptyList()
+        val termId = dictionary.yomiTrie.getTermIdShortArray(
+            nodeIndex,
+            dictionary.succinctBitVectorIsLeafYomi,
+        )
+        val existingStrings = existingCandidates.asSequence().map { it.string }.toSet()
+        return buildList {
+            dictionary.tokenArray.forEachDictionaryByYomiTermIdShortArray(
+                termId,
+                dictionary.succinctBitVectorTokenArray,
+            ) { posTableIndex, wordCost, nodeId ->
+                val candidate = Candidate(
+                    string = when (nodeId) {
+                        -2 -> input
+                        -1 -> input.hiraToKata()
+                        else -> dictionary.tangoTrie.getLetterShortArray(
+                            nodeId,
+                            dictionary.succinctBitVectorTangoLBS,
+                        )
+                    },
+                    type = 2,
+                    length = input.length.toUByte(),
+                    score = wordCost.toInt(),
+                    leftId = dictionary.tokenArray.leftIds[posTableIndex.toInt()],
+                    rightId = dictionary.tokenArray.rightIds[posTableIndex.toInt()],
+                )
+                if (candidate.string !in existingStrings) add(candidate)
             }
         }
     }
