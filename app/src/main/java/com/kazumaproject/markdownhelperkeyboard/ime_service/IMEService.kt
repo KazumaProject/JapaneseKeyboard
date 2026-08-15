@@ -9136,6 +9136,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return !hardKeyboardShiftPressd || shouldApplyRomajiQwertyWidthPreference()
     }
 
+    private fun Char.toRomajiQwertyFlickOutputChar(): Char {
+        return if (currentInputModeForSession == InputMode.ModeJapanese &&
+            isDefaultRomajiHenkanMap
+        ) {
+            toRomajiQwertyOutputChar()
+        } else {
+            this
+        }
+    }
+
     private fun handleTapFloating(
         char: Char?,
         insertString: String,
@@ -12787,10 +12797,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.DeleteAfterCursorUntilSymbol -> {
-                        if (isDeleteUpFlickPreference == true) {
-                            val insertString = inputString.value
-                            deleteWordOrSymbolsAfterCursor(insertString)
-                        }
+                        val insertString = inputString.value
+                        deleteWordOrSymbolsAfterCursor(insertString)
                     }
 
                     KeyAction.UndoLastDelete -> {
@@ -20454,19 +20462,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     variations?.let { variation ->
                         if (variation.isNotEmpty()) {
+                            val variationChar = variation.first().toRomajiQwertyFlickOutputChar()
                             if (switchQWERTYPassword == true) {
                                 if (currentInputType in passwordTypesWithOutNumber) {
                                     handleTap(
-                                        variation.first().toHankakuKigou(),
+                                        variationChar.toHankakuKigou(),
                                         insertString,
                                         sb,
                                         mainView
                                     )
                                 } else {
-                                    handleTap(variation.first(), insertString, sb, mainView)
+                                    handleTap(variationChar, insertString, sb, mainView)
                                 }
                             } else {
-                                handleTap(variation.first(), insertString, sb, mainView)
+                                handleTap(variationChar, insertString, sb, mainView)
                             }
                         }
                     }
