@@ -64,8 +64,8 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
                 appendLine("warmP95DeltaMs=${enabled.p95Ms - disabled.p95Ms}")
                 appendLine("retainedHeapDeltaBytes=${enabled.retainedHeapBytes - disabled.retainedHeapBytes}")
                 appendLine("nativeRetainedDeltaBytes=${enabled.nativeRetainedBytes - disabled.nativeRetainedBytes}")
-                appendLine("enabledEnglishCandidateIndex=${enabled.candidates.indexOfFirst { it.string == "car" }}")
-                appendLine("enabledEnglishCandidateScore=${enabled.candidates.firstOrNull { it.string == "car" }?.score}")
+                appendLine("enabledEnglishCandidateIndexes=${ENGLISH_CASES.associateWith { word -> enabled.candidates.indexOfFirst { it.string == word } }}")
+                appendLine("enabledEnglishCandidateScores=${ENGLISH_CASES.associateWith { word -> enabled.candidates.firstOrNull { it.string == word }?.score }}")
                 appendLine("enabledNBest4Candidates=${enabled.nBestCandidates.joinToString("|") { it.string }}")
                 appendLine("enabledCandidates=${enabled.candidates.take(16).joinToString("|") { it.string }}")
                 appendLine("disabledCandidates=${disabled.candidates.take(16).joinToString("|") { it.string }}")
@@ -119,18 +119,18 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
         val validationCandidates = convert(engine, repository, nBest = 64)
         val nBestCandidates = convert(engine, repository, nBest = 4)
         if (enabled) {
-            check(validationCandidates.any { it.string == "car" }) {
-                "Enabled dictionary did not produce car: $validationCandidates"
+            check(ENGLISH_CASES.all { word -> validationCandidates.any { it.string == word } }) {
+                "Enabled dictionary did not produce all case candidates: $validationCandidates"
             }
-            check(nBestCandidates.any { it.string == "car" }) {
-                "Enabled dictionary did not produce car in n-best candidates: $nBestCandidates"
+            check(ENGLISH_CASES.all { word -> nBestCandidates.any { it.string == word } }) {
+                "Enabled dictionary did not produce all case candidates in n-best candidates: $nBestCandidates"
             }
         } else {
-            check(validationCandidates.none { it.string == "car" }) {
-                "Disabled dictionary still produced car: $validationCandidates"
+            check(validationCandidates.none { it.string in ENGLISH_CASES }) {
+                "Disabled dictionary still produced English case candidates: $validationCandidates"
             }
-            check(nBestCandidates.none { it.string == "car" }) {
-                "Disabled dictionary still produced car in n-best candidates: $nBestCandidates"
+            check(nBestCandidates.none { it.string in ENGLISH_CASES }) {
+                "Disabled dictionary still produced English case candidates in n-best candidates: $nBestCandidates"
             }
         }
         return Measurement(
@@ -244,5 +244,6 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
     private companion object {
         const val WARMUPS = 10
         const val ITERATIONS = 50
+        val ENGLISH_CASES = setOf("car", "Car", "CAR")
     }
 }
