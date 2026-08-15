@@ -83,6 +83,8 @@ private const val POS_ID_COUNTER_TIME: Short = 2015
 private const val POS_ID_NUMBER_ARABIC: Short = 2044
 private const val POS_ID_NUMBER_SEPARATED: Short = 2045
 private const val POS_ID_NUMBER_KANJI: Short = 2046
+private const val ENGLISH_READING_CAPITALIZED_SCORE_OFFSET = 1_500
+private const val ENGLISH_READING_UPPERCASE_SCORE_OFFSET = 3_000
 
 internal fun shouldIncludeSymbolEmojiReading(
     inputLength: Int,
@@ -5050,8 +5052,36 @@ class KanaKanjiEngine {
             nodeIndex,
             dictionary.succinctBitVectorIsLeafYomi,
         )
-        val existingStrings = existingCandidates.asSequence().map { it.string }.toSet()
+        val existingStrings = existingCandidates.asSequence().map { it.string }.toMutableSet()
         return buildList {
+            fun addCandidate(candidate: Candidate) {
+                if (existingStrings.add(candidate.string)) add(candidate)
+            }
+
+            fun addEnglishCaseCandidates(candidate: Candidate) {
+                addCandidate(candidate)
+                if (candidate.string.none { it in 'A'..'Z' || it in 'a'..'z' }) return
+
+                val lowercase = candidate.string.lowercase(Locale.ROOT)
+                val capitalized = lowercase.replaceFirstChar { char ->
+                    char.uppercase(Locale.ROOT)
+                }
+                val uppercase = lowercase.uppercase(Locale.ROOT)
+                addCandidate(candidate.copy(string = lowercase))
+                addCandidate(
+                    candidate.copy(
+                        string = capitalized,
+                        score = candidate.score + ENGLISH_READING_CAPITALIZED_SCORE_OFFSET,
+                    )
+                )
+                addCandidate(
+                    candidate.copy(
+                        string = uppercase,
+                        score = candidate.score + ENGLISH_READING_UPPERCASE_SCORE_OFFSET,
+                    )
+                )
+            }
+
             dictionary.tokenArray.forEachDictionaryByYomiTermIdShortArray(
                 termId,
                 dictionary.succinctBitVectorTokenArray,
@@ -5071,7 +5101,7 @@ class KanaKanjiEngine {
                     leftId = dictionary.tokenArray.leftIds[posTableIndex.toInt()],
                     rightId = dictionary.tokenArray.rightIds[posTableIndex.toInt()],
                 )
-                if (candidate.string !in existingStrings) add(candidate)
+                addEnglishCaseCandidates(candidate)
             }
         }
     }
