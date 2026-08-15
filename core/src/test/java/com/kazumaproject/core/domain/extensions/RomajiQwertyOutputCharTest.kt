@@ -31,6 +31,14 @@ class RomajiQwertyOutputCharTest {
     }
 
     @Test
+    fun toRomajiQwertyOutputChar_appliesPreferencesToFullWidthVariations() {
+        assertEquals('1', '１'.toRomajiQwertyOutputChar(true, false))
+        assertEquals('!', '！'.toRomajiQwertyOutputChar(false, true))
+        assertEquals('１', '１'.toRomajiQwertyOutputChar(false, false))
+        assertEquals('！', '！'.toRomajiQwertyOutputChar(false, false))
+    }
+
+    @Test
     fun isAsciiSymbolForRomajiQwerty_excludesLettersNumbersAndSpace() {
         assertTrue('!'.isAsciiSymbolForRomajiQwerty())
         assertTrue('/'.isAsciiSymbolForRomajiQwerty())
