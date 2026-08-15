@@ -202,6 +202,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayo
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaImageCapability
@@ -1339,6 +1340,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Volatile
     private var lastAppliedDictionaryOverrideRevision: Long = Long.MIN_VALUE
+
+    @Volatile
+    private var lastAppliedEnglishReadingEnabled: Boolean? = null
 
     @Volatile
     private var dictionaryOverrideApplyJob: Job? = null
@@ -2940,11 +2944,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyDictionaryOverrideRevisionIfNeeded() {
         val currentRevision = dictionaryOverrideStore.currentRevision
-        if (currentRevision == lastAppliedDictionaryOverrideRevision) return
+        val englishReadingEnabled =
+            dictionarySourceResolver.resolveCategoryLoadState(DictionaryCategory.ENGLISH_READING) !=
+                DictionaryCategoryLoadState.Disabled
+        if (currentRevision == lastAppliedDictionaryOverrideRevision &&
+            englishReadingEnabled == lastAppliedEnglishReadingEnabled
+        ) return
         if (dictionaryOverrideApplyJob?.isActive == true) return
 
+        // Asset opening and dictionary decoding must stay on IO. Only the lightweight candidate
+        // refresh at the end of this job is dispatched back to the main thread.
         dictionaryOverrideApplyJob = ioScope.launch {
             val revisionToApply = dictionaryOverrideStore.currentRevision
+            val englishReadingEnabledToApply =
+                dictionarySourceResolver.resolveCategoryLoadState(
+                    DictionaryCategory.ENGLISH_READING
+                ) != DictionaryCategoryLoadState.Disabled
             val initialOptionalStateOnly =
                 lastAppliedDictionaryOverrideRevision == Long.MIN_VALUE &&
                     !kanaKanjiEngine.isInitialOptionalDictionaryStateLoaded()
@@ -2970,8 +2985,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.w(it, "Failed to apply dictionary override revision $revisionToApply")
             }.isSuccess
 
-            if (success && dictionaryOverrideStore.currentRevision == revisionToApply) {
+            if (
+                success &&
+                dictionaryOverrideStore.currentRevision == revisionToApply &&
+                (
+                    dictionarySourceResolver.resolveCategoryLoadState(
+                        DictionaryCategory.ENGLISH_READING
+                    ) != DictionaryCategoryLoadState.Disabled
+                    ) == englishReadingEnabledToApply
+            ) {
                 lastAppliedDictionaryOverrideRevision = revisionToApply
+                lastAppliedEnglishReadingEnabled = englishReadingEnabledToApply
                 if (initialOptionalStateOnly) {
                     Timber.d(
                         "Initial optional dictionary state loaded without core reload: " +
@@ -2992,6 +3016,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             dictionarySourceResolver
                         ),
                     )
+                }
+            }
+
+            if (success) {
+                withContext(Dispatchers.Main.immediate) {
+                    if (isInputViewActive) {
+                        requestCandidateRefresh(CandidateShowFlag.Updating)
+                    }
                 }
             }
         }

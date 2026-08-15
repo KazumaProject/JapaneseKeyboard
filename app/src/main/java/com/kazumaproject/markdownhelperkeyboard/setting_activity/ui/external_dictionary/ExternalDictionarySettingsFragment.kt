@@ -597,6 +597,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             DictionaryCategory.READING_CORRECTION -> "reading_correction"
             DictionaryCategory.KOTOWAZA -> "kotowaza"
             DictionaryCategory.ENGLISH -> getString(R.string.external_dictionary_category_english)
+            DictionaryCategory.ENGLISH_READING -> getString(R.string.external_dictionary_category_english_reading)
             DictionaryCategory.PERSON_NAME -> getString(R.string.mozc_ut_person_name_title)
             DictionaryCategory.PLACES -> getString(R.string.mozc_ut_places_title)
             DictionaryCategory.WIKI -> getString(R.string.mozc_ut_wiki_title)
@@ -637,6 +638,7 @@ private val DICTIONARY_CATEGORIES = listOf(
     DictionaryCategory.EMOTICON,
     DictionaryCategory.SYMBOL,
     DictionaryCategory.ENGLISH,
+    DictionaryCategory.ENGLISH_READING,
     DictionaryCategory.READING_CORRECTION,
     DictionaryCategory.KOTOWAZA,
     DictionaryCategory.PERSON_NAME,

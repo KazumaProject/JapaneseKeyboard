@@ -82,10 +82,15 @@ class DictionarySourceResolver @Inject constructor(
                 (store.getOverrideMetadata(it.key)?.validationStatus == ValidationStatus.INVALID)
         }
 
-        if (hasInvalid) return DictionaryCategoryLoadState.Invalid
         if (specs.all { !it.partOfTripleDictionary }) {
             return DictionaryCategoryLoadState.Bundled
         }
+        if (category == DictionaryCategory.ENGLISH_READING &&
+            !store.isOptionalBundledEnabled(category)
+        ) {
+            return DictionaryCategoryLoadState.Disabled
+        }
+        if (hasInvalid) return DictionaryCategoryLoadState.Invalid
         if (hasAny && (!hasAll || !validAll)) return DictionaryCategoryLoadState.Partial
         if (validAll && store.isExternalEnabledForCategory(category)) return DictionaryCategoryLoadState.User
         if (category.isDisableableBundledDictionary()) {
