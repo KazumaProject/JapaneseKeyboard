@@ -40,6 +40,12 @@ data class DictionaryZipMappedEntry(
 )
 
 object DictionaryZipEntryNameMapper {
+    private val pathSuffixToKey: Map<String, DictionaryFileKey> = mapOf(
+        "english_reading/tango.dat.zip" to DictionaryFileKey.ENGLISH_READING_TANGO,
+        "english_reading/yomi.dat.zip" to DictionaryFileKey.ENGLISH_READING_YOMI,
+        "english_reading/token.dat.zip" to DictionaryFileKey.ENGLISH_READING_TOKEN,
+    )
+
     private val filenameToKey: Map<String, DictionaryFileKey> = mapOf(
         "tango.dat" to DictionaryFileKey.SYSTEM_TANGO,
         "yomi.dat" to DictionaryFileKey.SYSTEM_YOMI,
@@ -104,7 +110,13 @@ object DictionaryZipEntryNameMapper {
             return DictionaryZipEntryNameResolution.Ignored(entryName, "Ignored macOS metadata entry")
         }
 
-        val key = filenameToKey[basename.lowercase(Locale.ROOT)]
+        val normalizedPath = pathSegments.joinToString("/").lowercase(Locale.ROOT)
+        val key = pathSuffixToKey.entries
+            .firstOrNull { (suffix, _) ->
+                normalizedPath == suffix || normalizedPath.endsWith("/$suffix")
+            }
+            ?.value
+            ?: filenameToKey[basename.lowercase(Locale.ROOT)]
             ?: return DictionaryZipEntryNameResolution.Unrecognized(entryName, basename)
         return DictionaryZipEntryNameResolution.Mapped(key, entryName, basename)
     }
