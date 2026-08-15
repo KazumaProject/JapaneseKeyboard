@@ -39,9 +39,10 @@ class EnglishReadingDictionaryInstrumentedTest {
             setEnabled(preferences, true)
             engine.applyDictionaryOverrideState(context)
             val enabledCandidates = convert(engine, repository, "かー", nBest = 4)
+            val enabledEnglishCases = enabledCandidates.map { it.string }.toSet()
             assertTrue(
-                "English reading candidate was not found: $enabledCandidates",
-                enabledCandidates.any { it.string == "car" },
+                "English reading case candidates were not found: $enabledCandidates",
+                setOf("car", "Car", "CAR").all(enabledEnglishCases::contains),
             )
             val galleryCandidates = convert(engine, repository, "ぎゃらりー")
             assertTrue(
@@ -58,8 +59,8 @@ class EnglishReadingDictionaryInstrumentedTest {
             engine.applyDictionaryOverrideState(context)
             val disabledCandidates = convert(engine, repository, "かー")
             assertFalse(
-                "English reading candidate remained after disabling: $disabledCandidates",
-                disabledCandidates.any { it.string == "car" },
+                "English reading case candidates remained after disabling: $disabledCandidates",
+                disabledCandidates.any { it.string in setOf("car", "Car", "CAR") },
             )
         } finally {
             if (hadPreviousValue) {
