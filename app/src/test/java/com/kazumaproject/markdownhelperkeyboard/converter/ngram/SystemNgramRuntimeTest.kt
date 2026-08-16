@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.ngram
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.graph.Node
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -46,4 +47,25 @@ class SystemNgramRuntimeTest {
         SystemNgramRuntime.setEnabled(context, true)
         assertSame(loaded, SystemNgramRuntime.current())
     }
+
+    @Test
+    fun loadsVersion3AndVersion4AssetsAsOneDictionary() {
+        SystemNgramRuntime.initialize(context, true)
+
+        val loaded = SystemNgramRuntime.loadedDictionary()
+        assertEquals(2_170, loaded.ruleCount)
+        assertEquals(56_984 + 15_191, loaded.storageBytes)
+        assertTrue(loaded.matchesSingleNode(node("カワボ")))
+    }
+
+    private fun node(word: String) = Node(
+        l = 1.toShort(),
+        r = 1.toShort(),
+        score = 0,
+        f = 0,
+        tango = word,
+        len = 1.toShort(),
+        yomiUsed = word,
+        sPos = 0,
+    )
 }
