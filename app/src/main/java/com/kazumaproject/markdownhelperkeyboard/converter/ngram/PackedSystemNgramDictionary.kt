@@ -9,6 +9,7 @@ class PackedSystemNgramDictionary private constructor(
     private val bytes: ByteArray,
 ) : SystemNgramDictionary {
     private val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+    private val formatVersion = buffer.getInt(4)
     override val ruleCount: Int = buffer.getInt(8)
     override val storageBytes: Int = bytes.size
     private val contextCount = buffer.getInt(12)
@@ -34,13 +35,41 @@ class PackedSystemNgramDictionary private constructor(
     init {
         verify()
         firstNodeValuesByKind = arrayOfNulls(4)
-        firstPairHashesByKinds = buildFirstPairHashes(firstNodeValuesByKind)
+        firstPairHashesByKinds = if (formatVersion == VERSION) {
+            buildFirstPairHashes(firstNodeValuesByKind)
+        } else {
+            buildFirstNodeHashes(firstNodeValuesByKind)
+            arrayOfNulls(16)
+        }
         firstPairKindKeys = firstPairHashesByKinds.indices
             .filter { firstPairHashesByKinds[it] != null }
             .toIntArray()
         firstNodeKindKeys = firstNodeValuesByKind.indices
             .filter { firstNodeValuesByKind[it] != null }
             .toIntArray()
+    }
+
+    override fun matchesSingleNode(node: Node): Boolean {
+        if (formatVersion != UNIGRAM_VERSION || node.tango == "BOS" || node.tango == "EOS") {
+            return false
+        }
+        val local = checkNotNull(scratch.get())
+        var signatureIndex = 0
+        while (signatureIndex < signatureCount) {
+            val signature = buffer.getInt(signaturesOffset + signatureIndex * 4)
+            val queryLength = encodeQuery(
+                target = local.query,
+                signature = signature,
+                node0 = node,
+                node1 = node,
+                node2 = null,
+                node3 = null,
+                node4 = null,
+            )
+            if (queryLength >= 0 && contains(local.query, queryLength, local.record)) return true
+            signatureIndex++
+        }
+        return false
     }
 
     override fun matches(
@@ -50,6 +79,7 @@ class PackedSystemNgramDictionary private constructor(
         node3: Node?,
         node4: Node?,
     ): Boolean {
+        if (formatVersion != VERSION) return false
         if (node0.tango == "BOS" || node1.tango == "EOS") return false
         val local = checkNotNull(scratch.get())
         var signatureIndex = 0
@@ -84,6 +114,7 @@ class PackedSystemNgramDictionary private constructor(
     }
 
     override fun mayMatchFirstPair(node0: Node, node1: Node): Boolean {
+        if (formatVersion != VERSION) return false
         if (node0.tango == "BOS" || node1.tango == "EOS") return false
         var node0WordHash = 0
         var node1WordHash = 0
@@ -168,6 +199,22 @@ class PackedSystemNgramDictionary private constructor(
             set.add(pairKey(first.value, second.value))
         }
         return result
+    }
+
+    private fun buildFirstNodeHashes(
+        firstNodeValues: Array<LongHashSet?>,
+    ) {
+        val record = ByteArray(maxKeyBytes.coerceAtLeast(1))
+        repeat(ruleCount) { recordId ->
+            val recordLength = decodeRecord(recordId, record)
+            val signature = (record[0].toInt() and 0xff) or
+                ((record[1].toInt() and 0xff) shl 8)
+            val firstKind = (signature ushr 3) and 0x3
+            val first = readPrefixFeature(record, 2, recordLength, firstKind)
+            val firstNodeSet = firstNodeValues[firstKind]
+                ?: LongHashSet().also { firstNodeValues[firstKind] = it }
+            firstNodeSet.add(first.value.toLong())
+        }
     }
 
     private fun readPrefixFeature(
@@ -471,7 +518,9 @@ class PackedSystemNgramDictionary private constructor(
     private fun verify() {
         require(bytes.size >= HEADER_SIZE) { "Truncated n-gram header" }
         require(buffer.getInt(0) == MAGIC) { "Invalid n-gram magic" }
-        require(buffer.getInt(4) == VERSION) { "Unsupported n-gram version" }
+        require(formatVersion == VERSION || formatVersion == UNIGRAM_VERSION) {
+            "Unsupported n-gram version"
+        }
         require(buffer.getInt(56) == bytes.size) { "Invalid n-gram file size" }
         require(ruleCount > 0) { "Invalid n-gram rule count" }
         require(contextCount > 0) { "Invalid n-gram context count" }
@@ -504,7 +553,14 @@ class PackedSystemNgramDictionary private constructor(
         repeat(signatureCount) { index ->
             val signature = buffer.getInt(signaturesOffset + index * 4)
             val order = signature and 0x7
-            require(order in 2..5) { "Invalid n-gram signature order" }
+            if (formatVersion == VERSION) {
+                require(order in 2..5) { "Invalid n-gram signature order" }
+            } else {
+                require(order == 1) { "Invalid unigram signature order" }
+                require(((signature ushr 3) and 0x3) == KIND_WORD) {
+                    "Invalid unigram signature kind"
+                }
+            }
             repeat(order) { feature ->
                 require(((signature ushr (3 + feature * 2)) and 0x3) in KIND_WORD..KIND_ANY) {
                     "Invalid n-gram signature kind"
@@ -647,6 +703,7 @@ class PackedSystemNgramDictionary private constructor(
     companion object {
         private const val MAGIC = 0x4A4B4E47
         private const val VERSION = 3
+        private const val UNIGRAM_VERSION = 4
         private const val HEADER_SIZE = 80
         private const val BLOCK_SIZE = 16
         private const val MAX_BUCKET_COUNT = 65536
