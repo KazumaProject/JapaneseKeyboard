@@ -49,6 +49,15 @@ import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
+import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
+import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -276,6 +285,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
     private var customBgColor: Int = Color.WHITE
@@ -426,10 +437,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        keyboardSkin: String = KeyboardSkinId.DEFAULT.preferenceValue,
+        keyboardSkinMotion: String = KeyboardSkinMotionMode.FULL.preferenceValue,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
+        this.keyboardSkinId = KeyboardSkinId.fromPreference(keyboardSkin)
+        this.keyboardSkinMotionMode = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
@@ -449,20 +464,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         LayoutInflater.from(context)
 
-        when (this.themeMode) {
-            "default" -> {
+        when {
+            this.keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+                applyBuiltInSkin()
+            }
+
+            this.themeMode == "default" -> {
+                clearBuiltInSkinStyles()
                 setBackgroundColor(Color.TRANSPARENT)
                 setMaterialYouTheme(this.isNightMode, true)
             }
 
-            "custom" -> {
+            this.themeMode == "custom" -> {
+                clearBuiltInSkinStyles()
+                val palette = resolveKeyboardSkinPalette(
+                    context = context,
+                    themeMode = this.themeMode,
+                    customBackgroundColor = customBgColor,
+                    customKeyColor = customKeyColor,
+                    customSpecialKeyColor = customSpecialKeyColor,
+                    customKeyTextColor = customKeyTextColor,
+                    customSpecialKeyTextColor = customSpecialKeyTextColor,
+                )
                 setFullCustomNeumorphismTheme(
-                    backgroundColor = customBgColor,
-                    normalKeyColor = customKeyColor,
-                    specialKeyColor = customSpecialKeyColor,
-                    normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor,
-                    borderWidth = borderWidth
+                    backgroundColor = palette.backgroundColor,
+                    normalKeyColor = palette.normalKeyColor,
+                    specialKeyColor = palette.specialKeyColor,
+                    normalKeyTextColor = palette.normalKeyTextColor,
+                    specialKeyTextColor = palette.specialKeyTextColor,
+                    borderWidth = borderWidth,
                 )
             }
 
@@ -491,7 +521,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         borderWidth: Int
     ) {
         val density = context.resources.displayMetrics.density
-        val radius = 8f * density // 角丸の半径 (8dp)
+        val radius = KeyboardSkinDrawableFactory.keyCornerRadiusDp(KeyboardSkinId.DEFAULT) * density
 
         // 1. 全体の背景色を設定
         if (liquidGlassEnable) {
@@ -564,90 +594,67 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * @param radius キーの角丸の半径 (px)
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        // 1. 色の計算
-        // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
-        val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
-        // シャドウ色: ベース色に黒(#000000)を混ぜて暗くする
-        val shadowColor = manipulateColor(baseColor, 0.8f)    // 輝度を下げる簡易版
-
-        // 2. ピクセル単位のオフセット量（4dpなどをpxに変換）
-        val density = context.resources.displayMetrics.density
-        val offset = (4 * density).toInt() // 影のずれ幅
-        val padding = (2 * density).toInt() // メイン面の縮小幅
-
-        // --- A. 通常状態 (Idle) の作成 ---
-
-        // レイヤー0: 暗い影 (右下に配置)
-        val shadowDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(shadowColor)
-        }
-
-        // レイヤー1: 明るいハイライト (左上に配置)
-        val highlightDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(highlightColor)
-        }
-
-        // レイヤー2: メインの面
-        val surfaceDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(baseColor)
-        }
-
-        // LayerDrawableで重ねる (下から順に描画される)
-        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
-
-        // インセット（余白）を設定して位置をずらす
-        // setLayerInset(index, left, top, right, bottom)
-
-        // 影: 左と上を空けて、右下に表示させる
-        idleLayer.setLayerInset(0, offset, offset, 0, 0)
-
-        // ハイライト: 右と下を空けて、左上に表示させる
-        idleLayer.setLayerInset(1, 0, 0, offset, offset)
-
-        // メイン面: 全体に少し余白を入れて中央に配置（影が見えるようにする）
-        idleLayer.setLayerInset(2, padding, padding, padding, padding)
-
-
-        // --- B. 押下状態 (Pressed) の作成 ---
-
-        // 押したときは凹む表現（影を消して少し暗くする、あるいは内側の影を擬似的に表現）
-        val pressedDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            // ベース色より少し暗くすることで「押し込まれた」感を出す
-            setColor(manipulateColor(baseColor, 0.95f))
-        }
-        // Pressed状態はサイズを変えないため、IdleのSurfaceと同じ位置に合わせるためのInsetが必要ならLayerDrawableにする
-        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
-        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
-
-
-        // --- C. StateListDrawable (Selector) にまとめる ---
-        val stateListDrawable = android.graphics.drawable.StateListDrawable()
-
-        // 押された時
-        stateListDrawable.addState(
-            intArrayOf(android.R.attr.state_pressed),
-            pressedLayer
+        return KeyboardSkinDrawableFactory.createKeyDrawable(
+            context = context,
+            skinId = KeyboardSkinId.DEFAULT,
+            baseColor = baseColor,
+            cornerRadiusDp = radius / context.resources.displayMetrics.density,
         )
-        // 無効な時 (必要であれば)
-        stateListDrawable.addState(
-            intArrayOf(-android.R.attr.state_enabled),
-            pressedLayer // 簡易的にPressedと同じ、あるいは透明度を下げるなど
-        )
-        // 通常時
-        stateListDrawable.addState(
-            intArrayOf(),
-            idleLayer
-        )
+    }
 
-        return stateListDrawable
+    private fun applyBuiltInSkin() {
+        val renderer = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+        background = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
+        binding.apply {
+            val characterKeys = listOf(
+                key1, key2, key3, key4, key5, key6, key7, key8, key9, key0,
+                keyKuten, keyTouten, keyQ, keyW, keyE, keyR, keyT, keyY, keyU, keyI, keyO, keyP,
+                keyA, keyS, keyD, keyF, keyG, keyH, keyJ, keyK, keyAtMark, keyL,
+                keyZ, keyX, keyC, keyV, keyB, keyN, keyM,
+            )
+            val modifierKeys = listOf(
+                keyShift, keyDelete, keySwitchDefault, keyEmoji, key123,
+                switchNumberLayout, cursorLeft, cursorRight, switchRomajiEnglish,
+            )
+            characterKeys.forEach { view ->
+                KeyboardSkinViewStyler.applyKey(
+                    view,
+                    keyboardSkinId,
+                    KeyboardElementRole.CHARACTER,
+                    keyboardSkinMotionMode,
+                )
+            }
+            modifierKeys.forEach { view ->
+                KeyboardSkinViewStyler.applyKey(
+                    view,
+                    keyboardSkinId,
+                    KeyboardElementRole.MODIFIER,
+                    keyboardSkinMotionMode,
+                )
+            }
+            KeyboardSkinViewStyler.applyKey(
+                keySpace,
+                keyboardSkinId,
+                KeyboardElementRole.SPACE,
+                keyboardSkinMotionMode,
+            )
+            KeyboardSkinViewStyler.applyKey(
+                keyReturn,
+                keyboardSkinId,
+                KeyboardElementRole.ACTION,
+                keyboardSkinMotionMode,
+            )
+        }
+    }
+
+    private fun clearBuiltInSkinStyles() {
+        fun clearRecursively(view: View) {
+            KeyboardSkinViewStyler.clearTransientStyle(view)
+            if (view is ViewGroup) {
+                for (index in 0 until view.childCount) clearRecursively(view.getChildAt(index))
+            }
+        }
+        clearRecursively(binding.root)
     }
 
     /**
@@ -2491,22 +2498,31 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             in rightKeyIds -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_right_material else com.kazumaproject.core.R.drawable.key_preview_bubble_right
             else -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_material else com.kazumaproject.core.R.drawable.key_preview_bubble
         }
-        iv.setBackgroundResource(drawableResIdForImageView)
-        when (themeMode) {
-            "custom" -> {
-                iv.setDrawableSolidColor(customSpecialKeyColor)
-                tv.setTextColor(customSpecialKeyTextColor)
-            }
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
+            iv.background = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+                .createKeyDrawable(context, KeyboardElementRole.POPUP, view.id)
+            tv.setTextColor(spec.palette.specialKeyTextColor)
+            tv.typeface = Typeface.create(
+                spec.typography.familyName,
+                if (spec.typography.bold) Typeface.BOLD else Typeface.NORMAL,
+            )
+        } else {
+            iv.setBackgroundResource(drawableResIdForImageView)
+            when (themeMode) {
+                "custom" -> {
+                    iv.setDrawableSolidColor(customSpecialKeyColor)
+                    tv.setTextColor(customSpecialKeyTextColor)
+                }
 
-            else -> {
-
+                else -> Unit
             }
-        }
-        keyPreviewPopupStyle.backgroundColor?.let { backgroundColor ->
-            iv.setDrawableSolidColor(backgroundColor)
-        }
-        keyPreviewPopupStyle.textColor?.let { textColor ->
-            tv.setTextColor(textColor)
+            keyPreviewPopupStyle.backgroundColor?.let { backgroundColor ->
+                iv.setDrawableSolidColor(backgroundColor)
+            }
+            keyPreviewPopupStyle.textColor?.let { textColor ->
+                tv.setTextColor(textColor)
+            }
         }
         popupView.rootView.layoutParams.height = previewHeight
 
@@ -2746,10 +2762,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val context = this.context
         variationPopupView = VariationsPopupView(context).apply {
             applyPopupViewStyle(variationPopupStyle)
+            setKeyboardSkin(keyboardSkinId)
             setChars(variations)
         }
-        when (themeMode) {
-            "custom" -> {
+        when {
+            keyboardSkinId != KeyboardSkinId.DEFAULT -> Unit
+            themeMode == "custom" -> {
                 variationPopupView?.setNeumorphicColors(
                     bgColor = customSpecialKeyColor,
                     selectedColor = manipulateColor(customSpecialKeyColor, 1.2f),
@@ -2757,9 +2775,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 )
             }
 
-            else -> {
-
-            }
+            else -> Unit
         }
         val maxColumns = 3
         val scale = variationPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f

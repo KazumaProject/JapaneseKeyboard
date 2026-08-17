@@ -1,5 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="keyboard_skin_entries">
+        <item>@string/keyboard_skin_default</item>
+        <item>@string/keyboard_skin_flat</item>
+        <item>@string/keyboard_skin_glass</item>
+        <item>@string/keyboard_skin_neumorphism</item>
+        <item>@string/keyboard_skin_mechanical</item>
+        <item>@string/keyboard_skin_washi</item>
+        <item>@string/keyboard_skin_neon</item>
+        <item>@string/keyboard_skin_terminal</item>
+        <item>@string/keyboard_skin_cupertino</item>
+    </string-array>
+
+    <string-array name="keyboard_skin_values">
+        <item>default</item>
+        <item>flat</item>
+        <item>glass</item>
+        <item>neumorphism</item>
+        <item>mechanical</item>
+        <item>washi</item>
+        <item>neon</item>
+        <item>terminal</item>
+        <item>cupertino</item>
+    </string-array>
+
+    <string-array name="keyboard_skin_motion_entries">
+        <item>@string/keyboard_skin_motion_full</item>
+        <item>@string/keyboard_skin_motion_reduced</item>
+        <item>@string/keyboard_skin_motion_off</item>
+    </string-array>
+
+    <string-array name="keyboard_skin_motion_values">
+        <item>full</item>
+        <item>reduced</item>
+        <item>off</item>
+    </string-array>
+
     <string-array name="type_null_input_behavior_entries">
         <item>@string/type_null_input_behavior_default</item>
         <item>@string/type_null_input_behavior_direct_commit</item>

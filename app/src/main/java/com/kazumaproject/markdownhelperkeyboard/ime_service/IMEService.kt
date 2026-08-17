@@ -103,6 +103,14 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
+import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
@@ -1636,6 +1644,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertySpecialKeyIconSize: Float? = 18.0f
 
     private var keyboardThemeMode: String? = "default"
+    private var keyboardSkinMode: String? = "default"
+    private var keyboardSkinMotionMode: String? = "full"
     private var customThemeBgColor: Int? = Color.WHITE
     private var customThemeKeyColor: Int? = Color.LTGRAY
     private var customThemeSpecialKeyColor: Int? = Color.GRAY
@@ -2872,6 +2882,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertySpecialKeyTextSize = preferences.qwertySpecialKeyTextSize
         qwertySpecialKeyIconSize = preferences.qwertySpecialKeyIconSize
         keyboardThemeMode = preferences.keyboardThemeMode
+        keyboardSkinMode = preferences.keyboardSkin
+        keyboardSkinMotionMode = preferences.keyboardSkinMotion
         customThemeBgColor = preferences.customThemeBgColor
         customThemeKeyColor = preferences.customThemeKeyColor
         customThemeSpecialKeyColor = preferences.customThemeSpecialKeyColor
@@ -3110,6 +3122,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         imageView.background = null
         imageView.isVisible = false
     }
+
+    private fun currentKeyboardSkin(): KeyboardSkinId =
+        KeyboardSkinId.fromPreference(keyboardSkinMode)
+
+    private fun currentKeyboardSkinMotion(): KeyboardSkinMotionMode =
+        KeyboardSkinMotionMode.fromPreference(keyboardSkinMotionMode)
+
+    private fun isBuiltInKeyboardSkinActive(): Boolean =
+        currentKeyboardSkin() != KeyboardSkinId.DEFAULT
 
     private fun applyKeyboardBackgroundImageToViewIfNeeded(
         imageView: ImageView,
@@ -3358,6 +3379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         mainView.keyboardBackgroundVideo.isVisible = false
         mainView.keyboardBackgroundImage.isVisible = false
+        mainView.keyboardSkinBackdrop.setSkin(KeyboardSkinId.DEFAULT)
 
         mainView.root.background = null
         mainView.suggestionViewParent.background = null
@@ -3380,6 +3402,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearNormalKeyboardBackgroundForFloatingMode(mainView)
             return
         }
+        if (isBuiltInKeyboardSkinActive()) {
+            releaseKeyboardBackgroundVideoPlayer()
+            clearKeyboardBackgroundImage(mainView.keyboardBackgroundImage)
+            mainView.keyboardSkinBackdrop.setSkin(
+                currentKeyboardSkin(),
+                currentKeyboardSkinMotion(),
+            )
+            return
+        }
+        mainView.keyboardSkinBackdrop.setSkin(KeyboardSkinId.DEFAULT)
         val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
         if (isBackgroundVideoApplied) {
             applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
@@ -3394,6 +3426,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         applyFloatingKeyboardRoundedClipping(floatingView)
         updateFloatingKeyboardBackgroundBounds(floatingView)
+        if (isBuiltInKeyboardSkinActive()) {
+            releaseFloatingKeyboardBackgroundVideoPlayer()
+            clearKeyboardBackgroundImage(floatingView.floatingKeyboardBackgroundImage)
+            floatingView.floatingKeyboardSkinBackdrop.setSkin(
+                currentKeyboardSkin(),
+                currentKeyboardSkinMotion(),
+            )
+            applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
+                floatingView,
+                enabled = false,
+            )
+            return
+        }
+        floatingView.floatingKeyboardSkinBackdrop.setSkin(KeyboardSkinId.DEFAULT)
         val isBackgroundVideoApplied = applyFloatingKeyboardBackgroundVideoIfNeeded(floatingView)
         if (isBackgroundVideoApplied) {
             clearKeyboardBackgroundImage(floatingView.floatingKeyboardBackgroundImage)
@@ -3425,6 +3471,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingView: FloatingKeyboardLayoutBinding?
     ) {
+        if (isBuiltInKeyboardSkinActive()) {
+            clearAndPauseKeyboardTouchEffects()
+            (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
+            (floatingView?.root as? InkTouchDispatchFrameLayout)
+                ?.touchEffectMotionEventListener = null
+            return
+        }
         refreshFluidInkDensityPreferences()
         setupMainKeyboardTouchEffect(mainView)
         floatingView?.let { setupFloatingKeyboardTouchEffect(it) }
@@ -4285,7 +4338,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
+        val selectedSkin = currentKeyboardSkin()
+        if (selectedSkin != KeyboardSkinId.DEFAULT) {
+            val renderer = KeyboardSkinRendererRegistry.rendererFor(selectedSkin)
+            mainView.root.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.DECK,
+            )
+            mainView.suggestionViewParent.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.CANDIDATE_STRIP,
+            )
+            mainView.candidateTabLayout.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.TOOLBAR,
+            )
+            mainView.shortcutToolbarRecyclerview.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.TOOLBAR,
+            )
+            mainView.candidatesRowView.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.CANDIDATE_PANEL,
+            )
+            KeyboardSkinViewStyler.applyKey(
+                mainView.suggestionVisibility,
+                selectedSkin,
+                KeyboardElementRole.TOOLBAR,
+                currentKeyboardSkinMotion(),
+            )
+            mainView.keyboardSkinBackdrop.setSkin(selectedSkin, currentKeyboardSkinMotion())
+            return
+        }
+        mainView.keyboardSkinBackdrop.setSkin(KeyboardSkinId.DEFAULT)
+        KeyboardSkinViewStyler.clearTransientStyle(mainView.suggestionVisibility)
+        mainView.suggestionVisibility.imageTintList = null
+        mainView.suggestionVisibility.clearColorFilter()
+        mainView.suggestionVisibility.setColorFilter(
+            if (keyboardThemeMode == "custom") {
+                customThemeKeyTextColor ?: Color.BLACK
+            } else {
+                getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+            }
+        )
+        mainView.shortcutToolbarRecyclerview.background = null
+        mainView.candidatesRowView.background = null
         val isDynamic = DynamicColors.isDynamicColorAvailable()
+        when {
+            keyboardThemeMode == "custom" -> {
+                mainView.suggestionVisibility.setBackgroundResource(
+                    com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
+                )
+                mainView.suggestionVisibility.setDrawableSolidColor(
+                    customThemeSpecialKeyColor ?: Color.GRAY
+                )
+            }
+
+            isDynamic -> mainView.suggestionVisibility.setBackgroundResource(
+                com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
+            )
+
+            else -> mainView.suggestionVisibility.setBackgroundResource(
+                com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
+            )
+        }
         if (isKeyboardRounded == true) {
             val fallbackColor = getColor(com.kazumaproject.core.R.color.keyboard_bg)
             val defaultColor = if (isDynamic) {
@@ -4372,7 +4488,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyNormalKeyboardChrome(mainView: MainLayoutBinding) {
         applyKeyboardContainerBackgrounds(mainView)
 
-        if (liquidGlassThemePreference == true) {
+        if (liquidGlassThemePreference == true && !isBuiltInKeyboardSkinActive()) {
             mainView.root.setDrawableAlpha(liquidGlassBlurRadiousPreference ?: 220)
             mainView.suggestionViewParent.setDrawableAlpha(0)
             mainView.candidateTabLayout.setDrawableAlpha(0)
@@ -4385,6 +4501,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFloatingKeyboardContainerBackgrounds(
         floatingView: FloatingKeyboardLayoutBinding
     ) {
+        val selectedSkin = currentKeyboardSkin()
+        if (selectedSkin != KeyboardSkinId.DEFAULT) {
+            val renderer = KeyboardSkinRendererRegistry.rendererFor(selectedSkin)
+            floatingView.root.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.DECK,
+            )
+            floatingView.suggestionViewParent.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.CANDIDATE_STRIP,
+            )
+            floatingView.candidatesRowView.background = renderer.createSurfaceDrawable(
+                this,
+                KeyboardSurfaceRole.CANDIDATE_PANEL,
+            )
+            KeyboardSkinViewStyler.applyKey(
+                floatingView.suggestionVisibility,
+                selectedSkin,
+                KeyboardElementRole.TOOLBAR,
+                currentKeyboardSkinMotion(),
+            )
+            floatingView.floatingKeyboardSkinBackdrop.setSkin(
+                selectedSkin,
+                currentKeyboardSkinMotion(),
+            )
+            return
+        }
+        floatingView.floatingKeyboardSkinBackdrop.setSkin(KeyboardSkinId.DEFAULT)
+        KeyboardSkinViewStyler.clearTransientStyle(floatingView.suggestionVisibility)
+        floatingView.suggestionVisibility.imageTintList = null
+        floatingView.suggestionVisibility.clearColorFilter()
+        floatingView.suggestionVisibility.setColorFilter(
+            if (keyboardThemeMode == "custom") {
+                customThemeKeyTextColor ?: Color.BLACK
+            } else {
+                getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+            }
+        )
+        floatingView.candidatesRowView.background = null
         val isDynamic = DynamicColors.isDynamicColorAvailable()
         when (keyboardThemeMode) {
             "default" -> {
@@ -4393,7 +4548,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                 } else {
+                    floatingView.root.setBackgroundResource(
+                        com.kazumaproject.core.R.drawable.rounded_corners_bg
+                    )
                     floatingView.suggestionViewParent.background = null
+                    floatingView.suggestionVisibility.setBackgroundResource(
+                        com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
+                    )
                 }
             }
 
@@ -4417,7 +4578,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                 } else {
+                    floatingView.root.setBackgroundResource(
+                        com.kazumaproject.core.R.drawable.rounded_corners_bg
+                    )
                     floatingView.suggestionViewParent.background = null
+                    floatingView.suggestionVisibility.setBackgroundResource(
+                        com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
+                    )
                 }
             }
         }
@@ -4433,6 +4600,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
+        applyKeyboardSkinThemeToCandidateAdapters()
+        shortcutAdapter?.setKeyboardSkin(
+            skinValue = currentKeyboardSkin().preferenceValue,
+            motionValue = currentKeyboardSkinMotion().preferenceValue,
+        )
+        mainLayoutBinding?.let { mainView ->
+            applyKeyboardSkinThemeToSymbolKeyboards(mainView, floatingKeyboardBinding)
+        }
         isInputViewActive = true
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
@@ -4562,11 +4737,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                     customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                     customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                    liquidGlassEnable = liquidGlassThemePreference ?: false,
+                    liquidGlassEnable =
+                        (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
                     customBorderEnable = customKeyBorderEnablePreference ?: false,
                     customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
                     liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-                    borderWidth = customKeyBorderWidth ?: 1
+                    borderWidth = customKeyBorderWidth ?: 1,
+                    keyboardSkin = keyboardSkinMode ?: "default",
+                    keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
                 )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
                     tenkeyUseThreeStateKeyboard
@@ -5014,6 +5192,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertySpecialKeyIconSize = null
 
         keyboardThemeMode = null
+        keyboardSkinMode = null
+        keyboardSkinMotionMode = null
         customThemeBgColor = null
         customThemeKeyColor = null
         customThemeSpecialKeyColor = null
@@ -5630,6 +5810,104 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun applyKeyboardSkinThemeToCandidateAdapters() {
+        val adapters = listOfNotNull(suggestionAdapter, suggestionAdapterFull)
+        val skin = currentKeyboardSkin()
+        adapters.forEach { adapter ->
+            adapter.setKeyboardSkin(
+                skinValue = skin.preferenceValue,
+                motionValue = currentKeyboardSkinMotion().preferenceValue,
+            )
+        }
+        if (skin == KeyboardSkinId.DEFAULT) {
+            adapters.forEach { adapter ->
+                if (keyboardThemeMode == "custom") {
+                    adapter.setCandidateTextColor(customThemeCandidateTextColor ?: Color.BLACK)
+                    adapter.setCandidateItemColors(
+                        customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
+                        customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
+                            this,
+                            com.kazumaproject.core.R.color.qwety_key_bg_color,
+                        ),
+                    )
+                } else {
+                    adapter.clearCandidateAppearanceColors()
+                }
+            }
+            val shortcutColor = if (keyboardThemeMode == "custom") {
+                customThemeShortcutIconColor ?: Color.BLACK
+            } else {
+                getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+            }
+            shortcutAdapter?.setIconColor(shortcutColor)
+            adapters.forEach { it.setShortcutIconColor(shortcutColor) }
+            applyCandidateEmptyPopupThemeToAdapters()
+            return
+        }
+
+        val palette = KeyboardSkinCatalog.specFor(skin).palette
+        adapters.forEach { adapter ->
+            adapter.setCandidateTextColor(palette.candidateTextColor)
+            adapter.setCandidateItemColors(
+                backgroundColor = palette.candidateSurfaceColor,
+                pressedColor = palette.accentColor,
+            )
+            adapter.setCandidateEmptyPopupColors(
+                backgroundColor = palette.specialKeyColor,
+                textColor = palette.specialKeyTextColor,
+            )
+        }
+    }
+
+    private fun applyKeyboardSkinThemeToSymbolKeyboards(
+        mainView: MainLayoutBinding,
+        floatingView: FloatingKeyboardLayoutBinding?,
+    ) {
+        val selectedSkin = currentKeyboardSkin()
+        if (selectedSkin == KeyboardSkinId.DEFAULT && keyboardThemeMode != "custom") {
+            mainView.keyboardSymbolView.resetKeyboardTheme()
+            floatingView?.floatingSymbolKeyboard?.resetKeyboardTheme()
+            return
+        }
+
+        val palette = resolveKeyboardSkinPalette(
+            context = this,
+            themeMode = keyboardThemeMode ?: "default",
+            customBackgroundColor = customThemeBgColor ?: Color.WHITE,
+            customKeyColor = customThemeKeyColor ?: Color.LTGRAY,
+            customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+            customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+            customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+            skinId = selectedSkin,
+        )
+        val isLegacyCustom =
+            selectedSkin == KeyboardSkinId.DEFAULT && keyboardThemeMode == "custom"
+        val symbolBackgroundColor = if (isLegacyCustom) {
+            manipulateColor(palette.normalKeyColor, 1.2f)
+        } else {
+            palette.backgroundColor
+        }
+        val symbolSelectedIconColor = if (isLegacyCustom) {
+            manipulateColor(palette.normalKeyTextColor, 0.6f)
+        } else {
+            palette.specialKeyTextColor
+        }
+        val applyToView: (CustomSymbolKeyboardView) -> Unit = { symbolView ->
+            symbolView.setKeyboardTheme(
+                backgroundColor = symbolBackgroundColor,
+                iconColor = palette.normalKeyTextColor,
+                selectedIconColor = symbolSelectedIconColor,
+                keyBackgroundColor = palette.normalKeyColor,
+                liquidGlassEnable =
+                    (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
+                keyboardSkin = selectedSkin.preferenceValue,
+                keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
+            )
+        }
+        applyToView(mainView.keyboardSymbolView)
+        floatingView?.floatingSymbolKeyboard?.let(applyToView)
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
@@ -5785,6 +6063,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 container.addView(newRootView)
                 gemmaMediaPanelController?.attachTo(container)
                 mainLayoutBinding?.let { mainView ->
+                    applyKeyboardSkinThemeToSymbolKeyboards(
+                        mainView,
+                        floatingKeyboardBinding,
+                    )
                     when (keyboardThemeMode) {
                         "default" -> {
                             if (isDynamicColorsEnable) {
@@ -5808,17 +6090,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
-                                val symbolKeyBg =
-                                    customThemeKeyColor ?: Color.WHITE
-                                keyboardSymbolView.setKeyboardTheme(
-                                    backgroundColor = manipulateColor(symbolKeyBg, 1.2f),
-                                    iconColor = customThemeKeyTextColor ?: Color.BLACK,
-                                    selectedIconColor = manipulateColor(
-                                        customThemeKeyTextColor ?: Color.BLACK, 0.6f
-                                    ),
-                                    keyBackgroundColor = symbolKeyBg,
-                                    liquidGlassEnable = liquidGlassThemePreference ?: false
-                                )
                                 listOfNotNull(suggestionAdapter, suggestionAdapterFull)
                                     .forEach { adapter ->
                                         adapter.setCandidateTextColor(
@@ -5880,7 +6151,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
-                    applyCandidateEmptyPopupThemeToAdapters()
+                    applyKeyboardContainerBackgrounds(mainView)
+                    floatingKeyboardBinding?.let(::applyFloatingKeyboardContainerBackgrounds)
+                    applyKeyboardSkinThemeToCandidateAdapters()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = isKeyboardRounded == true
                     applyKeyboardBackgroundIfNeeded(mainView)
@@ -8256,11 +8529,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
             customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
             customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-            liquidGlassEnable = liquidGlassThemePreference ?: false,
+            liquidGlassEnable =
+                (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
             customBorderEnable = customKeyBorderEnablePreference ?: false,
             customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
             liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-            borderWidth = customKeyBorderWidth ?: 1
+            borderWidth = customKeyBorderWidth ?: 1,
+            keyboardSkin = keyboardSkinMode ?: "default",
+            keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
             tenkeyUseThreeStateKeyboard
@@ -8403,11 +8679,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                 customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                liquidGlassEnable = liquidGlassThemePreference ?: false,
+                liquidGlassEnable =
+                    (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
                 customBorderEnable = customKeyBorderEnablePreference ?: false,
                 customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
                 liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-                borderWidth = customKeyBorderWidth ?: 1
+                borderWidth = customKeyBorderWidth ?: 1,
+                keyboardSkin = keyboardSkinMode ?: "default",
+                keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
             )
             setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
             setUseQwertyNumberWhenThreeStateOff(tenkeySwitchNumberToQwertyNumberPreference)
@@ -8596,11 +8875,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                 customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                liquidGlassEnable = liquidGlassThemePreference ?: false,
+                liquidGlassEnable =
+                    (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
                 customBorderEnable = customKeyBorderEnablePreference ?: false,
                 customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
                 liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-                borderWidth = customKeyBorderWidth ?: 1
+                borderWidth = customKeyBorderWidth ?: 1,
+                keyboardSkin = keyboardSkinMode ?: "default",
+                keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -11524,11 +11806,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
             customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
             customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-            liquidGlassEnable = liquidGlassThemePreference ?: false,
+            liquidGlassEnable =
+                (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
             customBorderEnable = customKeyBorderEnablePreference ?: false,
             customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
             liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-            borderWidth = customKeyBorderWidth ?: 1
+            borderWidth = customKeyBorderWidth ?: 1,
+            keyboardSkin = keyboardSkinMode ?: "default",
+            keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
         )
 
         flickView.setAngleAndRange(
@@ -18251,6 +18536,49 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tab.text = getCandidateTabDisplayName(tabType)
             mainView.candidateTabLayout.addTab(tab)
         }
+        applyKeyboardSkinToCandidateTabs(mainView.candidateTabLayout)
+    }
+
+    private fun applyKeyboardSkinToCandidateTabs(tabLayout: TabLayout) {
+        val skin = currentKeyboardSkin()
+        if (skin == KeyboardSkinId.DEFAULT) {
+            val fallbackNormal = getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+            val normalColor = if (keyboardThemeMode == "custom") {
+                customThemeKeyTextColor ?: fallbackNormal
+            } else {
+                tabLayout.context.getThemeColorOrFallback(
+                    attrRes = MaterialR.attr.colorOnSurface,
+                    fallbackColor = fallbackNormal,
+                )
+            }
+            val selectedColor = if (keyboardThemeMode == "custom") {
+                customThemeSpecialKeyTextColor ?: normalColor
+            } else {
+                tabLayout.context.getThemeColorOrFallback(
+                    attrRes = AppCompatR.attr.colorPrimary,
+                    fallbackColor = getColor(com.kazumaproject.core.R.color.enter_key_bg),
+                )
+            }
+            tabLayout.setTabTextColors(normalColor, selectedColor)
+            tabLayout.setSelectedTabIndicatorColor(selectedColor)
+            return
+        }
+        val palette = KeyboardSkinCatalog.specFor(skin).palette
+        tabLayout.setTabTextColors(palette.candidateTextColor, palette.accentColor)
+        tabLayout.setSelectedTabIndicatorColor(palette.accentColor)
+        tabLayout.tabRippleColor = null
+        tabLayout.post {
+            val strip = tabLayout.getChildAt(0) as? ViewGroup ?: return@post
+            for (index in 0 until strip.childCount) {
+                KeyboardSkinViewStyler.applyKey(
+                    strip.getChildAt(index),
+                    skin,
+                    KeyboardElementRole.TOOLBAR,
+                    currentKeyboardSkinMotion(),
+                    stableKey = index,
+                )
+            }
+        }
     }
 
     private fun getCandidateTabDisplayName(candidateTab: CandidateTab): String {
@@ -18265,13 +18593,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.candidateTabLayout.apply {
+            if (isBuiltInKeyboardSkinActive()) {
+                val palette = KeyboardSkinCatalog.specFor(currentKeyboardSkin()).palette
+                setSelectedTabIndicatorColor(palette.accentColor)
+                setTabTextColors(palette.candidateTextColor, palette.accentColor)
+            }
             when (keyboardThemeMode) {
                 "custom" -> {
-                    setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
-                    setTabTextColors(
-                        customThemeKeyTextColor ?: Color.BLACK,
-                        customThemeSpecialKeyTextColor ?: Color.BLACK
-                    )
+                    if (!isBuiltInKeyboardSkinActive()) {
+                        setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                        setTabTextColors(
+                            customThemeKeyTextColor ?: Color.BLACK,
+                            customThemeSpecialKeyTextColor ?: Color.BLACK
+                        )
+                    }
                 }
 
                 else -> {}
@@ -19786,10 +20121,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
+        shortcutAdapter?.setKeyboardSkin(
+            skinValue = currentKeyboardSkin().preferenceValue,
+            motionValue = currentKeyboardSkinMotion().preferenceValue,
+        )
         when (keyboardThemeMode) {
             "custom" -> {
-                shortcutAdapter?.setIconColor(customThemeShortcutIconColor ?: Color.BLACK)
-                suggestionAdapter?.setShortcutIconColor(customThemeShortcutIconColor ?: Color.BLACK)
+                if (!isBuiltInKeyboardSkinActive()) {
+                    shortcutAdapter?.setIconColor(customThemeShortcutIconColor ?: Color.BLACK)
+                    suggestionAdapter?.setShortcutIconColor(
+                        customThemeShortcutIconColor ?: Color.BLACK
+                    )
+                }
             }
 
             else -> {
@@ -19974,11 +20317,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                 customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                liquidGlassEnable = liquidGlassThemePreference ?: false,
+                liquidGlassEnable =
+                    (liquidGlassThemePreference ?: false) && !isBuiltInKeyboardSkinActive(),
                 customBorderEnable = customKeyBorderEnablePreference ?: false,
                 customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
                 liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-                borderWidth = customKeyBorderWidth ?: 1
+                borderWidth = customKeyBorderWidth ?: 1,
+                keyboardSkin = keyboardSkinMode ?: "default",
+                keyboardSkinMotion = keyboardSkinMotionMode ?: "full",
             )
             setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
             setFlickThresholdShape(flickThresholdShapePreferenceValue)

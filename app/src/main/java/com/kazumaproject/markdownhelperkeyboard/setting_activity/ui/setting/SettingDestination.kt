@@ -191,6 +191,26 @@ object SettingDestinations {
         )
         add(
             destination(
+                key = "keyboard_skin_preference",
+                title = context.getString(R.string.keyboard_skin_title),
+                summary = context.getString(R.string.keyboard_skin_summary),
+                category = SettingCategory.KEYBOARD_DISPLAY,
+                keywords = listOf(
+                    "skin",
+                    "appearance",
+                    "keyboard",
+                    "texture",
+                    "style",
+                    "スキン",
+                    "見た目",
+                    "キーボード",
+                ),
+                destinationId = R.id.keyboardSkinPickerFragment,
+                iconRes = CoreR.drawable.table_lamp_24px,
+            )
+        )
+        add(
+            destination(
                 key = "theme_custom_candidate_empty_popup_bg_color",
                 title = context.getString(R.string.theme_custom_candidate_empty_popup_bg_color),
                 summary = context.getString(R.string.theme_custom_candidate_empty_popup_bg_summary),
@@ -745,6 +765,7 @@ object SettingDestinations {
             "setting_management_custom_keyboard" -> R.id.keyboardListFragment
             "setting_route_legacy_settings" -> R.id.settingMainFragment
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment
+            "keyboard_skin_preference" -> R.id.keyboardSkinPickerFragment
             "theme_custom_candidate_empty_popup_bg_color" -> R.id.keyboardThemeFragment
             "theme_custom_candidate_empty_popup_text_color" -> R.id.keyboardThemeFragment
             "key_popup_use_custom_color_preference" -> R.id.keyboardThemeFragment

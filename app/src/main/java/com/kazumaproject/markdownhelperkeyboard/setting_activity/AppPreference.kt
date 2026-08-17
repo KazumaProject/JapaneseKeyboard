@@ -439,6 +439,10 @@ object AppPreference {
 
     private val KEYBOARD_THEME_MODE =
         Pair("keyboard_theme_mode_preference", "default") // default, light, dark, custom
+    private val KEYBOARD_SKIN =
+        Pair("keyboard_skin_preference", "default")
+    private val KEYBOARD_SKIN_MOTION =
+        Pair("keyboard_skin_motion_preference", "full")
     private val CUSTOM_THEME_BG_COLOR = Pair("custom_theme_bg_color_preference", Color.WHITE)
     private val CUSTOM_THEME_KEY_COLOR = Pair("custom_theme_key_color_preference", Color.LTGRAY)
     private val CUSTOM_THEME_SPECIAL_KEY_COLOR =
@@ -2673,6 +2677,22 @@ object AppPreference {
             ?: "default"
         set(value) = preferences.edit {
             it.putString(KEYBOARD_THEME_MODE.first, value)
+        }
+
+    var keyboard_skin: String
+        get() = preferences.getString(KEYBOARD_SKIN.first, KEYBOARD_SKIN.second)
+            ?: KEYBOARD_SKIN.second
+        set(value) = preferences.edit {
+            it.putString(KEYBOARD_SKIN.first, value)
+        }
+
+    var keyboard_skin_motion: String
+        get() = preferences.getString(
+            KEYBOARD_SKIN_MOTION.first,
+            KEYBOARD_SKIN_MOTION.second,
+        ) ?: KEYBOARD_SKIN_MOTION.second
+        set(value) = preferences.edit {
+            it.putString(KEYBOARD_SKIN_MOTION.first, value)
         }
 
     var custom_theme_bg_color: Int

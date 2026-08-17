@@ -34,6 +34,15 @@ import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
+import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -205,6 +214,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     )
 
     private var themeMode: String = "default"
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
     private var customBgColor: Int = Color.WHITE
@@ -480,33 +491,53 @@ class FlickKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        keyboardSkin: String = KeyboardSkinId.DEFAULT.preferenceValue,
+        keyboardSkinMotion: String = KeyboardSkinMotionMode.FULL.preferenceValue,
     ) {
+        val requestedSkin = KeyboardSkinId.fromPreference(keyboardSkin)
+        val requestedMotion = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
+        val builtInPalette = requestedSkin
+            .takeIf { it != KeyboardSkinId.DEFAULT }
+            ?.let { KeyboardSkinCatalog.specFor(it).palette }
+        val effectiveThemeMode = if (builtInPalette != null) "custom" else themeMode
+        val effectiveBgColor = builtInPalette?.backgroundColor ?: customBgColor
+        val effectiveKeyColor = builtInPalette?.normalKeyColor ?: customKeyColor
+        val effectiveSpecialKeyColor = builtInPalette?.specialKeyColor ?: customSpecialKeyColor
+        val effectiveKeyTextColor = builtInPalette?.normalKeyTextColor ?: customKeyTextColor
+        val effectiveSpecialKeyTextColor =
+            builtInPalette?.specialKeyTextColor ?: customSpecialKeyTextColor
+        val effectiveLiquidGlass = liquidGlassEnable && builtInPalette == null
+        val effectiveCustomBorder = customBorderEnable && builtInPalette == null
         val renderConfigurationChanged =
-            this.themeMode != themeMode ||
+            this.themeMode != effectiveThemeMode ||
+                this.keyboardSkinId != requestedSkin ||
+                this.keyboardSkinMotionMode != requestedMotion ||
                 this.isNightMode !=
                 (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ||
                 this.isDynamicColorEnabled != isDynamicColorEnabled ||
-                this.customBgColor != customBgColor ||
-                this.customKeyColor != customKeyColor ||
-                this.customSpecialKeyColor != customSpecialKeyColor ||
-                this.customKeyTextColor != customKeyTextColor ||
-                this.customSpecialKeyTextColor != customSpecialKeyTextColor ||
-                this.liquidGlassEnable != liquidGlassEnable ||
-                this.customBorderEnable != customBorderEnable ||
+                this.customBgColor != effectiveBgColor ||
+                this.customKeyColor != effectiveKeyColor ||
+                this.customSpecialKeyColor != effectiveSpecialKeyColor ||
+                this.customKeyTextColor != effectiveKeyTextColor ||
+                this.customSpecialKeyTextColor != effectiveSpecialKeyTextColor ||
+                this.liquidGlassEnable != effectiveLiquidGlass ||
+                this.customBorderEnable != effectiveCustomBorder ||
                 this.customBorderColor != customBorderColor ||
                 this.liquidGlassKeyAlphaEnable != liquidGlassKeyAlphaEnable ||
                 this.borderWidth != borderWidth
-        this.themeMode = themeMode
+        this.themeMode = effectiveThemeMode
+        this.keyboardSkinId = requestedSkin
+        this.keyboardSkinMotionMode = requestedMotion
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
         this.isDynamicColorEnabled = isDynamicColorEnabled
-        this.customBgColor = customBgColor
-        this.customKeyColor = customKeyColor
-        this.customSpecialKeyColor = customSpecialKeyColor
-        this.customKeyTextColor = customKeyTextColor
-        this.customSpecialKeyTextColor = customSpecialKeyTextColor
-        this.liquidGlassEnable = liquidGlassEnable
-        this.customBorderEnable = customBorderEnable
+        this.customBgColor = effectiveBgColor
+        this.customKeyColor = effectiveKeyColor
+        this.customSpecialKeyColor = effectiveSpecialKeyColor
+        this.customKeyTextColor = effectiveKeyTextColor
+        this.customSpecialKeyTextColor = effectiveSpecialKeyTextColor
+        this.liquidGlassEnable = effectiveLiquidGlass
+        this.customBorderEnable = effectiveCustomBorder
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
         this.borderWidth = borderWidth
@@ -514,9 +545,16 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyboardRenderRevision += 1
         }
 
-        if (liquidGlassEnable) {
-            this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            background = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+                .createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
+        } else if (effectiveLiquidGlass) {
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(effectiveBgColor, 0))
+        } else {
+            // Do not retain a previously selected skin surface after returning to Default.
+            background = null
         }
+        if (renderConfigurationChanged && currentLayout != null) rebuildCurrentKeyboard()
     }
 
     private fun manipulateColor(color: Int, factor: Float): Int {
@@ -529,24 +567,38 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun resolveKeyVisualPalette(keyData: KeyData): KeyVisualPalette {
         val usesSpecialSurface = KeyVisualStyleResolver.usesSpecialSurface(keyData)
+        val palette = resolveKeyboardSkinPalette(
+            context = context,
+            themeMode = themeMode,
+            customBackgroundColor = customBgColor,
+            customKeyColor = customKeyColor,
+            customSpecialKeyColor = customSpecialKeyColor,
+            customKeyTextColor = customKeyTextColor,
+            customSpecialKeyTextColor = customSpecialKeyTextColor,
+            skinId = keyboardSkinId,
+        )
         return if (usesSpecialSurface) {
             KeyVisualPalette(
                 usesSpecialSurface = true,
-                baseColor = customSpecialKeyColor,
-                textColor = customSpecialKeyTextColor,
-                highlightColor = manipulateColor(customSpecialKeyColor, 1.2f)
+                baseColor = palette.specialKeyColor,
+                textColor = palette.specialKeyTextColor,
+                highlightColor = manipulateColor(palette.specialKeyColor, 1.2f)
             )
         } else {
             KeyVisualPalette(
                 usesSpecialSurface = false,
-                baseColor = customKeyColor,
-                textColor = customKeyTextColor,
-                highlightColor = customSpecialKeyColor
+                baseColor = palette.normalKeyColor,
+                textColor = palette.normalKeyTextColor,
+                highlightColor = palette.specialKeyColor
             )
         }
     }
 
     private fun defaultKeyBackgroundDrawable(keyData: KeyData, isDarkTheme: Boolean): Drawable? {
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            return KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+                .createKeyDrawable(context, resolveElementRole(keyData), keyData.keyId.hashCode())
+        }
         val drawableResId = when {
             resolveKeyVisualPalette(keyData).usesSpecialSurface -> {
                 if (isDarkTheme) {
@@ -1258,7 +1310,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         val bottomInset = getScaledVerticalInsetDp(baseInsets[3])
 
         val isDarkTheme = context.isDarkThemeOn()
-        val commonCornerRadius = dpToPx(8).toFloat()
+        val commonCornerRadius = dpToPx(
+            KeyboardSkinCatalog.specFor(keyboardSkinId).geometry.cornerRadiusDp.toInt()
+        ).toFloat()
         val visualPalette = resolveKeyVisualPalette(keyData)
 
         val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
@@ -1290,8 +1344,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     isPressed = true
                 }
 
-                when (themeMode) {
-                    "custom" -> {
+                when {
+                    themeMode == "custom" || keyboardSkinId != KeyboardSkinId.DEFAULT -> {
                         if (customBorderEnable) {
                             setDrawableSolidColor(visualPalette.baseColor)
                             setBorder(customBorderColor, borderWidth)
@@ -1351,8 +1405,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     background = insetBg
                 }
 
-                when (themeMode) {
-                    "custom" -> {
+                when {
+                    themeMode == "custom" || keyboardSkinId != KeyboardSkinId.DEFAULT -> {
                         if (customBorderEnable) {
                             setDrawableSolidColor(visualPalette.baseColor)
                             setTextColor(visualPalette.textColor)
@@ -1388,10 +1442,88 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
 
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            applyBuiltInKeyStyle(
+                view = keyView,
+                keyData = keyData,
+                leftInset = leftInset,
+                topInset = topInset,
+                rightInset = rightInset,
+                bottomInset = bottomInset,
+                cornerRadius = commonCornerRadius,
+            )
+        }
+
         return keyView
     }
 
+    private fun applyBuiltInKeyStyle(
+        view: View,
+        keyData: KeyData,
+        leftInset: Int,
+        topInset: Int,
+        rightInset: Int,
+        bottomInset: Int,
+        cornerRadius: Float,
+    ) {
+        val role = resolveElementRole(keyData)
+        val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
+        KeyboardSkinViewStyler.applyKey(
+            view,
+            keyboardSkinId,
+            role,
+            keyboardSkinMotionMode,
+            keyData.keyId?.hashCode() ?: keyData.hashCode(),
+        )
+        val base = view.background
+        val segmented = SegmentedBackgroundDrawable(
+            label = "",
+            baseColor = Color.TRANSPARENT,
+            highlightColor = spec.palette.accentColor,
+            textColor = spec.palette.textColor(role),
+            cornerRadius = cornerRadius,
+        )
+        val layer = LayerDrawable(arrayOf(base, segmented)).apply {
+            val innerHorizontal = dpToPx(getScaledHorizontalInsetDp(2))
+            val innerVertical = dpToPx(getScaledVerticalInsetDp(2))
+            setLayerInset(1, innerHorizontal, innerVertical, innerHorizontal, innerVertical)
+        }
+        view.background = android.graphics.drawable.InsetDrawable(
+            layer,
+            leftInset,
+            topInset,
+            rightInset,
+            bottomInset,
+        )
+    }
+
+    private fun resolveElementRole(keyData: KeyData): KeyboardElementRole = when (keyData.action) {
+        KeyAction.Enter,
+        KeyAction.Confirm,
+        KeyAction.NewLine,
+        KeyAction.ForceNewLine -> KeyboardElementRole.ACTION
+
+        KeyAction.Space,
+        KeyAction.ForceHalfWidthSpace,
+        KeyAction.ForceFullWidthSpace -> KeyboardElementRole.SPACE
+
+        else -> if (KeyVisualStyleResolver.usesSpecialSurface(keyData)) {
+            KeyboardElementRole.MODIFIER
+        } else {
+            KeyboardElementRole.CHARACTER
+        }
+    }
+
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            return KeyboardSkinDrawableFactory.createKeyDrawable(
+                context = context,
+                skinId = keyboardSkinId,
+                baseColor = baseColor,
+                cornerRadiusDp = radius / resources.displayMetrics.density,
+            )
+        }
+
         val highlightColor = manipulateColor(baseColor, 1.2f)
         val shadowColor = manipulateColor(baseColor, 0.8f)
 

@@ -416,7 +416,16 @@
     <fragment
         android:id="@+id/keyboardThemeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"
-        android:label="@string/keyboardthemefragment" />
+        android:label="@string/keyboardthemefragment">
+        <action
+            android:id="@+id/action_keyboardThemeFragment_to_keyboardSkinPickerFragment"
+            app:destination="@id/keyboardSkinPickerFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/keyboardSkinPickerFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardSkinPickerFragment"
+        android:label="@string/keyboard_skin_picker_title"
+        tools:layout="@layout/fragment_keyboard_skin_picker" />
     <fragment
         android:id="@+id/tenKeyCandidateLetterSizeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"

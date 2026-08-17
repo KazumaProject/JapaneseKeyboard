@@ -21,8 +21,12 @@ class KeyboardTouchEffectContainerContractTest {
             val touchEffectChildren = childIdsOf(document, "keyboard_touch_effect_container")
 
             assertTrue(
-                "$path background container should keep only background media",
-                backgroundChildren == listOf("keyboard_background_video", "keyboard_background_image")
+                "$path background container should keep only skin and background media",
+                backgroundChildren == listOf(
+                    "keyboard_skin_backdrop",
+                    "keyboard_background_video",
+                    "keyboard_background_image"
+                )
             )
             normalEffectIds.forEach { id ->
                 assertFalse("$path background container must not contain $id", id in backgroundChildren)
@@ -38,8 +42,9 @@ class KeyboardTouchEffectContainerContractTest {
         val touchEffectChildren = childIdsOf(document, "floating_keyboard_touch_effect_container")
 
         assertTrue(
-            "floating background container should keep only background media",
+            "floating background container should keep only skin and background media",
             backgroundChildren == listOf(
+                "floating_keyboard_skin_backdrop",
                 "floating_keyboard_background_video",
                 "floating_keyboard_background_image"
             )

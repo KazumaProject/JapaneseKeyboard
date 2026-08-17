@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
+import androidx.navigation.fragment.findNavController
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
@@ -16,6 +17,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,6 +32,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
     companion object {
         // System Theme Keys
         private const val PREF_KEY_DEFAULT = "theme_default"
+        private const val PREF_KEY_SKIN = "keyboard_skin_preference"
         private const val PREF_KEY_ROUND_CORNER = "round_corner_keyboard_preference"
         private const val PREF_KEY_POPUP_USE_CUSTOM_COLOR =
             "key_popup_use_custom_color_preference"
@@ -82,12 +85,35 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
     }
 
     private var pendingHighlightPreferenceKey: String? = null
+    private var skinPreference: Preference? = null
+    private var skinOverriddenCategories: List<PreferenceCategory> = emptyList()
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = preferenceManager.context
         val screen = preferenceManager.createPreferenceScreen(context)
         pendingHighlightPreferenceKey =
             arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
+
+        val skinCategory = PreferenceCategory(context).apply {
+            title = getString(R.string.keyboard_skin_category)
+        }
+        screen.addPreference(skinCategory)
+
+        val skinPreference = Preference(context).apply {
+            key = PREF_KEY_SKIN
+            title = getString(R.string.keyboard_skin_title)
+            isPersistent = false
+            onPreferenceClickListener = Preference.OnPreferenceClickListener {
+                // This fragment is hosted inside SettingMainFragment's ViewPager, so the
+                // NavController's current destination is SettingMainFragment rather than
+                // keyboardThemeFragment. Navigate to the destination directly instead of
+                // using an action that only belongs to keyboardThemeFragment.
+                findNavController().navigate(R.id.keyboardSkinPickerFragment)
+                true
+            }
+        }
+        this.skinPreference = skinPreference
+        skinCategory.addPreference(skinPreference)
 
         // -------------------------------------------------------
         // System Category
@@ -424,10 +450,17 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
 
         preferenceScreen = screen
+        skinOverriddenCategories = listOf(systemCategory, customCategory, inputCategory)
 
         // Initialize state based on current preference
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
+        updateSkinOverrideState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateSkinOverrideState()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -500,6 +533,39 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
         // Input Category Visibility
         //findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.isVisible = isVisible
+    }
+
+    private fun updateSkinOverrideState() {
+        val skin = KeyboardSkinId.fromPreference(appPreference.keyboard_skin)
+        skinPreference?.summary = if (skin == KeyboardSkinId.DEFAULT) {
+            getString(R.string.keyboard_skin_summary)
+        } else {
+            getString(
+                R.string.keyboard_skin_summary_selected,
+                getString(keyboardSkinNameResource(skin)),
+            )
+        }
+        val themeControlsEnabled = skin == KeyboardSkinId.DEFAULT
+        skinOverriddenCategories.forEach { category ->
+            category.isEnabled = themeControlsEnabled
+            category.summary = if (themeControlsEnabled) {
+                null
+            } else {
+                getString(R.string.keyboard_skin_overrides_theme_summary)
+            }
+        }
+    }
+
+    private fun keyboardSkinNameResource(skin: KeyboardSkinId): Int = when (skin) {
+        KeyboardSkinId.DEFAULT -> R.string.keyboard_skin_default
+        KeyboardSkinId.FLAT -> R.string.keyboard_skin_flat
+        KeyboardSkinId.GLASS -> R.string.keyboard_skin_glass
+        KeyboardSkinId.NEUMORPHISM -> R.string.keyboard_skin_neumorphism
+        KeyboardSkinId.MECHANICAL -> R.string.keyboard_skin_mechanical
+        KeyboardSkinId.WASHI -> R.string.keyboard_skin_washi
+        KeyboardSkinId.NEON -> R.string.keyboard_skin_neon
+        KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_terminal
+        KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_cupertino
     }
 
     private fun saveCustomColor(key: String, color: Int) {

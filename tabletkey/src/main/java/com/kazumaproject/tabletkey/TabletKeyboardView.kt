@@ -26,6 +26,15 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
+import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
 import com.kazumaproject.core.data.tablet.TabletCapsLockState
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
@@ -310,6 +319,8 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
     private var customBgColor: Int = Color.WHITE
@@ -403,10 +414,14 @@ class TabletKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        keyboardSkin: String = KeyboardSkinId.DEFAULT.preferenceValue,
+        keyboardSkinMotion: String = KeyboardSkinMotionMode.FULL.preferenceValue,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
+        this.keyboardSkinId = KeyboardSkinId.fromPreference(keyboardSkin)
+        this.keyboardSkinMotionMode = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
@@ -426,23 +441,39 @@ class TabletKeyboardView @JvmOverloads constructor(
 
         LayoutInflater.from(context)
 
-        when (this.themeMode) {
-            "default" -> {
+        when {
+            this.keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+                applyBuiltInPopupColors()
+                applyBuiltInSkin()
+            }
+
+            this.themeMode == "default" -> {
+                clearBuiltInSkinStyles()
                 setBackgroundColor(Color.TRANSPARENT)
                 setMaterialYouTheme()
                 // resetLayoutを呼んでデフォルトの角丸背景などを再適用する
                 resetLayout()
             }
 
-            "custom" -> {
+            this.themeMode == "custom" -> {
+                clearBuiltInSkinStyles()
+                val palette = resolveKeyboardSkinPalette(
+                    context = context,
+                    themeMode = this.themeMode,
+                    customBackgroundColor = customBgColor,
+                    customKeyColor = customKeyColor,
+                    customSpecialKeyColor = customSpecialKeyColor,
+                    customKeyTextColor = customKeyTextColor,
+                    customSpecialKeyTextColor = customSpecialKeyTextColor,
+                )
                 setCustomThemePopup()
                 setFullCustomNeumorphismTheme(
-                    backgroundColor = customBgColor,
-                    normalKeyColor = customKeyColor,
-                    specialKeyColor = customSpecialKeyColor,
-                    normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor,
-                    borderWidth = borderWidth
+                    backgroundColor = palette.backgroundColor,
+                    normalKeyColor = palette.normalKeyColor,
+                    specialKeyColor = palette.specialKeyColor,
+                    normalKeyTextColor = palette.normalKeyTextColor,
+                    specialKeyTextColor = palette.specialKeyTextColor,
+                    borderWidth = borderWidth,
                 )
             }
 
@@ -466,7 +497,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         borderWidth: Int
     ) {
         val density = context.resources.displayMetrics.density
-        val radius = 8f * density // 角丸の半径 (8dp)
+        val radius = KeyboardSkinDrawableFactory.keyCornerRadiusDp(KeyboardSkinId.DEFAULT) * density
 
         // 1. 全体の背景色を設定
         if (liquidGlassEnable) {
@@ -574,6 +605,67 @@ class TabletKeyboardView @JvmOverloads constructor(
         stateListDrawable.addState(intArrayOf(), idleLayer)
 
         return stateListDrawable
+    }
+
+    private fun applyBuiltInSkin() {
+        val renderer = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+        background = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
+        binding.apply {
+            val characterKeys = listOf(
+                key1, key2, key3, key4, key5, key6, key7, key8, key9, key10,
+                key11, key12, key13, key14, key15, key16, key17, key18, key19, key20,
+                key21, key22, key23, key24, key25, key26, key27, key28, key29, key30,
+                key31, key32, key33, key34, key35, key36, key37, key38, key39, key40,
+                key41, key42, key43, key44, key45, key46, key47, key48, key49, key50,
+                key51, key52, key53, key54, key55,
+            )
+            val modifierKeys = listOf(
+                keyKigou, keyPrevious, keySwitchKeyMode, keyLeftCursor,
+                keyRightCursor, keyDelete,
+            )
+            characterKeys.forEach { view ->
+                KeyboardSkinViewStyler.applyKey(
+                    view, keyboardSkinId, KeyboardElementRole.CHARACTER, keyboardSkinMotionMode
+                )
+            }
+            modifierKeys.forEach { view ->
+                KeyboardSkinViewStyler.applyKey(
+                    view, keyboardSkinId, KeyboardElementRole.MODIFIER, keyboardSkinMotionMode
+                )
+            }
+            KeyboardSkinViewStyler.applyKey(
+                keySpace, keyboardSkinId, KeyboardElementRole.SPACE, keyboardSkinMotionMode
+            )
+            KeyboardSkinViewStyler.applyKey(
+                keyEnter, keyboardSkinId, KeyboardElementRole.ACTION, keyboardSkinMotionMode
+            )
+        }
+    }
+
+    private fun clearBuiltInSkinStyles() {
+        binding.root.apply {
+            for (index in 0 until childCount) {
+                KeyboardSkinViewStyler.clearTransientStyle(getChildAt(index))
+            }
+        }
+    }
+
+    private fun applyBuiltInPopupColors() {
+        val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
+        listOf(
+            bubbleViewActive, bubbleViewLeft, bubbleViewTop,
+            bubbleViewRight, bubbleViewBottom, bubbleViewCenter,
+        ).forEach { it.setBubbleColor(spec.palette.specialKeyColor) }
+        listOf(
+            popTextActive, popTextLeft, popTextTop,
+            popTextRight, popTextBottom, popTextCenter,
+        ).forEach { textView ->
+            textView.setTextColor(spec.palette.specialKeyTextColor)
+            textView.typeface = android.graphics.Typeface.create(
+                spec.typography.familyName,
+                if (spec.typography.bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL,
+            )
+        }
     }
 
     /**

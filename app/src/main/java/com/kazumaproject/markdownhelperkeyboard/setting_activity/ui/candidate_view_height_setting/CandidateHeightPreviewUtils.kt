@@ -468,7 +468,9 @@ private fun configureTenKeyPreview(
         customBorderEnable = appPreference.custom_theme_border_enable,
         customBorderColor = appPreference.custom_theme_border_color,
         liquidGlassKeyAlphaEnable = appPreference.liquid_glass_key_alpha,
-        borderWidth = appPreference.custom_theme_border_width
+        borderWidth = appPreference.custom_theme_border_width,
+        keyboardSkin = appPreference.keyboard_skin,
+        keyboardSkinMotion = appPreference.keyboard_skin_motion,
     )
     tenKey.setFlickSensitivityValue(appPreference.flick_sensitivity_preference ?: 100)
     tenKey.setFlickThresholdShape(
@@ -528,7 +530,9 @@ private fun configureQwertyPreview(
         customBorderEnable = appPreference.custom_theme_border_enable,
         customBorderColor = appPreference.custom_theme_border_color,
         liquidGlassKeyAlphaEnable = appPreference.liquid_glass_key_alpha,
-        borderWidth = appPreference.custom_theme_border_width
+        borderWidth = appPreference.custom_theme_border_width,
+        keyboardSkin = appPreference.keyboard_skin,
+        keyboardSkinMotion = appPreference.keyboard_skin_motion,
     )
     qwertyView.setLongPressTimeout((appPreference.long_press_timeout_preference ?: 300).toLong())
     qwertyView.applyPopupViewStyleSet(
@@ -608,7 +612,9 @@ private fun configureFlickKeyboardPreview(
         customBorderEnable = appPreference.custom_theme_border_enable,
         customBorderColor = appPreference.custom_theme_border_color,
         liquidGlassKeyAlphaEnable = appPreference.liquid_glass_key_alpha,
-        borderWidth = appPreference.custom_theme_border_width
+        borderWidth = appPreference.custom_theme_border_width,
+        keyboardSkin = appPreference.keyboard_skin,
+        keyboardSkinMotion = appPreference.keyboard_skin_motion,
     )
     flickView.setAngleAndRange(
         appPreference.getCircularFlickRanges(),

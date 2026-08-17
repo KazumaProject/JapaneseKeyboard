@@ -47,6 +47,14 @@ import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.domain.state.toInputMode
 import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
+import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.FlickTextPreviewEmitter
@@ -305,6 +313,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
     private var customBgColor: Int = Color.WHITE
@@ -902,10 +912,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        keyboardSkin: String = KeyboardSkinId.DEFAULT.preferenceValue,
+        keyboardSkinMotion: String = KeyboardSkinMotionMode.FULL.preferenceValue,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
+        this.keyboardSkinId = KeyboardSkinId.fromPreference(keyboardSkin)
+        this.keyboardSkinMotionMode = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
@@ -925,8 +939,17 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
         val inflater = LayoutInflater.from(context)
 
-        when (this.themeMode) {
-            "default" -> {
+        when {
+            this.keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+                buildCustomPopupViews(inflater)
+                applyBuiltInSkin()
+                applyPopupTextSize()
+                applyPopupColors()
+                applyBuiltInPopupColors()
+            }
+
+            this.themeMode == "default" -> {
+                clearBuiltInSkinStyles()
                 setPopupViewTheme(
                     isDynamicColorsEnable = isDynamicColorEnabled,
                     isDarkMode = isNightMode,
@@ -937,14 +960,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
 
 
-            "custom" -> {
-                val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
-                popupWindowActive = PopupWindow(
-                    activeBinding.root,
-                    LayoutParams.WRAP_CONTENT,
-                    LayoutParams.WRAP_CONTENT,
-                    false
+            this.themeMode == "custom" -> {
+                clearBuiltInSkinStyles()
+                val palette = resolveKeyboardSkinPalette(
+                    context = context,
+                    themeMode = this.themeMode,
+                    customBackgroundColor = customBgColor,
+                    customKeyColor = customKeyColor,
+                    customSpecialKeyColor = customSpecialKeyColor,
+                    customKeyTextColor = customKeyTextColor,
+                    customSpecialKeyTextColor = customSpecialKeyTextColor,
                 )
+                val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+                popupWindowActive = PopupWindow(activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
                 bubbleViewActive = activeBinding.bubbleLayoutActive
                 popTextActive = activeBinding.popupTextActive
                 val activeColor = manipulateColor(customSpecialKeyColor, 1.2f)
@@ -1010,12 +1038,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 popTextCenter.setTextColor(customSpecialKeyTextColor)
 
                 setFullCustomNeumorphismTheme(
-                    backgroundColor = customBgColor,
-                    normalKeyColor = customKeyColor,
-                    specialKeyColor = customSpecialKeyColor,
-                    normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor,
-                    borderWidth = borderWidth
+                    backgroundColor = palette.backgroundColor,
+                    normalKeyColor = palette.normalKeyColor,
+                    specialKeyColor = palette.specialKeyColor,
+                    normalKeyTextColor = palette.normalKeyTextColor,
+                    specialKeyTextColor = palette.specialKeyTextColor,
+                    borderWidth = borderWidth,
                 )
                 applyPopupTextSize()
                 applyPopupColors()
@@ -1051,7 +1079,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         borderWidth: Int
     ) {
         val density = context.resources.displayMetrics.density
-        val radius = 8f * density // 角丸の半径 (8dp)
+        val radius = KeyboardSkinDrawableFactory.keyCornerRadiusDp(KeyboardSkinId.DEFAULT) * density
 
         // 1. 全体の背景色を設定
         if (liquidGlassEnable) {
@@ -1218,6 +1246,119 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         )
 
         return stateListDrawable
+    }
+
+    private fun applyBuiltInSkin() {
+        val renderer = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+        background = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
+        binding.apply {
+            val characterKeys = listOf(
+                key1, key2, key3, key4, key5, key6,
+                key7, key8, key9, key11, key12, keySmallLetter,
+            )
+            val modifierKeys = listOf(
+                keyReturn, keySoftLeft, keyDelete, keyMoveCursorRight, keySwitchKeyMode,
+            )
+            characterKeys.forEach { view ->
+                KeyboardSkinViewStyler.applyKey(
+                    view,
+                    keyboardSkinId,
+                    KeyboardElementRole.CHARACTER,
+                    keyboardSkinMotionMode,
+                )
+            }
+            modifierKeys.forEach { view ->
+                KeyboardSkinViewStyler.applyKey(
+                    view,
+                    keyboardSkinId,
+                    KeyboardElementRole.MODIFIER,
+                    keyboardSkinMotionMode,
+                )
+            }
+            KeyboardSkinViewStyler.applyKey(
+                keySpace,
+                keyboardSkinId,
+                KeyboardElementRole.SPACE,
+                keyboardSkinMotionMode,
+            )
+            KeyboardSkinViewStyler.applyKey(
+                keyEnter,
+                keyboardSkinId,
+                KeyboardElementRole.ACTION,
+                keyboardSkinMotionMode,
+            )
+            val modifierDrawable = renderer.createKeyDrawable(context, KeyboardElementRole.MODIFIER)
+            val modifierTint = ColorStateList.valueOf(
+                com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+                    .specFor(keyboardSkinId).palette.specialKeyTextColor
+            )
+            sideKeySymbolModeContainer.setKeyBackground(modifierDrawable)
+            sideKeySymbolModeContainer.setKeyTint(modifierTint)
+            sideKeySymbolModeContainer.setKeyDrawableAlpha(255)
+        }
+    }
+
+    private fun clearBuiltInSkinStyles() {
+        binding.apply {
+            listOf(
+                key1, key2, key3, key4, key5, key6, key7, key8, key9, key11, key12,
+                keySmallLetter, keyReturn, keySoftLeft, keyDelete, keyMoveCursorRight,
+                keySpace, keyEnter, keySwitchKeyMode,
+            ).forEach(KeyboardSkinViewStyler::clearTransientStyle)
+        }
+    }
+
+    private fun buildCustomPopupViews(inflater: LayoutInflater) {
+        val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+        popupWindowActive = PopupWindow(activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
+        bubbleViewActive = activeBinding.bubbleLayoutActive
+        popTextActive = activeBinding.popupTextActive
+
+        val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowLeft = PopupWindow(leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
+        bubbleViewLeft = leftBinding.bubbleLayout
+        popTextLeft = leftBinding.popupText
+
+        val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowTop = PopupWindow(topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
+        bubbleViewTop = topBinding.bubbleLayout
+        popTextTop = topBinding.popupText
+
+        val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowRight = PopupWindow(rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
+        bubbleViewRight = rightBinding.bubbleLayout
+        popTextRight = rightBinding.popupText
+
+        val bottomBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowBottom = PopupWindow(bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
+        bubbleViewBottom = bottomBinding.bubbleLayout
+        popTextBottom = bottomBinding.popupText
+
+        val centerBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowCenter = PopupWindow(centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false)
+        bubbleViewCenter = centerBinding.bubbleLayout
+        popTextCenter = centerBinding.popupText
+    }
+
+    private fun applyBuiltInPopupColors() {
+        if (!::bubbleViewActive.isInitialized) return
+        val palette = com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+            .specFor(keyboardSkinId).palette
+        listOf(
+            bubbleViewActive, bubbleViewLeft, bubbleViewTop,
+            bubbleViewRight, bubbleViewBottom, bubbleViewCenter,
+        ).forEach { it.setBubbleColor(palette.specialKeyColor) }
+        listOf(
+            popTextActive, popTextLeft, popTextTop,
+            popTextRight, popTextBottom, popTextCenter,
+        ).forEach { textView ->
+            textView.setTextColor(palette.specialKeyTextColor)
+            textView.typeface = android.graphics.Typeface.create(
+                com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog.specFor(keyboardSkinId)
+                    .typography.familyName,
+                android.graphics.Typeface.BOLD,
+            )
+        }
     }
 
     /**

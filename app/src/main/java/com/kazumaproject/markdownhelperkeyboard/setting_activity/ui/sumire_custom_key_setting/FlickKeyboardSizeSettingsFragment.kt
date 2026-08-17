@@ -169,7 +169,9 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
             customBorderEnable = AppPreference.custom_theme_border_enable,
             customBorderColor = AppPreference.custom_theme_border_color,
             liquidGlassKeyAlphaEnable = AppPreference.liquid_glass_key_alpha,
-            borderWidth = AppPreference.custom_theme_border_width
+            borderWidth = AppPreference.custom_theme_border_width,
+            keyboardSkin = AppPreference.keyboard_skin,
+            keyboardSkinMotion = AppPreference.keyboard_skin_motion,
         )
 
         keyboardView.applyKeySizing(

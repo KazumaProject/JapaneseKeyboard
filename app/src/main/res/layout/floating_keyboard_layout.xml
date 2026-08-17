@@ -14,6 +14,15 @@
         android:clickable="false"
         android:focusable="false">
 
+        <com.kazumaproject.core.data.keyboard.KeyboardSkinBackdropView
+            android:id="@+id/floating_keyboard_skin_backdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <androidx.media3.ui.PlayerView
             android:id="@+id/floating_keyboard_background_video"
             android:layout_width="match_parent"

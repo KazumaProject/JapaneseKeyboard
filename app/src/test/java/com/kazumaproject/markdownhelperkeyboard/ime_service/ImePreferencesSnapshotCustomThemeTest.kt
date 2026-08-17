@@ -17,5 +17,7 @@ class ImePreferencesSnapshotCustomThemeTest {
         assertTrue(fieldNames.contains("customThemeCandidateEmptyPopupBgColor"))
         assertTrue(fieldNames.contains("customThemeCandidateEmptyPopupTextColor"))
         assertTrue(fieldNames.contains("customThemeShortcutIconColor"))
+        assertTrue(fieldNames.contains("keyboardSkin"))
+        assertTrue(fieldNames.contains("keyboardSkinMotion"))
     }
 }

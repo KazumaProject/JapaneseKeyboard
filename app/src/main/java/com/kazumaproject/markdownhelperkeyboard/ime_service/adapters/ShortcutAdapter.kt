@@ -8,6 +8,11 @@ import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
@@ -35,6 +40,8 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
     private var toolbarHeightPx: Int = 0
     private var iconSizePx: Int = 0
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -64,6 +71,23 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         applyShortcutToolbarSize(holder)
         holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            KeyboardSkinViewStyler.applyKey(
+                holder.itemView,
+                keyboardSkinId,
+                KeyboardElementRole.TOOLBAR,
+                keyboardSkinMotionMode,
+                stableKey = item.ordinal,
+            )
+            holder.imageView.setColorFilter(
+                KeyboardSkinCatalog.specFor(keyboardSkinId).palette.specialKeyTextColor,
+                PorterDuff.Mode.SRC_IN,
+            )
+            return
+        }
+        KeyboardSkinViewStyler.clearTransientStyle(holder.itemView)
+        holder.itemView.background = null
+
         // ★追加: 色が設定されていれば適用し、なければ解除する
         iconColorState.iconColor?.let { color ->
             holder.imageView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
@@ -92,6 +116,15 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     // ★追加: 外部から色を設定するメソッド
     fun setIconColor(color: Int) {
         if (!iconColorState.setIconColor(color)) return
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setKeyboardSkin(skinValue: String?, motionValue: String?) {
+        val nextSkin = KeyboardSkinId.fromPreference(skinValue)
+        val nextMotion = KeyboardSkinMotionMode.fromPreference(motionValue)
+        if (keyboardSkinId == nextSkin && keyboardSkinMotionMode == nextMotion) return
+        keyboardSkinId = nextSkin
+        keyboardSkinMotionMode = nextMotion
         notifyItemRangeChanged(0, itemCount)
     }
 

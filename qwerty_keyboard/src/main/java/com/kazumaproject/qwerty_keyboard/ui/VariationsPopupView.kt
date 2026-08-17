@@ -6,10 +6,17 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.util.TypedValue
 import android.view.View
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import kotlin.math.ceil
 import kotlin.math.min
@@ -36,6 +43,13 @@ class VariationsPopupView(context: Context) : View(context) {
     private var numRows = 1
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var skinSurfaceDrawable: Drawable? = null
+    private var skinItemDrawable: Drawable? = null
+    private var skinSelectedItemDrawable: Drawable? = null
+    private val skinTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+    }
 
     // ■■■ FLATモード用 (元のコードの変数) ■■■
     private val flatTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -93,6 +107,33 @@ class VariationsPopupView(context: Context) : View(context) {
         invalidate()
     }
 
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        if (skinId == KeyboardSkinId.DEFAULT) {
+            skinSurfaceDrawable = null
+            skinItemDrawable = null
+            skinSelectedItemDrawable = null
+            invalidate()
+            return
+        }
+        val renderer = KeyboardSkinRendererRegistry.rendererFor(skinId)
+        val spec = KeyboardSkinCatalog.specFor(skinId)
+        skinSurfaceDrawable = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.POPUP)
+        skinItemDrawable = renderer.createKeyDrawable(context, KeyboardElementRole.CANDIDATE, 1)
+        skinSelectedItemDrawable = renderer
+            .createKeyDrawable(context, KeyboardElementRole.CANDIDATE, 2)
+            .apply {
+                state = intArrayOf(android.R.attr.state_pressed, android.R.attr.state_enabled)
+            }
+        skinTextPaint.color = spec.palette.candidateTextColor
+        skinTextPaint.typeface = Typeface.create(
+            spec.typography.familyName,
+            if (spec.typography.bold) Typeface.BOLD else Typeface.NORMAL,
+        )
+        skinTextPaint.textSize = flatTextPaint.textSize
+        invalidate()
+    }
+
     // ニューモーフィズム用メソッド
     fun setNeumorphicColors(
         @ColorInt bgColor: Int,
@@ -140,6 +181,11 @@ class VariationsPopupView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (chars.isEmpty()) return
 
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            drawKeyboardSkinPopup(canvas)
+            return
+        }
+
         // 共通：描画領域のクリップ
         clipPath.reset()
         clipPath.addRoundRect(
@@ -180,6 +226,42 @@ class VariationsPopupView(context: Context) : View(context) {
             val cx = left + itemWidth / 2f
             val cy = top + (itemHeight / 2f) - ((targetPaint.descent() + targetPaint.ascent()) / 2f)
             canvas.drawText(char.toString(), cx, cy, targetPaint)
+        }
+    }
+
+    private fun drawKeyboardSkinPopup(canvas: Canvas) {
+        skinSurfaceDrawable?.apply {
+            setBounds(0, 0, width, height)
+            draw(canvas)
+        }
+        val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
+        chars.forEachIndexed { index, char ->
+            val col = index % maxColumns
+            val row = index / maxColumns
+            val left = col * itemWidth
+            val top = row * itemHeight
+            val right = left + itemWidth
+            val bottom = top + itemHeight
+            val drawable = if (index == selectedIndex) {
+                skinSelectedItemDrawable
+            } else {
+                skinItemDrawable
+            }
+            drawable?.apply {
+                setBounds(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+                draw(canvas)
+            }
+            skinTextPaint.color = when {
+                index != selectedIndex -> spec.palette.candidateTextColor
+                keyboardSkinId == KeyboardSkinId.FLAT ||
+                    keyboardSkinId == KeyboardSkinId.TERMINAL -> spec.palette.backgroundColor
+                else -> spec.palette.candidateTextColor
+            }
+            skinTextPaint.textSize = flatTextPaint.textSize
+            val cx = left + itemWidth / 2f
+            val cy = top + itemHeight / 2f -
+                (skinTextPaint.descent() + skinTextPaint.ascent()) / 2f
+            canvas.drawText(char.toString(), cx, cy, skinTextPaint)
         }
     }
 

@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
@@ -12,6 +13,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -23,6 +25,11 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.data.keyboard.KeyboardElementRole
+import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
@@ -81,6 +88,13 @@ internal class CandidateItemColorState {
         }
         this.backgroundColor = backgroundColor
         this.pressedBackgroundColor = pressedBackgroundColor
+        return true
+    }
+
+    fun clear(): Boolean {
+        if (backgroundColor == null && pressedBackgroundColor == null) return false
+        backgroundColor = null
+        pressedBackgroundColor = null
         return true
     }
 }
@@ -278,6 +292,8 @@ class SuggestionAdapter internal constructor(
 
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
@@ -1370,10 +1386,12 @@ class SuggestionAdapter internal constructor(
         holder.imageView.apply {
             setImageResource(shortcutType.resolveShortcutIconResId())
             contentDescription = shortcutType.description
-            shortcutIconColor?.let { color ->
-                setColorFilter(color, PorterDuff.Mode.SRC_IN)
-            } ?: clearColorFilter()
         }
+        applyShortcutSkin(
+            itemView = holder.itemView,
+            imageView = holder.imageView,
+            stableKey = shortcutType.ordinal,
+        )
         holder.itemView.contentDescription = shortcutType.description
         holder.itemView.setOnClickListener {
             val adapterPosition = holder.bindingAdapterPosition
@@ -1392,15 +1410,40 @@ class SuggestionAdapter internal constructor(
         holder.imageView.apply {
             setImageResource(R.drawable.more_horiz_24px)
             contentDescription = context.getString(R.string.shortcut_entry_content_description)
-            shortcutIconColor?.let { color ->
-                setColorFilter(color, PorterDuff.Mode.SRC_IN)
-            } ?: clearColorFilter()
         }
+        applyShortcutSkin(
+            itemView = holder.itemView,
+            imageView = holder.imageView,
+            stableKey = Int.MIN_VALUE,
+        )
         holder.itemView.contentDescription =
             holder.itemView.context.getString(R.string.shortcut_entry_content_description)
         holder.itemView.setOnClickListener {
             onShortcutEntryClickListener?.invoke(holder.itemView)
         }
+    }
+
+    private fun applyShortcutSkin(itemView: View, imageView: ImageView, stableKey: Int) {
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            KeyboardSkinViewStyler.applyKey(
+                itemView,
+                keyboardSkinId,
+                KeyboardElementRole.TOOLBAR,
+                keyboardSkinMotionMode,
+                stableKey,
+            )
+            imageView.setColorFilter(
+                KeyboardSkinCatalog.specFor(keyboardSkinId).palette.specialKeyTextColor,
+                PorterDuff.Mode.SRC_IN,
+            )
+            return
+        }
+
+        KeyboardSkinViewStyler.clearTransientStyle(itemView)
+        itemView.background = null
+        shortcutIconColor?.let { color ->
+            imageView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+        } ?: imageView.clearColorFilter()
     }
 
     private fun ShortcutType.resolveShortcutIconResId(): Int {
@@ -1443,6 +1486,22 @@ class SuggestionAdapter internal constructor(
         candidateTextColor = color
         // 全アイテムを更新して色を反映させる
         notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setKeyboardSkin(skinValue: String?, motionValue: String?) {
+        val nextSkin = KeyboardSkinId.fromPreference(skinValue)
+        val nextMotion = KeyboardSkinMotionMode.fromPreference(motionValue)
+        if (keyboardSkinId == nextSkin && keyboardSkinMotionMode == nextMotion) return
+        keyboardSkinId = nextSkin
+        keyboardSkinMotionMode = nextMotion
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun clearCandidateAppearanceColors() {
+        val itemColorsChanged = candidateItemColorState.clear()
+        val changed = candidateTextColor != null || itemColorsChanged
+        candidateTextColor = null
+        if (changed) notifyItemRangeChanged(0, itemCount)
     }
 
     fun setCandidateItemBackgroundColor(color: Int) {
@@ -1744,6 +1803,19 @@ class SuggestionAdapter internal constructor(
     }
 
     private fun applyCandidateItemBackground(itemView: View) {
+        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            KeyboardSkinViewStyler.applyKey(
+                itemView,
+                keyboardSkinId,
+                KeyboardElementRole.CANDIDATE,
+                keyboardSkinMotionMode,
+                stableKey = itemView.id,
+            )
+            applyBuiltInCandidateTypography(itemView)
+            return
+        }
+        KeyboardSkinViewStyler.clearTransientStyle(itemView)
+        clearBuiltInCandidateTypography(itemView)
         val backgroundColor = candidateItemColorState.backgroundColor
         val pressedColor = candidateItemColorState.pressedBackgroundColor
         if (backgroundColor == null && pressedColor == null) {
@@ -1769,6 +1841,43 @@ class SuggestionAdapter internal constructor(
                     itemView.context.resources.displayMetrics.density
                 )
             )
+        }
+    }
+
+    private fun applyBuiltInCandidateTypography(view: View) {
+        val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
+        when (view) {
+            is TextView -> {
+                view.setTextColor(spec.palette.candidateTextColor)
+                view.typeface = Typeface.create(
+                    spec.typography.familyName,
+                    if (spec.typography.bold) Typeface.BOLD else Typeface.NORMAL,
+                )
+                view.letterSpacing = spec.typography.letterSpacing
+            }
+
+            is ViewGroup -> for (index in 0 until view.childCount) {
+                applyBuiltInCandidateTypography(view.getChildAt(index))
+            }
+        }
+    }
+
+    private fun clearBuiltInCandidateTypography(view: View) {
+        when (view) {
+            is TextView -> {
+                view.typeface = Typeface.DEFAULT
+                view.letterSpacing = 0f
+                view.setTextColor(
+                    ContextCompat.getColor(
+                        view.context,
+                        com.kazumaproject.core.R.color.keyboard_icon_color,
+                    )
+                )
+            }
+
+            is ViewGroup -> for (index in 0 until view.childCount) {
+                clearBuiltInCandidateTypography(view.getChildAt(index))
+            }
         }
     }
 

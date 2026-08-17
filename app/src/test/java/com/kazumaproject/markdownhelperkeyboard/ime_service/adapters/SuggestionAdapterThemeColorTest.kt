@@ -27,6 +27,17 @@ class SuggestionAdapterThemeColorTest {
     }
 
     @Test
+    fun candidateItemColorsCanBeClearedWhenReturningToDefaultSkin() {
+        val state = CandidateItemColorState()
+        state.setColors(0x01020304, 0x05060708)
+
+        state.clear()
+
+        assertEquals(null, state.backgroundColor)
+        assertEquals(null, state.pressedBackgroundColor)
+    }
+
+    @Test
     fun candidateEmptyPopupColorsPreferDedicatedCustomColors() {
         val colors = resolveCandidateEmptyPopupThemeColors(
             popupBackgroundColor = 0x11111111,
