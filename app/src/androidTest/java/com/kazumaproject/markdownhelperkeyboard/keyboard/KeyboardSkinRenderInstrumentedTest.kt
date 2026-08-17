@@ -233,6 +233,88 @@ class KeyboardSkinRenderInstrumentedTest {
         assertTrue(fullHasAnimator)
     }
 
+    @Test
+    fun flatChromeControlsNeverDrawKeycapGeometry() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+
+        KeyboardSkinId.entries.filterNot { it == KeyboardSkinId.DEFAULT }.forEach { skin ->
+            var idlePixels = IntArray(0)
+            var pressedPixels = IntArray(0)
+            var hasStateAnimator = false
+            var pressedAlpha = 1f
+            var releasedAlpha = 0f
+            var backgroundIsNull = false
+            var geometryStayedFlat = false
+            instrumentation.runOnMainSync {
+                val control = View(context).apply {
+                    isEnabled = true
+                    KeyboardSkinViewStyler.applyFlatControl(
+                        this,
+                        skin,
+                        KeyboardElementRole.TOOLBAR,
+                    )
+                    measure(
+                        View.MeasureSpec.makeMeasureSpec(
+                            FLAT_CONTROL_WIDTH_PX,
+                            View.MeasureSpec.EXACTLY,
+                        ),
+                        View.MeasureSpec.makeMeasureSpec(
+                            FLAT_CONTROL_HEIGHT_PX,
+                            View.MeasureSpec.EXACTLY,
+                        ),
+                    )
+                    layout(0, 0, FLAT_CONTROL_WIDTH_PX, FLAT_CONTROL_HEIGHT_PX)
+                }
+                hasStateAnimator = control.stateListAnimator != null
+                backgroundIsNull = control.background == null
+                idlePixels = renderPixels(control, FLAT_CONTROL_WIDTH_PX, FLAT_CONTROL_HEIGHT_PX)
+                control.isPressed = true
+                control.refreshDrawableState()
+                control.stateListAnimator?.jumpToCurrentState()
+                pressedAlpha = control.alpha
+                pressedPixels = renderPixels(
+                    control,
+                    FLAT_CONTROL_WIDTH_PX,
+                    FLAT_CONTROL_HEIGHT_PX,
+                )
+                geometryStayedFlat =
+                    control.translationX == 0f &&
+                        control.translationY == 0f &&
+                        control.scaleX == 1f &&
+                        control.scaleY == 1f &&
+                        control.elevation == 0f
+                control.isPressed = false
+                control.refreshDrawableState()
+                control.stateListAnimator?.jumpToCurrentState()
+                releasedAlpha = control.alpha
+            }
+
+            assertTrue(
+                "$skin must not draw a resting keycap",
+                idlePixels.all { Color.alpha(it) == 0 },
+            )
+            assertTrue(
+                "$skin must not draw pressed keycap geometry",
+                pressedPixels.all { Color.alpha(it) == 0 },
+            )
+            assertTrue("$skin flat control background must stay absent", backgroundIsNull)
+            assertTrue("$skin needs content-only pressed feedback", hasStateAnimator)
+            assertEquals(FLAT_CONTROL_PRESSED_ALPHA, pressedAlpha, ALPHA_TOLERANCE)
+            assertEquals(1f, releasedAlpha, ALPHA_TOLERANCE)
+            assertTrue("$skin flat control must not move or lift", geometryStayedFlat)
+        }
+    }
+
+    private fun renderPixels(view: View, width: Int, height: Int): IntArray {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
+        return IntArray(width * height).also { pixels ->
+            bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+            bitmap.recycle()
+        }
+    }
+
     companion object {
         private const val TAG = "KeyboardSkinRender"
         private const val OUTPUT_DIRECTORY = "keyboard-skin-render-report"
@@ -242,5 +324,9 @@ class KeyboardSkinRenderInstrumentedTest {
         private const val TENKEY_HEIGHT_PX = 760
         private const val MIN_STRONG_RGB_DISTANCE = 45
         private const val MIN_STRONGLY_CHANGED_RATIO = 0.60f
+        private const val FLAT_CONTROL_WIDTH_PX = 240
+        private const val FLAT_CONTROL_HEIGHT_PX = 72
+        private const val FLAT_CONTROL_PRESSED_ALPHA = 0.72f
+        private const val ALPHA_TOLERANCE = 0.01f
     }
 }

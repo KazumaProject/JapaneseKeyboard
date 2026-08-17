@@ -18618,12 +18618,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 tabView.background = null
                 tabView.backgroundTintList = null
                 if (skin != KeyboardSkinId.DEFAULT) {
-                    KeyboardSkinViewStyler.applyKey(
+                    KeyboardSkinViewStyler.applyFlatControl(
                         tabView,
                         skin,
                         KeyboardElementRole.TOOLBAR,
-                        currentKeyboardSkinMotion(),
-                        stableKey = index,
+                        tintContent = false,
                     )
                 }
             }

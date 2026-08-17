@@ -6,9 +6,11 @@ import android.animation.ObjectAnimator
 import android.animation.StateListAnimator
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.PorterDuff
 import android.graphics.Typeface
 import android.os.Build
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
@@ -79,6 +81,30 @@ object KeyboardSkinViewStyler {
         view.backgroundTintList = null
         view.background = KeyboardSkinRendererRegistry.rendererFor(skinId)
             .createSurfaceDrawable(view.context, role)
+    }
+
+    /**
+     * Applies skin color and typography to chrome controls without turning them into keycaps.
+     * No background geometry is drawn in either state. Press feedback only fades the content,
+     * so toolbar shortcuts and tabs never read as keycaps on their already styled surface.
+     */
+    fun applyFlatControl(
+        view: View,
+        skinId: KeyboardSkinId,
+        role: KeyboardElementRole = KeyboardElementRole.TOOLBAR,
+        tintContent: Boolean = true,
+    ) {
+        clearTransientStyle(view)
+        view.backgroundTintList = null
+        view.background = null
+        view.elevation = 0f
+        if (skinId == KeyboardSkinId.DEFAULT) return
+
+        val spec = KeyboardSkinCatalog.specFor(skinId)
+        view.stateListAnimator = createFlatControlStateAnimator(view)
+        if (tintContent) {
+            applyFlatControlContent(view, spec, role)
+        }
     }
 
     fun clearTransientStyle(view: View) {
@@ -162,6 +188,48 @@ object KeyboardSkinViewStyler {
         duration = durationMs
     }
 
+    private fun createFlatControlStateAnimator(view: View): StateListAnimator =
+        StateListAnimator().apply {
+            addState(
+                pressedEnabledState,
+                propertyAnimator(
+                    view,
+                    View.ALPHA,
+                    FLAT_CONTROL_PRESSED_CONTENT_ALPHA,
+                    FLAT_CONTROL_PRESS_MS,
+                ),
+            )
+            addState(
+                defaultState,
+                propertyAnimator(view, View.ALPHA, 1f, FLAT_CONTROL_RELEASE_MS),
+            )
+        }
+
+    private fun applyFlatControlContent(
+        view: View,
+        spec: KeyboardSkinSpec,
+        role: KeyboardElementRole,
+    ) {
+        val contentColor = spec.palette.textColor(role)
+        when (view) {
+            is TextView -> {
+                view.setTextColor(contentColor)
+                view.typeface = Typeface.create(
+                    spec.typography.familyName,
+                    if (spec.typography.bold) Typeface.BOLD else Typeface.NORMAL,
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    view.letterSpacing = spec.typography.letterSpacing
+                }
+            }
+
+            is ImageView -> view.setColorFilter(contentColor, PorterDuff.Mode.SRC_IN)
+            is ViewGroup -> for (index in 0 until view.childCount) {
+                applyFlatControlContent(view.getChildAt(index), spec, role)
+            }
+        }
+    }
+
     private fun pressedTextColor(spec: KeyboardSkinSpec, role: KeyboardElementRole): Int {
         return when (spec.id) {
             KeyboardSkinId.FLAT -> if (
@@ -198,4 +266,7 @@ object KeyboardSkinViewStyler {
     private const val REDUCED_PRESSED_ALPHA = 0.88f
     private const val REDUCED_PRESS_MS = 55L
     private const val REDUCED_RELEASE_MS = 75L
+    private const val FLAT_CONTROL_PRESSED_CONTENT_ALPHA = 0.72f
+    private const val FLAT_CONTROL_PRESS_MS = 45L
+    private const val FLAT_CONTROL_RELEASE_MS = 70L
 }

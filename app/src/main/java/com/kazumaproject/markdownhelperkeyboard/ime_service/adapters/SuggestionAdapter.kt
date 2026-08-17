@@ -1390,7 +1390,6 @@ class SuggestionAdapter internal constructor(
         applyShortcutSkin(
             itemView = holder.itemView,
             imageView = holder.imageView,
-            stableKey = shortcutType.ordinal,
         )
         holder.itemView.contentDescription = shortcutType.description
         holder.itemView.setOnClickListener {
@@ -1414,7 +1413,6 @@ class SuggestionAdapter internal constructor(
         applyShortcutSkin(
             itemView = holder.itemView,
             imageView = holder.imageView,
-            stableKey = Int.MIN_VALUE,
         )
         holder.itemView.contentDescription =
             holder.itemView.context.getString(R.string.shortcut_entry_content_description)
@@ -1423,18 +1421,12 @@ class SuggestionAdapter internal constructor(
         }
     }
 
-    private fun applyShortcutSkin(itemView: View, imageView: ImageView, stableKey: Int) {
+    private fun applyShortcutSkin(itemView: View, imageView: ImageView) {
         if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
-            KeyboardSkinViewStyler.applyKey(
+            KeyboardSkinViewStyler.applyFlatControl(
                 itemView,
                 keyboardSkinId,
                 KeyboardElementRole.TOOLBAR,
-                keyboardSkinMotionMode,
-                stableKey,
-            )
-            imageView.setColorFilter(
-                KeyboardSkinCatalog.specFor(keyboardSkinId).palette.specialKeyTextColor,
-                PorterDuff.Mode.SRC_IN,
             )
             return
         }

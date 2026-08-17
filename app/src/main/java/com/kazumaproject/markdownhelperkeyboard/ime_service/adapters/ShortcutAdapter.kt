@@ -9,7 +9,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.core.data.keyboard.KeyboardElementRole
-import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
@@ -72,16 +71,10 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 
         if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
-            KeyboardSkinViewStyler.applyKey(
+            KeyboardSkinViewStyler.applyFlatControl(
                 holder.itemView,
                 keyboardSkinId,
                 KeyboardElementRole.TOOLBAR,
-                keyboardSkinMotionMode,
-                stableKey = item.ordinal,
-            )
-            holder.imageView.setColorFilter(
-                KeyboardSkinCatalog.specFor(keyboardSkinId).palette.specialKeyTextColor,
-                PorterDuff.Mode.SRC_IN,
             )
             return
         }

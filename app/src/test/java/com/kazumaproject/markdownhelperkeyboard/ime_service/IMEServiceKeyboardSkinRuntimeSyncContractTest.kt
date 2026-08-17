@@ -52,6 +52,34 @@ class IMEServiceKeyboardSkinRuntimeSyncContractTest {
         assertTrue(childSkinBody.contains("if (skin != KeyboardSkinId.DEFAULT)"))
     }
 
+    @Test
+    fun candidateTabsUseFlatChromeInsteadOfKeycapGeometry() {
+        val source = imeServiceSource()
+        val childSkinBody = source.substringAfter("private fun updateCandidateTabChildSkins(")
+            .substringBefore("private fun getCandidateTabDisplayName")
+
+        assertTrue(childSkinBody.contains("KeyboardSkinViewStyler.applyFlatControl("))
+        assertTrue(childSkinBody.contains("tintContent = false"))
+        assertTrue(!childSkinBody.contains("KeyboardSkinViewStyler.applyKey("))
+    }
+
+    @Test
+    fun shortcutIconsUseFlatChromeInsteadOfKeycapGeometry() {
+        val shortcutAdapter = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/adapters/ShortcutAdapter.kt"
+        ).readText().substringAfter("override fun onBindViewHolder(")
+            .substringBefore("fun setShortcutToolbarSize(")
+        val suggestionAdapter = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/adapters/SuggestionAdapter.kt"
+        ).readText().substringAfter("private fun applyShortcutSkin(")
+            .substringBefore("private fun ShortcutType.resolveShortcutIconResId")
+
+        listOf(shortcutAdapter, suggestionAdapter).forEach { body ->
+            assertTrue(body.contains("KeyboardSkinViewStyler.applyFlatControl("))
+            assertTrue(!body.contains("KeyboardSkinViewStyler.applyKey("))
+        }
+    }
+
     private fun imeServiceSource(): String = mainFile(
         "java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"
     ).readText()
