@@ -185,6 +185,12 @@ object KeyboardSkinViewStyler {
                 0.18f,
             )
 
+            KeyboardSkinId.MONOCHROME_LCD -> if (role == KeyboardElementRole.ACTION) {
+                spec.palette.actionKeyTextColor
+            } else {
+                spec.palette.normalKeyColor
+            }
+
             else -> spec.palette.textColor(role)
         }
     }

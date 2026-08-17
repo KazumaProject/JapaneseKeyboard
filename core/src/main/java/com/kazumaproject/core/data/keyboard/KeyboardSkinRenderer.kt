@@ -8,6 +8,7 @@ import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
+import android.graphics.DashPathEffect
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
@@ -60,6 +61,13 @@ object KeyboardSkinRendererRegistry {
         TerminalSkinRenderer,
         CupertinoSkinRenderer,
         CupertinoDarkSkinRenderer,
+        SumiHanshiSkinRenderer,
+        LetterpressSkinRenderer,
+        PorcelainSkinRenderer,
+        UrushiSkinRenderer,
+        ChalkboardSkinRenderer,
+        LinenSkinRenderer,
+        MonochromeLcdSkinRenderer,
     ).associateBy { it.spec.id }
 
     fun rendererFor(id: KeyboardSkinId): KeyboardSkinRenderer =
@@ -90,6 +98,13 @@ object KeyboardSkinRendererRegistry {
     private object TerminalSkinRenderer : DedicatedRenderer(KeyboardSkinId.TERMINAL)
     private object CupertinoSkinRenderer : DedicatedRenderer(KeyboardSkinId.CUPERTINO)
     private object CupertinoDarkSkinRenderer : DedicatedRenderer(KeyboardSkinId.CUPERTINO_DARK)
+    private object SumiHanshiSkinRenderer : DedicatedRenderer(KeyboardSkinId.SUMI_HANSHI)
+    private object LetterpressSkinRenderer : DedicatedRenderer(KeyboardSkinId.LETTERPRESS)
+    private object PorcelainSkinRenderer : DedicatedRenderer(KeyboardSkinId.PORCELAIN)
+    private object UrushiSkinRenderer : DedicatedRenderer(KeyboardSkinId.URUSHI)
+    private object ChalkboardSkinRenderer : DedicatedRenderer(KeyboardSkinId.CHALKBOARD)
+    private object LinenSkinRenderer : DedicatedRenderer(KeyboardSkinId.LINEN)
+    private object MonochromeLcdSkinRenderer : DedicatedRenderer(KeyboardSkinId.MONOCHROME_LCD)
 }
 
 /**
@@ -188,6 +203,7 @@ private class KeyboardSkinKeyDrawable(
     private val irregularPath = Path()
     private val popupPath = Path()
     private val roundedPath = Path()
+    private val pixelPath = Path()
     private val shaderMatrix = Matrix()
     private var faceGradient: Shader? = null
     private var textureShader: BitmapShader? = null
@@ -226,6 +242,7 @@ private class KeyboardSkinKeyDrawable(
         roundedPath.addRoundRect(rect, radius(), radius(), Path.Direction.CW)
         buildIrregularPath()
         buildPopupPath()
+        buildPixelPath()
         faceGradient = when (spec.material) {
             KeyboardSkinMaterial.GLASS -> LinearGradient(
                 rect.left,
@@ -244,6 +261,34 @@ private class KeyboardSkinKeyDrawable(
                 rect.bottom,
                 intArrayOf(adjust(roleColor(), 1.32f), roleColor(), adjust(roleColor(), 0.72f)),
                 null,
+                Shader.TileMode.CLAMP,
+            )
+
+            KeyboardSkinMaterial.PORCELAIN -> LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    adjust(roleColor(), 1.08f),
+                    roleColor(),
+                    ColorUtils.blendARGB(roleColor(), spec.palette.secondaryAccentColor, 0.15f),
+                ),
+                floatArrayOf(0f, 0.58f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+
+            KeyboardSkinMaterial.URUSHI -> LinearGradient(
+                rect.left,
+                rect.top,
+                rect.left,
+                rect.bottom,
+                intArrayOf(
+                    adjust(roleColor(), 1.55f),
+                    roleColor(),
+                    adjust(roleColor(), 0.58f),
+                ),
+                floatArrayOf(0f, 0.42f, 1f),
                 Shader.TileMode.CLAMP,
             )
 
@@ -272,6 +317,13 @@ private class KeyboardSkinKeyDrawable(
             KeyboardSkinMaterial.NEON -> drawNeon(canvas)
             KeyboardSkinMaterial.TERMINAL -> drawTerminal(canvas)
             KeyboardSkinMaterial.CUPERTINO -> drawCupertino(canvas)
+            KeyboardSkinMaterial.SUMI_HANSHI -> drawSumiHanshi(canvas)
+            KeyboardSkinMaterial.LETTERPRESS -> drawLetterpress(canvas)
+            KeyboardSkinMaterial.PORCELAIN -> drawPorcelain(canvas)
+            KeyboardSkinMaterial.URUSHI -> drawUrushi(canvas)
+            KeyboardSkinMaterial.CHALKBOARD -> drawChalkboard(canvas)
+            KeyboardSkinMaterial.LINEN -> drawLinen(canvas)
+            KeyboardSkinMaterial.MONOCHROME_LCD -> drawMonochromeLcd(canvas)
         }
     }
 
@@ -490,6 +542,343 @@ private class KeyboardSkinKeyDrawable(
         canvas.drawRoundRect(rect, radius, radius, fillPaint)
     }
 
+    private fun drawSumiHanshi(canvas: Canvas) {
+        val shape = materialShape(irregular = true)
+        fillPaint.shader = null
+        fillPaint.color = withAlpha(Color.BLACK, if (pressed) 20 else 14)
+        canvas.save()
+        canvas.translate(0f, dp(if (pressed) 0.35f else 0.8f))
+        canvas.drawPath(shape, fillPaint)
+        canvas.restore()
+
+        fillPaint.color = when {
+            pressed && role == KeyboardElementRole.ACTION -> adjust(roleColor(), 0.78f)
+            pressed -> ColorUtils.blendARGB(roleColor(), spec.palette.accentColor, 0.12f)
+            else -> roleColor()
+        }
+        canvas.drawPath(shape, fillPaint)
+        drawPaperFibers(canvas, shape, spec.palette.accentColor, 7, 14)
+
+        strokePaint.shader = null
+        strokePaint.pathEffect = DashPathEffect(
+            floatArrayOf(dp(8f), dp(0.9f), dp(2.8f), dp(1.1f)),
+            (stableKey and 3) * dp(0.65f),
+        )
+        strokePaint.strokeWidth = dp(spec.geometry.strokeWidthDp)
+        strokePaint.color = withAlpha(
+            if (role == KeyboardElementRole.ACTION) Color.BLACK else spec.palette.normalKeyTextColor,
+            if (pressed) 108 else 70,
+        )
+        canvas.drawPath(shape, strokePaint)
+        strokePaint.pathEffect = null
+
+        if (pressed && role != KeyboardElementRole.ACTION) {
+            fillPaint.shader = RadialGradient(
+                rect.centerX(),
+                rect.centerY(),
+                rect.width() * 0.46f,
+                withAlpha(spec.palette.accentColor, 105),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP,
+            )
+            canvas.drawPath(shape, fillPaint)
+            fillPaint.shader = null
+        }
+    }
+
+    private fun drawLetterpress(canvas: Canvas) {
+        val shape = materialShape()
+        fillPaint.shader = null
+        if (role == KeyboardElementRole.POPUP) {
+            fillPaint.color = withAlpha(Color.BLACK, 28)
+            canvas.save()
+            canvas.translate(0f, dp(1.1f))
+            canvas.drawPath(shape, fillPaint)
+            canvas.restore()
+        }
+        fillPaint.color = if (pressed) adjust(roleColor(), 0.94f) else roleColor()
+        canvas.drawPath(shape, fillPaint)
+        drawPaperFibers(canvas, shape, spec.palette.accentColor, 7, 18)
+
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(if (pressed) 2.2f else 1.25f)
+        strokePaint.color = withAlpha(
+            if (role == KeyboardElementRole.ACTION) Color.BLACK else spec.palette.accentColor,
+            if (pressed) 165 else 112,
+        )
+        canvas.drawPath(shape, strokePaint)
+        canvas.save()
+        canvas.scale(0.94f, 0.9f, rect.centerX(), rect.centerY())
+        strokePaint.strokeWidth = dp(0.75f)
+        strokePaint.color = withAlpha(Color.WHITE, if (pressed) 52 else 105)
+        canvas.drawPath(shape, strokePaint)
+        canvas.restore()
+    }
+
+    private fun drawPorcelain(canvas: Canvas) {
+        val shape = materialShape()
+        fillPaint.shader = null
+        fillPaint.color = withAlpha(Color.BLACK, if (pressed) 48 else 78)
+        canvas.save()
+        canvas.translate(0f, dp(if (pressed) 0.9f else spec.geometry.depthDp))
+        canvas.drawPath(shape, fillPaint)
+        canvas.restore()
+
+        fillPaint.shader = null
+        fillPaint.color = roleColor()
+        canvas.drawPath(shape, fillPaint)
+        fillPaint.shader = LinearGradient(
+            rect.left,
+            rect.top,
+            rect.left,
+            rect.bottom,
+            withAlpha(Color.WHITE, 90),
+            Color.TRANSPARENT,
+            Shader.TileMode.CLAMP,
+        )
+        canvas.drawPath(shape, fillPaint)
+        fillPaint.shader = null
+        if (pressed && role != KeyboardElementRole.ACTION) {
+            fillPaint.shader = RadialGradient(
+                rect.centerX(),
+                rect.centerY(),
+                rect.width() * 0.5f,
+                withAlpha(spec.palette.secondaryAccentColor, 155),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP,
+            )
+            canvas.drawPath(shape, fillPaint)
+            fillPaint.shader = null
+        }
+
+        val edge = if (role == KeyboardElementRole.ACTION) {
+            spec.palette.actionKeyTextColor
+        } else {
+            spec.palette.accentColor
+        }
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(if (pressed) 1.6f else spec.geometry.strokeWidthDp)
+        strokePaint.color = withAlpha(edge, if (pressed) 245 else 215)
+        canvas.drawPath(shape, strokePaint)
+        canvas.save()
+        canvas.scale(0.94f, 0.88f, rect.centerX(), rect.centerY())
+        strokePaint.strokeWidth = dp(0.55f)
+        strokePaint.color = withAlpha(edge, 105)
+        canvas.drawPath(shape, strokePaint)
+        canvas.restore()
+        if (role != KeyboardElementRole.POPUP) drawPorcelainCornerMarks(canvas, edge)
+    }
+
+    private fun drawUrushi(canvas: Canvas) {
+        val shape = materialShape()
+        fillPaint.shader = null
+        fillPaint.color = withAlpha(Color.BLACK, 160)
+        canvas.save()
+        canvas.translate(0f, dp(if (pressed) 0.8f else spec.geometry.depthDp))
+        canvas.drawPath(shape, fillPaint)
+        canvas.restore()
+
+        fillPaint.shader = faceGradient
+        canvas.drawPath(shape, fillPaint)
+        fillPaint.shader = null
+        if (pressed && role != KeyboardElementRole.ACTION) {
+            fillPaint.color = withAlpha(spec.palette.secondaryAccentColor, 72)
+            canvas.drawPath(shape, fillPaint)
+        }
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(if (pressed) 1.25f else spec.geometry.strokeWidthDp)
+        strokePaint.color = withAlpha(spec.palette.accentColor, if (pressed) 235 else 188)
+        canvas.drawPath(shape, strokePaint)
+        strokePaint.strokeWidth = dp(0.7f)
+        strokePaint.color = withAlpha(Color.WHITE, if (pressed) 70 else 125)
+        canvas.drawLine(
+            rect.left + radius(),
+            rect.top + dp(1.4f),
+            rect.right - radius(),
+            rect.top + dp(1.4f),
+            strokePaint,
+        )
+    }
+
+    private fun drawChalkboard(canvas: Canvas) {
+        val shape = materialShape(irregular = true)
+        fillPaint.shader = null
+        fillPaint.color = if (pressed && role != KeyboardElementRole.ACTION) {
+            ColorUtils.blendARGB(roleColor(), spec.palette.normalKeyTextColor, 0.08f)
+        } else if (pressed) {
+            adjust(roleColor(), 0.82f)
+        } else {
+            roleColor()
+        }
+        canvas.drawPath(shape, fillPaint)
+        if (pressed && role != KeyboardElementRole.ACTION) {
+            fillPaint.shader = RadialGradient(
+                rect.centerX(),
+                rect.centerY(),
+                rect.width() * 0.52f,
+                withAlpha(spec.palette.normalKeyTextColor, 86),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP,
+            )
+            canvas.drawPath(shape, fillPaint)
+            fillPaint.shader = null
+        }
+
+        val chalk = when (role) {
+            KeyboardElementRole.MODIFIER, KeyboardElementRole.SPACE -> spec.palette.secondaryAccentColor
+            KeyboardElementRole.ACTION -> spec.palette.backgroundColor
+            else -> spec.palette.accentColor
+        }
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(if (pressed) 1.55f else spec.geometry.strokeWidthDp)
+        strokePaint.color = withAlpha(chalk, if (pressed) 245 else 210)
+        canvas.drawPath(shape, strokePaint)
+        canvas.save()
+        canvas.scale(0.94f, 0.88f, rect.centerX(), rect.centerY())
+        strokePaint.strokeWidth = dp(0.45f)
+        strokePaint.color = withAlpha(chalk, 78)
+        canvas.drawPath(shape, strokePaint)
+        canvas.restore()
+        strokePaint.pathEffect = null
+    }
+
+    private fun drawLinen(canvas: Canvas) {
+        val shape = materialShape()
+        fillPaint.shader = null
+        fillPaint.color = withAlpha(Color.BLACK, if (pressed) 32 else 50)
+        canvas.save()
+        canvas.translate(0f, dp(if (pressed) 0.65f else spec.geometry.depthDp))
+        canvas.drawPath(shape, fillPaint)
+        canvas.restore()
+
+        fillPaint.color = if (pressed) adjust(roleColor(), 0.91f) else roleColor()
+        canvas.drawPath(shape, fillPaint)
+        drawLinenWeave(canvas, shape)
+        if (pressed) {
+            fillPaint.shader = RadialGradient(
+                rect.centerX(),
+                rect.centerY(),
+                rect.width() * 0.5f,
+                withAlpha(Color.BLACK, 48),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP,
+            )
+            canvas.drawPath(shape, fillPaint)
+            fillPaint.shader = null
+        }
+
+        val thread = if (role == KeyboardElementRole.ACTION) {
+            spec.palette.actionKeyTextColor
+        } else {
+            spec.palette.accentColor
+        }
+        strokePaint.shader = null
+        strokePaint.pathEffect = DashPathEffect(floatArrayOf(dp(2.1f), dp(1.7f)), dp((stableKey and 3) * 0.4f))
+        strokePaint.strokeWidth = dp(0.9f)
+        strokePaint.color = withAlpha(thread, if (pressed) 235 else 190)
+        canvas.save()
+        canvas.scale(0.91f, 0.82f, rect.centerX(), rect.centerY())
+        canvas.drawPath(shape, strokePaint)
+        canvas.restore()
+        strokePaint.pathEffect = null
+    }
+
+    private fun drawMonochromeLcd(canvas: Canvas) {
+        val shape = if (role == KeyboardElementRole.POPUP) popupPath else pixelPath
+        fillPaint.shader = null
+        fillPaint.color = when {
+            pressed && role == KeyboardElementRole.ACTION -> adjust(roleColor(), 0.72f)
+            pressed -> spec.palette.normalKeyTextColor
+            else -> roleColor()
+        }
+        canvas.drawPath(shape, fillPaint)
+        val lineColor = if (pressed && role != KeyboardElementRole.ACTION) {
+            spec.palette.normalKeyColor
+        } else {
+            spec.palette.accentColor
+        }
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(if (pressed) 1.5f else spec.geometry.strokeWidthDp)
+        strokePaint.color = withAlpha(lineColor, 245)
+        canvas.drawPath(shape, strokePaint)
+        canvas.save()
+        canvas.scale(0.94f, 0.84f, rect.centerX(), rect.centerY())
+        strokePaint.strokeWidth = dp(0.55f)
+        strokePaint.color = withAlpha(lineColor, 92)
+        canvas.drawPath(shape, strokePaint)
+        canvas.restore()
+    }
+
+    private fun materialShape(irregular: Boolean = false): Path = when {
+        role == KeyboardElementRole.POPUP -> popupPath
+        irregular -> irregularPath
+        else -> roundedPath
+    }
+
+    private fun drawPaperFibers(
+        canvas: Canvas,
+        clip: Path,
+        color: Int,
+        count: Int,
+        alpha: Int,
+    ) {
+        val save = canvas.save()
+        canvas.clipPath(clip)
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(0.45f)
+        strokePaint.color = withAlpha(color, alpha)
+        repeat(count) { index ->
+            val fraction = (index + 1f) / (count + 1f)
+            val y = rect.top + rect.height() * fraction + jitterValue(100 + index, dp(0.8f))
+            val startFraction = ((index * 37 + stableKey * 11) and 0x7F) / 160f
+            val start = rect.left + rect.width() * startFraction.coerceIn(0.04f, 0.78f)
+            val length = rect.width() * (0.08f + (index % 4) * 0.045f)
+            val end = (start + length).coerceAtMost(rect.right - dp(2f))
+            canvas.drawLine(start, y, end, y + jitterValue(160 + index, dp(0.7f)), strokePaint)
+        }
+        canvas.restoreToCount(save)
+    }
+
+    private fun drawPorcelainCornerMarks(canvas: Canvas, color: Int) {
+        val inset = dp(5f)
+        val length = dp(3.5f)
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(0.8f)
+        strokePaint.color = withAlpha(color, 145)
+        canvas.drawLine(rect.left + inset, rect.top + inset, rect.left + inset + length, rect.top + inset, strokePaint)
+        canvas.drawLine(rect.left + inset, rect.top + inset, rect.left + inset, rect.top + inset + length, strokePaint)
+        canvas.drawLine(rect.right - inset, rect.bottom - inset, rect.right - inset - length, rect.bottom - inset, strokePaint)
+        canvas.drawLine(rect.right - inset, rect.bottom - inset, rect.right - inset, rect.bottom - inset - length, strokePaint)
+    }
+
+    private fun drawLinenWeave(canvas: Canvas, clip: Path) {
+        val save = canvas.save()
+        canvas.clipPath(clip)
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(0.45f)
+        val step = dp(3.6f).coerceAtLeast(2f)
+        strokePaint.color = withAlpha(spec.palette.accentColor, 23)
+        var x = rect.left
+        while (x <= rect.right) {
+            canvas.drawLine(x, rect.top, x, rect.bottom, strokePaint)
+            x += step
+        }
+        strokePaint.color = withAlpha(Color.WHITE, 30)
+        var y = rect.top
+        while (y <= rect.bottom) {
+            canvas.drawLine(rect.left, y, rect.right, y, strokePaint)
+            y += step
+        }
+        canvas.restoreToCount(save)
+    }
+
     private fun buildIrregularPath() {
         irregularPath.reset()
         if (rect.isEmpty) return
@@ -525,6 +914,25 @@ private class KeyboardSkinKeyDrawable(
         popupPath.lineTo(rect.centerX(), rect.bottom)
         popupPath.lineTo(rect.centerX() + stem, rect.bottom - stem)
         popupPath.close()
+    }
+
+    private fun buildPixelPath() {
+        pixelPath.reset()
+        if (rect.isEmpty) return
+        val notch = dp(2.5f).coerceAtMost(minOf(rect.width(), rect.height()) * 0.18f)
+        pixelPath.moveTo(rect.left + notch, rect.top)
+        pixelPath.lineTo(rect.right - notch, rect.top)
+        pixelPath.lineTo(rect.right - notch, rect.top + notch)
+        pixelPath.lineTo(rect.right, rect.top + notch)
+        pixelPath.lineTo(rect.right, rect.bottom - notch)
+        pixelPath.lineTo(rect.right - notch, rect.bottom - notch)
+        pixelPath.lineTo(rect.right - notch, rect.bottom)
+        pixelPath.lineTo(rect.left + notch, rect.bottom)
+        pixelPath.lineTo(rect.left + notch, rect.bottom - notch)
+        pixelPath.lineTo(rect.left, rect.bottom - notch)
+        pixelPath.lineTo(rect.left, rect.top + notch)
+        pixelPath.lineTo(rect.left + notch, rect.top + notch)
+        pixelPath.close()
     }
 
     private fun jitterValue(index: Int, amplitude: Float): Float {
@@ -638,6 +1046,35 @@ internal class KeyboardSkinSurfaceDrawable(
                 null, Shader.TileMode.CLAMP,
             )
 
+            KeyboardSkinMaterial.PORCELAIN -> LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    adjust(spec.palette.backgroundColor, 0.78f),
+                    spec.palette.backgroundColor,
+                    adjust(spec.palette.backgroundColor, 1.18f),
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+
+            KeyboardSkinMaterial.URUSHI -> LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    0xFF050505.toInt(),
+                    spec.palette.backgroundColor,
+                    0xFF261815.toInt(),
+                    0xFF080706.toInt(),
+                ),
+                floatArrayOf(0f, 0.38f, 0.7f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+
             else -> null
         }
         textureShader?.let {
@@ -663,6 +1100,13 @@ internal class KeyboardSkinSurfaceDrawable(
             KeyboardSkinMaterial.NEON -> drawNeon(canvas)
             KeyboardSkinMaterial.TERMINAL -> drawTerminal(canvas)
             KeyboardSkinMaterial.CUPERTINO -> drawCupertino(canvas)
+            KeyboardSkinMaterial.SUMI_HANSHI -> drawSumiHanshi(canvas)
+            KeyboardSkinMaterial.LETTERPRESS -> drawLetterpress(canvas)
+            KeyboardSkinMaterial.PORCELAIN -> drawPorcelain(canvas)
+            KeyboardSkinMaterial.URUSHI -> drawUrushi(canvas)
+            KeyboardSkinMaterial.CHALKBOARD -> drawChalkboard(canvas)
+            KeyboardSkinMaterial.LINEN -> drawLinen(canvas)
+            KeyboardSkinMaterial.MONOCHROME_LCD -> drawMonochromeLcd(canvas)
         }
     }
 
@@ -836,6 +1280,167 @@ internal class KeyboardSkinSurfaceDrawable(
             canvas.drawRect(rect, fillPaint)
         }
         fillPaint.shader = null
+    }
+
+    private fun drawSumiHanshi(canvas: Canvas) {
+        drawSimple(canvas, surfaceColor())
+        drawPaperSurfaceFibers(canvas, spec.palette.accentColor, lineAlpha = 12, fiberCount = 24)
+        if (role == KeyboardSurfaceRole.CANDIDATE_STRIP) {
+            strokePaint.pathEffect = DashPathEffect(floatArrayOf(dp(5f), dp(3f)), 0f)
+            strokePaint.strokeWidth = dp(0.7f)
+            strokePaint.color = withAlpha(spec.palette.accentColor, 62)
+            canvas.drawLine(rect.left + dp(8f), rect.bottom - dp(2f), rect.right - dp(8f), rect.bottom - dp(2f), strokePaint)
+            strokePaint.pathEffect = null
+        }
+    }
+
+    private fun drawLetterpress(canvas: Canvas) {
+        drawSimple(canvas, surfaceColor())
+        drawPaperSurfaceFibers(canvas, spec.palette.accentColor, lineAlpha = 18, fiberCount = 25)
+        if (role != KeyboardSurfaceRole.DECK) {
+            strokePaint.pathEffect = null
+            strokePaint.strokeWidth = dp(0.8f)
+            strokePaint.color = withAlpha(spec.palette.accentColor, 86)
+            canvas.drawRect(rect, strokePaint)
+            strokePaint.color = withAlpha(Color.WHITE, 80)
+            canvas.drawLine(rect.left, rect.bottom - dp(1f), rect.right, rect.bottom - dp(1f), strokePaint)
+        }
+    }
+
+    private fun drawPorcelain(canvas: Canvas) {
+        if (role == KeyboardSurfaceRole.DECK) {
+            fillPaint.shader = baseShader
+            canvas.drawRect(rect, fillPaint)
+            fillPaint.shader = null
+            drawCeramicSpeckles(canvas, withAlpha(Color.WHITE, 18))
+        } else {
+            drawSimple(canvas, surfaceColor())
+            strokePaint.pathEffect = null
+            strokePaint.strokeWidth = dp(1f)
+            strokePaint.color = withAlpha(spec.palette.accentColor, 185)
+            canvas.drawRect(rect, strokePaint)
+        }
+    }
+
+    private fun drawUrushi(canvas: Canvas) {
+        fillPaint.shader = baseShader
+        if (baseShader == null) fillPaint.color = surfaceColor()
+        canvas.drawRect(rect, fillPaint)
+        fillPaint.shader = null
+        val sheen = LinearGradient(
+            rect.left,
+            rect.top,
+            rect.right,
+            rect.bottom,
+            intArrayOf(Color.TRANSPARENT, withAlpha(Color.WHITE, 22), Color.TRANSPARENT),
+            floatArrayOf(0.25f, 0.52f, 0.76f),
+            Shader.TileMode.CLAMP,
+        )
+        fillPaint.shader = sheen
+        canvas.drawRect(rect, fillPaint)
+        fillPaint.shader = null
+        if (role != KeyboardSurfaceRole.DECK) {
+            strokePaint.pathEffect = null
+            strokePaint.strokeWidth = dp(0.8f)
+            strokePaint.color = withAlpha(spec.palette.accentColor, 155)
+            canvas.drawRect(rect, strokePaint)
+        }
+    }
+
+    private fun drawChalkboard(canvas: Canvas) {
+        drawSimple(canvas, surfaceColor())
+        strokePaint.shader = null
+        strokePaint.strokeWidth = dp(0.8f)
+        strokePaint.pathEffect = DashPathEffect(floatArrayOf(dp(1.5f), dp(4.5f)), dp(1f))
+        repeat(14) { index ->
+            val y = rect.top + rect.height() * ((index * 37 % 101) / 101f)
+            val start = rect.left + rect.width() * ((index * 19 % 83) / 100f)
+            val length = rect.width() * (0.08f + (index % 5) * 0.025f)
+            strokePaint.color = withAlpha(spec.palette.normalKeyTextColor, 13 + index % 3 * 5)
+            canvas.drawLine(start, y, (start + length).coerceAtMost(rect.right), y + dp((index % 3 - 1) * 0.4f), strokePaint)
+        }
+        strokePaint.pathEffect = null
+        if (role == KeyboardSurfaceRole.CANDIDATE_STRIP) {
+            strokePaint.strokeWidth = dp(0.8f)
+            strokePaint.color = withAlpha(spec.palette.normalKeyTextColor, 52)
+            canvas.drawLine(rect.left + dp(7f), rect.bottom - dp(2f), rect.right - dp(7f), rect.bottom - dp(2f), strokePaint)
+        }
+    }
+
+    private fun drawLinen(canvas: Canvas) {
+        drawSimple(canvas, surfaceColor())
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(0.5f)
+        val step = dp(5.2f).coerceAtLeast(3f)
+        strokePaint.color = withAlpha(spec.palette.accentColor, 25)
+        var x = rect.left
+        while (x <= rect.right) {
+            canvas.drawLine(x, rect.top, x, rect.bottom, strokePaint)
+            x += step
+        }
+        strokePaint.color = withAlpha(Color.WHITE, 35)
+        var y = rect.top
+        while (y <= rect.bottom) {
+            canvas.drawLine(rect.left, y, rect.right, y, strokePaint)
+            y += step
+        }
+    }
+
+    private fun drawMonochromeLcd(canvas: Canvas) {
+        drawSimple(canvas, surfaceColor())
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(0.45f)
+        strokePaint.color = withAlpha(spec.palette.accentColor, 22)
+        val step = dp(5f).coerceAtLeast(3f)
+        var x = rect.left
+        while (x <= rect.right) {
+            canvas.drawLine(x, rect.top, x, rect.bottom, strokePaint)
+            x += step
+        }
+        var y = rect.top
+        while (y <= rect.bottom) {
+            canvas.drawLine(rect.left, y, rect.right, y, strokePaint)
+            y += step
+        }
+        strokePaint.strokeWidth = dp(1f)
+        strokePaint.color = withAlpha(spec.palette.accentColor, 205)
+        canvas.drawRect(rect, strokePaint)
+    }
+
+    private fun drawPaperSurfaceFibers(
+        canvas: Canvas,
+        color: Int,
+        lineAlpha: Int,
+        fiberCount: Int,
+    ) {
+        strokePaint.shader = null
+        strokePaint.pathEffect = null
+        strokePaint.strokeWidth = dp(0.45f)
+        strokePaint.color = withAlpha(color, lineAlpha)
+        repeat(fiberCount) { index ->
+            val y = rect.top + rect.height() * ((index * 43 % 101) / 101f)
+            val start = rect.left + rect.width() * ((index * 17 % 71) / 100f)
+            val length = rect.width() * (0.12f + (index % 7) * 0.025f)
+            canvas.drawLine(
+                start,
+                y,
+                (start + length).coerceAtMost(rect.right),
+                y + dp((index % 5 - 2) * 0.18f),
+                strokePaint,
+            )
+        }
+    }
+
+    private fun drawCeramicSpeckles(canvas: Canvas, color: Int) {
+        fillPaint.shader = null
+        fillPaint.color = color
+        repeat(30) { index ->
+            val x = rect.left + rect.width() * ((index * 29 % 97) / 97f)
+            val y = rect.top + rect.height() * ((index * 47 % 103) / 103f)
+            canvas.drawCircle(x, y, dp(if ((index and 1) == 0) 0.35f else 0.55f), fillPaint)
+        }
     }
 
     private fun drawSeigaiha(canvas: Canvas) {

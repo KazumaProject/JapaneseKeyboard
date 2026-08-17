@@ -10,6 +10,14 @@
         <item>@string/keyboard_skin_neon</item>
         <item>@string/keyboard_skin_terminal</item>
         <item>@string/keyboard_skin_cupertino</item>
+        <item>@string/keyboard_skin_cupertino_dark</item>
+        <item>@string/keyboard_skin_sumi_hanshi</item>
+        <item>@string/keyboard_skin_letterpress</item>
+        <item>@string/keyboard_skin_porcelain</item>
+        <item>@string/keyboard_skin_urushi</item>
+        <item>@string/keyboard_skin_chalkboard</item>
+        <item>@string/keyboard_skin_linen</item>
+        <item>@string/keyboard_skin_monochrome_lcd</item>
     </string-array>
 
     <string-array name="keyboard_skin_values">
@@ -22,6 +30,14 @@
         <item>neon</item>
         <item>terminal</item>
         <item>cupertino</item>
+        <item>cupertino_dark</item>
+        <item>sumi_hanshi</item>
+        <item>letterpress</item>
+        <item>porcelain</item>
+        <item>urushi</item>
+        <item>chalkboard</item>
+        <item>linen</item>
+        <item>monochrome_lcd</item>
     </string-array>
 
     <string-array name="keyboard_skin_motion_entries">

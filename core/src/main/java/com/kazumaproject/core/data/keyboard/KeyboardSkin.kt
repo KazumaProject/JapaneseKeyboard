@@ -14,7 +14,14 @@ enum class KeyboardSkinId(val preferenceValue: String) {
     NEON("neon"),
     TERMINAL("terminal"),
     CUPERTINO("cupertino"),
-    CUPERTINO_DARK("cupertino_dark");
+    CUPERTINO_DARK("cupertino_dark"),
+    SUMI_HANSHI("sumi_hanshi"),
+    LETTERPRESS("letterpress"),
+    PORCELAIN("porcelain"),
+    URUSHI("urushi"),
+    CHALKBOARD("chalkboard"),
+    LINEN("linen"),
+    MONOCHROME_LCD("monochrome_lcd");
 
     companion object {
         fun fromPreference(value: String?): KeyboardSkinId =
@@ -62,6 +69,13 @@ enum class KeyboardSkinMaterial {
     NEON,
     TERMINAL,
     CUPERTINO,
+    SUMI_HANSHI,
+    LETTERPRESS,
+    PORCELAIN,
+    URUSHI,
+    CHALKBOARD,
+    LINEN,
+    MONOCHROME_LCD,
 }
 
 enum class KeyboardSkinDepthModel {
@@ -74,6 +88,13 @@ enum class KeyboardSkinDepthModel {
     EMISSIVE,
     GRID,
     SHORT_SHADOW,
+    INK_ABSORPTION,
+    DEBOSSED_STOCK,
+    GLAZED_TILE,
+    LACQUERED_DOME,
+    POWDER_OUTLINE,
+    STITCHED_PATCH,
+    PIXEL_PLANE,
 }
 
 data class KeyboardSkinPalette(
@@ -287,6 +308,97 @@ object KeyboardSkinCatalog {
             KeyboardSkinMaterial.CUPERTINO,
             KeyboardSkinDepthModel.NONE,
             KeyboardSkinMotionSpec(1f, 0f, pressDurationMs = 60, releaseDurationMs = 80, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.SUMI_HANSHI,
+            palette(
+                0xFFF6F1E4, 0xFFFFFCF3, 0xFFEAE4D8, 0xFFB33A2E,
+                0xFF181512, 0xFF181512, 0xFFFFF9ED,
+                0xFF6E685E, 0xFFB33A2E, 0xFFF6F1E4, 0xFF181512,
+            ),
+            KeyboardSkinGeometry(3f, 2f, 0.55f, 0.8f, irregularityDp = 0.35f),
+            KeyboardSkinTypography("serif", true, 0.012f),
+            KeyboardSkinMaterial.SUMI_HANSHI,
+            KeyboardSkinDepthModel.INK_ABSORPTION,
+            KeyboardSkinMotionSpec(0.98f, 0.4f, pressDurationMs = 150, releaseDurationMs = 190, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.LETTERPRESS,
+            palette(
+                0xFFE8DDC4, 0xFFF3EAD7, 0xFFDDD0B8, 0xFFB33B2E,
+                0xFF201C17, 0xFF201C17, 0xFFFFF8E9,
+                0xFF6F6558, 0xFFB33B2E, 0xFFE8DDC4, 0xFF201C17,
+            ),
+            KeyboardSkinGeometry(2f, 2f, 1f, 1.5f, irregularityDp = 0.2f),
+            KeyboardSkinTypography("serif", false, 0.01f),
+            KeyboardSkinMaterial.LETTERPRESS,
+            KeyboardSkinDepthModel.DEBOSSED_STOCK,
+            KeyboardSkinMotionSpec(0.99f, 1.2f, pressDurationMs = 90, releaseDurationMs = 120, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.PORCELAIN,
+            palette(
+                0xFF24384A, 0xFFF7F3E8, 0xFFE1E9E8, 0xFFA94738,
+                0xFF244F7A, 0xFF244F7A, 0xFFFFF7EA,
+                0xFF244F7A, 0xFFAFC2C8, 0xFFF7F3E8, 0xFF244F7A,
+            ),
+            KeyboardSkinGeometry(8f, 2.5f, 1.2f, 2.4f),
+            KeyboardSkinTypography("serif", false, 0.008f),
+            KeyboardSkinMaterial.PORCELAIN,
+            KeyboardSkinDepthModel.GLAZED_TILE,
+            KeyboardSkinMotionSpec(0.985f, 1f, pressDurationMs = 105, releaseDurationMs = 140, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.URUSHI,
+            palette(
+                0xFF0D0C0B, 0xFF1B1715, 0xFF251B17, 0xFFA92D22,
+                0xFFF1E7D1, 0xFFF1E7D1, 0xFFFFF4DF,
+                0xFFB99A58, 0xFFA92D22, 0xFF0D0C0B, 0xFFF1E7D1,
+            ),
+            KeyboardSkinGeometry(8f, 2f, 0.9f, 2.6f),
+            KeyboardSkinTypography("serif", false, 0.012f),
+            KeyboardSkinMaterial.URUSHI,
+            KeyboardSkinDepthModel.LACQUERED_DOME,
+            KeyboardSkinMotionSpec(0.98f, 1.4f, pressDurationMs = 100, releaseDurationMs = 145, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.CHALKBOARD,
+            palette(
+                0xFF202725, 0xFF202725, 0xFF27312E, 0xFFD5AA4D,
+                0xFFF0EBDD, 0xFFC8DCD8, 0xFF202725,
+                0xFFF0EBDD, 0xFF8FB8B2, 0xFF202725, 0xFFF0EBDD,
+            ),
+            KeyboardSkinGeometry(7f, 2f, 1f, 0f, irregularityDp = 0.25f),
+            KeyboardSkinTypography("sans-serif", false, 0.008f),
+            KeyboardSkinMaterial.CHALKBOARD,
+            KeyboardSkinDepthModel.POWDER_OUTLINE,
+            KeyboardSkinMotionSpec(0.985f, 0f, pressDurationMs = 115, releaseDurationMs = 155, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.LINEN,
+            palette(
+                0xFFD7C6A8, 0xFFEFE5D0, 0xFFA9AA91, 0xFF9F443B,
+                0xFF2A2926, 0xFF2A2926, 0xFFFFF4E2,
+                0xFF2A2926, 0xFF6F7659, 0xFFD7C6A8, 0xFF2A2926,
+            ),
+            KeyboardSkinGeometry(7f, 2.5f, 1f, 2f, irregularityDp = 0.25f),
+            KeyboardSkinTypography("sans-serif-medium", false, 0.008f),
+            KeyboardSkinMaterial.LINEN,
+            KeyboardSkinDepthModel.STITCHED_PATCH,
+            KeyboardSkinMotionSpec(0.97f, 1f, pressDurationMs = 130, releaseDurationMs = 170, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.MONOCHROME_LCD,
+            palette(
+                0xFFB5B58B, 0xFFC6C79D, 0xFF9FA17B, 0xFF7D493B,
+                0xFF273126, 0xFF273126, 0xFFF2E9CA,
+                0xFF273126, 0xFF59604B, 0xFFA9AA81, 0xFF273126,
+            ),
+            KeyboardSkinGeometry(0f, 1.5f, 1f, 0f),
+            KeyboardSkinTypography("monospace", true, 0.02f),
+            KeyboardSkinMaterial.MONOCHROME_LCD,
+            KeyboardSkinDepthModel.PIXEL_PLANE,
+            KeyboardSkinMotionSpec(1f, 0f, pressDurationMs = 35, releaseDurationMs = 45, continuousPeriodMs = 0),
         ),
     ).associateBy(KeyboardSkinSpec::id)
 

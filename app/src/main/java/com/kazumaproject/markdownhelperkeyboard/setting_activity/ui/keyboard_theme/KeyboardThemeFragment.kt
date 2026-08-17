@@ -567,6 +567,13 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_terminal
         KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_cupertino
         KeyboardSkinId.CUPERTINO_DARK -> R.string.keyboard_skin_cupertino_dark
+        KeyboardSkinId.SUMI_HANSHI -> R.string.keyboard_skin_sumi_hanshi
+        KeyboardSkinId.LETTERPRESS -> R.string.keyboard_skin_letterpress
+        KeyboardSkinId.PORCELAIN -> R.string.keyboard_skin_porcelain
+        KeyboardSkinId.URUSHI -> R.string.keyboard_skin_urushi
+        KeyboardSkinId.CHALKBOARD -> R.string.keyboard_skin_chalkboard
+        KeyboardSkinId.LINEN -> R.string.keyboard_skin_linen
+        KeyboardSkinId.MONOCHROME_LCD -> R.string.keyboard_skin_monochrome_lcd
     }
 
     private fun saveCustomColor(key: String, color: Int) {

@@ -38,7 +38,7 @@ class KeyboardSkinPickerFragment : Fragment(R.layout.fragment_keyboard_skin_pick
         }
 
         view.findViewById<RecyclerView>(R.id.keyboard_skin_grid).apply {
-            layoutManager = GridLayoutManager(requireContext(), COLUMN_COUNT)
+            layoutManager = GridLayoutManager(requireContext(), columnCount())
             adapter = this@KeyboardSkinPickerFragment.adapter
             itemAnimator = null
             setHasFixedSize(true)
@@ -154,6 +154,13 @@ class KeyboardSkinPickerFragment : Fragment(R.layout.fragment_keyboard_skin_pick
         KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_terminal
         KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_cupertino
         KeyboardSkinId.CUPERTINO_DARK -> R.string.keyboard_skin_cupertino_dark
+        KeyboardSkinId.SUMI_HANSHI -> R.string.keyboard_skin_sumi_hanshi
+        KeyboardSkinId.LETTERPRESS -> R.string.keyboard_skin_letterpress
+        KeyboardSkinId.PORCELAIN -> R.string.keyboard_skin_porcelain
+        KeyboardSkinId.URUSHI -> R.string.keyboard_skin_urushi
+        KeyboardSkinId.CHALKBOARD -> R.string.keyboard_skin_chalkboard
+        KeyboardSkinId.LINEN -> R.string.keyboard_skin_linen
+        KeyboardSkinId.MONOCHROME_LCD -> R.string.keyboard_skin_monochrome_lcd
     }
 
     private fun materialResource(skin: KeyboardSkinId): Int = when (skin) {
@@ -167,9 +174,24 @@ class KeyboardSkinPickerFragment : Fragment(R.layout.fragment_keyboard_skin_pick
         KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_material_terminal
         KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_material_cupertino
         KeyboardSkinId.CUPERTINO_DARK -> R.string.keyboard_skin_material_cupertino_dark
+        KeyboardSkinId.SUMI_HANSHI -> R.string.keyboard_skin_material_sumi_hanshi
+        KeyboardSkinId.LETTERPRESS -> R.string.keyboard_skin_material_letterpress
+        KeyboardSkinId.PORCELAIN -> R.string.keyboard_skin_material_porcelain
+        KeyboardSkinId.URUSHI -> R.string.keyboard_skin_material_urushi
+        KeyboardSkinId.CHALKBOARD -> R.string.keyboard_skin_material_chalkboard
+        KeyboardSkinId.LINEN -> R.string.keyboard_skin_material_linen
+        KeyboardSkinId.MONOCHROME_LCD -> R.string.keyboard_skin_material_monochrome_lcd
+    }
+
+    private fun columnCount(): Int = if (resources.configuration.screenWidthDp >= TABLET_MIN_WIDTH_DP) {
+        TABLET_COLUMN_COUNT
+    } else {
+        PHONE_COLUMN_COUNT
     }
 
     companion object {
-        private const val COLUMN_COUNT = 3
+        private const val PHONE_COLUMN_COUNT = 2
+        private const val TABLET_COLUMN_COUNT = 3
+        private const val TABLET_MIN_WIDTH_DP = 600
     }
 }

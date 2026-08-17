@@ -17,7 +17,7 @@ class KeyboardSkinIdTest {
     fun allBuiltInSkinsHaveStableUniquePreferenceValues() {
         val values = KeyboardSkinId.entries.map { it.preferenceValue }
 
-        assertEquals(10, values.size)
+        assertEquals(17, values.size)
         assertEquals(values.size, values.toSet().size)
         assertTrue(values.contains(KeyboardSkinId.DEFAULT.preferenceValue))
         assertNotEquals(
@@ -26,6 +26,13 @@ class KeyboardSkinIdTest {
         )
         assertTrue(values.contains(KeyboardSkinId.CUPERTINO.preferenceValue))
         assertTrue(values.contains(KeyboardSkinId.CUPERTINO_DARK.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.SUMI_HANSHI.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.LETTERPRESS.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.PORCELAIN.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.URUSHI.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.CHALKBOARD.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.LINEN.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.MONOCHROME_LCD.preferenceValue))
     }
 
     @Test
@@ -40,13 +47,32 @@ class KeyboardSkinIdTest {
         val specs = KeyboardSkinCatalog.all().filter { it.id != KeyboardSkinId.DEFAULT }
         val baseDesigns = specs.filter { it.id != KeyboardSkinId.CUPERTINO_DARK }
 
-        assertEquals(9, specs.size)
+        assertEquals(16, specs.size)
         assertEquals(specs.size, specs.map { it.palette }.toSet().size)
         assertEquals(baseDesigns.size, baseDesigns.map { it.material }.toSet().size)
         assertEquals(
             KeyboardSkinCatalog.specFor(KeyboardSkinId.CUPERTINO).material,
             KeyboardSkinCatalog.specFor(KeyboardSkinId.CUPERTINO_DARK).material,
         )
+    }
+
+    @Test
+    fun tactileConceptSkinsHaveDedicatedMaterialsAndDepthModels() {
+        val ids = listOf(
+            KeyboardSkinId.SUMI_HANSHI,
+            KeyboardSkinId.LETTERPRESS,
+            KeyboardSkinId.PORCELAIN,
+            KeyboardSkinId.URUSHI,
+            KeyboardSkinId.CHALKBOARD,
+            KeyboardSkinId.LINEN,
+            KeyboardSkinId.MONOCHROME_LCD,
+        )
+        val specs = ids.map(KeyboardSkinCatalog::specFor)
+
+        assertEquals(ids.size, specs.map { it.material }.toSet().size)
+        assertEquals(ids.size, specs.map { it.depthModel }.toSet().size)
+        assertEquals(ids.size, specs.map { it.palette }.toSet().size)
+        assertTrue(specs.all { it.motion.continuousPeriodMs == 0L })
     }
 
     @Test

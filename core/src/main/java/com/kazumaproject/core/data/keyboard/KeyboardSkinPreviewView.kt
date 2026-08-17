@@ -102,8 +102,8 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
         drawFunctionRow(canvas, top + (rowHeight + rowGap) * 2f, rowHeight)
         drawBottomRow(canvas, top + (rowHeight + rowGap) * 3f, rowHeight)
 
-        if (KeyboardSkinCatalog.specFor(skinId).material == KeyboardSkinMaterial.CUPERTINO) {
-            drawCupertinoPopup(canvas, top, rowHeight)
+        if (showsPressedKeyPopup(skinId)) {
+            drawPressedKeyPopup(canvas, top, rowHeight)
         }
     }
 
@@ -195,6 +195,8 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
             Color.WHITE
         } else if (pressed && skinId == KeyboardSkinId.TERMINAL) {
             spec.palette.backgroundColor
+        } else if (pressed && skinId == KeyboardSkinId.MONOCHROME_LCD) {
+            spec.palette.normalKeyColor
         } else {
             spec.palette.textColor(role)
         }
@@ -203,7 +205,7 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
         canvas.drawText(label, bounds.centerX(), baseline, textPaint)
     }
 
-    private fun drawCupertinoPopup(canvas: Canvas, keyTop: Float, keyHeight: Float) {
+    private fun drawPressedKeyPopup(canvas: Canvas, keyTop: Float, keyHeight: Float) {
         val gap = dp(1.2f)
         val outer = dp(4f)
         val keyWidth = (width - outer * 2f - gap * 4f) / 5f
@@ -236,6 +238,20 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
     }
 
     private fun renderer(): KeyboardSkinRenderer = KeyboardSkinRendererRegistry.rendererFor(skinId)
+
+    private fun showsPressedKeyPopup(skin: KeyboardSkinId): Boolean = when (skin) {
+        KeyboardSkinId.CUPERTINO,
+        KeyboardSkinId.CUPERTINO_DARK,
+        KeyboardSkinId.SUMI_HANSHI,
+        KeyboardSkinId.LETTERPRESS,
+        KeyboardSkinId.PORCELAIN,
+        KeyboardSkinId.URUSHI,
+        KeyboardSkinId.CHALKBOARD,
+        KeyboardSkinId.LINEN,
+        KeyboardSkinId.MONOCHROME_LCD -> true
+
+        else -> false
+    }
 
     override fun doFrame(frameTimeNanos: Long) {
         frameScheduled = false

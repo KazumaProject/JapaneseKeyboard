@@ -23,6 +23,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
 class KeyboardSkinRenderInstrumentedTest {
@@ -133,6 +134,66 @@ class KeyboardSkinRenderInstrumentedTest {
     }
 
     @Test
+    fun tactileConceptSkinsHaveStrongPairwiseVisualDifferences() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val skins = listOf(
+            KeyboardSkinId.SUMI_HANSHI,
+            KeyboardSkinId.LETTERPRESS,
+            KeyboardSkinId.PORCELAIN,
+            KeyboardSkinId.URUSHI,
+            KeyboardSkinId.CHALKBOARD,
+            KeyboardSkinId.LINEN,
+            KeyboardSkinId.MONOCHROME_LCD,
+        )
+        val rendered = linkedMapOf<KeyboardSkinId, IntArray>()
+
+        skins.forEach { skin ->
+            var bitmap: Bitmap? = null
+            instrumentation.runOnMainSync {
+                val preview = KeyboardSkinPreviewView(context).apply {
+                    setSkin(skin, KeyboardSkinMotionMode.OFF)
+                    measure(
+                        View.MeasureSpec.makeMeasureSpec(WIDTH_PX, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(HEIGHT_PX, View.MeasureSpec.EXACTLY),
+                    )
+                    layout(0, 0, WIDTH_PX, HEIGHT_PX)
+                }
+                bitmap = Bitmap.createBitmap(WIDTH_PX, HEIGHT_PX, Bitmap.Config.ARGB_8888)
+                    .also { preview.draw(Canvas(it)) }
+            }
+            val image = checkNotNull(bitmap)
+            rendered[skin] = IntArray(WIDTH_PX * HEIGHT_PX).also { pixels ->
+                image.getPixels(pixels, 0, WIDTH_PX, 0, 0, WIDTH_PX, HEIGHT_PX)
+            }
+            image.recycle()
+        }
+
+        skins.forEachIndexed { firstIndex, first ->
+            for (secondIndex in firstIndex + 1 until skins.size) {
+                val second = skins[secondIndex]
+                val firstPixels = checkNotNull(rendered[first])
+                val secondPixels = checkNotNull(rendered[second])
+                var stronglyChanged = 0
+                firstPixels.indices.forEach { pixelIndex ->
+                    val firstColor = firstPixels[pixelIndex]
+                    val secondColor = secondPixels[pixelIndex]
+                    val rgbDistance =
+                        abs(Color.red(firstColor) - Color.red(secondColor)) +
+                            abs(Color.green(firstColor) - Color.green(secondColor)) +
+                            abs(Color.blue(firstColor) - Color.blue(secondColor))
+                    if (rgbDistance >= MIN_STRONG_RGB_DISTANCE) stronglyChanged += 1
+                }
+                val changedRatio = stronglyChanged.toFloat() / firstPixels.size
+                assertTrue(
+                    "$first and $second only differ strongly across $changedRatio of the preview",
+                    changedRatio >= MIN_STRONGLY_CHANGED_RATIO,
+                )
+            }
+        }
+    }
+
+    @Test
     fun reducedMotionKeepsAStateTransitionWhileOffRemovesAnimations() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -179,5 +240,7 @@ class KeyboardSkinRenderInstrumentedTest {
         private const val HEIGHT_PX = 420
         private const val TENKEY_WIDTH_PX = 1080
         private const val TENKEY_HEIGHT_PX = 760
+        private const val MIN_STRONG_RGB_DISTANCE = 45
+        private const val MIN_STRONGLY_CHANGED_RATIO = 0.60f
     }
 }
