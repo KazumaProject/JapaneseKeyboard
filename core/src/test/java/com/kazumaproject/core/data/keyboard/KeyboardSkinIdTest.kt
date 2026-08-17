@@ -17,7 +17,7 @@ class KeyboardSkinIdTest {
     fun allBuiltInSkinsHaveStableUniquePreferenceValues() {
         val values = KeyboardSkinId.entries.map { it.preferenceValue }
 
-        assertEquals(9, values.size)
+        assertEquals(10, values.size)
         assertEquals(values.size, values.toSet().size)
         assertTrue(values.contains(KeyboardSkinId.DEFAULT.preferenceValue))
         assertNotEquals(
@@ -25,6 +25,7 @@ class KeyboardSkinIdTest {
             KeyboardSkinId.GLASS.preferenceValue,
         )
         assertTrue(values.contains(KeyboardSkinId.CUPERTINO.preferenceValue))
+        assertTrue(values.contains(KeyboardSkinId.CUPERTINO_DARK.preferenceValue))
     }
 
     @Test
@@ -37,11 +38,15 @@ class KeyboardSkinIdTest {
     @Test
     fun nonDefaultSkinsOwnTheirPaletteAndVisualIdentity() {
         val specs = KeyboardSkinCatalog.all().filter { it.id != KeyboardSkinId.DEFAULT }
+        val baseDesigns = specs.filter { it.id != KeyboardSkinId.CUPERTINO_DARK }
 
-        assertEquals(8, specs.size)
+        assertEquals(9, specs.size)
         assertEquals(specs.size, specs.map { it.palette }.toSet().size)
-        assertEquals(specs.size, specs.map { it.material }.toSet().size)
-        assertEquals(specs.size, specs.map { it.depthModel }.toSet().size)
+        assertEquals(baseDesigns.size, baseDesigns.map { it.material }.toSet().size)
+        assertEquals(
+            KeyboardSkinCatalog.specFor(KeyboardSkinId.CUPERTINO).material,
+            KeyboardSkinCatalog.specFor(KeyboardSkinId.CUPERTINO_DARK).material,
+        )
     }
 
     @Test

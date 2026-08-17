@@ -33,13 +33,13 @@ class AppPreferenceKeyboardSkinTest {
     }
 
     @Test
-    fun cupertinoAndMotionModePersistIndependentlyFromThemeMode() {
+    fun cupertinoDarkAndMotionModePersistIndependentlyFromThemeMode() {
         AppPreference.theme_mode = "custom"
-        AppPreference.keyboard_skin = KeyboardSkinId.CUPERTINO.preferenceValue
+        AppPreference.keyboard_skin = KeyboardSkinId.CUPERTINO_DARK.preferenceValue
         AppPreference.keyboard_skin_motion = KeyboardSkinMotionMode.REDUCED.preferenceValue
 
         assertEquals("custom", AppPreference.theme_mode)
-        assertEquals(KeyboardSkinId.CUPERTINO.preferenceValue, AppPreference.keyboard_skin)
+        assertEquals(KeyboardSkinId.CUPERTINO_DARK.preferenceValue, AppPreference.keyboard_skin)
         assertEquals(
             KeyboardSkinMotionMode.REDUCED.preferenceValue,
             AppPreference.keyboard_skin_motion,

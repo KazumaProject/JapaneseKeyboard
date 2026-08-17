@@ -102,7 +102,9 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
         drawFunctionRow(canvas, top + (rowHeight + rowGap) * 2f, rowHeight)
         drawBottomRow(canvas, top + (rowHeight + rowGap) * 3f, rowHeight)
 
-        if (skinId == KeyboardSkinId.CUPERTINO) drawCupertinoPopup(canvas, top, rowHeight)
+        if (KeyboardSkinCatalog.specFor(skinId).material == KeyboardSkinMaterial.CUPERTINO) {
+            drawCupertinoPopup(canvas, top, rowHeight)
+        }
     }
 
     private fun drawCandidateText(canvas: Canvas, candidateHeight: Float, outer: Float) {

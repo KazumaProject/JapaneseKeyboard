@@ -153,6 +153,7 @@ class KeyboardSkinPickerFragment : Fragment(R.layout.fragment_keyboard_skin_pick
         KeyboardSkinId.NEON -> R.string.keyboard_skin_neon
         KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_terminal
         KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_cupertino
+        KeyboardSkinId.CUPERTINO_DARK -> R.string.keyboard_skin_cupertino_dark
     }
 
     private fun materialResource(skin: KeyboardSkinId): Int = when (skin) {
@@ -165,6 +166,7 @@ class KeyboardSkinPickerFragment : Fragment(R.layout.fragment_keyboard_skin_pick
         KeyboardSkinId.NEON -> R.string.keyboard_skin_material_neon
         KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_material_terminal
         KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_material_cupertino
+        KeyboardSkinId.CUPERTINO_DARK -> R.string.keyboard_skin_material_cupertino_dark
     }
 
     companion object {

@@ -141,7 +141,7 @@ object KeyboardSkinViewStyler {
                 propertyAnimator(view, View.TRANSLATION_Y, 0f, motion.releaseDurationMs),
                 propertyAnimator(view, View.TRANSLATION_X, 0f, motion.releaseDurationMs),
             )
-            interpolator = if (spec.id == KeyboardSkinId.CUPERTINO) {
+            interpolator = if (spec.material == KeyboardSkinMaterial.CUPERTINO) {
                 OvershootInterpolator(1.35f)
             } else {
                 AccelerateDecelerateInterpolator()

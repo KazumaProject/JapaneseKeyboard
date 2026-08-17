@@ -566,6 +566,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         KeyboardSkinId.NEON -> R.string.keyboard_skin_neon
         KeyboardSkinId.TERMINAL -> R.string.keyboard_skin_terminal
         KeyboardSkinId.CUPERTINO -> R.string.keyboard_skin_cupertino
+        KeyboardSkinId.CUPERTINO_DARK -> R.string.keyboard_skin_cupertino_dark
     }
 
     private fun saveCustomColor(key: String, color: Int) {

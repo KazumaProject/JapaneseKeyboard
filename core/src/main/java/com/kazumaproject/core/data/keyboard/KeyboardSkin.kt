@@ -13,7 +13,8 @@ enum class KeyboardSkinId(val preferenceValue: String) {
     WASHI("washi"),
     NEON("neon"),
     TERMINAL("terminal"),
-    CUPERTINO("cupertino");
+    CUPERTINO("cupertino"),
+    CUPERTINO_DARK("cupertino_dark");
 
     companion object {
         fun fromPreference(value: String?): KeyboardSkinId =
@@ -259,16 +260,33 @@ object KeyboardSkinCatalog {
         ),
         spec(
             KeyboardSkinId.CUPERTINO,
+            // Measured from the light keyboard on an iPhone 17 Pro Max,
+            // iOS 26.4 Simulator. Keep this palette independent from the app theme.
             palette(
-                0xFFCDD1D8, 0xFFFFFFFF, 0xFFAEB4BC, 0xFF0A74FF,
-                0xFF16181C, 0xFF16181C, 0xFFFFFFFF,
-                0xFF0A74FF, 0xFF7D848E, 0xFFE9EBEF, 0xFF16181C,
+                0xFFE8E9ED, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF0091FF,
+                0xFF000000, 0xFF000000, 0xFFFFFFFF,
+                0xFF0091FF, 0xFF636366, 0xFFE8E9ED, 0xFF000000,
             ),
-            KeyboardSkinGeometry(6f, 2f, 0f, 1.5f),
+            KeyboardSkinGeometry(7f, 1.5f, 0f, 0f),
             KeyboardSkinTypography("sans-serif", false),
             KeyboardSkinMaterial.CUPERTINO,
-            KeyboardSkinDepthModel.SHORT_SHADOW,
-            KeyboardSkinMotionSpec(0.985f, 1f, pressDurationMs = 80, releaseDurationMs = 140, continuousPeriodMs = 0),
+            KeyboardSkinDepthModel.NONE,
+            KeyboardSkinMotionSpec(1f, 0f, pressDurationMs = 60, releaseDurationMs = 80, continuousPeriodMs = 0),
+        ),
+        spec(
+            KeyboardSkinId.CUPERTINO_DARK,
+            // Measured from the dark keyboard on an iPhone 17 Pro Max,
+            // iOS 26.4 Simulator. This is a separate skin, not a theme-dependent variant.
+            palette(
+                0xFF171717, 0xFF3D3D3D, 0xFF3D3D3D, 0xFF007AFF,
+                0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+                0xFF007AFF, 0xFF8E8E93, 0xFF171717, 0xFFFFFFFF,
+            ),
+            KeyboardSkinGeometry(7f, 1.5f, 0f, 0f),
+            KeyboardSkinTypography("sans-serif", false),
+            KeyboardSkinMaterial.CUPERTINO,
+            KeyboardSkinDepthModel.NONE,
+            KeyboardSkinMotionSpec(1f, 0f, pressDurationMs = 60, releaseDurationMs = 80, continuousPeriodMs = 0),
         ),
     ).associateBy(KeyboardSkinSpec::id)
 

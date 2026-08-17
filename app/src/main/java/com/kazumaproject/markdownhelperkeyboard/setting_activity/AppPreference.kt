@@ -87,6 +87,8 @@ object AppPreference {
     const val VIBRATION_TIMING_KEY = "vibration_timing"
     const val KEY_SOUND_KEY = "key_sound_preference"
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
+    const val KEYBOARD_SKIN_KEY = "keyboard_skin_preference"
+    const val KEYBOARD_SKIN_MOTION_KEY = "keyboard_skin_motion_preference"
     const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
@@ -440,9 +442,9 @@ object AppPreference {
     private val KEYBOARD_THEME_MODE =
         Pair("keyboard_theme_mode_preference", "default") // default, light, dark, custom
     private val KEYBOARD_SKIN =
-        Pair("keyboard_skin_preference", "default")
+        Pair(KEYBOARD_SKIN_KEY, "default")
     private val KEYBOARD_SKIN_MOTION =
-        Pair("keyboard_skin_motion_preference", "full")
+        Pair(KEYBOARD_SKIN_MOTION_KEY, "full")
     private val CUSTOM_THEME_BG_COLOR = Pair("custom_theme_bg_color_preference", Color.WHITE)
     private val CUSTOM_THEME_KEY_COLOR = Pair("custom_theme_key_color_preference", Color.LTGRAY)
     private val CUSTOM_THEME_SPECIAL_KEY_COLOR =

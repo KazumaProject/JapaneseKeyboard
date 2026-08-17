@@ -59,6 +59,7 @@ object KeyboardSkinRendererRegistry {
         NeonSkinRenderer,
         TerminalSkinRenderer,
         CupertinoSkinRenderer,
+        CupertinoDarkSkinRenderer,
     ).associateBy { it.spec.id }
 
     fun rendererFor(id: KeyboardSkinId): KeyboardSkinRenderer =
@@ -88,6 +89,7 @@ object KeyboardSkinRendererRegistry {
     private object NeonSkinRenderer : DedicatedRenderer(KeyboardSkinId.NEON)
     private object TerminalSkinRenderer : DedicatedRenderer(KeyboardSkinId.TERMINAL)
     private object CupertinoSkinRenderer : DedicatedRenderer(KeyboardSkinId.CUPERTINO)
+    private object CupertinoDarkSkinRenderer : DedicatedRenderer(KeyboardSkinId.CUPERTINO_DARK)
 }
 
 /**
@@ -241,16 +243,6 @@ private class KeyboardSkinKeyDrawable(
                 rect.left,
                 rect.bottom,
                 intArrayOf(adjust(roleColor(), 1.32f), roleColor(), adjust(roleColor(), 0.72f)),
-                null,
-                Shader.TileMode.CLAMP,
-            )
-
-            KeyboardSkinMaterial.CUPERTINO -> LinearGradient(
-                rect.left,
-                rect.top,
-                rect.left,
-                rect.bottom,
-                intArrayOf(adjust(roleColor(), 1.03f), adjust(roleColor(), 0.97f)),
                 null,
                 Shader.TileMode.CLAMP,
             )
@@ -479,35 +471,23 @@ private class KeyboardSkinKeyDrawable(
 
     private fun drawCupertino(canvas: Canvas) {
         val radius = radius()
-        val depth = dp(spec.geometry.depthDp)
         fillPaint.shader = null
         if (role == KeyboardElementRole.POPUP) {
-            val shadowOffset = if (pressed) dp(0.6f) else depth
-            fillPaint.color = withAlpha(Color.BLACK, if (pressed) 52 else 76)
+            fillPaint.color = withAlpha(Color.BLACK, if (pressed) 28 else 42)
             canvas.save()
-            canvas.translate(0f, shadowOffset)
+            canvas.translate(0f, dp(1f))
             canvas.drawPath(popupPath, fillPaint)
             canvas.restore()
-            fillPaint.shader = faceGradient
-            canvas.save()
-            if (pressed) canvas.translate(0f, dp(0.8f))
+            fillPaint.color = roleColor()
             canvas.drawPath(popupPath, fillPaint)
-            canvas.restore()
-            fillPaint.shader = null
             return
         }
-        workRect.set(rect)
-        workRect.offset(0f, depth)
-        fillPaint.color = withAlpha(Color.BLACK, if (pressed) 58 else 72)
-        canvas.drawRoundRect(workRect, radius, radius, fillPaint)
-        workRect.set(rect)
-        if (pressed) workRect.offset(0f, dp(1f))
-        fillPaint.shader = faceGradient
-        canvas.drawRoundRect(workRect, radius, radius, fillPaint)
-        fillPaint.shader = null
-        strokePaint.strokeWidth = dp(0.6f)
-        strokePaint.color = withAlpha(Color.WHITE, if (role == KeyboardElementRole.CHARACTER) 205 else 90)
-        canvas.drawLine(workRect.left + radius, workRect.top + dp(0.6f), workRect.right - radius, workRect.top + dp(0.6f), strokePaint)
+        fillPaint.color = if (pressed) {
+            ColorUtils.blendARGB(roleColor(), spec.palette.backgroundColor, 0.42f)
+        } else {
+            roleColor()
+        }
+        canvas.drawRoundRect(rect, radius, radius, fillPaint)
     }
 
     private fun buildIrregularPath() {
@@ -655,12 +635,6 @@ internal class KeyboardSkinSurfaceDrawable(
             KeyboardSkinMaterial.NEON -> LinearGradient(
                 rect.left, rect.top, rect.right, rect.bottom,
                 intArrayOf(0xFF03020A.toInt(), spec.palette.backgroundColor, 0xFF15032A.toInt()),
-                null, Shader.TileMode.CLAMP,
-            )
-
-            KeyboardSkinMaterial.CUPERTINO -> LinearGradient(
-                rect.left, rect.top, rect.left, rect.bottom,
-                intArrayOf(0xFFDDE0E5.toInt(), spec.palette.backgroundColor, 0xFFBEC3CB.toInt()),
                 null, Shader.TileMode.CLAMP,
             )
 
@@ -845,21 +819,23 @@ internal class KeyboardSkinSurfaceDrawable(
     }
 
     private fun drawCupertino(canvas: Canvas) {
-        fillPaint.shader = baseShader
-        canvas.drawRect(rect, fillPaint)
         fillPaint.shader = null
-        textureShader?.let { shader ->
-            shaderMatrix.reset()
-            shaderMatrix.setScale(0.8f, 0.8f)
-            shader.setLocalMatrix(shaderMatrix)
-            texturePaint.shader = shader
-            texturePaint.alpha = 9
-            canvas.drawRect(rect, texturePaint)
-            texturePaint.shader = null
+        fillPaint.color = surfaceColor()
+        if (role == KeyboardSurfaceRole.DECK) {
+            val radius = dp(24f)
+            wavePath.reset()
+            wavePath.moveTo(rect.left, rect.bottom)
+            wavePath.lineTo(rect.left, rect.top + radius)
+            wavePath.quadTo(rect.left, rect.top, rect.left + radius, rect.top)
+            wavePath.lineTo(rect.right - radius, rect.top)
+            wavePath.quadTo(rect.right, rect.top, rect.right, rect.top + radius)
+            wavePath.lineTo(rect.right, rect.bottom)
+            wavePath.close()
+            canvas.drawPath(wavePath, fillPaint)
+        } else {
+            canvas.drawRect(rect, fillPaint)
         }
-        strokePaint.strokeWidth = dp(1f)
-        strokePaint.color = withAlpha(Color.WHITE, 75)
-        canvas.drawLine(rect.left, rect.top, rect.right, rect.top, strokePaint)
+        fillPaint.shader = null
     }
 
     private fun drawSeigaiha(canvas: Canvas) {
@@ -952,8 +928,7 @@ private object KeyboardSkinTextureStore {
 }
 
 private fun textureResourceFor(id: KeyboardSkinId): Int? = when (id) {
-    KeyboardSkinId.GLASS,
-    KeyboardSkinId.CUPERTINO -> R.drawable.keyboard_skin_glass_frost
+    KeyboardSkinId.GLASS -> R.drawable.keyboard_skin_glass_frost
 
     KeyboardSkinId.MECHANICAL -> R.drawable.keyboard_skin_mechanical_metal
     KeyboardSkinId.WASHI -> R.drawable.keyboard_skin_washi_fiber

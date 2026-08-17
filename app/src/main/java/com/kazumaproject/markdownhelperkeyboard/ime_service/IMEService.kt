@@ -815,11 +815,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY,
         AppPreference.FLICK_TFBI_FLICK_START_POSITION_KEY
     )
+    private val keyboardSkinPreferenceKeys = setOf(
+        AppPreference.KEYBOARD_SKIN_KEY,
+        AppPreference.KEYBOARD_SKIN_MOTION_KEY,
+    )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key != null && key in runtimeInputPreferenceKeys) {
+            if (key != null &&
+                (key in runtimeInputPreferenceKeys || key in keyboardSkinPreferenceKeys)
+            ) {
                 runOnMainThread {
-                    syncRuntimeInputPreferences()
+                    if (key in runtimeInputPreferenceKeys) {
+                        syncRuntimeInputPreferences()
+                    }
+                    if (key in keyboardSkinPreferenceKeys) {
+                        syncKeyboardSkinPreferences()
+                    }
                 }
             }
         }
@@ -2519,6 +2530,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ngramRuleScorerManager.setEnabled(
             appPreference.custom_ngram_dictionary_enable_preference,
         )
+    }
+
+    /**
+     * Refreshes skin state on views that survive while the settings Activity is open.
+     *
+     * Returning to the same editor can call onStartInputView() without onStartInput(), so relying
+     * on the full preference snapshot leaves candidate tabs and adapters on the previous skin.
+     */
+    private fun syncKeyboardSkinPreferences() {
+        assertMainThread("syncKeyboardSkinPreferences")
+
+        val nextSkin = KeyboardSkinId.fromPreference(appPreference.keyboard_skin)
+        val nextMotion = KeyboardSkinMotionMode.fromPreference(
+            appPreference.keyboard_skin_motion
+        )
+
+        keyboardSkinMode = nextSkin.preferenceValue
+        keyboardSkinMotionMode = nextMotion.preferenceValue
+
+        // Reapply even when the values match. A preference listener may have updated the cached
+        // values while the input view was absent, and the newly inflated views still need styling.
+        applyKeyboardSkinThemeToCandidateAdapters()
+        shortcutAdapter?.setKeyboardSkin(
+            skinValue = nextSkin.preferenceValue,
+            motionValue = nextMotion.preferenceValue,
+        )
+        mainLayoutBinding?.let { mainView ->
+            applyKeyboardContainerBackgrounds(mainView)
+            applyKeyboardSkinToCandidateTabs(mainView.candidateTabLayout)
+            applyKeyboardSkinThemeToSymbolKeyboards(mainView, floatingKeyboardBinding)
+        }
+        floatingKeyboardBinding?.let(::applyFloatingKeyboardContainerBackgrounds)
     }
 
     /**
@@ -4597,17 +4640,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // The input view can restart without onStartInput() after returning from settings.
         // Re-read preferences that may change while the existing input session is retained.
         syncRuntimeInputPreferences()
+        syncKeyboardSkinPreferences()
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
-        applyKeyboardSkinThemeToCandidateAdapters()
-        shortcutAdapter?.setKeyboardSkin(
-            skinValue = currentKeyboardSkin().preferenceValue,
-            motionValue = currentKeyboardSkinMotion().preferenceValue,
-        )
-        mainLayoutBinding?.let { mainView ->
-            applyKeyboardSkinThemeToSymbolKeyboards(mainView, floatingKeyboardBinding)
-        }
         isInputViewActive = true
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
@@ -18541,6 +18577,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyKeyboardSkinToCandidateTabs(tabLayout: TabLayout) {
         val skin = currentKeyboardSkin()
+        updateCandidateTabChildSkins(tabLayout, skin)
         if (skin == KeyboardSkinId.DEFAULT) {
             val fallbackNormal = getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
             val normalColor = if (keyboardThemeMode == "custom") {
@@ -18567,16 +18604,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tabLayout.setTabTextColors(palette.candidateTextColor, palette.accentColor)
         tabLayout.setSelectedTabIndicatorColor(palette.accentColor)
         tabLayout.tabRippleColor = null
+    }
+
+    private fun updateCandidateTabChildSkins(
+        tabLayout: TabLayout,
+        skin: KeyboardSkinId,
+    ) {
         tabLayout.post {
             val strip = tabLayout.getChildAt(0) as? ViewGroup ?: return@post
             for (index in 0 until strip.childCount) {
-                KeyboardSkinViewStyler.applyKey(
-                    strip.getChildAt(index),
-                    skin,
-                    KeyboardElementRole.TOOLBAR,
-                    currentKeyboardSkinMotion(),
-                    stableKey = index,
-                )
+                val tabView = strip.getChildAt(index)
+                KeyboardSkinViewStyler.clearTransientStyle(tabView)
+                tabView.background = null
+                tabView.backgroundTintList = null
+                if (skin != KeyboardSkinId.DEFAULT) {
+                    KeyboardSkinViewStyler.applyKey(
+                        tabView,
+                        skin,
+                        KeyboardElementRole.TOOLBAR,
+                        currentKeyboardSkinMotion(),
+                        stableKey = index,
+                    )
+                }
             }
         }
     }

@@ -50,7 +50,11 @@
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceLabelLarge" />
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            app:autoSizeMaxTextSize="18sp"
+            app:autoSizeMinTextSize="12sp"
+            app:autoSizeStepGranularity="1sp"
+            app:autoSizeTextType="uniform" />
 
         <TextView
             android:id="@+id/keyboard_skin_material"
@@ -60,7 +64,11 @@
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceLabelSmall" />
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            app:autoSizeMaxTextSize="14sp"
+            app:autoSizeMinTextSize="10sp"
+            app:autoSizeStepGranularity="1sp"
+            app:autoSizeTextType="uniform" />
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

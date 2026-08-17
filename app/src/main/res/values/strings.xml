@@ -1045,7 +1045,8 @@
     <string name="keyboard_skin_washi">Washi</string>
     <string name="keyboard_skin_neon">Neon</string>
     <string name="keyboard_skin_terminal">Terminal</string>
-    <string name="keyboard_skin_cupertino">Cupertino</string>
+    <string name="keyboard_skin_cupertino">Cupertino L</string>
+    <string name="keyboard_skin_cupertino_dark">Cupertino D</string>
     <string name="keyboard_skin_picker_title">Keyboard Skin</string>
     <string name="keyboard_skin_picker_description">Each skin has its own colors, key shape, surface, shadows, typography, and press response. Default keeps the existing keyboard theme exactly as configured.</string>
     <string name="keyboard_skin_summary_selected">Selected: %1$s. Theme colors and other keyboard decorations are paused while this skin is active.</string>
@@ -1058,7 +1059,8 @@
     <string name="keyboard_skin_material_washi">Paper &amp; ink</string>
     <string name="keyboard_skin_material_neon">Emissive glow</string>
     <string name="keyboard_skin_material_terminal">CRT grid</string>
-    <string name="keyboard_skin_material_cupertino">iOS-style keys</string>
+    <string name="keyboard_skin_material_cupertino">Light mode</string>
+    <string name="keyboard_skin_material_cupertino_dark">Dark mode</string>
     <string name="keyboard_skin_motion_title">Motion</string>
     <string name="keyboard_skin_motion_summary">Controls key press movement and animated surfaces. Reduced keeps state changes without movement.</string>
     <string name="keyboard_skin_motion_full">Full</string>

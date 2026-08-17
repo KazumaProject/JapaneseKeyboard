@@ -922,7 +922,8 @@
     <string name="keyboard_skin_washi">和紙</string>
     <string name="keyboard_skin_neon">ネオン</string>
     <string name="keyboard_skin_terminal">ターミナル</string>
-    <string name="keyboard_skin_cupertino">クパチーノ</string>
+    <string name="keyboard_skin_cupertino">クパチーノ L</string>
+    <string name="keyboard_skin_cupertino_dark">クパチーノ D</string>
     <string name="keyboard_skin_picker_title">キーボードスキン</string>
     <string name="keyboard_skin_picker_description">各スキンは、配色・キー形状・質感・影・文字・押下表現まで専用設計です。デフォルトは現在のキーボードテーマをそのまま維持します。</string>
     <string name="keyboard_skin_summary_selected">選択中: %1$s。スキン適用中はテーマ色や他のキーボード装飾を一時停止します。</string>
@@ -935,7 +936,8 @@
     <string name="keyboard_skin_material_washi">紙と墨</string>
     <string name="keyboard_skin_material_neon">発光ライン</string>
     <string name="keyboard_skin_material_terminal">CRTグリッド</string>
-    <string name="keyboard_skin_material_cupertino">iOS風キー</string>
+    <string name="keyboard_skin_material_cupertino">ライトモード</string>
+    <string name="keyboard_skin_material_cupertino_dark">ダークモード</string>
     <string name="keyboard_skin_motion_title">モーション</string>
     <string name="keyboard_skin_motion_summary">キー押下の動きと背景アニメーションを調整します。「軽減」は移動を止め、状態変化だけを残します。</string>
     <string name="keyboard_skin_motion_full">フル</string>
