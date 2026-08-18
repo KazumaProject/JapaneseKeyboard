@@ -54,7 +54,7 @@ interface KeyboardSkinRenderer {
         selected: Boolean = false,
     ): Drawable? = KeyboardSkinPopupRenderer.createDrawable(
         context = context,
-        skinId = spec.id,
+        skinId = spec.reference,
         kind = kind,
         direction = direction,
         selected = selected,
@@ -85,6 +85,18 @@ object KeyboardSkinRendererRegistry {
 
     fun rendererFor(id: KeyboardSkinId): KeyboardSkinRenderer =
         checkNotNull(renderers[id]) { "Missing renderer for $id" }
+
+    fun rendererFor(reference: KeyboardSkinRef): KeyboardSkinRenderer = when (reference) {
+        is KeyboardSkinRef.BuiltIn -> rendererFor(reference.id)
+        is KeyboardSkinRef.Imported -> KeyboardSkinRuntime.specFor(reference.id)
+            ?.let(::ImportedKeyboardSkinRenderer)
+            ?: rendererFor(KeyboardSkinId.DEFAULT)
+    }
+
+    fun rendererFor(spec: KeyboardSkinSpec): KeyboardSkinRenderer = when (spec.reference) {
+        is KeyboardSkinRef.BuiltIn -> rendererFor(spec.id)
+        is KeyboardSkinRef.Imported -> ImportedKeyboardSkinRenderer(spec)
+    }
 
     private abstract class DedicatedRenderer(id: KeyboardSkinId) : KeyboardSkinRenderer {
         final override val spec: KeyboardSkinSpec = KeyboardSkinCatalog.specFor(id)
@@ -129,6 +141,9 @@ object KeyboardSkinDrawableFactory {
     fun keyCornerRadiusDp(skinId: KeyboardSkinId): Float =
         KeyboardSkinCatalog.specFor(skinId).geometry.cornerRadiusDp
 
+    fun keyCornerRadiusDp(skinId: KeyboardSkinRef): Float =
+        KeyboardSkinCatalog.specFor(skinId).geometry.cornerRadiusDp
+
     fun createKeyDrawable(
         context: Context,
         skinId: KeyboardSkinId,
@@ -149,12 +164,48 @@ object KeyboardSkinDrawableFactory {
             .createKeyDrawable(context, role, baseColor)
     }
 
+    fun createKeyDrawable(
+        context: Context,
+        skinId: KeyboardSkinRef,
+        baseColor: Int,
+        cornerRadiusDp: Float = keyCornerRadiusDp(skinId),
+    ): Drawable {
+        if (skinId.isDefault()) {
+            return createLegacyNeumorphismDrawable(context, baseColor, cornerRadiusDp)
+        }
+        val palette = KeyboardSkinCatalog.specFor(skinId).palette
+        val role = when (baseColor) {
+            palette.actionKeyColor -> KeyboardElementRole.ACTION
+            palette.specialKeyColor -> KeyboardElementRole.MODIFIER
+            palette.candidateSurfaceColor -> KeyboardElementRole.CANDIDATE
+            else -> KeyboardElementRole.CHARACTER
+        }
+        return KeyboardSkinRendererRegistry.rendererFor(skinId)
+            .createKeyDrawable(context, role, baseColor)
+    }
+
     fun createSurfaceDrawable(
         context: Context,
         skinId: KeyboardSkinId,
         baseColor: Int,
     ): Drawable {
         if (skinId == KeyboardSkinId.DEFAULT) {
+            return GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(context.resources, 10f)
+                setColor(baseColor)
+            }
+        }
+        return KeyboardSkinRendererRegistry.rendererFor(skinId)
+            .createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
+    }
+
+    fun createSurfaceDrawable(
+        context: Context,
+        skinId: KeyboardSkinRef,
+        baseColor: Int,
+    ): Drawable {
+        if (skinId.isDefault()) {
             return GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(context.resources, 10f)

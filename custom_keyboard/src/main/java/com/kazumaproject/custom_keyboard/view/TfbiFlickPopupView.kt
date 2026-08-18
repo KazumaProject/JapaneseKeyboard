@@ -8,7 +8,7 @@ import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.domain.extensions.getThemeColor
@@ -47,7 +47,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var inputTextTransform: (String) -> String = { it }
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
@@ -83,7 +83,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         invalidate()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         if (KeyboardSkinPopupRenderer.isFixedCupertino(skinId)) {
             applyCupertinoSkin()

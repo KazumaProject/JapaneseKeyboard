@@ -18,7 +18,7 @@ import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.ShapeType
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import java.util.EnumSet
@@ -57,7 +57,7 @@ class FlickCirclePopupView @JvmOverloads constructor(
         separatorColor = "#BDBDBD".toColorInt(),
         textColor = Color.BLACK
     )
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     init {
         applyThemeToPaints()
@@ -108,7 +108,7 @@ class FlickCirclePopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         if (KeyboardSkinPopupRenderer.isFixedCupertino(skinId)) {
             applyCupertinoColors()

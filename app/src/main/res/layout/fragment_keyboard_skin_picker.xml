@@ -19,6 +19,16 @@
         android:text="@string/keyboard_skin_picker_description"
         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/keyboard_skin_import_button"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/keyboard_skin_import" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/keyboard_skin_grid"
         android:layout_width="match_parent"

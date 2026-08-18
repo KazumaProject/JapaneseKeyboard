@@ -6,7 +6,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
@@ -60,7 +60,7 @@ class CenterGuideFlickInputController(
     private var textMap: Map<FlickDirection, String> = emptyMap()
     private var inputTextTransform: (String) -> String = { it }
     private var popupStyle = PopupViewStyle(100, 20f)
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     private var activeGestureConfig: GestureSessionConfig? = null
     private var isTouchActive = false
@@ -99,7 +99,7 @@ class CenterGuideFlickInputController(
         popupHost.setColors(backgroundColor, highlightedColor, textColor)
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         popupHost.setKeyboardSkin(skinId)
     }

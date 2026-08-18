@@ -15,10 +15,13 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.isBuiltIn
+import com.kazumaproject.core.data.keyboard.isDefault
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import kotlin.math.ceil
 import kotlin.math.min
@@ -46,7 +49,7 @@ class VariationsPopupView(context: Context) : View(context) {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var popupTextSizeSp: Float = 28f
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var skinSurfaceDrawable: Drawable? = null
     private var skinItemDrawable: Drawable? = null
     private var skinSelectedItemDrawable: Drawable? = null
@@ -124,9 +127,12 @@ class VariationsPopupView(context: Context) : View(context) {
         invalidate()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinId) =
+        setKeyboardSkin(KeyboardSkinRef.BuiltIn(skinId))
+
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
-        if (skinId == KeyboardSkinId.DEFAULT) {
+        if (skinId.isDefault()) {
             skinSurfaceDrawable = null
             skinItemDrawable = null
             skinSelectedItemDrawable = null
@@ -213,7 +219,7 @@ class VariationsPopupView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (chars.isEmpty()) return
 
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             drawKeyboardSkinPopup(canvas)
             return
         }
@@ -300,8 +306,8 @@ class VariationsPopupView(context: Context) : View(context) {
                 popup != null && index == selectedIndex -> popup.selectedTextColor
                 popup != null -> popup.textColor
                 index != selectedIndex -> spec.palette.candidateTextColor
-                keyboardSkinId == KeyboardSkinId.FLAT ||
-                    keyboardSkinId == KeyboardSkinId.TERMINAL -> spec.palette.backgroundColor
+                keyboardSkinId.isBuiltIn(KeyboardSkinId.FLAT) ||
+                    keyboardSkinId.isBuiltIn(KeyboardSkinId.TERMINAL) -> spec.palette.backgroundColor
                 else -> spec.palette.candidateTextColor
             }
             skinTextPaint.textSize = popup?.let {

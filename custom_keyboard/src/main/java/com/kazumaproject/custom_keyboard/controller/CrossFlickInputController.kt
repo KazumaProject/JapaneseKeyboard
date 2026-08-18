@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.Button
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
@@ -127,7 +127,7 @@ class CrossFlickInputController(
     private val gridPopupView = CrossFlickPopupView(context).apply {
         elevation = 8f
     }
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
@@ -148,7 +148,7 @@ class CrossFlickInputController(
         invalidateDirectionalPopupCache()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         gridPopupView.setKeyboardSkin(skinId)
         actionPopupViews.values.forEach { it.setKeyboardSkin(skinId) }

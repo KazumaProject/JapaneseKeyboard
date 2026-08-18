@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KazumaProject/JapaneseKeyboard/blob/main/docs/keyboard-skins/import-v1/sumire-keyboard-skin-v1.schema.json",
+  "title": "Sumire Keyboard Skin v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "formatVersion", "id", "name", "palette", "keys", "surfaces", "typography", "motion"],
+  "properties": {
+    "format": { "const": "sumire-keyboard-skin" },
+    "formatVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{2,63}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+    "author": { "type": "string", "maxLength": 50 },
+    "description": { "type": "string", "maxLength": 200 },
+    "palette": { "$ref": "#/$defs/palette" },
+    "keys": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base"],
+      "properties": {
+        "base": { "$ref": "#/$defs/style" },
+        "character": { "$ref": "#/$defs/styleOverride" },
+        "modifier": { "$ref": "#/$defs/styleOverride" },
+        "action": { "$ref": "#/$defs/styleOverride" },
+        "space": { "$ref": "#/$defs/styleOverride" },
+        "candidate": { "$ref": "#/$defs/styleOverride" },
+        "toolbar": { "$ref": "#/$defs/styleOverride" },
+        "popup": { "$ref": "#/$defs/styleOverride" }
+      }
+    },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deck", "candidateStrip", "candidatePanel", "toolbar", "popup"],
+      "properties": {
+        "deck": { "$ref": "#/$defs/style" },
+        "candidateStrip": { "$ref": "#/$defs/style" },
+        "candidatePanel": { "$ref": "#/$defs/style" },
+        "toolbar": { "$ref": "#/$defs/style" },
+        "popup": { "$ref": "#/$defs/style" }
+      }
+    },
+    "typography": { "$ref": "#/$defs/typography" },
+    "motion": { "$ref": "#/$defs/motion" }
+  },
+  "$defs": {
+    "paletteColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?|@palette\\.(background|normalKey|specialKey|actionKey|normalKeyText|specialKeyText|actionKeyText|accent|secondaryAccent|candidateSurface|candidateText))$"
+    },
+    "palette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["background", "normalKey", "specialKey", "actionKey", "normalKeyText", "specialKeyText", "actionKeyText", "accent", "secondaryAccent", "candidateSurface", "candidateText"],
+      "properties": {
+        "background": { "$ref": "#/$defs/paletteColor" },
+        "normalKey": { "$ref": "#/$defs/paletteColor" },
+        "specialKey": { "$ref": "#/$defs/paletteColor" },
+        "actionKey": { "$ref": "#/$defs/paletteColor" },
+        "normalKeyText": { "$ref": "#/$defs/paletteColor" },
+        "specialKeyText": { "$ref": "#/$defs/paletteColor" },
+        "actionKeyText": { "$ref": "#/$defs/paletteColor" },
+        "accent": { "$ref": "#/$defs/paletteColor" },
+        "secondaryAccent": { "$ref": "#/$defs/paletteColor" },
+        "candidateSurface": { "$ref": "#/$defs/paletteColor" },
+        "candidateText": { "$ref": "#/$defs/paletteColor" }
+      }
+    },
+    "shape": {
+      "type": "string",
+      "enum": ["roundedRect", "capsule", "cutCorner", "hexagon", "pixelNotched", "roughRect"]
+    },
+    "fill": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "color"],
+          "properties": {
+            "type": { "const": "solid" },
+            "color": { "$ref": "#/$defs/color" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "colors", "stops", "angleDegrees"],
+          "properties": {
+            "type": { "const": "linearGradient" },
+            "colors": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "$ref": "#/$defs/color" } },
+            "stops": { "$ref": "#/$defs/stops" },
+            "angleDegrees": { "type": "number", "minimum": 0, "maximum": 360 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "colors", "stops", "centerX", "centerY", "radius"],
+          "properties": {
+            "type": { "const": "radialGradient" },
+            "colors": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "$ref": "#/$defs/color" } },
+            "stops": { "$ref": "#/$defs/stops" },
+            "centerX": { "type": "number", "minimum": 0, "maximum": 1 },
+            "centerY": { "type": "number", "minimum": 0, "maximum": 1 },
+            "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+          }
+        }
+      ]
+    },
+    "stops": {
+      "description": "The runtime additionally checks that every stop is strictly increasing.",
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [{ "const": 0 }, { "const": 1 }],
+          "items": false
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            { "const": 0 },
+            { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+            { "const": 1 }
+          ],
+          "items": false
+        },
+        {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            { "const": 0 },
+            { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+            { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+            { "const": 1 }
+          ],
+          "items": false
+        }
+      ]
+    },
+    "stroke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["color", "widthDp"],
+      "properties": {
+        "color": { "$ref": "#/$defs/color" },
+        "widthDp": { "type": "number", "minimum": 0, "maximum": 4 }
+      }
+    },
+    "shadow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["color", "offsetXDp", "offsetYDp", "blurDp"],
+      "properties": {
+        "color": { "$ref": "#/$defs/color" },
+        "offsetXDp": { "type": "number", "minimum": -8, "maximum": 8 },
+        "offsetYDp": { "type": "number", "minimum": -8, "maximum": 8 },
+        "blurDp": { "type": "number", "minimum": 0, "maximum": 12 }
+      }
+    },
+    "decoration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "color", "opacity", "sizeDp", "spacingDp", "angleDegrees"],
+      "properties": {
+        "type": { "enum": ["none", "dots", "grid", "stripes", "scanlines", "speckles", "weave"] },
+        "color": { "$ref": "#/$defs/color" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sizeDp": { "type": "number", "exclusiveMinimum": 0, "maximum": 8 },
+        "spacingDp": { "type": "number", "exclusiveMinimum": 0, "maximum": 32 },
+        "angleDegrees": { "type": "number", "minimum": 0, "maximum": 360 }
+      }
+    },
+    "styleProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "$ref": "#/$defs/shape" },
+        "fill": { "$ref": "#/$defs/fill" },
+        "cornerRadiusDp": { "type": "number", "minimum": 0, "maximum": 32 },
+        "insetDp": { "type": "number", "minimum": 0, "maximum": 8 },
+        "roughnessDp": { "type": "number", "minimum": 0, "maximum": 3 },
+        "cutSizeDp": { "type": "number", "minimum": 0, "maximum": 32 },
+        "stroke": { "$ref": "#/$defs/stroke" },
+        "shadows": { "type": "array", "maxItems": 2, "items": { "$ref": "#/$defs/shadow" } },
+        "decoration": { "$ref": "#/$defs/decoration" }
+      }
+    },
+    "style": {
+      "allOf": [
+        { "$ref": "#/$defs/styleProperties" },
+        { "required": ["shape", "fill", "cornerRadiusDp", "insetDp", "roughnessDp", "cutSizeDp"] }
+      ]
+    },
+    "styleOverride": { "$ref": "#/$defs/styleProperties" },
+    "typography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["font", "weight", "letterSpacing"],
+      "properties": {
+        "font": { "enum": ["sans", "sansMedium", "sansCondensed", "serif", "monospace"] },
+        "weight": { "enum": ["normal", "medium", "bold"] },
+        "letterSpacing": { "type": "number", "minimum": -0.1, "maximum": 0.2 }
+      }
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["press", "background"],
+      "properties": {
+        "press": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scale", "translationXDp", "translationYDp", "durationMs", "releaseDurationMs"],
+          "properties": {
+            "scale": { "type": "number", "minimum": 0.9, "maximum": 1.05 },
+            "translationXDp": { "type": "number", "minimum": -4, "maximum": 4 },
+            "translationYDp": { "type": "number", "minimum": -4, "maximum": 4 },
+            "durationMs": { "type": "integer", "minimum": 0, "maximum": 500 },
+            "releaseDurationMs": { "type": "integer", "minimum": 0, "maximum": 500 }
+          }
+        },
+        "background": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "periodSeconds"],
+          "properties": {
+            "type": { "enum": ["none", "pulse", "sweep", "shift"] },
+            "periodSeconds": { "type": "number", "minimum": 0, "maximum": 30 }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "none" } } },
+              "then": { "properties": { "periodSeconds": { "minimum": 0, "maximum": 30 } } },
+              "else": { "properties": { "periodSeconds": { "minimum": 2, "maximum": 30 } } }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

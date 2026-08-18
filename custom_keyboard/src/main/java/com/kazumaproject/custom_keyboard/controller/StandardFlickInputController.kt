@@ -11,7 +11,7 @@ import android.view.WindowManager
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
@@ -63,7 +63,7 @@ class StandardFlickInputController(
     private var popupTextColor: Int = Color.BLACK
     private var popupStrokeColor: Int = Color.LTGRAY
     private var popupStyle = PopupViewStyle(100, 19f)
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     init {
         popupWindow = PopupWindow(
@@ -87,7 +87,7 @@ class StandardFlickInputController(
         this.popupStrokeColor = theme.separatorColor
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         popupView.setKeyboardSkin(skinId)
     }

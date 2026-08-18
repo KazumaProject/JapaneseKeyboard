@@ -49,7 +49,7 @@ class IMEServiceKeyboardSkinRuntimeSyncContractTest {
 
         assertTrue(childSkinBody.contains("KeyboardSkinViewStyler.clearTransientStyle(tabView)"))
         assertTrue(childSkinBody.contains("tabView.background = null"))
-        assertTrue(childSkinBody.contains("if (skin != KeyboardSkinId.DEFAULT)"))
+        assertTrue(childSkinBody.contains("if (!skin.isDefault())"))
     }
 
     @Test

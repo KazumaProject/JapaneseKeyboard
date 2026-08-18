@@ -11,7 +11,7 @@ import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDirection
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDrawable
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
@@ -49,7 +49,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     private var separatorColor = Color.LTGRAY
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var skinPopupDrawable: KeyboardSkinPopupDrawable? = null
 
     init {
@@ -81,7 +81,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         invalidate()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         skinPopupDrawable = KeyboardSkinPopupRenderer.createDrawable(
             context,

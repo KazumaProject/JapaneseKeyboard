@@ -28,6 +28,9 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
+import com.kazumaproject.core.data.keyboard.isDefault
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
@@ -292,7 +295,7 @@ class SuggestionAdapter internal constructor(
 
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
@@ -1422,7 +1425,7 @@ class SuggestionAdapter internal constructor(
     }
 
     private fun applyShortcutSkin(itemView: View, imageView: ImageView) {
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             KeyboardSkinViewStyler.applyFlatControl(
                 itemView,
                 keyboardSkinId,
@@ -1481,9 +1484,8 @@ class SuggestionAdapter internal constructor(
     }
 
     fun setKeyboardSkin(skinValue: String?, motionValue: String?) {
-        val nextSkin = KeyboardSkinId.fromPreference(skinValue)
+        val nextSkin = KeyboardSkinRef.fromPreference(skinValue).resolvedOrDefault()
         val nextMotion = KeyboardSkinMotionMode.fromPreference(motionValue)
-        if (keyboardSkinId == nextSkin && keyboardSkinMotionMode == nextMotion) return
         keyboardSkinId = nextSkin
         keyboardSkinMotionMode = nextMotion
         notifyItemRangeChanged(0, itemCount)
@@ -1795,7 +1797,7 @@ class SuggestionAdapter internal constructor(
     }
 
     private fun applyCandidateItemBackground(itemView: View) {
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             KeyboardSkinViewStyler.applyKey(
                 itemView,
                 keyboardSkinId,

@@ -38,12 +38,16 @@ import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRuntime
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
 import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
+import com.kazumaproject.core.data.keyboard.isDefault
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -215,8 +219,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     )
 
     private var themeMode: String = "default"
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
+    private var keyboardSkinRuntimeGeneration: Long = 0L
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
     private var customBgColor: Int = Color.WHITE
@@ -506,10 +511,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyboardSkin: String = KeyboardSkinId.DEFAULT.preferenceValue,
         keyboardSkinMotion: String = KeyboardSkinMotionMode.FULL.preferenceValue,
     ) {
-        val requestedSkin = KeyboardSkinId.fromPreference(keyboardSkin)
+        val requestedSkin = KeyboardSkinRef.fromPreference(keyboardSkin).resolvedOrDefault()
         val requestedMotion = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
+        val requestedRuntimeGeneration =
+            if (requestedSkin is KeyboardSkinRef.Imported) KeyboardSkinRuntime.generation() else 0L
         val builtInPalette = requestedSkin
-            .takeIf { it != KeyboardSkinId.DEFAULT }
+            .takeIf { !it.isDefault() }
             ?.let { KeyboardSkinCatalog.specFor(it).palette }
         val effectiveThemeMode = if (builtInPalette != null) "custom" else themeMode
         val effectiveBgColor = builtInPalette?.backgroundColor ?: customBgColor
@@ -524,6 +531,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             this.themeMode != effectiveThemeMode ||
                 this.keyboardSkinId != requestedSkin ||
                 this.keyboardSkinMotionMode != requestedMotion ||
+                this.keyboardSkinRuntimeGeneration != requestedRuntimeGeneration ||
                 this.isNightMode !=
                 (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ||
                 this.isDynamicColorEnabled != isDynamicColorEnabled ||
@@ -540,6 +548,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.themeMode = effectiveThemeMode
         this.keyboardSkinId = requestedSkin
         this.keyboardSkinMotionMode = requestedMotion
+        this.keyboardSkinRuntimeGeneration = requestedRuntimeGeneration
         KeyboardSkinPopupRenderer.specFor(requestedSkin)?.let { popup ->
             popupViewStyleSet = FlickPopupViewStyleSet(
                 directional = PopupViewStyle(100, popup.flickTextSizeSp),
@@ -564,7 +573,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyboardRenderRevision += 1
         }
 
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             background = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
                 .createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
         } else if (effectiveLiquidGlass) {
@@ -614,7 +623,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun defaultKeyBackgroundDrawable(keyData: KeyData, isDarkTheme: Boolean): Drawable? {
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             return KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
                 .createKeyDrawable(context, resolveElementRole(keyData), keyData.keyId.hashCode())
         }
@@ -1364,7 +1373,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
 
                 when {
-                    themeMode == "custom" || keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+                    themeMode == "custom" || !keyboardSkinId.isDefault() -> {
                         if (customBorderEnable) {
                             setDrawableSolidColor(visualPalette.baseColor)
                             setBorder(customBorderColor, borderWidth)
@@ -1425,7 +1434,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
 
                 when {
-                    themeMode == "custom" || keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+                    themeMode == "custom" || !keyboardSkinId.isDefault() -> {
                         if (customBorderEnable) {
                             setDrawableSolidColor(visualPalette.baseColor)
                             setTextColor(visualPalette.textColor)
@@ -1461,7 +1470,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             applyBuiltInKeyStyle(
                 view = keyView,
                 keyData = keyData,
@@ -1544,7 +1553,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             return KeyboardSkinDrawableFactory.createKeyDrawable(
                 context = context,
                 skinId = keyboardSkinId,

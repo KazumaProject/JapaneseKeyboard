@@ -20,7 +20,7 @@ import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.ShapeType
 import com.kazumaproject.custom_keyboard.data.getDirectionForAngle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import kotlin.math.cos
@@ -59,7 +59,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         separatorColor = "#BDBDBD".toColorInt(),
         textColor = Color.BLACK
     )
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     init {
         applyThemeToPaints()
@@ -141,7 +141,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         if (KeyboardSkinPopupRenderer.isFixedCupertino(skinId)) {
             applyCupertinoColors()

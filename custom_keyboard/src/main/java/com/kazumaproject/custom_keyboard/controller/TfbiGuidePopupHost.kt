@@ -5,7 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -40,7 +40,7 @@ internal class TfbiGuidePopupHost(
     private var configuredBackgroundColor: Int? = null
     private var configuredHighlightedColor: Int? = null
     private var configuredTextColor: Int? = null
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     fun show(
         anchor: View,
@@ -105,7 +105,7 @@ internal class TfbiGuidePopupHost(
         guideView?.setInputTextTransform(transform)
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         guideView?.setKeyboardSkin(skinId)
     }

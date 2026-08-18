@@ -54,12 +54,16 @@ import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
 import com.kazumaproject.core.data.keyboard.resolveKeyboardSkinPalette
+import com.kazumaproject.core.data.keyboard.isBuiltIn
+import com.kazumaproject.core.data.keyboard.isDefault
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -287,7 +291,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
@@ -445,7 +449,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
-        this.keyboardSkinId = KeyboardSkinId.fromPreference(keyboardSkin)
+        this.keyboardSkinId = KeyboardSkinRef.fromPreference(keyboardSkin).resolvedOrDefault()
         this.keyboardSkinMotionMode = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
@@ -467,7 +471,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         LayoutInflater.from(context)
 
         when {
-            this.keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+            !this.keyboardSkinId.isDefault() -> {
                 applyBuiltInSkin()
             }
 
@@ -2514,7 +2518,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 keyboardSkinId,
                 KeyboardSkinPopupKind.KEY_PREVIEW,
             )
-        } else if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        } else if (!keyboardSkinId.isDefault()) {
             val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
             iv.background = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
                 .createKeyDrawable(context, KeyboardElementRole.POPUP, view.id)
@@ -2806,7 +2810,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             setChars(variations)
         }
         when {
-            keyboardSkinId != KeyboardSkinId.DEFAULT -> Unit
+            !keyboardSkinId.isDefault() -> Unit
             themeMode == "custom" -> {
                 variationPopupView?.setNeumorphicColors(
                     bgColor = customSpecialKeyColor,

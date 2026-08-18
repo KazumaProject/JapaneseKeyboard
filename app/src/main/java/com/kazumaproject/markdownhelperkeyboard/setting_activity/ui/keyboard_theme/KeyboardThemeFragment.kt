@@ -18,6 +18,10 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRuntime
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
+import com.kazumaproject.core.data.keyboard.isDefault
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import dagger.hilt.android.AndroidEntryPoint
@@ -536,16 +540,21 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
     }
 
     private fun updateSkinOverrideState() {
-        val skin = KeyboardSkinId.fromPreference(appPreference.keyboard_skin)
-        skinPreference?.summary = if (skin == KeyboardSkinId.DEFAULT) {
+        val skin = KeyboardSkinRef.fromPreference(appPreference.keyboard_skin).resolvedOrDefault()
+        val skinName = when (skin) {
+            is KeyboardSkinRef.BuiltIn -> getString(keyboardSkinNameResource(skin.id))
+            is KeyboardSkinRef.Imported -> KeyboardSkinRuntime.definitionFor(skin.id)?.name
+                ?: skin.id
+        }
+        skinPreference?.summary = if (skin.isDefault()) {
             getString(R.string.keyboard_skin_summary)
         } else {
             getString(
                 R.string.keyboard_skin_summary_selected,
-                getString(keyboardSkinNameResource(skin)),
+                skinName,
             )
         }
-        val themeControlsEnabled = skin == KeyboardSkinId.DEFAULT
+        val themeControlsEnabled = skin.isDefault()
         skinOverriddenCategories.forEach { category ->
             category.isEnabled = themeControlsEnabled
             category.summary = if (themeControlsEnabled) {

@@ -44,9 +44,12 @@ import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
+import com.kazumaproject.core.data.keyboard.isDefault
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
@@ -90,7 +93,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var themeIconColor: Int = Color.GRAY
     private var themeSelectedIconColor: Int = Color.BLUE
     private var themeKeyBackgroundColor: Int = Color.LTGRAY
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var liquidGlassEnable: Boolean = false
 
@@ -276,17 +279,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         keyboardSkin: String = KeyboardSkinId.DEFAULT.preferenceValue,
         keyboardSkinMotion: String = KeyboardSkinMotionMode.FULL.preferenceValue,
     ) {
-        this.keyboardSkinId = KeyboardSkinId.fromPreference(keyboardSkin)
+        this.keyboardSkinId = KeyboardSkinRef.fromPreference(keyboardSkin).resolvedOrDefault()
         this.keyboardSkinMotionMode = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
         val builtInPalette = keyboardSkinId
-            .takeIf { it != KeyboardSkinId.DEFAULT }
+            .takeIf { !it.isDefault() }
             ?.let { KeyboardSkinCatalog.specFor(it).palette }
         this.themeBackgroundColor = builtInPalette?.backgroundColor ?: backgroundColor
         this.themeIconColor = builtInPalette?.normalKeyTextColor ?: iconColor
         this.themeSelectedIconColor = builtInPalette?.accentColor ?: selectedIconColor
         this.themeKeyBackgroundColor = builtInPalette?.normalKeyColor ?: keyBackgroundColor
         this.isCustomThemeApplied = true
-        this.liquidGlassEnable = liquidGlassEnable && keyboardSkinId == KeyboardSkinId.DEFAULT
+        this.liquidGlassEnable = liquidGlassEnable && keyboardSkinId.isDefault()
 
         val effectiveBackgroundColor = themeBackgroundColor
         val effectiveIconColor = themeIconColor
@@ -294,7 +297,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         val effectiveKeyBackgroundColor = themeKeyBackgroundColor
 
         // 1. 全体の背景色
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             background = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
                 .createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
         } else if (this.liquidGlassEnable) {
@@ -314,7 +317,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         )
         val tabColorStateList = ColorStateList(states, colors)
         val bgTintList = ColorStateList.valueOf(
-            if (keyboardSkinId == KeyboardSkinId.DEFAULT) effectiveBackgroundColor else Color.TRANSPARENT
+            if (keyboardSkinId.isDefault()) effectiveBackgroundColor else Color.TRANSPARENT
         )
 
         // 3. Category Tab の全体設定
@@ -346,7 +349,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         // 5. 機能キー (Return/Delete) のニューモーフィズム設定
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             KeyboardSkinViewStyler.applyKey(
                 returnButton,
                 keyboardSkinId,
@@ -394,8 +397,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     /** Restores the layout/resource-driven appearance after leaving a built-in skin. */
     fun resetKeyboardTheme() {
-        if (keyboardSkinId == KeyboardSkinId.DEFAULT && !isCustomThemeApplied) return
-        keyboardSkinId = KeyboardSkinId.DEFAULT
+        if (keyboardSkinId.isDefault() && !isCustomThemeApplied) return
+        keyboardSkinId = KeyboardSkinRef.DEFAULT
         keyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
         liquidGlassEnable = false
         isCustomThemeApplied = false
@@ -482,7 +485,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             }
 
             // 背景を設定
-            if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+            if (!keyboardSkinId.isDefault()) {
                 KeyboardSkinViewStyler.applyKey(
                     tabView,
                     keyboardSkinId,
@@ -513,7 +516,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
      * TenKeyの getDynamicNeumorphDrawable と同等の実装
      */
     private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             return KeyboardSkinDrawableFactory.createKeyDrawable(
                 context = context,
                 skinId = keyboardSkinId,

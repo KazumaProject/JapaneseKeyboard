@@ -18,8 +18,9 @@ class KeyboardSkinBackdropView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs), Choreographer.FrameCallback {
-    private var skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var skinRef: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var motionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
+    private var runtimeGeneration = KeyboardSkinRuntime.generation()
     private var deckDrawable: Drawable? = null
     private var startFrameNanos = 0L
     private var lastDrawNanos = 0L
@@ -36,26 +37,44 @@ class KeyboardSkinBackdropView @JvmOverloads constructor(
     fun setSkin(
         skin: KeyboardSkinId,
         motion: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL,
+    ) = setSkin(KeyboardSkinRef.BuiltIn(skin), motion)
+
+    fun setSkin(
+        skin: KeyboardSkinRef,
+        motion: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL,
     ) {
-        if (skin == skinId && motion == motionMode && deckDrawable != null) {
+        val nextRuntimeGeneration = runtimeGenerationFor(skin)
+        if (
+            skin == skinRef &&
+            motion == motionMode &&
+            deckDrawable != null &&
+            nextRuntimeGeneration == runtimeGeneration
+        ) {
             updateFrameLoop()
             return
         }
         stopFrameLoop()
-        skinId = skin
+        skinRef = skin
         motionMode = motion
-        deckDrawable = if (skin == KeyboardSkinId.DEFAULT) {
+        runtimeGeneration = nextRuntimeGeneration
+        deckDrawable = if (skin.isDefault()) {
             null
         } else {
             KeyboardSkinRendererRegistry.rendererFor(skin)
                 .createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
         }
-        visibility = if (skin == KeyboardSkinId.DEFAULT) GONE else VISIBLE
+        visibility = if (skin.isDefault()) GONE else VISIBLE
         invalidate()
         updateFrameLoop()
     }
 
-    fun activeSkin(): KeyboardSkinId = skinId
+    private fun runtimeGenerationFor(skin: KeyboardSkinRef): Long =
+        if (skin is KeyboardSkinRef.Imported) KeyboardSkinRuntime.generation() else 0L
+
+    fun activeSkin(): KeyboardSkinId = (skinRef as? KeyboardSkinRef.BuiltIn)?.id
+        ?: KeyboardSkinId.DEFAULT
+
+    fun activeSkinRef(): KeyboardSkinRef = skinRef
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -73,7 +92,7 @@ class KeyboardSkinBackdropView @JvmOverloads constructor(
         }
         if (startFrameNanos == 0L) startFrameNanos = frameTimeNanos
         if (frameTimeNanos - lastDrawNanos >= FRAME_INTERVAL_NANOS) {
-            val periodNanos = KeyboardSkinCatalog.specFor(skinId).motion.continuousPeriodMs * 1_000_000L
+            val periodNanos = KeyboardSkinCatalog.specFor(skinRef).motion.continuousPeriodMs * 1_000_000L
             val phase = if (periodNanos > 0L) {
                 ((frameTimeNanos - startFrameNanos) % periodNanos).toFloat() / periodNanos.toFloat()
             } else {
@@ -117,8 +136,8 @@ class KeyboardSkinBackdropView @JvmOverloads constructor(
 
     private fun shouldAnimate(): Boolean {
         if (!isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE) return false
-        if (motionMode != KeyboardSkinMotionMode.FULL || skinId == KeyboardSkinId.DEFAULT) return false
-        if (KeyboardSkinCatalog.specFor(skinId).motion.continuousPeriodMs <= 0L) return false
+        if (motionMode != KeyboardSkinMotionMode.FULL || skinRef.isDefault()) return false
+        if (KeyboardSkinCatalog.specFor(skinRef).motion.continuousPeriodMs <= 0L) return false
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()
     }
 

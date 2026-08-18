@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.SystemClock
 import android.widget.TextView
+import android.view.View
 import androidx.navigation.Navigation
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
@@ -44,23 +45,18 @@ class KeyboardSkinPickerInstrumentedTest {
             }
             awaitSkinGrid(scenario, instrumentation)
 
-            scenario.onActivity { activity ->
-                activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid)
-                    .scrollToPosition(KeyboardSkinId.CUPERTINO_DARK.ordinal)
-            }
-            instrumentation.waitForIdleSync()
-            SystemClock.sleep(350)
+            // Position is intentionally not derived from enum ordinal: imported cards are listed
+            // first and the built-in order is an implementation detail.
+            val light = findSkinCard(scenario, instrumentation, KeyboardSkinId.CUPERTINO.preferenceValue)
+            val dark = findSkinCard(scenario, instrumentation, KeyboardSkinId.CUPERTINO_DARK.preferenceValue)
 
             scenario.onActivity { activity ->
-                val grid = activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid)
                 assertLabelIsComplete(
-                    grid,
-                    KeyboardSkinId.CUPERTINO.ordinal,
+                    light,
                     activity.getString(R.string.keyboard_skin_cupertino),
                 )
                 assertLabelIsComplete(
-                    grid,
-                    KeyboardSkinId.CUPERTINO_DARK.ordinal,
+                    dark,
                     activity.getString(R.string.keyboard_skin_cupertino_dark),
                 )
 
@@ -118,21 +114,12 @@ class KeyboardSkinPickerInstrumentedTest {
             awaitSkinGrid(scenario, instrumentation)
 
             skins.forEachIndexed { index, skin ->
+                val item = findSkinCard(scenario, instrumentation, skin.preferenceValue)
                 scenario.onActivity { activity ->
-                    activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid)
-                        .scrollToPosition(skin.ordinal)
-                }
-                instrumentation.waitForIdleSync()
-                SystemClock.sleep(120)
-                scenario.onActivity { activity ->
-                    val grid = activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid)
-                    val item = grid.findViewHolderForAdapterPosition(skin.ordinal)?.itemView
-                        ?: grid.layoutManager?.findViewByPosition(skin.ordinal)
-                    assertNotNull("Skin card ${skin.name} must be visible", item)
-                    val label = checkNotNull(item).findViewById<TextView>(R.id.keyboard_skin_name)
+                    val label = item.findViewById<TextView>(R.id.keyboard_skin_name)
                     assertEquals(activity.getString(nameResources[index]), label.text.toString())
                     assertLabelHasNoEllipsis(label)
-                    checkNotNull(item).performClick()
+                    item.performClick()
                 }
                 instrumentation.waitForIdleSync()
                 assertEquals(
@@ -162,16 +149,43 @@ class KeyboardSkinPickerInstrumentedTest {
     }
 
     private fun assertLabelIsComplete(
-        grid: RecyclerView,
-        position: Int,
+        item: View,
         expectedText: String,
     ) {
-        val item = grid.findViewHolderForAdapterPosition(position)?.itemView
-            ?: grid.layoutManager?.findViewByPosition(position)
-        assertNotNull("Skin card $position must be visible", item)
-        val label = checkNotNull(item).findViewById<TextView>(R.id.keyboard_skin_name)
+        val label = item.findViewById<TextView>(R.id.keyboard_skin_name)
         assertEquals(expectedText, label.text.toString())
         assertLabelHasNoEllipsis(label)
+    }
+
+    private fun findSkinCard(
+        scenario: ActivityScenario<MainActivity>,
+        instrumentation: android.app.Instrumentation,
+        preferenceValue: String,
+    ): View {
+        var itemCount = 0
+        scenario.onActivity { activity ->
+            itemCount = activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid).adapter?.itemCount ?: 0
+        }
+        repeat(itemCount) { position ->
+            scenario.onActivity { activity ->
+                activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid).scrollToPosition(position)
+            }
+            instrumentation.waitForIdleSync()
+            SystemClock.sleep(80)
+            var match: View? = null
+            scenario.onActivity { activity ->
+                val grid = activity.findViewById<RecyclerView>(R.id.keyboard_skin_grid)
+                for (index in 0 until grid.childCount) {
+                    val child = grid.getChildAt(index)
+                    if (child.tag == preferenceValue) {
+                        match = child
+                        break
+                    }
+                }
+            }
+            if (match != null) return match as View
+        }
+        throw AssertionError("Skin card $preferenceValue must be visible")
     }
 
     private fun assertLabelHasNoEllipsis(label: TextView) {

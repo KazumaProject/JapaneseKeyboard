@@ -23,8 +23,14 @@ object KeyboardSkinPopupRenderer {
     fun specFor(skinId: KeyboardSkinId): KeyboardSkinPopupSpec? =
         KeyboardSkinCatalog.specFor(skinId).popup
 
+    fun specFor(skinRef: KeyboardSkinRef): KeyboardSkinPopupSpec? =
+        KeyboardSkinCatalog.specFor(skinRef).popup
+
     fun isFixedCupertino(skinId: KeyboardSkinId): Boolean =
         specFor(skinId) != null
+
+    fun isFixedCupertino(skinRef: KeyboardSkinRef): Boolean =
+        specFor(skinRef) != null
 
     fun createDrawable(
         context: Context,
@@ -35,6 +41,30 @@ object KeyboardSkinPopupRenderer {
     ): Drawable? {
         val popup = specFor(skinId) ?: return null
         return KeyboardSkinPopupDrawable(context, popup, kind, direction, selected)
+    }
+
+    fun createDrawable(
+        context: Context,
+        skinId: KeyboardSkinRef,
+        kind: KeyboardSkinPopupKind,
+        direction: KeyboardSkinPopupDirection = KeyboardSkinPopupDirection.CENTER,
+        selected: Boolean = false,
+    ): Drawable? {
+        val popup = specFor(skinId) ?: return null
+        val importedSurface = if (skinId is KeyboardSkinRef.Imported) {
+            KeyboardSkinRendererRegistry.rendererFor(skinId)
+                .createSurfaceDrawable(context, KeyboardSurfaceRole.POPUP)
+        } else {
+            null
+        }
+        return KeyboardSkinPopupDrawable(
+            context = context,
+            spec = popup,
+            kind = kind,
+            direction = direction,
+            selected = selected,
+            surfaceDrawable = importedSurface,
+        )
     }
 
     /** Applies the fixed iOS typography. Returns false when the skin has no popup spec. */
@@ -69,7 +99,47 @@ object KeyboardSkinPopupRenderer {
         return true
     }
 
+    fun applyTextStyle(
+        view: TextView,
+        skinId: KeyboardSkinRef,
+        kind: KeyboardSkinPopupKind,
+        selected: Boolean = false,
+    ): Boolean {
+        val popup = specFor(skinId) ?: return false
+        val skin = KeyboardSkinCatalog.specFor(skinId)
+        view.setTextColor(if (selected) popup.selectedTextColor else popup.textColor)
+        view.typeface = Typeface.create(
+            skin.typography.familyName,
+            if (skin.typography.bold) Typeface.BOLD else Typeface.NORMAL,
+        )
+        view.includeFontPadding = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            view.letterSpacing = skin.typography.letterSpacing
+        }
+        view.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            when (kind) {
+                KeyboardSkinPopupKind.KEY_PREVIEW -> popup.keyPreviewTextSizeSp
+                KeyboardSkinPopupKind.VARIATION -> popup.variationTextSizeSp
+                else -> popup.flickTextSizeSp
+            },
+        )
+        val horizontal = dp(view.context, popup.contentPaddingHorizontalDp).toInt()
+        val vertical = dp(view.context, popup.contentPaddingVerticalDp).toInt()
+        view.setPadding(horizontal, vertical, horizontal, vertical)
+        return true
+    }
+
     fun popupTextSizeSp(skinId: KeyboardSkinId, kind: KeyboardSkinPopupKind): Float? {
+        val popup = specFor(skinId) ?: return null
+        return when (kind) {
+            KeyboardSkinPopupKind.KEY_PREVIEW -> popup.keyPreviewTextSizeSp
+            KeyboardSkinPopupKind.VARIATION -> popup.variationTextSizeSp
+            else -> popup.flickTextSizeSp
+        }
+    }
+
+    fun popupTextSizeSp(skinId: KeyboardSkinRef, kind: KeyboardSkinPopupKind): Float? {
         val popup = specFor(skinId) ?: return null
         return when (kind) {
             KeyboardSkinPopupKind.KEY_PREVIEW -> popup.keyPreviewTextSizeSp
@@ -114,6 +184,40 @@ object KeyboardSkinPopupRenderer {
         return true
     }
 
+    fun drawPath(
+        canvas: Canvas,
+        context: Context,
+        skinId: KeyboardSkinRef,
+        _kind: KeyboardSkinPopupKind,
+        path: Path,
+        selected: Boolean = false,
+    ): Boolean {
+        val popup = specFor(skinId) ?: return false
+        val density = context.resources.displayMetrics.density
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = popup.shadowColor
+            alpha = if (selected) popup.selectedShadowAlpha else popup.shadowAlpha
+            style = Paint.Style.FILL
+        }
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = if (selected) popup.selectedSurfaceColor else popup.surfaceColor
+            style = Paint.Style.FILL
+        }
+        canvas.save()
+        canvas.translate(0f, density)
+        canvas.drawPath(path, shadowPaint)
+        canvas.restore()
+        canvas.drawPath(path, fillPaint)
+        if (popup.strokeWidthDp > 0f) {
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = if (selected) popup.selectedSurfaceColor else popup.surfaceColor
+                style = Paint.Style.STROKE
+                strokeWidth = popup.strokeWidthDp * density
+            }.also { canvas.drawPath(path, it) }
+        }
+        return true
+    }
+
     /** Draws a shared rounded surface for Canvas-based custom popup variants. */
     fun drawRoundRect(
         canvas: Canvas,
@@ -135,11 +239,48 @@ object KeyboardSkinPopupRenderer {
         return true
     }
 
+    fun drawRoundRect(
+        canvas: Canvas,
+        context: Context,
+        skinId: KeyboardSkinRef,
+        kind: KeyboardSkinPopupKind,
+        bounds: RectF,
+        selected: Boolean = false,
+        direction: KeyboardSkinPopupDirection = KeyboardSkinPopupDirection.CENTER,
+    ): Boolean {
+        val drawable = createDrawable(context, skinId, kind, direction, selected) ?: return false
+        drawable.setBounds(bounds.left.toInt(), bounds.top.toInt(), bounds.right.toInt(), bounds.bottom.toInt())
+        drawable.draw(canvas)
+        return true
+    }
+
     /** Applies the shared popup typography to a Canvas paint. */
     fun applyPaintStyle(
         paint: Paint,
         context: Context,
         skinId: KeyboardSkinId,
+        kind: KeyboardSkinPopupKind,
+        selected: Boolean = false,
+    ): Boolean {
+        val popup = specFor(skinId) ?: return false
+        val skin = KeyboardSkinCatalog.specFor(skinId)
+        paint.color = if (selected) popup.selectedTextColor else popup.textColor
+        paint.typeface = Typeface.create(
+            skin.typography.familyName,
+            if (skin.typography.bold) Typeface.BOLD else Typeface.NORMAL,
+        )
+        paint.textSize = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_SP,
+            popupTextSizeSp(skinId, kind) ?: return false,
+            context.resources.displayMetrics,
+        )
+        return true
+    }
+
+    fun applyPaintStyle(
+        paint: Paint,
+        context: Context,
+        skinId: KeyboardSkinRef,
         kind: KeyboardSkinPopupKind,
         selected: Boolean = false,
     ): Boolean {
@@ -192,6 +333,7 @@ class KeyboardSkinPopupDrawable(
     private val kind: KeyboardSkinPopupKind,
     direction: KeyboardSkinPopupDirection,
     selected: Boolean,
+    private val surfaceDrawable: Drawable? = null,
 ) : Drawable() {
 
     private val density = context.resources.displayMetrics.density
@@ -207,6 +349,18 @@ class KeyboardSkinPopupDrawable(
 
     override fun draw(canvas: Canvas) {
         if (boundsF.isEmpty) return
+        surfaceDrawable?.let { importedSurface ->
+            importedSurface.setBounds(bounds)
+            importedSurface.alpha = drawableAlpha
+            importedSurface.colorFilter = drawableColorFilter
+            importedSurface.state = if (selected) {
+                intArrayOf(android.R.attr.state_pressed, android.R.attr.state_enabled)
+            } else {
+                intArrayOf()
+            }
+            importedSurface.draw(canvas)
+            return
+        }
         val shadowAlpha = if (selected) spec.selectedShadowAlpha else spec.shadowAlpha
         shadowPaint.color = spec.shadowColor
         shadowPaint.alpha = shadowAlpha * drawableAlpha / 255
@@ -232,6 +386,7 @@ class KeyboardSkinPopupDrawable(
 
     override fun onBoundsChange(bounds: Rect) {
         boundsF.set(bounds)
+        surfaceDrawable?.bounds = bounds
         rebuildPath()
     }
 
@@ -245,6 +400,11 @@ class KeyboardSkinPopupDrawable(
     fun setSelected(selected: Boolean) {
         if (this.selected == selected) return
         this.selected = selected
+        surfaceDrawable?.state = if (selected) {
+            intArrayOf(android.R.attr.state_pressed, android.R.attr.state_enabled)
+        } else {
+            intArrayOf()
+        }
         invalidateSelf()
     }
 
@@ -338,11 +498,13 @@ class KeyboardSkinPopupDrawable(
 
     override fun setAlpha(alpha: Int) {
         drawableAlpha = alpha.coerceIn(0, 255)
+        surfaceDrawable?.alpha = drawableAlpha
         invalidateSelf()
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
         drawableColorFilter = colorFilter
+        surfaceDrawable?.colorFilter = colorFilter
         invalidateSelf()
     }
 

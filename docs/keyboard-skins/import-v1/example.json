@@ -1,0 +1,242 @@
+{
+  "format": "sumire-keyboard-skin",
+  "formatVersion": 1,
+  "id": "ai-sakura-cyber",
+  "name": "桜サイバー",
+  "author": "Sumire sample",
+  "description": "グラデーション、幾何学キー、装飾、モーションを使う検証済みサンプル",
+  "palette": {
+    "background": "#121629",
+    "normalKey": "#273254",
+    "specialKey": "#3B315D",
+    "actionKey": "#8A2145",
+    "normalKeyText": "#FFFFFF",
+    "specialKeyText": "#FFFFFF",
+    "actionKeyText": "#FFFFFF",
+    "accent": "#FFB3C7",
+    "secondaryAccent": "#63D8FF",
+    "candidateSurface": "#1B223A",
+    "candidateText": "#FFFFFF"
+  },
+  "keys": {
+    "base": {
+      "shape": "roundedRect",
+      "fill": {
+        "type": "linearGradient",
+        "colors": ["@palette.normalKey", "#3D4D7C", "@palette.secondaryAccent"],
+        "stops": [0, 0.55, 1],
+        "angleDegrees": 135
+      },
+      "cornerRadiusDp": 12,
+      "insetDp": 1.5,
+      "roughnessDp": 0.5,
+      "cutSizeDp": 3,
+      "stroke": { "color": "@palette.accent", "widthDp": 1 },
+      "shadows": [
+        { "color": "#66000000", "offsetXDp": 1, "offsetYDp": 2, "blurDp": 5 },
+        { "color": "#443E8CFF", "offsetXDp": -1, "offsetYDp": -1, "blurDp": 2 }
+      ],
+      "decoration": {
+        "type": "dots",
+        "color": "@palette.accent",
+        "opacity": 0.12,
+        "sizeDp": 1,
+        "spacingDp": 8,
+        "angleDegrees": 0
+      }
+    },
+    "character": {},
+    "modifier": {
+      "shape": "capsule",
+      "fill": { "type": "solid", "color": "@palette.specialKey" },
+      "decoration": {
+        "type": "grid",
+        "color": "@palette.secondaryAccent",
+        "opacity": 0.1,
+        "sizeDp": 0.8,
+        "spacingDp": 10,
+        "angleDegrees": 0
+      }
+    },
+    "action": {
+      "shape": "cutCorner",
+      "fill": {
+        "type": "radialGradient",
+        "colors": ["@palette.actionKey", "#4E1534"],
+        "stops": [0, 1],
+        "centerX": 0.35,
+        "centerY": 0.3,
+        "radius": 0.9
+      },
+      "cutSizeDp": 6,
+      "decoration": {
+        "type": "speckles",
+        "color": "@palette.accent",
+        "opacity": 0.14,
+        "sizeDp": 1.2,
+        "spacingDp": 7,
+        "angleDegrees": 0
+      }
+    },
+    "space": {
+      "shape": "hexagon",
+      "fill": { "type": "solid", "color": "@palette.normalKey" }
+    },
+    "candidate": {
+      "shape": "pixelNotched",
+      "fill": {
+        "type": "linearGradient",
+        "colors": ["@palette.candidateSurface", "#293A60"],
+        "stops": [0, 1],
+        "angleDegrees": 90
+      },
+      "cutSizeDp": 3
+    },
+    "toolbar": {
+      "shape": "roughRect",
+      "fill": { "type": "solid", "color": "@palette.specialKey" },
+      "roughnessDp": 1.2
+    },
+    "popup": {
+      "shape": "roundedRect",
+      "fill": {
+        "type": "radialGradient",
+        "colors": ["#5B477F", "@palette.specialKey"],
+        "stops": [0, 1],
+        "centerX": 0.5,
+        "centerY": 0.25,
+        "radius": 1
+      },
+      "cornerRadiusDp": 16
+    }
+  },
+  "surfaces": {
+    "deck": {
+      "shape": "roughRect",
+      "fill": {
+        "type": "radialGradient",
+        "colors": ["#29345B", "@palette.background"],
+        "stops": [0, 1],
+        "centerX": 0.25,
+        "centerY": 0.15,
+        "radius": 1
+      },
+      "cornerRadiusDp": 10,
+      "insetDp": 0,
+      "roughnessDp": 1,
+      "cutSizeDp": 0,
+      "stroke": { "color": "@palette.accent", "widthDp": 1 },
+      "shadows": [],
+      "decoration": {
+        "type": "weave",
+        "color": "@palette.secondaryAccent",
+        "opacity": 0.08,
+        "sizeDp": 1,
+        "spacingDp": 14,
+        "angleDegrees": 0
+      }
+    },
+    "candidateStrip": {
+      "shape": "capsule",
+      "fill": {
+        "type": "linearGradient",
+        "colors": ["@palette.candidateSurface", "#293A60"],
+        "stops": [0, 1],
+        "angleDegrees": 0
+      },
+      "cornerRadiusDp": 16,
+      "insetDp": 0,
+      "roughnessDp": 0,
+      "cutSizeDp": 0,
+      "stroke": { "color": "@palette.secondaryAccent", "widthDp": 0.5 },
+      "shadows": [],
+      "decoration": {
+        "type": "scanlines",
+        "color": "@palette.accent",
+        "opacity": 0.08,
+        "sizeDp": 0.8,
+        "spacingDp": 6,
+        "angleDegrees": 0
+      }
+    },
+    "candidatePanel": {
+      "shape": "cutCorner",
+      "fill": { "type": "solid", "color": "@palette.candidateSurface" },
+      "cornerRadiusDp": 4,
+      "insetDp": 0,
+      "roughnessDp": 0,
+      "cutSizeDp": 4,
+      "stroke": { "color": "@palette.accent", "widthDp": 0.5 },
+      "shadows": [],
+      "decoration": {
+        "type": "stripes",
+        "color": "@palette.secondaryAccent",
+        "opacity": 0.08,
+        "sizeDp": 1,
+        "spacingDp": 12,
+        "angleDegrees": 35
+      }
+    },
+    "toolbar": {
+      "shape": "pixelNotched",
+      "fill": { "type": "solid", "color": "@palette.specialKey" },
+      "cornerRadiusDp": 2,
+      "insetDp": 0,
+      "roughnessDp": 0,
+      "cutSizeDp": 3,
+      "stroke": { "color": "@palette.accent", "widthDp": 0 },
+      "shadows": [],
+      "decoration": {
+        "type": "grid",
+        "color": "@palette.accent",
+        "opacity": 0.08,
+        "sizeDp": 0.7,
+        "spacingDp": 10,
+        "angleDegrees": 0
+      }
+    },
+    "popup": {
+      "shape": "hexagon",
+      "fill": {
+        "type": "linearGradient",
+        "colors": ["#6B4E91", "@palette.specialKey", "#241D43"],
+        "stops": [0, 0.5, 1],
+        "angleDegrees": 90
+      },
+      "cornerRadiusDp": 6,
+      "insetDp": 0,
+      "roughnessDp": 0,
+      "cutSizeDp": 0,
+      "stroke": { "color": "@palette.accent", "widthDp": 1 },
+      "shadows": [
+        { "color": "#77000000", "offsetXDp": 0, "offsetYDp": 2, "blurDp": 6 }
+      ],
+      "decoration": {
+        "type": "speckles",
+        "color": "@palette.accent",
+        "opacity": 0.1,
+        "sizeDp": 1,
+        "spacingDp": 9,
+        "angleDegrees": 0
+      }
+    }
+  },
+  "typography": {
+    "font": "sansCondensed",
+    "weight": "medium",
+    "letterSpacing": 0.02
+  },
+  "motion": {
+    "press": {
+      "scale": 0.94,
+      "translationXDp": -2,
+      "translationYDp": 2.2,
+      "durationMs": 120,
+      "releaseDurationMs": 180
+    },
+    "background": {
+      "type": "shift",
+      "periodSeconds": 12
+    }
+  }
+}

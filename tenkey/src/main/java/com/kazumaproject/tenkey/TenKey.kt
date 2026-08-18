@@ -50,6 +50,9 @@ import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
+import com.kazumaproject.core.data.keyboard.isDefault
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
@@ -315,7 +318,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
@@ -941,7 +944,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
-        this.keyboardSkinId = KeyboardSkinId.fromPreference(keyboardSkin)
+        this.keyboardSkinId = KeyboardSkinRef.fromPreference(keyboardSkin).resolvedOrDefault()
         this.keyboardSkinMotionMode = KeyboardSkinMotionMode.fromPreference(keyboardSkinMotion)
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
@@ -963,7 +966,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val inflater = LayoutInflater.from(context)
 
         when {
-            this.keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+            !this.keyboardSkinId.isDefault() -> {
                 KeyboardSkinPopupRenderer.specFor(this.keyboardSkinId)?.let { popup ->
                     popupViewStyle = PopupViewStyle(100, popup.flickTextSizeSp)
                 }

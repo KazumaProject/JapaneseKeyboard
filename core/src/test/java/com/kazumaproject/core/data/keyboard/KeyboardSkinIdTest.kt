@@ -43,6 +43,18 @@ class KeyboardSkinIdTest {
     }
 
     @Test
+    fun importedReferencesUseAStableNamespacedPreferenceValue() {
+        val reference = KeyboardSkinRef.fromPreference("imported:ai-sakura-cyber")
+
+        assertEquals(
+            KeyboardSkinRef.Imported("ai-sakura-cyber"),
+            reference,
+        )
+        assertEquals("imported:ai-sakura-cyber", reference.preferenceValue)
+        assertEquals(KeyboardSkinRef.DEFAULT, KeyboardSkinRef.fromPreference("imported:bad id"))
+    }
+
+    @Test
     fun nonDefaultSkinsOwnTheirPaletteAndVisualIdentity() {
         val specs = KeyboardSkinCatalog.all().filter { it.id != KeyboardSkinId.DEFAULT }
         val baseDesigns = specs.filter { it.id != KeyboardSkinId.CUPERTINO_DARK }

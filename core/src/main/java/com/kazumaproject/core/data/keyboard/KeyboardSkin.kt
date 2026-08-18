@@ -157,6 +157,7 @@ data class KeyboardSkinMotionSpec(
     val releaseDurationMs: Long,
     /** Zero means that the skin has no continuously animated backdrop. */
     val continuousPeriodMs: Long,
+    val backgroundAnimation: KeyboardSkinBackgroundAnimation = KeyboardSkinBackgroundAnimation.NONE,
 )
 
 /**
@@ -213,6 +214,13 @@ data class KeyboardSkinSpec(
     val depthModel: KeyboardSkinDepthModel,
     val motion: KeyboardSkinMotionSpec,
     val popup: KeyboardSkinPopupSpec? = null,
+    /** Imported skins keep the built-in-compatible [id] field but carry their real reference here. */
+    val reference: KeyboardSkinRef = KeyboardSkinRef.BuiltIn(id),
+    val keyStyles: Map<KeyboardElementRole, KeyboardSkinShapeStyle> = emptyMap(),
+    val surfaceStyles: Map<KeyboardSurfaceRole, KeyboardSkinShapeStyle> = emptyMap(),
+    val displayName: String? = null,
+    val author: String? = null,
+    val description: String? = null,
 )
 
 /**
@@ -453,6 +461,12 @@ object KeyboardSkinCatalog {
     fun specFor(id: KeyboardSkinId): KeyboardSkinSpec =
         checkNotNull(specs[id]) { "Missing keyboard skin specification for $id" }
 
+    fun specFor(reference: KeyboardSkinRef): KeyboardSkinSpec = when (reference) {
+        is KeyboardSkinRef.BuiltIn -> specFor(reference.id)
+        is KeyboardSkinRef.Imported -> KeyboardSkinRuntime.specFor(reference.id)
+            ?: specFor(KeyboardSkinId.DEFAULT)
+    }
+
     fun all(): List<KeyboardSkinSpec> = KeyboardSkinId.entries.map(::specFor)
 
     private fun palette(
@@ -514,6 +528,7 @@ sealed interface KeyboardAppearance {
     data class BuiltIn(
         val spec: KeyboardSkinSpec,
         val motionMode: KeyboardSkinMotionMode,
+        val reference: KeyboardSkinRef = KeyboardSkinRef.BuiltIn(spec.id),
     ) : KeyboardAppearance
 }
 
@@ -529,11 +544,12 @@ object KeyboardAppearanceResolver {
         customKeyTextColor: Int,
         customSpecialKeyTextColor: Int,
     ): KeyboardAppearance {
-        val skinId = KeyboardSkinId.fromPreference(skinValue)
-        if (skinId != KeyboardSkinId.DEFAULT) {
+        val skinRef = KeyboardSkinRef.fromPreference(skinValue).resolvedOrDefault()
+        if (!skinRef.isDefault()) {
             return KeyboardAppearance.BuiltIn(
-                spec = KeyboardSkinCatalog.specFor(skinId),
+                spec = KeyboardSkinCatalog.specFor(skinRef),
                 motionMode = KeyboardSkinMotionMode.fromPreference(motionValue),
+                reference = skinRef,
             )
         }
         return KeyboardAppearance.Legacy(
@@ -595,5 +611,28 @@ fun resolveKeyboardSkinPalette(
         secondaryAccentColor = normal,
         candidateSurfaceColor = background,
         candidateTextColor = text,
+    )
+}
+
+fun resolveKeyboardSkinPalette(
+    context: Context,
+    themeMode: String,
+    customBackgroundColor: Int,
+    customKeyColor: Int,
+    customSpecialKeyColor: Int,
+    customKeyTextColor: Int,
+    customSpecialKeyTextColor: Int,
+    skinId: KeyboardSkinRef,
+): KeyboardSkinPalette {
+    if (!skinId.isDefault()) return KeyboardSkinCatalog.specFor(skinId).palette
+    return resolveKeyboardSkinPalette(
+        context = context,
+        themeMode = themeMode,
+        customBackgroundColor = customBackgroundColor,
+        customKeyColor = customKeyColor,
+        customSpecialKeyColor = customSpecialKeyColor,
+        customKeyTextColor = customKeyTextColor,
+        customSpecialKeyTextColor = customSpecialKeyTextColor,
+        skinId = KeyboardSkinId.DEFAULT,
     )
 }

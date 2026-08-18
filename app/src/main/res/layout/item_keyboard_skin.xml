@@ -32,13 +32,24 @@
                 android:id="@+id/keyboard_skin_selected_badge"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:layout_gravity="top|end"
+                android:layout_gravity="top|start"
                 android:layout_margin="4dp"
                 android:background="@drawable/keyboard_skin_selected_badge"
                 android:gravity="center"
                 android:text="✓"
                 android:textColor="@android:color/white"
                 android:textStyle="bold"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/keyboard_skin_menu"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top|end"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/keyboard_skin_menu"
+                android:padding="8dp"
+                android:src="@android:drawable/ic_menu_more"
                 android:visibility="gone" />
         </FrameLayout>
 

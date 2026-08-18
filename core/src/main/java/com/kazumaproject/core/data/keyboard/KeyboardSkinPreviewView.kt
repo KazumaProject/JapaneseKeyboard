@@ -21,8 +21,9 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val keyRect = RectF()
     private val popupRect = RectF()
-    private var skinId = KeyboardSkinId.DEFAULT
+    private var skinRef: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var motionMode = KeyboardSkinMotionMode.OFF
+    private var runtimeGeneration = KeyboardSkinRuntime.generation()
     private var deck = renderer().createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
     private var candidateStrip = renderer().createSurfaceDrawable(context, KeyboardSurfaceRole.CANDIDATE_STRIP)
     private var characterKey = renderer().createKeyDrawable(context, KeyboardElementRole.CHARACTER, 1)
@@ -48,11 +49,22 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
     fun setSkin(
         skin: KeyboardSkinId,
         motion: KeyboardSkinMotionMode = motionMode,
+    ) = setSkin(KeyboardSkinRef.BuiltIn(skin), motion)
+
+    fun setSkin(
+        skin: KeyboardSkinRef,
+        motion: KeyboardSkinMotionMode = motionMode,
     ) {
-        if (skin == skinId && motion == motionMode) return
+        val nextRuntimeGeneration = runtimeGenerationFor(skin)
+        if (
+            skin == skinRef &&
+            motion == motionMode &&
+            nextRuntimeGeneration == runtimeGeneration
+        ) return
         stopFrames()
-        skinId = skin
+        skinRef = skin
         motionMode = motion
+        runtimeGeneration = nextRuntimeGeneration
         val renderer = renderer()
         deck = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.DECK)
         candidateStrip = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.CANDIDATE_STRIP)
@@ -69,11 +81,17 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
         updateFrames()
     }
 
+    private fun runtimeGenerationFor(skin: KeyboardSkinRef): Long =
+        if (skin is KeyboardSkinRef.Imported) KeyboardSkinRuntime.generation() else 0L
+
     fun setMotionMode(mode: KeyboardSkinMotionMode) {
-        setSkin(skinId, mode)
+        setSkin(skinRef, mode)
     }
 
-    fun currentSkin(): KeyboardSkinId = skinId
+    fun currentSkin(): KeyboardSkinId = (skinRef as? KeyboardSkinRef.BuiltIn)?.id
+        ?: KeyboardSkinId.DEFAULT
+
+    fun currentSkinRef(): KeyboardSkinRef = skinRef
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -102,13 +120,13 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
         drawFunctionRow(canvas, top + (rowHeight + rowGap) * 2f, rowHeight)
         drawBottomRow(canvas, top + (rowHeight + rowGap) * 3f, rowHeight)
 
-        if (showsPressedKeyPopup(skinId)) {
+        if (showsPressedKeyPopup(skinRef)) {
             drawPressedKeyPopup(canvas, top, rowHeight)
         }
     }
 
     private fun drawCandidateText(canvas: Canvas, candidateHeight: Float, outer: Float) {
-        val spec = KeyboardSkinCatalog.specFor(skinId)
+        val spec = KeyboardSkinCatalog.specFor(skinRef)
         textPaint.color = spec.palette.candidateTextColor
         textPaint.textSize = (candidateHeight * 0.34f).coerceAtLeast(dp(7f))
         val baseline = outer + candidateHeight * 0.64f - (textPaint.descent() + textPaint.ascent()) * 0.08f
@@ -190,12 +208,12 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
     ) {
         drawable.setBounds(bounds.left.toInt(), bounds.top.toInt(), bounds.right.toInt(), bounds.bottom.toInt())
         drawable.draw(canvas)
-        val spec = KeyboardSkinCatalog.specFor(skinId)
-        textPaint.color = if (pressed && skinId == KeyboardSkinId.FLAT) {
+        val spec = KeyboardSkinCatalog.specFor(skinRef)
+        textPaint.color = if (pressed && skinRef.isBuiltIn(KeyboardSkinId.FLAT)) {
             Color.WHITE
-        } else if (pressed && skinId == KeyboardSkinId.TERMINAL) {
+        } else if (pressed && skinRef.isBuiltIn(KeyboardSkinId.TERMINAL)) {
             spec.palette.backgroundColor
-        } else if (pressed && skinId == KeyboardSkinId.MONOCHROME_LCD) {
+        } else if (pressed && skinRef.isBuiltIn(KeyboardSkinId.MONOCHROME_LCD)) {
             spec.palette.normalKeyColor
         } else {
             spec.palette.textColor(role)
@@ -223,42 +241,39 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
             popupRect.bottom.toInt(),
         )
         popupKey.draw(canvas)
-        textPaint.color = KeyboardSkinCatalog.specFor(skinId).palette.specialKeyTextColor
+        textPaint.color = KeyboardSkinCatalog.specFor(skinRef).palette.specialKeyTextColor
         textPaint.textSize = keyHeight * 0.48f
         val baseline = popupRect.centerY() - (textPaint.ascent() + textPaint.descent()) / 2f - dp(1f)
         canvas.drawText("た", popupRect.centerX(), baseline, textPaint)
     }
 
     private fun updateTypography() {
-        val typography = KeyboardSkinCatalog.specFor(skinId).typography
+        val typography = KeyboardSkinCatalog.specFor(skinRef).typography
         textPaint.typeface = Typeface.create(
             typography.familyName,
             if (typography.bold) Typeface.BOLD else Typeface.NORMAL,
         )
     }
 
-    private fun renderer(): KeyboardSkinRenderer = KeyboardSkinRendererRegistry.rendererFor(skinId)
+    private fun renderer(): KeyboardSkinRenderer = KeyboardSkinRendererRegistry.rendererFor(skinRef)
 
-    private fun showsPressedKeyPopup(skin: KeyboardSkinId): Boolean = when (skin) {
-        KeyboardSkinId.CUPERTINO,
-        KeyboardSkinId.CUPERTINO_DARK,
-        KeyboardSkinId.SUMI_HANSHI,
-        KeyboardSkinId.LETTERPRESS,
-        KeyboardSkinId.PORCELAIN,
-        KeyboardSkinId.URUSHI,
-        KeyboardSkinId.CHALKBOARD,
-        KeyboardSkinId.LINEN,
-        KeyboardSkinId.MONOCHROME_LCD -> true
-
-        else -> false
-    }
+    private fun showsPressedKeyPopup(skin: KeyboardSkinRef): Boolean =
+        skin is KeyboardSkinRef.Imported || skin.isBuiltIn(KeyboardSkinId.CUPERTINO) ||
+            skin.isBuiltIn(KeyboardSkinId.CUPERTINO_DARK) ||
+            skin.isBuiltIn(KeyboardSkinId.SUMI_HANSHI) ||
+            skin.isBuiltIn(KeyboardSkinId.LETTERPRESS) ||
+            skin.isBuiltIn(KeyboardSkinId.PORCELAIN) ||
+            skin.isBuiltIn(KeyboardSkinId.URUSHI) ||
+            skin.isBuiltIn(KeyboardSkinId.CHALKBOARD) ||
+            skin.isBuiltIn(KeyboardSkinId.LINEN) ||
+            skin.isBuiltIn(KeyboardSkinId.MONOCHROME_LCD)
 
     override fun doFrame(frameTimeNanos: Long) {
         frameScheduled = false
         if (!shouldAnimate()) return
         if (startNanos == 0L) startNanos = frameTimeNanos
         if (frameTimeNanos - lastDrawNanos >= FRAME_INTERVAL_NANOS) {
-            val period = KeyboardSkinCatalog.specFor(skinId).motion.continuousPeriodMs * 1_000_000L
+            val period = KeyboardSkinCatalog.specFor(skinRef).motion.continuousPeriodMs * 1_000_000L
             val phase = ((frameTimeNanos - startNanos) % period).toFloat() / period.toFloat()
             (deck as? PhasedKeyboardSkinDrawable)?.setPhase(phase)
             invalidate()
@@ -288,7 +303,7 @@ class KeyboardSkinPreviewView @JvmOverloads constructor(
 
     private fun shouldAnimate(): Boolean {
         if (!isAttachedToWindow || !isShown || motionMode != KeyboardSkinMotionMode.FULL) return false
-        if (KeyboardSkinCatalog.specFor(skinId).motion.continuousPeriodMs <= 0L) return false
+        if (KeyboardSkinCatalog.specFor(skinRef).motion.continuousPeriodMs <= 0L) return false
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()
     }
 

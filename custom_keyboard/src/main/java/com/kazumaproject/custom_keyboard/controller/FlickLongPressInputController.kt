@@ -9,7 +9,7 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
@@ -72,7 +72,7 @@ class FlickLongPressInputController(
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
     private var popupStyle = PopupViewStyle(100, 20f)
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     private val longPressRunnable = Runnable {
         val direction = longPressDirection ?: return@Runnable
@@ -90,7 +90,7 @@ class FlickLongPressInputController(
         popupTextColor = textColor
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         popupView?.setKeyboardSkin(skinId)
     }

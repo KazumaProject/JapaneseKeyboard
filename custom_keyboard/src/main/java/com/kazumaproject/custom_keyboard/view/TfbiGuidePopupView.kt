@@ -12,7 +12,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
 import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.domain.extensions.getThemeColor
@@ -73,7 +73,7 @@ class TfbiGuidePopupView(context: Context) : View(context) {
     private var popupTextColor: Int = defaultTextColor
     private var activeTextColor: Int = Color.WHITE
     private var inputTextTransform: (String) -> String = { it }
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
 
     fun setState(state: TfbiGuidePopupState) {
         this.state = state
@@ -112,7 +112,7 @@ class TfbiGuidePopupView(context: Context) : View(context) {
         invalidate()
     }
 
-    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+    fun setKeyboardSkin(skinId: KeyboardSkinRef) {
         keyboardSkinId = skinId
         val popup = KeyboardSkinPopupRenderer.specFor(skinId)
         if (popup != null) {

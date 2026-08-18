@@ -10,6 +10,9 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinRef
+import com.kazumaproject.core.data.keyboard.isDefault
+import com.kazumaproject.core.data.keyboard.resolvedOrDefault
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.domain.extensions.dpToPx
@@ -39,7 +42,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
     private var toolbarHeightPx: Int = 0
     private var iconSizePx: Int = 0
-    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var keyboardSkinId: KeyboardSkinRef = KeyboardSkinRef.DEFAULT
     private var keyboardSkinMotionMode: KeyboardSkinMotionMode = KeyboardSkinMotionMode.FULL
 
     /**
@@ -70,7 +73,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         applyShortcutToolbarSize(holder)
         holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (!keyboardSkinId.isDefault()) {
             KeyboardSkinViewStyler.applyFlatControl(
                 holder.itemView,
                 keyboardSkinId,
@@ -113,9 +116,8 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     }
 
     fun setKeyboardSkin(skinValue: String?, motionValue: String?) {
-        val nextSkin = KeyboardSkinId.fromPreference(skinValue)
+        val nextSkin = KeyboardSkinRef.fromPreference(skinValue).resolvedOrDefault()
         val nextMotion = KeyboardSkinMotionMode.fromPreference(motionValue)
-        if (keyboardSkinId == nextSkin && keyboardSkinMotionMode == nextMotion) return
         keyboardSkinId = nextSkin
         keyboardSkinMotionMode = nextMotion
         notifyItemRangeChanged(0, itemCount)

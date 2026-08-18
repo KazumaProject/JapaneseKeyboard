@@ -89,6 +89,7 @@ object AppPreference {
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     const val KEYBOARD_SKIN_KEY = "keyboard_skin_preference"
     const val KEYBOARD_SKIN_MOTION_KEY = "keyboard_skin_motion_preference"
+    const val KEYBOARD_SKIN_REVISION_KEY = "keyboard_skin_revision"
     const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
@@ -2695,6 +2696,12 @@ object AppPreference {
         ) ?: KEYBOARD_SKIN_MOTION.second
         set(value) = preferences.edit {
             it.putString(KEYBOARD_SKIN_MOTION.first, value)
+        }
+
+    var keyboard_skin_revision: Long
+        get() = preferences.getLong(KEYBOARD_SKIN_REVISION_KEY, 0L)
+        set(value) = preferences.edit {
+            it.putLong(KEYBOARD_SKIN_REVISION_KEY, value)
         }
 
     var custom_theme_bg_color: Int
