@@ -14,6 +14,9 @@ import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -53,7 +56,7 @@ private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
 
 class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
-    private class CellView(context: Context) : FrameLayout(context) {
+    private inner class CellView(context: Context) : FrameLayout(context) {
         val textView: TextView = AppCompatTextView(context).apply {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
@@ -106,6 +109,24 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             backgroundColor: Int?,
             textColor: Int?
         ) {
+            val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+            if (popup != null) {
+                background = KeyboardSkinPopupRenderer.createDrawable(
+                    context,
+                    keyboardSkinId,
+                    KeyboardSkinPopupKind.FLICK_CROSS,
+                    selected = highlighted,
+                )
+                textView.setTextColor(
+                    if (highlighted) popup.selectedTextColor else popup.textColor
+                )
+                imageView.setColorFilter(
+                    if (highlighted) popup.selectedTextColor else popup.textColor,
+                    PorterDuff.Mode.SRC_IN,
+                )
+                applyTextSize(popup.flickTextSizeSp)
+                return
+            }
             val resolvedTextColor = textColor ?: theme.textColor
             textView.setTextColor(resolvedTextColor)
             imageView.setColorFilter(resolvedTextColor, PorterDuff.Mode.SRC_IN)
@@ -126,6 +147,24 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             backgroundColor: Int?,
             textColor: Int?
         ) {
+            val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+            if (popup != null) {
+                background = KeyboardSkinPopupRenderer.createDrawable(
+                    context,
+                    keyboardSkinId,
+                    KeyboardSkinPopupKind.FLICK_CROSS,
+                    selected = highlighted,
+                )
+                val resolvedTextColor = if (highlighted) {
+                    popup.selectedTextColor
+                } else {
+                    popup.textColor
+                }
+                textView.setTextColor(resolvedTextColor)
+                imageView.setColorFilter(resolvedTextColor, PorterDuff.Mode.SRC_IN)
+                applyTextSize(popup.flickTextSizeSp)
+                return
+            }
             val typedValue = TypedValue()
             val color = if (highlighted) {
                 context.theme.resolveAttribute(materialR.attr.colorSecondaryContainer, typedValue, true)
@@ -143,7 +182,11 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         }
 
         fun applyTextSize(textSizeSp: Float) {
-            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp.coerceIn(8f, 48f))
+            val fixedSize = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)?.flickTextSizeSp
+            textView.setTextSize(
+                TypedValue.COMPLEX_UNIT_SP,
+                (fixedSize ?: textSizeSp).coerceIn(8f, 48f),
+            )
         }
     }
 
@@ -160,6 +203,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var inputTextTransform: (String) -> String = { it }
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     init {
         addView(gridLayout, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -170,10 +214,18 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         updateCellColors()
     }
 
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        updateCellColors()
+        updateCellTextSizes()
+        invalidate()
+    }
+
     fun applyPopupViewStyle(style: PopupViewStyle) {
-        popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
-        popupBackgroundColor = style.backgroundColor
-        popupTextColor = style.textColor
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+        popupTextSizeSp = popup?.flickTextSizeSp ?: style.textSizeSp.coerceIn(8f, 48f)
+        popupBackgroundColor = if (popup == null) style.backgroundColor else null
+        popupTextColor = if (popup == null) style.textColor else popup.textColor
         updateCellTextSizes()
         updateCellColors()
         invalidate()
@@ -239,7 +291,11 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
         gridPositions.forEach { (direction, pos) ->
             val action = map[direction]
-            val margin = (1 * context.resources.displayMetrics.density).toInt()
+            val margin = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                KeyboardSkinPopupRenderer.specFor(keyboardSkinId)?.itemGapDp?.div(2f) ?: 1f,
+                resources.displayMetrics,
+            ).toInt()
 
             val params = GridLayout.LayoutParams(
                 GridLayout.spec(pos.first),

@@ -19,6 +19,10 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import androidx.core.text.inSpans
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDrawable
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import kotlin.math.roundToInt
@@ -47,6 +51,8 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var inputTextTransform: (String) -> String = { it }
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var skinPopupDrawable: KeyboardSkinPopupDrawable? = null
 
     private class YOffsetSpan(private val yOffset: Int) : ReplacementSpan() {
         override fun getSize(
@@ -88,6 +94,10 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
      * 既存: 直接色指定
      */
     fun setColors(backgroundColor: Int, textColor: Int, strokeColor: Int) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            applyCupertinoSkin()
+            return
+        }
         lastBackgroundColor = backgroundColor
         lastTextColor = textColor
         lastStrokeColor = strokeColor
@@ -108,7 +118,29 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
      */
     fun setPopupColors(theme: FlickPopupColorTheme) {
         colorTheme = theme
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            applyCupertinoSkin()
+            return
+        }
         applyTheme(theme, flickDirection)
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        skinPopupDrawable = KeyboardSkinPopupRenderer.createDrawable(
+            context,
+            skinId,
+            KeyboardSkinPopupKind.FLICK_STANDARD,
+        ) as? KeyboardSkinPopupDrawable
+        if (skinPopupDrawable != null) {
+            background = skinPopupDrawable
+            applyCupertinoSkin()
+        } else {
+            skinPopupDrawable = null
+            background = backgroundDrawable
+            applyResolvedColors()
+        }
+        invalidate()
     }
 
     /**
@@ -232,6 +264,24 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            val popup = checkNotNull(KeyboardSkinPopupRenderer.specFor(keyboardSkinId))
+            viewSize = dpToPx(72)
+            popupTextSizeSp = popup.flickTextSizeSp
+            popupBackgroundColor = null
+            popupTextColor = popup.textColor
+            background = skinPopupDrawable
+            KeyboardSkinPopupRenderer.applyTextStyle(
+                this,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.FLICK_STANDARD,
+            )
+            width = viewSize
+            height = viewSize
+            requestLayout()
+            invalidate()
+            return
+        }
         val scale = style.sizeScalePercent.coerceIn(50, 200) / 100f
         viewSize = (dpToPx(72) * scale).toInt().coerceAtLeast(1)
         popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
@@ -248,6 +298,24 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         setTextColor(popupTextColor ?: lastTextColor)
         backgroundDrawable.setColor(popupBackgroundColor ?: lastBackgroundColor)
         backgroundDrawable.setStroke(dpToPx(1), lastStrokeColor)
+    }
+
+    private fun applyCupertinoSkin() {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId) ?: return
+        lastBackgroundColor = popup.surfaceColor
+        lastTextColor = popup.textColor
+        lastStrokeColor = popup.surfaceColor
+        popupTextSizeSp = popup.flickTextSizeSp
+        popupBackgroundColor = null
+        popupTextColor = popup.textColor
+        background = skinPopupDrawable
+        KeyboardSkinPopupRenderer.applyTextStyle(
+            this,
+            keyboardSkinId,
+            KeyboardSkinPopupKind.FLICK_STANDARD,
+        )
+        width = viewSize
+        height = viewSize
     }
 
     private fun createBackground(): GradientDrawable {

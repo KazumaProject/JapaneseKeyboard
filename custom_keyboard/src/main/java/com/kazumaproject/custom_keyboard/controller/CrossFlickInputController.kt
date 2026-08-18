@@ -8,6 +8,8 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.Button
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
@@ -125,6 +127,7 @@ class CrossFlickInputController(
     private val gridPopupView = CrossFlickPopupView(context).apply {
         elevation = 8f
     }
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
@@ -145,21 +148,30 @@ class CrossFlickInputController(
         invalidateDirectionalPopupCache()
     }
 
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        gridPopupView.setKeyboardSkin(skinId)
+        actionPopupViews.values.forEach { it.setKeyboardSkin(skinId) }
+        directionalPopupMap.values.forEach { it.setKeyboardSkin(skinId) }
+        invalidateDirectionalPopupCache()
+    }
+
     fun applyPopupViewStyleSet(
         directional: PopupViewStyle,
         cross: PopupViewStyle
     ) {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
         directionalPopupStyle = PopupViewStyle(
-            sizeScalePercent = directional.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = directional.textSizeSp.coerceIn(8f, 48f),
-            backgroundColor = directional.backgroundColor,
-            textColor = directional.textColor
+            sizeScalePercent = if (popup == null) directional.sizeScalePercent.coerceIn(50, 200) else 100,
+            textSizeSp = popup?.flickTextSizeSp ?: directional.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = if (popup == null) directional.backgroundColor else null,
+            textColor = if (popup == null) directional.textColor else popup.textColor,
         )
         crossPopupStyle = PopupViewStyle(
-            sizeScalePercent = cross.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = cross.textSizeSp.coerceIn(8f, 48f),
-            backgroundColor = cross.backgroundColor,
-            textColor = cross.textColor
+            sizeScalePercent = if (popup == null) cross.sizeScalePercent.coerceIn(50, 200) else 100,
+            textSizeSp = popup?.flickTextSizeSp ?: cross.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = if (popup == null) cross.backgroundColor else null,
+            textColor = if (popup == null) cross.textColor else popup.textColor,
         )
         actionPopupViews.values.forEach { it.applyPopupViewStyle(crossPopupStyle) }
         gridPopupView.applyPopupViewStyle(crossPopupStyle)
@@ -522,6 +534,7 @@ class CrossFlickInputController(
         if (!anchor.isAttachedToWindow) return
 
         val popupView = CrossFlickPopupView(context).apply {
+            setKeyboardSkin(keyboardSkinId)
             setInputTextTransform(inputTextTransform)
             applyPopupViewStyle(crossPopupStyle)
             val scale = crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
@@ -619,6 +632,7 @@ class CrossFlickInputController(
             if (text.isNullOrEmpty()) return@forEach
 
             val popupView = DirectionalKeyPopupView(context).apply {
+                setKeyboardSkin(keyboardSkinId)
                 this.text = inputTextTransform(text)
                 applyPopupViewStyle(directionalPopupStyle)
                 popupColorTheme?.let { setColors(it) }

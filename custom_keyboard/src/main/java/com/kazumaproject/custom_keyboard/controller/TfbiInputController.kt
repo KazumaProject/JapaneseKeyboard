@@ -10,6 +10,7 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
@@ -123,6 +124,7 @@ class TfbiInputController(
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
     private var popupStyle = PopupViewStyle(100, 20f)
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     // ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
     fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
@@ -130,6 +132,12 @@ class TfbiInputController(
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
         guidePopupHost.setColors(backgroundColor, highlightedColor, textColor)
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        popupView?.setKeyboardSkin(skinId)
+        guidePopupHost.setKeyboardSkin(skinId)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -429,6 +437,7 @@ class TfbiInputController(
         }
 
         popupView = TfbiFlickPopupView(context).apply {
+            setKeyboardSkin(keyboardSkinId)
             setInputTextTransform(inputTextTransform)
             // ▼▼▼ 修正: 色設定があれば適用 ▼▼▼
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {

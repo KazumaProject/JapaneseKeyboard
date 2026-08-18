@@ -54,6 +54,8 @@ import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
@@ -2473,10 +2475,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
-        tv.setTextSize(
-            TypedValue.COMPLEX_UNIT_SP,
-            keyPreviewPopupStyle.textSizeSp.coerceIn(8f, 48f)
-        )
+        val fixedCupertinoPopup = KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)
+        if (!fixedCupertinoPopup) {
+            tv.setTextSize(
+                TypedValue.COMPLEX_UNIT_SP,
+                keyPreviewPopupStyle.textSizeSp.coerceIn(8f, 48f)
+            )
+        }
         val isLandMode =
             (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
 
@@ -2498,7 +2503,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             in rightKeyIds -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_right_material else com.kazumaproject.core.R.drawable.key_preview_bubble_right
             else -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_material else com.kazumaproject.core.R.drawable.key_preview_bubble
         }
-        if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
+        if (fixedCupertinoPopup) {
+            iv.background = KeyboardSkinPopupRenderer.createDrawable(
+                context,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.KEY_PREVIEW,
+            )
+            KeyboardSkinPopupRenderer.applyTextStyle(
+                tv,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.KEY_PREVIEW,
+            )
+        } else if (keyboardSkinId != KeyboardSkinId.DEFAULT) {
             val spec = KeyboardSkinCatalog.specFor(keyboardSkinId)
             iv.background = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
                 .createKeyDrawable(context, KeyboardElementRole.POPUP, view.id)
@@ -2524,7 +2540,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 tv.setTextColor(textColor)
             }
         }
-        popupView.rootView.layoutParams.height = previewHeight
+        if (!fixedCupertinoPopup) {
+            popupView.rootView.layoutParams.height = previewHeight
+        }
 
         when (view) {
             is QWERTYButton -> {
@@ -2540,9 +2558,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             else -> tv.text = ""
         }
 
-        val scale = keyPreviewPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
-        val popupWidth = (view.width * 2 * scale).toInt().coerceAtLeast(1)
-        val popupHeight = ((view.height * 2 + 64) * scale).toInt().coerceAtLeast(1)
+        val popupSpec = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+        val scale = if (fixedCupertinoPopup) {
+            1f
+        } else {
+            keyPreviewPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        }
+        val popupWidth = if (popupSpec != null) {
+            (view.width * popupSpec.keyPreviewWidthScale * scale).toInt().coerceAtLeast(1)
+        } else {
+            (view.width * 2 * scale).toInt().coerceAtLeast(1)
+        }
+        val popupHeight = if (popupSpec != null) {
+            (
+                view.height * popupSpec.keyPreviewHeightScale * scale +
+                    context.dpToPx(popupSpec.stemHeightDp)
+                ).toInt().coerceAtLeast(1)
+        } else {
+            ((view.height * 2 + 64) * scale).toInt().coerceAtLeast(1)
+        }
 
         val popup = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
@@ -2550,7 +2584,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             elevation = 6f
         }
 
-        val xOffset = -((popupWidth - view.width) / 2)
+        val centeredOffset = -((popupWidth - view.width) / 2)
+        val absoluteLeft = view.left + centeredOffset
+        val clampedLeft = absoluteLeft.coerceIn(
+            0,
+            (width - popupWidth).coerceAtLeast(0),
+        )
+        val xOffset = clampedLeft - view.left
         val yOffset = -popupHeight
         popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
@@ -2817,6 +2857,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             backgroundColor = styleSet.variation.backgroundColor,
             textColor = styleSet.variation.textColor
         )
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            val popup = checkNotNull(KeyboardSkinPopupRenderer.specFor(keyboardSkinId))
+            keyPreviewPopupStyle = PopupViewStyle(100, popup.keyPreviewTextSizeSp)
+            variationPopupStyle = PopupViewStyle(100, popup.variationTextSizeSp)
+        }
         variationPopupView?.applyPopupViewStyle(variationPopupStyle)
     }
 

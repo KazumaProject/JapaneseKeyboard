@@ -46,6 +46,19 @@ interface KeyboardSkinRenderer {
         context: Context,
         role: KeyboardSurfaceRole = KeyboardSurfaceRole.DECK,
     ): Drawable
+
+    fun createPopupDrawable(
+        context: Context,
+        kind: KeyboardSkinPopupKind,
+        direction: KeyboardSkinPopupDirection = KeyboardSkinPopupDirection.CENTER,
+        selected: Boolean = false,
+    ): Drawable? = KeyboardSkinPopupRenderer.createDrawable(
+        context = context,
+        skinId = spec.id,
+        kind = kind,
+        direction = direction,
+        selected = selected,
+    )
 }
 
 /** One registered renderer per skin. Shared classes below are low-level drawing primitives only. */

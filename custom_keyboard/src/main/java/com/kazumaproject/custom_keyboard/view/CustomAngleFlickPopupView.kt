@@ -11,6 +11,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.View
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -19,6 +20,9 @@ import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.ShapeType
 import com.kazumaproject.custom_keyboard.data.getDirectionForAngle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -55,6 +59,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         separatorColor = "#BDBDBD".toColorInt(),
         textColor = Color.BLACK
     )
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     init {
         applyThemeToPaints()
@@ -91,7 +96,18 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     fun setUiSize(orbit: Float, centerRadius: Float, newTextSize: Float) {
         this.orbitRadius = orbit
         this.centerCircleRadius = centerRadius // ここで見た目のサイズを固定
-        this.textPaint.textSize = newTextSize
+        this.textPaint.textSize = if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                KeyboardSkinPopupRenderer.popupTextSizeSp(
+                    keyboardSkinId,
+                    KeyboardSkinPopupKind.FLICK_CIRCLE,
+                ) ?: newTextSize,
+                resources.displayMetrics,
+            )
+        } else {
+            newTextSize
+        }
         updateSizesAndRequestLayout()
     }
 
@@ -115,10 +131,50 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     }
 
     fun setColors(theme: FlickPopupColorTheme) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            applyCupertinoColors()
+            return
+        }
         this.colorTheme = theme
         applyThemeToPaints()
         if (width > 0) updateShaders()
         invalidate()
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(skinId)) {
+            applyCupertinoColors()
+            KeyboardSkinPopupRenderer.applyPaintStyle(
+                textPaint,
+                context,
+                skinId,
+                KeyboardSkinPopupKind.FLICK_CIRCLE,
+            )
+            separatorPaint.alpha = 0
+        } else {
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            separatorPaint.alpha = 255
+            applyThemeToPaints()
+        }
+        invalidate()
+    }
+
+    private fun applyCupertinoColors() {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId) ?: return
+        this.colorTheme = FlickPopupColorTheme(
+            segmentColor = popup.surfaceColor,
+            segmentHighlightGradientStartColor = popup.selectedSurfaceColor,
+            segmentHighlightGradientEndColor = popup.selectedSurfaceColor,
+            centerGradientStartColor = popup.surfaceColor,
+            centerGradientEndColor = popup.surfaceColor,
+            centerHighlightGradientStartColor = popup.selectedSurfaceColor,
+            centerHighlightGradientEndColor = popup.selectedSurfaceColor,
+            separatorColor = popup.surfaceColor,
+            textColor = popup.textColor,
+        )
+        applyThemeToPaints()
+        if (width > 0) updateShaders()
     }
 
     fun setCharacterMap(map: Map<CircularFlickDirection, FlickAction>) {
@@ -187,10 +243,19 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
                 if (isFullUIModeActive || direction == currentFlickDirection) {
                     val path = segmentPaths[direction] ?: return@forEach
                     val isSelected = (direction == currentFlickDirection)
-                    val paint = if (isSelected) targetHighlightPaint else targetPaint
-
-                    canvas.drawPath(path, paint)
-                    canvas.drawPath(path, separatorPaint)
+                    if (!KeyboardSkinPopupRenderer.drawPath(
+                            canvas,
+                            context,
+                            keyboardSkinId,
+                            KeyboardSkinPopupKind.FLICK_CIRCLE,
+                            path,
+                            isSelected,
+                        )
+                    ) {
+                        val paint = if (isSelected) targetHighlightPaint else targetPaint
+                        canvas.drawPath(path, paint)
+                        canvas.drawPath(path, separatorPaint)
+                    }
 
                     val text = characterMap[direction].toDisplayLabel()
                     val pos = targetPositions[direction] ?: centerPoint
@@ -210,7 +275,20 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
 
         val isCenterSelected = (currentFlickDirection == CircularFlickDirection.TAP)
         val centerPaint = if (isCenterSelected) centerHighlightPaint else centerCirclePaint
-        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerPaint)
+        val centerPath = Path().apply {
+            addCircle(centerPoint.x, centerPoint.y, centerCircleRadius, Path.Direction.CW)
+        }
+        if (!KeyboardSkinPopupRenderer.drawPath(
+                canvas,
+                context,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.FLICK_CIRCLE,
+                centerPath,
+                isCenterSelected,
+            )
+        ) {
+            canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerPaint)
+        }
 
         val centerText = characterMap[currentFlickDirection].toDisplayLabel()
             .ifEmpty { characterMap[CircularFlickDirection.TAP].toDisplayLabel() }
@@ -317,6 +395,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     private fun applyThemeToPaints() {
         targetPaint.color = colorTheme.segmentColor
         separatorPaint.color = colorTheme.separatorColor
+        separatorPaint.alpha = if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) 0 else 255
         textPaint.color = colorTheme.textColor
     }
 

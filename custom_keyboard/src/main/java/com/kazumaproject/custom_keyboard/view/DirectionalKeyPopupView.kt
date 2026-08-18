@@ -11,6 +11,11 @@ import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDirection
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDrawable
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import kotlin.math.min
@@ -44,6 +49,8 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     private var separatorColor = Color.LTGRAY
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
+    private var skinPopupDrawable: KeyboardSkinPopupDrawable? = null
 
     init {
         // init時のテキスト色はテーマで上書きされる前提
@@ -57,6 +64,10 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
      * ▼▼▼ 変更点: 枠線用の色もテーマから受け取るように変更 ▼▼▼
      */
     fun setColors(theme: FlickPopupColorTheme) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            applyCupertinoSkin()
+            return
+        }
         this.defaultColor = theme.centerGradientStartColor
         this.highlightColor = theme.centerGradientStartColor
         this.separatorColor = theme.separatorColor
@@ -66,10 +77,29 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
     fun setFlickDirection(direction: FlickDirection) {
         this.currentDirection = direction
+        skinPopupDrawable?.setDirection(direction.toPopupDirection())
+        invalidate()
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        skinPopupDrawable = KeyboardSkinPopupRenderer.createDrawable(
+            context,
+            skinId,
+            KeyboardSkinPopupKind.FLICK_DIRECTIONAL,
+            currentDirection.toPopupDirection(),
+        ) as? KeyboardSkinPopupDrawable
+        if (skinPopupDrawable != null) {
+            applyCupertinoSkin()
+        }
         invalidate()
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            applyCupertinoSkin()
+            return
+        }
         popupBackgroundColor = style.backgroundColor
         popupTextColor = style.textColor
         setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp.coerceIn(8f, 48f))
@@ -84,6 +114,11 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         val w = width.toFloat()
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
+
+        if (skinPopupDrawable != null) {
+            skinPopupDrawable?.setBounds(0, 0, width, height)
+            skinPopupDrawable?.draw(canvas)
+        }
 
         backgroundPaint.color = popupBackgroundColor ?: if (currentDirection == FlickDirection.TAP) {
             this.highlightColor
@@ -100,8 +135,10 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
         val saveCount = canvas.save()
         canvas.translate(strokeInset, strokeInset)
-        canvas.drawPath(backgroundPath, backgroundPaint)
-        canvas.drawPath(backgroundPath, strokePaint)
+        if (skinPopupDrawable == null) {
+            canvas.drawPath(backgroundPath, backgroundPaint)
+            canvas.drawPath(backgroundPath, strokePaint)
+        }
         canvas.restoreToCount(saveCount)
 
         val textToDraw = this.text.toString()
@@ -248,5 +285,32 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
             dp,
             context.resources.displayMetrics
         )
+    }
+
+    private fun applyCupertinoSkin() {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId) ?: return
+        defaultColor = popup.surfaceColor
+        highlightColor = popup.selectedSurfaceColor
+        separatorColor = popup.surfaceColor
+        popupBackgroundColor = null
+        popupTextColor = popup.textColor
+        setTextColor(popup.textColor)
+        KeyboardSkinPopupRenderer.applyTextStyle(
+            this,
+            keyboardSkinId,
+            KeyboardSkinPopupKind.FLICK_DIRECTIONAL,
+            selected = currentDirection == FlickDirection.TAP,
+        )
+        skinPopupDrawable?.setDirection(currentDirection.toPopupDirection())
+    }
+
+    private fun FlickDirection.toPopupDirection(): KeyboardSkinPopupDirection = when (this) {
+        FlickDirection.UP -> KeyboardSkinPopupDirection.UP
+        FlickDirection.DOWN -> KeyboardSkinPopupDirection.DOWN
+        FlickDirection.UP_LEFT,
+        FlickDirection.UP_LEFT_FAR -> KeyboardSkinPopupDirection.LEFT
+        FlickDirection.UP_RIGHT,
+        FlickDirection.UP_RIGHT_FAR -> KeyboardSkinPopupDirection.RIGHT
+        FlickDirection.TAP -> KeyboardSkinPopupDirection.CENTER
     }
 }

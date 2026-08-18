@@ -15,6 +15,8 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -43,6 +45,7 @@ class VariationsPopupView(context: Context) : View(context) {
     private var numRows = 1
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
+    private var popupTextSizeSp: Float = 28f
     private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     private var skinSurfaceDrawable: Drawable? = null
     private var skinItemDrawable: Drawable? = null
@@ -87,8 +90,22 @@ class VariationsPopupView(context: Context) : View(context) {
     private val itemCornerRadius = 15f
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            val popup = checkNotNull(KeyboardSkinPopupRenderer.specFor(keyboardSkinId))
+            popupTextSizeSp = popup.variationTextSizeSp
+            popupBackgroundColor = null
+            popupTextColor = popup.textColor
+            skinTextPaint.textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                popup.variationTextSizeSp,
+                resources.displayMetrics,
+            )
+            invalidate()
+            return
+        }
         popupBackgroundColor = style.backgroundColor
         popupTextColor = style.textColor
+        popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
         val textSizePx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP,
             style.textSizeSp.coerceIn(8f, 48f),
@@ -118,19 +135,34 @@ class VariationsPopupView(context: Context) : View(context) {
         }
         val renderer = KeyboardSkinRendererRegistry.rendererFor(skinId)
         val spec = KeyboardSkinCatalog.specFor(skinId)
-        skinSurfaceDrawable = renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.POPUP)
-        skinItemDrawable = renderer.createKeyDrawable(context, KeyboardElementRole.CANDIDATE, 1)
-        skinSelectedItemDrawable = renderer
-            .createKeyDrawable(context, KeyboardElementRole.CANDIDATE, 2)
-            .apply {
-                state = intArrayOf(android.R.attr.state_pressed, android.R.attr.state_enabled)
-            }
-        skinTextPaint.color = spec.palette.candidateTextColor
+        skinSurfaceDrawable = renderer.createPopupDrawable(
+            context,
+            KeyboardSkinPopupKind.VARIATION,
+        ) ?: renderer.createSurfaceDrawable(context, KeyboardSurfaceRole.POPUP)
+        skinItemDrawable = renderer.createPopupDrawable(
+            context,
+            KeyboardSkinPopupKind.VARIATION,
+        ) ?: renderer.createKeyDrawable(context, KeyboardElementRole.CANDIDATE, 1)
+        skinSelectedItemDrawable = renderer.createPopupDrawable(
+            context,
+            KeyboardSkinPopupKind.VARIATION,
+            selected = true,
+        ) ?: renderer.createKeyDrawable(context, KeyboardElementRole.CANDIDATE, 2).apply {
+            state = intArrayOf(android.R.attr.state_pressed, android.R.attr.state_enabled)
+        }
+        val popup = KeyboardSkinPopupRenderer.specFor(skinId)
+        skinTextPaint.color = popup?.textColor ?: spec.palette.candidateTextColor
         skinTextPaint.typeface = Typeface.create(
             spec.typography.familyName,
             if (spec.typography.bold) Typeface.BOLD else Typeface.NORMAL,
         )
-        skinTextPaint.textSize = flatTextPaint.textSize
+        skinTextPaint.textSize = popup?.let {
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                it.variationTextSizeSp,
+                resources.displayMetrics,
+            )
+        } ?: flatTextPaint.textSize
         invalidate()
     }
 
@@ -247,17 +279,38 @@ class VariationsPopupView(context: Context) : View(context) {
             } else {
                 skinItemDrawable
             }
+            val gap = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)?.itemGapDp?.let {
+                TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP,
+                    it / 2f,
+                    resources.displayMetrics,
+                )
+            } ?: 0f
             drawable?.apply {
-                setBounds(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+                setBounds(
+                    (left + gap).toInt(),
+                    (top + gap).toInt(),
+                    (right - gap).toInt(),
+                    (bottom - gap).toInt(),
+                )
                 draw(canvas)
             }
+            val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
             skinTextPaint.color = when {
+                popup != null && index == selectedIndex -> popup.selectedTextColor
+                popup != null -> popup.textColor
                 index != selectedIndex -> spec.palette.candidateTextColor
                 keyboardSkinId == KeyboardSkinId.FLAT ||
                     keyboardSkinId == KeyboardSkinId.TERMINAL -> spec.palette.backgroundColor
                 else -> spec.palette.candidateTextColor
             }
-            skinTextPaint.textSize = flatTextPaint.textSize
+            skinTextPaint.textSize = popup?.let {
+                TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_SP,
+                    it.variationTextSizeSp,
+                    resources.displayMetrics,
+                )
+            } ?: flatTextPaint.textSize
             val cx = left + itemWidth / 2f
             val cy = top + itemHeight / 2f -
                 (skinTextPaint.descent() + skinTextPaint.ascent()) / 2f

@@ -17,6 +17,14 @@ class CupertinoSkinReferenceTest {
         assertEquals(7f, spec.geometry.cornerRadiusDp)
         assertEquals(0f, spec.geometry.depthDp)
         assertEquals(KeyboardSkinDepthModel.NONE, spec.depthModel)
+        assertEquals(KeyboardSkinPopupKind.KEY_PREVIEW, KeyboardSkinPopupKind.entries.first())
+        val popup = checkNotNull(spec.popup)
+        assertEquals(0xFFFFFFFF.toInt(), popup.surfaceColor)
+        assertEquals(0xFFD1D1D6.toInt(), popup.selectedSurfaceColor)
+        assertEquals(0xFF000000.toInt(), popup.textColor)
+        assertEquals(7f, popup.cornerRadiusDp)
+        assertEquals(10f, popup.stemWidthDp)
+        assertEquals(6f, popup.stemHeightDp)
     }
 
     @Test
@@ -32,5 +40,26 @@ class CupertinoSkinReferenceTest {
         assertEquals(0f, spec.geometry.depthDp)
         assertEquals(KeyboardSkinDepthModel.NONE, spec.depthModel)
         assertEquals(KeyboardSkinMaterial.CUPERTINO, spec.material)
+        val popup = checkNotNull(spec.popup)
+        assertEquals(0xFF5A5A5E.toInt(), popup.surfaceColor)
+        assertEquals(0xFF8E8E93.toInt(), popup.selectedSurfaceColor)
+        assertEquals(0xFFFFFFFF.toInt(), popup.textColor)
+        assertEquals(7f, popup.cornerRadiusDp)
+    }
+
+    @Test
+    fun popupKindsRemainStableForSharedRenderers() {
+        assertEquals(
+            listOf(
+                KeyboardSkinPopupKind.KEY_PREVIEW,
+                KeyboardSkinPopupKind.VARIATION,
+                KeyboardSkinPopupKind.FLICK_STANDARD,
+                KeyboardSkinPopupKind.FLICK_DIRECTIONAL,
+                KeyboardSkinPopupKind.FLICK_CROSS,
+                KeyboardSkinPopupKind.FLICK_CIRCLE,
+                KeyboardSkinPopupKind.FLICK_GUIDE,
+            ),
+            KeyboardSkinPopupKind.entries,
+        )
     }
 }

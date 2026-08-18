@@ -11,6 +11,7 @@ import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -60,6 +61,7 @@ class CustomAngleFlickController(
     var listener: FlickListener? = null
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     private val popupView = CustomAngleFlickPopupView(context)
     private val popupWindow = PopupWindow(
@@ -120,6 +122,11 @@ class CustomAngleFlickController(
 
     fun setPopupColors(theme: FlickPopupColorTheme) {
         popupView.setColors(theme)
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        popupView.setKeyboardSkin(skinId)
     }
 
     // 見た目用に centerRadius (px) を受け取れるようにする

@@ -12,6 +12,9 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
@@ -70,6 +73,7 @@ class TfbiGuidePopupView(context: Context) : View(context) {
     private var popupTextColor: Int = defaultTextColor
     private var activeTextColor: Int = Color.WHITE
     private var inputTextTransform: (String) -> String = { it }
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     fun setState(state: TfbiGuidePopupState) {
         this.state = state
@@ -82,16 +86,66 @@ class TfbiGuidePopupView(context: Context) : View(context) {
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
         popupStyle = PopupViewStyle(
-            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
-            backgroundColor = style.backgroundColor,
-            textColor = style.textColor
+            sizeScalePercent = if (popup == null) style.sizeScalePercent.coerceIn(50, 200) else 100,
+            textSizeSp = popup?.flickTextSizeSp ?: style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = if (popup == null) style.backgroundColor else null,
+            textColor = if (popup == null) style.textColor else popup.textColor,
         )
-        popupBackgroundColor = style.backgroundColor ?: configuredBackgroundColor
-        activeColor = configuredHighlightedColor ?: DEFAULT_ACTIVE_COLOR
-        popupTextColor = style.textColor ?: configuredTextColor ?: defaultTextColor
+        popupBackgroundColor = if (popup == null) {
+            style.backgroundColor ?: configuredBackgroundColor
+        } else {
+            popup.surfaceColor
+        }
+        activeColor = if (popup == null) {
+            configuredHighlightedColor ?: DEFAULT_ACTIVE_COLOR
+        } else {
+            popup.selectedSurfaceColor
+        }
+        popupTextColor = if (popup == null) {
+            style.textColor ?: configuredTextColor ?: defaultTextColor
+        } else {
+            popup.textColor
+        }
         activeTextColor = readableForeground(activeColor)
+        invalidate()
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        val popup = KeyboardSkinPopupRenderer.specFor(skinId)
+        if (popup != null) {
+            popupBackgroundColor = popup.surfaceColor
+            activeColor = popup.selectedSurfaceColor
+            popupTextColor = popup.textColor
+            activeTextColor = popup.selectedTextColor
+            textPaint.typeface = android.graphics.Typeface.create(
+                "sans-serif",
+                android.graphics.Typeface.NORMAL,
+            )
+            activeTextPaint.typeface = textPaint.typeface
+            KeyboardSkinPopupRenderer.applyPaintStyle(
+                textPaint,
+                context,
+                skinId,
+                KeyboardSkinPopupKind.FLICK_GUIDE,
+            )
+            KeyboardSkinPopupRenderer.applyPaintStyle(
+                activeTextPaint,
+                context,
+                skinId,
+                KeyboardSkinPopupKind.FLICK_GUIDE,
+                selected = true,
+            )
+        } else {
+            popupBackgroundColor = popupStyle.backgroundColor ?: configuredBackgroundColor
+            activeColor = configuredHighlightedColor ?: DEFAULT_ACTIVE_COLOR
+            popupTextColor = popupStyle.textColor ?: configuredTextColor ?: defaultTextColor
+            activeTextColor = readableForeground(activeColor)
+            textPaint.typeface = null
+            activeTextPaint.typeface = null
+        }
         invalidate()
     }
 
@@ -100,6 +154,10 @@ class TfbiGuidePopupView(context: Context) : View(context) {
         highlightedBackgroundColor: Int,
         textColor: Int
     ) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            setKeyboardSkin(keyboardSkinId)
+            return
+        }
         configuredBackgroundColor = backgroundColor
         configuredHighlightedColor = highlightedBackgroundColor
         configuredTextColor = textColor
@@ -116,20 +174,33 @@ class TfbiGuidePopupView(context: Context) : View(context) {
         val inset = dp(1f)
         val panel = RectF(inset, inset, width - inset, height - inset)
         val panelColor = popupBackgroundColor ?: defaultPanelColor
-        panelPaint.shader = LinearGradient(
-            0f,
-            panel.top,
-            0f,
-            panel.bottom,
-            ColorUtils.blendARGB(panelColor, Color.WHITE, 0.16f),
-            ColorUtils.blendARGB(panelColor, Color.BLACK, 0.06f),
-            Shader.TileMode.CLAMP
-        )
-        borderPaint.color = ColorUtils.setAlphaComponent(popupTextColor, 105)
-        gridPaint.color = ColorUtils.setAlphaComponent(popupTextColor, 70)
-        canvas.drawRoundRect(panel, dp(4f), dp(4f), panelPaint)
-        panelPaint.shader = null
-        canvas.drawRoundRect(panel, dp(4f), dp(4f), borderPaint)
+        val fixedCupertino = KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)
+        if (fixedCupertino) {
+            KeyboardSkinPopupRenderer.drawRoundRect(
+                canvas,
+                context,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.FLICK_GUIDE,
+                panel,
+            )
+            borderPaint.color = Color.TRANSPARENT
+            gridPaint.color = Color.TRANSPARENT
+        } else {
+            panelPaint.shader = LinearGradient(
+                0f,
+                panel.top,
+                0f,
+                panel.bottom,
+                ColorUtils.blendARGB(panelColor, Color.WHITE, 0.16f),
+                ColorUtils.blendARGB(panelColor, Color.BLACK, 0.06f),
+                Shader.TileMode.CLAMP
+            )
+            borderPaint.color = ColorUtils.setAlphaComponent(popupTextColor, 105)
+            gridPaint.color = ColorUtils.setAlphaComponent(popupTextColor, 70)
+            canvas.drawRoundRect(panel, dp(4f), dp(4f), panelPaint)
+            panelPaint.shader = null
+            canvas.drawRoundRect(panel, dp(4f), dp(4f), borderPaint)
+        }
 
         val cellWidth = panel.width() / 3f
         val cellHeight = panel.height() / 3f
@@ -215,8 +286,32 @@ class TfbiGuidePopupView(context: Context) : View(context) {
             rect.centerX() + textWidth / 2f,
             rect.centerY() + (textSize + verticalPadding * 2) / 2f
         )
-        activePaint.color = activeColor
-        canvas.drawRoundRect(pill, dp(if (compact) 7f else 9f), dp(if (compact) 7f else 9f), activePaint)
+        if (!KeyboardSkinPopupRenderer.drawRoundRect(
+                canvas,
+                context,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.FLICK_GUIDE,
+                pill,
+                selected = true,
+            )
+        ) {
+            activePaint.color = activeColor
+            canvas.drawRoundRect(
+                pill,
+                dp(if (compact) 7f else 9f),
+                dp(if (compact) 7f else 9f),
+                activePaint,
+            )
+        }
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            KeyboardSkinPopupRenderer.applyPaintStyle(
+                activeTextPaint,
+                context,
+                keyboardSkinId,
+                KeyboardSkinPopupKind.FLICK_GUIDE,
+                selected = true,
+            )
+        }
         val baseline = pill.centerY() - (activeTextPaint.ascent() + activeTextPaint.descent()) / 2f
         canvas.drawText(text, pill.centerX(), baseline, activeTextPaint)
     }
@@ -240,7 +335,12 @@ class TfbiGuidePopupView(context: Context) : View(context) {
         scale: Float,
         minimumSp: Float
     ): Float {
-        val configured = sp(popupStyle.textSizeSp * scale)
+        val effectiveScale = if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            1f
+        } else {
+            scale
+        }
+        val configured = sp(popupStyle.textSizeSp * effectiveScale)
         textPaint.textSize = configured
         val measured = textPaint.measureText(text)
         val safeWidth = maxWidth.coerceAtLeast(1f)

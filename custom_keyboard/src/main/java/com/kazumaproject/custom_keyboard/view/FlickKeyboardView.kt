@@ -39,6 +39,7 @@ import com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
 import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
@@ -319,12 +320,22 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
-        popupViewStyleSet = FlickPopupViewStyleSet(
-            directional = clampPopupStyle(styleSet.directional),
-            cross = clampPopupStyle(styleSet.cross),
-            standard = clampPopupStyle(styleSet.standard),
-            tfbi = clampPopupStyle(styleSet.tfbi)
-        )
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+        popupViewStyleSet = if (popup != null) {
+            FlickPopupViewStyleSet(
+                directional = PopupViewStyle(100, popup.flickTextSizeSp),
+                cross = PopupViewStyle(100, popup.flickTextSizeSp),
+                standard = PopupViewStyle(100, popup.flickTextSizeSp),
+                tfbi = PopupViewStyle(100, popup.flickTextSizeSp),
+            )
+        } else {
+            FlickPopupViewStyleSet(
+                directional = clampPopupStyle(styleSet.directional),
+                cross = clampPopupStyle(styleSet.cross),
+                standard = clampPopupStyle(styleSet.standard),
+                tfbi = clampPopupStyle(styleSet.tfbi),
+            )
+        }
         crossFlickControllers.forEach {
             it.applyPopupViewStyleSet(popupViewStyleSet.directional, popupViewStyleSet.cross)
         }
@@ -529,6 +540,14 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.themeMode = effectiveThemeMode
         this.keyboardSkinId = requestedSkin
         this.keyboardSkinMotionMode = requestedMotion
+        KeyboardSkinPopupRenderer.specFor(requestedSkin)?.let { popup ->
+            popupViewStyleSet = FlickPopupViewStyleSet(
+                directional = PopupViewStyle(100, popup.flickTextSizeSp),
+                cross = PopupViewStyle(100, popup.flickTextSizeSp),
+                standard = PopupViewStyle(100, popup.flickTextSizeSp),
+                tfbi = PopupViewStyle(100, popup.flickTextSizeSp),
+            )
+        }
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
         this.isDynamicColorEnabled = isDynamicColorEnabled
         this.customBgColor = effectiveBgColor
@@ -1476,6 +1495,16 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyData.keyId?.hashCode() ?: keyData.hashCode(),
         )
         val base = view.background
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            view.background = android.graphics.drawable.InsetDrawable(
+                base,
+                leftInset,
+                topInset,
+                rightInset,
+                bottomInset,
+            )
+            return
+        }
         val segmented = SegmentedBackgroundDrawable(
             label = "",
             baseColor = Color.TRANSPARENT,
@@ -1588,6 +1617,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         val secondaryColor =
@@ -1774,6 +1804,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupOverlayHostProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
@@ -2010,6 +2041,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.standard)
@@ -2122,6 +2154,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupOverlayHostProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
@@ -2274,6 +2307,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
@@ -2422,6 +2456,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
                         setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
@@ -2541,6 +2576,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
@@ -2592,6 +2628,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
                         setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
@@ -2664,6 +2701,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setKeyboardSkin(keyboardSkinId)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
                         setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)

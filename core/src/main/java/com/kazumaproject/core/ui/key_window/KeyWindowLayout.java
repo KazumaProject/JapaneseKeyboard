@@ -5,11 +5,14 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.widget.FrameLayout;
 
 import com.kazumaproject.core.R;
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDirection;
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupDrawable;
 
 /**
  * Bubble View for Android with custom stroke width and color, arrow size, position and direction.
@@ -29,6 +32,7 @@ public class KeyWindowLayout extends FrameLayout {
     private int mBubbleColor;
     private float mStrokeWidth;
     private int mStrokeColor;
+    private Drawable mCustomBubbleDrawable;
 
     public KeyWindowLayout(Context context) {
         this(context, null, 0);
@@ -70,7 +74,12 @@ public class KeyWindowLayout extends FrameLayout {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        if (mKeyWindows != null) mKeyWindows.draw(canvas);
+        if (mCustomBubbleDrawable != null) {
+            mCustomBubbleDrawable.setBounds(0, 0, getWidth(), getHeight());
+            mCustomBubbleDrawable.draw(canvas);
+        } else if (mKeyWindows != null) {
+            mKeyWindows.draw(canvas);
+        }
         super.dispatchDraw(canvas);
     }
 
@@ -175,13 +184,66 @@ public class KeyWindowLayout extends FrameLayout {
         resetPadding();
         mArrowDirection = arrowDirection;
         initPadding();
+        updateCustomPopupDirection();
+        invalidate();
         return this;
+    }
+
+    /** Replaces the legacy bubble path for built-in Cupertino skins. */
+    public KeyWindowLayout setCustomBubbleDrawable(Drawable drawable) {
+        mCustomBubbleDrawable = drawable;
+        updateCustomPopupDirection();
+        invalidate();
+        return this;
+    }
+
+    /** Restores the legacy bubble renderer after leaving a fixed-skin popup. */
+    public KeyWindowLayout clearCustomBubbleDrawable() {
+        mCustomBubbleDrawable = null;
+        invalidate();
+        return this;
+    }
+
+    private void updateCustomPopupDirection() {
+        if (!(mCustomBubbleDrawable instanceof KeyboardSkinPopupDrawable)) return;
+        if (mArrowWidth <= 0f || mArrowHeight <= 0f) {
+            ((KeyboardSkinPopupDrawable) mCustomBubbleDrawable)
+                    .setDirection(KeyboardSkinPopupDirection.CENTER);
+            return;
+        }
+        KeyboardSkinPopupDirection direction;
+        switch (mArrowDirection) {
+            case LEFT:
+            case LEFT_CENTER:
+                direction = KeyboardSkinPopupDirection.LEFT;
+                break;
+            case RIGHT:
+            case RIGHT_CENTER:
+                direction = KeyboardSkinPopupDirection.RIGHT;
+                break;
+            case TOP:
+            case TOP_CENTER:
+            case TOP_RIGHT:
+                direction = KeyboardSkinPopupDirection.UP;
+                break;
+            case BOTTOM:
+            case BOTTOM_CENTER:
+            case BOTTOM_RIGHT:
+                direction = KeyboardSkinPopupDirection.DOWN;
+                break;
+            default:
+                direction = KeyboardSkinPopupDirection.CENTER;
+                break;
+        }
+        ((KeyboardSkinPopupDrawable) mCustomBubbleDrawable).setDirection(direction);
     }
 
     public KeyWindowLayout setArrowWidth(float arrowWidth) {
         resetPadding();
         mArrowWidth = arrowWidth;
         initPadding();
+        updateCustomPopupDirection();
+        invalidate();
         return this;
     }
 
@@ -195,6 +257,8 @@ public class KeyWindowLayout extends FrameLayout {
         resetPadding();
         mArrowHeight = arrowHeight;
         initPadding();
+        updateCustomPopupDirection();
+        invalidate();
         return this;
     }
 

@@ -159,6 +159,51 @@ data class KeyboardSkinMotionSpec(
     val continuousPeriodMs: Long,
 )
 
+/**
+ * Popup surfaces are intentionally separate from keycaps. iOS uses a larger, flatter surface for
+ * previews and flick candidates, so reusing the key drawable alone cannot reproduce its geometry.
+ */
+enum class KeyboardSkinPopupKind {
+    KEY_PREVIEW,
+    VARIATION,
+    FLICK_STANDARD,
+    FLICK_DIRECTIONAL,
+    FLICK_CROSS,
+    FLICK_CIRCLE,
+    FLICK_GUIDE,
+}
+
+enum class KeyboardSkinPopupDirection {
+    CENTER,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+}
+
+data class KeyboardSkinPopupSpec(
+    @ColorInt val surfaceColor: Int,
+    @ColorInt val selectedSurfaceColor: Int,
+    @ColorInt val textColor: Int,
+    @ColorInt val selectedTextColor: Int,
+    @ColorInt val secondaryTextColor: Int,
+    @ColorInt val shadowColor: Int,
+    val shadowAlpha: Int,
+    val selectedShadowAlpha: Int,
+    val cornerRadiusDp: Float,
+    val strokeWidthDp: Float,
+    val stemWidthDp: Float,
+    val stemHeightDp: Float,
+    val contentPaddingHorizontalDp: Float,
+    val contentPaddingVerticalDp: Float,
+    val itemGapDp: Float,
+    val keyPreviewWidthScale: Float,
+    val keyPreviewHeightScale: Float,
+    val keyPreviewTextSizeSp: Float,
+    val variationTextSizeSp: Float,
+    val flickTextSizeSp: Float,
+)
+
 data class KeyboardSkinSpec(
     val id: KeyboardSkinId,
     val palette: KeyboardSkinPalette,
@@ -167,6 +212,7 @@ data class KeyboardSkinSpec(
     val material: KeyboardSkinMaterial,
     val depthModel: KeyboardSkinDepthModel,
     val motion: KeyboardSkinMotionSpec,
+    val popup: KeyboardSkinPopupSpec? = null,
 )
 
 /**
@@ -293,6 +339,7 @@ object KeyboardSkinCatalog {
             KeyboardSkinMaterial.CUPERTINO,
             KeyboardSkinDepthModel.NONE,
             KeyboardSkinMotionSpec(1f, 0f, pressDurationMs = 60, releaseDurationMs = 80, continuousPeriodMs = 0),
+            popup = cupertinoPopup(isDark = false),
         ),
         spec(
             KeyboardSkinId.CUPERTINO_DARK,
@@ -308,6 +355,7 @@ object KeyboardSkinCatalog {
             KeyboardSkinMaterial.CUPERTINO,
             KeyboardSkinDepthModel.NONE,
             KeyboardSkinMotionSpec(1f, 0f, pressDurationMs = 60, releaseDurationMs = 80, continuousPeriodMs = 0),
+            popup = cupertinoPopup(isDark = true),
         ),
         spec(
             KeyboardSkinId.SUMI_HANSHI,
@@ -433,7 +481,31 @@ object KeyboardSkinCatalog {
         material: KeyboardSkinMaterial,
         depthModel: KeyboardSkinDepthModel,
         motion: KeyboardSkinMotionSpec,
-    ) = KeyboardSkinSpec(id, palette, geometry, typography, material, depthModel, motion)
+        popup: KeyboardSkinPopupSpec? = null,
+    ) = KeyboardSkinSpec(id, palette, geometry, typography, material, depthModel, motion, popup)
+
+    private fun cupertinoPopup(isDark: Boolean): KeyboardSkinPopupSpec = KeyboardSkinPopupSpec(
+        surfaceColor = if (isDark) 0xFF5A5A5E.toInt() else 0xFFFFFFFF.toInt(),
+        selectedSurfaceColor = if (isDark) 0xFF8E8E93.toInt() else 0xFFD1D1D6.toInt(),
+        textColor = if (isDark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt(),
+        selectedTextColor = if (isDark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt(),
+        secondaryTextColor = if (isDark) 0xFFD1D1D6.toInt() else 0xFF636366.toInt(),
+        shadowColor = 0xFF000000.toInt(),
+        shadowAlpha = if (isDark) 72 else 42,
+        selectedShadowAlpha = if (isDark) 88 else 30,
+        cornerRadiusDp = 7f,
+        strokeWidthDp = 0f,
+        stemWidthDp = 10f,
+        stemHeightDp = 6f,
+        contentPaddingHorizontalDp = 12f,
+        contentPaddingVerticalDp = 8f,
+        itemGapDp = 4f,
+        keyPreviewWidthScale = 2f,
+        keyPreviewHeightScale = 2f,
+        keyPreviewTextSizeSp = 28f,
+        variationTextSizeSp = 28f,
+        flickTextSizeSp = 22f,
+    )
 }
 
 sealed interface KeyboardAppearance {

@@ -8,6 +8,9 @@ import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
@@ -44,6 +47,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var inputTextTransform: (String) -> String = { it }
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
@@ -67,11 +71,27 @@ class TfbiFlickPopupView(context: Context) : View(context) {
      * @param textColor テキストおよび枠線の色
      */
     fun setColors(backgroundColor: Int, highlightedBackgroundColor: Int, textColor: Int) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            applyCupertinoSkin()
+            return
+        }
         bgPaint.color = backgroundColor
         highlightBgPaint.color = highlightedBackgroundColor
         strokePaint.color = textColor
         textPaint.color = textColor
         applyPopupColorOverrides()
+        invalidate()
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(skinId)) {
+            applyCupertinoSkin()
+        } else {
+            strokePaint.alpha = 255
+            textPaint.typeface = null
+            applyPopupColorOverrides()
+        }
         invalidate()
     }
 
@@ -94,9 +114,12 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
-        popupBackgroundColor = style.backgroundColor
-        popupTextColor = style.textColor
-        textPaint.textSize = spToPx(style.textSizeSp.coerceIn(8f, 48f))
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+        popupBackgroundColor = if (popup == null) style.backgroundColor else null
+        popupTextColor = if (popup == null) style.textColor else popup.textColor
+        textPaint.textSize = spToPx(
+            (popup?.flickTextSizeSp ?: style.textSizeSp).coerceIn(8f, 48f)
+        )
         applyPopupColorOverrides()
         invalidate()
     }
@@ -107,6 +130,22 @@ class TfbiFlickPopupView(context: Context) : View(context) {
             textPaint.color = textColor
             strokePaint.color = textColor
         }
+    }
+
+    private fun applyCupertinoSkin() {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId) ?: return
+        bgPaint.color = popup.surfaceColor
+        highlightBgPaint.color = popup.selectedSurfaceColor
+        strokePaint.color = popup.surfaceColor
+        strokePaint.alpha = 0
+        textPaint.color = popup.textColor
+        textPaint.typeface = android.graphics.Typeface.create(
+            "sans-serif",
+            android.graphics.Typeface.NORMAL,
+        )
+        textPaint.textSize = spToPx(popup.flickTextSizeSp)
+        popupBackgroundColor = null
+        popupTextColor = popup.textColor
     }
 
     // ===== Viewのライフサイクル =====
@@ -120,19 +159,42 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         super.onDraw(canvas)
 
         rects[TfbiFlickDirection.TAP]?.let { rect ->
-            val paint =
-                if (highlightedDirection == TfbiFlickDirection.TAP) highlightBgPaint else bgPaint
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
-            drawTextCentered(canvas, inputTextTransform(tapCharacter), rect)
+            val selected = highlightedDirection == TfbiFlickDirection.TAP
+            val drawRect = popupRect(rect)
+            if (!KeyboardSkinPopupRenderer.drawRoundRect(
+                    canvas,
+                    context,
+                    keyboardSkinId,
+                    KeyboardSkinPopupKind.FLICK_CROSS,
+                    drawRect,
+                    selected,
+                )
+            ) {
+                val paint = if (selected) highlightBgPaint else bgPaint
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
+            }
+            drawTextCentered(canvas, inputTextTransform(tapCharacter), drawRect)
         }
 
         for ((direction, char) in petalCharacters) {
             rects[direction]?.let { rect ->
-                val paint = if (highlightedDirection == direction) highlightBgPaint else bgPaint
-                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
-                drawTextCentered(canvas, inputTextTransform(char), rect)
+                val selected = highlightedDirection == direction
+                val drawRect = popupRect(rect)
+                if (!KeyboardSkinPopupRenderer.drawRoundRect(
+                        canvas,
+                        context,
+                        keyboardSkinId,
+                        KeyboardSkinPopupKind.FLICK_CROSS,
+                        drawRect,
+                        selected,
+                    )
+                ) {
+                    val paint = if (selected) highlightBgPaint else bgPaint
+                    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+                    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
+                }
+                drawTextCentered(canvas, inputTextTransform(char), drawRect)
             }
         }
     }
@@ -156,6 +218,16 @@ class TfbiFlickPopupView(context: Context) : View(context) {
                 rects[direction] = rect
             }
         }
+    }
+
+    private fun popupRect(rect: RectF): RectF {
+        val popup = KeyboardSkinPopupRenderer.specFor(keyboardSkinId) ?: return rect
+        val inset = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            popup.itemGapDp / 2f,
+            resources.displayMetrics,
+        )
+        return RectF(rect).apply { inset(inset, inset) }
     }
 
     private fun drawTextCentered(canvas: Canvas, text: String, rect: RectF) {

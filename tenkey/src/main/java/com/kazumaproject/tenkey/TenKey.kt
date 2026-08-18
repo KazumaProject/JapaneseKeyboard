@@ -51,6 +51,8 @@ import com.kazumaproject.core.data.keyboard.KeyboardElementRole
 import com.kazumaproject.core.data.keyboard.KeyboardSkinDrawableFactory
 import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.core.data.keyboard.KeyboardSkinMotionMode
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupKind
+import com.kazumaproject.core.data.keyboard.KeyboardSkinPopupRenderer
 import com.kazumaproject.core.data.keyboard.KeyboardSkinRendererRegistry
 import com.kazumaproject.core.data.keyboard.KeyboardSkinViewStyler
 import com.kazumaproject.core.data.keyboard.KeyboardSurfaceRole
@@ -610,6 +612,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        if (KeyboardSkinPopupRenderer.isFixedCupertino(keyboardSkinId)) {
+            val popup = checkNotNull(KeyboardSkinPopupRenderer.specFor(keyboardSkinId))
+            popupViewStyle = PopupViewStyle(
+                sizeScalePercent = 100,
+                textSizeSp = popup.flickTextSizeSp,
+            )
+            applyPopupTextSize()
+            applyPopupColors()
+            return
+        }
         popupViewStyle = PopupViewStyle(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
@@ -622,6 +634,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private fun applyPopupTextSize() {
         if (!::popTextActive.isInitialized) return
+        val fixedTextSize = KeyboardSkinPopupRenderer.popupTextSizeSp(
+            keyboardSkinId,
+            KeyboardSkinPopupKind.FLICK_STANDARD,
+        )
         listOf(
             popTextActive,
             popTextLeft,
@@ -632,8 +648,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         ).forEach { textView ->
             textView.setTextSize(
                 TypedValue.COMPLEX_UNIT_SP,
-                popupViewStyle.textSizeSp.coerceIn(8f, 48f)
+                (fixedTextSize ?: popupViewStyle.textSizeSp).coerceIn(8f, 48f)
             )
+            if (fixedTextSize != null) {
+                KeyboardSkinPopupRenderer.applyTextStyle(
+                    textView,
+                    keyboardSkinId,
+                    KeyboardSkinPopupKind.FLICK_STANDARD,
+                )
+            }
         }
     }
 
@@ -941,6 +964,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
         when {
             this.keyboardSkinId != KeyboardSkinId.DEFAULT -> {
+                KeyboardSkinPopupRenderer.specFor(this.keyboardSkinId)?.let { popup ->
+                    popupViewStyle = PopupViewStyle(100, popup.flickTextSizeSp)
+                }
                 buildCustomPopupViews(inflater)
                 applyBuiltInSkin()
                 applyPopupTextSize()
@@ -1342,12 +1368,52 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private fun applyBuiltInPopupColors() {
         if (!::bubbleViewActive.isInitialized) return
+        val renderer = KeyboardSkinRendererRegistry.rendererFor(keyboardSkinId)
+        val popupSpec = KeyboardSkinPopupRenderer.specFor(keyboardSkinId)
+        if (popupSpec != null) {
+            bubbleViewActive.setCustomBubbleDrawable(
+                renderer.createPopupDrawable(
+                    context,
+                    KeyboardSkinPopupKind.FLICK_DIRECTIONAL,
+                    selected = true,
+                )
+            )
+            bubbleViewLeft.setCustomBubbleDrawable(
+                renderer.createPopupDrawable(context, KeyboardSkinPopupKind.FLICK_DIRECTIONAL)
+            )
+            bubbleViewTop.setCustomBubbleDrawable(
+                renderer.createPopupDrawable(context, KeyboardSkinPopupKind.FLICK_DIRECTIONAL)
+            )
+            bubbleViewRight.setCustomBubbleDrawable(
+                renderer.createPopupDrawable(context, KeyboardSkinPopupKind.FLICK_DIRECTIONAL)
+            )
+            bubbleViewBottom.setCustomBubbleDrawable(
+                renderer.createPopupDrawable(context, KeyboardSkinPopupKind.FLICK_DIRECTIONAL)
+            )
+            bubbleViewCenter.setCustomBubbleDrawable(
+                renderer.createPopupDrawable(context, KeyboardSkinPopupKind.FLICK_STANDARD)
+            )
+            listOf(
+                popTextActive, popTextLeft, popTextTop,
+                popTextRight, popTextBottom, popTextCenter,
+            ).forEach { textView ->
+                KeyboardSkinPopupRenderer.applyTextStyle(
+                    textView,
+                    keyboardSkinId,
+                    KeyboardSkinPopupKind.FLICK_STANDARD,
+                )
+            }
+            return
+        }
         val palette = com.kazumaproject.core.data.keyboard.KeyboardSkinCatalog
             .specFor(keyboardSkinId).palette
         listOf(
             bubbleViewActive, bubbleViewLeft, bubbleViewTop,
             bubbleViewRight, bubbleViewBottom, bubbleViewCenter,
-        ).forEach { it.setBubbleColor(palette.specialKeyColor) }
+        ).forEach {
+            it.clearCustomBubbleDrawable()
+            it.setBubbleColor(palette.specialKeyColor)
+        }
         listOf(
             popTextActive, popTextLeft, popTextTop,
             popTextRight, popTextBottom, popTextCenter,

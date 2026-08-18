@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.keyboard.KeyboardSkinId
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -39,6 +40,7 @@ internal class TfbiGuidePopupHost(
     private var configuredBackgroundColor: Int? = null
     private var configuredHighlightedColor: Int? = null
     private var configuredTextColor: Int? = null
+    private var keyboardSkinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
 
     fun show(
         anchor: View,
@@ -51,6 +53,7 @@ internal class TfbiGuidePopupHost(
 
         val panel = guideView ?: TfbiGuidePopupView(context).also { guideView = it }
         val arrow = arrowView ?: TfbiGestureArrowView(context).also { arrowView = it }
+        panel.setKeyboardSkin(keyboardSkinId)
         panel.setInputTextTransform(inputTextTransform)
         panel.applyPopupViewStyle(style)
         applyConfiguredColors(panel, arrow)
@@ -100,6 +103,11 @@ internal class TfbiGuidePopupHost(
 
     fun setInputTextTransform(transform: (String) -> String) {
         guideView?.setInputTextTransform(transform)
+    }
+
+    fun setKeyboardSkin(skinId: KeyboardSkinId) {
+        keyboardSkinId = skinId
+        guideView?.setKeyboardSkin(skinId)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
