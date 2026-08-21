@@ -464,6 +464,16 @@
             android:summaryOn="@string/flick_input_only_summary_on"
             android:title="@string/flick_input_only_title" />
 
+        <SeekBarPreference
+            android:defaultValue="1000"
+            android:dependency=""
+            android:key="time_same_pronounce_typing_preference"
+            android:max="1000"
+            android:title="@string/time_same_pronounce_typing_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/time_same_pronounce_typing_summary" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="flick_editor_preview_preference"
@@ -678,18 +688,6 @@
             app:min="1"
             app:showSeekBarValue="true"
             app:summary="@string/pref_clipboard_unpinned_retention_hours_summary" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/category_operation_title">
-        <SeekBarPreference
-            android:defaultValue="1000"
-            android:dependency=""
-            android:key="time_same_pronounce_typing_preference"
-            android:max="1000"
-            android:title="@string/time_same_pronounce_typing_title"
-            app:min="1"
-            app:showSeekBarValue="true"
-            app:summary="@string/time_same_pronounce_typing_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_vibration_title">
