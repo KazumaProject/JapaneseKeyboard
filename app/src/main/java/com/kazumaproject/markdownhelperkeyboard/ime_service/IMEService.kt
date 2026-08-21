@@ -20492,7 +20492,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         clearDeletedBuffer()
                         refreshEditHistoryUi()
                     }
-                    handleTap(character, inputString.value, StringBuilder(), mainView)
+                    // A QWERTY downward flick is a character input gesture, so it must use
+                    // the append-only flick path. The tap path can enter the ten-key repeated
+                    // character cycle (for example A + a -> B).
+                    handleFlick(character, inputString.value, StringBuilder(), mainView)
                 }
             })
 
