@@ -30,7 +30,14 @@ enum class UnitCategory {
 sealed class Precision {
     data object Auto : Precision()
 
+    @Deprecated("Use DecimalPlaces(0)")
     data object Integer : Precision()
+
+    data class DecimalPlaces(val places: Int) : Precision() {
+        init {
+            require(places in MIN_DECIMAL_PLACES..MAX_DECIMAL_PLACES)
+        }
+    }
 
     data class SignificantDigits(val digits: Int) : Precision() {
         init {
@@ -39,8 +46,10 @@ sealed class Precision {
     }
 
     companion object {
-        const val MIN_DIGITS = 3
+        const val MIN_DIGITS = 1
         const val MAX_DIGITS = 15
+        const val MIN_DECIMAL_PLACES = 0
+        const val MAX_DECIMAL_PLACES = 15
     }
 }
 

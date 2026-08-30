@@ -18,7 +18,13 @@
     <string name="utility_region_us">米国</string>
     <string name="utility_region_uk">英国</string>
     <string name="utility_precision_auto">自動</string>
-    <string name="utility_precision_integer">整数（小数点以下0桁）</string>
+    <string name="utility_precision_dialog_title">表示精度</string>
+    <string name="utility_precision_mode_decimal_places">小数点以下</string>
+    <string name="utility_precision_mode_significant_digits">有効数字</string>
+    <string name="utility_precision_digit_count">桁数</string>
+    <string name="utility_precision_decimal_place">小数点以下 1 桁</string>
+    <string name="utility_precision_decimal_places">小数点以下 %1$d 桁</string>
+    <string name="utility_precision_significant_digit">有効数字 1 桁</string>
     <string name="utility_precision_digits">有効数字 %1$d 桁</string>
     <string name="utility_targets_disabled">自動候補は無効</string>
     <string name="utility_reset_title">すべての設定をリセット</string>

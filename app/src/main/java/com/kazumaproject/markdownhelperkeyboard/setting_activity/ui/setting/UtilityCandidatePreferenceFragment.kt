@@ -5,7 +5,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitRegistry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -16,6 +15,19 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_utility_candidate
 
     override fun onCommonPreferencesCreated() {
+        findPreference<Preference>(CALCULATION_PRECISION_KEY)?.setOnPreferenceClickListener {
+            val current = AppPreference.utility_candidate_config
+            PrecisionSelectionDialog.create(
+                context = requireContext(),
+                current = current.calculationPrecision,
+            ) { precision ->
+                AppPreference.utility_candidate_config = current.copy(
+                    calculationPrecision = precision,
+                )
+                updateSummaries()
+            }.show()
+            true
+        }
         targetPreferenceKeys.forEach { (key, category) ->
             findPreference<Preference>(key)?.setOnPreferenceClickListener {
                 findNavController().navigate(
@@ -35,21 +47,22 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
                     preferenceScreen.removeAll()
                     setPreferencesFromResource(preferencesXmlRes, null)
                     onCommonPreferencesCreated()
-                    updateTargetSummaries()
                 }
                 .show()
             true
         }
-        updateTargetSummaries()
+        updateSummaries()
     }
 
     override fun onResume() {
         super.onResume()
-        updateTargetSummaries()
+        updateSummaries()
     }
 
-    private fun updateTargetSummaries() {
+    private fun updateSummaries() {
         val config = AppPreference.utility_candidate_config
+        findPreference<Preference>(CALCULATION_PRECISION_KEY)?.summary =
+            requireContext().utilityPrecisionLabel(config.calculationPrecision)
         targetPreferenceKeys.forEach { (key, category) ->
             val settings = config.unitTargets[category].orEmpty()
             findPreference<Preference>(key)?.summary = if (settings.isEmpty()) {
@@ -57,14 +70,7 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
             } else {
                 settings.mapNotNull { setting ->
                     UnitRegistry.Default.findById(setting.unitId)?.let { unit ->
-                        val precision = when (val value = setting.precision) {
-                            Precision.Auto -> getString(R.string.utility_precision_auto)
-                            Precision.Integer -> getString(R.string.utility_precision_integer)
-                            is Precision.SignificantDigits -> getString(
-                                R.string.utility_precision_digits,
-                                value.digits,
-                            )
-                        }
+                        val precision = requireContext().utilityPrecisionLabel(setting.precision)
                         "${unit.symbol} ($precision)"
                     }
                 }.joinToString()
@@ -73,6 +79,7 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
     }
 
     private companion object {
+        const val CALCULATION_PRECISION_KEY = "utility_calculation_precision"
         val targetPreferenceKeys = mapOf(
             "utility_targets_length" to UnitCategory.LENGTH,
             "utility_targets_area" to UnitCategory.AREA,
