@@ -5,8 +5,10 @@ import android.os.Looper
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -156,6 +158,23 @@ class SuggestionAdapterUserTemplateTypeTest {
         adapter.onBindViewHolder(holder, 0)
 
         assertEquals("", holder.typeText.text.toString())
+        adapter.release()
+    }
+
+    @Test
+    fun utilityCandidatesShowCalculationAndConversionBadges() {
+        val adapter = SuggestionAdapter()
+        adapter.suggestions = listOf(
+            candidate("3", CANDIDATE_TYPE_CALCULATION),
+            candidate("1m", CANDIDATE_TYPE_UNIT_CONVERSION),
+        )
+        awaitItemCount(adapter, 2)
+        val holder = createHolder(adapter)
+
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("[Calc]", holder.typeText.text.toString())
+        adapter.onBindViewHolder(holder, 1)
+        assertEquals("[Convert]", holder.typeText.text.toString())
         adapter.release()
     }
 

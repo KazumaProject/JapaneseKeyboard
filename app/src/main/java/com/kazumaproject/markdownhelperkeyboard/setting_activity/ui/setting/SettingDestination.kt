@@ -731,6 +731,7 @@ object SettingDestinations {
             "setting_route_input_method" -> R.id.inputMethodPreferenceFragment
             "setting_route_candidate_conversion" -> R.id.candidateConversionPreferenceFragment
             "setting_route_conversion_engine" -> R.id.conversionEnginePreferenceFragment
+            "setting_route_utility_candidates" -> R.id.utilityCandidatePreferenceFragment
             "setting_route_dictionary" -> R.id.dictionaryPreferenceFragment
             "setting_route_ai_conversion" -> R.id.aiConversionPreferenceFragment
             "setting_route_clipboard_shortcut" -> R.id.clipboardShortcutPreferenceFragment
