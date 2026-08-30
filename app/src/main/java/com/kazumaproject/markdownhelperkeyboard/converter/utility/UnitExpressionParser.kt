@@ -8,6 +8,8 @@ data class ParsedUnitExpression(
     val category: UnitCategory,
     val baseValue: BigDecimal,
     val terms: List<ParsedUnitTerm>,
+    val canonicalSourceText: String,
+    val prefersCanonicalSource: Boolean,
 )
 
 data class ParsedUnitTerm(
@@ -25,29 +27,36 @@ class UnitExpressionParser(
         expression: String,
         profile: RegionalUnitProfile = RegionalUnitProfile.JAPAN,
     ): ParsedUnitExpression? {
-        val source = rewriteJapaneseTemperature(expression.trim())
+        val rewritten = rewriteJapaneseTemperature(expression.trim())
+        val source = rewritten.text
         if (source.isEmpty()) return null
         var offset = 0
         var category: UnitCategory? = null
         var baseValue = BigDecimal.ZERO
         val terms = mutableListOf<ParsedUnitTerm>()
+        val canonicalSource = StringBuilder(source.length)
+        var prefersCanonicalSource = rewritten.wasRewritten
 
         while (true) {
             offset = skipSpaces(source, offset)
             if (offset >= source.length) break
             var sign = 1
+            var operator = ""
             when (source[offset]) {
                 '+' -> {
+                    if (terms.isNotEmpty()) operator = "+"
                     offset++
                     offset = skipSpaces(source, offset)
                 }
                 '-' -> {
                     sign = -1
+                    operator = "-"
                     offset++
                     offset = skipSpaces(source, offset)
                 }
             }
 
+            val numberStart = offset
             val number = readNumber(source, offset) ?: return null
             offset = number.end
             offset = skipSpaces(source, offset)
@@ -59,6 +68,10 @@ class UnitExpressionParser(
             if (unit.category != category) return null
             val signedValue = if (sign < 0) number.value.negate() else number.value
             terms += ParsedUnitTerm(signedValue, unit)
+            canonicalSource.append(operator)
+            canonicalSource.append(source, numberStart, number.end)
+            canonicalSource.append(unit.symbol)
+            prefersCanonicalSource = prefersCanonicalSource || match.isWordAlias
             if (terms.size > maxTerms) return null
 
             if (category == UnitCategory.TEMPERATURE && terms.size > 1) return null
@@ -78,6 +91,8 @@ class UnitExpressionParser(
             category = category ?: return null,
             baseValue = baseValue,
             terms = terms,
+            canonicalSourceText = canonicalSource.toString(),
+            prefersCanonicalSource = prefersCanonicalSource,
         )
     }
 
@@ -130,10 +145,13 @@ class UnitExpressionParser(
         return NumberRead(value, offset)
     }
 
-    private fun rewriteJapaneseTemperature(source: String): String {
-        val match = JAPANESE_TEMPERATURE.matchEntire(source) ?: return source
+    private data class RewrittenSource(val text: String, val wasRewritten: Boolean)
+
+    private fun rewriteJapaneseTemperature(source: String): RewrittenSource {
+        val match = JAPANESE_TEMPERATURE.matchEntire(source)
+            ?: return RewrittenSource(source, false)
         val unit = if (match.groupValues[1] == "華氏") "°F" else "°C"
-        return match.groupValues[2] + unit
+        return RewrittenSource(match.groupValues[2] + unit, true)
     }
 
     private fun skipSpaces(source: String, start: Int): Int {
