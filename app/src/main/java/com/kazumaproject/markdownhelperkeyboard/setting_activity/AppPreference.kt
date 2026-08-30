@@ -1802,6 +1802,7 @@ object AppPreference {
 
     private fun String?.toUtilityPrecision(): Precision = when (this) {
         "auto", null -> Precision.Auto
+        "integer" -> Precision.Integer
         else -> toIntOrNull()
             ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
             ?.let(Precision::SignificantDigits)
@@ -1810,6 +1811,7 @@ object AppPreference {
 
     private fun Precision.toPreferenceValue(): String = when (this) {
         Precision.Auto -> "auto"
+        Precision.Integer -> "integer"
         is Precision.SignificantDigits -> digits.toString()
     }
 

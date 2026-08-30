@@ -16,6 +16,22 @@ class UnitTargetSettingsJsonCodecTest {
     }
 
     @Test
+    fun integerPrecisionRoundTripsWithoutChangingTheDocumentVersion() {
+        val settings = UtilityCandidateConfig.defaultUnitTargets() +
+            (
+                UnitCategory.LENGTH to listOf(
+                    UnitTargetSetting(UnitId("length.m"), Precision.Integer),
+                )
+            )
+
+        val encoded = codec.encode(settings)
+
+        assertTrue(encoded.contains("\"version\":1"))
+        assertTrue(encoded.contains("\"precision\":\"integer\""))
+        assertEquals(settings, codec.decodeOrDefault(encoded))
+    }
+
+    @Test
     fun corruptDocumentFallsBackToDefaults() {
         assertEquals(UtilityCandidateConfig.defaultUnitTargets(), codec.decodeOrDefault("{"))
         assertEquals(

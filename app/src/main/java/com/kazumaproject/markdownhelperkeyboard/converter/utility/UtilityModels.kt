@@ -30,6 +30,8 @@ enum class UnitCategory {
 sealed class Precision {
     data object Auto : Precision()
 
+    data object Integer : Precision()
+
     data class SignificantDigits(val digits: Int) : Precision() {
         init {
             require(digits in MIN_DIGITS..MAX_DIGITS)
