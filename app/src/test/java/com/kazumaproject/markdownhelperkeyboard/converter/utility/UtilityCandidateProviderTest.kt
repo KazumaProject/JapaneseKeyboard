@@ -125,6 +125,19 @@ class UtilityCandidateProviderTest {
     }
 
     @Test
+    fun wordAliasesExposeCanonicalSourceWithoutChangingSymbolInputOrdering() {
+        assertEquals("10尺", provider.provide("10 しゃく").preferredSourceText)
+        assertEquals("10坪", provider.provide("10つぼ").preferredSourceText)
+        assertEquals("5ft3in", provider.provide("5 feet 3 inches").preferredSourceText)
+        assertEquals("1h30min", provider.provide("1 時間 30 分").preferredSourceText)
+        assertEquals("32°F", provider.provide("華氏32度").preferredSourceText)
+
+        assertEquals(null, provider.provide("10尺").preferredSourceText)
+        assertEquals(null, provider.provide("411in").preferredSourceText)
+        assertEquals(null, provider.provide("32f").preferredSourceText)
+    }
+
+    @Test
     fun compoundUnitsAndSameDimensionAdditionAreSupported() {
         assertTrue("160.02cm" in texts("5'3\""))
         assertTrue("5400s" in texts("1h30min"))

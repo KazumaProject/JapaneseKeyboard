@@ -26,17 +26,22 @@ class UnitRegistry private constructor(
     private data class AliasEntry(
         val alias: String,
         val ignoreCase: Boolean,
+        val isWordAlias: Boolean,
         val definition: UnitDefinition,
     )
 
-    data class Match(val definition: UnitDefinition, val length: Int)
+    data class Match(
+        val definition: UnitDefinition,
+        val length: Int,
+        val isWordAlias: Boolean,
+    )
 
     private val byId = definitions.associateBy(UnitDefinition::id)
     private val aliasEntries = definitions.flatMap { definition ->
         val exact = (definition.exactAliases + definition.symbol).map {
-            AliasEntry(it, false, definition)
+            AliasEntry(it, false, false, definition)
         }
-        val folded = definition.wordAliases.map { AliasEntry(it, true, definition) }
+        val folded = definition.wordAliases.map { AliasEntry(it, true, true, definition) }
         exact + folded
     }.distinctBy { Triple(it.alias, it.ignoreCase, it.definition.id) }
         .sortedByDescending { it.alias.length }
@@ -71,7 +76,13 @@ class UnitRegistry private constructor(
         }
         val longest = categoryMatches.maxOfOrNull(Match::length) ?: return null
         val definitions = categoryMatches.filter { it.length == longest }.map(Match::definition)
-        return resolveAmbiguity(definitions, profile, expectedCategory)?.let { Match(it, longest) }
+        val definition = resolveAmbiguity(definitions, profile, expectedCategory) ?: return null
+        val selectedMatch = categoryMatches
+            .asSequence()
+            .filter { it.length == longest && it.definition.id == definition.id }
+            .minByOrNull { if (it.isWordAlias) 1 else 0 }
+            ?: return null
+        return Match(definition, longest, selectedMatch.isWordAlias)
     }
 
     private fun matchCandidates(text: String, offset: Int): List<Match> = aliasEntries.mapNotNull { entry ->
@@ -81,7 +92,7 @@ class UnitRegistry private constructor(
             return@mapNotNull null
         }
         if (text.regionMatches(offset, entry.alias, 0, entry.alias.length, entry.ignoreCase)) {
-            Match(entry.definition, entry.alias.length)
+            Match(entry.definition, entry.alias.length, entry.isWordAlias)
         } else {
             null
         }

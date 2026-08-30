@@ -111,6 +111,7 @@ data class UtilityCandidate(
 data class UtilityCandidateResult(
     val candidates: List<UtilityCandidate> = emptyList(),
     val trigger: UtilityTrigger = UtilityTrigger.NONE,
+    val preferredSourceText: String? = null,
 ) {
     val hasCandidates: Boolean get() = candidates.isNotEmpty()
 
