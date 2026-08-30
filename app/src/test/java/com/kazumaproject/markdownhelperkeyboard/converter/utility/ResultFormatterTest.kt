@@ -19,4 +19,22 @@ class ResultFormatterTest {
         assertEquals("12", ResultFormatter.format(BigDecimal("12.000"), Precision.SignificantDigits(6)))
         assertEquals("0", ResultFormatter.format(BigDecimal("-0.000"), Precision.SignificantDigits(3)))
     }
+
+    @Test
+    fun integerPrecisionUsesHalfUpAndNeverReturnsNegativeZero() {
+        assertEquals("1", ResultFormatter.format(BigDecimal("1.49"), Precision.Integer))
+        assertEquals("2", ResultFormatter.format(BigDecimal("1.5"), Precision.Integer))
+        assertEquals("-2", ResultFormatter.format(BigDecimal("-1.5"), Precision.Integer))
+        assertEquals("0", ResultFormatter.format(BigDecimal("0.49"), Precision.Integer))
+        assertEquals("0", ResultFormatter.format(BigDecimal("-0.49"), Precision.Integer))
+        assertEquals("0", ResultFormatter.format(BigDecimal("-0.000"), Precision.Integer))
+    }
+
+    @Test
+    fun integerPrecisionKeepsScientificNotationForExtremeValues() {
+        assertEquals(
+            "1.234567890123e12",
+            ResultFormatter.format(BigDecimal("1234567890123.4"), Precision.Integer),
+        )
+    }
 }
