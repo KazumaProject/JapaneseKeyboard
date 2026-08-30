@@ -7,6 +7,31 @@ import org.junit.Test
 
 class UtilityCandidateConfigTest {
     @Test
+    fun significantDigitsAcceptOneThroughFifteen() {
+        assertEquals(1, Precision.SignificantDigits(1).digits)
+        assertEquals(2, Precision.SignificantDigits(2).digits)
+        assertEquals(15, Precision.SignificantDigits(15).digits)
+        assertThrows(IllegalArgumentException::class.java) {
+            Precision.SignificantDigits(0)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Precision.SignificantDigits(16)
+        }
+    }
+
+    @Test
+    fun decimalPlacesAcceptZeroThroughFifteen() {
+        assertEquals(0, Precision.DecimalPlaces(0).places)
+        assertEquals(15, Precision.DecimalPlaces(15).places)
+        assertThrows(IllegalArgumentException::class.java) {
+            Precision.DecimalPlaces(-1)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Precision.DecimalPlaces(16)
+        }
+    }
+
+    @Test
     fun defaultsStayAtFourTargetsWhileLimitIsEight() {
         assertEquals(8, UtilityCandidateConfig.MAX_TARGETS_PER_CATEGORY)
         assertTrue(UtilityCandidateConfig.defaultUnitTargets().values.all { it.size <= 4 })

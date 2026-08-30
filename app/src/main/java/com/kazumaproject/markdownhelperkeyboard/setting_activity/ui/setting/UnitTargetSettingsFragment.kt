@@ -124,34 +124,19 @@ class UnitTargetSettingsFragment : Fragment() {
 
     private fun showPrecisionDialog(position: Int) {
         val current = adapter.items.getOrNull(position) ?: return
-        val values: List<Precision> = listOf(Precision.Auto, Precision.Integer) +
-            (Precision.MIN_DIGITS..Precision.MAX_DIGITS).map(Precision::SignificantDigits)
-        val labels = values.map { precisionLabel(it) }.toTypedArray()
-        val selected = values.indexOf(current.precision).coerceAtLeast(0)
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.utility_calculation_precision_title)
-            .setSingleChoiceItems(labels, selected) { dialog, index ->
-                adapter.updatePrecision(position, values[index])
-                saveTargets()
-                dialog.dismiss()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        PrecisionSelectionDialog.create(
+            context = requireContext(),
+            current = current.precision,
+        ) { precision ->
+            adapter.updatePrecision(position, precision)
+            saveTargets()
+        }.show()
     }
 
     private fun saveTargets() {
         val current = AppPreference.utility_candidate_config
         AppPreference.utility_candidate_config = current.copy(
             unitTargets = current.unitTargets + (category to adapter.items.toList()),
-        )
-    }
-
-    private fun precisionLabel(precision: Precision): String = when (precision) {
-        Precision.Auto -> getString(R.string.utility_precision_auto)
-        Precision.Integer -> getString(R.string.utility_precision_integer)
-        is Precision.SignificantDigits -> getString(
-            R.string.utility_precision_digits,
-            precision.digits,
         )
     }
 
@@ -186,7 +171,7 @@ class UnitTargetSettingsFragment : Fragment() {
         override fun onBindViewHolder(holder: TargetViewHolder, position: Int) {
             val item = items[position]
             holder.symbol.text = registry.findById(item.unitId)?.symbol ?: item.unitId.value
-            holder.precision.text = precisionLabel(item.precision)
+            holder.precision.text = requireContext().utilityPrecisionLabel(item.precision)
             holder.precision.setOnClickListener { onPrecision(holder.bindingAdapterPosition) }
             holder.remove.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
         }

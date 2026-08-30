@@ -4,6 +4,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.utility
 class UnitTargetSettingsJsonCodec(
     private val registry: UnitRegistry = UnitRegistry.Default,
 ) {
+    @Suppress("DEPRECATION")
     fun encode(settings: Map<UnitCategory, List<UnitTargetSetting>>): String = buildString {
         append("{\"version\":")
         append(CURRENT_VERSION)
@@ -20,7 +21,8 @@ class UnitTargetSettingsJsonCodec(
                 appendJsonString(
                     when (val precision = setting.precision) {
                         Precision.Auto -> "auto"
-                        Precision.Integer -> "integer"
+                        Precision.Integer -> "${DECIMAL_PREFIX}0"
+                        is Precision.DecimalPlaces -> "$DECIMAL_PREFIX${precision.places}"
                         is Precision.SignificantDigits -> precision.digits.toString()
                     }
                 )
@@ -65,12 +67,23 @@ class UnitTargetSettingsJsonCodec(
                     if (definition.category != category) return@mapNotNull null
                     val precision = when (precisionText) {
                         "auto" -> Precision.Auto
-                        "integer" -> Precision.Integer
+                        "integer" -> Precision.DecimalPlaces(0)
                         else -> {
-                            val digits = precisionText.toIntOrNull()
-                                ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
-                                ?: return@mapNotNull null
-                            Precision.SignificantDigits(digits)
+                            if (precisionText.startsWith(DECIMAL_PREFIX)) {
+                                val places = precisionText.removePrefix(DECIMAL_PREFIX)
+                                    .toIntOrNull()
+                                    ?.takeIf {
+                                        it in Precision.MIN_DECIMAL_PLACES..
+                                            Precision.MAX_DECIMAL_PLACES
+                                    }
+                                    ?: return@mapNotNull null
+                                Precision.DecimalPlaces(places)
+                            } else {
+                                val digits = precisionText.toIntOrNull()
+                                    ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
+                                    ?: return@mapNotNull null
+                                Precision.SignificantDigits(digits)
+                            }
                         }
                     }
                     UnitTargetSetting(id, precision)
@@ -269,5 +282,6 @@ class UnitTargetSettingsJsonCodec(
         const val CURRENT_VERSION = 1
         private const val MAX_JSON_LENGTH = 32_768
         private const val MAX_JSON_DEPTH = 16
+        private const val DECIMAL_PREFIX = "decimal:"
     }
 }

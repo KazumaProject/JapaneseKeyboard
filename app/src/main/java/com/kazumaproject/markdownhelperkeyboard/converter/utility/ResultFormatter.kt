@@ -9,6 +9,7 @@ object ResultFormatter {
     private const val SCIENTIFIC_UPPER_EXPONENT = 12
     private const val SCIENTIFIC_LOWER_EXPONENT = -7
 
+    @Suppress("DEPRECATION")
     fun format(value: BigDecimal, precision: Precision): String {
         if (value.signum() == 0) return "0"
         val rounded = when (precision) {
@@ -20,6 +21,10 @@ object ResultFormatter {
                 }
             }
             Precision.Integer -> value.setScale(0, RoundingMode.HALF_UP)
+            is Precision.DecimalPlaces -> value.setScale(
+                precision.places,
+                RoundingMode.HALF_UP,
+            )
             is Precision.SignificantDigits -> value.round(
                 MathContext(precision.digits, RoundingMode.HALF_UP)
             )

@@ -1,17 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="utility_precision_entries">
-        <item>@string/utility_precision_auto</item>
-        <item>@string/utility_precision_integer</item>
-        <item>有効数字 3 桁</item><item>有効数字 4 桁</item>
-        <item>有効数字 5 桁</item><item>有効数字 6 桁</item>
-        <item>有効数字 7 桁</item><item>有効数字 8 桁</item>
-        <item>有効数字 9 桁</item><item>有効数字 10 桁</item>
-        <item>有効数字 11 桁</item><item>有効数字 12 桁</item>
-        <item>有効数字 13 桁</item><item>有効数字 14 桁</item>
-        <item>有効数字 15 桁</item>
-    </string-array>
-
     <string-array name="type_null_input_behavior_entries">
         <item>@string/type_null_input_behavior_default</item>
         <item>@string/type_null_input_behavior_direct_commit</item>

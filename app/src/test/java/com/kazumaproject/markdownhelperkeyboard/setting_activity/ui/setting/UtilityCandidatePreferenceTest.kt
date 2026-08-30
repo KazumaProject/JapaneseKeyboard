@@ -72,17 +72,17 @@ class UtilityCandidatePreferenceTest {
     }
 
     @Test
-    fun integerPrecisionPersistsForCalculationAndUnitTargets() {
+    fun decimalPrecisionPersistsForCalculationAndUnitTargets() {
         val defaults = AppPreference.utility_candidate_config
         val updated = defaults.copy(
-            calculationPrecision = Precision.Integer,
+            calculationPrecision = Precision.DecimalPlaces(2),
             unitTargets = defaults.unitTargets +
                 (
                     UnitCategory.LENGTH to
                         listOf(
                             UnitTargetSetting(
                                 UnitId("length.m"),
-                                Precision.Integer,
+                                Precision.DecimalPlaces(2),
                             ),
                         )
                 ),
@@ -93,33 +93,64 @@ class UtilityCandidatePreferenceTest {
         assertEquals(updated, ImePreferencesSnapshot.from(AppPreference).utilityCandidateConfig)
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         assertEquals(
-            "integer",
+            "decimal:2",
             preferences.getString(AppPreference.UTILITY_CALCULATION_PRECISION_KEY, null),
         )
         assertTrue(
             preferences.getString(AppPreference.UTILITY_UNIT_TARGETS_JSON_KEY, null)
-                ?.contains("\"precision\":\"integer\"") == true,
+                ?.contains("\"precision\":\"decimal:2\"") == true,
         )
     }
 
     @Test
-    fun precisionEntriesAreLocalizedOrderedAndMatchStoredValues() {
-        val values = context.resources.getStringArray(R.array.utility_precision_values).toList()
-        assertEquals(
-            listOf("auto", "integer") + (Precision.MIN_DIGITS..Precision.MAX_DIGITS).map(Int::toString),
-            values,
-        )
+    fun legacyIntegerPreferenceMigratesToDecimalPlacesZero() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        preferences.edit()
+            .putString(AppPreference.UTILITY_CALCULATION_PRECISION_KEY, "integer")
+            .putString(
+                AppPreference.UTILITY_UNIT_TARGETS_JSON_KEY,
+                """{"version":1,"categories":{"length":[
+                    {"unitId":"length.m","precision":"integer"}
+                ]}}""".trimIndent(),
+            )
+            .commit()
 
-        val englishEntries = localizedPrecisionEntries(Locale.ENGLISH)
-        val japaneseEntries = localizedPrecisionEntries(Locale.JAPANESE)
-        assertEquals(values.size, englishEntries.size)
-        assertEquals(values.size, japaneseEntries.size)
-        assertEquals("Automatic", englishEntries[0])
-        assertEquals("Integer (0 decimal places)", englishEntries[1])
-        assertEquals("3 significant digits", englishEntries[2])
-        assertEquals("自動", japaneseEntries[0])
-        assertEquals("整数（小数点以下0桁）", japaneseEntries[1])
-        assertEquals("有効数字 3 桁", japaneseEntries[2])
+        val config = ImePreferencesSnapshot.from(AppPreference).utilityCandidateConfig
+        assertEquals(Precision.DecimalPlaces(0), config.calculationPrecision)
+        assertEquals(
+            Precision.DecimalPlaces(0),
+            config.unitTargets.getValue(UnitCategory.LENGTH).single().precision,
+        )
+    }
+
+    @Test
+    fun invalidDecimalCalculationPreferenceFallsBackToAutomatic() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putString(AppPreference.UTILITY_CALCULATION_PRECISION_KEY, "decimal:16")
+            .commit()
+
+        assertEquals(
+            Precision.Auto,
+            ImePreferencesSnapshot.from(AppPreference).utilityCandidateConfig.calculationPrecision,
+        )
+    }
+
+    @Test
+    fun precisionLabelsAreLocalized() {
+        val english = localizedContext(Locale.ENGLISH)
+        val japanese = localizedContext(Locale.JAPANESE)
+
+        assertEquals("Automatic", english.utilityPrecisionLabel(Precision.Auto))
+        assertEquals("0 decimal places", english.utilityPrecisionLabel(Precision.DecimalPlaces(0)))
+        assertEquals("1 decimal place", english.utilityPrecisionLabel(Precision.DecimalPlaces(1)))
+        assertEquals("2 decimal places", english.utilityPrecisionLabel(Precision.DecimalPlaces(2)))
+        assertEquals("1 significant digit", english.utilityPrecisionLabel(Precision.SignificantDigits(1)))
+        assertEquals("2 significant digits", english.utilityPrecisionLabel(Precision.SignificantDigits(2)))
+        assertEquals("自動", japanese.utilityPrecisionLabel(Precision.Auto))
+        assertEquals("小数点以下 0 桁", japanese.utilityPrecisionLabel(Precision.DecimalPlaces(0)))
+        assertEquals("小数点以下 2 桁", japanese.utilityPrecisionLabel(Precision.DecimalPlaces(2)))
+        assertEquals("有効数字 1 桁", japanese.utilityPrecisionLabel(Precision.SignificantDigits(1)))
+        assertEquals("有効数字 2 桁", japanese.utilityPrecisionLabel(Precision.SignificantDigits(2)))
     }
 
     @Test
@@ -130,6 +161,7 @@ class UtilityCandidatePreferenceTest {
             null,
         )
         assertTrue(screen.findPreference<androidx.preference.Preference>(CALCULATION_KEY) != null)
+        assertTrue(screen.findPreference<androidx.preference.Preference>(PRECISION_KEY) != null)
         TARGET_KEYS.forEach { key ->
             assertTrue(key, screen.findPreference<androidx.preference.Preference>(key) != null)
         }
@@ -144,6 +176,18 @@ class UtilityCandidatePreferenceTest {
         assertEquals(
             CALCULATION_KEY,
             SettingDestinations.highlightPreferenceKey(result.destination),
+        )
+
+        val precisionResult = SettingSearchIndex.searchable(context, SettingSearchScope.NEW_HOME)
+            .first { it.key == PRECISION_KEY }
+        assertTrue(precisionResult.destination is SettingDestinationType.NavDestination)
+        assertEquals(
+            R.id.utilityCandidatePreferenceFragment,
+            SettingDestinations.destinationId(precisionResult.destination),
+        )
+        assertEquals(
+            PRECISION_KEY,
+            SettingDestinations.highlightPreferenceKey(precisionResult.destination),
         )
     }
 
@@ -211,16 +255,16 @@ class UtilityCandidatePreferenceTest {
         }
     }
 
-    private fun localizedPrecisionEntries(locale: Locale): List<String> {
+    private fun localizedContext(locale: Locale): Context {
         val configuration = Configuration(context.resources.configuration).apply {
             setLocale(locale)
         }
         return context.createConfigurationContext(configuration)
-            .resources.getStringArray(R.array.utility_precision_entries).toList()
     }
 
     private companion object {
         const val CALCULATION_KEY = "utility_calculation_enabled"
+        const val PRECISION_KEY = "utility_calculation_precision"
         const val ROUTE_KEY = "setting_route_utility_candidates"
         val TARGET_KEYS = listOf(
             "utility_targets_length",

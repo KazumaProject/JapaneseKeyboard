@@ -58,24 +58,44 @@ class UtilityCandidateProviderTest {
     }
 
     @Test
-    fun integerPrecisionAppliesToCalculationExpressionAndUnitCandidates() {
-        val calculationConfig = UtilityCandidateConfig(calculationPrecision = Precision.Integer)
+    fun decimalPlacesApplyToCalculationExpressionAndUnitCandidates() {
+        val calculationConfig = UtilityCandidateConfig(
+            calculationPrecision = Precision.DecimalPlaces(2),
+        )
         assertEquals(
-            listOf("1", "1÷2=1"),
-            provider.provide("1/2=", calculationConfig).candidates.map { it.text },
+            listOf("0.33", "1÷3=0.33"),
+            provider.provide("1/3=", calculationConfig).candidates.map { it.text },
         )
 
         val unitConfig = UtilityCandidateConfig(
             unitTargets = UtilityCandidateConfig.defaultUnitTargets() +
                 (
                     UnitCategory.LENGTH to listOf(
-                        UnitTargetSetting(UnitId("length.cm"), Precision.Integer),
+                        UnitTargetSetting(UnitId("length.cm"), Precision.DecimalPlaces(2)),
                     )
                 ),
         )
         assertEquals(
-            listOf("3cm"),
+            listOf("2.54cm"),
             provider.provide("1in", unitConfig).candidates.map { it.text },
+        )
+    }
+
+    @Test
+    fun oneAndTwoSignificantDigitsApplyToCandidates() {
+        assertEquals(
+            "1000",
+            provider.provide(
+                "1234.5=",
+                UtilityCandidateConfig(calculationPrecision = Precision.SignificantDigits(1)),
+            ).candidates.first().text,
+        )
+        assertEquals(
+            "1200",
+            provider.provide(
+                "1234.5=",
+                UtilityCandidateConfig(calculationPrecision = Precision.SignificantDigits(2)),
+            ).candidates.first().text,
         )
     }
 

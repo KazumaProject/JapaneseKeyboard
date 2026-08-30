@@ -51,6 +51,7 @@ object AppPreference {
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
     const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
@@ -1802,16 +1803,27 @@ object AppPreference {
 
     private fun String?.toUtilityPrecision(): Precision = when (this) {
         "auto", null -> Precision.Auto
-        "integer" -> Precision.Integer
-        else -> toIntOrNull()
-            ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
-            ?.let(Precision::SignificantDigits)
-            ?: Precision.Auto
+        "integer" -> Precision.DecimalPlaces(0)
+        else -> if (startsWith(UTILITY_DECIMAL_PRECISION_PREFIX)) {
+            removePrefix(UTILITY_DECIMAL_PRECISION_PREFIX).toIntOrNull()
+                ?.takeIf {
+                    it in Precision.MIN_DECIMAL_PLACES..Precision.MAX_DECIMAL_PLACES
+                }
+                ?.let(Precision::DecimalPlaces)
+                ?: Precision.Auto
+        } else {
+            toIntOrNull()
+                ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
+                ?.let(Precision::SignificantDigits)
+                ?: Precision.Auto
+        }
     }
 
+    @Suppress("DEPRECATION")
     private fun Precision.toPreferenceValue(): String = when (this) {
         Precision.Auto -> "auto"
-        Precision.Integer -> "integer"
+        Precision.Integer -> "${UTILITY_DECIMAL_PRECISION_PREFIX}0"
+        is Precision.DecimalPlaces -> "$UTILITY_DECIMAL_PRECISION_PREFIX$places"
         is Precision.SignificantDigits -> digits.toString()
     }
 
