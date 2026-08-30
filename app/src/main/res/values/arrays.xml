@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="utility_angle_mode_entries">
+        <item>@string/utility_angle_degrees</item>
+        <item>@string/utility_angle_radians</item>
+    </string-array>
+    <string-array name="utility_angle_mode_values">
+        <item>degrees</item>
+        <item>radians</item>
+    </string-array>
+    <string-array name="utility_regional_profile_entries">
+        <item>@string/utility_region_japan</item>
+        <item>@string/utility_region_us</item>
+        <item>@string/utility_region_uk</item>
+    </string-array>
+    <string-array name="utility_regional_profile_values">
+        <item>japan</item>
+        <item>united_states</item>
+        <item>united_kingdom</item>
+    </string-array>
+    <string-array name="utility_precision_entries">
+        <item>@string/utility_precision_auto</item>
+        <item>3</item><item>4</item><item>5</item><item>6</item><item>7</item><item>8</item>
+        <item>9</item><item>10</item><item>11</item><item>12</item><item>13</item><item>14</item><item>15</item>
+    </string-array>
+    <string-array name="utility_precision_values">
+        <item>auto</item>
+        <item>3</item><item>4</item><item>5</item><item>6</item><item>7</item><item>8</item>
+        <item>9</item><item>10</item><item>11</item><item>12</item><item>13</item><item>14</item><item>15</item>
+    </string-array>
     <string-array name="delete_long_press_conversion_behavior_entries">
         <item>@string/delete_long_press_conversion_behavior_deferred</item>
         <item>@string/delete_long_press_conversion_behavior_continuous</item>
