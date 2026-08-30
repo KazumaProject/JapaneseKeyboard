@@ -1,12 +1,16 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.RegionalUnitProfile
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitCategory
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitId
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitTargetSetting
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.ime_service.ImePreferencesSnapshot
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -18,6 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.xmlpull.v1.XmlPullParser
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -67,6 +72,57 @@ class UtilityCandidatePreferenceTest {
     }
 
     @Test
+    fun integerPrecisionPersistsForCalculationAndUnitTargets() {
+        val defaults = AppPreference.utility_candidate_config
+        val updated = defaults.copy(
+            calculationPrecision = Precision.Integer,
+            unitTargets = defaults.unitTargets +
+                (
+                    UnitCategory.LENGTH to
+                        listOf(
+                            UnitTargetSetting(
+                                UnitId("length.m"),
+                                Precision.Integer,
+                            ),
+                        )
+                ),
+        )
+
+        AppPreference.utility_candidate_config = updated
+
+        assertEquals(updated, ImePreferencesSnapshot.from(AppPreference).utilityCandidateConfig)
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        assertEquals(
+            "integer",
+            preferences.getString(AppPreference.UTILITY_CALCULATION_PRECISION_KEY, null),
+        )
+        assertTrue(
+            preferences.getString(AppPreference.UTILITY_UNIT_TARGETS_JSON_KEY, null)
+                ?.contains("\"precision\":\"integer\"") == true,
+        )
+    }
+
+    @Test
+    fun precisionEntriesAreLocalizedOrderedAndMatchStoredValues() {
+        val values = context.resources.getStringArray(R.array.utility_precision_values).toList()
+        assertEquals(
+            listOf("auto", "integer") + (Precision.MIN_DIGITS..Precision.MAX_DIGITS).map(Int::toString),
+            values,
+        )
+
+        val englishEntries = localizedPrecisionEntries(Locale.ENGLISH)
+        val japaneseEntries = localizedPrecisionEntries(Locale.JAPANESE)
+        assertEquals(values.size, englishEntries.size)
+        assertEquals(values.size, japaneseEntries.size)
+        assertEquals("Automatic", englishEntries[0])
+        assertEquals("Integer (0 decimal places)", englishEntries[1])
+        assertEquals("3 significant digits", englishEntries[2])
+        assertEquals("自動", japaneseEntries[0])
+        assertEquals("整数（小数点以下0桁）", japaneseEntries[1])
+        assertEquals("有効数字 3 桁", japaneseEntries[2])
+    }
+
+    @Test
     fun screenInflatesAndSearchTargetsItsHighlightableDestination() {
         val screen = PreferenceManager(context).inflateFromResource(
             context,
@@ -104,6 +160,7 @@ class UtilityCandidatePreferenceTest {
         )
         assertEquals(R.xml.pref_conversion_engine, legacyTab.xmlRes)
         assertTrue(conversionEngineXmlContainsRoute())
+        assertTrue(routeIsInPredictionSourceCategory())
     }
 
     private fun conversionEngineXmlContainsRoute(): Boolean {
@@ -119,6 +176,47 @@ class UtilityCandidatePreferenceTest {
             }
             false
         }
+    }
+
+    private fun routeIsInPredictionSourceCategory(): Boolean {
+        val parser = context.resources.getXml(R.xml.pref_conversion_engine)
+        val androidNamespace = "http://schemas.android.com/apk/res/android"
+        var currentCategoryTitle: String? = null
+        return parser.use {
+            while (parser.eventType != XmlPullParser.END_DOCUMENT) {
+                when (parser.eventType) {
+                    XmlPullParser.START_TAG -> when (parser.name) {
+                        "PreferenceCategory" -> {
+                            val titleRes = parser.getAttributeResourceValue(
+                                androidNamespace,
+                                "title",
+                                0,
+                            )
+                            currentCategoryTitle = titleRes.takeIf { it != 0 }?.let(context::getString)
+                        }
+                        "Preference" -> if (
+                            parser.getAttributeValue(androidNamespace, "key") == ROUTE_KEY
+                        ) {
+                            return@use currentCategoryTitle ==
+                                context.getString(R.string.prediction_source_category_title)
+                        }
+                    }
+                    XmlPullParser.END_TAG -> if (parser.name == "PreferenceCategory") {
+                        currentCategoryTitle = null
+                    }
+                }
+                parser.next()
+            }
+            false
+        }
+    }
+
+    private fun localizedPrecisionEntries(locale: Locale): List<String> {
+        val configuration = Configuration(context.resources.configuration).apply {
+            setLocale(locale)
+        }
+        return context.createConfigurationContext(configuration)
+            .resources.getStringArray(R.array.utility_precision_entries).toList()
     }
 
     private companion object {

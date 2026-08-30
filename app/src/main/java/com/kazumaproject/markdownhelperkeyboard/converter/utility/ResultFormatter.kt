@@ -19,6 +19,7 @@ object ResultFormatter {
                     value
                 }
             }
+            Precision.Integer -> value.setScale(0, RoundingMode.HALF_UP)
             is Precision.SignificantDigits -> value.round(
                 MathContext(precision.digits, RoundingMode.HALF_UP)
             )

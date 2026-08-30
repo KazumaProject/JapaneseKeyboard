@@ -58,6 +58,28 @@ class UtilityCandidateProviderTest {
     }
 
     @Test
+    fun integerPrecisionAppliesToCalculationExpressionAndUnitCandidates() {
+        val calculationConfig = UtilityCandidateConfig(calculationPrecision = Precision.Integer)
+        assertEquals(
+            listOf("1", "1÷2=1"),
+            provider.provide("1/2=", calculationConfig).candidates.map { it.text },
+        )
+
+        val unitConfig = UtilityCandidateConfig(
+            unitTargets = UtilityCandidateConfig.defaultUnitTargets() +
+                (
+                    UnitCategory.LENGTH to listOf(
+                        UnitTargetSetting(UnitId("length.cm"), Precision.Integer),
+                    )
+                ),
+        )
+        assertEquals(
+            listOf("3cm"),
+            provider.provide("1in", unitConfig).candidates.map { it.text },
+        )
+    }
+
+    @Test
     fun fullWidthInputAndGroupingAreNormalized() {
         assertEquals("7", texts("１２３÷３＋２×２－３８＝").first())
         assertEquals("1234.5", texts("1,200+34.5=").first())

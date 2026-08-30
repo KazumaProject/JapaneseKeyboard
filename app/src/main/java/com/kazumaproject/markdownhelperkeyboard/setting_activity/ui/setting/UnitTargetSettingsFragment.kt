@@ -124,7 +124,7 @@ class UnitTargetSettingsFragment : Fragment() {
 
     private fun showPrecisionDialog(position: Int) {
         val current = adapter.items.getOrNull(position) ?: return
-        val values: List<Precision> = listOf(Precision.Auto) +
+        val values: List<Precision> = listOf(Precision.Auto, Precision.Integer) +
             (Precision.MIN_DIGITS..Precision.MAX_DIGITS).map(Precision::SignificantDigits)
         val labels = values.map { precisionLabel(it) }.toTypedArray()
         val selected = values.indexOf(current.precision).coerceAtLeast(0)
@@ -148,6 +148,7 @@ class UnitTargetSettingsFragment : Fragment() {
 
     private fun precisionLabel(precision: Precision): String = when (precision) {
         Precision.Auto -> getString(R.string.utility_precision_auto)
+        Precision.Integer -> getString(R.string.utility_precision_integer)
         is Precision.SignificantDigits -> getString(
             R.string.utility_precision_digits,
             precision.digits,

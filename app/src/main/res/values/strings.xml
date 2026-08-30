@@ -18,6 +18,7 @@
     <string name="utility_region_us">United States</string>
     <string name="utility_region_uk">United Kingdom</string>
     <string name="utility_precision_auto">Automatic</string>
+    <string name="utility_precision_integer">Integer (0 decimal places)</string>
     <string name="utility_precision_digits">%1$d significant digits</string>
     <string name="utility_targets_disabled">Automatic candidates off</string>
     <string name="utility_reset_title">Reset all settings</string>

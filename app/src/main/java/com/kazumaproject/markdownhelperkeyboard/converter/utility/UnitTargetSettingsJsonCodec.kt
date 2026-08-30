@@ -20,6 +20,7 @@ class UnitTargetSettingsJsonCodec(
                 appendJsonString(
                     when (val precision = setting.precision) {
                         Precision.Auto -> "auto"
+                        Precision.Integer -> "integer"
                         is Precision.SignificantDigits -> precision.digits.toString()
                     }
                 )
@@ -62,13 +63,15 @@ class UnitTargetSettingsJsonCodec(
                         ?: return@mapNotNull null
                     val definition = registry.findById(id) ?: return@mapNotNull null
                     if (definition.category != category) return@mapNotNull null
-                    val precision = if (precisionText == "auto") {
-                        Precision.Auto
-                    } else {
-                        val digits = precisionText.toIntOrNull()
-                            ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
-                            ?: return@mapNotNull null
-                        Precision.SignificantDigits(digits)
+                    val precision = when (precisionText) {
+                        "auto" -> Precision.Auto
+                        "integer" -> Precision.Integer
+                        else -> {
+                            val digits = precisionText.toIntOrNull()
+                                ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
+                                ?: return@mapNotNull null
+                            Precision.SignificantDigits(digits)
+                        }
                     }
                     UnitTargetSetting(id, precision)
                 }.distinctBy(UnitTargetSetting::unitId)

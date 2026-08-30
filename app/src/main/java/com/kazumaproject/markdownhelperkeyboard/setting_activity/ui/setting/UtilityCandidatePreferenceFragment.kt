@@ -59,7 +59,11 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
                     UnitRegistry.Default.findById(setting.unitId)?.let { unit ->
                         val precision = when (val value = setting.precision) {
                             Precision.Auto -> getString(R.string.utility_precision_auto)
-                            is Precision.SignificantDigits -> value.digits.toString()
+                            Precision.Integer -> getString(R.string.utility_precision_integer)
+                            is Precision.SignificantDigits -> getString(
+                                R.string.utility_precision_digits,
+                                value.digits,
+                            )
                         }
                         "${unit.symbol} ($precision)"
                     }
