@@ -18,23 +18,6 @@
         <item>united_states</item>
         <item>united_kingdom</item>
     </string-array>
-    <string-array name="utility_precision_entries">
-        <item>@string/utility_precision_auto</item>
-        <item>@string/utility_precision_integer</item>
-        <item>3 significant digits</item><item>4 significant digits</item>
-        <item>5 significant digits</item><item>6 significant digits</item>
-        <item>7 significant digits</item><item>8 significant digits</item>
-        <item>9 significant digits</item><item>10 significant digits</item>
-        <item>11 significant digits</item><item>12 significant digits</item>
-        <item>13 significant digits</item><item>14 significant digits</item>
-        <item>15 significant digits</item>
-    </string-array>
-    <string-array name="utility_precision_values">
-        <item>auto</item>
-        <item>integer</item>
-        <item>3</item><item>4</item><item>5</item><item>6</item><item>7</item><item>8</item>
-        <item>9</item><item>10</item><item>11</item><item>12</item><item>13</item><item>14</item><item>15</item>
-    </string-array>
     <string-array name="delete_long_press_conversion_behavior_entries">
         <item>@string/delete_long_press_conversion_behavior_deferred</item>
         <item>@string/delete_long_press_conversion_behavior_continuous</item>

@@ -16,19 +16,48 @@ class UnitTargetSettingsJsonCodecTest {
     }
 
     @Test
-    fun integerPrecisionRoundTripsWithoutChangingTheDocumentVersion() {
+    fun decimalPrecisionRoundTripsWithoutChangingTheDocumentVersion() {
         val settings = UtilityCandidateConfig.defaultUnitTargets() +
             (
                 UnitCategory.LENGTH to listOf(
-                    UnitTargetSetting(UnitId("length.m"), Precision.Integer),
+                    UnitTargetSetting(UnitId("length.m"), Precision.DecimalPlaces(2)),
                 )
             )
 
         val encoded = codec.encode(settings)
 
         assertTrue(encoded.contains("\"version\":1"))
-        assertTrue(encoded.contains("\"precision\":\"integer\""))
+        assertTrue(encoded.contains("\"precision\":\"decimal:2\""))
         assertEquals(settings, codec.decodeOrDefault(encoded))
+    }
+
+    @Test
+    fun legacyIntegerAndNumericPrecisionsRemainReadable() {
+        val decoded = codec.decodeOrDefault(
+            """{"version":1,"categories":{"length":[
+                {"unitId":"length.m","precision":"integer"},
+                {"unitId":"length.cm","precision":"1"},
+                {"unitId":"length.ft","precision":"2"}
+            ]}}""".trimIndent(),
+        ).getValue(UnitCategory.LENGTH)
+
+        assertEquals(Precision.DecimalPlaces(0), decoded[0].precision)
+        assertEquals(Precision.SignificantDigits(1), decoded[1].precision)
+        assertEquals(Precision.SignificantDigits(2), decoded[2].precision)
+    }
+
+    @Test
+    fun invalidDecimalPrecisionIsDiscarded() {
+        val decoded = codec.decodeOrDefault(
+            """{"version":1,"categories":{"length":[
+                {"unitId":"length.m","precision":"decimal:-1"},
+                {"unitId":"length.cm","precision":"decimal:16"},
+                {"unitId":"length.ft","precision":"decimal:2"}
+            ]}}""".trimIndent(),
+        ).getValue(UnitCategory.LENGTH)
+
+        assertEquals(listOf("length.ft"), decoded.map { it.unitId.value })
+        assertEquals(Precision.DecimalPlaces(2), decoded.single().precision)
     }
 
     @Test
@@ -48,7 +77,7 @@ class UnitTargetSettingsJsonCodecTest {
               {"unitId":"length.m","precision":"5"},
               {"unitId":"mass.kg","precision":"6"},
               {"unitId":"unknown.id","precision":"auto"},
-              {"unitId":"length.cm","precision":"2"},
+              {"unitId":"length.cm","precision":"0"},
               {"unitId":"length.ft","precision":"5"},
               {"unitId":"length.in","precision":"5"},
               {"unitId":"length.km","precision":"5"},

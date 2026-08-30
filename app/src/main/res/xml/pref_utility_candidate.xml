@@ -22,14 +22,10 @@
             android:key="utility_angle_mode"
             android:title="@string/utility_angle_mode_title"
             app:useSimpleSummaryProvider="true" />
-        <ListPreference
-            android:defaultValue="auto"
+        <Preference
             android:dependency="utility_calculation_enabled"
-            android:entries="@array/utility_precision_entries"
-            android:entryValues="@array/utility_precision_values"
             android:key="utility_calculation_precision"
-            android:title="@string/utility_calculation_precision_title"
-            app:useSimpleSummaryProvider="true" />
+            android:title="@string/utility_calculation_precision_title" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/utility_unit_conversion_category_title">
