@@ -114,7 +114,13 @@ class UtilityCandidateProvider(
         return if (candidates.isEmpty()) {
             UtilityCandidateResult.Empty
         } else {
-            UtilityCandidateResult(candidates, UtilityTrigger.AUTOMATIC_UNIT_CONVERSION)
+            UtilityCandidateResult(
+                candidates = candidates,
+                trigger = UtilityTrigger.AUTOMATIC_UNIT_CONVERSION,
+                preferredSourceText = parsed.canonicalSourceText.takeIf {
+                    parsed.prefersCanonicalSource && it != normalizedInput.trim()
+                },
+            )
         }
     }
 

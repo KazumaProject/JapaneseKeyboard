@@ -30,20 +30,37 @@ object UtilityCandidateComposer {
             UtilityTrigger.EXPLICIT_UNIT_CONVERSION -> utilityCandidates + existingCandidates
 
             UtilityTrigger.AUTOMATIC_UNIT_CONVERSION -> {
-                val literal = existingCandidates.firstOrNull { it.string == input } ?: Candidate(
-                    string = input,
-                    type = CANDIDATE_TYPE_UTILITY_LITERAL,
-                    length = input.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
-                    score = 0,
-                    yomi = input,
-                )
-                listOf(literal) + utilityCandidates + existingCandidates.filterNot { it === literal }
+                val inputLiteral = existingCandidates.firstOrNull { it.string == input }
+                    ?: utilityLiteral(input, input)
+                val preferredSource = result.preferredSourceText
+                    ?.takeIf { it.isNotBlank() && it != input }
+                    ?.let { text ->
+                        existingCandidates.firstOrNull { it.string == text }
+                            ?: utilityLiteral(text, input)
+                    }
+                if (preferredSource == null) {
+                    listOf(inputLiteral) + utilityCandidates +
+                        existingCandidates.filterNot { it === inputLiteral }
+                } else {
+                    listOf(preferredSource) + utilityCandidates + inputLiteral +
+                        existingCandidates.filterNot {
+                            it === preferredSource || it === inputLiteral
+                        }
+                }
             }
 
             UtilityTrigger.NONE -> existingCandidates
         }
         return ordered.distinctBy(Candidate::string)
     }
+
+    private fun utilityLiteral(text: String, input: String) = Candidate(
+        string = text,
+        type = CANDIDATE_TYPE_UTILITY_LITERAL,
+        length = input.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+        score = 0,
+        yomi = input,
+    )
 
     fun isUtilityCandidate(candidate: Candidate?): Boolean = when (candidate?.type) {
         CANDIDATE_TYPE_CALCULATION,
