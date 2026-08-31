@@ -618,7 +618,7 @@
     <string name="keyboard_size_direct_input_orientation_portrait">縦画面</string>
     <string name="keyboard_size_direct_input_orientation_landscape">横画面</string>
     <string name="keyboard_size_direct_input_keyboard_type_title">キーボード種別</string>
-    <string name="keyboard_size_direct_input_keyboard_type_ten_key">TenKey</string>
+    <string name="keyboard_size_direct_input_keyboard_type_ten_key">TenKey系（TenKey・50音・Sumire・カスタム）</string>
     <string name="keyboard_size_direct_input_keyboard_type_qwerty">QWERTY</string>
     <string name="keyboard_size_direct_input_height_dp">高さ dp</string>
     <string name="keyboard_size_direct_input_width_percent">幅 %</string>
@@ -880,8 +880,6 @@
     <string name="pref_romaji_shift_title">Shift直後の1文字だけ大文字</string>
     <string name="pref_romaji_shift_summary">ローマ字入力で、Shiftキーを押した直後の最初の1文字のみをアルファベットの大文字にします。</string>
     <string name="tablet_preference_category_title">タブレット</string>
-    <string name="pref_tablet_layout_title">タブレットのレイアウト</string>
-    <string name="pref_tablet_layout_summary">タブレットでは五十音（かな）レイアウトを使用します。</string>
     <string name="pref_tablet_tenkey_kana_english_qwerty_title">タブレットの英字入力で QWERTY を使用</string>
     <string name="pref_tablet_tenkey_kana_english_qwerty_summary">タブレットの五十音配列と TenKey 配列の両方で、英字入力時に QWERTY レイアウトを使用します。</string>
     <string name="welcome_title">こんにちは</string>
@@ -1763,4 +1761,10 @@
     <string name="text_macro_variable_newline_description">改行文字（\n）を1つ挿入します。</string>
     <string name="text_macro_variable_newline_example">例: 1行目{newline}2行目</string>
     <string name="text_macro_variable_newline_restriction">選択文字やクリップボードを必要とせず、保護された入力欄でも使用できます。</string>
+    <string name="keyboard_type_tenkey">日本語 - かな</string>
+    <string name="keyboard_type_gojuon">日本語 - 50音</string>
+    <string name="keyboard_type_sumire">日本語 - スミレ入力 β</string>
+    <string name="keyboard_type_qwerty">英語（QWERTY）</string>
+    <string name="keyboard_type_romaji">日本語 - ローマ字</string>
+    <string name="keyboard_type_custom">カスタム - ユーザー定義</string>
 </resources>

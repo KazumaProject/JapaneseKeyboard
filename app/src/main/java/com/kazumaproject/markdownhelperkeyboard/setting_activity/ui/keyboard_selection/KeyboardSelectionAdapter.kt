@@ -49,7 +49,7 @@ class KeyboardSelectionAdapter(
 
         @SuppressLint("ClickableViewAccessibility")
         fun bind(keyboardType: KeyboardType) {
-            binding.keyboardName.text = getKeyboardDisplayName(keyboardType)
+            binding.keyboardName.text = binding.root.context.getKeyboardDisplayName(keyboardType)
 
             binding.dragHandle.visibility = if (isEditing) View.VISIBLE else View.GONE
             binding.deleteIcon.visibility = if (isEditing) View.VISIBLE else View.GONE
@@ -77,13 +77,4 @@ class KeyboardSelectionAdapter(
         }
     }
 
-    private fun getKeyboardDisplayName(keyboardType: KeyboardType): String {
-        return when (keyboardType) {
-            KeyboardType.TENKEY -> "日本語 - かな"
-            KeyboardType.QWERTY -> "英語(QWERTY)"
-            KeyboardType.ROMAJI -> "日本語 - ローマ字"
-            KeyboardType.SUMIRE -> "日本語 - スミレ入力 β"
-            KeyboardType.CUSTOM -> "カスタム - ユーザー定義"
-        }
-    }
 }

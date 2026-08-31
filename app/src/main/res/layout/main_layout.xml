@@ -184,8 +184,8 @@
         android:importantForAccessibility="yes"
         android:visibility="gone" />
 
-    <com.kazumaproject.tabletkey.TabletKeyboardView
-        android:id="@+id/tablet_view"
+    <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
+        android:id="@+id/gojuon_view"
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height"
         android:layout_gravity="bottom"

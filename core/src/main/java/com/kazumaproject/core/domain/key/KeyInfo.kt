@@ -1,6 +1,6 @@
 package com.kazumaproject.core.domain.key
 
-import com.kazumaproject.core.data.tablet.TabletCapsLockState
+import com.kazumaproject.core.data.gojuon.GojuonCapsLockState
 
 sealed class KeyInfo {
     data object Null : KeyInfo()
@@ -13,7 +13,7 @@ sealed class KeyInfo {
         abstract val flickBottom: Char?
     }
 
-    fun KeyTapFlickInfo.getOutputChar(state: TabletCapsLockState): Char? {
+    fun KeyTapFlickInfo.getOutputChar(state: GojuonCapsLockState): Char? {
         val isUpper = state.shiftOn || state.capsLockOn
         return when {
             isUpper && state.zenkakuOn -> this.flickRight
@@ -465,8 +465,8 @@ sealed class KeyInfo {
             get() = null
     }
 
-    /** タブレット **/
-    object TabletKeyAJapanese : KeyTapFlickInfo() {
+    /** 50音キーボード **/
+    object GojuonKeyAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'あ'
         override val flickLeft: Char?
@@ -531,7 +531,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyKAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyKAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'か'
         override val flickLeft: Char
@@ -596,7 +596,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeySAJapanese : KeyTapFlickInfo() {
+    object GojuonKeySAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'さ'
         override val flickLeft: Char
@@ -661,7 +661,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyTAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyTAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'た'
         override val flickLeft: Char
@@ -726,7 +726,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyNAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyNAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'な'
         override val flickLeft: Char?
@@ -791,7 +791,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyHAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyHAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'は'
         override val flickLeft: Char
@@ -856,7 +856,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyMAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyMAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'ま'
         override val flickLeft: Char?
@@ -921,7 +921,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyYAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyYAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'や'
         override val flickLeft: Char?
@@ -960,7 +960,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyRAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyRAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'ら'
         override val flickLeft: Char?
@@ -1025,7 +1025,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object TabletKeyWAJapanese : KeyTapFlickInfo() {
+    object GojuonKeyWAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'わ'
         override val flickLeft: Char?
@@ -1155,7 +1155,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    /** Tablet QWERTYKey
+    /** Gojuon QWERTYKey
      *
      *  tap: Default
      *  left: Capital Letter
@@ -2077,7 +2077,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object Key1NumberTablet : KeyTapFlickInfo() {
+    object Key1NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '1'
         override val flickTop: Char
@@ -2087,7 +2087,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key2NumberTablet : KeyTapFlickInfo() {
+    object Key2NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '2'
         override val flickTop: Char
@@ -2097,7 +2097,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key3NumberTablet : KeyTapFlickInfo() {
+    object Key3NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '3'
         override val flickTop: Char
@@ -2107,7 +2107,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key4NumberTablet : KeyTapFlickInfo() {
+    object Key4NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '4'
         override val flickTop: Char
@@ -2117,7 +2117,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key5NumberTablet : KeyTapFlickInfo() {
+    object Key5NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '5'
         override val flickTop: Char
@@ -2127,7 +2127,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key6NumberTablet : KeyTapFlickInfo() {
+    object Key6NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '6'
         override val flickTop: Char
@@ -2137,7 +2137,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key7NumberTablet : KeyTapFlickInfo() {
+    object Key7NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '7'
         override val flickTop: Char
@@ -2147,7 +2147,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key8NumberTablet : KeyTapFlickInfo() {
+    object Key8NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '8'
         override val flickTop: Char
@@ -2157,7 +2157,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key9NumberTablet : KeyTapFlickInfo() {
+    object Key9NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '9'
         override val flickTop: Char
@@ -2167,7 +2167,7 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
-    object Key0NumberTablet : KeyTapFlickInfo() {
+    object Key0NumberGojuon : KeyTapFlickInfo() {
         override val tap: Char
             get() = '0'
         override val flickTop: Char
