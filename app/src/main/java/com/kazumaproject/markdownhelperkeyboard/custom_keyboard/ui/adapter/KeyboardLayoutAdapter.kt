@@ -5,11 +5,13 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.PopupMenu
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardLayoutListItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemKeyboardLayoutBinding
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -22,14 +24,16 @@ class KeyboardLayoutAdapter(
 
     // ★追加: Fragment 側の ItemTouchHelper.startDrag を呼ぶためのコールバック
     private val onStartDrag: (RecyclerView.ViewHolder) -> Unit,
-) : ListAdapter<CustomKeyboardLayout, KeyboardLayoutAdapter.ViewHolder>(DiffCallback) {
+) : ListAdapter<KeyboardLayoutListItem, KeyboardLayoutAdapter.ViewHolder>(DiffCallback) {
 
     inner class ViewHolder(private val binding: ListItemKeyboardLayoutBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         @SuppressLint("ClickableViewAccessibility")
-        fun bind(layout: CustomKeyboardLayout) {
+        fun bind(item: KeyboardLayoutListItem) {
+            val layout = item.layout
             binding.keyboardNameText.text = layout.name
+            binding.keyboardInUseBadge.isVisible = item.isInUse
             val context = binding.root.context
             binding.keyboardDateText.text = context.getString(
                 com.kazumaproject.core.R.string.created_at_date,
@@ -51,6 +55,7 @@ class KeyboardLayoutAdapter(
             binding.keyboardMenuButton.setOnClickListener { view ->
                 PopupMenu(view.context, view).apply {
                     menuInflater.inflate(R.menu.menu_list_item, menu)
+                    menu.findItem(R.id.action_delete_layout).isEnabled = !item.isInUse
                     setOnMenuItemClickListener { menuItem ->
                         when (menuItem.itemId) {
                             R.id.action_delete_layout -> {
@@ -90,17 +95,17 @@ class KeyboardLayoutAdapter(
         return sdf.format(Date(timestamp))
     }
 
-    companion object DiffCallback : DiffUtil.ItemCallback<CustomKeyboardLayout>() {
+    companion object DiffCallback : DiffUtil.ItemCallback<KeyboardLayoutListItem>() {
         override fun areItemsTheSame(
-            oldItem: CustomKeyboardLayout,
-            newItem: CustomKeyboardLayout
+            oldItem: KeyboardLayoutListItem,
+            newItem: KeyboardLayoutListItem
         ): Boolean {
-            return oldItem.layoutId == newItem.layoutId
+            return oldItem.layout.layoutId == newItem.layout.layoutId
         }
 
         override fun areContentsTheSame(
-            oldItem: CustomKeyboardLayout,
-            newItem: CustomKeyboardLayout
+            oldItem: KeyboardLayoutListItem,
+            newItem: KeyboardLayoutListItem
         ): Boolean {
             return oldItem == newItem
         }

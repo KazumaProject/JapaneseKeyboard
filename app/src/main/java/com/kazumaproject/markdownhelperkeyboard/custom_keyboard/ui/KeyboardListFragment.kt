@@ -139,7 +139,7 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                 super.clearView(recyclerView, viewHolder)
 
                 // ★ドロップ後に永続化
-                val idsInDisplayOrder = adapter.currentList.map { it.layoutId }
+                val idsInDisplayOrder = adapter.currentList.map { it.layout.layoutId }
                 viewModel.updateLayoutOrder(idsInDisplayOrder)
             }
 
@@ -157,14 +157,21 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.layouts.collect { layouts ->
-                adapter.submitList(layouts)
+            viewModel.layoutItems.collect { items ->
+                adapter.submitList(items)
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.deleteEvents.collect { event ->
                 when (event) {
+                    is KeyboardDeleteEvent.BlockedInUse ->
+                        Toast.makeText(
+                            requireContext(),
+                            R.string.custom_keyboard_in_use_delete_blocked,
+                            Toast.LENGTH_LONG,
+                        ).show()
+
                     is KeyboardDeleteEvent.ConfirmReferenced ->
                         showReferencedDeleteWarningDialog(event.impact)
 
@@ -172,6 +179,11 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshCustomKeyboardUsage()
     }
 
     // [ADD] Function to set up the menu
