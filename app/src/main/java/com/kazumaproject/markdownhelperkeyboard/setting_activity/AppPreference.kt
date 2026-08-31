@@ -32,6 +32,7 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwriti
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
+import com.kazumaproject.core.R as CoreR
 
 internal object CustomThemeColorPreferenceKeys {
     const val CANDIDATE_TEXT_COLOR = "custom_theme_candidate_text_color"
@@ -43,6 +44,9 @@ internal object CustomThemeColorPreferenceKeys {
 }
 
 object AppPreference {
+
+    internal const val GOJUON_KEYBOARD_TYPE_MIGRATION_KEY =
+        "gojuon_keyboard_type_migrated_v1"
 
     const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
     const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
@@ -106,6 +110,8 @@ object AppPreference {
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
     private lateinit var preferences: SharedPreferences
+    private lateinit var appContext: Context
+    private var isTabletDevice: Boolean = false
     private val gson = Gson()
     private val unitTargetSettingsCodec = UnitTargetSettingsJsonCodec()
     private const val LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY =
@@ -409,12 +415,7 @@ object AppPreference {
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
 
-    private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(
-            KeyboardType.TENKEY,
-            KeyboardType.QWERTY
-        )
-    )
+    private val defaultKeyboardOrderJson = gson.toJson(defaultKeyboardOrder(isTablet = false))
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
     private val SETTING_HOME_FREQUENT_KEYS =
         Pair("setting_home_frequent_keys_preference", "")
@@ -890,11 +891,72 @@ object AppPreference {
         Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
 
     fun init(context: Context) {
+        appContext = context.applicationContext
+        isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
         removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
         migrateSymbolEmojiCandidatePreferenceIfNeeded()
         migrateSumireKeymapGuideModesIfNeeded()
+        migrateGojuonKeyboardTypeIfNeeded(context)
+    }
+
+    fun migrateGojuonKeyboardTypeIfNeeded(context: Context = appContext) {
+        isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
+        if (!isTabletDevice) {
+            preferences.edit { it.remove(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY) }
+            return
+        }
+        if (preferences.getBoolean(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, false)) return
+
+        val legacyDefault = defaultKeyboardOrder(isTablet = false)
+        val legacyOrder = if (preferences.contains(KEYBOARD_ORDER.first)) {
+            parseKeyboardOrder(
+                preferences.getString(KEYBOARD_ORDER.first, defaultKeyboardOrderJson),
+                fallback = legacyDefault,
+                preserveEmpty = true,
+            )
+        } else {
+            legacyDefault
+        }
+        val result = GojuonKeyboardTypeMigration.resolve(
+            legacyGojuonEnabled = preferences.getBoolean(
+                TABLET_GOJUON_LAYOUT_PREFERENCE.first,
+                TABLET_GOJUON_LAYOUT_PREFERENCE.second,
+            ),
+            keyboardOrder = legacyOrder,
+            selectedPosition = preferences.getInt(
+                SAVE_LAST_USED_KEYBOARD_POSITION.first,
+                SAVE_LAST_USED_KEYBOARD_POSITION.second,
+            ),
+        )
+        preferences.edit {
+            it.putString(KEYBOARD_ORDER.first, gson.toJson(result.keyboardOrder))
+            it.putInt(SAVE_LAST_USED_KEYBOARD_POSITION.first, result.selectedPosition)
+            it.putBoolean(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, true)
+            it.remove(TABLET_GOJUON_LAYOUT_PREFERENCE.first)
+        }
+    }
+
+    private fun defaultKeyboardOrder(isTablet: Boolean = isTabletDevice): List<KeyboardType> {
+        return listOf(
+            if (isTablet) KeyboardType.GOJUON else KeyboardType.TENKEY,
+            KeyboardType.QWERTY,
+        )
+    }
+
+    private fun parseKeyboardOrder(
+        json: String?,
+        fallback: List<KeyboardType> = defaultKeyboardOrder(),
+        preserveEmpty: Boolean = false,
+    ): List<KeyboardType> {
+        val type = object : TypeToken<List<KeyboardType?>>() {}.type
+        return runCatching {
+            val parsed = gson.fromJson<List<KeyboardType?>>(json, type)
+                .orEmpty()
+                .filterNotNull()
+            if (preserveEmpty) parsed else parsed.ifEmpty { fallback }
+        }.getOrElse { fallback }
     }
 
     fun migrateSymbolEmojiCandidatePreferenceIfNeeded() {
@@ -1504,16 +1566,10 @@ object AppPreference {
 
     var keyboard_order: List<KeyboardType>
         get() {
-            val json = preferences.getString(KEYBOARD_ORDER.first, KEYBOARD_ORDER.second)
-            val type = object : TypeToken<List<KeyboardType?>>() {}.type
-            return runCatching {
-                gson.fromJson<List<KeyboardType?>>(json, type)
-                    .orEmpty()
-                    .filterNotNull()
-                    .ifEmpty { listOf(KeyboardType.TENKEY, KeyboardType.QWERTY) }
-            }.getOrElse {
-                listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
-            }
+            val fallback = defaultKeyboardOrder()
+            if (!preferences.contains(KEYBOARD_ORDER.first)) return fallback
+            val json = preferences.getString(KEYBOARD_ORDER.first, gson.toJson(fallback))
+            return parseKeyboardOrder(json, fallback, preserveEmpty = true)
         }
         set(value) = preferences.edit {
             val json = gson.toJson(value)
@@ -3401,15 +3457,6 @@ object AppPreference {
             it.putBoolean(QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE.first, value)
         }
 
-    var tablet_gojuon_layout_preference: Boolean
-        get() = preferences.getBoolean(
-            TABLET_GOJUON_LAYOUT_PREFERENCE.first,
-            TABLET_GOJUON_LAYOUT_PREFERENCE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(TABLET_GOJUON_LAYOUT_PREFERENCE.first, value)
-        }
-
     var last_pasted_clipboard_text_preference: String
         get() = preferences.getString(
             LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE.first,
@@ -4717,6 +4764,7 @@ object AppPreference {
             }
         }
         migrateSumireKeymapGuideModesIfNeeded()
+        migrateGojuonKeyboardTypeIfNeeded()
     }
 
     fun migrateSumirePreferenceIfNeeded() {

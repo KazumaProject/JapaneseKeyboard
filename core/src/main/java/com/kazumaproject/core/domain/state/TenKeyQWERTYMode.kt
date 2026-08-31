@@ -2,6 +2,7 @@ package com.kazumaproject.core.domain.state
 
 sealed class TenKeyQWERTYMode {
     data object Default : TenKeyQWERTYMode()
+    data object Gojuon : TenKeyQWERTYMode()
     data object TenKeyQWERTY : TenKeyQWERTYMode()
     data object TenKeyQWERTYRomaji : TenKeyQWERTYMode()
     data object Sumire : TenKeyQWERTYMode()

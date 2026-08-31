@@ -13,20 +13,20 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
 
     private var currentInputMode: InputMode = InputMode.ModeJapanese
 
-    fun setInputMode(inputMode: InputMode, isTablet: Boolean) {
-        setInputMode(inputMode, isTablet, useThreeStateKeyboard = true)
+    fun setInputMode(inputMode: InputMode, isGojuon: Boolean) {
+        setInputMode(inputMode, isGojuon, useThreeStateKeyboard = true)
     }
 
     fun setInputMode(
         inputMode: InputMode,
-        isTablet: Boolean,
+        isGojuon: Boolean,
         useThreeStateKeyboard: Boolean,
         twoStateNumberReturnTarget: TwoStateNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
     ) {
         currentInputMode = inputMode
         val resId = resolveInputModeSwitchIconResId(
             inputMode = inputMode,
-            isTablet = isTablet,
+            isGojuon = isGojuon,
             useThreeStateKeyboard = useThreeStateKeyboard,
             twoStateNumberReturnTarget = twoStateNumberReturnTarget
         )
@@ -37,26 +37,26 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
 
 fun resolveInputModeSwitchIconResId(
     inputMode: InputMode,
-    isTablet: Boolean,
+    isGojuon: Boolean,
     useThreeStateKeyboard: Boolean,
     twoStateNumberReturnTarget: TwoStateNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
 ): Int {
     return if (useThreeStateKeyboard) {
         when (inputMode) {
-            InputMode.ModeJapanese -> if (isTablet) {
-                R.drawable.input_mode_japanese_select_tablet
+            InputMode.ModeJapanese -> if (isGojuon) {
+                R.drawable.input_mode_japanese_select_gojuon
             } else {
                 R.drawable.input_mode_japanese_select
             }
 
-            InputMode.ModeEnglish -> if (isTablet) {
-                R.drawable.input_mode_english_select_tablet
+            InputMode.ModeEnglish -> if (isGojuon) {
+                R.drawable.input_mode_english_select_gojuon
             } else {
                 R.drawable.input_mode_english_select
             }
 
-            InputMode.ModeNumber -> if (isTablet) {
-                R.drawable.input_mode_number_select_tablet
+            InputMode.ModeNumber -> if (isGojuon) {
+                R.drawable.input_mode_number_select_gojuon
             } else {
                 R.drawable.input_mode_number_select
             }
