@@ -59,9 +59,22 @@ Navigation Component had already restored the destination header. A follow-up
 list-resume test then failed because `KeyboardListFragment` only initialized its
 header in `onCreate()`, which is not called again when its back-stack view is
 recreated. All three tests passed after removing the stale teardown writes and
-restoring the list title, home state, and options menu in `onResume()`.
+restoring the list title and options menu in `onResume()`.
 
-The complete Lite Standard unit suite executed 1,368 tests: 1,362 passed, 4 were
+Navigation-indicator follow-up RED command:
+
+```text
+.\gradlew.bat :app:testLiteStandardDebugUnitTest --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.CustomKeyboardEditorActionBarLifecycleContractTest" --tests "com.kazumaproject.markdownhelperkeyboard.setting_activity.SharedActionBarNavigationContractTest"
+```
+
+Result: four of six tests failed. `KeyboardListFragment.onResume()` forced the up
+indicator off after returning from keyboard selection, two keyboard-size screens
+did the same during teardown, and three custom-toolbar screens independently
+toggled the shared ActionBar. All six tests passed after leaving the up indicator
+to NavigationUI and centralizing custom-toolbar visibility by destination in
+`MainActivity`.
+
+The complete Lite Standard unit suite executed 1,371 tests: 1,365 passed, 4 were
 skipped, and 2 unrelated existing SQLite migration tests failed with
 `SQLiteCantOpenDatabaseException`:
 
@@ -92,7 +105,10 @@ Build and lint commands both passed:
 | 11 | The Lite Standard application satisfies Android Lint | `:app:lintLiteStandardDebug` | Static analysis | PASS |
 | 12 | Leaving keyboard editing cannot clear the destination screen's ActionBar | `CustomKeyboardEditorActionBarLifecycleContractTest.keyboardEditorDoesNotClearDestinationActionBarWhenItsViewIsDestroyed` | Lifecycle contract | PASS |
 | 13 | Leaving key editing cannot clear the parent editor's ActionBar | `CustomKeyboardEditorActionBarLifecycleContractTest.keyEditorDoesNotClearDestinationActionBarWhenItsViewIsDestroyed` | Lifecycle contract | PASS |
-| 14 | Resuming the custom-keyboard list restores its title, home state, and header actions | `CustomKeyboardEditorActionBarLifecycleContractTest.keyboardListRestoresItsHeaderWheneverItResumes` | Lifecycle contract | PASS |
+| 14 | Resuming the custom-keyboard list restores its title and header actions without overriding NavigationUI's up indicator | `CustomKeyboardEditorActionBarLifecycleContractTest.keyboardListRestoresItsHeaderWheneverItResumes` | Lifecycle contract | PASS |
+| 15 | Keyboard-size screens cannot overwrite the destination up indicator during teardown | `SharedActionBarNavigationContractTest.fragmentTeardownDoesNotOverrideTheDestinationUpIndicator` | Lifecycle contract | PASS |
+| 16 | `MainActivity` owns shared ActionBar visibility for every custom-toolbar destination | `SharedActionBarNavigationContractTest.mainActivityOwnsSharedActionBarVisibilityForCustomToolbarDestinations` | Navigation contract | PASS |
+| 17 | Custom-toolbar fragments cannot toggle the shared ActionBar from their own lifecycle callbacks | `SharedActionBarNavigationContractTest.customToolbarFragmentsDoNotToggleTheSharedActionBar` | Lifecycle contract | PASS |
 
 ## Coverage and known gaps
 

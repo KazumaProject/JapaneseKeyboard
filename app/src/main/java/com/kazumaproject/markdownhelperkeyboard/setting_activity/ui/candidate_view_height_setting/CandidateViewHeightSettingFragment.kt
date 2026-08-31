@@ -15,7 +15,6 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
@@ -133,7 +132,6 @@ class CandidateViewHeightSettingFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         restoreBottomNavigationVisibility()
-        (activity as? AppCompatActivity)?.supportActionBar?.show()
         binding.candidateHeightSettingRecyclerview.adapter = null
         suggestionAdapter.release()
         _binding = null
@@ -215,7 +213,6 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     private fun setupMenu() {
-        (activity as? AppCompatActivity)?.supportActionBar?.hide()
         binding.toolbar.setNavigationIcon(AppCompatR.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener {
             parentFragmentManager.popBackStack()

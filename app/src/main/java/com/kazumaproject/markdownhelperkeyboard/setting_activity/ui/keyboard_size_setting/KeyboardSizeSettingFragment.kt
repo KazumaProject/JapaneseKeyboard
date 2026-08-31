@@ -600,7 +600,6 @@ class KeyboardSettingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(false)
         _binding = null
     }
 }

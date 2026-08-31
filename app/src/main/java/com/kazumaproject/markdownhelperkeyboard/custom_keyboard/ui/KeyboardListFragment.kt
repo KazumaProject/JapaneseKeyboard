@@ -178,7 +178,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         super.onResume()
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = getString(R.string.custom_layout_fragment_title)
-            setDisplayHomeAsUpEnabled(false)
         }
         requireActivity().invalidateOptionsMenu()
         viewModel.refreshCustomKeyboardUsage()

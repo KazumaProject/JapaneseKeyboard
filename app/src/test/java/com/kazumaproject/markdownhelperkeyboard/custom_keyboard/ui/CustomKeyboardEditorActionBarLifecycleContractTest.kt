@@ -26,7 +26,10 @@ class CustomKeyboardEditorActionBarLifecycleContractTest {
         assertTrue(
             onResumeBody.contains("title = getString(R.string.custom_layout_fragment_title)"),
         )
-        assertTrue(onResumeBody.contains("setDisplayHomeAsUpEnabled(false)"))
+        assertFalse(
+            "KeyboardListFragment must leave the up indicator to NavigationUI",
+            onResumeBody.contains("setDisplayHomeAsUpEnabled"),
+        )
         assertTrue(onResumeBody.contains("invalidateOptionsMenu()"))
     }
 
