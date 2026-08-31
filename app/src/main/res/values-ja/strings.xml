@@ -668,6 +668,15 @@
     <string name="editor_confirm_placement">確定</string>
     <string name="editor_cancel_placement">キャンセル</string>
     <string name="editor_delete_selected_item">選択を削除</string>
+    <string name="editor_delete_row_confirmation_title">行を削除しますか？</string>
+    <string name="editor_delete_row_confirmation_message">この行に含まれるボタンも削除される場合があります。</string>
+    <string name="editor_delete_column_confirmation_title">列を削除しますか？</string>
+    <string name="editor_delete_column_confirmation_message">この列に含まれるボタンも削除される場合があります。</string>
+    <string name="editor_delete_button_confirmation_title">ボタンを削除しますか？</string>
+    <string name="editor_delete_button_confirmation_message">選択したボタンをこのキーボードから削除します。</string>
+    <string name="editor_confirm_delete">削除</string>
+    <string name="editor_cancel_delete">キャンセル</string>
+    <string name="editor_hide_button_delete_warning_during_editing">この編集中はボタン削除の警告を表示しない</string>
     <string name="editor_add_key_to_empty_slot">空き位置にキーを追加</string>
     <string name="editor_unsaved_changes_title">未保存の変更を破棄しますか？</string>
     <string name="editor_unsaved_changes_message">キーボードの変更はまだ保存されていません。</string>

@@ -126,6 +126,38 @@ class KeyboardEditorIssue934Test {
         assertTrue(viewModel.hasUnsavedChanges())
     }
 
+    @Test
+    fun deletionWarnings_buttonCanBeSuppressedWithoutSuppressingRowOrColumn() {
+        val viewModel = viewModel()
+        viewModel.start(-1L)
+
+        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.ROW))
+        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.COLUMN))
+        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
+
+        viewModel.suppressButtonDeletionWarningForCurrentEditing()
+
+        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.ROW))
+        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.COLUMN))
+        assertFalse(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
+    }
+
+    @Test
+    fun deletionWarnings_buttonSuppressionResetsForNextEditingSession() {
+        val viewModel = viewModel()
+        viewModel.start(-1L)
+        viewModel.suppressButtonDeletionWarningForCurrentEditing()
+        assertFalse(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
+
+        viewModel.start(-1L)
+        assertFalse(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
+
+        viewModel.onCancelEditing()
+        viewModel.start(-1L)
+
+        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
+    }
+
     private fun viewModel(): KeyboardEditorViewModel =
         KeyboardEditorViewModel(KeyboardRepository(mock(KeyboardLayoutDao::class.java)))
 

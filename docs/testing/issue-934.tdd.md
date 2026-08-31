@@ -11,6 +11,8 @@
 2. As a custom-keyboard editor user, the empty key slot remains available after saving and reopening the layout.
 3. As a custom-keyboard editor user, deleting a key does not insert or reveal an Undo control that shifts the editor buttons.
 4. As a custom-keyboard editor user, leaving with unsaved persistent changes requires explicit confirmation.
+5. As a custom-keyboard editor user, deleting a row, column, or button requires confirmation before the editor changes.
+6. As a custom-keyboard editor user, I can hide only button-deletion warnings for the remainder of the current editing session.
 
 ## RED / GREEN report
 
@@ -32,6 +34,22 @@ Undo-control reversion RED command:
 
 Result: expected runtime RED because `button_undo_delete` was still present in the editor layout.
 
+Deletion-warning RED command:
+
+```text
+.\gradlew.bat :app:testLiteStandardDebugUnitTest --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorIssue934Test" --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorFragmentUiRobolectricTest"
+```
+
+Result: expected compile-time RED. The new tests could not resolve the row/column/button deletion targets, dialog specifications, warning policy APIs, or confirmation strings before the deletion-warning implementation was added.
+
+Concrete dialog UI RED command:
+
+```text
+.\gradlew.bat :app:testLiteStandardDebugUnitTest --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorFragmentUiRobolectricTest"
+```
+
+Result: expected compile-time RED because the testable dialog factory and button-warning opt-out view tag did not exist before the confirmation UI was extracted from the Fragment.
+
 ### GREEN
 
 The focused Issue/UI command passed after implementation:
@@ -40,7 +58,7 @@ The focused Issue/UI command passed after implementation:
 BUILD SUCCESSFUL
 ```
 
-The two targeted classes contain 11 passing tests: five Issue #934 behavior tests and six editor UI tests.
+The two targeted classes contain 16 passing tests: seven Issue #934 behavior tests and nine editor UI tests.
 
 Expanded editor/persistence regression command:
 
@@ -48,7 +66,7 @@ Expanded editor/persistence regression command:
 .\gradlew.bat :app:testLiteStandardDebugUnitTest --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorIssue934Test" --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorFragmentUiRobolectricTest" --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorViewModelFlexiblePlacementTest" --tests "com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepositorySaveLayoutTest"
 ```
 
-Result: `BUILD SUCCESSFUL`; 107 tests passed with zero failures.
+Result: `BUILD SUCCESSFUL`; 112 tests passed with zero failures.
 
 Build command:
 
@@ -71,6 +89,11 @@ Result: `BUILD SUCCESSFUL`.
 | 7 | The editor layout contains no Undo-delete control that can shift adjacent buttons | `KeyboardEditorFragmentUiRobolectricTest.editorLayout_hasNoUndoDeleteControlThatCanShiftButtons` | Robolectric UI | PASS |
 | 8 | A deletion is tracked as an unsaved persistent edit | `KeyboardEditorIssue934Test.unsavedChanges_tracksPersistedEditorContentAndDeletion` | Unit | PASS |
 | 9 | Persistent input-mode settings are dirty, while selection and editor-only chrome are not | `KeyboardEditorIssue934Test.unsavedChanges_tracksInputModeSettingsButIgnoresEditorOnlyState` | Unit | PASS |
+| 10 | Row, column, and button deletions each have a dedicated confirmation specification, and only button deletion offers the session opt-out | `KeyboardEditorFragmentUiRobolectricTest.deletionDialogSpecs_warnForEveryTargetAndOnlyButtonHasSessionOptOut` | Robolectric UI | PASS |
+| 11 | Suppressing the button-deletion warning never suppresses row or column warnings | `KeyboardEditorIssue934Test.deletionWarnings_buttonCanBeSuppressedWithoutSuppressingRowOrColumn` | Unit | PASS |
+| 12 | Button-warning suppression survives recreation within the same edit and resets for the next editing session | `KeyboardEditorIssue934Test.deletionWarnings_buttonSuppressionResetsForNextEditingSession` | Unit | PASS |
+| 13 | The button-deletion confirmation visibly contains the session opt-out, and confirming a checked option invokes both suppression and deletion | `KeyboardEditorFragmentUiRobolectricTest.buttonDeletionDialog_showsSessionOptOutAndAppliesItOnlyWhenConfirmed` | Robolectric UI | PASS |
+| 14 | Row and column confirmation dialogs do not contain the button-warning opt-out | `KeyboardEditorFragmentUiRobolectricTest.rowAndColumnDeletionDialogs_doNotShowButtonWarningOptOut` | Robolectric UI | PASS |
 
 ## Coverage and known gaps
 

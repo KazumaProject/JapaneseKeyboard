@@ -151,9 +151,13 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             }
         }
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
-        binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
+        binding.buttonRemoveRow.setOnClickListener {
+            requestDeletion(KeyboardEditorDeletionTarget.ROW) { viewModel.removeRow() }
+        }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
-        binding.buttonRemoveCol.setOnClickListener { viewModel.removeColumn() }
+        binding.buttonRemoveCol.setOnClickListener {
+            requestDeletion(KeyboardEditorDeletionTarget.COLUMN) { viewModel.removeColumn() }
+        }
         binding.insertDirectionGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             when (checkedId) {
@@ -201,7 +205,9 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             viewModel.cancelPlacementPreview()
         }
         binding.buttonDeleteSelectedItem.setOnClickListener {
-            viewModel.deleteSelectedItem()
+            requestDeletion(KeyboardEditorDeletionTarget.BUTTON) {
+                viewModel.deleteSelectedItem()
+            }
         }
         binding.buttonNudgeLeft.setOnClickListener {
             viewModel.nudgePlacementCursor(NudgeDirection.Left)
@@ -224,6 +230,25 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             showTemplateSelectionDialog()
         }
         // ▲▲▲ ここまで追加 ▲▲▲
+    }
+
+    private fun requestDeletion(
+        target: KeyboardEditorDeletionTarget,
+        deleteAction: () -> Unit
+    ) {
+        if (!viewModel.shouldShowDeletionWarning(target)) {
+            deleteAction()
+            return
+        }
+
+        showKeyboardEditorDeletionConfirmationDialog(
+            context = requireContext(),
+            target = target,
+            onDeletionConfirmed = deleteAction,
+            onButtonWarningSuppressed = {
+                viewModel.suppressButtonDeletionWarningForCurrentEditing()
+            }
+        )
     }
 
     private fun observeViewModel() {
@@ -383,13 +408,17 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     }
 
     override fun onRowDeleted(rowIndex: Int) {
-        Timber.d("onRowDeleted: rowIndex = $rowIndex")
-        viewModel.deleteRowAt(rowIndex)
+        requestDeletion(KeyboardEditorDeletionTarget.ROW) {
+            Timber.d("onRowDeleted: rowIndex = $rowIndex")
+            viewModel.deleteRowAt(rowIndex)
+        }
     }
 
     override fun onColumnDeleted(columnIndex: Int) {
-        Timber.d("onColumnDeleted: columnIndex = $columnIndex")
-        viewModel.deleteColumnAt(columnIndex)
+        requestDeletion(KeyboardEditorDeletionTarget.COLUMN) {
+            Timber.d("onColumnDeleted: columnIndex = $columnIndex")
+            viewModel.deleteColumnAt(columnIndex)
+        }
     }
 
     override fun onPlacementPointerTarget(target: InsertionTarget) {

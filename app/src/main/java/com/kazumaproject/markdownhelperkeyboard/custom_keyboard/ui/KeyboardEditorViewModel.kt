@@ -109,6 +109,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     private var currentEditingId: Long? = null
     private var initialContent: EditorContentSnapshot? = null
+    private var isButtonDeletionWarningSuppressed = false
     private val placementSolver = FlexiblePlacementSolver()
     private val placementNavigator = InsertionTargetNavigator()
 
@@ -141,6 +142,7 @@ class KeyboardEditorViewModel @Inject constructor(
             Timber.d("Request to load same layout ($newId). Skipping.")
             return
         }
+        isButtonDeletionWarningSuppressed = false
         currentEditingId = newId
 
         if (newId != null) {
@@ -232,6 +234,7 @@ class KeyboardEditorViewModel @Inject constructor(
     fun onCancelEditing() {
         currentEditingId = null
         initialContent = null
+        isButtonDeletionWarningSuppressed = false
         _uiState.value = EditorUiState()
     }
 
@@ -239,6 +242,13 @@ class KeyboardEditorViewModel @Inject constructor(
         val baseline = initialContent ?: return false
         val state = _uiState.value
         return !state.isLoading && state.contentSnapshot() != baseline
+    }
+
+    internal fun shouldShowDeletionWarning(target: KeyboardEditorDeletionTarget): Boolean =
+        target != KeyboardEditorDeletionTarget.BUTTON || !isButtonDeletionWarningSuppressed
+
+    internal fun suppressButtonDeletionWarningForCurrentEditing() {
+        isButtonDeletionWarningSuppressed = true
     }
 
     fun clearDuplicateNameError() {
@@ -1579,6 +1589,7 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun onDoneNavigating() {
+        isButtonDeletionWarningSuppressed = false
         _uiState.update { it.copy(navigateBack = false) }
     }
 

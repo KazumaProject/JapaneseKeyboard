@@ -710,6 +710,15 @@
     <string name="editor_confirm_placement">Confirm</string>
     <string name="editor_cancel_placement">Cancel</string>
     <string name="editor_delete_selected_item">Delete selected</string>
+    <string name="editor_delete_row_confirmation_title">Delete row?</string>
+    <string name="editor_delete_row_confirmation_message">Buttons in this row may also be deleted.</string>
+    <string name="editor_delete_column_confirmation_title">Delete column?</string>
+    <string name="editor_delete_column_confirmation_message">Buttons in this column may also be deleted.</string>
+    <string name="editor_delete_button_confirmation_title">Delete button?</string>
+    <string name="editor_delete_button_confirmation_message">The selected button will be removed from this keyboard.</string>
+    <string name="editor_confirm_delete">Delete</string>
+    <string name="editor_cancel_delete">Cancel</string>
+    <string name="editor_hide_button_delete_warning_during_editing">Don’t show button deletion warnings again during this editing session</string>
     <string name="editor_add_key_to_empty_slot">Add key to empty slot</string>
     <string name="editor_unsaved_changes_title">Discard unsaved changes?</string>
     <string name="editor_unsaved_changes_message">Your keyboard changes have not been saved.</string>
