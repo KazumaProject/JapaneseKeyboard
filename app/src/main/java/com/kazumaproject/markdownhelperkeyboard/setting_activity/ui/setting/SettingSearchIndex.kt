@@ -60,6 +60,7 @@ object SettingSearchIndex {
         R.id.inputMethodPreferenceFragment,
         R.id.candidateConversionPreferenceFragment,
         R.id.conversionEnginePreferenceFragment,
+        R.id.utilityCandidatePreferenceFragment,
         R.id.aiConversionPreferenceFragment,
         R.id.operationFeedbackPreferenceFragment,
         R.id.clipboardShortcutPreferenceFragment,
@@ -94,7 +95,8 @@ object SettingSearchIndex {
         }
 
     fun legacySearchable(context: Context): List<SettingDestination> {
-        val themeItem = SettingTabRegistry.createTabs()
+        val tabs = SettingTabRegistry.createTabs()
+        val themeItem = tabs
             .firstOrNull { it.key == SettingTabRegistry.TAB_THEME }
             ?.let { tab ->
                 val title = tab.title(context)
@@ -119,10 +121,35 @@ object SettingSearchIndex {
                     location = location,
                 )
             }
+        val textMacroItem = tabs
+            .firstOrNull { it.key == SettingTabRegistry.TAB_TEXT_MACRO }
+            ?.let { tab ->
+                val title = tab.title(context)
+                val location = context.getString(R.string.setting_search_legacy_location, title)
+                SettingDestinations.destination(
+                    key = "legacy_text_macro",
+                    title = title,
+                    summary = context.getString(R.string.setting_category_text_macro_summary),
+                    category = SettingCategory.TEXT_MACRO,
+                    keywords = listOf("macro", "dynamic", "template", "snippet", "定型文"),
+                    destinationId = tab.destinationId,
+                    iconRes = SettingDestinations.defaultIconForCategory(SettingCategory.TEXT_MACRO),
+                    destinationType = SettingDestinationType.NavDestination(tab.destinationId),
+                    legacyTarget = LegacySettingTarget(
+                        tabKey = tab.key,
+                        xmlRes = null,
+                        destinationId = tab.destinationId,
+                        preferenceKey = "legacy_text_macro",
+                        filterResultMode = false,
+                    ),
+                    searchScope = SettingSearchScope.LEGACY_TABS,
+                    location = location,
+                )
+            }
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
-        return (listOfNotNull(themeItem) + xmlItems).distinctBy { destination ->
+        return (listOfNotNull(themeItem, textMacroItem) + xmlItems).distinctBy { destination ->
             val legacyTarget = destination.legacyTarget
             "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"
         }
@@ -284,6 +311,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
+        add(PreferenceXmlSource(R.xml.pref_utility_candidate, R.id.utilityCandidatePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_dictionary, R.id.dictionaryPreferenceFragment, SettingCategory.DICTIONARY))
         add(PreferenceXmlSource(R.xml.pref_ai_conversion, R.id.aiConversionPreferenceFragment, SettingCategory.AI_CONVERSION))
         if (AppVariantConfig.hasZenz) {
@@ -320,6 +348,7 @@ object SettingSearchIndex {
         when (tabKey) {
             SettingTabRegistry.TAB_CONVERSION_ENGINE -> SettingCategory.CONVERSION_ENGINE
             SettingTabRegistry.TAB_DICTIONARY -> SettingCategory.DICTIONARY
+            SettingTabRegistry.TAB_TEXT_MACRO -> SettingCategory.TEXT_MACRO
             SettingTabRegistry.TAB_ZENZ,
             SettingTabRegistry.TAB_GEMMA -> SettingCategory.AI_CONVERSION
             SettingTabRegistry.TAB_COMMON -> SettingCategory.ADVANCED

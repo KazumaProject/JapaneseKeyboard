@@ -873,7 +873,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
         val inputStringEmpty = !isCandidateListVisible
         val tailEmpty = true
         val clipboardPreviewShown = false
-        val selectedTextGemmaActionsShown = false
+        val selectionActionsShown = false
         val suggestionsEmpty = !isCandidateListVisible
         val customLayoutPickerShown = false
         val presentation = CandidateStripPresentationPolicy.resolve(
@@ -887,7 +887,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
                 inputStringEmpty = inputStringEmpty,
                 tailEmpty = tailEmpty,
                 clipboardPreviewShown = clipboardPreviewShown,
-                selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+                selectionActionsShown = selectionActionsShown,
                 suggestionsEmpty = suggestionsEmpty,
                 customLayoutPickerShown = customLayoutPickerShown,
                 symbolKeyboardShown = false,
@@ -962,6 +962,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
             views = CandidateKeyboardPreviewViews(
                 container = binding.keyboardPreviewContainer,
                 tenKey = binding.candidateHeightSettingTenkeyPreview,
+                gojuon = binding.candidateHeightSettingGojuonPreview,
                 qwerty = binding.candidateHeightSettingQwertyPreview,
                 flick = binding.candidateHeightSettingFlickPreview
             ),

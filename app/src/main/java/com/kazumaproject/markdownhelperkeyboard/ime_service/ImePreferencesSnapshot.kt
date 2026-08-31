@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySo
 import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -29,6 +30,7 @@ data class ImePreferencesSnapshot(
     val showLearnedCandidatesInIncognitoPreference: Boolean,
     val isUserDictionaryEnable: Boolean,
     val isUserTemplateEnable: Boolean,
+    val isTextMacroCandidateEnable: Boolean,
     val systemNgramDictionaryEnabled: Boolean,
     val customNgramDictionaryEnabled: Boolean,
     val showDictionaryCandidateLabels: Boolean,
@@ -68,7 +70,6 @@ data class ImePreferencesSnapshot(
     val showCandidateInPasswordPreference: Boolean,
     val qwertyShowKeymapSymbolsPreference: Boolean,
     val qwertyRomajiShiftConversionPreference: Boolean,
-    val tabletGojuonLayoutPreference: Boolean,
     val isNgWordEnable: Boolean,
     val deleteKeyHighLight: Boolean,
     val customKeyboardSuggestionPreference: Boolean,
@@ -246,6 +247,7 @@ data class ImePreferencesSnapshot(
     val enableTypoCorrectionJapaneseFlickKeyboardPreference: Boolean,
     val enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean,
     val enableGemmaTranslationPreference: Boolean,
+    val utilityCandidateConfig: UtilityCandidateConfig,
 ) {
     companion object {
         fun from(
@@ -300,6 +302,7 @@ data class ImePreferencesSnapshot(
                     appPreference.show_learned_candidates_in_incognito_preference,
                 isUserDictionaryEnable = appPreference.user_dictionary_preference ?: true,
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
+                isTextMacroCandidateEnable = appPreference.text_macro_candidate_preference,
                 systemNgramDictionaryEnabled =
                     appPreference.system_ngram_dictionary_enable_preference,
                 customNgramDictionaryEnabled =
@@ -401,8 +404,6 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_show_keymap_symbols ?: false,
                 qwertyRomajiShiftConversionPreference =
                     appPreference.qwerty_romaji_shift_conversion_preference,
-                tabletGojuonLayoutPreference =
-                    appPreference.tablet_gojuon_layout_preference,
                 isNgWordEnable = appPreference.ng_word_preference ?: true,
                 deleteKeyHighLight = appPreference.delete_key_high_light_preference ?: true,
                 customKeyboardSuggestionPreference =
@@ -691,7 +692,8 @@ data class ImePreferencesSnapshot(
                 enableTypoCorrectionQwertyEnglishKeyboardPreference =
                     appPreference.enable_typo_correction_qwerty_english_keyboard_preference,
                 enableGemmaTranslationPreference =
-                    AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference
+                    AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference,
+                utilityCandidateConfig = appPreference.utility_candidate_config,
             )
         }
     }

@@ -24,6 +24,10 @@ class KeyboardLayoutEditStateTest {
         )
         assertEquals(
             KeyboardLayoutEditTarget.TenKeyFamily,
+            KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Gojuon),
+        )
+        assertEquals(
+            KeyboardLayoutEditTarget.TenKeyFamily,
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Number),
         )
     }

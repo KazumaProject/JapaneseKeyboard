@@ -16,6 +16,11 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.RegionalUnitProfile
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitTargetSettingsJsonCodec
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
@@ -27,6 +32,7 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwriti
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
+import com.kazumaproject.core.R as CoreR
 
 internal object CustomThemeColorPreferenceKeys {
     const val CANDIDATE_TEXT_COLOR = "custom_theme_candidate_text_color"
@@ -38,6 +44,18 @@ internal object CustomThemeColorPreferenceKeys {
 }
 
 object AppPreference {
+
+    internal const val GOJUON_KEYBOARD_TYPE_MIGRATION_KEY =
+        "gojuon_keyboard_type_migrated_v1"
+
+    const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
+    const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
+    const val UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY = "utility_expression_candidate_enabled"
+    const val UTILITY_ANGLE_MODE_KEY = "utility_angle_mode"
+    const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
+    const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
+    const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
@@ -92,7 +110,10 @@ object AppPreference {
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
     private lateinit var preferences: SharedPreferences
+    private lateinit var appContext: Context
+    private var isTabletDevice: Boolean = false
     private val gson = Gson()
+    private val unitTargetSettingsCodec = UnitTargetSettingsJsonCodec()
     private const val LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY =
         "symbol_emoji_candidate_enable_preference"
     private val circularSlotActionEditableSlots = setOf(
@@ -124,6 +145,7 @@ object AppPreference {
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
+    private val TEXT_MACRO_CANDIDATE_PREFERENCE = Pair("text_macro_candidate_preference", true)
     private val SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
         Pair("system_ngram_dictionary_enable_preference", true)
     private val CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
@@ -393,12 +415,7 @@ object AppPreference {
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
 
-    private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(
-            KeyboardType.TENKEY,
-            KeyboardType.QWERTY
-        )
-    )
+    private val defaultKeyboardOrderJson = gson.toJson(defaultKeyboardOrder(isTablet = false))
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
     private val SETTING_HOME_FREQUENT_KEYS =
         Pair("setting_home_frequent_keys_preference", "")
@@ -874,11 +891,72 @@ object AppPreference {
         Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
 
     fun init(context: Context) {
+        appContext = context.applicationContext
+        isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
         removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
         migrateSymbolEmojiCandidatePreferenceIfNeeded()
         migrateSumireKeymapGuideModesIfNeeded()
+        migrateGojuonKeyboardTypeIfNeeded(context)
+    }
+
+    fun migrateGojuonKeyboardTypeIfNeeded(context: Context = appContext) {
+        isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
+        if (!isTabletDevice) {
+            preferences.edit { it.remove(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY) }
+            return
+        }
+        if (preferences.getBoolean(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, false)) return
+
+        val legacyDefault = defaultKeyboardOrder(isTablet = false)
+        val legacyOrder = if (preferences.contains(KEYBOARD_ORDER.first)) {
+            parseKeyboardOrder(
+                preferences.getString(KEYBOARD_ORDER.first, defaultKeyboardOrderJson),
+                fallback = legacyDefault,
+                preserveEmpty = true,
+            )
+        } else {
+            legacyDefault
+        }
+        val result = GojuonKeyboardTypeMigration.resolve(
+            legacyGojuonEnabled = preferences.getBoolean(
+                TABLET_GOJUON_LAYOUT_PREFERENCE.first,
+                TABLET_GOJUON_LAYOUT_PREFERENCE.second,
+            ),
+            keyboardOrder = legacyOrder,
+            selectedPosition = preferences.getInt(
+                SAVE_LAST_USED_KEYBOARD_POSITION.first,
+                SAVE_LAST_USED_KEYBOARD_POSITION.second,
+            ),
+        )
+        preferences.edit {
+            it.putString(KEYBOARD_ORDER.first, gson.toJson(result.keyboardOrder))
+            it.putInt(SAVE_LAST_USED_KEYBOARD_POSITION.first, result.selectedPosition)
+            it.putBoolean(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, true)
+            it.remove(TABLET_GOJUON_LAYOUT_PREFERENCE.first)
+        }
+    }
+
+    private fun defaultKeyboardOrder(isTablet: Boolean = isTabletDevice): List<KeyboardType> {
+        return listOf(
+            if (isTablet) KeyboardType.GOJUON else KeyboardType.TENKEY,
+            KeyboardType.QWERTY,
+        )
+    }
+
+    private fun parseKeyboardOrder(
+        json: String?,
+        fallback: List<KeyboardType> = defaultKeyboardOrder(),
+        preserveEmpty: Boolean = false,
+    ): List<KeyboardType> {
+        val type = object : TypeToken<List<KeyboardType?>>() {}.type
+        return runCatching {
+            val parsed = gson.fromJson<List<KeyboardType?>>(json, type)
+                .orEmpty()
+                .filterNotNull()
+            if (preserveEmpty) parsed else parsed.ifEmpty { fallback }
+        }.getOrElse { fallback }
     }
 
     fun migrateSymbolEmojiCandidatePreferenceIfNeeded() {
@@ -1488,16 +1566,10 @@ object AppPreference {
 
     var keyboard_order: List<KeyboardType>
         get() {
-            val json = preferences.getString(KEYBOARD_ORDER.first, KEYBOARD_ORDER.second)
-            val type = object : TypeToken<List<KeyboardType?>>() {}.type
-            return runCatching {
-                gson.fromJson<List<KeyboardType?>>(json, type)
-                    .orEmpty()
-                    .filterNotNull()
-                    .ifEmpty { listOf(KeyboardType.TENKEY, KeyboardType.QWERTY) }
-            }.getOrElse {
-                listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
-            }
+            val fallback = defaultKeyboardOrder()
+            if (!preferences.contains(KEYBOARD_ORDER.first)) return fallback
+            val json = preferences.getString(KEYBOARD_ORDER.first, gson.toJson(fallback))
+            return parseKeyboardOrder(json, fallback, preserveEmpty = true)
         }
         set(value) = preferences.edit {
             val json = gson.toJson(value)
@@ -1702,6 +1774,115 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
         }
+
+    var utility_candidate_config: UtilityCandidateConfig
+        get() {
+            val calculationPrecision = preferences.getString(
+                UTILITY_CALCULATION_PRECISION_KEY,
+                "auto",
+            ).toUtilityPrecision()
+            return UtilityCandidateConfig(
+                calculationEnabled = preferences.getBoolean(
+                    UTILITY_CALCULATION_ENABLED_KEY,
+                    true,
+                ),
+                unitConversionEnabled = preferences.getBoolean(
+                    UTILITY_UNIT_CONVERSION_ENABLED_KEY,
+                    true,
+                ),
+                includeExpressionCandidate = preferences.getBoolean(
+                    UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+                    true,
+                ),
+                angleMode = preferences.getString(UTILITY_ANGLE_MODE_KEY, "degrees")
+                    .toAngleMode(),
+                calculationPrecision = calculationPrecision,
+                regionalUnitProfile = preferences.getString(
+                    UTILITY_REGIONAL_PROFILE_KEY,
+                    "japan",
+                ).toRegionalUnitProfile(),
+                unitTargets = unitTargetSettingsCodec.decodeOrDefault(
+                    preferences.getString(UTILITY_UNIT_TARGETS_JSON_KEY, null),
+                ),
+            )
+        }
+        set(value) = preferences.edit { editor ->
+            editor.putBoolean(UTILITY_CALCULATION_ENABLED_KEY, value.calculationEnabled)
+            editor.putBoolean(UTILITY_UNIT_CONVERSION_ENABLED_KEY, value.unitConversionEnabled)
+            editor.putBoolean(
+                UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+                value.includeExpressionCandidate,
+            )
+            editor.putString(
+                UTILITY_ANGLE_MODE_KEY,
+                if (value.angleMode == AngleMode.DEGREES) "degrees" else "radians",
+            )
+            editor.putString(
+                UTILITY_CALCULATION_PRECISION_KEY,
+                value.calculationPrecision.toPreferenceValue(),
+            )
+            editor.putString(
+                UTILITY_REGIONAL_PROFILE_KEY,
+                when (value.regionalUnitProfile) {
+                    RegionalUnitProfile.JAPAN -> "japan"
+                    RegionalUnitProfile.UNITED_STATES -> "united_states"
+                    RegionalUnitProfile.UNITED_KINGDOM -> "united_kingdom"
+                },
+            )
+            editor.putString(
+                UTILITY_UNIT_TARGETS_JSON_KEY,
+                unitTargetSettingsCodec.encode(value.unitTargets),
+            )
+        }
+
+    fun resetUtilityCandidateConfig() {
+        preferences.edit { editor ->
+            editor.remove(UTILITY_CALCULATION_ENABLED_KEY)
+            editor.remove(UTILITY_UNIT_CONVERSION_ENABLED_KEY)
+            editor.remove(UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY)
+            editor.remove(UTILITY_ANGLE_MODE_KEY)
+            editor.remove(UTILITY_CALCULATION_PRECISION_KEY)
+            editor.remove(UTILITY_REGIONAL_PROFILE_KEY)
+            editor.remove(UTILITY_UNIT_TARGETS_JSON_KEY)
+        }
+    }
+
+    private fun String?.toAngleMode(): AngleMode = when (this) {
+        "radians" -> AngleMode.RADIANS
+        else -> AngleMode.DEGREES
+    }
+
+    private fun String?.toRegionalUnitProfile(): RegionalUnitProfile = when (this) {
+        "united_states" -> RegionalUnitProfile.UNITED_STATES
+        "united_kingdom" -> RegionalUnitProfile.UNITED_KINGDOM
+        else -> RegionalUnitProfile.JAPAN
+    }
+
+    private fun String?.toUtilityPrecision(): Precision = when (this) {
+        "auto", null -> Precision.Auto
+        "integer" -> Precision.DecimalPlaces(0)
+        else -> if (startsWith(UTILITY_DECIMAL_PRECISION_PREFIX)) {
+            removePrefix(UTILITY_DECIMAL_PRECISION_PREFIX).toIntOrNull()
+                ?.takeIf {
+                    it in Precision.MIN_DECIMAL_PLACES..Precision.MAX_DECIMAL_PLACES
+                }
+                ?.let(Precision::DecimalPlaces)
+                ?: Precision.Auto
+        } else {
+            toIntOrNull()
+                ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
+                ?.let(Precision::SignificantDigits)
+                ?: Precision.Auto
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun Precision.toPreferenceValue(): String = when (this) {
+        Precision.Auto -> "auto"
+        Precision.Integer -> "${UTILITY_DECIMAL_PRECISION_PREFIX}0"
+        is Precision.DecimalPlaces -> "$UTILITY_DECIMAL_PRECISION_PREFIX$places"
+        is Precision.SignificantDigits -> digits.toString()
+    }
 
     var japanese_prediction_enable_preference: Boolean
         get() = preferences.getBoolean(
@@ -1943,6 +2124,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(USER_TEMPLATE_PREFERENCE.first, value ?: true)
+        }
+
+    var text_macro_candidate_preference: Boolean
+        get() = preferences.getBoolean(
+            TEXT_MACRO_CANDIDATE_PREFERENCE.first,
+            TEXT_MACRO_CANDIDATE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TEXT_MACRO_CANDIDATE_PREFERENCE.first, value)
         }
 
     var system_ngram_dictionary_enable_preference: Boolean
@@ -3267,15 +3457,6 @@ object AppPreference {
             it.putBoolean(QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE.first, value)
         }
 
-    var tablet_gojuon_layout_preference: Boolean
-        get() = preferences.getBoolean(
-            TABLET_GOJUON_LAYOUT_PREFERENCE.first,
-            TABLET_GOJUON_LAYOUT_PREFERENCE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(TABLET_GOJUON_LAYOUT_PREFERENCE.first, value)
-        }
-
     var last_pasted_clipboard_text_preference: String
         get() = preferences.getString(
             LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE.first,
@@ -4583,6 +4764,7 @@ object AppPreference {
             }
         }
         migrateSumireKeymapGuideModesIfNeeded()
+        migrateGojuonKeyboardTypeIfNeeded()
     }
 
     fun migrateSumirePreferenceIfNeeded() {

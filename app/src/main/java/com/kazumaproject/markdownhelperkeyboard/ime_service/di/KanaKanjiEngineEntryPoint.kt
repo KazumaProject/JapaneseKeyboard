@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.di
 
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
@@ -19,4 +20,5 @@ interface KanaKanjiEngineEntryPoint {
     fun ngramRuleScorerManager(): NgramRuleScorerManager
     fun dictionaryBinaryReader(): DictionaryBinaryReader
     fun candidateOrderOverrideRepository(): CandidateOrderOverrideRepository
+    fun keyboardLayoutDao(): KeyboardLayoutDao
 }
