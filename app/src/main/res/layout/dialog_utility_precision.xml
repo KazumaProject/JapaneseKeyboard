@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="8dp">
+
+    <RadioGroup
+        android:id="@+id/utility_precision_mode_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/utility_precision_mode_auto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/utility_precision_auto" />
+
+        <RadioButton
+            android:id="@+id/utility_precision_mode_decimal_places"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/utility_precision_mode_decimal_places" />
+
+        <RadioButton
+            android:id="@+id/utility_precision_mode_significant_digits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/utility_precision_mode_significant_digits" />
+
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/utility_precision_digit_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:labelFor="@id/utility_precision_digit_picker"
+        android:text="@string/utility_precision_digit_count" />
+
+    <NumberPicker
+        android:id="@+id/utility_precision_digit_picker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal" />
+
+</LinearLayout>
