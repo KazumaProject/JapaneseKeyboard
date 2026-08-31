@@ -381,6 +381,26 @@ class RestartInputModePreferenceTest {
     }
 
     @Test
+    fun gojuonTemporaryEnglishQwertySurfacePersistsAsGojuon() {
+        val target = RestartInputModePreference.resolvePersistenceTarget(
+            currentKeyboardType = KeyboardType.QWERTY,
+            activeTenKeyQwertyMode = TenKeyQWERTYMode.TenKeyQWERTY,
+            previousTenKeyQWERTYMode = TenKeyQWERTYMode.Gojuon,
+            qwertyReturnSource = RestartInputModeQwertyReturnSource.GojuonDefault,
+        )
+
+        assertEquals(KeyboardType.GOJUON, target)
+        assertEquals(
+            RestartInputModePersistence(KeyboardType.GOJUON, "english"),
+            persistenceValue(
+                target = target,
+                tenkeyRestoreEnabled = true,
+                currentInputMode = InputMode.ModeEnglish,
+            ),
+        )
+    }
+
+    @Test
     fun sumireTemporaryEnglishQwertySurfacePersistsAsSumire() {
         val target = RestartInputModePreference.resolvePersistenceTarget(
             currentKeyboardType = KeyboardType.QWERTY,
@@ -495,6 +515,67 @@ class RestartInputModePreferenceTest {
                 presentation = state?.presentation ?: RestartInputModePresentation.Native,
                 tenkeyQwertyNumberReturnTarget = state?.tenkeyQwertyNumberReturnTarget
             )
+        )
+    }
+
+    @Test
+    fun gojuonNumberQwertyProxyKeepsGojuonAsReturnTarget() {
+        val state = persistenceState(
+            currentKeyboardType = KeyboardType.GOJUON,
+            activeTenKeyQwertyMode = TenKeyQWERTYMode.TenKeyQWERTY,
+            previousTenKeyQWERTYMode = TenKeyQWERTYMode.Gojuon,
+            qwertyReturnSource = RestartInputModeQwertyReturnSource.GojuonNumber,
+            currentInputMode = InputMode.ModeNumber,
+            tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.English,
+            isQwertyViewVisible = true,
+            isQwertyNumberLayout = true,
+        )
+
+        assertEquals(
+            RestartInputModeState(
+                KeyboardType.GOJUON,
+                InputMode.ModeNumber,
+                RestartInputModePresentation.TenkeyQwertyNumberProxy,
+                TwoStateNumberReturnTarget.English,
+            ),
+            state,
+        )
+        assertEquals(
+            RestartInputModePersistence(
+                KeyboardType.GOJUON,
+                "number",
+                "tenkey_qwerty_number_proxy",
+                "english",
+            ),
+            persistenceValue(
+                target = state?.keyboardType,
+                tenkeyRestoreEnabled = true,
+                currentInputMode = state?.inputMode ?: InputMode.ModeJapanese,
+                presentation = state?.presentation ?: RestartInputModePresentation.Native,
+                tenkeyQwertyNumberReturnTarget = state?.tenkeyQwertyNumberReturnTarget,
+            ),
+        )
+    }
+
+    @Test
+    fun gojuonRestartsAsGojuonWithSharedTenkeyPreference() {
+        assertEquals(
+            RestartInputModeState(
+                KeyboardType.GOJUON,
+                InputMode.ModeNumber,
+                RestartInputModePresentation.TenkeyQwertyNumberProxy,
+                TwoStateNumberReturnTarget.Japanese,
+            ),
+            RestartInputModePreference.resolveRestoredState(
+                type = KeyboardType.GOJUON,
+                tenkeyRestoreEnabled = true,
+                sumireRestoreEnabled = false,
+                tenkeyLastInputModePreference = "number",
+                tenkeyLastInputModePresentationPreference = "tenkey_qwerty_number_proxy",
+                tenkeyLastQwertyNumberReturnTargetPreference = "japanese",
+                sumireLastInputModePreference = "english",
+                sumireLastInputModePresentationPreference = "native",
+            ),
         )
     }
 
