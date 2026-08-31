@@ -9,10 +9,10 @@ object CandidateStripContentResolver {
             )
         }
         if (state.candidates.isNotEmpty()) {
-            if (state.selectedTextGemmaActionsShown) {
+            if (state.selectionActionsShown) {
                 return CandidateStripContent.SelectionActions(
                     actions = state.candidates,
-                    showShortcutEntry = shouldShowShortcutEntryWithGemmaActions(state)
+                    showShortcutEntry = shouldShowShortcutEntryWithSelectionActions(state)
                 )
             }
             return CandidateStripContent.Candidates(
@@ -65,7 +65,7 @@ object CandidateStripContentResolver {
         return hasSwitchableShortcutEntryContent(state)
     }
 
-    private fun shouldShowShortcutEntryWithGemmaActions(
+    private fun shouldShowShortcutEntryWithSelectionActions(
         state: CandidateStripInputState
     ): Boolean = canShowShortcutEntry(state)
 
@@ -82,9 +82,9 @@ object CandidateStripContentResolver {
     private fun hasSwitchableShortcutEntryContent(
         state: CandidateStripInputState
     ): Boolean {
-        val hasGemmaActions =
-            state.candidates.isNotEmpty() && state.selectedTextGemmaActionsShown
-        return hasGemmaActions || resolveClipboardPreviewOrNull(state) != null
+        val hasSelectionActions =
+            state.candidates.isNotEmpty() && state.selectionActionsShown
+        return hasSelectionActions || resolveClipboardPreviewOrNull(state) != null
     }
 
     private fun shouldShowZeroQuerySuggestions(state: CandidateStripInputState): Boolean {
@@ -103,7 +103,7 @@ object CandidateStripContentResolver {
         if (state.candidatesShown) return false
         if (state.symbolKeyboardShown) return false
         if (state.customLayoutPickerShown) return false
-        if (state.selectedTextGemmaActionsShown) return false
+        if (state.selectionActionsShown) return false
         if (state.editorTextSelected) return false
         return true
     }
@@ -117,7 +117,7 @@ object CandidateStripContentResolver {
         if (state.candidatesShown) return null
         if (state.symbolKeyboardShown) return null
         if (state.customLayoutPickerShown) return null
-        if (state.selectedTextGemmaActionsShown) return null
+        if (state.selectionActionsShown) return null
         if (state.editorTextSelected) return null
         val hasContent = state.clipboardBitmap != null || state.clipboardText.isNotBlank()
         if (!hasContent) return null
@@ -137,7 +137,7 @@ object CandidateStripContentResolver {
                 state.tailEmpty &&
                 !state.candidatesShown &&
                 !state.customLayoutPickerShown &&
-                !state.selectedTextGemmaActionsShown
+                !state.selectionActionsShown
         return QuickActionsState(
             incognitoVisible = canShowQuickActions && state.incognitoVisible,
             undoEnabled = canShowQuickActions && state.undoEnabled,
@@ -171,7 +171,7 @@ object CandidateStripContentResolver {
         if (!state.tailEmpty) return false
         if (state.candidatesShown) return false
         if (state.customLayoutPickerShown) return false
-        if (state.selectedTextGemmaActionsShown) return false
+        if (state.selectionActionsShown) return false
         return true
     }
 }
