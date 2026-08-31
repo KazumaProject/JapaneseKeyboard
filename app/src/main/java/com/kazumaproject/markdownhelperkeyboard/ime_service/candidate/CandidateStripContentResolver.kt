@@ -10,7 +10,7 @@ object CandidateStripContentResolver {
         }
         if (state.candidates.isNotEmpty()) {
             if (state.selectedTextGemmaActionsShown) {
-                return CandidateStripContent.GemmaActions(
+                return CandidateStripContent.SelectionActions(
                     actions = state.candidates,
                     showShortcutEntry = shouldShowShortcutEntryWithGemmaActions(state)
                 )

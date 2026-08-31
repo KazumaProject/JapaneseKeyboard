@@ -192,8 +192,8 @@ class CandidateStripContentResolverTest {
         )
         val content = CandidateStripContentResolver.resolve(state)
 
-        assertTrue(content is CandidateStripContent.GemmaActions)
-        assertTrue((content as CandidateStripContent.GemmaActions).actions == actions)
+        assertTrue(content is CandidateStripContent.SelectionActions)
+        assertTrue((content as CandidateStripContent.SelectionActions).actions == actions)
     }
 
     @Test

@@ -314,7 +314,7 @@ class SuggestionAdapterDisplayItemTest {
     fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
-            CandidateStripContent.GemmaActions(
+            CandidateStripContent.SelectionActions(
                 actions = gemmaActions(),
                 showShortcutEntry = false
             )
@@ -334,7 +334,7 @@ class SuggestionAdapterDisplayItemTest {
     fun integratedOnGemmaActionsShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
-            CandidateStripContent.GemmaActions(
+            CandidateStripContent.SelectionActions(
                 actions = gemmaActions(),
                 showShortcutEntry = true
             )
@@ -366,7 +366,7 @@ class SuggestionAdapterDisplayItemTest {
         )
 
         adapter.submitContent(
-            CandidateStripContent.GemmaActions(
+            CandidateStripContent.SelectionActions(
                 actions = gemmaActions(),
                 showShortcutEntry = true
             )

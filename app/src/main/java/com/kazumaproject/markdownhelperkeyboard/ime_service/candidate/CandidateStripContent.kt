@@ -10,7 +10,8 @@ sealed interface CandidateStripContent {
         val candidates: List<Candidate>,
     ) : CandidateStripContent
 
-    data class GemmaActions(
+    /** Explicit actions for selected text: local macros first, then translation and prompts. */
+    data class SelectionActions(
         val actions: List<Candidate>,
         val showShortcutEntry: Boolean,
     ) : CandidateStripContent
