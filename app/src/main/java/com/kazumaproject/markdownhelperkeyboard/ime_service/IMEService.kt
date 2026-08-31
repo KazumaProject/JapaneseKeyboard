@@ -57,6 +57,8 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodInfo
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.InlineSuggestionsRequest
+import android.view.inputmethod.InlineSuggestionsResponse
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -65,9 +67,11 @@ import android.widget.ListView
 import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.inline.InlineContentView
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.annotation.ColorInt
+import androidx.annotation.RequiresApi
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -225,6 +229,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacing
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineAutofillController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionsRequestFactory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
@@ -387,6 +394,7 @@ import java.text.BreakIterator
 import java.text.SimpleDateFormat
 import java.util.ArrayDeque
 import java.util.Calendar
+import java.util.IdentityHashMap
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -730,6 +738,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var suggestionAdapter: SuggestionAdapter? = null
     private var suggestionAdapterFull: SuggestionAdapter? = null
+    private var inlineAutofillController: InlineAutofillController? = null
+    private var inlineSuggestionsDisplayed = false
+    private val inlineHostPreviousVisibility = IdentityHashMap<View, Pair<Boolean, Boolean>>()
     private var currentCandidateStripCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
@@ -754,6 +765,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var integratedShortcutEntryExpanded: Boolean = false
     private var lastSuggestionLayoutKey: SuggestionLayoutKey? = null
     private var mainSuggestionGridSpacingDecoration: RecyclerView.ItemDecoration? = null
+
+    private data class InlineSuggestionHost(
+        val clipView: InlineSuggestionClipView,
+        val container: LinearLayout,
+        val suggestionRecyclerView: RecyclerView,
+        val suggestionVisibility: View,
+    )
 
     private data class ClipboardPreviewSnapshot(
         val text: String,
@@ -995,6 +1013,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
+        enforceInlineSuggestionVisibility()
     }
 
     private fun isFullCandidateViewVisible(): Boolean {
@@ -2218,6 +2237,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController = InlineAutofillController(
+                context = this,
+                onViewsChanged = ::renderInlineSuggestionViews,
+            )
+        }
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         runtimeInputSharedPreferences =
@@ -2450,11 +2475,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 startScope(mainView)
             }
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.onHostChanged()
+        }
         return keyboardContainer
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest {
+        return InlineSuggestionsRequestFactory.create(this)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    override fun onInlineSuggestionsResponse(response: InlineSuggestionsResponse): Boolean {
+        return inlineAutofillController?.handleResponse(response) ?: false
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.startInputSession()
+        }
         resetEditorSelectionSnapshot()
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
@@ -4085,6 +4126,117 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingView?.suggestionRecyclerView?.adapter = null
             floatingView?.candidatesRowView?.adapter = null
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.onHostChanged()
+        }
+    }
+
+    private fun inlineSuggestionHosts(): List<InlineSuggestionHost> = buildList {
+        mainLayoutBinding?.let { binding ->
+            add(
+                InlineSuggestionHost(
+                    clipView = binding.inlineSuggestionsClip,
+                    container = binding.inlineSuggestionsContainer,
+                    suggestionRecyclerView = binding.suggestionRecyclerView,
+                    suggestionVisibility = binding.suggestionVisibility,
+                )
+            )
+        }
+        floatingKeyboardBinding?.let { binding ->
+            add(
+                InlineSuggestionHost(
+                    clipView = binding.inlineSuggestionsClip,
+                    container = binding.inlineSuggestionsContainer,
+                    suggestionRecyclerView = binding.suggestionRecyclerView,
+                    suggestionVisibility = binding.suggestionVisibility,
+                )
+            )
+        }
+    }
+
+    private fun activeInlineSuggestionHost(): InlineSuggestionHost? {
+        return if (isKeyboardFloatingMode == true) {
+            floatingKeyboardBinding?.let { binding ->
+                InlineSuggestionHost(
+                    clipView = binding.inlineSuggestionsClip,
+                    container = binding.inlineSuggestionsContainer,
+                    suggestionRecyclerView = binding.suggestionRecyclerView,
+                    suggestionVisibility = binding.suggestionVisibility,
+                )
+            }
+        } else {
+            mainLayoutBinding?.let { binding ->
+                InlineSuggestionHost(
+                    clipView = binding.inlineSuggestionsClip,
+                    container = binding.inlineSuggestionsContainer,
+                    suggestionRecyclerView = binding.suggestionRecyclerView,
+                    suggestionVisibility = binding.suggestionVisibility,
+                )
+            }
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun renderInlineSuggestionViews(views: List<InlineContentView>) {
+        assertMainThread("renderInlineSuggestionViews")
+        clearInlineSuggestionHosts(restoreNativeVisibility = true)
+        if (views.isEmpty()) return
+
+        val host = activeInlineSuggestionHost() ?: return
+        Timber.d("Rendering ${views.size} inline suggestion views")
+        host.clipView.setBackgroundColor(
+            ContextCompat.getColor(this, com.kazumaproject.core.R.color.keyboard_bg)
+        )
+        inlineHostPreviousVisibility[host.clipView] =
+            host.suggestionRecyclerView.isVisible to host.suggestionVisibility.isVisible
+        views.forEach { view ->
+            (view.parent as? ViewGroup)?.removeView(view)
+            view.setZOrderedOnTop(true)
+            val frameworkWidth = view.layoutParams?.width
+                ?.takeIf { it > 0 }
+                ?: ViewGroup.LayoutParams.WRAP_CONTENT
+            val frameworkHeight = view.layoutParams?.height
+                ?.takeIf { it > 0 }
+                ?: ViewGroup.LayoutParams.MATCH_PARENT
+            host.container.addView(
+                view,
+                LinearLayout.LayoutParams(
+                    frameworkWidth,
+                    frameworkHeight,
+                ).apply {
+                    val margin = (4 * resources.displayMetrics.density).toInt()
+                    marginStart = margin
+                    marginEnd = margin
+                }
+            )
+        }
+        inlineSuggestionsDisplayed = true
+        enforceInlineSuggestionVisibility()
+        Timber.d(
+            "Inline suggestion host visible=${host.clipView.isVisible} " +
+                "children=${host.container.childCount}"
+        )
+    }
+
+    private fun clearInlineSuggestionHosts(restoreNativeVisibility: Boolean) {
+        inlineSuggestionHosts().forEach { host ->
+            host.container.removeAllViews()
+            host.clipView.isVisible = false
+            val previous = inlineHostPreviousVisibility.remove(host.clipView)
+            if (restoreNativeVisibility && previous != null) {
+                host.suggestionRecyclerView.isVisible = previous.first
+                host.suggestionVisibility.isVisible = previous.second
+            }
+        }
+        inlineSuggestionsDisplayed = false
+    }
+
+    private fun enforceInlineSuggestionVisibility() {
+        if (!inlineSuggestionsDisplayed) return
+        val activeHost = activeInlineSuggestionHost() ?: return
+        activeHost.clipView.isVisible = true
+        activeHost.suggestionRecyclerView.isVisible = false
+        activeHost.suggestionVisibility.isVisible = false
     }
 
     private fun updateFloatingKeyboardBackgroundBounds(
@@ -4811,7 +4963,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         consumePendingGemmaPickedImage()
     }
 
+    override fun onFinishInput() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.clear()
+        }
+        super.onFinishInput()
+    }
+
     override fun onFinishInputView(finishingInput: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.clear()
+        }
         flickInputPreviewCoordinator.cancel(restore = false)
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
@@ -4845,6 +5007,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.clear()
+        }
         flickInputPreviewCoordinator.cancel(restore = true)
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
@@ -4853,6 +5018,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            inlineAutofillController?.destroy()
+            inlineAutofillController = null
+        }
         flickInputPreviewCoordinator.cancel(restore = false)
         resetEditorSelectionSnapshot()
         Timber.d("onUpdate onDestroy")

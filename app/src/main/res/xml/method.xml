@@ -1,5 +1,6 @@
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:isDefault="true"
+    android:supportsInlineSuggestions="true"
     android:settingsActivity="com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity">
     <subtype
         android:imeSubtypeLocale="jp_JP"
