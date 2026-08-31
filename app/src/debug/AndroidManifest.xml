@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application>
+        <activity
+            android:name=".autofill.DebugInlineAutofillAttributionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.Dialog.Alert" />
+
+        <service
+            android:name=".autofill.DebugInlineAutofillService"
+            android:exported="true"
+            android:label="Sumire Inline Autofill QA"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE"
+            tools:targetApi="r">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/debug_inline_autofill_service" />
+        </service>
+
         <activity
             android:name=".FastInputHostActivity"
             android:exported="true"

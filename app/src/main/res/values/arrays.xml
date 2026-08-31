@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="utility_angle_mode_entries">
+        <item>@string/utility_angle_degrees</item>
+        <item>@string/utility_angle_radians</item>
+    </string-array>
+    <string-array name="utility_angle_mode_values">
+        <item>degrees</item>
+        <item>radians</item>
+    </string-array>
+    <string-array name="utility_regional_profile_entries">
+        <item>@string/utility_region_japan</item>
+        <item>@string/utility_region_us</item>
+        <item>@string/utility_region_uk</item>
+    </string-array>
+    <string-array name="utility_regional_profile_values">
+        <item>japan</item>
+        <item>united_states</item>
+        <item>united_kingdom</item>
+    </string-array>
     <string-array name="delete_long_press_conversion_behavior_entries">
         <item>@string/delete_long_press_conversion_behavior_deferred</item>
         <item>@string/delete_long_press_conversion_behavior_continuous</item>

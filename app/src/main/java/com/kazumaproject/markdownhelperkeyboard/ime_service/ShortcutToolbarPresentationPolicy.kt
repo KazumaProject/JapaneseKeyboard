@@ -6,7 +6,7 @@ data class ShortcutToolbarPresentationState(
     val inputStringEmpty: Boolean,
     val tailEmpty: Boolean,
     val clipboardPreviewShown: Boolean,
-    val selectedTextGemmaActionsShown: Boolean,
+    val selectionActionsShown: Boolean,
     val suggestionsEmpty: Boolean,
     val customLayoutPickerShown: Boolean,
     val symbolKeyboardShown: Boolean = false
@@ -39,11 +39,11 @@ object ShortcutToolbarPresentationPolicy {
             state.inputStringEmpty &&
                 state.tailEmpty &&
                 !state.clipboardPreviewShown &&
-                !state.selectedTextGemmaActionsShown &&
+                !state.selectionActionsShown &&
                 state.suggestionsEmpty &&
                 !state.customLayoutPickerShown
         val isCentralSpecialContentShown =
-            state.clipboardPreviewShown || state.selectedTextGemmaActionsShown
+            state.clipboardPreviewShown || state.selectionActionsShown
         val showIntegratedShortcutEntry =
             state.inputStringEmpty &&
                 state.tailEmpty &&

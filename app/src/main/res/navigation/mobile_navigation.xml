@@ -154,6 +154,16 @@
         android:label="@string/conversion_engine_category_title" />
 
     <fragment
+        android:id="@+id/utilityCandidatePreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.UtilityCandidatePreferenceFragment"
+        android:label="@string/utility_candidate_settings_title" />
+
+    <fragment
+        android:id="@+id/unitTargetSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.UnitTargetSettingsFragment"
+        android:label="@string/utility_conversion_targets_title" />
+
+    <fragment
         android:id="@+id/aiConversionPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AiConversionPreferenceFragment"
         android:label="@string/setting_category_ai_conversion_title" />
@@ -300,6 +310,20 @@
         android:id="@+id/userTemplateFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.user_template.ui.UserTemplateFragment"
         android:label="@string/user_template_fragment_title" />
+    <fragment
+        android:id="@+id/textMacroFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.text_macro.ui.TextMacroFragment"
+        android:label="@string/text_macro_title" />
+    <fragment
+        android:id="@+id/textMacroEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.text_macro.ui.TextMacroEditorFragment"
+        android:label="@string/text_macro_editor_title"
+        tools:layout="@layout/fragment_text_macro_editor">
+        <argument
+            android:name="macroId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
     <fragment
         android:id="@+id/clipboardHistoryFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.clipboard_history.ui.ClipboardHistoryFragment"

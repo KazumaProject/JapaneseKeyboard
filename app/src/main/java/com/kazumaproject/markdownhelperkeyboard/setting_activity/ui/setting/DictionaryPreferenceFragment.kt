@@ -69,6 +69,11 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("text_macro_manage_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.textMacroFragment)
+            true
+        }
+
         findPreference<Preference>("external_dictionary_settings_preference")?.setOnPreferenceClickListener {
             navigateSafely(R.id.externalDictionarySettingsFragment)
             true

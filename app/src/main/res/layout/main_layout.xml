@@ -118,6 +118,35 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView
+            android:id="@+id/inline_suggestions_clip"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/suggestion_visibility"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="true"
+                android:fillViewport="false"
+                android:overScrollMode="never"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/inline_suggestions_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp" />
+            </HorizontalScrollView>
+        </com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView>
+
         <!-- Visibility Toggle Button -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/suggestion_visibility"
@@ -155,8 +184,8 @@
         android:importantForAccessibility="yes"
         android:visibility="gone" />
 
-    <com.kazumaproject.tabletkey.TabletKeyboardView
-        android:id="@+id/tablet_view"
+    <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
+        android:id="@+id/gojuon_view"
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height"
         android:layout_gravity="bottom"

@@ -71,9 +71,9 @@ class ShortcutToolbarPresentationPolicyTest {
     }
 
     @Test
-    fun integratedOnGemmaActionsShowShortcutEntryOnly() {
+    fun integratedOnSelectionActionsShowShortcutEntryOnly() {
         val presentation = ShortcutToolbarPresentationPolicy.resolve(
-            baseState(selectedTextGemmaActionsShown = true, suggestionsEmpty = false)
+            baseState(selectionActionsShown = true, suggestionsEmpty = false)
         )
 
         assertFalse(presentation.showIndependentToolbar)
@@ -93,11 +93,11 @@ class ShortcutToolbarPresentationPolicyTest {
     }
 
     @Test
-    fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
+    fun integratedOffSelectionActionsDoNotShowShortcutEntry() {
         val presentation = ShortcutToolbarPresentationPolicy.resolve(
             baseState(
                 integratedInSuggestion = false,
-                selectedTextGemmaActionsShown = true,
+                selectionActionsShown = true,
                 suggestionsEmpty = false
             )
         )
@@ -146,7 +146,7 @@ class ShortcutToolbarPresentationPolicyTest {
         inputStringEmpty: Boolean = true,
         tailEmpty: Boolean = true,
         clipboardPreviewShown: Boolean = false,
-        selectedTextGemmaActionsShown: Boolean = false,
+        selectionActionsShown: Boolean = false,
         suggestionsEmpty: Boolean = true,
         customLayoutPickerShown: Boolean = false,
         symbolKeyboardShown: Boolean = false
@@ -157,7 +157,7 @@ class ShortcutToolbarPresentationPolicyTest {
             inputStringEmpty = inputStringEmpty,
             tailEmpty = tailEmpty,
             clipboardPreviewShown = clipboardPreviewShown,
-            selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+            selectionActionsShown = selectionActionsShown,
             suggestionsEmpty = suggestionsEmpty,
             customLayoutPickerShown = customLayoutPickerShown,
             symbolKeyboardShown = symbolKeyboardShown

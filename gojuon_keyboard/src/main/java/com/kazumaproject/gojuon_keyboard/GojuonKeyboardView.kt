@@ -1,0 +1,4093 @@
+package com.kazumaproject.gojuon_keyboard
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.res.ColorStateList
+import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.os.Build
+import android.util.AttributeSet
+import android.util.Log
+import android.view.GestureDetector
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.widget.PopupWindow
+import android.widget.TextView
+import androidx.appcompat.widget.AppCompatButton
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.isVisible
+import androidx.core.widget.ImageViewCompat
+import com.google.android.material.color.DynamicColors
+import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.data.gojuon.GojuonCapsLockState
+import com.kazumaproject.core.domain.extensions.hide
+import com.kazumaproject.core.domain.extensions.layoutXPosition
+import com.kazumaproject.core.domain.extensions.layoutYPosition
+import com.kazumaproject.core.domain.extensions.setBorder
+import com.kazumaproject.core.domain.extensions.setBottomToTopOf
+import com.kazumaproject.core.domain.extensions.setDrawableAlpha
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
+import com.kazumaproject.core.domain.extensions.setEndToStartOf
+import com.kazumaproject.core.domain.extensions.setHorizontalWeight
+import com.kazumaproject.core.domain.extensions.setLargeUnicodeIcon
+import com.kazumaproject.core.domain.extensions.setLargeUnicodeIconScaleX
+import com.kazumaproject.core.domain.extensions.setMarginEnd
+import com.kazumaproject.core.domain.extensions.setStartToEndOf
+import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyInfo.KeyEEnglish.getOutputChar
+import com.kazumaproject.core.domain.key.KeyMap
+import com.kazumaproject.core.domain.key.KeyRect
+import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
+import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.state.GestureType
+import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
+import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.ui.effect.Blur
+import com.kazumaproject.core.ui.key_window.KeyWindowLayout
+import com.kazumaproject.gojuon_keyboard.databinding.GojuonLayoutBinding
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowBottom
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowCenter
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowFlickBottom
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowFlickLeft
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowFlickRight
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowFlickTap
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowFlickTop
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowLeft
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowRight
+import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowTop
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextEnglish
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextEnglishCaps
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextJapanese
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextNumber
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextDefaultEnglish
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextFlickBottomJapanese
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextFlickLeftJapanese
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextFlickRightJapanese
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextFlickTopJapanese
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextTapJapanese
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
+
+/**
+ * A custom view that wraps the gojuon keyboard layout and provides easy access
+ * to all of its key views via binding.
+ */
+@SuppressLint("ClickableViewAccessibility")
+class GojuonKeyboardView @JvmOverloads constructor(
+    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
+) : ConstraintLayout(context, attrs, defStyleAttr), View.OnTouchListener {
+
+    private val binding: GojuonLayoutBinding =
+        GojuonLayoutBinding.inflate(LayoutInflater.from(context), this)
+
+    val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
+    private lateinit var pressedKey: PressedKey
+    private var inputModeChangedListener: ((InputMode) -> Unit)? = null
+
+    private var flickSensitivity: Int = 100
+    private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
+    private var flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
+
+    // All AppCompatButton keys (all the character keys)
+    private val allButtonKeys = listOf(
+        binding.key1,
+        binding.key2,
+        binding.key3,
+        binding.key4,
+        binding.key5,
+        binding.key6,
+        binding.key7,
+        binding.key8,
+        binding.key9,
+        binding.key10,
+        binding.key11,
+        binding.key12,
+        binding.key13,
+        binding.key14,
+        binding.key15,
+        binding.key16,
+        binding.key17,
+        binding.key18,
+        binding.key19,
+        binding.key20,
+        binding.key21,
+        binding.key22,
+        binding.key23,
+        binding.key24,
+        binding.key25,
+        binding.key26,
+        binding.key27,
+        binding.key28,
+        binding.key29,
+        binding.key30,
+        binding.key31,
+        binding.key32,
+        binding.key33,
+        binding.key34,
+        binding.key35,
+        binding.key36,
+        binding.key37,
+        binding.key38,
+        binding.key39,
+        binding.key40,
+        binding.key41,
+        binding.key42,
+        binding.key43,
+        binding.key44,
+        binding.key45,
+        binding.key46,
+        binding.key47,
+        binding.key48,
+        binding.key49,
+        binding.key50,
+        binding.key51,
+        binding.key52,
+        binding.key53,
+        binding.key54,
+        binding.key55
+    )
+
+    // All AppCompatImageButton keys (side and utility keys)
+    private val allImageButtonKeys = listOf(
+        binding.keyKigou,
+        binding.keyPrevious,
+        binding.keySwitchKeyMode,
+        binding.keyLeftCursor,
+        binding.keyRightCursor,
+        binding.keyDelete,
+        binding.keySpace,
+        binding.keyEnter
+    )
+
+    private val listKeys: Map<Key, Any> = mapOf(
+        // あ row
+        Key.KeyA to binding.key51,
+        Key.KeyI to binding.key52,
+        Key.KeyU to binding.key53,
+        Key.KeyE to binding.key54,
+        Key.KeyO to binding.key55,
+
+        // か row
+        Key.KeyKA to binding.key46,
+        Key.KeyKI to binding.key47,
+        Key.KeyKU to binding.key48,
+        Key.KeyKE to binding.key49,
+        Key.KeyKO to binding.key50,
+
+        // さ row
+        Key.KeySA to binding.key41,
+        Key.KeySHI to binding.key42,
+        Key.KeySU to binding.key43,
+        Key.KeySE to binding.key44,
+        Key.KeySO to binding.key45,
+
+        // た row
+        Key.KeyTA to binding.key36,
+        Key.KeyCHI to binding.key37,
+        Key.KeyTSU to binding.key38,
+        Key.KeyTE to binding.key39,
+        Key.KeyTO to binding.key40,
+
+        // な row
+        Key.KeyNA to binding.key31,
+        Key.KeyNI to binding.key32,
+        Key.KeyNU to binding.key33,
+        Key.KeyNE to binding.key34,
+        Key.KeyNO to binding.key35,
+
+        // は row
+        Key.KeyHA to binding.key26,
+        Key.KeyHI to binding.key27,
+        Key.KeyFU to binding.key28,
+        Key.KeyHE to binding.key29,
+        Key.KeyHO to binding.key30,
+
+        // ま row
+        Key.KeyMA to binding.key21,
+        Key.KeyMI to binding.key22,
+        Key.KeyMU to binding.key23,
+        Key.KeyME to binding.key24,
+        Key.KeyMO to binding.key25,
+
+        // や row
+        Key.KeyYA to binding.key16,
+        Key.KeySPACE1 to binding.key17,
+        Key.KeyYU to binding.key18,
+        Key.KeySPACE2 to binding.key19,
+        Key.KeyYO to binding.key20,
+
+        // ら row
+        Key.KeyRA to binding.key11,
+        Key.KeyRI to binding.key12,
+        Key.KeyRU to binding.key13,
+        Key.KeyRE to binding.key14,
+        Key.KeyRO to binding.key15,
+
+        // わ row
+        Key.KeyWA to binding.key6,
+        Key.KeyWO to binding.key7,
+        Key.KeyN to binding.key8,
+        Key.KeyMinus to binding.key9,
+
+        // symbols & modifiers
+        Key.KeyDakutenSmall to binding.key10,
+        Key.KeyKagikakko to binding.key1,
+        Key.KeyQuestion to binding.key2,
+        Key.KeyCaution to binding.key3,
+        Key.KeyTouten to binding.key4,
+        Key.KeyKuten to binding.key5,
+
+        // side keys
+        Key.SideKeySymbol to binding.keyKigou,
+        Key.SideKeyPreviousChar to binding.keyPrevious,
+        Key.SideKeyInputMode to binding.keySwitchKeyMode,
+        Key.SideKeyCursorLeft to binding.keyLeftCursor,
+        Key.SideKeyCursorRight to binding.keyRightCursor,
+        Key.SideKeyDelete to binding.keyDelete,
+        Key.SideKeySpace to binding.keySpace,
+        Key.SideKeyEnter to binding.keyEnter,
+    )
+
+    private var keyMap: KeyMap
+    private var flickListener: FlickListener? = null
+    private var longPressListener: LongPressListener? = null
+    private var keyTouchCancelListener: KeyTouchCancelListener? = null
+
+    private var longPressJob: Job? = null
+    private var isLongPressed = false
+
+    private lateinit var popupWindowActive: PopupWindow
+    private lateinit var bubbleViewActive: KeyWindowLayout
+    private lateinit var popTextActive: MaterialTextView
+    private lateinit var popupWindowLeft: PopupWindow
+    private lateinit var bubbleViewLeft: KeyWindowLayout
+    private lateinit var popTextLeft: MaterialTextView
+    private lateinit var popupWindowTop: PopupWindow
+    private lateinit var bubbleViewTop: KeyWindowLayout
+    private lateinit var popTextTop: MaterialTextView
+    private lateinit var popupWindowRight: PopupWindow
+    private lateinit var bubbleViewRight: KeyWindowLayout
+    private lateinit var popTextRight: MaterialTextView
+    private lateinit var popupWindowBottom: PopupWindow
+    private lateinit var bubbleViewBottom: KeyWindowLayout
+    private lateinit var popTextBottom: MaterialTextView
+    private lateinit var popupWindowCenter: PopupWindow
+    private lateinit var bubbleViewCenter: KeyWindowLayout
+    private lateinit var popTextCenter: MaterialTextView
+
+    private val _gojuonCapsLockState = MutableStateFlow(GojuonCapsLockState())
+    private val gojuonCapsLockState: StateFlow<GojuonCapsLockState> =
+        _gojuonCapsLockState.asStateFlow()
+    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private var isDynamicColorsEnable = false
+
+    // Theme Variables (Initialized with defaults)
+    private var themeMode: String = "default"
+    private var isNightMode: Boolean = false
+    private var isDynamicColorEnabled: Boolean = false
+    private var customBgColor: Int = Color.WHITE
+    private var customKeyColor: Int = Color.LTGRAY
+    private var customSpecialKeyColor: Int = Color.GRAY
+    private var customKeyTextColor: Int = Color.BLACK
+    private var customSpecialKeyTextColor: Int = Color.BLACK
+    private var liquidGlassEnable: Boolean = false
+
+    private var liquidGlassKeyAlphaEnable: Int = 255
+    private var customBorderEnable: Boolean = false
+    private var customBorderColor: Int = Color.BLACK
+    private var borderWidth: Int = 1
+
+    init {
+        (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
+        keyMap = KeyMap()
+        declarePopupWindows()
+        handleCurrentInputModeSwitch(inputMode = currentInputMode.get())
+
+        //setMaterialYouTheme()
+
+        uiScope.launch {
+            gojuonCapsLockState.collectLatest { state ->
+                Log.d("gojuonCapsLockState", "$state")
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+
+                    }
+
+                    InputMode.ModeEnglish -> {
+                        binding.apply {
+                            updateKeyStylesEnglish(state)
+                        }
+                    }
+
+                    InputMode.ModeNumber -> {
+                        binding.apply {
+                            setKeysInNumberText(state.zenkakuOn)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setMaterialYouTheme() {
+        isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        if (isDynamicColorsEnable) {
+            allButtonKeys.forEach {
+                it.setBackgroundDrawable(
+                    ContextCompat.getDrawable(
+                        this.context,
+                        com.kazumaproject.core.R.drawable.gojuon_keyboard_center_bg_material
+                    )
+                )
+                if (liquidGlassEnable) {
+                    it.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
+            }
+            allImageButtonKeys.forEach {
+                it.setBackgroundDrawable(
+                    ContextCompat.getDrawable(
+                        this.context,
+                        com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    )
+                )
+                if (liquidGlassEnable) {
+                    it.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
+            }
+            return
+        }
+    }
+
+    /**
+     * テーマ設定を一括で適用するメイン関数
+     * メンバ変数に値を保存してからテーマを適用します。
+     * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
+     */
+    fun applyKeyboardTheme(
+        themeMode: String,
+        currentNightMode: Int,
+        isDynamicColorEnabled: Boolean,
+        customBgColor: Int,
+        customKeyColor: Int,
+        customSpecialKeyColor: Int,
+        customKeyTextColor: Int,
+        customSpecialKeyTextColor: Int,
+        liquidGlassEnable: Boolean,
+        customBorderEnable: Boolean,
+        customBorderColor: Int,
+        liquidGlassKeyAlphaEnable: Int,
+        borderWidth: Int
+    ) {
+        // メンバ変数に代入
+        this.themeMode = themeMode
+
+        // Int型の currentNightMode から Boolean型の isNightMode を判定
+        this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
+
+        this.isDynamicColorEnabled = isDynamicColorEnabled
+        this.customBgColor = customBgColor
+        this.customKeyColor = customKeyColor
+        this.customSpecialKeyColor = customSpecialKeyColor
+        this.customKeyTextColor = customKeyTextColor
+        this.customSpecialKeyTextColor = customSpecialKeyTextColor
+        this.liquidGlassEnable = liquidGlassEnable
+
+        this.customBorderEnable = customBorderEnable
+        this.customBorderColor = customBorderColor
+        this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
+        this.borderWidth = borderWidth
+
+        LayoutInflater.from(context)
+
+        when (this.themeMode) {
+            "default" -> {
+                setBackgroundColor(Color.TRANSPARENT)
+                setMaterialYouTheme()
+                // resetLayoutを呼んでデフォルトの角丸背景などを再適用する
+                resetLayout()
+            }
+
+            "custom" -> {
+                setCustomThemePopup()
+                setFullCustomNeumorphismTheme(
+                    backgroundColor = customBgColor,
+                    normalKeyColor = customKeyColor,
+                    specialKeyColor = customSpecialKeyColor,
+                    normalKeyTextColor = customKeyTextColor,
+                    specialKeyTextColor = customSpecialKeyTextColor,
+                    borderWidth = borderWidth
+                )
+            }
+
+            else -> {
+                setBackgroundColor(Color.TRANSPARENT)
+                setMaterialYouTheme()
+                resetLayout()
+            }
+        }
+    }
+
+    /**
+     * 詳細な色指定によるニューモーフィズムテーマの適用（拡張版）
+     */
+    fun setFullCustomNeumorphismTheme(
+        backgroundColor: Int,
+        normalKeyColor: Int,
+        specialKeyColor: Int,
+        normalKeyTextColor: Int,
+        specialKeyTextColor: Int,
+        borderWidth: Int
+    ) {
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density // 角丸の半径 (8dp)
+
+        // 1. 全体の背景色を設定
+        if (liquidGlassEnable) {
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
+        } else {
+            this.setBackgroundColor(backgroundColor)
+        }
+
+        binding.apply {
+            // --- キーの分類リスト定義 ---
+            val normalKeys = listOf(
+                key1, key2, key3, key4, key5, key6, key7, key8, key9, key10,
+                key11, key12, key13, key14, key15, key16, key17, key18, key19, key20,
+                key21, key22, key23, key24, key25, key26, key27, key28, key29, key30,
+                key31, key32, key33, key34, key35, key36, key37, key38, key39, key40,
+                key41, key42, key43, key44, key45, key46, key47, key48, key49, key50,
+                key51, key52, key53, key54, key55
+            )
+
+            val specialKeys = listOf(
+                keyKigou, keyPrevious, keySwitchKeyMode, keyLeftCursor,
+                keyRightCursor, keyDelete, keySpace, keyEnter
+            )
+
+            // --- 色の適用処理 ---
+
+            // 2. 通常キーへの適用
+            val normalDrawableState =
+                getDynamicNeumorphDrawable(normalKeyColor, radius).constantState
+            val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
+
+            normalKeys.forEach { view ->
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customKeyColor)
+                    view.setBorder(customBorderColor, borderWidth)
+                } else {
+                    view.background = normalDrawableState?.newDrawable()?.mutate()
+                }
+                view.setTextColor(normalColorStateList)
+            }
+
+            // 3. 特殊キーへの適用
+            val specialDrawableState =
+                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+            val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
+
+            specialKeys.forEach { view ->
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customSpecialKeyColor)
+                    view.setBorder(customBorderColor, borderWidth)
+                } else {
+                    view.background = specialDrawableState?.newDrawable()?.mutate()
+                }
+                ImageViewCompat.setImageTintList(view, specialColorStateList)
+            }
+
+        }
+    }
+
+    /**
+     * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
+     */
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        val highlightColor = manipulateColor(baseColor, 1.2f)
+        val shadowColor = manipulateColor(baseColor, 0.8f)
+
+        val density = context.resources.displayMetrics.density
+        val offset = (4 * density).toInt()
+        val padding = (2 * density).toInt()
+
+        // --- A. 通常状態 (Idle) の作成 ---
+        val shadowDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(shadowColor)
+        }
+        val highlightDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(highlightColor)
+        }
+        val surfaceDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(baseColor)
+        }
+
+        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
+        idleLayer.setLayerInset(0, offset, offset, 0, 0)
+        idleLayer.setLayerInset(1, 0, 0, offset, offset)
+        idleLayer.setLayerInset(2, padding, padding, padding, padding)
+
+        // --- B. 押下状態 (Pressed) の作成 ---
+        val pressedDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(manipulateColor(baseColor, 0.95f))
+        }
+        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
+        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
+
+        // --- C. StateListDrawable (Selector) にまとめる ---
+        val stateListDrawable = android.graphics.drawable.StateListDrawable()
+        stateListDrawable.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
+        stateListDrawable.addState(intArrayOf(), idleLayer)
+
+        return stateListDrawable
+    }
+
+    /**
+     * 色の明るさを調整するヘルパー関数
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
+    }
+
+    /**
+     * ポップアップウィンドウ（のコンテンツビュー）にニューモーフィズムを適用する関数
+     */
+    private fun updatePopupStyle(view: View) {
+        if (themeMode == "default") return
+
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density
+
+        // ポップアップは通常キーと同じ色を使用（必要であれば専用の色変数を定義してください）
+        val bgColor = customKeyColor
+        val textColor = customKeyTextColor
+
+        // 背景にニューモーフィズムDrawableを設定
+        view.setDrawableSolidColor(bgColor)
+
+        // 内部のテキストビューを探して色を変更
+        // declarePopupWindowsでIDが popup_text または popup_text_active であると想定
+        val textView = view.findViewById<TextView>(R.id.popup_text)
+            ?: view.findViewById<TextView>(R.id.popup_text_active)
+
+        textView?.setTextColor(textColor)
+    }
+
+
+    /**
+     * 現在のテーマ設定に基づいて、単一のキーのスタイル（背景とテキスト色）を更新します。
+     * デフォルトテーマの場合は何もしません。
+     */
+    private fun updateKeyStyle(view: View, isNormalKey: Boolean) {
+        if (themeMode == "default") return
+
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density
+        val bgColor = if (isNormalKey) customKeyColor else customSpecialKeyColor
+        val textColor = if (isNormalKey) customKeyTextColor else customSpecialKeyTextColor
+
+        view.background =
+            getDynamicNeumorphDrawable(bgColor, radius).constantState?.newDrawable()?.mutate()
+
+        if (view is TextView) {
+            view.setTextColor(textColor)
+        }
+    }
+
+    private fun updateKeyStylesEnglish(state: GojuonCapsLockState) {
+        if (state.zenkakuOn) {
+            when {
+                state.capsLockOn && state.shiftOn -> {
+                    setKeysInEnglishCapsOnText(true)
+                }
+
+                !state.capsLockOn && state.shiftOn -> {
+                    setKeysInEnglishShiftOnText(true)
+                }
+
+                state.capsLockOn && !state.shiftOn -> {
+                    setKeysInEnglishCapsOnText(true)
+                }
+
+                else -> {
+                    setKeysInEnglishText(true)
+                }
+            }
+        } else {
+            when {
+                state.capsLockOn -> setKeysInEnglishCapsOnText(false)
+                state.shiftOn -> setKeysInEnglishShiftOnText(false)
+                else -> setKeysInEnglishText(false)
+            }
+        }
+    }
+
+    private fun updateKeyStylesNumber(state: GojuonCapsLockState) {
+        setKeysInNumberText(state.zenkakuOn)
+    }
+
+    private fun toggleShift() {
+        _gojuonCapsLockState.update {
+            it.copy(
+                shiftOn = !it.shiftOn, capsLockOn = it.capsLockOn, zenkakuOn = it.zenkakuOn
+            )
+        }
+    }
+
+
+    private fun enableCapsLock() {
+        _gojuonCapsLockState.update {
+            it.copy(
+                capsLockOn = true, shiftOn = false, zenkakuOn = it.zenkakuOn
+            )
+        }
+    }
+
+    private fun toggleZenkaku() {
+        _gojuonCapsLockState.update {
+            it.copy(
+                shiftOn = it.shiftOn, capsLockOn = it.capsLockOn, zenkakuOn = !it.zenkakuOn
+            )
+        }
+    }
+
+
+    private fun clearShiftCaps() {
+        _gojuonCapsLockState.value = GojuonCapsLockState()
+    }
+
+    private fun clearShiftCapsWithoutZenkaku() {
+        _gojuonCapsLockState.update {
+            it.copy(
+                shiftOn = false, capsLockOn = false, zenkakuOn = it.zenkakuOn
+            )
+        }
+    }
+
+    private fun clearShiftCapsOnlyZenkaku() {
+        _gojuonCapsLockState.update {
+            it.copy(
+                shiftOn = it.shiftOn, capsLockOn = it.capsLockOn, zenkakuOn = false
+            )
+        }
+    }
+    // ... (中略: GestureDetector, declarePopupWindows, setOnFlickListener, setOnLongPressListener, onTouch, onDetachedFromWindow, release, getGestureType, setKeyPressed, resetAllKeys, buildKeyRects..., pressedKeyByMotionEvent, getRawCoordinates, resetLongPressAction, getButtonFromKey, onLongPressed, hideAllPopWindow, setTapInActionMove, setFlickInActionMove, setFlickActionPointerDown, setSideKey... メソッドは変更なしのため省略) ...
+
+    private var skipNextTouches = false
+
+    private val gestureDetector =
+        GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                return if (currentInputMode.get() == InputMode.ModeEnglish) {
+                    val key = pressedKeyByMotionEvent(e, 0)
+                    if (key == Key.KeyKuten) {
+                        hideAllPopWindow()
+                        enableCapsLock()
+                        skipNextTouches = true
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+        })
+
+    @SuppressLint("InflateParams")
+    private fun declarePopupWindows() {
+        isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        val mPopWindowActive = PopupWindow(context)
+        val popupViewActive =
+            if (isDynamicColorsEnable) LayoutInflater.from(context)
+                .inflate(R.layout.popup_layout_active_material, null) else LayoutInflater.from(
+                context
+            ).inflate(R.layout.popup_layout_active, null)
+        mPopWindowActive.contentView = popupViewActive
+
+        val mPopWindowLeft = PopupWindow(context)
+        val mPopWindowTop = PopupWindow(context)
+        val mPopWindowRight = PopupWindow(context)
+        val mPopWindowBottom = PopupWindow(context)
+        val mPopWindowCenter = PopupWindow(context)
+
+        val popupViewLeft = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewTop = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewRight = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewBottom = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewCenter = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+
+        mPopWindowLeft.contentView = popupViewLeft
+        mPopWindowTop.contentView = popupViewTop
+        mPopWindowRight.contentView = popupViewRight
+        mPopWindowBottom.contentView = popupViewBottom
+        mPopWindowCenter.contentView = popupViewCenter
+
+        popupWindowActive = mPopWindowActive
+        popupWindowLeft = mPopWindowLeft
+        popupWindowTop = mPopWindowTop
+        popupWindowRight = mPopWindowRight
+        popupWindowBottom = mPopWindowBottom
+        popupWindowCenter = mPopWindowCenter
+
+        bubbleViewActive = mPopWindowActive.contentView.findViewById(R.id.bubble_layout_active)
+        popTextActive = mPopWindowActive.contentView.findViewById(R.id.popup_text_active)
+        bubbleViewLeft = mPopWindowLeft.contentView.findViewById(R.id.bubble_layout)
+        popTextLeft = mPopWindowLeft.contentView.findViewById(R.id.popup_text)
+        bubbleViewTop = mPopWindowTop.contentView.findViewById(R.id.bubble_layout)
+        popTextTop = mPopWindowTop.contentView.findViewById(R.id.popup_text)
+        bubbleViewRight = mPopWindowRight.contentView.findViewById(R.id.bubble_layout)
+        popTextRight = mPopWindowRight.contentView.findViewById(R.id.popup_text)
+        bubbleViewBottom = mPopWindowBottom.contentView.findViewById(R.id.bubble_layout)
+        popTextBottom = mPopWindowBottom.contentView.findViewById(R.id.popup_text)
+        bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
+        popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
+    }
+
+    @SuppressLint("InflateParams")
+    private fun setCustomThemePopup() {
+        bubbleViewActive.setBubbleColor(manipulateColor(customSpecialKeyColor, 1.2f))
+        bubbleViewLeft.setBubbleColor(customKeyColor)
+        bubbleViewTop.setBubbleColor(customKeyColor)
+        bubbleViewRight.setBubbleColor(customKeyColor)
+        bubbleViewBottom.setBubbleColor(customKeyColor)
+        bubbleViewCenter.setBubbleColor(customKeyColor)
+        popTextActive.setTextColor(customSpecialKeyTextColor)
+        popTextTop.setTextColor(customKeyTextColor)
+        popTextLeft.setTextColor(customKeyTextColor)
+        popTextRight.setTextColor(customKeyTextColor)
+        popTextBottom.setTextColor(customKeyTextColor)
+        popTextCenter.setTextColor(customKeyTextColor)
+    }
+
+    fun setOnFlickListener(flickListener: FlickListener) {
+        this.flickListener = flickListener
+    }
+
+    fun setOnLongPressListener(longPressListener: LongPressListener) {
+        this.longPressListener = longPressListener
+    }
+
+    fun setOnKeyTouchCancelListener(listener: KeyTouchCancelListener?) {
+        keyTouchCancelListener = listener
+    }
+
+    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+        if (v != null && event != null) {
+            if (this.visibility != View.VISIBLE) {
+                return false
+            }
+            if (skipNextTouches) {
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
+                    skipNextTouches = false
+                }
+                return true
+            }
+            if (currentInputMode.get() == InputMode.ModeEnglish) {
+                gestureDetector.onTouchEvent(event)
+            }
+            when (event.action and MotionEvent.ACTION_MASK) {
+                MotionEvent.ACTION_DOWN -> {
+                    val key = pressedKeyByMotionEvent(event, 0)
+                    flickListener?.onFlick(
+                        gestureType = GestureType.Down, key = key, char = null
+                    )
+                    pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        PressedKey(
+                            key = key,
+                            pointer = 0,
+                            initialX = event.getRawX(event.actionIndex),
+                            initialY = event.getRawY(event.actionIndex),
+                        )
+                    } else {
+                        PressedKey(
+                            key = key,
+                            pointer = 0,
+                            initialX = event.getX(event.actionIndex),
+                            initialY = event.getY(event.actionIndex),
+                        )
+                    }
+                    setKeyPressed()
+                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        key == Key.KeyKuten
+                    ) {
+                        toggleShift()
+                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        pressedKey.key == Key.KeyKuten && gojuonCapsLockState.value.capsLockOn
+                    ) {
+                        clearShiftCaps()
+                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        pressedKey.key == Key.KeyO
+                    ) {
+                        toggleZenkaku()
+                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        pressedKey.key == Key.KeyKO
+                    ) {
+                        toggleZenkaku()
+                    }
+                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        key != Key.SideKeyDelete &&
+                        key != Key.SideKeyCursorRight &&
+                        key != Key.SideKeyCursorLeft
+                    ) {
+                        return false
+                    }
+
+                    if (currentInputMode.get() == InputMode.ModeNumber &&
+                        key == Key.KeyO
+                    ) {
+                        toggleZenkaku()
+                    } else if (
+                        currentInputMode.get() == InputMode.ModeNumber &&
+                        key == Key.KeyKO
+                    ) {
+                        toggleZenkaku()
+                    }
+
+                    if (currentInputMode.get() == InputMode.ModeNumber &&
+                        key != Key.SideKeyDelete &&
+                        key != Key.SideKeyCursorRight &&
+                        key != Key.SideKeyCursorLeft
+                    ) {
+                        return false
+                    }
+                    Log.d("ACTION_DOWN: ", "${gojuonCapsLockState.value}")
+                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                        delay(longPressTimeout)
+                        if (pressedKey.key != Key.NotSelected) {
+                            longPressListener?.onLongPress(pressedKey.key)
+                            isLongPressed = true
+                            onLongPressed()
+                        }
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    resetLongPressAction()
+                    if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                        val gestureType = getGestureType(event)
+                        val keyInfo = currentInputMode.get().next(
+                            keyMap = keyMap, key = pressedKey.key, isGojuon = true
+                        )
+                        if (keyInfo == KeyInfo.Null) {
+                            flickListener?.onFlick(
+                                gestureType = gestureType, key = pressedKey.key, char = null
+                            )
+                            if (pressedKey.key == Key.SideKeyInputMode) {
+                                handleClickInputModeSwitch()
+                            }
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+                            when (gestureType) {
+                                GestureType.Null -> {}
+                                GestureType.Down -> {}
+                                GestureType.Tap -> {
+                                    when (currentInputMode.get()) {
+                                        InputMode.ModeJapanese -> {
+                                            flickListener?.onFlick(
+                                                gestureType = gestureType,
+                                                key = pressedKey.key,
+                                                char = keyInfo.tap,
+                                            )
+                                        }
+
+                                        InputMode.ModeEnglish -> {
+                                            val capState = gojuonCapsLockState.value
+                                            val isZenkaku = capState.zenkakuOn
+                                            val outputChar = keyInfo.getOutputChar(capState)
+
+                                            if (capState.shiftOn && pressedKey.key !in setOf(
+                                                    Key.KeyKuten, Key.KeyO, Key.KeyKO
+                                                )
+                                            ) {
+                                                toggleShift()
+                                            }
+
+                                            if (pressedKey.key == Key.KeyKuten && capState.capsLockOn) {
+                                                clearShiftCapsWithoutZenkaku()
+                                            }
+
+                                            if (pressedKey.key == Key.KeyKO && isZenkaku) {
+                                                clearShiftCapsOnlyZenkaku()
+                                            }
+                                            Log.d("capState", "after: $capState")
+                                            flickListener?.onFlick(
+                                                gestureType = gestureType,
+                                                key = pressedKey.key,
+                                                char = outputChar
+                                            )
+                                        }
+
+                                        InputMode.ModeNumber -> {
+                                            val capState = gojuonCapsLockState.value
+                                            val outputChar = keyInfo.getOutputChar(capState)
+                                            if (pressedKey.key == Key.KeyKuten) {
+                                                flickListener?.onFlick(
+                                                    gestureType = gestureType,
+                                                    key = Key.KeyDakutenSmall,
+                                                    char = outputChar,
+                                                )
+                                            } else {
+                                                flickListener?.onFlick(
+                                                    gestureType = gestureType,
+                                                    key = pressedKey.key,
+                                                    char = outputChar,
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                }
+
+                                GestureType.FlickLeft -> {
+                                    if (currentInputMode.get() == InputMode.ModeEnglish) return false
+                                    flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickLeft,
+                                    )
+                                }
+
+                                GestureType.FlickTop -> {
+                                    if (currentInputMode.get() == InputMode.ModeEnglish) return false
+                                    flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickTop,
+                                    )
+                                }
+
+                                GestureType.FlickRight -> {
+                                    if (currentInputMode.get() == InputMode.ModeEnglish) return false
+                                    flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickRight,
+                                    )
+                                }
+
+                                GestureType.FlickBottom -> {
+                                    if (currentInputMode.get() == InputMode.ModeEnglish) return false
+                                    flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickBottom,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    resetAllKeys()
+                    popupWindowActive.hide()
+                    val button = getButtonFromKey(pressedKey.key)
+                    button?.let {
+                        if (it is AppCompatButton) {
+                            when (currentInputMode.get()) {
+                                InputMode.ModeJapanese -> {
+                                    it.setGojuonKeyTextJapanese(it.id)
+                                }
+
+                                InputMode.ModeEnglish -> {
+                                    if (gojuonCapsLockState.value.capsLockOn) {
+                                        it.setGojuonKeyTextEnglishCaps(it.id)
+                                    } else {
+                                        it.setGojuonKeyTextEnglish(it.id)
+                                    }
+                                }
+
+                                InputMode.ModeNumber -> {
+                                    it.setGojuonKeyTextNumber(it.id)
+                                }
+                            }
+                            // 修正: 押下後に色が戻らないようにテーマを再適用
+                            if (themeMode != "default") {
+                                updateKeyStyle(it, isNormalKey = true)
+                            }
+                        }
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val gestureType =
+                        if (event.pointerCount == 1) getGestureType(event, 0) else getGestureType(
+                            event, pressedKey.pointer
+                        )
+                    when (gestureType) {
+                        GestureType.Null -> {}
+                        GestureType.Down -> {}
+                        GestureType.Tap -> {
+                            setTapInActionMove()
+                        }
+
+                        GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
+                            setFlickInActionMove(gestureType)
+                        }
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (isLongPressed) {
+                        hideAllPopWindow()
+                        Blur.removeBlurEffect(this)
+                    }
+                    popupWindowActive.hide()
+                    longPressJob?.cancel()
+                    if (event.pointerCount == 2) {
+                        isLongPressed = false
+                        val pointer = event.getPointerId(event.actionIndex)
+                        val key = pressedKeyByMotionEvent(event, pointer)
+                        val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
+                        val keyInfo = currentInputMode.get()
+                            .next(keyMap = keyMap, key = pressedKey.key, isGojuon = true)
+                        if (keyInfo == KeyInfo.Null) {
+                            flickListener?.onFlick(
+                                gestureType = gestureType2, key = pressedKey.key, char = null
+                            )
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+                            when (gestureType2) {
+                                GestureType.Null -> {}
+                                GestureType.Down -> {}
+                                GestureType.Tap -> {
+                                    val capState = gojuonCapsLockState.value
+                                    val outputChar = keyInfo.getOutputChar(capState)
+                                    flickListener?.onFlick(
+                                        gestureType = gestureType2,
+                                        key = pressedKey.key,
+                                        char = outputChar,
+                                    )
+                                    val button = getButtonFromKey(pressedKey.key)
+                                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                                        gojuonCapsLockState.value.capsLockOn
+                                    ) {
+                                        button?.let {
+                                            if (it is AppCompatButton) {
+                                                it.setGojuonKeyTextEnglishCaps(it.id)
+                                                // 修正: テーマ再適用
+                                                if (themeMode != "default") updateKeyStyle(it, true)
+                                            }
+                                        }
+                                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                                        gojuonCapsLockState.value.shiftOn
+                                    ) {
+                                        toggleShift()
+                                    } else {
+                                        button?.let {
+                                            if (it is AppCompatButton) {
+                                                if (it == binding.key10) return false
+                                                when (currentInputMode.get()) {
+                                                    InputMode.ModeJapanese -> {
+                                                        it.setGojuonKeyTextJapanese(it.id)
+                                                    }
+
+                                                    InputMode.ModeEnglish -> {
+                                                        it.setGojuonKeyTextEnglish(it.id)
+                                                    }
+
+                                                    InputMode.ModeNumber -> {
+                                                        it.setGojuonKeyTextNumber(it.id)
+                                                    }
+                                                }
+                                                // 修正: テーマ再適用
+                                                if (themeMode != "default") updateKeyStyle(it, true)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
+                                    setFlickActionPointerDown(keyInfo, gestureType2)
+                                }
+                            }
+                        }
+                        pressedKey = pressedKey.copy(
+                            key = key,
+                            pointer = pointer,
+                            initialX = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawX(0)
+                            } else {
+                                event.getX(0)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawX(1)
+                            } else {
+                                event.getX(1)
+                            },
+                            initialY = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawY(0)
+                            } else {
+                                event.getY(0)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawY(1)
+                            } else {
+                                event.getY(1)
+                            },
+                        )
+                        setKeyPressed()
+                        longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                            delay(longPressTimeout)
+                            if (pressedKey.key != Key.NotSelected) {
+                                longPressListener?.onLongPress(pressedKey.key)
+                                isLongPressed = true
+                                onLongPressed()
+                            }
+                        }
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.pointerCount == 2) {
+                        if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                            resetLongPressAction()
+                            val gestureType =
+                                getGestureType(event, event.getPointerId(event.actionIndex))
+                            val keyInfo = currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isGojuon = true)
+                            if (keyInfo == KeyInfo.Null) {
+                                flickListener?.onFlick(
+                                    gestureType = gestureType, key = pressedKey.key, char = null
+                                )
+                                if (pressedKey.key == Key.SideKeyInputMode) {
+                                    handleClickInputModeSwitch()
+                                }
+                            } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+                                val capState = gojuonCapsLockState.value
+                                val outputChar = keyInfo.getOutputChar(capState)
+                                when (gestureType) {
+                                    GestureType.Null -> {}
+                                    GestureType.Down -> {}
+                                    GestureType.Tap, GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = outputChar,
+                                    )
+                                }
+                            }
+                            val button = getButtonFromKey(pressedKey.key)
+                            if (currentInputMode.get() == InputMode.ModeEnglish && gojuonCapsLockState.value.capsLockOn) {
+                                button?.let {
+                                    if (it is AppCompatButton) {
+                                        it.setGojuonKeyTextEnglishCaps(it.id)
+                                    }
+                                }
+                            } else {
+                                button?.let {
+                                    if (it is AppCompatButton) {
+                                        if (it == binding.key10) return false
+                                        it.isPressed = false
+                                        when (currentInputMode.get()) {
+                                            InputMode.ModeJapanese -> {
+                                                it.setGojuonKeyTextJapanese(it.id)
+                                            }
+
+                                            InputMode.ModeEnglish -> {
+                                                it.setGojuonKeyTextEnglish(it.id)
+                                            }
+
+                                            InputMode.ModeNumber -> {
+                                                it.setGojuonKeyTextNumber(it.id)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // 修正: 押下後に色が戻らないようにテーマを再適用
+                            button?.let {
+                                if (it is AppCompatButton && themeMode != "default") {
+                                    updateKeyStyle(it, true)
+                                }
+                            }
+                            pressedKey = pressedKey.copy(
+                                key = Key.NotSelected,
+                            )
+                            popupWindowActive.hide()
+                        }
+                        return false
+
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+                    return true
+                }
+
+                else -> {
+                    return false
+                }
+            }
+        }
+        return false
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        release()
+        uiScope.cancel()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            cancelActiveTouch(KeyTouchCancelReason.ViewHidden)
+        }
+    }
+
+    private fun release() {
+        cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
+        flickListener = null
+        longPressListener = null
+        keyTouchCancelListener = null
+        inputModeChangedListener = null
+        longPressJob?.cancel()
+        longPressJob = null
+    }
+
+    private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        resetLongPressAction()
+        resetAllKeys()
+
+        if (::popupWindowActive.isInitialized) {
+            popupWindowActive.hide()
+        }
+
+        if (::pressedKey.isInitialized && pressedKey.key != Key.NotSelected) {
+            keyTouchCancelListener?.onKeyTouchCanceled(pressedKey.key, reason)
+            pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
+    }
+
+    private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
+        val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawX(pointer)
+        } else {
+            event.getX(pointer)
+        }
+        val finalY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawY(pointer)
+        } else {
+            event.getY(pointer)
+        }
+        val distanceX = finalX - pressedKey.initialX
+        val distanceY = finalY - pressedKey.initialY
+        return when (
+            FlickGestureMath.cardinalDirection(
+                deltaX = distanceX,
+                deltaY = distanceY,
+                thresholdPx = flickThresholdPx,
+                thresholdShape = flickThresholdShape
+            )
+        ) {
+            CoreFlickDirection.Tap -> GestureType.Tap
+            CoreFlickDirection.Left -> GestureType.FlickLeft
+            CoreFlickDirection.Top -> GestureType.FlickTop
+            CoreFlickDirection.Right -> GestureType.FlickRight
+            CoreFlickDirection.Bottom -> GestureType.FlickBottom
+        }
+    }
+
+    private fun resolveFlickThresholdPx(sensitivity: Int): Float {
+        return FlickGestureMath.thresholdPxForSensitivity(
+            sensitivity = sensitivity,
+            scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
+            sensitiveMultiplier = 1.5f,
+            normalMultiplier = 3.5f,
+            stableMultiplier = 4.25f
+        )
+    }
+
+    private fun setKeyPressed() {
+        when (pressedKey.key) {
+            // --- あ row ---
+            Key.KeyA -> {
+                resetAllKeys()
+                binding.key51.isPressed = true
+            }
+
+            Key.KeyI -> {
+                resetAllKeys()
+                binding.key52.isPressed = true
+            }
+
+            Key.KeyU -> {
+                resetAllKeys()
+                binding.key53.isPressed = true
+            }
+
+            Key.KeyE -> {
+                resetAllKeys()
+                binding.key54.isPressed = true
+            }
+
+            Key.KeyO -> {
+                resetAllKeys()
+                binding.key55.isPressed = true
+            }
+
+            // --- か row ---
+            Key.KeyKA -> {
+                resetAllKeys()
+                binding.key46.isPressed = true
+            }
+
+            Key.KeyKI -> {
+                resetAllKeys()
+                binding.key47.isPressed = true
+            }
+
+            Key.KeyKU -> {
+                resetAllKeys()
+                binding.key48.isPressed = true
+            }
+
+            Key.KeyKE -> {
+                resetAllKeys()
+                binding.key49.isPressed = true
+            }
+
+            Key.KeyKO -> {
+                resetAllKeys()
+                binding.key50.isPressed = true
+            }
+
+            // --- さ row ---
+            Key.KeySA -> {
+                resetAllKeys()
+                binding.key41.isPressed = true
+            }
+
+            Key.KeySHI -> {
+                resetAllKeys()
+                binding.key42.isPressed = true
+            }
+
+            Key.KeySU -> {
+                resetAllKeys()
+                binding.key43.isPressed = true
+            }
+
+            Key.KeySE -> {
+                resetAllKeys()
+                binding.key44.isPressed = true
+            }
+
+            Key.KeySO -> {
+                resetAllKeys()
+                binding.key45.isPressed = true
+            }
+
+            // --- た row ---
+            Key.KeyTA -> {
+                resetAllKeys()
+                binding.key36.isPressed = true
+            }
+
+            Key.KeyCHI -> {
+                resetAllKeys()
+                binding.key37.isPressed = true
+            }
+
+            Key.KeyTSU -> {
+                resetAllKeys()
+                binding.key38.isPressed = true
+            }
+
+            Key.KeyTE -> {
+                resetAllKeys()
+                binding.key39.isPressed = true
+            }
+
+            Key.KeyTO -> {
+                resetAllKeys()
+                binding.key40.isPressed = true
+            }
+
+            // --- な row ---
+            Key.KeyNA -> {
+                resetAllKeys()
+                binding.key31.isPressed = true
+            }
+
+            Key.KeyNI -> {
+                resetAllKeys()
+                binding.key32.isPressed = true
+            }
+
+            Key.KeyNU -> {
+                resetAllKeys()
+                binding.key33.isPressed = true
+            }
+
+            Key.KeyNE -> {
+                resetAllKeys()
+                binding.key34.isPressed = true
+            }
+
+            Key.KeyNO -> {
+                resetAllKeys()
+                binding.key35.isPressed = true
+            }
+
+            // --- は row ---
+            Key.KeyHA -> {
+                resetAllKeys()
+                binding.key26.isPressed = true
+            }
+
+            Key.KeyHI -> {
+                resetAllKeys()
+                binding.key27.isPressed = true
+            }
+
+            Key.KeyFU -> {
+                resetAllKeys()
+                binding.key28.isPressed = true
+            }
+
+            Key.KeyHE -> {
+                resetAllKeys()
+                binding.key29.isPressed = true
+            }
+
+            Key.KeyHO -> {
+                resetAllKeys()
+                binding.key30.isPressed = true
+            }
+
+            // --- ま row ---
+            Key.KeyMA -> {
+                resetAllKeys()
+                binding.key21.isPressed = true
+            }
+
+            Key.KeyMI -> {
+                resetAllKeys()
+                binding.key22.isPressed = true
+            }
+
+            Key.KeyMU -> {
+                resetAllKeys()
+                binding.key23.isPressed = true
+            }
+
+            Key.KeyME -> {
+                resetAllKeys()
+                binding.key24.isPressed = true
+            }
+
+            Key.KeyMO -> {
+                resetAllKeys()
+                binding.key25.isPressed = true
+            }
+
+            // --- や row ---
+            Key.KeyYA -> {
+                resetAllKeys()
+                binding.key16.isPressed = true
+            }
+
+            Key.KeyYU -> {
+                resetAllKeys()
+                binding.key18.isPressed = true
+            }
+
+            Key.KeyYO -> {
+                resetAllKeys()
+                binding.key20.isPressed = true
+            }
+
+            Key.KeySPACE1 -> {
+                resetAllKeys()
+                binding.key17.isPressed = true
+            }
+
+            Key.KeySPACE2 -> {
+                resetAllKeys()
+                binding.key19.isPressed = true
+            }
+
+            // --- ら row ---
+            Key.KeyRA -> {
+                resetAllKeys()
+                binding.key11.isPressed = true
+            }
+
+            Key.KeyRI -> {
+                resetAllKeys()
+                binding.key12.isPressed = true
+            }
+
+            Key.KeyRU -> {
+                resetAllKeys()
+                binding.key13.isPressed = true
+            }
+
+            Key.KeyRE -> {
+                resetAllKeys()
+                binding.key14.isPressed = true
+            }
+
+            Key.KeyRO -> {
+                resetAllKeys()
+                binding.key15.isPressed = true
+            }
+
+            // --- わ row + ん + minus ---
+            Key.KeyWA -> {
+                resetAllKeys()
+                binding.key6.isPressed = true
+            }
+
+            Key.KeyWO -> {
+                resetAllKeys()
+                binding.key7.isPressed = true
+            }
+
+            Key.KeyN -> {
+                resetAllKeys()
+                binding.key8.isPressed = true
+            }
+
+            Key.KeyMinus -> {
+                resetAllKeys()
+                binding.key9.isPressed = true
+            }
+
+            // --- Modifiers & punctuation ---
+            Key.KeyDakutenSmall -> {
+                resetAllKeys()
+                binding.key10.isPressed = true
+            }
+
+            Key.KeyKagikakko -> {
+                resetAllKeys()
+                binding.key1.isPressed = true
+            }
+
+            Key.KeyQuestion -> {
+                resetAllKeys()
+                binding.key2.isPressed = true
+            }
+
+            Key.KeyCaution -> {
+                resetAllKeys()
+                binding.key3.isPressed = true
+            }
+
+            Key.KeyTouten -> {
+                resetAllKeys()
+                binding.key4.isPressed = true
+            }
+
+            Key.KeyKuten -> {
+                resetAllKeys()
+                binding.key5.isPressed = true
+            }
+
+            // --- Side-row keys ---
+            Key.SideKeySymbol -> {
+                resetAllKeys()
+                binding.keyKigou.isPressed = true
+            }
+
+            Key.SideKeyPreviousChar -> {
+                resetAllKeys()
+                binding.keyPrevious.isPressed = true
+            }
+
+            Key.SideKeyInputMode -> {
+                resetAllKeys()
+                binding.keySwitchKeyMode.isPressed = true
+            }
+
+            Key.SideKeyCursorLeft -> {
+                resetAllKeys()
+                binding.keyLeftCursor.isPressed = true
+            }
+
+            Key.SideKeyCursorRight -> {
+                resetAllKeys()
+                binding.keyRightCursor.isPressed = true
+            }
+
+            Key.SideKeyDelete -> {
+                resetAllKeys()
+                binding.keyDelete.isPressed = true
+            }
+
+            Key.SideKeySpace -> {
+                resetAllKeys()
+                binding.keySpace.isPressed = true
+            }
+
+            Key.SideKeyEnter -> {
+                resetAllKeys()
+                binding.keyEnter.isPressed = true
+            }
+
+            Key.NotSelected -> {
+                // no key pressed
+            }
+
+            Key.SideKeyNumberMode -> {}
+            Key.KeyDakutenSmall -> {}
+            Key.KeyKutouten -> {}
+            Key.SideKeyInputMode -> {}
+            Key.SideKeyPreviousChar -> {}
+        }
+    }
+
+    private fun resetAllKeys() {
+        // あ row
+        binding.key51.isPressed = false
+        binding.key52.isPressed = false
+        binding.key53.isPressed = false
+        binding.key54.isPressed = false
+        binding.key55.isPressed = false
+
+        // か row
+        binding.key46.isPressed = false
+        binding.key47.isPressed = false
+        binding.key48.isPressed = false
+        binding.key49.isPressed = false
+        binding.key50.isPressed = false
+
+        // さ row
+        binding.key41.isPressed = false
+        binding.key42.isPressed = false
+        binding.key43.isPressed = false
+        binding.key44.isPressed = false
+        binding.key45.isPressed = false
+
+        // た row
+        binding.key36.isPressed = false
+        binding.key37.isPressed = false
+        binding.key38.isPressed = false
+        binding.key39.isPressed = false
+        binding.key40.isPressed = false
+
+        // な row
+        binding.key31.isPressed = false
+        binding.key32.isPressed = false
+        binding.key33.isPressed = false
+        binding.key34.isPressed = false
+        binding.key35.isPressed = false
+
+        // は row
+        binding.key26.isPressed = false
+        binding.key27.isPressed = false
+        binding.key28.isPressed = false
+        binding.key29.isPressed = false
+        binding.key30.isPressed = false
+
+        // ま row
+        binding.key21.isPressed = false
+        binding.key22.isPressed = false
+        binding.key23.isPressed = false
+        binding.key24.isPressed = false
+        binding.key25.isPressed = false
+
+        // や row
+        binding.key16.isPressed = false
+        binding.key18.isPressed = false
+        binding.key20.isPressed = false
+
+        // ら row
+        binding.key11.isPressed = false
+        binding.key12.isPressed = false
+        binding.key13.isPressed = false
+        binding.key14.isPressed = false
+        binding.key15.isPressed = false
+
+        // わ row + ん + minus
+        binding.key6.isPressed = false
+        binding.key7.isPressed = false
+        binding.key8.isPressed = false
+        binding.key9.isPressed = false
+
+        // Modifiers & punctuation
+        binding.key10.isPressed = false
+        binding.key1.isPressed = false
+        binding.key2.isPressed = false
+        binding.key3.isPressed = false
+        binding.key4.isPressed = false
+        binding.key5.isPressed = false
+
+        // Side-row keys
+        binding.keyKigou.isPressed = false
+        binding.keyPrevious.isPressed = false
+        binding.keySwitchKeyMode.isPressed = false
+        binding.keyLeftCursor.isPressed = false
+        binding.keyRightCursor.isPressed = false
+        binding.keyDelete.isPressed = false
+        binding.keySpace.isPressed = false
+        binding.keyEnter.isPressed = false
+    }
+    // ... (中略: buildKeyRects, buildKeyRectsEnglish, buildKeyRectsNumber, pressedKeyByMotionEvent, getRawCoordinates, resetLongPressAction, getButtonFromKey, onLongPressed, hideAllPopWindow, setTapInActionMove, setFlickInActionMove, setFlickActionPointerDown, setSideKey... メソッドは変更なしのため省略) ...
+
+    private fun buildKeyRects() = listOf(
+        // ---- Side Keys ----
+        KeyRect(
+            Key.SideKeySymbol,
+            binding.keyKigou.layoutXPosition(),
+            binding.keyKigou.layoutYPosition(),
+            binding.keyKigou.layoutXPosition() + binding.keyKigou.width,
+            binding.keyKigou.layoutYPosition() + binding.keyKigou.height
+        ),
+        KeyRect(
+            Key.SideKeyPreviousChar,
+            binding.keyPrevious.layoutXPosition(),
+            binding.keyPrevious.layoutYPosition(),
+            binding.keyPrevious.layoutXPosition() + binding.keyPrevious.width,
+            binding.keyPrevious.layoutYPosition() + binding.keyPrevious.height
+        ),
+        KeyRect(
+            Key.SideKeyInputMode,
+            binding.keySwitchKeyMode.layoutXPosition(),
+            binding.keySwitchKeyMode.layoutYPosition(),
+            binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
+            binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorLeft,
+            binding.keyLeftCursor.layoutXPosition(),
+            binding.keyLeftCursor.layoutYPosition(),
+            binding.keyLeftCursor.layoutXPosition() + binding.keyLeftCursor.width,
+            binding.keyLeftCursor.layoutYPosition() + binding.keyLeftCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorRight,
+            binding.keyRightCursor.layoutXPosition(),
+            binding.keyRightCursor.layoutYPosition(),
+            binding.keyRightCursor.layoutXPosition() + binding.keyRightCursor.width,
+            binding.keyRightCursor.layoutYPosition() + binding.keyRightCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyDelete,
+            binding.keyDelete.layoutXPosition(),
+            binding.keyDelete.layoutYPosition(),
+            binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
+            binding.keyDelete.layoutYPosition() + binding.keyDelete.height
+        ),
+        KeyRect(
+            Key.SideKeySpace,
+            binding.keySpace.layoutXPosition(),
+            binding.keySpace.layoutYPosition(),
+            binding.keySpace.layoutXPosition() + binding.keySpace.width,
+            binding.keySpace.layoutYPosition() + binding.keySpace.height
+        ),
+        KeyRect(
+            Key.SideKeyEnter,
+            binding.keyEnter.layoutXPosition(),
+            binding.keyEnter.layoutYPosition(),
+            binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
+            binding.keyEnter.layoutYPosition() + binding.keyEnter.height
+        ),
+
+        // ---- Character Keys ----
+        KeyRect(
+            Key.KeyKagikakko,
+            binding.key1.layoutXPosition(),
+            binding.key1.layoutYPosition(),
+            binding.key1.layoutXPosition() + binding.key1.width,
+            binding.key1.layoutYPosition() + binding.key1.height
+        ),
+        KeyRect(
+            Key.KeyQuestion,
+            binding.key2.layoutXPosition(),
+            binding.key2.layoutYPosition(),
+            binding.key2.layoutXPosition() + binding.key2.width,
+            binding.key2.layoutYPosition() + binding.key2.height
+        ),
+        KeyRect(
+            Key.KeyCaution,
+            binding.key3.layoutXPosition(),
+            binding.key3.layoutYPosition(),
+            binding.key3.layoutXPosition() + binding.key3.width,
+            binding.key3.layoutYPosition() + binding.key3.height
+        ),
+        KeyRect(
+            Key.KeyTouten,
+            binding.key4.layoutXPosition(),
+            binding.key4.layoutYPosition(),
+            binding.key4.layoutXPosition() + binding.key4.width,
+            binding.key4.layoutYPosition() + binding.key4.height
+        ),
+        KeyRect(
+            Key.KeyKuten,
+            binding.key5.layoutXPosition(),
+            binding.key5.layoutYPosition(),
+            binding.key5.layoutXPosition() + binding.key5.width,
+            binding.key5.layoutYPosition() + binding.key5.height
+        ),
+
+        // わ row and punctuation
+        KeyRect(
+            Key.KeyWA,
+            binding.key6.layoutXPosition(),
+            binding.key6.layoutYPosition(),
+            binding.key6.layoutXPosition() + binding.key6.width,
+            binding.key6.layoutYPosition() + binding.key6.height
+        ),
+        KeyRect(
+            Key.KeyWO,
+            binding.key7.layoutXPosition(),
+            binding.key7.layoutYPosition(),
+            binding.key7.layoutXPosition() + binding.key7.width,
+            binding.key7.layoutYPosition() + binding.key7.height
+        ),
+        KeyRect(
+            Key.KeyN,
+            binding.key8.layoutXPosition(),
+            binding.key8.layoutYPosition(),
+            binding.key8.layoutXPosition() + binding.key8.width,
+            binding.key8.layoutYPosition() + binding.key8.height
+        ),
+        KeyRect(
+            Key.KeyMinus,
+            binding.key9.layoutXPosition(),
+            binding.key9.layoutYPosition(),
+            binding.key9.layoutXPosition() + binding.key9.width,
+            binding.key9.layoutYPosition() + binding.key9.height
+        ),
+        KeyRect(
+            Key.KeyDakutenSmall,
+            binding.key10.layoutXPosition(),
+            binding.key10.layoutYPosition(),
+            binding.key10.layoutXPosition() + binding.key10.width,
+            binding.key10.layoutYPosition() + binding.key10.height
+        ),
+
+        // ら row
+        KeyRect(
+            Key.KeyRA,
+            binding.key11.layoutXPosition(),
+            binding.key11.layoutYPosition(),
+            binding.key11.layoutXPosition() + binding.key11.width,
+            binding.key11.layoutYPosition() + binding.key11.height
+        ),
+        KeyRect(
+            Key.KeyRI,
+            binding.key12.layoutXPosition(),
+            binding.key12.layoutYPosition(),
+            binding.key12.layoutXPosition() + binding.key12.width,
+            binding.key12.layoutYPosition() + binding.key12.height
+        ),
+        KeyRect(
+            Key.KeyRU,
+            binding.key13.layoutXPosition(),
+            binding.key13.layoutYPosition(),
+            binding.key13.layoutXPosition() + binding.key13.width,
+            binding.key13.layoutYPosition() + binding.key13.height
+        ),
+        KeyRect(
+            Key.KeyRE,
+            binding.key14.layoutXPosition(),
+            binding.key14.layoutYPosition(),
+            binding.key14.layoutXPosition() + binding.key14.width,
+            binding.key14.layoutYPosition() + binding.key14.height
+        ),
+        KeyRect(
+            Key.KeyRO,
+            binding.key15.layoutXPosition(),
+            binding.key15.layoutYPosition(),
+            binding.key15.layoutXPosition() + binding.key15.width,
+            binding.key15.layoutYPosition() + binding.key15.height
+        ),
+
+        // や row
+        KeyRect(
+            Key.KeyYA,
+            binding.key16.layoutXPosition(),
+            binding.key16.layoutYPosition(),
+            binding.key16.layoutXPosition() + binding.key16.width,
+            binding.key16.layoutYPosition() + binding.key16.height
+        ),
+        // key17 = (empty)
+        KeyRect(
+            Key.KeySPACE1,
+            binding.key17.layoutXPosition(),
+            binding.key17.layoutYPosition(),
+            binding.key17.layoutXPosition() + binding.key17.width,
+            binding.key17.layoutYPosition() + binding.key17.height
+        ),
+        KeyRect(
+            Key.KeyYU,
+            binding.key18.layoutXPosition(),
+            binding.key18.layoutYPosition(),
+            binding.key18.layoutXPosition() + binding.key18.width,
+            binding.key18.layoutYPosition() + binding.key18.height
+        ),
+        // key19 = (empty)
+        KeyRect(
+            Key.KeySPACE2,
+            binding.key19.layoutXPosition(),
+            binding.key19.layoutYPosition(),
+            binding.key19.layoutXPosition() + binding.key19.width,
+            binding.key19.layoutYPosition() + binding.key19.height
+        ),
+        KeyRect(
+            Key.KeyYO,
+            binding.key20.layoutXPosition(),
+            binding.key20.layoutYPosition(),
+            binding.key20.layoutXPosition() + binding.key20.width,
+            binding.key20.layoutYPosition() + binding.key20.height
+        ),
+
+        // ま row
+        KeyRect(
+            Key.KeyMA,
+            binding.key21.layoutXPosition(),
+            binding.key21.layoutYPosition(),
+            binding.key21.layoutXPosition() + binding.key21.width,
+            binding.key21.layoutYPosition() + binding.key21.height
+        ),
+        KeyRect(
+            Key.KeyMI,
+            binding.key22.layoutXPosition(),
+            binding.key22.layoutYPosition(),
+            binding.key22.layoutXPosition() + binding.key22.width,
+            binding.key22.layoutYPosition() + binding.key22.height
+        ),
+        KeyRect(
+            Key.KeyMU,
+            binding.key23.layoutXPosition(),
+            binding.key23.layoutYPosition(),
+            binding.key23.layoutXPosition() + binding.key23.width,
+            binding.key23.layoutYPosition() + binding.key23.height
+        ),
+        KeyRect(
+            Key.KeyME,
+            binding.key24.layoutXPosition(),
+            binding.key24.layoutYPosition(),
+            binding.key24.layoutXPosition() + binding.key24.width,
+            binding.key24.layoutYPosition() + binding.key24.height
+        ),
+        KeyRect(
+            Key.KeyMO,
+            binding.key25.layoutXPosition(),
+            binding.key25.layoutYPosition(),
+            binding.key25.layoutXPosition() + binding.key25.width,
+            binding.key25.layoutYPosition() + binding.key25.height
+        ),
+
+        // は row
+        KeyRect(
+            Key.KeyHA,
+            binding.key26.layoutXPosition(),
+            binding.key26.layoutYPosition(),
+            binding.key26.layoutXPosition() + binding.key26.width,
+            binding.key26.layoutYPosition() + binding.key26.height
+        ),
+        KeyRect(
+            Key.KeyHI,
+            binding.key27.layoutXPosition(),
+            binding.key27.layoutYPosition(),
+            binding.key27.layoutXPosition() + binding.key27.width,
+            binding.key27.layoutYPosition() + binding.key27.height
+        ),
+        KeyRect(
+            Key.KeyFU,
+            binding.key28.layoutXPosition(),
+            binding.key28.layoutYPosition(),
+            binding.key28.layoutXPosition() + binding.key28.width,
+            binding.key28.layoutYPosition() + binding.key28.height
+        ),
+        KeyRect(
+            Key.KeyHE,
+            binding.key29.layoutXPosition(),
+            binding.key29.layoutYPosition(),
+            binding.key29.layoutXPosition() + binding.key29.width,
+            binding.key29.layoutYPosition() + binding.key29.height
+        ),
+        KeyRect(
+            Key.KeyHO,
+            binding.key30.layoutXPosition(),
+            binding.key30.layoutYPosition(),
+            binding.key30.layoutXPosition() + binding.key30.width,
+            binding.key30.layoutYPosition() + binding.key30.height
+        ),
+
+        // な row
+        KeyRect(
+            Key.KeyNA,
+            binding.key31.layoutXPosition(),
+            binding.key31.layoutYPosition(),
+            binding.key31.layoutXPosition() + binding.key31.width,
+            binding.key31.layoutYPosition() + binding.key31.height
+        ),
+        KeyRect(
+            Key.KeyNI,
+            binding.key32.layoutXPosition(),
+            binding.key32.layoutYPosition(),
+            binding.key32.layoutXPosition() + binding.key32.width,
+            binding.key32.layoutYPosition() + binding.key32.height
+        ),
+        KeyRect(
+            Key.KeyNU,
+            binding.key33.layoutXPosition(),
+            binding.key33.layoutYPosition(),
+            binding.key33.layoutXPosition() + binding.key33.width,
+            binding.key33.layoutYPosition() + binding.key33.height
+        ),
+        KeyRect(
+            Key.KeyNE,
+            binding.key34.layoutXPosition(),
+            binding.key34.layoutYPosition(),
+            binding.key34.layoutXPosition() + binding.key34.width,
+            binding.key34.layoutYPosition() + binding.key34.height
+        ),
+        KeyRect(
+            Key.KeyNO,
+            binding.key35.layoutXPosition(),
+            binding.key35.layoutYPosition(),
+            binding.key35.layoutXPosition() + binding.key35.width,
+            binding.key35.layoutYPosition() + binding.key35.height
+        ),
+
+        // た row
+        KeyRect(
+            Key.KeyTA,
+            binding.key36.layoutXPosition(),
+            binding.key36.layoutYPosition(),
+            binding.key36.layoutXPosition() + binding.key36.width,
+            binding.key36.layoutYPosition() + binding.key36.height
+        ),
+        KeyRect(
+            Key.KeyCHI,
+            binding.key37.layoutXPosition(),
+            binding.key37.layoutYPosition(),
+            binding.key37.layoutXPosition() + binding.key37.width,
+            binding.key37.layoutYPosition() + binding.key37.height
+        ),
+        KeyRect(
+            Key.KeyTSU,
+            binding.key38.layoutXPosition(),
+            binding.key38.layoutYPosition(),
+            binding.key38.layoutXPosition() + binding.key38.width,
+            binding.key38.layoutYPosition() + binding.key38.height
+        ),
+        KeyRect(
+            Key.KeyTE,
+            binding.key39.layoutXPosition(),
+            binding.key39.layoutYPosition(),
+            binding.key39.layoutXPosition() + binding.key39.width,
+            binding.key39.layoutYPosition() + binding.key39.height
+        ),
+        KeyRect(
+            Key.KeyTO,
+            binding.key40.layoutXPosition(),
+            binding.key40.layoutYPosition(),
+            binding.key40.layoutXPosition() + binding.key40.width,
+            binding.key40.layoutYPosition() + binding.key40.height
+        ),
+
+        // さ row
+        KeyRect(
+            Key.KeySA,
+            binding.key41.layoutXPosition(),
+            binding.key41.layoutYPosition(),
+            binding.key41.layoutXPosition() + binding.key41.width,
+            binding.key41.layoutYPosition() + binding.key41.height
+        ),
+        KeyRect(
+            Key.KeySHI,
+            binding.key42.layoutXPosition(),
+            binding.key42.layoutYPosition(),
+            binding.key42.layoutXPosition() + binding.key42.width,
+            binding.key42.layoutYPosition() + binding.key42.height
+        ),
+        KeyRect(
+            Key.KeySU,
+            binding.key43.layoutXPosition(),
+            binding.key43.layoutYPosition(),
+            binding.key43.layoutXPosition() + binding.key43.width,
+            binding.key43.layoutYPosition() + binding.key43.height
+        ),
+        KeyRect(
+            Key.KeySE,
+            binding.key44.layoutXPosition(),
+            binding.key44.layoutYPosition(),
+            binding.key44.layoutXPosition() + binding.key44.width,
+            binding.key44.layoutYPosition() + binding.key44.height
+        ),
+        KeyRect(
+            Key.KeySO,
+            binding.key45.layoutXPosition(),
+            binding.key45.layoutYPosition(),
+            binding.key45.layoutXPosition() + binding.key45.width,
+            binding.key45.layoutYPosition() + binding.key45.height
+        ),
+
+        // か row
+        KeyRect(
+            Key.KeyKA,
+            binding.key46.layoutXPosition(),
+            binding.key46.layoutYPosition(),
+            binding.key46.layoutXPosition() + binding.key46.width,
+            binding.key46.layoutYPosition() + binding.key46.height
+        ),
+        KeyRect(
+            Key.KeyKI,
+            binding.key47.layoutXPosition(),
+            binding.key47.layoutYPosition(),
+            binding.key47.layoutXPosition() + binding.key47.width,
+            binding.key47.layoutYPosition() + binding.key47.height
+        ),
+        KeyRect(
+            Key.KeyKU,
+            binding.key48.layoutXPosition(),
+            binding.key48.layoutYPosition(),
+            binding.key48.layoutXPosition() + binding.key48.width,
+            binding.key48.layoutYPosition() + binding.key48.height
+        ),
+        KeyRect(
+            Key.KeyKE,
+            binding.key49.layoutXPosition(),
+            binding.key49.layoutYPosition(),
+            binding.key49.layoutXPosition() + binding.key49.width,
+            binding.key49.layoutYPosition() + binding.key49.height
+        ),
+        KeyRect(
+            Key.KeyKO,
+            binding.key50.layoutXPosition(),
+            binding.key50.layoutYPosition(),
+            binding.key50.layoutXPosition() + binding.key50.width,
+            binding.key50.layoutYPosition() + binding.key50.height
+        ),
+
+        // あ row
+        KeyRect(
+            Key.KeyA,
+            binding.key51.layoutXPosition(),
+            binding.key51.layoutYPosition(),
+            binding.key51.layoutXPosition() + binding.key51.width,
+            binding.key51.layoutYPosition() + binding.key51.height
+        ),
+        KeyRect(
+            Key.KeyI,
+            binding.key52.layoutXPosition(),
+            binding.key52.layoutYPosition(),
+            binding.key52.layoutXPosition() + binding.key52.width,
+            binding.key52.layoutYPosition() + binding.key52.height
+        ),
+        KeyRect(
+            Key.KeyU,
+            binding.key53.layoutXPosition(),
+            binding.key53.layoutYPosition(),
+            binding.key53.layoutXPosition() + binding.key53.width,
+            binding.key53.layoutYPosition() + binding.key53.height
+        ),
+        KeyRect(
+            Key.KeyE,
+            binding.key54.layoutXPosition(),
+            binding.key54.layoutYPosition(),
+            binding.key54.layoutXPosition() + binding.key54.width,
+            binding.key54.layoutYPosition() + binding.key54.height
+        ),
+        KeyRect(
+            Key.KeyO,
+            binding.key55.layoutXPosition(),
+            binding.key55.layoutYPosition(),
+            binding.key55.layoutXPosition() + binding.key55.width,
+            binding.key55.layoutYPosition() + binding.key55.height
+        ),
+    )
+
+    private fun buildKeyRectsEnglish() = listOf(
+        // ---- Side Keys ----
+        KeyRect(
+            Key.SideKeySymbol,
+            binding.keyKigou.layoutXPosition(),
+            binding.keyKigou.layoutYPosition(),
+            binding.keyKigou.layoutXPosition() + binding.keyKigou.width,
+            binding.keyKigou.layoutYPosition() + binding.keyKigou.height
+        ),
+        KeyRect(
+            Key.SideKeyPreviousChar,
+            binding.keyPrevious.layoutXPosition(),
+            binding.keyPrevious.layoutYPosition(),
+            binding.keyPrevious.layoutXPosition() + binding.keyPrevious.width,
+            binding.keyPrevious.layoutYPosition() + binding.keyPrevious.height
+        ),
+        KeyRect(
+            Key.SideKeyInputMode,
+            binding.keySwitchKeyMode.layoutXPosition(),
+            binding.keySwitchKeyMode.layoutYPosition(),
+            binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
+            binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorLeft,
+            binding.keyLeftCursor.layoutXPosition(),
+            binding.keyLeftCursor.layoutYPosition(),
+            binding.keyLeftCursor.layoutXPosition() + binding.keyLeftCursor.width,
+            binding.keyLeftCursor.layoutYPosition() + binding.keyLeftCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorRight,
+            binding.keyRightCursor.layoutXPosition(),
+            binding.keyRightCursor.layoutYPosition(),
+            binding.keyRightCursor.layoutXPosition() + binding.keyRightCursor.width,
+            binding.keyRightCursor.layoutYPosition() + binding.keyRightCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyDelete,
+            binding.keyDelete.layoutXPosition(),
+            binding.keyDelete.layoutYPosition(),
+            binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
+            binding.keyDelete.layoutYPosition() + binding.keyDelete.height
+        ),
+        KeyRect(
+            Key.SideKeySpace,
+            binding.keySpace.layoutXPosition(),
+            binding.keySpace.layoutYPosition(),
+            binding.keySpace.layoutXPosition() + binding.keySpace.width,
+            binding.keySpace.layoutYPosition() + binding.keySpace.height
+        ),
+        KeyRect(
+            Key.SideKeyEnter,
+            binding.keyEnter.layoutXPosition(),
+            binding.keyEnter.layoutYPosition(),
+            binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
+            binding.keyEnter.layoutYPosition() + binding.keyEnter.height
+        ),
+
+        // ---- Character Keys ----
+        KeyRect(
+            Key.KeyKagikakko,
+            binding.key1.layoutXPosition(),
+            binding.key1.layoutYPosition(),
+            binding.key1.layoutXPosition() + binding.key1.width,
+            binding.key1.layoutYPosition() + binding.key1.height
+        ),
+        KeyRect(
+            Key.KeyQuestion,
+            binding.key2.layoutXPosition(),
+            binding.key2.layoutYPosition(),
+            binding.key2.layoutXPosition() + binding.key2.width,
+            binding.key2.layoutYPosition() + binding.key2.height
+        ),
+        KeyRect(
+            Key.KeyCaution,
+            binding.key3.layoutXPosition(),
+            binding.key3.layoutYPosition(),
+            binding.key3.layoutXPosition() + binding.key3.width,
+            binding.key3.layoutYPosition() + binding.key3.height
+        ),
+        KeyRect(
+            Key.KeyTouten,
+            binding.key4.layoutXPosition(),
+            binding.key4.layoutYPosition(),
+            binding.key4.layoutXPosition() + binding.key4.width,
+            binding.key4.layoutYPosition() + binding.key4.height
+        ),
+        KeyRect(
+            Key.KeyKuten,
+            binding.key5.layoutXPosition(),
+            binding.key5.layoutYPosition(),
+            binding.key5.layoutXPosition() + binding.key5.width,
+            binding.key5.layoutYPosition() + binding.key5.height
+        ),
+
+        // わ row and punctuation
+        KeyRect(
+            Key.KeyWA,
+            binding.key6.layoutXPosition(),
+            binding.key6.layoutYPosition(),
+            binding.key6.layoutXPosition() + binding.key6.width,
+            binding.key6.layoutYPosition() + binding.key6.height
+        ),
+        KeyRect(
+            Key.KeyWO,
+            binding.key7.layoutXPosition(),
+            binding.key7.layoutYPosition(),
+            binding.key7.layoutXPosition() + binding.key7.width,
+            binding.key7.layoutYPosition() + binding.key7.height
+        ),
+        KeyRect(
+            Key.KeyN,
+            binding.key8.layoutXPosition(),
+            binding.key8.layoutYPosition(),
+            binding.key8.layoutXPosition() + binding.key8.width,
+            binding.key8.layoutYPosition() + binding.key8.height
+        ),
+        KeyRect(
+            Key.KeyMinus,
+            binding.key9.layoutXPosition(),
+            binding.key9.layoutYPosition(),
+            binding.key9.layoutXPosition() + binding.key9.width,
+            binding.key9.layoutYPosition() + binding.key9.height
+        ),
+        KeyRect(
+            Key.KeyDakutenSmall,
+            binding.key10.layoutXPosition(),
+            binding.key10.layoutYPosition(),
+            binding.key10.layoutXPosition() + binding.key10.width,
+            binding.key10.layoutYPosition() + binding.key10.height
+        ),
+
+        // ら row
+        KeyRect(
+            Key.KeyRA,
+            binding.key11.layoutXPosition(),
+            binding.key11.layoutYPosition(),
+            binding.key11.layoutXPosition() + binding.key11.width,
+            binding.key11.layoutYPosition() + binding.key11.height
+        ),
+        KeyRect(
+            Key.KeyRI,
+            binding.key12.layoutXPosition(),
+            binding.key12.layoutYPosition(),
+            binding.key12.layoutXPosition() + binding.key12.width,
+            binding.key12.layoutYPosition() + binding.key12.height
+        ),
+        KeyRect(
+            Key.KeyRU,
+            binding.key13.layoutXPosition(),
+            binding.key13.layoutYPosition(),
+            binding.key13.layoutXPosition() + binding.key13.width,
+            binding.key13.layoutYPosition() + binding.key13.height
+        ),
+        KeyRect(
+            Key.KeyRE,
+            binding.key14.layoutXPosition(),
+            binding.key14.layoutYPosition(),
+            binding.key14.layoutXPosition() + binding.key14.width,
+            binding.key14.layoutYPosition() + binding.key14.height
+        ),
+        KeyRect(
+            Key.KeyDakutenSmall,
+            binding.key15.layoutXPosition(),
+            binding.key15.layoutYPosition(),
+            binding.key15.layoutXPosition() + binding.key15.width,
+            binding.key15.layoutYPosition() + binding.key15.height
+        ),
+
+        // や row
+        KeyRect(
+            Key.KeyYA,
+            binding.key16.layoutXPosition(),
+            binding.key16.layoutYPosition(),
+            binding.key16.layoutXPosition() + binding.key16.width,
+            binding.key16.layoutYPosition() + binding.key16.height
+        ),
+        // key17 = (empty)
+        KeyRect(
+            Key.KeySPACE1,
+            binding.key17.layoutXPosition(),
+            binding.key17.layoutYPosition(),
+            binding.key17.layoutXPosition() + binding.key17.width,
+            binding.key17.layoutYPosition() + binding.key17.height
+        ),
+        KeyRect(
+            Key.KeyYU,
+            binding.key18.layoutXPosition(),
+            binding.key18.layoutYPosition(),
+            binding.key18.layoutXPosition() + binding.key18.width,
+            binding.key18.layoutYPosition() + binding.key18.height
+        ),
+        // key19 = (empty)
+        KeyRect(
+            Key.KeySPACE2,
+            binding.key19.layoutXPosition(),
+            binding.key19.layoutYPosition(),
+            binding.key19.layoutXPosition() + binding.key19.width,
+            binding.key19.layoutYPosition() + binding.key19.height
+        ),
+        KeyRect(
+            Key.KeyDakutenSmall,
+            binding.key20.layoutXPosition(),
+            binding.key20.layoutYPosition(),
+            binding.key20.layoutXPosition() + binding.key20.width,
+            binding.key20.layoutYPosition() + binding.key20.height
+        ),
+
+        // ま row
+        KeyRect(
+            Key.KeyMA,
+            binding.key21.layoutXPosition(),
+            binding.key21.layoutYPosition(),
+            binding.key21.layoutXPosition() + binding.key21.width,
+            binding.key21.layoutYPosition() + binding.key21.height
+        ),
+        KeyRect(
+            Key.KeyMI,
+            binding.key22.layoutXPosition(),
+            binding.key22.layoutYPosition(),
+            binding.key22.layoutXPosition() + binding.key22.width,
+            binding.key22.layoutYPosition() + binding.key22.height
+        ),
+        KeyRect(
+            Key.KeyMU,
+            binding.key23.layoutXPosition(),
+            binding.key23.layoutYPosition(),
+            binding.key23.layoutXPosition() + binding.key23.width,
+            binding.key23.layoutYPosition() + binding.key23.height
+        ),
+        KeyRect(
+            Key.KeyME,
+            binding.key24.layoutXPosition(),
+            binding.key24.layoutYPosition(),
+            binding.key24.layoutXPosition() + binding.key24.width,
+            binding.key24.layoutYPosition() + binding.key24.height
+        ),
+        KeyRect(
+            Key.KeyMO,
+            binding.key25.layoutXPosition(),
+            binding.key25.layoutYPosition(),
+            binding.key25.layoutXPosition() + binding.key25.width,
+            binding.key25.layoutYPosition() + binding.key25.height
+        ),
+
+        // は row
+        KeyRect(
+            Key.KeyHA,
+            binding.key26.layoutXPosition(),
+            binding.key26.layoutYPosition(),
+            binding.key26.layoutXPosition() + binding.key26.width,
+            binding.key26.layoutYPosition() + binding.key26.height
+        ),
+        KeyRect(
+            Key.KeyHI,
+            binding.key27.layoutXPosition(),
+            binding.key27.layoutYPosition(),
+            binding.key27.layoutXPosition() + binding.key27.width,
+            binding.key27.layoutYPosition() + binding.key27.height
+        ),
+        KeyRect(
+            Key.KeyFU,
+            binding.key28.layoutXPosition(),
+            binding.key28.layoutYPosition(),
+            binding.key28.layoutXPosition() + binding.key28.width,
+            binding.key28.layoutYPosition() + binding.key28.height
+        ),
+        KeyRect(
+            Key.KeyHE,
+            binding.key29.layoutXPosition(),
+            binding.key29.layoutYPosition(),
+            binding.key29.layoutXPosition() + binding.key29.width,
+            binding.key29.layoutYPosition() + binding.key29.height
+        ),
+        KeyRect(
+            Key.KeyHO,
+            binding.key30.layoutXPosition(),
+            binding.key30.layoutYPosition(),
+            binding.key30.layoutXPosition() + binding.key30.width,
+            binding.key30.layoutYPosition() + binding.key30.height
+        ),
+
+        // な row
+        KeyRect(
+            Key.KeyNA,
+            binding.key31.layoutXPosition(),
+            binding.key31.layoutYPosition(),
+            binding.key31.layoutXPosition() + binding.key31.width,
+            binding.key31.layoutYPosition() + binding.key31.height
+        ),
+        KeyRect(
+            Key.KeyNI,
+            binding.key32.layoutXPosition(),
+            binding.key32.layoutYPosition(),
+            binding.key32.layoutXPosition() + binding.key32.width,
+            binding.key32.layoutYPosition() + binding.key32.height
+        ),
+        KeyRect(
+            Key.KeyNU,
+            binding.key33.layoutXPosition(),
+            binding.key33.layoutYPosition(),
+            binding.key33.layoutXPosition() + binding.key33.width,
+            binding.key33.layoutYPosition() + binding.key33.height
+        ),
+        KeyRect(
+            Key.KeyNE,
+            binding.key34.layoutXPosition(),
+            binding.key34.layoutYPosition(),
+            binding.key34.layoutXPosition() + binding.key34.width,
+            binding.key34.layoutYPosition() + binding.key34.height
+        ),
+        KeyRect(
+            Key.KeyNO,
+            binding.key35.layoutXPosition(),
+            binding.key35.layoutYPosition(),
+            binding.key35.layoutXPosition() + binding.key35.width,
+            binding.key35.layoutYPosition() + binding.key35.height
+        ),
+
+        // た row
+        KeyRect(
+            Key.KeyTA,
+            binding.key36.layoutXPosition(),
+            binding.key36.layoutYPosition(),
+            binding.key36.layoutXPosition() + binding.key36.width,
+            binding.key36.layoutYPosition() + binding.key36.height
+        ),
+        KeyRect(
+            Key.KeyCHI,
+            binding.key37.layoutXPosition(),
+            binding.key37.layoutYPosition(),
+            binding.key37.layoutXPosition() + binding.key37.width,
+            binding.key37.layoutYPosition() + binding.key37.height
+        ),
+        KeyRect(
+            Key.KeyTSU,
+            binding.key38.layoutXPosition(),
+            binding.key38.layoutYPosition(),
+            binding.key38.layoutXPosition() + binding.key38.width,
+            binding.key38.layoutYPosition() + binding.key38.height
+        ),
+        KeyRect(
+            Key.KeyTE,
+            binding.key39.layoutXPosition(),
+            binding.key39.layoutYPosition(),
+            binding.key39.layoutXPosition() + binding.key39.width,
+            binding.key39.layoutYPosition() + binding.key39.height
+        ),
+        KeyRect(
+            Key.KeyTO,
+            binding.key40.layoutXPosition(),
+            binding.key40.layoutYPosition(),
+            binding.key40.layoutXPosition() + binding.key40.width,
+            binding.key40.layoutYPosition() + binding.key40.height
+        ),
+
+        // さ row
+        KeyRect(
+            Key.KeySA,
+            binding.key41.layoutXPosition(),
+            binding.key41.layoutYPosition(),
+            binding.key41.layoutXPosition() + binding.key41.width,
+            binding.key41.layoutYPosition() + binding.key41.height
+        ),
+        KeyRect(
+            Key.KeySHI,
+            binding.key42.layoutXPosition(),
+            binding.key42.layoutYPosition(),
+            binding.key42.layoutXPosition() + binding.key42.width,
+            binding.key42.layoutYPosition() + binding.key42.height
+        ),
+        KeyRect(
+            Key.KeySU,
+            binding.key43.layoutXPosition(),
+            binding.key43.layoutYPosition(),
+            binding.key43.layoutXPosition() + binding.key43.width,
+            binding.key43.layoutYPosition() + binding.key43.height
+        ),
+        KeyRect(
+            Key.KeySE,
+            binding.key44.layoutXPosition(),
+            binding.key44.layoutYPosition(),
+            binding.key44.layoutXPosition() + binding.key44.width,
+            binding.key44.layoutYPosition() + binding.key44.height
+        ),
+        KeyRect(
+            Key.KeySO,
+            binding.key45.layoutXPosition(),
+            binding.key45.layoutYPosition(),
+            binding.key45.layoutXPosition() + binding.key45.width,
+            binding.key45.layoutYPosition() + binding.key45.height
+        ),
+
+        // か row
+        KeyRect(
+            Key.KeyKA,
+            binding.key46.layoutXPosition(),
+            binding.key46.layoutYPosition(),
+            binding.key46.layoutXPosition() + binding.key46.width,
+            binding.key46.layoutYPosition() + binding.key46.height
+        ),
+        KeyRect(
+            Key.KeyKI,
+            binding.key47.layoutXPosition(),
+            binding.key47.layoutYPosition(),
+            binding.key47.layoutXPosition() + binding.key47.width,
+            binding.key47.layoutYPosition() + binding.key47.height
+        ),
+        KeyRect(
+            Key.KeyKU,
+            binding.key48.layoutXPosition(),
+            binding.key48.layoutYPosition(),
+            binding.key48.layoutXPosition() + binding.key48.width,
+            binding.key48.layoutYPosition() + binding.key48.height
+        ),
+        KeyRect(
+            Key.KeyKE,
+            binding.key49.layoutXPosition(),
+            binding.key49.layoutYPosition(),
+            binding.key49.layoutXPosition() + binding.key49.width,
+            binding.key49.layoutYPosition() + binding.key49.height
+        ),
+        KeyRect(
+            Key.KeyKO,
+            binding.key50.layoutXPosition(),
+            binding.key50.layoutYPosition(),
+            binding.key50.layoutXPosition() + binding.key50.width,
+            binding.key50.layoutYPosition() + binding.key50.height
+        ),
+
+        // あ row
+        KeyRect(
+            Key.KeyA,
+            binding.key51.layoutXPosition(),
+            binding.key51.layoutYPosition(),
+            binding.key51.layoutXPosition() + binding.key51.width,
+            binding.key51.layoutYPosition() + binding.key51.height
+        ),
+        KeyRect(
+            Key.KeyI,
+            binding.key52.layoutXPosition(),
+            binding.key52.layoutYPosition(),
+            binding.key52.layoutXPosition() + binding.key52.width,
+            binding.key52.layoutYPosition() + binding.key52.height
+        ),
+        KeyRect(
+            Key.KeyU,
+            binding.key53.layoutXPosition(),
+            binding.key53.layoutYPosition(),
+            binding.key53.layoutXPosition() + binding.key53.width,
+            binding.key53.layoutYPosition() + binding.key53.height
+        ),
+        KeyRect(
+            Key.KeyE,
+            binding.key54.layoutXPosition(),
+            binding.key54.layoutYPosition(),
+            binding.key54.layoutXPosition() + binding.key54.width,
+            binding.key54.layoutYPosition() + binding.key54.height
+        ),
+        KeyRect(
+            Key.KeyO,
+            binding.key55.layoutXPosition(),
+            binding.key55.layoutYPosition(),
+            binding.key55.layoutXPosition() + binding.key55.width,
+            binding.key55.layoutYPosition() + binding.key55.height
+        ),
+    )
+
+    private fun buildKeyRectsNumber() = listOf(
+        // ---- Side Keys ----
+        KeyRect(
+            Key.SideKeySymbol,
+            binding.keyKigou.layoutXPosition(),
+            binding.keyKigou.layoutYPosition(),
+            binding.keyKigou.layoutXPosition() + binding.keyKigou.width,
+            binding.keyKigou.layoutYPosition() + binding.keyKigou.height
+        ),
+        KeyRect(
+            Key.SideKeyPreviousChar,
+            binding.keyPrevious.layoutXPosition(),
+            binding.keyPrevious.layoutYPosition(),
+            binding.keyPrevious.layoutXPosition() + binding.keyPrevious.width,
+            binding.keyPrevious.layoutYPosition() + binding.keyPrevious.height
+        ),
+        KeyRect(
+            Key.SideKeyInputMode,
+            binding.keySwitchKeyMode.layoutXPosition(),
+            binding.keySwitchKeyMode.layoutYPosition(),
+            binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
+            binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorLeft,
+            binding.keyLeftCursor.layoutXPosition(),
+            binding.keyLeftCursor.layoutYPosition(),
+            binding.keyLeftCursor.layoutXPosition() + binding.keyLeftCursor.width,
+            binding.keyLeftCursor.layoutYPosition() + binding.keyLeftCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorRight,
+            binding.keyRightCursor.layoutXPosition(),
+            binding.keyRightCursor.layoutYPosition(),
+            binding.keyRightCursor.layoutXPosition() + binding.keyRightCursor.width,
+            binding.keyRightCursor.layoutYPosition() + binding.keyRightCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyDelete,
+            binding.keyDelete.layoutXPosition(),
+            binding.keyDelete.layoutYPosition(),
+            binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
+            binding.keyDelete.layoutYPosition() + binding.keyDelete.height
+        ),
+        KeyRect(
+            Key.SideKeySpace,
+            binding.keySpace.layoutXPosition(),
+            binding.keySpace.layoutYPosition(),
+            binding.keySpace.layoutXPosition() + binding.keySpace.width,
+            binding.keySpace.layoutYPosition() + binding.keySpace.height
+        ),
+        KeyRect(
+            Key.SideKeyEnter,
+            binding.keyEnter.layoutXPosition(),
+            binding.keyEnter.layoutYPosition(),
+            binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
+            binding.keyEnter.layoutYPosition() + binding.keyEnter.height
+        ),
+
+        // ---- Character Keys ----
+        KeyRect(
+            Key.KeyKagikakko,
+            binding.key1.layoutXPosition(),
+            binding.key1.layoutYPosition(),
+            binding.key1.layoutXPosition() + binding.key1.width,
+            binding.key1.layoutYPosition() + binding.key1.height
+        ),
+        KeyRect(
+            Key.KeyQuestion,
+            binding.key2.layoutXPosition(),
+            binding.key2.layoutYPosition(),
+            binding.key2.layoutXPosition() + binding.key2.width,
+            binding.key2.layoutYPosition() + binding.key2.height
+        ),
+        KeyRect(
+            Key.KeyCaution,
+            binding.key3.layoutXPosition(),
+            binding.key3.layoutYPosition(),
+            binding.key3.layoutXPosition() + binding.key3.width,
+            binding.key3.layoutYPosition() + binding.key3.height
+        ),
+        KeyRect(
+            Key.KeyTouten,
+            binding.key4.layoutXPosition(),
+            binding.key4.layoutYPosition(),
+            binding.key4.layoutXPosition() + binding.key4.width,
+            binding.key4.layoutYPosition() + binding.key4.height
+        ),
+        KeyRect(
+            Key.KeyKuten,
+            binding.key5.layoutXPosition(),
+            binding.key5.layoutYPosition(),
+            binding.key5.layoutXPosition() + binding.key5.width,
+            binding.key5.layoutYPosition() + binding.key5.height
+        ),
+        // ら row
+        KeyRect(
+            Key.KeyRA,
+            binding.key11.layoutXPosition(),
+            binding.key11.layoutYPosition(),
+            binding.key11.layoutXPosition() + binding.key11.width,
+            binding.key11.layoutYPosition() + binding.key11.height
+        ),
+        KeyRect(
+            Key.KeyRI,
+            binding.key12.layoutXPosition(),
+            binding.key12.layoutYPosition(),
+            binding.key12.layoutXPosition() + binding.key12.width,
+            binding.key12.layoutYPosition() + binding.key12.height
+        ),
+        KeyRect(
+            Key.KeyRU,
+            binding.key13.layoutXPosition(),
+            binding.key13.layoutYPosition(),
+            binding.key13.layoutXPosition() + binding.key13.width,
+            binding.key13.layoutYPosition() + binding.key13.height
+        ),
+        KeyRect(
+            Key.KeyRE,
+            binding.key14.layoutXPosition(),
+            binding.key14.layoutYPosition(),
+            binding.key14.layoutXPosition() + binding.key14.width,
+            binding.key14.layoutYPosition() + binding.key14.height
+        ),
+        KeyRect(
+            Key.KeyDakutenSmall,
+            binding.key15.layoutXPosition(),
+            binding.key15.layoutYPosition(),
+            binding.key15.layoutXPosition() + binding.key15.width,
+            binding.key15.layoutYPosition() + binding.key15.height
+        ),
+        // は row
+        KeyRect(
+            Key.KeyHA,
+            binding.key26.layoutXPosition(),
+            binding.key26.layoutYPosition(),
+            binding.key26.layoutXPosition() + binding.key26.width,
+            binding.key26.layoutYPosition() + binding.key26.height
+        ),
+        KeyRect(
+            Key.KeyHI,
+            binding.key27.layoutXPosition(),
+            binding.key27.layoutYPosition(),
+            binding.key27.layoutXPosition() + binding.key27.width,
+            binding.key27.layoutYPosition() + binding.key27.height
+        ),
+        KeyRect(
+            Key.KeyFU,
+            binding.key28.layoutXPosition(),
+            binding.key28.layoutYPosition(),
+            binding.key28.layoutXPosition() + binding.key28.width,
+            binding.key28.layoutYPosition() + binding.key28.height
+        ),
+        KeyRect(
+            Key.KeyHE,
+            binding.key29.layoutXPosition(),
+            binding.key29.layoutYPosition(),
+            binding.key29.layoutXPosition() + binding.key29.width,
+            binding.key29.layoutYPosition() + binding.key29.height
+        ),
+        KeyRect(
+            Key.KeyHO,
+            binding.key30.layoutXPosition(),
+            binding.key30.layoutYPosition(),
+            binding.key30.layoutXPosition() + binding.key30.width,
+            binding.key30.layoutYPosition() + binding.key30.height
+        ),
+
+        // な row
+        KeyRect(
+            Key.KeyNA,
+            binding.key31.layoutXPosition(),
+            binding.key31.layoutYPosition(),
+            binding.key31.layoutXPosition() + binding.key31.width,
+            binding.key31.layoutYPosition() + binding.key31.height
+        ),
+        KeyRect(
+            Key.KeyNI,
+            binding.key32.layoutXPosition(),
+            binding.key32.layoutYPosition(),
+            binding.key32.layoutXPosition() + binding.key32.width,
+            binding.key32.layoutYPosition() + binding.key32.height
+        ),
+        KeyRect(
+            Key.KeyNU,
+            binding.key33.layoutXPosition(),
+            binding.key33.layoutYPosition(),
+            binding.key33.layoutXPosition() + binding.key33.width,
+            binding.key33.layoutYPosition() + binding.key33.height
+        ),
+        KeyRect(
+            Key.KeyNE,
+            binding.key34.layoutXPosition(),
+            binding.key34.layoutYPosition(),
+            binding.key34.layoutXPosition() + binding.key34.width,
+            binding.key34.layoutYPosition() + binding.key34.height
+        ),
+        KeyRect(
+            Key.KeyNO,
+            binding.key35.layoutXPosition(),
+            binding.key35.layoutYPosition(),
+            binding.key35.layoutXPosition() + binding.key35.width,
+            binding.key35.layoutYPosition() + binding.key35.height
+        ),
+
+        // た row
+        KeyRect(
+            Key.KeyTA,
+            binding.key36.layoutXPosition(),
+            binding.key36.layoutYPosition(),
+            binding.key36.layoutXPosition() + binding.key36.width,
+            binding.key36.layoutYPosition() + binding.key36.height
+        ),
+        KeyRect(
+            Key.KeyCHI,
+            binding.key37.layoutXPosition(),
+            binding.key37.layoutYPosition(),
+            binding.key37.layoutXPosition() + binding.key37.width,
+            binding.key37.layoutYPosition() + binding.key37.height
+        ),
+        KeyRect(
+            Key.KeyTSU,
+            binding.key38.layoutXPosition(),
+            binding.key38.layoutYPosition(),
+            binding.key38.layoutXPosition() + binding.key38.width,
+            binding.key38.layoutYPosition() + binding.key38.height
+        ),
+        KeyRect(
+            Key.KeyTE,
+            binding.key39.layoutXPosition(),
+            binding.key39.layoutYPosition(),
+            binding.key39.layoutXPosition() + binding.key39.width,
+            binding.key39.layoutYPosition() + binding.key39.height
+        ),
+        KeyRect(
+            Key.KeyTO,
+            binding.key40.layoutXPosition(),
+            binding.key40.layoutYPosition(),
+            binding.key40.layoutXPosition() + binding.key40.width,
+            binding.key40.layoutYPosition() + binding.key40.height
+        ),
+
+        // さ row
+        KeyRect(
+            Key.KeySA,
+            binding.key41.layoutXPosition(),
+            binding.key41.layoutYPosition(),
+            binding.key41.layoutXPosition() + binding.key41.width,
+            binding.key41.layoutYPosition() + binding.key41.height
+        ),
+        KeyRect(
+            Key.KeySHI,
+            binding.key42.layoutXPosition(),
+            binding.key42.layoutYPosition(),
+            binding.key42.layoutXPosition() + binding.key42.width,
+            binding.key42.layoutYPosition() + binding.key42.height
+        ),
+        KeyRect(
+            Key.KeySU,
+            binding.key43.layoutXPosition(),
+            binding.key43.layoutYPosition(),
+            binding.key43.layoutXPosition() + binding.key43.width,
+            binding.key43.layoutYPosition() + binding.key43.height
+        ),
+        KeyRect(
+            Key.KeySE,
+            binding.key44.layoutXPosition(),
+            binding.key44.layoutYPosition(),
+            binding.key44.layoutXPosition() + binding.key44.width,
+            binding.key44.layoutYPosition() + binding.key44.height
+        ),
+        KeyRect(
+            Key.KeySO,
+            binding.key45.layoutXPosition(),
+            binding.key45.layoutYPosition(),
+            binding.key45.layoutXPosition() + binding.key45.width,
+            binding.key45.layoutYPosition() + binding.key45.height
+        ),
+
+        // か row
+        KeyRect(
+            Key.KeyKA,
+            binding.key46.layoutXPosition(),
+            binding.key46.layoutYPosition(),
+            binding.key46.layoutXPosition() + binding.key46.width,
+            binding.key46.layoutYPosition() + binding.key46.height
+        ),
+        KeyRect(
+            Key.KeyKI,
+            binding.key47.layoutXPosition(),
+            binding.key47.layoutYPosition(),
+            binding.key47.layoutXPosition() + binding.key47.width,
+            binding.key47.layoutYPosition() + binding.key47.height
+        ),
+        KeyRect(
+            Key.KeyKU,
+            binding.key48.layoutXPosition(),
+            binding.key48.layoutYPosition(),
+            binding.key48.layoutXPosition() + binding.key48.width,
+            binding.key48.layoutYPosition() + binding.key48.height
+        ),
+        KeyRect(
+            Key.KeyKE,
+            binding.key49.layoutXPosition(),
+            binding.key49.layoutYPosition(),
+            binding.key49.layoutXPosition() + binding.key49.width,
+            binding.key49.layoutYPosition() + binding.key49.height
+        ),
+        KeyRect(
+            Key.KeyKO,
+            binding.key50.layoutXPosition(),
+            binding.key50.layoutYPosition(),
+            binding.key50.layoutXPosition() + binding.key50.width,
+            binding.key50.layoutYPosition() + binding.key50.height
+        ),
+
+        // あ row
+        KeyRect(
+            Key.KeyA,
+            binding.key51.layoutXPosition(),
+            binding.key51.layoutYPosition(),
+            binding.key51.layoutXPosition() + binding.key51.width,
+            binding.key51.layoutYPosition() + binding.key51.height
+        ),
+        KeyRect(
+            Key.KeyI,
+            binding.key52.layoutXPosition(),
+            binding.key52.layoutYPosition(),
+            binding.key52.layoutXPosition() + binding.key52.width,
+            binding.key52.layoutYPosition() + binding.key52.height
+        ),
+        KeyRect(
+            Key.KeyU,
+            binding.key53.layoutXPosition(),
+            binding.key53.layoutYPosition(),
+            binding.key53.layoutXPosition() + binding.key53.width,
+            binding.key53.layoutYPosition() + binding.key53.height
+        ),
+        KeyRect(
+            Key.KeyE,
+            binding.key54.layoutXPosition(),
+            binding.key54.layoutYPosition(),
+            binding.key54.layoutXPosition() + binding.key54.width,
+            binding.key54.layoutYPosition() + binding.key54.height
+        ),
+        KeyRect(
+            Key.KeyO,
+            binding.key55.layoutXPosition(),
+            binding.key55.layoutYPosition(),
+            binding.key55.layoutXPosition() + binding.key55.width,
+            binding.key55.layoutYPosition() + binding.key55.height
+        ),
+    )
+
+    private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
+        val (x, y) = getRawCoordinates(event, pointer)
+
+        val keyRects = when (currentInputMode.get()) {
+            InputMode.ModeEnglish -> buildKeyRectsEnglish()
+            InputMode.ModeJapanese -> buildKeyRects()
+            InputMode.ModeNumber -> buildKeyRectsNumber()
+        }
+
+        keyRects.forEach { rect ->
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                return rect.key
+            }
+        }
+
+        val nearest = keyRects.minByOrNull { rect ->
+            val centerX = (rect.left + rect.right) / 2
+            val centerY = (rect.top + rect.bottom) / 2
+            val dx = x - centerX
+            val dy = y - centerY
+            dx * dx + dy * dy
+        }
+        return nearest?.key ?: Key.NotSelected
+    }
+
+    // --- Utility to get consistent absolute coordinates ---
+    private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawX(pointer) to event.getRawY(pointer)
+        } else {
+            val location = IntArray(2)
+            this.getLocationOnScreen(location)
+            (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
+        }
+    }
+
+    private fun resetLongPressAction() {
+        if (isLongPressed) {
+            hideAllPopWindow()
+            Blur.removeBlurEffect(this)
+        }
+        longPressJob?.cancel()
+        isLongPressed = false
+    }
+
+    private fun getButtonFromKey(key: Key): Any? {
+        return listKeys.getOrDefault(key, null)
+    }
+    // ... (中略: onLongPressed, hideAllPopWindow, setTapInActionMove, setFlickInActionMove, setFlickActionPointerDown, setSideKey... メソッドは変更なしのため省略) ...
+
+    private fun onLongPressed() {
+        val button = getButtonFromKey(pressedKey.key)
+        button?.let {
+            if (it is AppCompatButton) {
+                if (it.id == binding.key10.id || it.id == binding.key17.id || it.id == binding.key19.id) return
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        popTextTop.setGojuonTextFlickTopJapanese(it.id)
+                        popTextLeft.setGojuonTextFlickLeftJapanese(it.id)
+                        popTextBottom.setGojuonTextFlickBottomJapanese(it.id)
+                        popTextRight.setGojuonTextFlickRightJapanese(it.id)
+                        popTextActive.setGojuonTextTapJapanese(it.id)
+                    }
+
+                    InputMode.ModeEnglish -> {
+                        return
+                    }
+
+                    InputMode.ModeNumber -> {
+                        return
+                    }
+                }
+                if (popTextTop.text.isNotEmpty()) {
+                    popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
+                }
+                if (popTextLeft.text.isNotEmpty()) {
+                    popupWindowLeft.setPopUpWindowFlickLeft(context, bubbleViewLeft, it)
+                }
+                if (popTextBottom.text.isNotEmpty()) {
+                    popupWindowBottom.setPopUpWindowFlickBottom(
+                        context, bubbleViewBottom, it
+                    )
+                }
+                if (popTextRight.text.isNotEmpty()) {
+                    popupWindowRight.setPopUpWindowFlickRight(
+                        context, bubbleViewRight, it
+                    )
+                }
+                popupWindowActive.setPopUpWindowFlickTap(
+                    context, bubbleViewActive, it
+                )
+                Blur.applyBlurEffect(this, 8f)
+            }
+        }
+    }
+
+    private fun hideAllPopWindow() {
+        popupWindowActive.hide()
+        popupWindowLeft.hide()
+        popupWindowTop.hide()
+        popupWindowRight.hide()
+        popupWindowBottom.hide()
+        popupWindowCenter.hide()
+    }
+
+    private fun setTapInActionMove() {
+        if (!isLongPressed) popupWindowActive.hide()
+        val button = getButtonFromKey(pressedKey.key)
+        if (currentInputMode.get() == InputMode.ModeEnglish &&
+            (gojuonCapsLockState.value.capsLockOn || gojuonCapsLockState.value.shiftOn)
+        ) {
+            button?.let {
+                if (it is AppCompatButton) {
+                    it.setGojuonKeyTextEnglishCaps(it.id)
+                    // 修正: テーマ再適用
+                    if (themeMode != "default") updateKeyStyle(it, true)
+                }
+            }
+            return
+        }
+        button?.let {
+            if (it is AppCompatButton) {
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        it.setGojuonKeyTextJapanese(it.id)
+                        if (isLongPressed) popTextActive.setGojuonTextTapJapanese(it.id)
+                    }
+
+                    InputMode.ModeEnglish -> {
+                        it.setGojuonKeyTextEnglish(it.id)
+                        if (isLongPressed) popTextActive.setGojuonTextDefaultEnglish(it.id)
+                    }
+
+                    InputMode.ModeNumber -> {
+                        it.setGojuonKeyTextNumber(it.id)
+                    }
+                }
+                it.isPressed = true
+
+                // 修正: テーマ再適用
+                if (themeMode != "default") updateKeyStyle(it, true)
+
+                if (isLongPressed) {
+                    popupWindowActive.setPopUpWindowCenter(
+                        context, bubbleViewActive, it
+                    )
+                }
+            }
+        }
+    }
+
+    private fun setFlickInActionMove(gestureType: GestureType) {
+        longPressJob?.cancel()
+        val button = getButtonFromKey(pressedKey.key)
+        if (currentInputMode.get() == InputMode.ModeEnglish &&
+            (gojuonCapsLockState.value.capsLockOn || gojuonCapsLockState.value.shiftOn)
+        ) {
+            button?.let {
+                if (it is AppCompatButton) {
+                    it.setGojuonKeyTextEnglishCaps(it.id)
+                }
+            }
+            return
+        } else if (currentInputMode.get() == InputMode.ModeEnglish) {
+            return
+        } else if (currentInputMode.get() == InputMode.ModeNumber) {
+            return
+        }
+        button?.let {
+            if (it is AppCompatButton) {
+                if (!isLongPressed) it.text = ""
+                when (gestureType) {
+                    GestureType.FlickLeft -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setGojuonTextFlickLeftJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setGojuonTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+                                return
+                            }
+
+                            InputMode.ModeNumber -> {
+                                return
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowLeft(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickLeft(
+                                    context, bubbleViewActive, it
+                                )
+                            }
+                        }
+                    }
+
+                    GestureType.FlickTop -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setGojuonTextFlickTopJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setGojuonTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+                                return
+                            }
+
+                            InputMode.ModeNumber -> {
+                                return
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowTop(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickTop(
+                                    context, bubbleViewActive, it
+                                )
+                            }
+                        }
+                    }
+
+                    GestureType.FlickRight -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setGojuonTextFlickRightJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setGojuonTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+                                return
+                            }
+
+                            InputMode.ModeNumber -> {
+                                return
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowRight(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickRight(
+                                    context, bubbleViewActive, it
+                                )
+                            }
+                        }
+                    }
+
+                    GestureType.FlickBottom -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setGojuonTextFlickBottomJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setGojuonTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+                                return
+                            }
+
+                            InputMode.ModeNumber -> {
+                                return
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowBottom(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickBottom(
+                                    context, bubbleViewActive, it
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+
+                    }
+                }
+                it.isPressed = false
+            }
+        }
+    }
+
+    private fun setFlickActionPointerDown(keyInfo: KeyInfo, gestureType: GestureType) {
+        if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+            val charToSend = if (currentInputMode.get() == InputMode.ModeEnglish) {
+                val capState = gojuonCapsLockState.value
+                keyInfo.getOutputChar(capState)
+            } else {
+                when (gestureType) {
+                    GestureType.Tap -> keyInfo.tap
+                    GestureType.FlickLeft -> keyInfo.flickLeft
+                    GestureType.FlickTop -> keyInfo.flickTop
+                    GestureType.FlickRight -> keyInfo.flickRight
+                    GestureType.FlickBottom -> keyInfo.flickBottom
+                    GestureType.Down -> null
+                    GestureType.Null -> null
+                }
+            }
+            flickListener?.onFlick(
+                gestureType = gestureType,
+                key = pressedKey.key,
+                char = charToSend,
+            )
+            val button = getButtonFromKey(pressedKey.key)
+            if (currentInputMode.get() == InputMode.ModeEnglish && gojuonCapsLockState.value.capsLockOn) {
+                button?.let {
+                    if (it is AppCompatButton) {
+                        it.setGojuonKeyTextEnglishCaps(it.id)
+                        // 修正: テーマ再適用
+                        if (themeMode != "default") updateKeyStyle(it, true)
+                    }
+                }
+            } else {
+                button?.let {
+                    if (it is AppCompatButton) {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                it.setGojuonKeyTextJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+                                it.setGojuonKeyTextEnglish(it.id)
+                            }
+
+                            InputMode.ModeNumber -> {
+                                it.setGojuonKeyTextNumber(it.id)
+                            }
+                        }
+                        // 修正: テーマ再適用
+                        if (themeMode != "default") updateKeyStyle(it, true)
+                    }
+                }
+            }
+        }
+    }
+
+    fun setSideKeyEnterDrawable(drawable: Drawable?) {
+        binding.keyEnter.setImageDrawable(drawable)
+    }
+
+    fun setSideKeySpaceDrawable(drawable: Drawable?) {
+        binding.keySpace.setImageDrawable(drawable)
+    }
+
+    fun setSideKeyPreviousState(state: Boolean) {
+        binding.keyPrevious.isEnabled = state
+    }
+
+    fun setInputModeSwitchState() {
+        val inputMode = currentInputMode.get()
+        binding.keySwitchKeyMode.setInputMode(inputMode, true)
+        handleCurrentInputModeSwitch(inputMode)
+    }
+
+    fun setFlickSensitivityValue(sensitivity: Int) {
+        flickSensitivity = sensitivity.coerceIn(1, 200)
+        flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
+    }
+
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        flickThresholdShape = shape
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
+    fun setOnInputModeChangedListener(listener: (InputMode) -> Unit) {
+        inputModeChangedListener = listener
+    }
+
+    private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
+        when (inputMode) {
+            InputMode.ModeJapanese -> {
+                setKeysInJapaneseText()
+            }
+
+            InputMode.ModeEnglish -> {
+                setKeysInEnglishText(false)
+            }
+
+            InputMode.ModeNumber -> {
+                setKeysInNumberText(false)
+            }
+        }
+        clearShiftCaps()
+        resetLayout()
+    }
+
+    private fun handleClickInputModeSwitch() {
+        val newInputMode = when (currentInputMode.get()) {
+            InputMode.ModeJapanese -> {
+                setKeysInEnglishText(false)
+                binding.apply {
+                    /** は行の margin を削除 **/
+                    key26.setMarginEnd(0f)
+                    key27.setMarginEnd(0f)
+                    key28.setMarginEnd(0f)
+                    key29.setMarginEnd(0f)
+                    key30.setMarginEnd(0f)
+
+                    /** 最後の行の margin を削除 **/
+                    key1.setMarginEnd(0f)
+                    key2.setMarginEnd(0f)
+                    key3.setMarginEnd(0f)
+                    key4.setMarginEnd(0f)
+                    key5.setMarginEnd(0f)
+
+                    /** わ行を削除 **/
+                    key6.isVisible = false
+                    key7.isVisible = false
+                    key8.isVisible = false
+                    key9.isVisible = false
+                    key10.isVisible = false
+
+                    /** 句点ボタンの width を 2 にする **/
+                    key5.setHorizontalWeight(2f)
+                    /** ろボタンを隠す **/
+                    key15.isVisible = false
+                    /** れボタンを句点ボタンの上に配置 **/
+                    key14.setBottomToTopOf(key5)
+                    /** 句点ボタンをよボタンの左に配置 **/
+                    key5.setEndToStartOf(key20)
+
+                    /** よボタンの width を 2 にする **/
+                    key20.setHorizontalWeight(2f)
+                    /** もボタンを隠す **/
+                    key25.isVisible = false
+                    /** めボタンをよボタンの上部に配置 **/
+                    key24.setBottomToTopOf(key20)
+                    /** よボタンをほボタンの左に配置 **/
+                    key20.setEndToStartOf(key30)
+                    /** ほボタンをよボタンの右に配置 **/
+                    key30.setStartToEndOf(key20)
+
+                    /** おボタンの width を 2 にする **/
+                    key55.setHorizontalWeight(2f)
+                    key50.isVisible = false
+                    key49.setBottomToTopOf(key55)
+                    key55.setStartToEndOf(key45)
+                    key45.setEndToStartOf(key55)
+
+                }
+                clearShiftCaps()
+                InputMode.ModeEnglish
+            }
+
+            InputMode.ModeEnglish -> {
+                setKeysInNumberText(false)
+                binding.apply {
+                    /** や行を削除 **/
+                    key16.isVisible = false
+                    key17.isVisible = false
+                    key18.isVisible = false
+                    key19.isVisible = false
+                    key20.isVisible = false
+                    /** ま行を削除 **/
+                    key21.isVisible = false
+                    key22.isVisible = false
+                    key23.isVisible = false
+                    key24.isVisible = false
+
+                    key36.setMarginEnd(2f)
+                    key37.setMarginEnd(2f)
+                    key38.setMarginEnd(2f)
+                    key39.setMarginEnd(2f)
+                    key40.setMarginEnd(2f)
+
+                    if (gojuonCapsLockState.value.capsLockOn || gojuonCapsLockState.value.shiftOn) {
+                        if (themeMode == "default") {
+                            if (isDynamicColorsEnable) {
+                                binding.key5.background = ContextCompat.getDrawable(
+                                    this@GojuonKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                                )
+                            } else {
+                                binding.key5.background = ContextCompat.getDrawable(
+                                    this@GojuonKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                                )
+                            }
+                        } else {
+                            updateKeyStyle(binding.key5, isNormalKey = true)
+                        }
+                    }
+
+                    if (gojuonCapsLockState.value.zenkakuOn) {
+                        if (themeMode == "default") {
+                            if (isDynamicColorsEnable) {
+                                binding.key55.background = ContextCompat.getDrawable(
+                                    this@GojuonKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                                )
+                            } else {
+                                binding.key55.background = ContextCompat.getDrawable(
+                                    this@GojuonKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                                )
+                            }
+                        } else {
+                            updateKeyStyle(binding.key55, isNormalKey = true)
+                        }
+                    }
+                }
+                clearShiftCaps()
+                InputMode.ModeNumber
+            }
+
+            InputMode.ModeNumber -> {
+                setKeysInJapaneseText()
+                binding.apply {
+                    /** は行に margin を追加 **/
+                    key26.setMarginEnd(2f)
+                    key27.setMarginEnd(2f)
+                    key28.setMarginEnd(2f)
+                    key29.setMarginEnd(2f)
+                    key30.setMarginEnd(2f)
+
+                    /** 最後の行に margin を追加 **/
+                    key1.setMarginEnd(2f)
+                    key2.setMarginEnd(2f)
+                    key3.setMarginEnd(2f)
+                    key4.setMarginEnd(2f)
+                    key5.setMarginEnd(2f)
+
+                    /** わ行を追加 **/
+                    key6.isVisible = true
+                    key7.isVisible = true
+                    key8.isVisible = true
+                    key9.isVisible = true
+                    key10.isVisible = true
+
+                    /** 句点ボタンの width を 1 にする **/
+                    key5.setHorizontalWeight(1f)
+                    /** ろボタンを表示 **/
+                    key15.isVisible = true
+                    key14.setBottomToTopOf(key15)
+                    key5.setEndToStartOf(key10)
+                    key10.setStartToEndOf(key5)
+                    /** もボタンを表示 **/
+                    key25.isVisible = true
+                    /** めボタンをよボタンの上部に配置 **/
+                    key24.setBottomToTopOf(key25)
+                    key20.setEndToStartOf(key25)
+                    key30.setStartToEndOf(key25)
+
+                    /** おボタンの width を 1 にする **/
+                    key55.setHorizontalWeight(1f)
+                    key50.isVisible = true
+                    key49.setBottomToTopOf(key50)
+                    key55.setStartToEndOf(key50)
+                    key45.setEndToStartOf(key50)
+
+                    /** や行を追加 **/
+                    key16.isVisible = true
+                    key17.isVisible = true
+                    key18.isVisible = true
+                    key19.isVisible = true
+                    key20.isVisible = true
+                    /** ま行を追加 **/
+                    key21.isVisible = true
+                    key22.isVisible = true
+                    key23.isVisible = true
+                    key24.isVisible = true
+
+                    key36.setMarginEnd(0f)
+                    key37.setMarginEnd(0f)
+                    key38.setMarginEnd(0f)
+                    key39.setMarginEnd(0f)
+                    key40.setMarginEnd(0f)
+
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key55.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key55, isNormalKey = true)
+                    }
+                }
+                clearShiftCaps()
+                InputMode.ModeJapanese
+            }
+        }
+        currentInputMode.set(newInputMode)
+        binding.keySwitchKeyMode.setInputMode(newInputMode, isGojuon = true)
+        inputModeChangedListener?.invoke(newInputMode)
+    }
+
+    fun resetLayout() {
+        Log.d("resetLayout", "called: ${gojuonCapsLockState.value} ${currentInputMode.get()}")
+        when (currentInputMode.get()) {
+            InputMode.ModeJapanese -> {
+                binding.apply {
+                    /** は行に margin を追加 **/
+                    key26.setMarginEnd(2f)
+                    key27.setMarginEnd(2f)
+                    key28.setMarginEnd(2f)
+                    key29.setMarginEnd(2f)
+                    key30.setMarginEnd(2f)
+
+                    /** 最後の行に margin を追加 **/
+                    key1.setMarginEnd(2f)
+                    key2.setMarginEnd(2f)
+                    key3.setMarginEnd(2f)
+                    key4.setMarginEnd(2f)
+                    key5.setMarginEnd(2f)
+
+                    /** わ行を追加 **/
+                    key6.isVisible = true
+                    key7.isVisible = true
+                    key8.isVisible = true
+                    key9.isVisible = true
+                    key10.isVisible = true
+
+                    /** 句点ボタンの width を 1 にする **/
+                    key5.setHorizontalWeight(1f)
+                    /** ろボタンを表示 **/
+                    key15.isVisible = true
+                    key14.setBottomToTopOf(key15)
+                    key5.setEndToStartOf(key10)
+                    key10.setStartToEndOf(key5)
+                    /** もボタンを表示 **/
+                    key25.isVisible = true
+                    /** めボタンをよボタンの上部に配置 **/
+                    key24.setBottomToTopOf(key25)
+                    key20.setEndToStartOf(key25)
+                    key30.setStartToEndOf(key25)
+
+                    /** おボタンの width を 1 にする **/
+                    key55.setHorizontalWeight(1f)
+                    key50.isVisible = true
+                    key49.setBottomToTopOf(key50)
+                    key55.setStartToEndOf(key50)
+                    key45.setEndToStartOf(key50)
+
+                    /** や行を追加 **/
+                    key16.isVisible = true
+                    key17.isVisible = true
+                    key18.isVisible = true
+                    key19.isVisible = true
+                    key20.isVisible = true
+                    /** ま行を追加 **/
+                    key21.isVisible = true
+                    key22.isVisible = true
+                    key23.isVisible = true
+                    key24.isVisible = true
+
+                    key36.setMarginEnd(0f)
+                    key37.setMarginEnd(0f)
+                    key38.setMarginEnd(0f)
+                    key39.setMarginEnd(0f)
+                    key40.setMarginEnd(0f)
+
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key5.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
+                            key55.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key5, isNormalKey = true)
+                        updateKeyStyle(key55, isNormalKey = true)
+                    }
+                }
+                clearShiftCaps()
+            }
+
+            InputMode.ModeEnglish -> {
+                binding.apply {
+                    /** は行の margin を削除 **/
+                    key26.setMarginEnd(0f)
+                    key27.setMarginEnd(0f)
+                    key28.setMarginEnd(0f)
+                    key29.setMarginEnd(0f)
+                    key30.setMarginEnd(0f)
+
+                    /** 最後の行の margin を削除 **/
+                    key1.setMarginEnd(0f)
+                    key2.setMarginEnd(0f)
+                    key3.setMarginEnd(0f)
+                    key4.setMarginEnd(0f)
+                    key5.setMarginEnd(0f)
+
+                    /** わ行を削除 **/
+                    key6.isVisible = false
+                    key7.isVisible = false
+                    key8.isVisible = false
+                    key9.isVisible = false
+                    key10.isVisible = false
+
+                    /** 句点ボタンの width を 2 にする **/
+                    key5.setHorizontalWeight(2f)
+                    /** ろボタンを隠す **/
+                    key15.isVisible = false
+                    /** れボタンを句点ボタンの上に配置 **/
+                    key14.setBottomToTopOf(key5)
+                    /** 句点ボタンをよボタンの左に配置 **/
+                    key5.setEndToStartOf(key20)
+
+                    /** よボタンの width を 2 にする **/
+                    key20.setHorizontalWeight(2f)
+                    /** もボタンを隠す **/
+                    key25.isVisible = false
+                    /** めボタンをよボタンの上部に配置 **/
+                    key24.setBottomToTopOf(key20)
+                    /** よボタンをほボタンの左に配置 **/
+                    key20.setEndToStartOf(key30)
+                    /** ほボタンをよボタンの右に配置 **/
+                    key30.setStartToEndOf(key20)
+
+                    /** おボタンの width を 2 にする **/
+                    key55.setHorizontalWeight(2f)
+                    key50.isVisible = false
+                    key49.setBottomToTopOf(key55)
+                    key55.setStartToEndOf(key45)
+                    key45.setEndToStartOf(key55)
+
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key5.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
+                            key55.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key5, isNormalKey = true)
+                        updateKeyStyle(key55, isNormalKey = true)
+                    }
+                }
+                clearShiftCaps()
+            }
+
+            InputMode.ModeNumber -> {
+                binding.apply {
+                    /** や行を削除 **/
+                    key16.isVisible = false
+                    key17.isVisible = false
+                    key18.isVisible = false
+                    key19.isVisible = false
+                    key20.isVisible = false
+                    /** ま行を削除 **/
+                    key21.isVisible = false
+                    key22.isVisible = false
+                    key23.isVisible = false
+                    key24.isVisible = false
+
+                    key36.setMarginEnd(2f)
+                    key37.setMarginEnd(2f)
+                    key38.setMarginEnd(2f)
+                    key39.setMarginEnd(2f)
+                    key40.setMarginEnd(2f)
+
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key5.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
+
+                            key55.background = ContextCompat.getDrawable(
+                                this@GojuonKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key5, isNormalKey = true)
+                        updateKeyStyle(key55, isNormalKey = true)
+                    }
+                }
+                clearShiftCaps()
+            }
+        }
+    }
+
+    private fun setKeysInJapaneseText() {
+        allButtonKeys.forEach {
+            it.setGojuonKeyTextJapanese(keyId = it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
+        binding.apply {
+            key5.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.string_kuten),
+                scaleX = 1f
+            )
+            key20.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.string_よ), scaleX = 1f
+            )
+
+            // key5とkey20はアイコンを設定しているため、テーマ適用の再確認が必要な場合はここで行う
+            if (themeMode != "default") {
+                updateKeyStyle(key5, isNormalKey = true)
+                updateKeyStyle(key20, isNormalKey = true)
+            }
+        }
+    }
+
+    private fun setKeysInEnglishText(isZenkaku: Boolean) = binding.run {
+        // key5以外の全てのキーにテキストを設定
+        allButtonKeys.filterNot { it == key5 }.forEach {
+            it.setGojuonKeyTextEnglish(it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
+
+        val shiftOn = gojuonCapsLockState.value.capsLockOn
+        val ctx = root.context
+        key5.apply {
+            setLargeUnicodeIconScaleX(
+                icon = ctx.getString(
+                    if (shiftOn) com.kazumaproject.core.R.string.caps_lock_icon
+                    else com.kazumaproject.core.R.string.shift_symbol
+                ), scaleX = 1.618f
+            )
+            if (themeMode == "default") {
+                if (isDynamicColorsEnable) {
+                    background = ContextCompat.getDrawable(
+                        ctx, com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                    )
+                }
+            } else {
+                updateKeyStyle(this, isNormalKey = true)
+            }
+        }
+
+        key20.setLargeUnicodeIcon(
+            icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
+        )
+        // key20もアイコン設定により色がリセットされる可能性があるため再適用
+        if (themeMode != "default") {
+            updateKeyStyle(key20, isNormalKey = true)
+        }
+
+        if (isZenkaku) {
+            key55.background =
+                ContextCompat.getDrawable(ctx, com.kazumaproject.core.R.drawable.zenkaku_pressed_bg)
+        } else {
+            if (themeMode == "default") {
+                val bgRes = if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+                key55.background = ContextCompat.getDrawable(ctx, bgRes)
+            } else {
+                updateKeyStyle(key55, isNormalKey = true)
+            }
+        }
+    }
+
+    private fun setKeysInEnglishCapsOnText(isZenkaku: Boolean) = binding.run {
+        allButtonKeys.filterNot { it == key5 }.forEach {
+            it.setGojuonKeyTextEnglishCaps(it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
+
+        val ctx = root.context
+        key5.apply {
+            setLargeUnicodeIconScaleX(
+                icon = ctx.getString(com.kazumaproject.core.R.string.caps_lock_icon),
+                scaleX = 1.618f,
+                iconSizeSp = 30
+            )
+            if (themeMode == "default") {
+                background = ContextCompat.getDrawable(
+                    this@GojuonKeyboardView.context,
+                    com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                )
+            } else {
+                // CapsLock ON時も通常のボタンスタイル（または必要に応じて強調色）を適用
+                updateKeyStyle(this, isNormalKey = true)
+            }
+        }
+
+        key20.setLargeUnicodeIcon(
+            icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
+        )
+        if (themeMode != "default") {
+            updateKeyStyle(key20, isNormalKey = true)
+        }
+
+        if (isZenkaku) {
+            key55.background =
+                ContextCompat.getDrawable(ctx, com.kazumaproject.core.R.drawable.zenkaku_pressed_bg)
+        } else {
+            if (themeMode == "default") {
+                val bgRes = if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+                key55.background = ContextCompat.getDrawable(ctx, bgRes)
+            } else {
+                updateKeyStyle(key55, isNormalKey = true)
+            }
+        }
+    }
+
+    private fun setKeysInEnglishShiftOnText(isZenkaku: Boolean) = binding.run {
+        allButtonKeys.filterNot { it == key5 }.forEach {
+            it.setGojuonKeyTextEnglishCaps(it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
+
+        val ctx = root.context
+
+        key5.apply {
+            setLargeUnicodeIconScaleX(
+                icon = ctx.getString(com.kazumaproject.core.R.string.shift_symbol), scaleX = 1.618f
+            )
+            if (themeMode == "default") {
+                background = ContextCompat.getDrawable(
+                    ctx, com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                )
+            } else {
+                updateKeyStyle(this, isNormalKey = true)
+            }
+        }
+
+        key20.setLargeUnicodeIcon(
+            icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
+        )
+        if (themeMode != "default") {
+            updateKeyStyle(key20, isNormalKey = true)
+        }
+
+        if (isZenkaku) {
+            key55.background =
+                ContextCompat.getDrawable(ctx, com.kazumaproject.core.R.drawable.zenkaku_pressed_bg)
+        } else {
+            if (themeMode == "default") {
+                val bgRes = if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+                key55.background = ContextCompat.getDrawable(ctx, bgRes)
+            } else {
+                updateKeyStyle(key55, isNormalKey = true)
+            }
+        }
+    }
+
+    private fun setKeysInNumberText(isZenkaku: Boolean) {
+        allButtonKeys.forEach { button ->
+            if (button != binding.key5) {
+                button.setGojuonKeyTextNumber(keyId = button.id)
+                // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+                if (themeMode != "default") {
+                    button.setTextColor(customKeyTextColor)
+                }
+            }
+        }
+        binding.apply {
+            val ctx = root.context
+            key5.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.gojuon_number_command),
+            )
+            if (themeMode != "default") {
+                updateKeyStyle(key5, isNormalKey = true)
+            }
+
+            if (isZenkaku) {
+                key55.background = ContextCompat.getDrawable(
+                    ctx,
+                    com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
+                )
+            } else {
+                if (themeMode == "default") {
+                    val bgRes = if (isDynamicColorsEnable) {
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                    } else {
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                    }
+                    key55.background = ContextCompat.getDrawable(ctx, bgRes)
+                } else {
+                    updateKeyStyle(key55, isNormalKey = true)
+                }
+            }
+        }
+    }
+
+}

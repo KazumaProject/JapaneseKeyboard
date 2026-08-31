@@ -15,6 +15,11 @@ class PackedSystemNgramDictionaryTest {
         get() = checkNotNull(javaClass.classLoader?.getResourceAsStream("ngram/system_ngram_v3_test.dat"))
             .use { it.readBytes() }
 
+    private val unigramFixture: ByteArray
+        get() = checkNotNull(
+            javaClass.classLoader?.getResourceAsStream("ngram/system_ngram_unigram_v4_test.dat"),
+        ).use { it.readBytes() }
+
     @Test
     fun exactRuleMatchesAndOneCharacterDifferenceDoesNot() {
         val dictionary = dictionary()
@@ -76,6 +81,18 @@ class PackedSystemNgramDictionaryTest {
         assertTrue(dictionary.matches(node("服"), node("を"), node("着る"), null, null))
         assertTrue(dictionary.matches(node("一"), node("二"), node("三"), node("四"), null))
         assertTrue(dictionary.matches(node("一"), node("二"), node("三"), node("四"), node("五")))
+    }
+
+    @Test
+    fun version4MatchesSingleWordRulesWithoutParticipatingInPairMatches() {
+        val dictionary = PackedSystemNgramDictionary.read(unigramFixture)
+
+        assertTrue(dictionary.matchesSingleNode(node("カワボ")))
+        assertFalse(dictionary.matchesSingleNode(node("存在しない表記")))
+        assertTrue(dictionary.mayMatchFirstNode(node("カワボ")))
+        assertFalse(dictionary.mayMatchFirstNode(node("存在しない表記")))
+        assertFalse(dictionary.matches(node("カワボ"), node("候補"), null, null, null))
+        assertFalse(dictionary.mayMatchFirstPair(node("カワボ"), node("候補")))
     }
 
     @Test

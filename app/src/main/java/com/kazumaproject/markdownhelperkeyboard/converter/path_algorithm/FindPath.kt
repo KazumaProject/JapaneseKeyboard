@@ -2231,6 +2231,7 @@ class FindPath(
         if (dictionary.ruleCount == 0) return false
         var start = path.next
         while (start != null && start.node.tango != "EOS") {
+            if (dictionary.matchesSingleNode(start.node)) return true
             val second = start.next
             if (second == null || second.node.tango == "EOS") return false
             if (
@@ -2250,9 +2251,10 @@ class FindPath(
     /**
      * Proves that no packed system n-gram can occur in the pruned lattice before requesting the
      * old 32–64 candidate safety window.  Every candidate path consists of nodes whose reading
-     * ranges are adjacent, so every matching rule must have a first pair represented by one of
-     * these edges.  The packed dictionary's prefix index may return a conservative false positive
-     * but never a false negative; unknown dictionary implementations keep the old search path.
+     * ranges are adjacent, so every matching rule must have a first node or first pair represented
+     * by this lattice.  The packed dictionary's prefix index may return a conservative false
+     * positive but never a false negative; unknown dictionary implementations keep the old search
+     * path.
      */
     private fun latticeMayContainSystemNgram(
         graph: MutableMap<Int, MutableList<Node>>,
@@ -2263,7 +2265,7 @@ class FindPath(
             val leftNodes = graph[leftEnd] ?: continue
             for (leftNode in leftNodes) {
                 if (leftNode.sPos + leftNode.len.toInt() != leftEnd) continue
-                if (!dictionary.mayMatchFirstNode(leftNode)) continue
+                if (dictionary.mayMatchFirstNode(leftNode)) return true
                 for (rightEnd in leftEnd + 1..length) {
                     val rightNodes = graph[rightEnd] ?: continue
                     for (rightNode in rightNodes) {

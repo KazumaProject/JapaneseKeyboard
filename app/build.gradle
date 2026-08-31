@@ -31,8 +31,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 800
-        versionName "1.7.107"
+        versionCode 804
+        versionName "1.7.111"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -1068,11 +1068,12 @@ dependencies {
     implementation 'androidx.navigation:navigation-fragment-ktx:2.9.0'
     implementation 'androidx.navigation:navigation-ui-ktx:2.9.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'androidx.autofill:autofill:1.3.0'
     implementation project(':flexbox')
     implementation project(':tenkey')
     implementation project(':core')
     implementation project(':symbol_keyboard')
-    implementation project(':tabletkey')
+    implementation project(':gojuon_keyboard')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
     fullImplementation project(':zenz')

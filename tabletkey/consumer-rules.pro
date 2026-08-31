@@ -1,2 +1,0 @@
--keep class com.kazumaproject.tabletkey.** { *; }
--keep interface com.kazumaproject.tabletkey.** { *; }
