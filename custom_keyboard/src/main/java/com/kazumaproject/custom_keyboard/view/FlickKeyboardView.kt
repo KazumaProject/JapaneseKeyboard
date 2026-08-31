@@ -89,6 +89,7 @@ import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.core.domain.flick.FlickTextPreviewEmitter
 import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
 import com.kazumaproject.core.domain.flick.FlickTextSelection
+import com.kazumaproject.core.domain.key.KeyTextSizeDefaults
 import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -164,7 +165,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             flickThresholdShape = settings.flickThresholdShape
         )
     }
-    private var defaultTextSize = 14f
+    private var defaultTextSize = KeyTextSizeDefaults.SumireKeySp
     private var specialKeyTextSizeSp = SPECIAL_KEY_BASE_TEXT_SIZE_SP
 
     /**

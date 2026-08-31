@@ -19,6 +19,7 @@ import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyTextSizeDefaults
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.state.GestureType
@@ -494,7 +495,9 @@ private fun configureTenKeyPreview(
     tenKey.setUseQwertyNumberWhenThreeStateOff(
         appPreference.tenkey_switch_number_to_qwerty_number_preference
     )
-    tenKey.setKeyLetterSize((appPreference.key_letter_size ?: 0.0f) + 17f)
+    tenKey.setKeyLetterSize(
+        (appPreference.key_letter_size ?: 0.0f) + KeyTextSizeDefaults.TenKeyJapaneseSp
+    )
     tenKey.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
     tenKey.setKeySizeScale(
         appPreference.tenkey_key_width_scale_percent ?: 100,
@@ -668,8 +671,9 @@ private fun configureFlickKeyboardPreview(
         keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 160,
         keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 160,
         iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 80,
-        textSizeSp = appPreference.flick_key_text_size_sp ?: 16.0f,
-        specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
+        textSizeSp = appPreference.flick_key_text_size_sp ?: KeyTextSizeDefaults.SumireKeySp,
+        specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp
+            ?: KeyTextSizeDefaults.SumireSpecialKeySp
     )
     flickView.applyPopupViewStyleSet(
         FlickPopupViewStyleSet(
