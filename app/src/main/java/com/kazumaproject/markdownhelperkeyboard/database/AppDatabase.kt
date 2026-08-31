@@ -45,6 +45,8 @@ import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.Sumi
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry
+import com.kazumaproject.markdownhelperkeyboard.text_macro.database.TextMacro
+import com.kazumaproject.markdownhelperkeyboard.text_macro.database.TextMacroDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
@@ -79,8 +81,9 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyActionOverrideEntity::class,
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
+        TextMacro::class,
     ],
-    version = 44,
+    version = 45,
     exportSchema = false
 )
 @TypeConverters(
@@ -108,6 +111,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun sumireSpecialKeyActionOverrideDao(): SumireSpecialKeyActionOverrideDao
     abstract fun sumireSpecialKeyPlacementOverrideDao(): SumireSpecialKeyPlacementOverrideDao
     abstract fun customZeroQueryDao(): CustomZeroQueryDao
+    abstract fun textMacroDao(): TextMacroDao
 
     companion object {
 
@@ -1162,6 +1166,29 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_candidate_order_override_input_scope_candidate` ON `candidate_order_override` (`input`, `scope`, `candidate`)"
+                )
+            }
+        }
+
+        /** Adds dynamic text macros without reading or rewriting legacy user_template rows. */
+        val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `text_macro` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `reading` TEXT,
+                        `body` TEXT NOT NULL,
+                        `enabled` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_text_macro_name` ON `text_macro` (`name`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_text_macro_reading` ON `text_macro` (`reading`)"
                 )
             }
         }

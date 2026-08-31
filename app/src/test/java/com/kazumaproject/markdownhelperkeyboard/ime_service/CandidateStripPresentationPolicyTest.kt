@@ -73,9 +73,9 @@ class CandidateStripPresentationPolicyTest {
     }
 
     @Test
-    fun integratedOnGemmaActionsShowShortcutEntryOnly() {
+    fun integratedOnSelectionActionsShowShortcutEntryOnly() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(selectedTextGemmaActionsShown = true, suggestionsEmpty = false)
+            baseState(selectionActionsShown = true, suggestionsEmpty = false)
         )
 
         assertFalse(presentation.showIndependentShortcutToolbar)
@@ -100,11 +100,11 @@ class CandidateStripPresentationPolicyTest {
     }
 
     @Test
-    fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
+    fun integratedOffSelectionActionsDoNotShowShortcutEntry() {
         val presentation = CandidateStripPresentationPolicy.resolve(
             baseState(
                 shortcutToolbarIntegratedInSuggestion = false,
-                selectedTextGemmaActionsShown = true,
+                selectionActionsShown = true,
                 suggestionsEmpty = false
             )
         )
@@ -309,7 +309,7 @@ class CandidateStripPresentationPolicyTest {
         inputStringEmpty: Boolean = true,
         tailEmpty: Boolean = true,
         clipboardPreviewShown: Boolean = false,
-        selectedTextGemmaActionsShown: Boolean = false,
+        selectionActionsShown: Boolean = false,
         suggestionsEmpty: Boolean = true,
         customLayoutPickerShown: Boolean = false,
         symbolKeyboardShown: Boolean = false,
@@ -324,7 +324,7 @@ class CandidateStripPresentationPolicyTest {
             inputStringEmpty = inputStringEmpty,
             tailEmpty = tailEmpty,
             clipboardPreviewShown = clipboardPreviewShown,
-            selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+            selectionActionsShown = selectionActionsShown,
             suggestionsEmpty = suggestionsEmpty,
             customLayoutPickerShown = customLayoutPickerShown,
             symbolKeyboardShown = symbolKeyboardShown,
