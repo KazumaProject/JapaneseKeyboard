@@ -12,6 +12,8 @@
 - As a custom-keyboard user, layouts display an in-use badge and cannot be
   deleted while Custom Keyboard is selected as an input method. Removing Custom
   Keyboard from keyboard selection immediately unlocks layout deletion.
+- As a custom-keyboard user, returning from keyboard or key editing preserves
+  the destination screen's title, navigation state, and header actions.
 
 ## RED / GREEN report
 
@@ -45,7 +47,21 @@ The two additional-requirement classes passed all five tests after the UI badge,
 disabled delete action, and ViewModel deletion guard were implemented. The
 combined Issue #932 focused run passed all seven tests.
 
-The complete Lite Standard unit suite executed 1,365 tests: 1,359 passed, 4 were
+Header-regression RED command:
+
+```text
+.\gradlew.bat :app:testLiteStandardDebugUnitTest --tests "com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.CustomKeyboardEditorActionBarLifecycleContractTest"
+```
+
+Result: the first two tests failed because `KeyboardEditorFragment.onDestroyView()` and
+`KeyEditorFragment.onDestroyView()` cleared the activity's shared ActionBar after
+Navigation Component had already restored the destination header. A follow-up
+list-resume test then failed because `KeyboardListFragment` only initialized its
+header in `onCreate()`, which is not called again when its back-stack view is
+recreated. All three tests passed after removing the stale teardown writes and
+restoring the list title, home state, and options menu in `onResume()`.
+
+The complete Lite Standard unit suite executed 1,368 tests: 1,362 passed, 4 were
 skipped, and 2 unrelated existing SQLite migration tests failed with
 `SQLiteCantOpenDatabaseException`:
 
@@ -74,6 +90,9 @@ Build and lint commands both passed:
 | 9 | An unused layout hides the badge and keeps deletion enabled | `KeyboardLayoutAdapterInUseTest.unusedLayoutHidesBadgeAndKeepsDeleteMenuItemEnabled` | Robolectric UI | PASS |
 | 10 | The Lite Standard debug APK packages successfully | `:app:assembleLiteStandardDebug` | Build | PASS |
 | 11 | The Lite Standard application satisfies Android Lint | `:app:lintLiteStandardDebug` | Static analysis | PASS |
+| 12 | Leaving keyboard editing cannot clear the destination screen's ActionBar | `CustomKeyboardEditorActionBarLifecycleContractTest.keyboardEditorDoesNotClearDestinationActionBarWhenItsViewIsDestroyed` | Lifecycle contract | PASS |
+| 13 | Leaving key editing cannot clear the parent editor's ActionBar | `CustomKeyboardEditorActionBarLifecycleContractTest.keyEditorDoesNotClearDestinationActionBarWhenItsViewIsDestroyed` | Lifecycle contract | PASS |
+| 14 | Resuming the custom-keyboard list restores its title, home state, and header actions | `CustomKeyboardEditorActionBarLifecycleContractTest.keyboardListRestoresItsHeaderWheneverItResumes` | Lifecycle contract | PASS |
 
 ## Coverage and known gaps
 
