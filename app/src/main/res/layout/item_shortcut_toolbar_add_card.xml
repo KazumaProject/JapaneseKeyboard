@@ -38,7 +38,7 @@
                 android:layout_width="26dp"
                 android:layout_height="26dp"
                 android:layout_gravity="center"
-                android:tint="?attr/colorPrimary"
+                app:tint="?attr/colorPrimary"
                 tools:src="@drawable/keyboard_floating_24px" />
 
         </FrameLayout>
@@ -85,7 +85,7 @@
             android:padding="8dp"
             android:scaleType="center"
             android:src="@drawable/baseline_add_circle_outline_24"
-            android:tint="?attr/colorPrimary"
+            app:tint="?attr/colorPrimary"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

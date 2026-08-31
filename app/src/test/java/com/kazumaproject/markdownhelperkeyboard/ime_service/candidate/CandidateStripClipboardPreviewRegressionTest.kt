@@ -34,7 +34,7 @@ class CandidateStripClipboardPreviewRegressionTest {
             )
         )
 
-        assertTrue(selectedContent is CandidateStripContent.GemmaActions)
+        assertTrue(selectedContent is CandidateStripContent.SelectionActions)
 
         val releasedContent = CandidateStripContentResolver.resolve(
             baseState(

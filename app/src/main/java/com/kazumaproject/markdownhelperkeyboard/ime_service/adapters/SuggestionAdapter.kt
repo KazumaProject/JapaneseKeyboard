@@ -34,6 +34,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -615,7 +616,7 @@ class SuggestionAdapter internal constructor(
                     if (value.isEmpty()) {
                         CandidateStripContent.Empty
                     } else if (value.all { it.isSelectedTextGemmaActionCandidate() }) {
-                        CandidateStripContent.GemmaActions(
+                        CandidateStripContent.SelectionActions(
                             actions = value,
                             showShortcutEntry = false
                         )
@@ -698,7 +699,7 @@ class SuggestionAdapter internal constructor(
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
         return when (val content = currentContent) {
             is CandidateStripContent.Candidates -> buildCandidateItems(content)
-            is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
+            is CandidateStripContent.SelectionActions -> buildGemmaActionItems(content)
             is CandidateStripContent.ZeroQuerySuggestions -> buildZeroQueryItems(content)
             is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
             is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(
@@ -730,7 +731,7 @@ class SuggestionAdapter internal constructor(
         }
 
     private fun buildGemmaActionItems(
-        content: CandidateStripContent.GemmaActions
+        content: CandidateStripContent.SelectionActions
     ): List<SuggestionDisplayItem> =
         buildList {
             if (content.showShortcutEntry) {
@@ -807,7 +808,7 @@ class SuggestionAdapter internal constructor(
     private fun CandidateStripContent.candidatesForClicks(): List<Candidate> {
         return when (this) {
             is CandidateStripContent.Candidates -> candidates
-            is CandidateStripContent.GemmaActions -> actions
+            is CandidateStripContent.SelectionActions -> actions
             else -> emptyList()
         }
     }
@@ -1609,6 +1610,7 @@ class SuggestionAdapter internal constructor(
             CANDIDATE_TYPE_ERA -> ""
             CANDIDATE_TYPE_USER_TEMPLATE ->
                 if (showDictionaryCandidateLabels) "[定型]" else ""
+            CANDIDATE_TYPE_TEXT_MACRO -> "[マクロ]"
             /** 半角 **/
             (31).toByte() -> "[半]"
             /** 漢数字 **/
