@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/utility_calculation_category_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="utility_calculation_enabled"
+            android:title="@string/utility_calculation_enabled_title"
+            app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="utility_calculation_enabled"
+            android:key="utility_expression_candidate_enabled"
+            android:title="@string/utility_expression_candidate_title"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:defaultValue="degrees"
+            android:dependency="utility_calculation_enabled"
+            android:entries="@array/utility_angle_mode_entries"
+            android:entryValues="@array/utility_angle_mode_values"
+            android:key="utility_angle_mode"
+            android:title="@string/utility_angle_mode_title"
+            app:useSimpleSummaryProvider="true" />
+        <Preference
+            android:dependency="utility_calculation_enabled"
+            android:key="utility_calculation_precision"
+            android:title="@string/utility_calculation_precision_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/utility_unit_conversion_category_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="utility_unit_conversion_enabled"
+            android:title="@string/utility_unit_conversion_enabled_title"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:defaultValue="japan"
+            android:dependency="utility_unit_conversion_enabled"
+            android:entries="@array/utility_regional_profile_entries"
+            android:entryValues="@array/utility_regional_profile_values"
+            android:key="utility_regional_profile"
+            android:title="@string/utility_regional_profile_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference android:key="utility_targets_length" android:title="@string/unit_category_length" />
+        <Preference android:key="utility_targets_area" android:title="@string/unit_category_area" />
+        <Preference android:key="utility_targets_volume" android:title="@string/unit_category_volume" />
+        <Preference android:key="utility_targets_mass" android:title="@string/unit_category_mass" />
+        <Preference android:key="utility_targets_temperature" android:title="@string/unit_category_temperature" />
+        <Preference android:key="utility_targets_speed" android:title="@string/unit_category_speed" />
+        <Preference android:key="utility_targets_pressure" android:title="@string/unit_category_pressure" />
+        <Preference android:key="utility_targets_energy" android:title="@string/unit_category_energy" />
+        <Preference android:key="utility_targets_power" android:title="@string/unit_category_power" />
+        <Preference android:key="utility_targets_time" android:title="@string/unit_category_time" />
+        <Preference android:key="utility_targets_data" android:title="@string/unit_category_data" />
+    </PreferenceCategory>
+
+    <Preference
+        android:key="utility_reset_all"
+        android:summary="@string/utility_reset_summary"
+        android:title="@string/utility_reset_title" />
+</androidx.preference.PreferenceScreen>

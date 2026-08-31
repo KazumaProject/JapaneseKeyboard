@@ -1,0 +1,201 @@
+name: Keyboard Size Regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: Number of portrait-landscape-portrait rounds
+        required: true
+        type: choice
+        default: '1'
+        options:
+          - '1'
+          - '3'
+          - '10'
+      capture_visuals:
+        description: Save a screenshot for every passing case
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-build:
+    name: Build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
+      ZENZ_DEBUG_NATIVE_ABIS: x86_64
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android build dependencies
+        run: sdkmanager "platforms;android-36" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-keyboard-size-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-keyboard-size-gradle-
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Zenz model
+        uses: actions/cache@v5
+        with:
+          path: .zenz-model-cache
+          key: ${{ runner.os }}-zenz-model-v2-4f5423f0fad41a73b1242eb96fe5c12ae4fdca83-Q5_K_M-ggml-model-Q5_K_M.gguf
+
+      - name: Validate scripts
+        run: bash -n .github/scripts/ime-emulator-common.sh .github/scripts/run-fast-input-regression.sh .github/scripts/run-keyboard-size-regression.sh
+
+      - name: Build APKs and run unit tests
+        run: >-
+          ./gradlew
+          :app:testFullStandardDebugUnitTest
+          :gojuon_keyboard:testDebugUnitTest
+          :app:assembleFullStandardDebug
+          :app:assembleFullStandardDebugAndroidTest
+          --stacktrace
+          --no-daemon
+          --max-workers=2
+
+      - name: Upload build verification
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: keyboard-size-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/outputs/apk/fullStandard/debug/
+            app/build/outputs/apk/androidTest/fullStandard/debug/
+            app/build/reports/tests/
+            gojuon_keyboard/build/reports/tests/
+          if-no-files-found: warn
+          retention-days: 14
+
+  keyboard-size-regression:
+    name: ${{ matrix.device_name }} API 35
+    needs: verify-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device_name: Pixel 6 Pro
+            profile: pixel_6_pro
+            device_class: phone
+            ram_size: 3072M
+          - device_name: Pixel Tablet
+            profile: pixel_tablet
+            device_class: tablet
+            ram_size: 4096M
+    env:
+      ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
+      ZENZ_DEBUG_NATIVE_ABIS: x86_64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-36"
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-keyboard-size-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-keyboard-size-gradle-
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Zenz model
+        uses: actions/cache@v5
+        with:
+          path: .zenz-model-cache
+          key: ${{ runner.os }}-zenz-model-v2-4f5423f0fad41a73b1242eb96fe5c12ae4fdca83-Q5_K_M-ggml-model-Q5_K_M.gguf
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run keyboard-size matrix
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          KEYBOARD_SIZE_ROUNDS: ${{ inputs.rounds }}
+          KEYBOARD_SIZE_CAPTURE_VISUALS: ${{ inputs.capture_visuals }}
+          KEYBOARD_SIZE_DEVICE_CLASS: ${{ matrix.device_class }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.profile }}
+          cores: 2
+          ram-size: ${{ matrix.ram_size }}
+          heap-size: 512M
+          disk-size: 8192M
+          ndk: 29.0.14206865
+          cmake: 3.22.1
+          enable-hw-keyboard: false
+          disable-animations: false
+          disable-spellchecker: true
+          pre-emulator-launch-script: >-
+            avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
+            sed -i '/^[[:space:]]*hw\.keyboard[[:space:]]*=/d' "$avd_config" &&
+            printf '%s\n' 'hw.keyboard=no' >> "$avd_config" &&
+            grep '^hw.keyboard=no$' "$avd_config"
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -no-snapshot
+            -noaudio -no-boot-anim -camera-back none
+          script: bash .github/scripts/run-keyboard-size-regression.sh
+
+      - name: Upload device results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: keyboard-size-${{ matrix.device_class }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            keyboard-size-artifacts/${{ matrix.device_class }}/
+            app/build/reports/androidTests/connected/
+            app/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0

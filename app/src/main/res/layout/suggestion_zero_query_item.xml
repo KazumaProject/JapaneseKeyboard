@@ -12,7 +12,7 @@
         android:id="@+id/zero_query_item_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
+        android:gravity="start|center_vertical"
         android:maxLines="1"
         android:textAlignment="viewStart"
         android:textColor="@color/main_text_color"

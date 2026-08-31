@@ -21,6 +21,11 @@ enum class ShortcutType(
         com.kazumaproject.core.R.drawable.book_3_24px,
         description = "定型文"
     ),
+    TEXT_MACRO(
+        "text_macro",
+        com.kazumaproject.core.R.drawable.book_3_24px,
+        description = "動的定型文（マクロ）"
+    ),
     KEYBOARD_PICKER(
         "keyboard_picker",
         com.kazumaproject.core.R.drawable.language_24dp,

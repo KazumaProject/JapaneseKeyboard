@@ -147,7 +147,7 @@ class CandidateStripContentResolverTest {
             candidatesShown = false,
             symbolKeyboardShown = false,
             customLayoutPickerShown = false,
-            selectedTextGemmaActionsShown = false,
+            selectionActionsShown = false,
             editorTextSelected = true,
             clipboardPreviewEnabled = true,
             clipboardText = "hello"
@@ -168,7 +168,7 @@ class CandidateStripContentResolverTest {
             candidatesShown = false,
             symbolKeyboardShown = false,
             customLayoutPickerShown = false,
-            selectedTextGemmaActionsShown = false,
+            selectionActionsShown = false,
             editorTextSelected = false,
             clipboardPreviewEnabled = true,
             clipboardText = "hello"
@@ -179,21 +179,21 @@ class CandidateStripContentResolverTest {
     }
 
     @Test
-    fun gemmaActionsWinOverClipboardPreview_whenEditorTextSelected() {
+    fun selectionActionsWinOverClipboardPreview_whenEditorTextSelected() {
         val actions = listOf(candidate("Translate"))
         val state = baseState(
             candidates = actions,
             inputStringEmpty = true,
             tailEmpty = true,
-            selectedTextGemmaActionsShown = true,
+            selectionActionsShown = true,
             editorTextSelected = true,
             clipboardPreviewEnabled = true,
             clipboardText = "hello"
         )
         val content = CandidateStripContentResolver.resolve(state)
 
-        assertTrue(content is CandidateStripContent.GemmaActions)
-        assertTrue((content as CandidateStripContent.GemmaActions).actions == actions)
+        assertTrue(content is CandidateStripContent.SelectionActions)
+        assertTrue((content as CandidateStripContent.SelectionActions).actions == actions)
     }
 
     @Test
@@ -546,7 +546,7 @@ class CandidateStripContentResolverTest {
         )
         assertTrue(
             CandidateStripContentResolver.resolve(
-                base.copy(selectedTextGemmaActionsShown = true)
+                base.copy(selectionActionsShown = true)
             ) is CandidateStripContent.Empty
         )
         assertTrue(
@@ -584,7 +584,7 @@ class CandidateStripContentResolverTest {
         symbolKeyboardShown: Boolean = false,
         customLayoutPickerShown: Boolean = false,
         customLayouts: List<CustomKeyboardLayout> = emptyList(),
-        selectedTextGemmaActionsShown: Boolean = false,
+        selectionActionsShown: Boolean = false,
         editorTextSelected: Boolean = false,
         clipboardPreviewEnabled: Boolean = false,
         clipboardPreviewDescriptionShown: Boolean = true,
@@ -614,7 +614,7 @@ class CandidateStripContentResolverTest {
             symbolKeyboardShown = symbolKeyboardShown,
             customLayoutPickerShown = customLayoutPickerShown,
             customLayouts = customLayouts,
-            selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+            selectionActionsShown = selectionActionsShown,
             editorTextSelected = editorTextSelected,
             clipboardPreviewEnabled = clipboardPreviewEnabled,
             clipboardPreviewDescriptionShown = clipboardPreviewDescriptionShown,

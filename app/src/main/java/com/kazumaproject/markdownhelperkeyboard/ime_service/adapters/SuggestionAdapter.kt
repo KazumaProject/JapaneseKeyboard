@@ -30,10 +30,13 @@ import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -118,7 +121,7 @@ class SuggestionAdapter internal constructor(
         const val VIEW_TYPE_EMPTY = 0
         const val VIEW_TYPE_SUGGESTION = 1
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
-        const val VIEW_TYPE_GEMMA_ACTION = 3
+        const val VIEW_TYPE_SELECTION_ACTION = 3
         const val VIEW_TYPE_SHORTCUT = 4
         const val VIEW_TYPE_CLIPBOARD_PREVIEW = 5
         const val VIEW_TYPE_SHORTCUT_ENTRY = 6
@@ -139,7 +142,7 @@ class SuggestionAdapter internal constructor(
 
     internal enum class SuggestionDisplayItemKind {
         CandidateItem,
-        GemmaActionItem,
+        SelectionActionItem,
         ZeroQueryCloseItem,
         ZeroQueryCandidateItem,
         QuickActionsItem,
@@ -173,7 +176,7 @@ class SuggestionAdapter internal constructor(
             val candidateIndex: Int,
         ) : SuggestionDisplayItem()
 
-        data class GemmaActionItem(
+        data class SelectionActionItem(
             val candidate: Candidate,
             val candidateIndex: Int,
         ) : SuggestionDisplayItem()
@@ -533,8 +536,8 @@ class SuggestionAdapter internal constructor(
                     // of removals and insertions to DiffUtil.
                     oldItem.candidateIndex == newItem.candidateIndex
 
-                oldItem is SuggestionDisplayItem.GemmaActionItem &&
-                        newItem is SuggestionDisplayItem.GemmaActionItem ->
+                oldItem is SuggestionDisplayItem.SelectionActionItem &&
+                        newItem is SuggestionDisplayItem.SelectionActionItem ->
                     oldItem.candidateIndex == newItem.candidateIndex
 
                 oldItem is SuggestionDisplayItem.ZeroQueryCloseItem &&
@@ -614,8 +617,8 @@ class SuggestionAdapter internal constructor(
                 submitContent(
                     if (value.isEmpty()) {
                         CandidateStripContent.Empty
-                    } else if (value.all { it.isSelectedTextGemmaActionCandidate() }) {
-                        CandidateStripContent.GemmaActions(
+                    } else if (value.all { it.isSelectionActionCandidate() }) {
+                        CandidateStripContent.SelectionActions(
                             actions = value,
                             showShortcutEntry = false
                         )
@@ -698,7 +701,7 @@ class SuggestionAdapter internal constructor(
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
         return when (val content = currentContent) {
             is CandidateStripContent.Candidates -> buildCandidateItems(content)
-            is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
+            is CandidateStripContent.SelectionActions -> buildSelectionActionItems(content)
             is CandidateStripContent.ZeroQuerySuggestions -> buildZeroQueryItems(content)
             is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
             is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(
@@ -729,15 +732,15 @@ class SuggestionAdapter internal constructor(
             }
         }
 
-    private fun buildGemmaActionItems(
-        content: CandidateStripContent.GemmaActions
+    private fun buildSelectionActionItems(
+        content: CandidateStripContent.SelectionActions
     ): List<SuggestionDisplayItem> =
         buildList {
             if (content.showShortcutEntry) {
                 add(SuggestionDisplayItem.ShortcutEntryItem)
             }
             content.actions.forEachIndexed { index, candidate ->
-                add(SuggestionDisplayItem.GemmaActionItem(candidate, index))
+                add(SuggestionDisplayItem.SelectionActionItem(candidate, index))
             }
         }
 
@@ -807,7 +810,7 @@ class SuggestionAdapter internal constructor(
     private fun CandidateStripContent.candidatesForClicks(): List<Candidate> {
         return when (this) {
             is CandidateStripContent.Candidates -> candidates
-            is CandidateStripContent.GemmaActions -> actions
+            is CandidateStripContent.SelectionActions -> actions
             else -> emptyList()
         }
     }
@@ -884,8 +887,8 @@ class SuggestionAdapter internal constructor(
             is SuggestionDisplayItem.CandidateItem ->
                 SuggestionDisplayItemKind.CandidateItem
 
-            is SuggestionDisplayItem.GemmaActionItem ->
-                SuggestionDisplayItemKind.GemmaActionItem
+            is SuggestionDisplayItem.SelectionActionItem ->
+                SuggestionDisplayItemKind.SelectionActionItem
 
             SuggestionDisplayItem.ZeroQueryCloseItem ->
                 SuggestionDisplayItemKind.ZeroQueryCloseItem
@@ -942,7 +945,7 @@ class SuggestionAdapter internal constructor(
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
-    inner class GemmaActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class SelectionActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val badgeText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_badge)
         val actionText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_text)
     }
@@ -995,7 +998,7 @@ class SuggestionAdapter internal constructor(
             is SuggestionDisplayItem.CandidateItem -> VIEW_TYPE_SUGGESTION
             SuggestionDisplayItem.ZeroQueryCloseItem -> VIEW_TYPE_ZERO_QUERY_CLOSE
             is SuggestionDisplayItem.ZeroQueryCandidateItem -> VIEW_TYPE_ZERO_QUERY_CANDIDATE
-            is SuggestionDisplayItem.GemmaActionItem -> VIEW_TYPE_GEMMA_ACTION
+            is SuggestionDisplayItem.SelectionActionItem -> VIEW_TYPE_SELECTION_ACTION
             is SuggestionDisplayItem.QuickActionsItem -> VIEW_TYPE_EMPTY
             is SuggestionDisplayItem.ClipboardPreviewItem -> VIEW_TYPE_CLIPBOARD_PREVIEW
             SuggestionDisplayItem.ShortcutEntryItem -> VIEW_TYPE_SHORTCUT_ENTRY
@@ -1048,13 +1051,13 @@ class SuggestionAdapter internal constructor(
                 SuggestionViewHolder(itemView)
             }
 
-            VIEW_TYPE_GEMMA_ACTION -> {
+            VIEW_TYPE_SELECTION_ACTION -> {
                 val itemView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_gemma_action_item, parent, false)
                 itemView.setBackgroundResource(
                     if (isDynamicColorEnable) com.kazumaproject.core.R.drawable.recyclerview_item_bg_material else com.kazumaproject.core.R.drawable.recyclerview_item_bg
                 )
-                GemmaActionViewHolder(itemView)
+                SelectionActionViewHolder(itemView)
             }
 
             VIEW_TYPE_SHORTCUT -> {
@@ -1107,9 +1110,9 @@ class SuggestionAdapter internal constructor(
                 item as SuggestionDisplayItem.ZeroQueryCandidateItem,
             )
 
-            VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
-                holder as GemmaActionViewHolder,
-                item as SuggestionDisplayItem.GemmaActionItem,
+            VIEW_TYPE_SELECTION_ACTION -> onBindSelectionActionViewHolder(
+                holder as SelectionActionViewHolder,
+                item as SuggestionDisplayItem.SelectionActionItem,
             )
 
             VIEW_TYPE_SHORTCUT -> onBindShortcutViewHolder(
@@ -1607,8 +1610,13 @@ class SuggestionAdapter internal constructor(
             (30).toByte() -> "[全]"
             CANDIDATE_TYPE_TIME -> ""
             CANDIDATE_TYPE_ERA -> ""
+            CANDIDATE_TYPE_CALCULATION ->
+                holder.itemView.context.getString(R.string.candidate_badge_calculation)
+            CANDIDATE_TYPE_UNIT_CONVERSION ->
+                holder.itemView.context.getString(R.string.candidate_badge_unit_conversion)
             CANDIDATE_TYPE_USER_TEMPLATE ->
                 if (showDictionaryCandidateLabels) "[定型]" else ""
+            CANDIDATE_TYPE_TEXT_MACRO -> "[マクロ]"
             /** 半角 **/
             (31).toByte() -> "[半]"
             /** 漢数字 **/
@@ -1703,9 +1711,9 @@ class SuggestionAdapter internal constructor(
         }
     }
 
-    private fun onBindGemmaActionViewHolder(
-        holder: GemmaActionViewHolder,
-        item: SuggestionDisplayItem.GemmaActionItem,
+    private fun onBindSelectionActionViewHolder(
+        holder: SelectionActionViewHolder,
+        item: SuggestionDisplayItem.SelectionActionItem,
     ) {
         applyCandidateItemBackground(holder.itemView)
         val suggestion = item.candidate
@@ -1802,7 +1810,7 @@ class SuggestionAdapter internal constructor(
         val displayIndex = displayItems.indexOfFirst { item ->
             when (item) {
                 is SuggestionDisplayItem.CandidateItem -> item.candidateIndex == candidateIndex
-                is SuggestionDisplayItem.GemmaActionItem -> item.candidateIndex == candidateIndex
+                is SuggestionDisplayItem.SelectionActionItem -> item.candidateIndex == candidateIndex
                 else -> false
             }
         }
@@ -1811,7 +1819,7 @@ class SuggestionAdapter internal constructor(
         }
     }
 
-    private fun Candidate.isSelectedTextGemmaActionCandidate(): Boolean {
+    private fun Candidate.isSelectionActionCandidate(): Boolean {
         return type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
                 type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }

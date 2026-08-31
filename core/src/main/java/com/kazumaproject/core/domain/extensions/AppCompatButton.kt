@@ -15,7 +15,7 @@ const val KEY_JAPANESE_SIZE = 17f
 const val KEY_ENGLISH_SIZE = 12f
 const val KEY_NUMBER_SIZE = 16f
 
-const val KEY_TABLET_SIZE = 18f
+const val KEY_GOJUON_SIZE = 18f
 
 val JP_KEY_LAYOUT_WITH_SPACE = listOf(
     "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",
