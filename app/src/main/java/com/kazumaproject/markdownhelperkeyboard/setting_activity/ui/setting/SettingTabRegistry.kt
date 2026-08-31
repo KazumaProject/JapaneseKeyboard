@@ -6,6 +6,7 @@ import androidx.annotation.XmlRes
 import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
+import com.kazumaproject.markdownhelperkeyboard.text_macro.ui.TextMacroFragment
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
 data class SettingTabSpec(
@@ -21,6 +22,7 @@ object SettingTabRegistry {
     const val TAB_THEME = "theme"
     const val TAB_CONVERSION_ENGINE = "conversion_engine"
     const val TAB_DICTIONARY = "dictionary"
+    const val TAB_TEXT_MACRO = "text_macro"
     const val TAB_KANA = "kana"
     const val TAB_QWERTY = "qwerty"
     const val TAB_SUMIRE = "sumire"
@@ -82,6 +84,13 @@ object SettingTabRegistry {
                 xmlRes = R.xml.pref_dictionary,
                 destinationId = R.id.dictionaryPreferenceFragment,
                 fragmentFactory = { DictionaryPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_TEXT_MACRO,
+                title = { context -> context.getString(R.string.setting_category_text_macro_title) },
+                xmlRes = null,
+                destinationId = R.id.textMacroFragment,
+                fragmentFactory = { TextMacroFragment() },
             ),
             SettingTabSpec(
                 key = TAB_KANA,

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/setting_home_scroll"
     android:layout_width="match_parent"
@@ -59,7 +60,7 @@
                 android:contentDescription="@string/setting_home_search_content_description"
                 android:padding="12dp"
                 android:src="@drawable/baseline_search_24"
-                android:tint="?attr/colorOnSurfaceVariant" />
+                app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
 
@@ -88,7 +89,7 @@
                 android:contentDescription="@string/setting_home_frequent_edit_content_description"
                 android:padding="12dp"
                 android:src="@drawable/baseline_settings_24"
-                android:tint="?attr/colorOnSurfaceVariant" />
+                app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
 

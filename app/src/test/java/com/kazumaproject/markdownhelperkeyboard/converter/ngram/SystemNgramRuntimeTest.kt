@@ -53,8 +53,8 @@ class SystemNgramRuntimeTest {
         SystemNgramRuntime.initialize(context, true)
 
         val loaded = SystemNgramRuntime.loadedDictionary()
-        assertEquals(2_170, loaded.ruleCount)
-        assertEquals(56_984 + 15_191, loaded.storageBytes)
+        assertEquals(1_715 + 471, loaded.ruleCount)
+        assertEquals(57_376 + 15_191, loaded.storageBytes)
         assertTrue(loaded.matchesSingleNode(node("カワボ")))
     }
 
