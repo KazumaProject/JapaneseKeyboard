@@ -16,6 +16,11 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.RegionalUnitProfile
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UnitTargetSettingsJsonCodec
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
@@ -38,6 +43,15 @@ internal object CustomThemeColorPreferenceKeys {
 }
 
 object AppPreference {
+
+    const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
+    const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
+    const val UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY = "utility_expression_candidate_enabled"
+    const val UTILITY_ANGLE_MODE_KEY = "utility_angle_mode"
+    const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
+    const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
+    const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
@@ -93,6 +107,7 @@ object AppPreference {
 
     private lateinit var preferences: SharedPreferences
     private val gson = Gson()
+    private val unitTargetSettingsCodec = UnitTargetSettingsJsonCodec()
     private const val LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY =
         "symbol_emoji_candidate_enable_preference"
     private val circularSlotActionEditableSlots = setOf(
@@ -1703,6 +1718,115 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
         }
+
+    var utility_candidate_config: UtilityCandidateConfig
+        get() {
+            val calculationPrecision = preferences.getString(
+                UTILITY_CALCULATION_PRECISION_KEY,
+                "auto",
+            ).toUtilityPrecision()
+            return UtilityCandidateConfig(
+                calculationEnabled = preferences.getBoolean(
+                    UTILITY_CALCULATION_ENABLED_KEY,
+                    true,
+                ),
+                unitConversionEnabled = preferences.getBoolean(
+                    UTILITY_UNIT_CONVERSION_ENABLED_KEY,
+                    true,
+                ),
+                includeExpressionCandidate = preferences.getBoolean(
+                    UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+                    true,
+                ),
+                angleMode = preferences.getString(UTILITY_ANGLE_MODE_KEY, "degrees")
+                    .toAngleMode(),
+                calculationPrecision = calculationPrecision,
+                regionalUnitProfile = preferences.getString(
+                    UTILITY_REGIONAL_PROFILE_KEY,
+                    "japan",
+                ).toRegionalUnitProfile(),
+                unitTargets = unitTargetSettingsCodec.decodeOrDefault(
+                    preferences.getString(UTILITY_UNIT_TARGETS_JSON_KEY, null),
+                ),
+            )
+        }
+        set(value) = preferences.edit { editor ->
+            editor.putBoolean(UTILITY_CALCULATION_ENABLED_KEY, value.calculationEnabled)
+            editor.putBoolean(UTILITY_UNIT_CONVERSION_ENABLED_KEY, value.unitConversionEnabled)
+            editor.putBoolean(
+                UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+                value.includeExpressionCandidate,
+            )
+            editor.putString(
+                UTILITY_ANGLE_MODE_KEY,
+                if (value.angleMode == AngleMode.DEGREES) "degrees" else "radians",
+            )
+            editor.putString(
+                UTILITY_CALCULATION_PRECISION_KEY,
+                value.calculationPrecision.toPreferenceValue(),
+            )
+            editor.putString(
+                UTILITY_REGIONAL_PROFILE_KEY,
+                when (value.regionalUnitProfile) {
+                    RegionalUnitProfile.JAPAN -> "japan"
+                    RegionalUnitProfile.UNITED_STATES -> "united_states"
+                    RegionalUnitProfile.UNITED_KINGDOM -> "united_kingdom"
+                },
+            )
+            editor.putString(
+                UTILITY_UNIT_TARGETS_JSON_KEY,
+                unitTargetSettingsCodec.encode(value.unitTargets),
+            )
+        }
+
+    fun resetUtilityCandidateConfig() {
+        preferences.edit { editor ->
+            editor.remove(UTILITY_CALCULATION_ENABLED_KEY)
+            editor.remove(UTILITY_UNIT_CONVERSION_ENABLED_KEY)
+            editor.remove(UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY)
+            editor.remove(UTILITY_ANGLE_MODE_KEY)
+            editor.remove(UTILITY_CALCULATION_PRECISION_KEY)
+            editor.remove(UTILITY_REGIONAL_PROFILE_KEY)
+            editor.remove(UTILITY_UNIT_TARGETS_JSON_KEY)
+        }
+    }
+
+    private fun String?.toAngleMode(): AngleMode = when (this) {
+        "radians" -> AngleMode.RADIANS
+        else -> AngleMode.DEGREES
+    }
+
+    private fun String?.toRegionalUnitProfile(): RegionalUnitProfile = when (this) {
+        "united_states" -> RegionalUnitProfile.UNITED_STATES
+        "united_kingdom" -> RegionalUnitProfile.UNITED_KINGDOM
+        else -> RegionalUnitProfile.JAPAN
+    }
+
+    private fun String?.toUtilityPrecision(): Precision = when (this) {
+        "auto", null -> Precision.Auto
+        "integer" -> Precision.DecimalPlaces(0)
+        else -> if (startsWith(UTILITY_DECIMAL_PRECISION_PREFIX)) {
+            removePrefix(UTILITY_DECIMAL_PRECISION_PREFIX).toIntOrNull()
+                ?.takeIf {
+                    it in Precision.MIN_DECIMAL_PLACES..Precision.MAX_DECIMAL_PLACES
+                }
+                ?.let(Precision::DecimalPlaces)
+                ?: Precision.Auto
+        } else {
+            toIntOrNull()
+                ?.takeIf { it in Precision.MIN_DIGITS..Precision.MAX_DIGITS }
+                ?.let(Precision::SignificantDigits)
+                ?: Precision.Auto
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun Precision.toPreferenceValue(): String = when (this) {
+        Precision.Auto -> "auto"
+        Precision.Integer -> "${UTILITY_DECIMAL_PRECISION_PREFIX}0"
+        is Precision.DecimalPlaces -> "$UTILITY_DECIMAL_PRECISION_PREFIX$places"
+        is Precision.SignificantDigits -> digits.toString()
+    }
 
     var japanese_prediction_enable_preference: Boolean
         get() = preferences.getBoolean(
