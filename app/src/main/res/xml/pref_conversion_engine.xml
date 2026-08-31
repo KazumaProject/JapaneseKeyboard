@@ -152,6 +152,12 @@
             android:title="@string/emoticon_candidate_enable_title"
             app:iconSpaceReserved="false" />
 
+        <Preference
+            android:key="setting_route_utility_candidates"
+            android:summary="@string/utility_candidate_settings_summary"
+            android:title="@string/utility_candidate_settings_title"
+            app:iconSpaceReserved="false" />
+
     </PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

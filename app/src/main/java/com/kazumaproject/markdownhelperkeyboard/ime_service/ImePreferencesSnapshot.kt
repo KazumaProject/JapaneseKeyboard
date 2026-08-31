@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySo
 import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -246,6 +247,7 @@ data class ImePreferencesSnapshot(
     val enableTypoCorrectionJapaneseFlickKeyboardPreference: Boolean,
     val enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean,
     val enableGemmaTranslationPreference: Boolean,
+    val utilityCandidateConfig: UtilityCandidateConfig,
 ) {
     companion object {
         fun from(
@@ -691,7 +693,8 @@ data class ImePreferencesSnapshot(
                 enableTypoCorrectionQwertyEnglishKeyboardPreference =
                     appPreference.enable_typo_correction_qwerty_english_keyboard_preference,
                 enableGemmaTranslationPreference =
-                    AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference
+                    AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference,
+                utilityCandidateConfig = appPreference.utility_candidate_config,
             )
         }
     }

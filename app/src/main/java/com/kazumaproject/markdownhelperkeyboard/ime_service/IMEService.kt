@@ -180,8 +180,11 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UTILITY_LITERAL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -201,6 +204,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBack
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiConversionSession
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryRequest
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryResult
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateComposer
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityTrigger
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -823,7 +830,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.KEY_SOUND_KEY,
         AppPreference.KEY_SOUND_VOLUME_PERCENT_KEY,
         AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY,
-        AppPreference.FLICK_TFBI_FLICK_START_POSITION_KEY
+        AppPreference.FLICK_TFBI_FLICK_START_POSITION_KEY,
+        AppPreference.UTILITY_CALCULATION_ENABLED_KEY,
+        AppPreference.UTILITY_UNIT_CONVERSION_ENABLED_KEY,
+        AppPreference.UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+        AppPreference.UTILITY_ANGLE_MODE_KEY,
+        AppPreference.UTILITY_CALCULATION_PRECISION_KEY,
+        AppPreference.UTILITY_REGIONAL_PROFILE_KEY,
+        AppPreference.UTILITY_UNIT_TARGETS_JSON_KEY,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -1727,6 +1741,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var candidateViewHeight: String? = "2"
     private var candidateTabVisibility: Boolean? = false
     private var conversionBackend: ConversionBackend = ConversionBackend.LEGACY
+    private val utilityCandidateProvider = UtilityCandidateProvider()
+    private var utilityCandidateConfig: UtilityCandidateConfig = UtilityCandidateConfig()
     private var predictionConfig: PredictionConfig = PredictionConfig()
     @Volatile
     private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
@@ -2560,6 +2576,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
 
+        utilityCandidateConfig = appPreference.utility_candidate_config
+
         val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
         val thresholdShape = FlickThresholdShape.fromPreferenceValue(
             appPreference.flick_threshold_shape_preference
@@ -2647,6 +2665,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardOrder = preferences.keyboardOrder
         candidateTabOrder = preferences.candidateTabOrder
         conversionBackend = preferences.conversionBackend
+        utilityCandidateConfig = preferences.utilityCandidateConfig
         predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
@@ -15944,15 +15963,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzLiveLocalCandidatesSnapshot = localCandidates
             zenzLiveSnapshotDisplayInput = insertString
         }
-        val displayedCandidates = buildDisplayedCandidatesWithZenzSlot(
+        val displayedCandidatesWithZenz = buildDisplayedCandidatesWithZenzSlot(
             localCandidates = localCandidates,
             input = insertString,
             zenzSlotState = _zenzLiveSlotState.value
         )
+        val displayedCandidates = composeUtilityCandidates(
+            input = insertString,
+            candidates = displayedCandidatesWithZenz,
+        )
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
-                    candidates = localCandidates.map {
+                    candidates = displayedCandidates.map {
                         CandidateItem(
                             word = it.string, length = it.length
                         )
@@ -15965,7 +15988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateSuggestionAdaptersOnMain(
                     candidates = displayedCandidates,
                     insertString = insertString,
-                    fullCandidates = localCandidates,
+                    fullCandidates = composeUtilityCandidates(insertString, localCandidates),
                     token = token,
                 )
             }
@@ -15975,6 +15998,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             filteredCandidateList = localCandidates
             lastLocalUpdatedInput.emit(insertString)
         }
+    }
+
+    private fun composeUtilityCandidates(
+        input: String,
+        candidates: List<Candidate>,
+    ): List<Candidate> = UtilityCandidateComposer.compose(
+        input = input,
+        existingCandidates = candidates,
+        result = utilityCandidateProvider.provide(input, utilityCandidateConfig),
+    )
+
+    private fun candidateForAutomaticApplication(
+        input: String,
+        candidate: Candidate?,
+    ): Candidate? {
+        val utilityResult = utilityCandidateProvider.provide(input, utilityCandidateConfig)
+        return if (utilityResult.hasCandidates) null else candidate
+    }
+
+    private fun commitExplicitUtilityCandidateOnEnter(
+        suggestions: List<Candidate>,
+        input: String,
+    ): Boolean {
+        val utilityResult = utilityCandidateProvider.provide(input, utilityCandidateConfig)
+        if (
+            utilityResult.trigger != UtilityTrigger.EXPLICIT_CALCULATION &&
+            utilityResult.trigger != UtilityTrigger.EXPLICIT_UNIT_CONVERSION
+        ) return false
+        val resultText = utilityResult.candidates.firstOrNull()?.text ?: return false
+        // Keep the parameter as a consistency guard for the normal candidate path. Hardware
+        // candidate rows do not retain candidate type metadata, so the provider remains the
+        // source of truth there.
+        if (suggestions.isEmpty() && inputString.value != input) return false
+        commitUtilityCandidate(resultText)
+        clearSuggestionStateAfterCommit()
+        resetFlagsEnterKey()
+        return true
+    }
+
+    private fun commitUtilityCandidate(text: String) {
+        conversionLearningSession.cancel()
+        _inputString.update { "" }
+        stringInTail.set("")
+        commitText(text, 1)
     }
 
     private fun shouldApplyCandidateResult(
@@ -21729,6 +21796,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         when (candidate.type.toInt()) {
+            CANDIDATE_TYPE_CALCULATION.toInt(),
+            CANDIDATE_TYPE_UNIT_CONVERSION.toInt() -> {
+                commitUtilityCandidate(candidate.string)
+            }
+
+            CANDIDATE_TYPE_UTILITY_LITERAL.toInt() -> {
+                commitUtilityCandidate(candidate.string)
+            }
+
             15 -> {
                 val readingCorrection = candidate.string.correctReading()
                 commitAndClearInput(readingCorrection.first)
@@ -22616,7 +22692,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString, token)) return
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull(),
+                    candidate = candidateForAutomaticApplication(
+                        insertString,
+                        displayedCandidates.firstOrNull(),
+                    ),
                 )
             ) return
         }
@@ -22633,7 +22712,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull()
+                    candidate = candidateForAutomaticApplication(
+                        insertString,
+                        displayedCandidates.firstOrNull(),
+                    )
                 )
             ) {
                 return
@@ -22644,7 +22726,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull()
+                    candidate = composeUtilityCandidates(
+                        insertString,
+                        displayedCandidates,
+                    ).firstOrNull()
                 )
             ) {
                 return
@@ -22706,7 +22791,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString, token)) return
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull(),
+                    candidate = candidateForAutomaticApplication(
+                        insertString,
+                        displayedCandidates.firstOrNull(),
+                    ),
                 )
             ) return
         }
@@ -22723,7 +22811,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull()
+                    candidate = candidateForAutomaticApplication(
+                        insertString,
+                        displayedCandidates.firstOrNull(),
+                    )
                 )
             ) {
                 return
@@ -22734,7 +22825,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull()
+                    candidate = composeUtilityCandidates(
+                        insertString,
+                        displayedCandidates,
+                    ).firstOrNull()
                 )
             ) {
                 return
@@ -22768,13 +22862,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
+        val displayedCandidates = composeUtilityCandidates(insertString, filtered)
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
-                    candidates = filtered.map {
+                    candidates = displayedCandidates.map {
                         CandidateItem(
                             word = it.string, length = it.length
                         )
@@ -22785,7 +22880,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (!suppressSuggestions) {
                 updateSuggestionAdaptersOnMain(
-                    candidates = filtered,
+                    candidates = displayedCandidates,
                     insertString = insertString,
                     token = token,
                 )
@@ -22799,7 +22894,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = filtered.firstOrNull()
+                    candidate = candidateForAutomaticApplication(
+                        insertString,
+                        filtered.firstOrNull(),
+                    )
                 )
             ) {
                 return
@@ -22810,7 +22908,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = filtered.firstOrNull()
+                    candidate = displayedCandidates.firstOrNull()
                 )
             ) {
                 return
@@ -22843,13 +22941,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
+        val displayedCandidates = composeUtilityCandidates(insertString, filtered)
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
-                    candidates = filtered.map {
+                    candidates = displayedCandidates.map {
                         CandidateItem(
                             word = it.string, length = it.length
                         )
@@ -22860,7 +22959,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (!suppressSuggestions) {
                 updateSuggestionAdaptersOnMain(
-                    candidates = filtered,
+                    candidates = displayedCandidates,
                     insertString = insertString,
                     token = token,
                 )
@@ -22874,7 +22973,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = filtered.firstOrNull()
+                    candidate = candidateForAutomaticApplication(
+                        insertString,
+                        filtered.firstOrNull(),
+                    )
                 )
             ) {
                 return
@@ -24161,6 +24263,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
     ) {
         if (dispatchDirectEnterIfNeeded()) return
+        if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitBunsetsuConversionSession()) {
             return
         }
@@ -24209,6 +24312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String
     ) {
         if (dispatchDirectEnterIfNeeded()) return
+        if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitBunsetsuConversionSession()) {
             return
         }
