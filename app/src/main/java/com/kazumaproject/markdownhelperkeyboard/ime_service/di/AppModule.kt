@@ -58,6 +58,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_41_42
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_42_43
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_43_44
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_44_45
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -86,6 +87,7 @@ import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
+import com.kazumaproject.markdownhelperkeyboard.text_macro.database.TextMacroDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQueryDao
@@ -157,6 +159,7 @@ object AppModule {
             MIGRATION_41_42,
             MIGRATION_42_43,
             MIGRATION_43_44,
+            MIGRATION_44_45,
         )
         .build()
 
@@ -179,6 +182,10 @@ object AppModule {
     @Singleton
     @Provides
     fun providesUserTemplateDao(db: AppDatabase): UserTemplateDao = db.userTemplateDao()
+
+    @Singleton
+    @Provides
+    fun providesTextMacroDao(db: AppDatabase): TextMacroDao = db.textMacroDao()
 
     @Singleton
     @Provides

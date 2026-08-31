@@ -301,6 +301,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.user_template.ui.UserTemplateFragment"
         android:label="@string/user_template_fragment_title" />
     <fragment
+        android:id="@+id/textMacroFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.text_macro.ui.TextMacroFragment"
+        android:label="@string/text_macro_title" />
+    <fragment
         android:id="@+id/clipboardHistoryFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.clipboard_history.ui.ClipboardHistoryFragment"
         android:label="@string/clipboard_fragment_title" />

@@ -13,7 +13,7 @@ class CandidateStripLayoutPolicyTest {
     fun gemmaActionsUseLinearHorizontalLayout() {
         assertTrue(
             CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
-                CandidateStripContent.GemmaActions(
+                CandidateStripContent.SelectionActions(
                     actions = listOf(candidate("Translate")),
                     showShortcutEntry = false
                 )
