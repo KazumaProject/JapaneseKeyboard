@@ -26,6 +26,67 @@ private fun calculateFlickTopYOffset(anchorHeight: Int): Int {
     return -(anchorHeight * 2) - 16
 }
 
+private fun isPortraitBottomRowAnchor(anchorId: Int, orientation: Int): Boolean {
+    return orientation != Configuration.ORIENTATION_LANDSCAPE &&
+        (anchorId == R.id.key_small_letter || anchorId == R.id.key_11 || anchorId == R.id.key_12)
+}
+
+internal enum class LongPressPopupPosition {
+    TOP,
+    LEFT,
+    CENTER,
+    RIGHT,
+    BOTTOM
+}
+
+internal fun calculateLongPressPopupYOffset(
+    position: LongPressPopupPosition,
+    anchorId: Int,
+    orientation: Int,
+    popupHeight: Int,
+    anchorHeight: Int
+): Int {
+    val centeredOnAnchor = -((popupHeight + anchorHeight) / 2)
+    val isBottomRow = isPortraitBottomRowAnchor(anchorId, orientation)
+    val guideStep = (popupHeight + anchorHeight) / 2
+    return when (position) {
+        LongPressPopupPosition.TOP -> -popupHeight - anchorHeight - if (isBottomRow) guideStep else 0
+        LongPressPopupPosition.BOTTOM -> if (isBottomRow) centeredOnAnchor else 0
+        LongPressPopupPosition.LEFT,
+        LongPressPopupPosition.CENTER,
+        LongPressPopupPosition.RIGHT -> centeredOnAnchor - if (isBottomRow) guideStep else 0
+    }
+}
+
+internal data class FlickBottomPopupPlacement(
+    val arrowDirection: ArrowDirection,
+    val xOffset: Int,
+    val yOffset: Int
+)
+
+internal fun calculateFlickBottomPopupPlacement(
+    anchorId: Int,
+    orientation: Int,
+    popupWidth: Int,
+    anchorWidth: Int,
+    anchorHeight: Int
+): FlickBottomPopupPlacement {
+    val isPortraitBottomRow = isPortraitBottomRowAnchor(anchorId, orientation)
+    return FlickBottomPopupPlacement(
+        arrowDirection = if (isPortraitBottomRow) {
+            ArrowDirection.BOTTOM_CENTER
+        } else {
+            ArrowDirection.TOP_CENTER
+        },
+        xOffset = calculateCenteredXOffset(popupWidth, anchorWidth),
+        yOffset = if (isPortraitBottomRow) {
+            calculateFlickTopYOffset(anchorHeight)
+        } else {
+            -(anchorHeight / 2) - 8
+        }
+    )
+}
+
 fun PopupWindow.setPopUpWindowFlickRight(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
@@ -140,63 +201,31 @@ fun PopupWindow.setPopUpWindowFlickBottom(
     this.width = baseWidth.scaledPopupSize(sizeScalePercent)
     this.height = baseHeight.scaledPopupSize(sizeScalePercent)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+    val placement = calculateFlickBottomPopupPlacement(
+        anchorId = anchorView.id,
+        orientation = context.resources.configuration.orientation,
+        popupWidth = width,
+        anchorWidth = anchorView.width,
+        anchorHeight = anchorView.height
+    )
     keyWindowLayout.let { bubble ->
-        if (bubble.arrowDirection != ArrowDirection.TOP_CENTER) this.dismiss()
-        bubble.arrowDirection = ArrowDirection.TOP_CENTER
+        if (bubble.arrowDirection != placement.arrowDirection) this.dismiss()
+        bubble.arrowDirection = placement.arrowDirection
         bubble.arrowHeight = (anchorView.height / 2).toFloat() - 8
         bubble.arrowWidth = anchorView.width.toFloat() - 10
         bubble.cornersRadius = 20f
     }
     when (context.resources.configuration.orientation) {
-        Configuration.ORIENTATION_PORTRAIT -> {
-            when (anchorView.id) {
-                R.id.key_small_letter,
-                R.id.key_11,
-                R.id.key_12 -> {
-
-                }
-
-                else -> {
-                    showAsDropDown(
-                        anchorView,
-                        -((width - anchorView.width) / 2),
-                        -(anchorView.height / 2) - 8,
-                        Gravity.CENTER
-                    )
-                }
-            }
-        }
-
-        Configuration.ORIENTATION_LANDSCAPE -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -(anchorView.height / 2) - 8,
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_UNDEFINED -> {
-            when (anchorView.id) {
-                R.id.key_small_letter,
-                R.id.key_11,
-                R.id.key_12 -> {
-
-                }
-
-                else -> {
-                    showAsDropDown(
-                        anchorView,
-                        -((width - anchorView.width) / 2),
-                        -(anchorView.height / 2) - 8,
-                        Gravity.CENTER
-                    )
-                }
-            }
-        }
+        Configuration.ORIENTATION_PORTRAIT,
+        Configuration.ORIENTATION_LANDSCAPE,
+        Configuration.ORIENTATION_UNDEFINED -> showAsDropDown(
+            anchorView,
+            placement.xOffset,
+            placement.yOffset,
+            Gravity.CENTER
+        )
 
         else -> {
-
         }
     }
 }
@@ -272,33 +301,19 @@ fun PopupWindow.setPopUpWindowCenter(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when (context.resources.configuration.orientation) {
-        Configuration.ORIENTATION_PORTRAIT -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_LANDSCAPE -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_UNDEFINED -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
+    val orientation = context.resources.configuration.orientation
+    val yOffset = calculateLongPressPopupYOffset(
+        LongPressPopupPosition.CENTER, anchorView.id, orientation, height, anchorView.height
+    )
+    when (orientation) {
+        Configuration.ORIENTATION_PORTRAIT,
+        Configuration.ORIENTATION_LANDSCAPE,
+        Configuration.ORIENTATION_UNDEFINED -> showAsDropDown(
+            anchorView,
+            -((width - anchorView.width) / 2),
+            yOffset,
+            Gravity.CENTER
+        )
 
         else -> {}
     }
@@ -319,33 +334,19 @@ fun PopupWindow.setPopUpWindowRight(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when (context.resources.configuration.orientation) {
-        Configuration.ORIENTATION_PORTRAIT -> {
-            showAsDropDown(
-                anchorView,
-                anchorView.width,
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_LANDSCAPE -> {
-            showAsDropDown(
-                anchorView,
-                anchorView.width,
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_UNDEFINED -> {
-            showAsDropDown(
-                anchorView,
-                anchorView.width,
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
+    val orientation = context.resources.configuration.orientation
+    val yOffset = calculateLongPressPopupYOffset(
+        LongPressPopupPosition.RIGHT, anchorView.id, orientation, height, anchorView.height
+    )
+    when (orientation) {
+        Configuration.ORIENTATION_PORTRAIT,
+        Configuration.ORIENTATION_LANDSCAPE,
+        Configuration.ORIENTATION_UNDEFINED -> showAsDropDown(
+            anchorView,
+            anchorView.width,
+            yOffset,
+            Gravity.CENTER
+        )
 
         else -> {}
     }
@@ -366,37 +367,21 @@ fun PopupWindow.setPopUpWindowLeft(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when (context.resources.configuration.orientation) {
-        Configuration.ORIENTATION_PORTRAIT -> {
-            showAsDropDown(
-                anchorView,
-                -width,
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
+    val orientation = context.resources.configuration.orientation
+    val yOffset = calculateLongPressPopupYOffset(
+        LongPressPopupPosition.LEFT, anchorView.id, orientation, height, anchorView.height
+    )
+    when (orientation) {
+        Configuration.ORIENTATION_PORTRAIT,
+        Configuration.ORIENTATION_LANDSCAPE,
+        Configuration.ORIENTATION_UNDEFINED -> showAsDropDown(
+            anchorView,
+            -width,
+            yOffset,
+            Gravity.CENTER
+        )
 
-        Configuration.ORIENTATION_LANDSCAPE -> {
-            showAsDropDown(
-                anchorView,
-                -width,
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_UNDEFINED -> {
-            showAsDropDown(
-                anchorView,
-                -width,
-                -((height + anchorView.height) / 2),
-                Gravity.CENTER
-            )
-        }
-
-        else -> {
-
-        }
+        else -> {}
     }
 }
 
@@ -416,57 +401,21 @@ fun PopupWindow.setPopUpWindowBottom(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when (context.resources.configuration.orientation) {
-        Configuration.ORIENTATION_PORTRAIT -> {
-            when (anchorView.id) {
-                R.id.key_small_letter,
-                R.id.key_11,
-                R.id.key_12 -> {
+    val orientation = context.resources.configuration.orientation
+    val yOffset = calculateLongPressPopupYOffset(
+        LongPressPopupPosition.BOTTOM, anchorView.id, orientation, height, anchorView.height
+    )
+    when (orientation) {
+        Configuration.ORIENTATION_PORTRAIT,
+        Configuration.ORIENTATION_LANDSCAPE,
+        Configuration.ORIENTATION_UNDEFINED -> showAsDropDown(
+            anchorView,
+            -((width - anchorView.width) / 2),
+            yOffset,
+            Gravity.CENTER
+        )
 
-                }
-
-                else -> {
-                    showAsDropDown(
-                        anchorView,
-                        -((width - anchorView.width) / 2),
-                        0,
-                        Gravity.CENTER
-                    )
-                }
-            }
-        }
-
-        Configuration.ORIENTATION_LANDSCAPE -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                0,
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_UNDEFINED -> {
-            when (anchorView.id) {
-                R.id.key_small_letter,
-                R.id.key_11,
-                R.id.key_12 -> {
-
-                }
-
-                else -> {
-                    showAsDropDown(
-                        anchorView,
-                        -((width - anchorView.width) / 2),
-                        0,
-                        Gravity.CENTER
-                    )
-                }
-            }
-        }
-
-        else -> {
-
-        }
+        else -> {}
     }
 }
 
@@ -485,36 +434,20 @@ fun PopupWindow.setPopUpWindowTop(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when (context.resources.configuration.orientation) {
-        Configuration.ORIENTATION_PORTRAIT -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -height - anchorView.height,
-                Gravity.CENTER
-            )
-        }
+    val orientation = context.resources.configuration.orientation
+    val yOffset = calculateLongPressPopupYOffset(
+        LongPressPopupPosition.TOP, anchorView.id, orientation, height, anchorView.height
+    )
+    when (orientation) {
+        Configuration.ORIENTATION_PORTRAIT,
+        Configuration.ORIENTATION_LANDSCAPE,
+        Configuration.ORIENTATION_UNDEFINED -> showAsDropDown(
+            anchorView,
+            -((width - anchorView.width) / 2),
+            yOffset,
+            Gravity.CENTER
+        )
 
-        Configuration.ORIENTATION_LANDSCAPE -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -height - anchorView.height,
-                Gravity.CENTER
-            )
-        }
-
-        Configuration.ORIENTATION_UNDEFINED -> {
-            showAsDropDown(
-                anchorView,
-                -((width - anchorView.width) / 2),
-                -height - anchorView.height,
-                Gravity.CENTER
-            )
-        }
-
-        else -> {
-
-        }
+        else -> {}
     }
 }
