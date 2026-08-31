@@ -203,6 +203,21 @@
             android:title="@string/user_template_title" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/text_macro_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="text_macro_candidate_preference"
+            android:summaryOff="@string/text_macro_candidate_summary_off"
+            android:summaryOn="@string/text_macro_candidate_summary_on"
+            android:title="@string/text_macro_candidate_title" />
+
+        <Preference
+            android:key="text_macro_manage_preference"
+            android:summary="@string/text_macro_manage_summary"
+            android:title="@string/text_macro_manage"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_zero_query_suggestion_title">
         <SwitchPreferenceCompat
             android:defaultValue="false"

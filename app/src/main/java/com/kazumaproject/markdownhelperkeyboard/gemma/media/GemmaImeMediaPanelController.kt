@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.gemma.media
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -441,6 +442,7 @@ class GemmaImeMediaPanelController(
         }
     }
 
+    @SuppressLint("MissingPermission") // ensureAudioPermissionAndRecord checks RECORD_AUDIO first.
     private fun startRecording() {
         if (recording.getAndSet(true)) return
         val minBuffer = AudioRecord.getMinBufferSize(
