@@ -311,19 +311,19 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
-    fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
+    fun integratedOffSelectionActionsDoNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
             CandidateStripContent.SelectionActions(
-                actions = gemmaActions(),
+                actions = selectionActions(),
                 showShortcutEntry = false
             )
         )
 
         assertEquals(
             listOf(
-                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
-                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.SelectionActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.SelectionActionItem,
             ),
             adapter.buildDisplayItemKindsForTesting()
         )
@@ -331,11 +331,11 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
-    fun integratedOnGemmaActionsShowShortcutEntry() {
+    fun integratedOnSelectionActionsShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
             CandidateStripContent.SelectionActions(
-                actions = gemmaActions(),
+                actions = selectionActions(),
                 showShortcutEntry = true
             )
         )
@@ -343,8 +343,8 @@ class SuggestionAdapterDisplayItemTest {
         assertEquals(
             listOf(
                 SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
-                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
-                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.SelectionActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.SelectionActionItem,
             ),
             adapter.buildDisplayItemKindsForTesting()
         )
@@ -352,7 +352,7 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
-    fun expandedShortcutEntryReplacesGemmaActionsWithShortcutItems() {
+    fun expandedShortcutEntryReplacesSelectionActionsWithShortcutItems() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(CandidateStripContent.ExpandedShortcutEntry(shortcuts()))
 
@@ -367,7 +367,7 @@ class SuggestionAdapterDisplayItemTest {
 
         adapter.submitContent(
             CandidateStripContent.SelectionActions(
-                actions = gemmaActions(),
+                actions = selectionActions(),
                 showShortcutEntry = true
             )
         )
@@ -375,8 +375,8 @@ class SuggestionAdapterDisplayItemTest {
         assertEquals(
             listOf(
                 SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
-                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
-                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.SelectionActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.SelectionActionItem,
             ),
             adapter.buildDisplayItemKindsForTesting()
         )
@@ -534,7 +534,7 @@ class SuggestionAdapterDisplayItemTest {
             showIntegratedShortcuts = false,
         )
 
-    private fun gemmaActions(): List<Candidate> =
+    private fun selectionActions(): List<Candidate> =
         listOf(
             candidate(
                 string = "Translate",

@@ -33,6 +33,10 @@ data class TextMacroImportPlan(
     val overwritten: Int,
 )
 
+class DuplicateTextMacroNameException(
+    val macroName: String,
+) : IllegalArgumentException("A macro with this name already exists")
+
 @Singleton
 class TextMacroRepository @Inject constructor(
     private val dao: TextMacroDao,
@@ -54,8 +58,8 @@ class TextMacroRepository @Inject constructor(
     suspend fun save(macro: TextMacro): Long {
         val normalized = normalizeAndValidate(macro)
         val sameName = dao.getByName(normalized.name)
-        require(sameName == null || sameName.id == normalized.id) {
-            "A macro with this name already exists"
+        if (sameName != null && sameName.id != normalized.id) {
+            throw DuplicateTextMacroNameException(normalized.name)
         }
         return if (normalized.id == 0L) {
             dao.insert(normalized)

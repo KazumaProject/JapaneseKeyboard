@@ -15,6 +15,7 @@ enum class SettingCategory {
     CANDIDATE_CONVERSION,
     CONVERSION_ENGINE,
     DICTIONARY,
+    TEXT_MACRO,
     AI_CONVERSION,
     CLIPBOARD_SHORTCUT,
     OPERATION_FEEDBACK,
@@ -585,6 +586,15 @@ object SettingDestinations {
             iconRes = CoreR.drawable.dictionary_24px,
         ),
         destination(
+            key = "setting_route_text_macro",
+            title = context.getString(R.string.setting_category_text_macro_title),
+            summary = context.getString(R.string.setting_category_text_macro_summary),
+            category = SettingCategory.TEXT_MACRO,
+            keywords = listOf("macro", "dynamic", "template", "snippet", "定型文"),
+            destinationId = R.id.textMacroFragment,
+            iconRes = CoreR.drawable.book_3_24px,
+        ),
+        destination(
             key = "setting_route_ai_conversion",
             title = context.getString(R.string.setting_category_ai_conversion_title),
             summary = context.getString(R.string.setting_category_ai_conversion_summary),
@@ -714,6 +724,7 @@ object SettingDestinations {
             SettingCategory.CANDIDATE_CONVERSION -> context.getString(R.string.setting_category_candidate_conversion_title)
             SettingCategory.CONVERSION_ENGINE -> context.getString(R.string.conversion_engine_category_title)
             SettingCategory.DICTIONARY -> context.getString(R.string.category_dictionary)
+            SettingCategory.TEXT_MACRO -> context.getString(R.string.setting_category_text_macro_title)
             SettingCategory.AI_CONVERSION -> context.getString(R.string.setting_category_ai_conversion_title)
             SettingCategory.CLIPBOARD_SHORTCUT -> context.getString(R.string.setting_category_clipboard_shortcut_title)
             SettingCategory.OPERATION_FEEDBACK -> context.getString(R.string.setting_category_operation_feedback_title)
@@ -732,6 +743,7 @@ object SettingDestinations {
             SettingCategory.CANDIDATE_CONVERSION -> CoreR.drawable.arrows_output_24px
             SettingCategory.CONVERSION_ENGINE -> CoreR.drawable.swap_horiz_24px
             SettingCategory.DICTIONARY -> CoreR.drawable.dictionary_24px
+            SettingCategory.TEXT_MACRO -> CoreR.drawable.book_3_24px
             SettingCategory.AI_CONVERSION -> CoreR.drawable.lightbulb_24dp
             SettingCategory.CLIPBOARD_SHORTCUT -> CoreR.drawable.content_paste_24px
             SettingCategory.OPERATION_FEEDBACK -> CoreR.drawable.baseline_settings_24
@@ -749,6 +761,7 @@ object SettingDestinations {
             "setting_route_candidate_conversion" -> R.id.candidateConversionPreferenceFragment
             "setting_route_conversion_engine" -> R.id.conversionEnginePreferenceFragment
             "setting_route_dictionary" -> R.id.dictionaryPreferenceFragment
+            "setting_route_text_macro" -> R.id.textMacroFragment
             "setting_route_ai_conversion" -> R.id.aiConversionPreferenceFragment
             "setting_route_clipboard_shortcut" -> R.id.clipboardShortcutPreferenceFragment
             "setting_route_operation_feedback" -> R.id.operationFeedbackPreferenceFragment

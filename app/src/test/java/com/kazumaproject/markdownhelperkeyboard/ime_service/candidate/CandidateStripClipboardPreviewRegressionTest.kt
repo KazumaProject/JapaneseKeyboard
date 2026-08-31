@@ -21,13 +21,13 @@ import org.robolectric.annotation.Config
 class CandidateStripClipboardPreviewRegressionTest {
 
     @Test
-    fun selectedTextGemmaActionsWinAndClipboardPreviewReturnsAfterSelectionCleared() {
+    fun selectionActionsWinAndClipboardPreviewReturnsAfterSelectionCleared() {
         val selectedContent = CandidateStripContentResolver.resolve(
             baseState(
                 candidates = listOf(candidate("Translate")),
                 inputStringEmpty = true,
                 tailEmpty = true,
-                selectedTextGemmaActionsShown = true,
+                selectionActionsShown = true,
                 editorTextSelected = true,
                 clipboardPreviewEnabled = true,
                 clipboardText = "copied"
@@ -184,7 +184,7 @@ class CandidateStripClipboardPreviewRegressionTest {
         symbolKeyboardShown: Boolean = false,
         customLayoutPickerShown: Boolean = false,
         customLayouts: List<CustomKeyboardLayout> = emptyList(),
-        selectedTextGemmaActionsShown: Boolean = false,
+        selectionActionsShown: Boolean = false,
         editorTextSelected: Boolean = false,
         clipboardPreviewEnabled: Boolean = false,
         clipboardPreviewDescriptionShown: Boolean = true,
@@ -211,7 +211,7 @@ class CandidateStripClipboardPreviewRegressionTest {
             symbolKeyboardShown = symbolKeyboardShown,
             customLayoutPickerShown = customLayoutPickerShown,
             customLayouts = customLayouts,
-            selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+            selectionActionsShown = selectionActionsShown,
             editorTextSelected = editorTextSelected,
             clipboardPreviewEnabled = clipboardPreviewEnabled,
             clipboardPreviewDescriptionShown = clipboardPreviewDescriptionShown,
