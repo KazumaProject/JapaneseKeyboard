@@ -90,7 +90,7 @@ class TenKeyInputModeChangedListenerTest {
             CoreR.drawable.input_mode_japanese_select_custom,
             resolveInputModeSwitchIconResId(
                 inputMode = InputMode.ModeNumber,
-                isTablet = false,
+                isGojuon = false,
                 useThreeStateKeyboard = false,
                 twoStateNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
             )
@@ -99,7 +99,7 @@ class TenKeyInputModeChangedListenerTest {
             CoreR.drawable.input_mode_english_custom,
             resolveInputModeSwitchIconResId(
                 inputMode = InputMode.ModeNumber,
-                isTablet = false,
+                isGojuon = false,
                 useThreeStateKeyboard = false,
                 twoStateNumberReturnTarget = TwoStateNumberReturnTarget.English
             )

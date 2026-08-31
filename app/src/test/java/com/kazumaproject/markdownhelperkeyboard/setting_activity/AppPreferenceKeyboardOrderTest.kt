@@ -35,12 +35,31 @@ class AppPreferenceKeyboardOrderTest {
     }
 
     @Test
+    @Config(qualifiers = "sw600dp")
+    fun freshTabletInstallDefaultsToGojuonAndQwertyOnly() {
+        assertEquals(
+            listOf(KeyboardType.GOJUON, KeyboardType.QWERTY),
+            AppPreference.keyboard_order,
+        )
+    }
+
+    @Test
     fun savedKeyboardOrderIsPreserved() {
         AppPreference.keyboard_order = listOf(KeyboardType.SUMIRE, KeyboardType.ROMAJI)
 
         assertEquals(
             listOf(KeyboardType.SUMIRE, KeyboardType.ROMAJI),
             AppPreference.keyboard_order
+        )
+    }
+
+    @Test
+    fun savedGojuonOrderIsParsedWithoutFallingBackToTenkey() {
+        AppPreference.keyboard_order = listOf(KeyboardType.GOJUON, KeyboardType.CUSTOM)
+
+        assertEquals(
+            listOf(KeyboardType.GOJUON, KeyboardType.CUSTOM),
+            AppPreference.keyboard_order,
         )
     }
 }

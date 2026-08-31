@@ -87,6 +87,21 @@ class KeyboardDisplayResolverTest {
     }
 
     @Test
+    fun requestedGojuonStaysGojuonAndKeepsItsIndex() {
+        val resolution = resolveKeyboardDisplay(
+            requested = KeyboardType.GOJUON,
+            keyboardOrder = listOf(
+                KeyboardType.QWERTY,
+                KeyboardType.GOJUON,
+                KeyboardType.TENKEY,
+            ),
+        )
+
+        assertEquals(KeyboardType.GOJUON, resolution.resolvedKeyboard)
+        assertEquals(1, resolution.resolvedIndex)
+    }
+
+    @Test
     fun customOnlyOrderInvalidRestoredKeyboardNormalizesToCustomIndex() {
         val resolution = resolveKeyboardDisplay(
             requested = KeyboardType.TENKEY,
