@@ -660,7 +660,7 @@
     <string name="keyboard_size_direct_input_orientation_portrait">Portrait</string>
     <string name="keyboard_size_direct_input_orientation_landscape">Landscape</string>
     <string name="keyboard_size_direct_input_keyboard_type_title">Keyboard Type</string>
-    <string name="keyboard_size_direct_input_keyboard_type_ten_key">TenKey</string>
+    <string name="keyboard_size_direct_input_keyboard_type_ten_key">TenKey family (TenKey, Gojūon, Sumire, Custom)</string>
     <string name="keyboard_size_direct_input_keyboard_type_qwerty">QWERTY</string>
     <string name="keyboard_size_direct_input_height_dp">Height dp</string>
     <string name="keyboard_size_direct_input_width_percent">Width %</string>
@@ -926,8 +926,6 @@
     <string name="pref_romaji_shift_title">Capitalize only the first character after Shift</string>
     <string name="pref_romaji_shift_summary">In romaji input, only the first character after pressing the Shift key becomes uppercase.</string>
     <string name="tablet_preference_category_title">Tablet</string>
-    <string name="pref_tablet_layout_title">Tablet layout</string>
-    <string name="pref_tablet_layout_summary">Use the kana (Gojūon) layout on tablets.</string>
     <string name="pref_tablet_tenkey_kana_english_qwerty_title">Use QWERTY for tablet alphabet input</string>
     <string name="pref_tablet_tenkey_kana_english_qwerty_summary">Use the QWERTY layout for alphabet input on tablets, including both Gojuon and TenKey layouts.</string>
     <string name="welcome_title">Welcome!</string>
@@ -1765,4 +1763,10 @@
     <string name="text_macro_variable_newline_description">Inserts one newline character (\n).</string>
     <string name="text_macro_variable_newline_example">Example: First line{newline}Second line</string>
     <string name="text_macro_variable_newline_restriction">Requires no selection or clipboard context and is available in protected input.</string>
+    <string name="keyboard_type_tenkey">Japanese – TenKey</string>
+    <string name="keyboard_type_gojuon">Japanese – Gojūon</string>
+    <string name="keyboard_type_sumire">Japanese – Sumire input β</string>
+    <string name="keyboard_type_qwerty">English (QWERTY)</string>
+    <string name="keyboard_type_romaji">Japanese – Romaji</string>
+    <string name="keyboard_type_custom">Custom – User defined</string>
 </resources>

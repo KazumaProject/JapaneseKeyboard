@@ -29,6 +29,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.resolveInitialCustomKeyboardSelection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -129,6 +130,7 @@ internal class CandidateHeightPreviewGridSpacingDecoration(
 internal data class CandidateKeyboardPreviewViews(
     val container: FrameLayout,
     val tenKey: TenKey,
+    val gojuon: GojuonKeyboardView,
     val qwerty: QWERTYKeyboardView,
     val flick: FlickKeyboardView
 )
@@ -153,6 +155,7 @@ internal fun renderCandidateKeyboardPreview(
     onPreviewLayoutChanged()
 
     views.tenKey.isVisible = false
+    views.gojuon.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
@@ -234,6 +237,7 @@ private fun renderNonCustomKeyboardPreviewType(
     onPreviewLayoutChanged()
 
     views.tenKey.isVisible = false
+    views.gojuon.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
@@ -241,6 +245,11 @@ private fun renderNonCustomKeyboardPreviewType(
         KeyboardType.TENKEY -> {
             views.tenKey.isVisible = true
             configureTenKeyPreview(fragment.requireContext(), appPreference, views.tenKey)
+        }
+
+        KeyboardType.GOJUON -> {
+            views.gojuon.isVisible = true
+            configureGojuonPreview(fragment.requireContext(), appPreference, views.gojuon)
         }
 
         KeyboardType.QWERTY,
@@ -507,6 +516,43 @@ private fun configureTenKeyPreview(
     tenKey.isClickable = false
     tenKey.isFocusable = false
     tenKey.setOnTouchListener { _, _ -> true }
+}
+
+private fun configureGojuonPreview(
+    context: Context,
+    appPreference: AppPreference,
+    gojuon: GojuonKeyboardView,
+) {
+    gojuon.applyKeyboardTheme(
+        themeMode = appPreference.theme_mode,
+        currentNightMode = currentNightMode(context),
+        isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+        customBgColor = appPreference.custom_theme_bg_color,
+        customKeyColor = appPreference.custom_theme_key_color,
+        customSpecialKeyColor = appPreference.custom_theme_special_key_color,
+        customKeyTextColor = appPreference.custom_theme_key_text_color,
+        customSpecialKeyTextColor = appPreference.custom_theme_special_key_text_color,
+        liquidGlassEnable = appPreference.liquid_glass_preference,
+        customBorderEnable = appPreference.custom_theme_border_enable,
+        customBorderColor = appPreference.custom_theme_border_color,
+        liquidGlassKeyAlphaEnable = appPreference.liquid_glass_key_alpha,
+        borderWidth = appPreference.custom_theme_border_width,
+    )
+    gojuon.setFlickSensitivityValue(appPreference.flick_sensitivity_preference ?: 100)
+    gojuon.setFlickThresholdShape(
+        FlickThresholdShape.fromPreferenceValue(appPreference.flick_threshold_shape_preference)
+    )
+    gojuon.setLongPressTimeout((appPreference.long_press_timeout_preference ?: 300).toLong())
+    gojuon.setOnFlickListener(object : FlickListener {
+        override fun onFlick(gestureType: GestureType, key: Key, char: Char?) = Unit
+    })
+    gojuon.setOnLongPressListener(object : LongPressListener {
+        override fun onLongPress(key: Key) = Unit
+    })
+    gojuon.isClickable = false
+    gojuon.isFocusable = false
+    gojuon.setOnTouchListener { _, _ -> true }
+    gojuon.resetLayout()
 }
 
 private fun configureQwertyPreview(

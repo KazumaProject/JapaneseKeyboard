@@ -25,7 +25,7 @@ sealed class Key {
     data object SideKeyCursorLeft : Key()
     data object SideKeyCursorRight : Key()
 
-    // Additional keys from TabletKey (not duplicated)
+    // Additional keys from GojuonKey (not duplicated)
     data object KeyI : Key()
     data object KeyU : Key()
     data object KeyE : Key()

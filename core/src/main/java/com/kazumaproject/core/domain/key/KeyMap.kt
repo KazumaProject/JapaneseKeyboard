@@ -4,9 +4,9 @@ interface KeyMapHolder {
     val keysJapanese: Set<Key>
     val keysEnglish: Set<Key>
     val keysNumber: Set<Key>
-    fun getKeyInfoJapanese(key: Key, isTablet: Boolean): KeyInfo
-    fun getKeyInfoEnglish(key: Key, isTablet: Boolean): KeyInfo
-    fun getKeyInfoNumber(key: Key, isTablet: Boolean): KeyInfo
+    fun getKeyInfoJapanese(key: Key, isGojuon: Boolean): KeyInfo
+    fun getKeyInfoEnglish(key: Key, isGojuon: Boolean): KeyInfo
+    fun getKeyInfoNumber(key: Key, isGojuon: Boolean): KeyInfo
 }
 
 
@@ -25,70 +25,70 @@ class KeyMap : KeyMapHolder {
         Key.KeyKutouten to KeyInfo.KeyKigouJapanese,
     )
 
-    private val listJapaneseTablet: Map<Key, KeyInfo> = mapOf(
+    private val listJapaneseGojuon: Map<Key, KeyInfo> = mapOf(
         // あ row
-        Key.KeyA to KeyInfo.TabletKeyAJapanese,
+        Key.KeyA to KeyInfo.GojuonKeyAJapanese,
         Key.KeyI to KeyInfo.KeyIJapanese,
         Key.KeyU to KeyInfo.KeyUJapanese,
         Key.KeyE to KeyInfo.KeyEJapanese,
         Key.KeyO to KeyInfo.KeyOJapanese,
 
         // か row
-        Key.KeyKA to KeyInfo.TabletKeyKAJapanese,
+        Key.KeyKA to KeyInfo.GojuonKeyKAJapanese,
         Key.KeyKI to KeyInfo.KeyKIJapanese,
         Key.KeyKU to KeyInfo.KeyKUJapanese,
         Key.KeyKE to KeyInfo.KeyKEJapanese,
         Key.KeyKO to KeyInfo.KeyKOJapanese,
 
         // さ row
-        Key.KeySA to KeyInfo.TabletKeySAJapanese,
+        Key.KeySA to KeyInfo.GojuonKeySAJapanese,
         Key.KeySHI to KeyInfo.KeySHIJapanese,
         Key.KeySU to KeyInfo.KeySUJapanese,
         Key.KeySE to KeyInfo.KeySEJapanese,
         Key.KeySO to KeyInfo.KeySOJapanese,
 
         // た row
-        Key.KeyTA to KeyInfo.TabletKeyTAJapanese,
+        Key.KeyTA to KeyInfo.GojuonKeyTAJapanese,
         Key.KeyCHI to KeyInfo.KeyCHIJapanese,
         Key.KeyTSU to KeyInfo.KeyTSUJapanese,
         Key.KeyTE to KeyInfo.KeyTEJapanese,
         Key.KeyTO to KeyInfo.KeyTOJapanese,
 
         // な row
-        Key.KeyNA to KeyInfo.TabletKeyNAJapanese,
+        Key.KeyNA to KeyInfo.GojuonKeyNAJapanese,
         Key.KeyNI to KeyInfo.KeyNIJapanese,
         Key.KeyNU to KeyInfo.KeyNUJapanese,
         Key.KeyNE to KeyInfo.KeyNEJapanese,
         Key.KeyNO to KeyInfo.KeyNOJapanese,
 
         // は row
-        Key.KeyHA to KeyInfo.TabletKeyHAJapanese,
+        Key.KeyHA to KeyInfo.GojuonKeyHAJapanese,
         Key.KeyHI to KeyInfo.KeyHIJapanese,
         Key.KeyFU to KeyInfo.KeyFUJapanese,
         Key.KeyHE to KeyInfo.KeyHEJapanese,
         Key.KeyHO to KeyInfo.KeyHOJapanese,
 
         // ま row
-        Key.KeyMA to KeyInfo.TabletKeyMAJapanese,
+        Key.KeyMA to KeyInfo.GojuonKeyMAJapanese,
         Key.KeyMI to KeyInfo.KeyMIJapanese,
         Key.KeyMU to KeyInfo.KeyMUJapanese,
         Key.KeyME to KeyInfo.KeyMEJapanese,
         Key.KeyMO to KeyInfo.KeyMOJapanese,
 
         // や row
-        Key.KeyYA to KeyInfo.TabletKeyYAJapanese,
+        Key.KeyYA to KeyInfo.GojuonKeyYAJapanese,
         Key.KeyYU to KeyInfo.KeyYUJapanese,
         Key.KeyYO to KeyInfo.KeyYOJapanese,
 
         // ら row
-        Key.KeyRA to KeyInfo.TabletKeyRAJapanese,
+        Key.KeyRA to KeyInfo.GojuonKeyRAJapanese,
         Key.KeyRI to KeyInfo.KeyRIJapanese,
         Key.KeyRU to KeyInfo.KeyRUJapanese,
         Key.KeyRE to KeyInfo.KeyREJapanese,
         Key.KeyRO to KeyInfo.KeyROJapanese,
 
         // わ row
-        Key.KeyWA to KeyInfo.TabletKeyWAJapanese,
+        Key.KeyWA to KeyInfo.GojuonKeyWAJapanese,
         Key.KeyWO to KeyInfo.KeyWOJapanese,
         Key.KeyN to KeyInfo.KeyNNJapanese,
 
@@ -116,7 +116,7 @@ class KeyMap : KeyMapHolder {
         Key.KeyKutouten to KeyInfo.KeyKigouEnglish,
     )
 
-    private val listEnglishTablet: Map<Key, KeyInfo> = mapOf(
+    private val listEnglishGojuon: Map<Key, KeyInfo> = mapOf(
         Key.KeyKagikakko to KeyInfo.KeyAEnglish,
         Key.KeyQuestion to KeyInfo.KeyKEnglish,
         Key.KeyCaution to KeyInfo.KeyUEnglish,
@@ -189,7 +189,7 @@ class KeyMap : KeyMapHolder {
         Key.KeyDakutenSmall to KeyInfo.KeyDakutenSmallNumber
     )
 
-    private val listNumberTablet: Map<Key, KeyInfo> = mapOf(
+    private val listNumberGojuon: Map<Key, KeyInfo> = mapOf(
         Key.KeyKagikakko to KeyInfo.KeyYearNumber,
         Key.KeyQuestion to KeyInfo.KeyMultipleNumber,
         Key.KeyCaution to KeyInfo.KeyMusicNoteNumber,
@@ -220,21 +220,21 @@ class KeyMap : KeyMapHolder {
         Key.KeyTE to KeyInfo.KeyCircleNumber,
         Key.KeyTO to KeyInfo.KeyRightParenNumber,
 
-        Key.KeySA to KeyInfo.Key1NumberTablet,
-        Key.KeySHI to KeyInfo.Key4NumberTablet,
-        Key.KeySU to KeyInfo.Key7NumberTablet,
+        Key.KeySA to KeyInfo.Key1NumberGojuon,
+        Key.KeySHI to KeyInfo.Key4NumberGojuon,
+        Key.KeySU to KeyInfo.Key7NumberGojuon,
         Key.KeySE to KeyInfo.KeyCommaNumber,
         Key.KeySO to KeyInfo.KeyColonNumber,
 
-        Key.KeyKA to KeyInfo.Key2NumberTablet,
-        Key.KeyKI to KeyInfo.Key5NumberTablet,
-        Key.KeyKU to KeyInfo.Key8NumberTablet,
-        Key.KeyKE to KeyInfo.Key0NumberTablet,
+        Key.KeyKA to KeyInfo.Key2NumberGojuon,
+        Key.KeyKI to KeyInfo.Key5NumberGojuon,
+        Key.KeyKU to KeyInfo.Key8NumberGojuon,
+        Key.KeyKE to KeyInfo.Key0NumberGojuon,
         Key.KeyKO to KeyInfo.KeyZenkakuNumber,
 
-        Key.KeyA to KeyInfo.Key3NumberTablet,
-        Key.KeyI to KeyInfo.Key6NumberTablet,
-        Key.KeyU to KeyInfo.Key9NumberTablet,
+        Key.KeyA to KeyInfo.Key3NumberGojuon,
+        Key.KeyI to KeyInfo.Key6NumberGojuon,
+        Key.KeyU to KeyInfo.Key9NumberGojuon,
         Key.KeyE to KeyInfo.KeyPeriodNumber,
         Key.KeyO to KeyInfo.KeyZenkakuNumber,
     )
@@ -248,25 +248,25 @@ class KeyMap : KeyMapHolder {
     override val keysNumber: Set<Key>
         get() = listNumber.keys
 
-    override fun getKeyInfoJapanese(key: Key, isTablet: Boolean): KeyInfo {
-        return if (isTablet) {
-            listJapaneseTablet.getOrDefault(key, KeyInfo.Null)
+    override fun getKeyInfoJapanese(key: Key, isGojuon: Boolean): KeyInfo {
+        return if (isGojuon) {
+            listJapaneseGojuon.getOrDefault(key, KeyInfo.Null)
         } else {
             listJapanese.getOrDefault(key, KeyInfo.Null)
         }
     }
 
-    override fun getKeyInfoEnglish(key: Key, isTablet: Boolean): KeyInfo {
-        return if (isTablet) {
-            listEnglishTablet.getOrDefault(key, KeyInfo.Null)
+    override fun getKeyInfoEnglish(key: Key, isGojuon: Boolean): KeyInfo {
+        return if (isGojuon) {
+            listEnglishGojuon.getOrDefault(key, KeyInfo.Null)
         } else {
             listEnglish.getOrDefault(key, KeyInfo.Null)
         }
     }
 
-    override fun getKeyInfoNumber(key: Key, isTablet: Boolean): KeyInfo {
-        return if (isTablet) {
-            listNumberTablet.getOrDefault(key, KeyInfo.Null)
+    override fun getKeyInfoNumber(key: Key, isGojuon: Boolean): KeyInfo {
+        return if (isGojuon) {
+            listNumberGojuon.getOrDefault(key, KeyInfo.Null)
         } else {
             listNumber.getOrDefault(key, KeyInfo.Null)
         }

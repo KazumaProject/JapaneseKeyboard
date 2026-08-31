@@ -375,7 +375,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 handleCurrentInputModeSwitch(inputMode)
                 binding.keySwitchKeyMode.setInputMode(
                     inputMode = inputMode,
-                    isTablet = false,
+                    isGojuon = false,
                     useThreeStateKeyboard = useThreeStateKeyboard,
                     twoStateNumberReturnTarget = twoStateNumberReturnTarget
                 )
@@ -1359,7 +1359,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
         binding.keySwitchKeyMode.setInputMode(
             inputMode = currentInputMode.value,
-            isTablet = false,
+            isGojuon = false,
             useThreeStateKeyboard = enabled,
             twoStateNumberReturnTarget = twoStateNumberReturnTarget
         )
@@ -2078,7 +2078,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val keyInfo = currentInputMode.value.next(
             keyMap = keyMap,
             key = key,
-            isTablet = false
+            isGojuon = false
         )
         return resolveTextSelection(keyInfo, gestureType)
     }
@@ -2108,7 +2108,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val keyInfo = currentInputMode.value.next(
             keyMap = keyMap,
             key = key,
-            isTablet = false
+            isGojuon = false
         )
         val selection = resolveTextSelection(keyInfo, gestureType)
         flickTextPreviewEmitter.commit(selection) {
