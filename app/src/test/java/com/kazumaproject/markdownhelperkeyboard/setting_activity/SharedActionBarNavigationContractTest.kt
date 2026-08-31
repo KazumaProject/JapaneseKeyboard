@@ -25,17 +25,57 @@ class SharedActionBarNavigationContractTest {
     }
 
     @Test
-    fun mainActivityOwnsSharedActionBarVisibilityForCustomToolbarDestinations() {
+    fun mainActivityOwnsSharedActionBarVisibilityForEveryHiddenHeaderDestination() {
         val source = mainFile("MainActivity.kt").readText()
 
         assertTrue(source.contains("private val destinationsWithOwnToolbar = setOf("))
         assertTrue(source.contains("R.id.candidateViewHeightSettingFragment"))
         assertTrue(source.contains("R.id.candidateHeightLandscapeSettingFragment"))
         assertTrue(source.contains("R.id.shortcutToolbarSizeSettingFragment"))
+        assertTrue(source.contains("private val destinationsWithoutSharedActionBar"))
+        assertTrue(source.contains("destinationsWithOwnToolbar + R.id.enableKeyboardFragment"))
         assertTrue(source.contains("updateSharedActionBarVisibility(destination.id)"))
-        assertTrue(source.contains("destinationId in destinationsWithOwnToolbar"))
+        assertTrue(source.contains("destinationId in destinationsWithoutSharedActionBar"))
         assertTrue(source.contains("supportActionBar?.hide()"))
         assertTrue(source.contains("supportActionBar?.show()"))
+    }
+
+    @Test
+    fun fragmentsNeverClearTheSharedActionBarTitleAfterNavigation() {
+        val sourceRoot = projectFile("app/src/main/java", "src/main/java")
+        val blankSharedTitleAssignments = listOf(
+            Regex("""supportActionBar\?\.title\s*=\s*(?:""|null)"""),
+            Regex("""requireActivity\(\)\.title\s*=\s*(?:""|null)"""),
+            Regex(
+                """supportActionBar\?\.apply\s*\{[\s\S]{0,300}?title\s*=\s*(?:""|null)""",
+            ),
+        )
+        val offenders = sourceRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { file ->
+                val source = file.readText()
+                blankSharedTitleAssignments.any { it.containsMatchIn(source) }
+            }
+            .map { it.relativeTo(sourceRoot).invariantSeparatorsPath }
+            .toList()
+
+        assertTrue(
+            "Fragments must leave destination titles to NavigationUI: $offenders",
+            offenders.isEmpty(),
+        )
+    }
+
+    @Test
+    fun sharedNavigationDestinationsNeverDeclareAnEmptyLabel() {
+        val navigation = projectFile(
+            "app/src/main/res/navigation/mobile_navigation.xml",
+            "src/main/res/navigation/mobile_navigation.xml",
+        ).readText()
+
+        assertFalse(
+            "Shared ActionBar destinations need a non-empty NavigationUI title",
+            navigation.contains("android:label=\"\""),
+        )
     }
 
     @Test
@@ -57,11 +97,13 @@ class SharedActionBarNavigationContractTest {
 
     private fun mainFile(relativePath: String): File {
         val sourcePath = "java/com/kazumaproject/markdownhelperkeyboard/setting_activity/$relativePath"
-        val candidates = listOf(
-            File("app/src/main/$sourcePath"),
-            File("src/main/$sourcePath"),
-        )
-        return candidates.firstOrNull(File::exists)
-            ?: error("Unable to locate $sourcePath")
+        return projectFile("app/src/main/$sourcePath", "src/main/$sourcePath")
+    }
+
+    private fun projectFile(vararg candidates: String): File {
+        return candidates.asSequence()
+            .map(::File)
+            .firstOrNull(File::exists)
+            ?: error("Unable to locate any of ${candidates.toList()}")
     }
 }

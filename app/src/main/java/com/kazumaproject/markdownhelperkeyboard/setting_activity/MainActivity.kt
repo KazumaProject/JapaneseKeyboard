@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
         R.id.candidateHeightLandscapeSettingFragment,
         R.id.shortcutToolbarSizeSettingFragment,
     )
+    private val destinationsWithoutSharedActionBar =
+        destinationsWithOwnToolbar + R.id.enableKeyboardFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,7 +105,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSharedActionBarVisibility(destinationId: Int) {
-        if (destinationId in destinationsWithOwnToolbar) {
+        if (destinationId in destinationsWithoutSharedActionBar) {
             supportActionBar?.hide()
         } else {
             supportActionBar?.show()

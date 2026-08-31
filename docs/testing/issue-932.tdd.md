@@ -74,7 +74,19 @@ toggled the shared ActionBar. All six tests passed after leaving the up indicato
 to NavigationUI and centralizing custom-toolbar visibility by destination in
 `MainActivity`.
 
-The complete Lite Standard unit suite executed 1,371 tests: 1,365 passed, 4 were
+Blank-title follow-up RED command:
+
+```text
+.\gradlew.bat :app:testLiteStandardDebugUnitTest --tests "com.kazumaproject.markdownhelperkeyboard.setting_activity.SharedActionBarNavigationContractTest"
+```
+
+Result: three of five tests failed. The audit found four fragments assigning an
+empty title, one navigation destination declaring an empty label, and the
+welcome screen changing shared-header state outside `MainActivity`. All five
+tests passed after removing fragment-level blank-title writes, assigning
+NavigationUI labels, and treating the welcome screen as a headerless destination.
+
+The complete Lite Standard unit suite executed 1,373 tests: 1,367 passed, 4 were
 skipped, and 2 unrelated existing SQLite migration tests failed with
 `SQLiteCantOpenDatabaseException`:
 
@@ -107,8 +119,10 @@ Build and lint commands both passed:
 | 13 | Leaving key editing cannot clear the parent editor's ActionBar | `CustomKeyboardEditorActionBarLifecycleContractTest.keyEditorDoesNotClearDestinationActionBarWhenItsViewIsDestroyed` | Lifecycle contract | PASS |
 | 14 | Resuming the custom-keyboard list restores its title and header actions without overriding NavigationUI's up indicator | `CustomKeyboardEditorActionBarLifecycleContractTest.keyboardListRestoresItsHeaderWheneverItResumes` | Lifecycle contract | PASS |
 | 15 | Keyboard-size screens cannot overwrite the destination up indicator during teardown | `SharedActionBarNavigationContractTest.fragmentTeardownDoesNotOverrideTheDestinationUpIndicator` | Lifecycle contract | PASS |
-| 16 | `MainActivity` owns shared ActionBar visibility for every custom-toolbar destination | `SharedActionBarNavigationContractTest.mainActivityOwnsSharedActionBarVisibilityForCustomToolbarDestinations` | Navigation contract | PASS |
+| 16 | `MainActivity` owns shared ActionBar visibility for every custom-toolbar or headerless destination | `SharedActionBarNavigationContractTest.mainActivityOwnsSharedActionBarVisibilityForEveryHiddenHeaderDestination` | Navigation contract | PASS |
 | 17 | Custom-toolbar fragments cannot toggle the shared ActionBar from their own lifecycle callbacks | `SharedActionBarNavigationContractTest.customToolbarFragmentsDoNotToggleTheSharedActionBar` | Lifecycle contract | PASS |
+| 18 | No Kotlin fragment can clear a NavigationUI title with an empty or null assignment | `SharedActionBarNavigationContractTest.fragmentsNeverClearTheSharedActionBarTitleAfterNavigation` | Source audit | PASS |
+| 19 | Every shared navigation destination declares a non-empty label | `SharedActionBarNavigationContractTest.sharedNavigationDestinationsNeverDeclareAnEmptyLabel` | Navigation resource audit | PASS |
 
 ## Coverage and known gaps
 

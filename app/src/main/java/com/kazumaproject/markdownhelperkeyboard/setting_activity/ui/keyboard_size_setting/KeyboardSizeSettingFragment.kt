@@ -70,11 +70,6 @@ class KeyboardSettingFragment : Fragment() {
         updateControlsVisibility()
     }
 
-    override fun onResume() {
-        super.onResume()
-        (requireActivity() as AppCompatActivity).supportActionBar?.title = ""
-    }
-
     private fun setupViewPager() {
         val adapter = KeyboardViewPagerAdapter()
         binding.keyboardViewPager.adapter = adapter
