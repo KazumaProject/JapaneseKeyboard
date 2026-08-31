@@ -668,6 +668,11 @@
     <string name="editor_confirm_placement">確定</string>
     <string name="editor_cancel_placement">キャンセル</string>
     <string name="editor_delete_selected_item">選択を削除</string>
+    <string name="editor_add_key_to_empty_slot">空き位置にキーを追加</string>
+    <string name="editor_unsaved_changes_title">未保存の変更を破棄しますか？</string>
+    <string name="editor_unsaved_changes_message">キーボードの変更はまだ保存されていません。</string>
+    <string name="editor_discard_changes">破棄</string>
+    <string name="editor_continue_editing">編集を続ける</string>
     <string name="editor_nudge_left">左へ</string>
     <string name="editor_nudge_right">右へ</string>
     <string name="editor_nudge_up">上へ</string>

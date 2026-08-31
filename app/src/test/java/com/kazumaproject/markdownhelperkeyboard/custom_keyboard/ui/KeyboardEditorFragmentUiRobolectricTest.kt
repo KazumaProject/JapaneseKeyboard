@@ -2,14 +2,17 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
+import android.view.View
 import androidx.core.view.isVisible
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.deletedKeySlot
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import org.junit.Assert.assertEquals
@@ -18,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -90,6 +94,46 @@ class KeyboardEditorFragmentUiRobolectricTest {
         assertEquals(spacer.id, spacerState.selectedItemId)
         assertTrue(spacerState.hasDeletableSelection())
         assertTrue(binding.buttonDeleteSelectedItem.isEnabled)
+    }
+
+    @Test
+    fun editorLayout_hasNoUndoDeleteControlThatCanShiftButtons() {
+        val binding = inflateBinding()
+
+        val undoControlId = binding.root.resources.getIdentifier(
+            "button_undo_delete",
+            "id",
+            binding.root.context.packageName
+        )
+        assertEquals(0, undoControlId)
+    }
+
+    @Test
+    fun deletedKeySlotUi_showsAddButtonAtEmptyPosition() {
+        val binding = inflateBinding()
+        val listener = mock(EditableFlickKeyboardView.OnKeyEditListener::class.java)
+        binding.flickKeyboardView.setOnKeyEditListener(listener)
+        val slot = deletedKeySlot("slot", GridPlacement(0, 0, 2, 2))
+        val layout = KeyboardDefaultLayouts.createNumberTemplateLayout().copy(
+            keys = emptyList(),
+            items = listOf(slot),
+            columnCount = 1,
+            rowCount = 1,
+            columnUnitCount = 2,
+            rowUnitCount = 2
+        )
+        assertFalse(layout.usesFlexiblePlacement())
+
+        binding.flickKeyboardView.setKeyboard(layout)
+
+        val addButton = binding.flickKeyboardView.findViewWithTag<View>("deleted-key-slot:${slot.id}")
+        assertEquals(View.VISIBLE, addButton.visibility)
+        assertEquals(
+            binding.root.context.getString(R.string.editor_add_key_to_empty_slot),
+            addButton.contentDescription
+        )
+        assertTrue(addButton.performClick())
+        verify(listener).onDeletedKeySlotSelected(slot.id)
     }
 
     private fun inflateBinding(): FragmentKeyboardEditorBinding {

@@ -710,6 +710,11 @@
     <string name="editor_confirm_placement">Confirm</string>
     <string name="editor_cancel_placement">Cancel</string>
     <string name="editor_delete_selected_item">Delete selected</string>
+    <string name="editor_add_key_to_empty_slot">Add key to empty slot</string>
+    <string name="editor_unsaved_changes_title">Discard unsaved changes?</string>
+    <string name="editor_unsaved_changes_message">Your keyboard changes have not been saved.</string>
+    <string name="editor_discard_changes">Discard</string>
+    <string name="editor_continue_editing">Continue editing</string>
     <string name="editor_nudge_left">Left</string>
     <string name="editor_nudge_right">Right</string>
     <string name="editor_nudge_up">Up</string>

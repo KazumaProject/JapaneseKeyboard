@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
@@ -53,6 +54,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardEditorBinding.bind(view)
         setupToolbarAndMenu()
+        setupBackNavigation()
         viewModel.start(args.layoutId)
         setupUIListeners()
         observeViewModel()
@@ -72,8 +74,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
-                        findNavController().popBackStack()
-                        viewModel.onCancelEditing()
+                        requestExitEditor()
                         true
                     }
 
@@ -86,6 +87,35 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
                 }
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
+    private fun setupBackNavigation() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    requestExitEditor()
+                }
+            }
+        )
+    }
+
+    private fun requestExitEditor() {
+        if (!viewModel.hasUnsavedChanges()) {
+            exitEditor()
+            return
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.editor_unsaved_changes_title)
+            .setMessage(R.string.editor_unsaved_changes_message)
+            .setPositiveButton(R.string.editor_discard_changes) { _, _ -> exitEditor() }
+            .setNegativeButton(R.string.editor_continue_editing, null)
+            .show()
+    }
+
+    private fun exitEditor() {
+        findNavController().popBackStack()
+        viewModel.onCancelEditing()
     }
 
     private fun setupUIListeners() {
@@ -340,6 +370,11 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     override fun onSpacerSelected(spacerId: String) {
         Timber.d("onSpacerSelected: spacerId = $spacerId")
         viewModel.onSpacerTapped(spacerId)
+    }
+
+    override fun onDeletedKeySlotSelected(slotId: String) {
+        Timber.d("onDeletedKeySlotSelected: slotId = $slotId")
+        viewModel.restoreDeletedKeySlot(slotId)
     }
 
     override fun onKeysSwapped(draggedKeyId: String, targetKeyId: String) {

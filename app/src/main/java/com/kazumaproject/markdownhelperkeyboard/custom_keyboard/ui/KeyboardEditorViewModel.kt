@@ -16,7 +16,9 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
+import com.kazumaproject.custom_keyboard.data.deletedKeySlot
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
+import com.kazumaproject.custom_keyboard.data.isDeletedKeySlot
 import com.kazumaproject.custom_keyboard.data.isPlacementOverlapping
 import com.kazumaproject.custom_keyboard.data.swapGridKeyPlacementsKeepingKeyDataInSync
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
@@ -79,8 +81,23 @@ data class EditorUiState(
 
 data class LayoutTemplate(val nameResId: Int, val layout: KeyboardLayout)
 
+private data class EditorContentSnapshot(
+    val name: String,
+    val layout: KeyboardLayout,
+    val isRomaji: Boolean,
+    val isDirectMode: Boolean
+)
+
 fun shouldShowKeyboardEditorStructuralControls(layout: KeyboardLayout): Boolean =
     keyboardEditorCapabilities(layout).showGridStructuralControls
+
+private fun EditorUiState.contentSnapshot(): EditorContentSnapshot =
+    EditorContentSnapshot(
+        name = name,
+        layout = layout,
+        isRomaji = isRomaji,
+        isDirectMode = isDirectMode
+    )
 
 @HiltViewModel
 class KeyboardEditorViewModel @Inject constructor(
@@ -91,6 +108,7 @@ class KeyboardEditorViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var currentEditingId: Long? = null
+    private var initialContent: EditorContentSnapshot? = null
     private val placementSolver = FlexiblePlacementSolver()
     private val placementNavigator = InsertionTargetNavigator()
 
@@ -137,37 +155,37 @@ class KeyboardEditorViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val layoutName = repository.getLayoutName(id) ?: "名称未設定"
             val loadedLayout = repository.getFullLayout(id).first()
-            _uiState.update {
-                it.copy(
-                    layoutId = id,
-                    name = layoutName,
-                    layout = loadedLayout,
-                    isLoading = false,
-                    isRomaji = loadedLayout.isRomaji,
-                    isDirectMode = loadedLayout.isDirectMode
-                )
-            }
+            val loadedState = _uiState.value.copy(
+                layoutId = id,
+                name = layoutName,
+                layout = loadedLayout,
+                isLoading = false,
+                isRomaji = loadedLayout.isRomaji,
+                isDirectMode = loadedLayout.isDirectMode
+            )
+            _uiState.value = loadedState
+            initialContent = loadedState.contentSnapshot()
         }
     }
 
     private fun createNewLayout() {
-        _uiState.update {
-            it.copy(
-                layoutId = null,
-                name = "新しいキーボード",
-                layout = KeyboardLayout(
-                    keys = (0 until 4).flatMap { row ->
-                        (0 until 5).map { col -> createEmptyKey(row, col) }
-                    },
-                    flickKeyMaps = emptyMap(),
-                    columnCount = 5,
-                    rowCount = 4,
-                ),
-                isLoading = false,
-                isRomaji = false,
-                isDirectMode = false
-            )
-        }
+        val newState = _uiState.value.copy(
+            layoutId = null,
+            name = "新しいキーボード",
+            layout = KeyboardLayout(
+                keys = (0 until 4).flatMap { row ->
+                    (0 until 5).map { col -> createEmptyKey(row, col) }
+                },
+                flickKeyMaps = emptyMap(),
+                columnCount = 5,
+                rowCount = 4,
+            ),
+            isLoading = false,
+            isRomaji = false,
+            isDirectMode = false
+        )
+        _uiState.value = newState
+        initialContent = newState.contentSnapshot()
     }
 
     fun saveLayout() {
@@ -205,6 +223,7 @@ class KeyboardEditorViewModel @Inject constructor(
                     Timber.e(e, "saveLayout failed for id=%s", idToSave)
                 }
                 .onSuccess {
+                    initialContent = _uiState.value.contentSnapshot()
                     _uiState.update { it.copy(navigateBack = true) }
                 }
         }
@@ -212,7 +231,14 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun onCancelEditing() {
         currentEditingId = null
+        initialContent = null
         _uiState.value = EditorUiState()
+    }
+
+    fun hasUnsavedChanges(): Boolean {
+        val baseline = initialContent ?: return false
+        val state = _uiState.value
+        return !state.isLoading && state.contentSnapshot() != baseline
     }
 
     fun clearDuplicateNameError() {
@@ -654,26 +680,74 @@ class KeyboardEditorViewModel @Inject constructor(
         val selectedId = currentState.selectedItemId ?: return false
         val layout = currentState.layout
         val removedItem = layout.items.firstOrNull { it.matchesEditorItemId(selectedId) } ?: return false
-        val updatedItems = layout.items.filterNot { it.matchesEditorItemId(selectedId) }
-        if (updatedItems.size == layout.items.size) return false
-        val baseAfterDeletion = layout.copyWithItems(updatedItems)
-        val layoutAfterDeletion = if (layout.usesFlexiblePlacement()) {
-            baseAfterDeletion
-                .compactFlexibleGapAfterDeletion(
-                    removedPlacement = removedItem.placement,
-                    preferredPolicy = currentState.insertionPolicy
+        val layoutAfterDeletion = when (removedItem) {
+            is KeyItem -> {
+                val emptySlot = deletedKeySlot(UUID.randomUUID().toString(), removedItem.placement)
+                layout.copyWithItems(
+                    layout.items.map { item ->
+                        if (item.matchesEditorItemId(selectedId)) emptySlot else item
+                    }
+                ).copy(
+                    isFlexiblePlacementLayout = layout.usesFlexiblePlacement()
                 )
-                .compactFlexibleOuterBoundsAfterDeletion()
-                .takeIfValidFlexible()
-                ?: baseAfterDeletion
-                    .compactFlexibleOuterBoundsAfterDeletion()
-                    .takeIfValidFlexible()
-                ?: return false
-        } else {
-            baseAfterDeletion.canonicalizeIfFlexible()
+            }
+
+            is SpacerItem -> {
+                val updatedItems = layout.items.filterNot { it.matchesEditorItemId(selectedId) }
+                if (updatedItems.size == layout.items.size) return false
+                val baseAfterDeletion = layout.copyWithItems(updatedItems)
+                if (layout.usesFlexiblePlacement()) {
+                    baseAfterDeletion
+                        .compactFlexibleGapAfterDeletion(
+                            removedPlacement = removedItem.placement,
+                            preferredPolicy = currentState.insertionPolicy
+                        )
+                        .compactFlexibleOuterBoundsAfterDeletion()
+                        .takeIfValidFlexible()
+                        ?: baseAfterDeletion
+                            .compactFlexibleOuterBoundsAfterDeletion()
+                            .takeIfValidFlexible()
+                        ?: return false
+                } else {
+                    baseAfterDeletion.canonicalizeIfFlexible()
+                }
+            }
         }
         val cleanedLayout = layoutAfterDeletion.removeMappingsForDeletedItem(removedItem)
         _uiState.value = currentState.copy(layout = cleanedLayout, selectedItemId = null)
+        return true
+    }
+
+    fun restoreDeletedKeySlot(slotId: String): Boolean {
+        val state = _uiState.value
+        if (state.editorMode != KeyboardEditorMode.Normal) return false
+        val slot = state.layout.items
+            .filterIsInstance<SpacerItem>()
+            .firstOrNull { it.id == slotId && it.isDeletedKeySlot() }
+            ?: return false
+        val placement = slot.placement
+        val keyId = "key_${UUID.randomUUID()}"
+        val restoredKey = KeyItem(
+            id = keyId,
+            keyData = KeyData(
+                label = "",
+                row = placement.rowUnits / 2,
+                column = placement.columnUnits / 2,
+                isFlickable = false,
+                rowSpan = (placement.rowSpanUnits + 1) / 2,
+                colSpan = (placement.columnSpanUnits + 1) / 2,
+                keyId = keyId,
+                keyType = KeyType.NORMAL
+            ),
+            placement = placement
+        )
+        val restoredLayout = state.layout.copyWithItems(
+            state.layout.items.map { item -> if (item.id == slot.id) restoredKey else item }
+        )
+        _uiState.value = state.copy(
+            layout = restoredLayout,
+            selectedItemId = restoredKey.id
+        )
         return true
     }
 
