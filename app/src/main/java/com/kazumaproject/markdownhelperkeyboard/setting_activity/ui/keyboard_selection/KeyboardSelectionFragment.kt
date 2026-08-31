@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -182,7 +183,8 @@ class KeyboardSelectionFragment : Fragment() {
 
         if (availableKeyboards.isEmpty()) return
 
-        val dialogItems = availableKeyboards.map { getKeyboardDisplayName(it) }.toTypedArray()
+        val dialogItems = availableKeyboards.map { requireContext().getKeyboardDisplayName(it) }
+            .toTypedArray()
 
         AlertDialog.Builder(requireContext())
             .setTitle(com.kazumaproject.core.R.string.add_keyboard_dialog_title)
@@ -207,12 +209,13 @@ class KeyboardSelectionFragment : Fragment() {
     }
 }
 
-fun getKeyboardDisplayName(keyboardType: KeyboardType): String {
+fun Context.getKeyboardDisplayName(keyboardType: KeyboardType): String {
     return when (keyboardType) {
-        KeyboardType.TENKEY -> "日本語 - かな"
-        KeyboardType.QWERTY -> "英語(QWERTY)"
-        KeyboardType.ROMAJI -> "日本語 - ローマ字"
-        KeyboardType.SUMIRE -> "日本語 - スミレ入力 β"
-        KeyboardType.CUSTOM -> "カスタム - ユーザー定義"
+        KeyboardType.TENKEY -> getString(R.string.keyboard_type_tenkey)
+        KeyboardType.GOJUON -> getString(R.string.keyboard_type_gojuon)
+        KeyboardType.QWERTY -> getString(R.string.keyboard_type_qwerty)
+        KeyboardType.ROMAJI -> getString(R.string.keyboard_type_romaji)
+        KeyboardType.SUMIRE -> getString(R.string.keyboard_type_sumire)
+        KeyboardType.CUSTOM -> getString(R.string.keyboard_type_custom)
     }
 }

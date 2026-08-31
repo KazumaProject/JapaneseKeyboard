@@ -102,6 +102,7 @@ internal object RestartInputModePreference {
     ): KeyboardType? {
         return when (currentKeyboardType) {
             KeyboardType.TENKEY -> KeyboardType.TENKEY
+            KeyboardType.GOJUON -> KeyboardType.GOJUON
             KeyboardType.SUMIRE -> KeyboardType.SUMIRE
             else -> {
                 if (activeTenKeyQwertyMode != TenKeyQWERTYMode.TenKeyQWERTY) {
@@ -111,12 +112,16 @@ internal object RestartInputModePreference {
                     RestartInputModeQwertyReturnSource.TenKeyDefault,
                     RestartInputModeQwertyReturnSource.TenKeyNumber -> return KeyboardType.TENKEY
 
+                    RestartInputModeQwertyReturnSource.GojuonDefault,
+                    RestartInputModeQwertyReturnSource.GojuonNumber -> return KeyboardType.GOJUON
+
                     RestartInputModeQwertyReturnSource.Sumire -> return KeyboardType.SUMIRE
                     RestartInputModeQwertyReturnSource.None,
                     RestartInputModeQwertyReturnSource.Custom -> Unit
                 }
                 when (previousTenKeyQWERTYMode) {
                     TenKeyQWERTYMode.Default -> KeyboardType.TENKEY
+                    TenKeyQWERTYMode.Gojuon -> KeyboardType.GOJUON
                     TenKeyQWERTYMode.Sumire -> KeyboardType.SUMIRE
                     else -> null
                 }
@@ -190,9 +195,12 @@ internal object RestartInputModePreference {
                     isQwertyProxySurface &&
                     returnsToSumire -> RestartInputModePresentation.SumireQwertyProxy
 
-            target == KeyboardType.TENKEY &&
+            target.isTenkeyRestartFamily &&
                     currentInputMode == InputMode.ModeNumber &&
-                    qwertyReturnSource == RestartInputModeQwertyReturnSource.TenKeyNumber &&
+                    qwertyReturnSource in setOf(
+                        RestartInputModeQwertyReturnSource.TenKeyNumber,
+                        RestartInputModeQwertyReturnSource.GojuonNumber,
+                    ) &&
                     isQwertyProxySurface &&
                     isQwertyNumberLayout ->
                 RestartInputModePresentation.TenkeyQwertyNumberProxy
@@ -213,17 +221,17 @@ internal object RestartInputModePreference {
         if (currentInputType in passwordTypesWithoutNumber) return null
         if (currentInputType in numberTypes) return null
 
-        val target = state?.keyboardType
-        val currentInputMode = state?.inputMode ?: fallbackInputMode
+        val target = state?.keyboardType ?: return null
+        val currentInputMode = state.inputMode
         val normalizedPresentation = normalizePresentation(
             target,
             currentInputMode,
-            state?.presentation ?: RestartInputModePresentation.Native
+            state.presentation
         )
         val value = toPreferenceValue(currentInputMode)
         val presentationValue = toPreferenceValue(normalizedPresentation)
         val tenkeyQwertyNumberReturnTargetValue =
-            if (target == KeyboardType.TENKEY &&
+            if (target.isTenkeyRestartFamily &&
                 normalizedPresentation == RestartInputModePresentation.TenkeyQwertyNumberProxy
             ) {
                 state.tenkeyQwertyNumberReturnTarget?.let(::toPreferenceValue)
@@ -231,9 +239,9 @@ internal object RestartInputModePreference {
                 null
             }
         return when {
-            target == KeyboardType.TENKEY && tenkeyRestoreEnabled ->
+            target.isTenkeyRestartFamily && tenkeyRestoreEnabled ->
                 RestartInputModePersistence(
-                    KeyboardType.TENKEY,
+                    target,
                     value,
                     presentationValue,
                     tenkeyQwertyNumberReturnTargetValue
@@ -258,7 +266,7 @@ internal object RestartInputModePreference {
         sumireLastInputModePresentationPreference: String
     ): RestartInputModeState? {
         val inputMode = when {
-            type == KeyboardType.TENKEY && tenkeyRestoreEnabled ->
+            type.isTenkeyRestartFamily && tenkeyRestoreEnabled ->
                 fromPreferenceValue(tenkeyLastInputModePreference)
 
             type == KeyboardType.SUMIRE && sumireRestoreEnabled ->
@@ -267,7 +275,8 @@ internal object RestartInputModePreference {
             else -> return null
         }
         val presentationPreference = when (type) {
-            KeyboardType.TENKEY -> tenkeyLastInputModePresentationPreference
+            KeyboardType.TENKEY,
+            KeyboardType.GOJUON -> tenkeyLastInputModePresentationPreference
             KeyboardType.SUMIRE -> sumireLastInputModePresentationPreference
             else -> NATIVE
         }
@@ -277,7 +286,7 @@ internal object RestartInputModePreference {
             presentation = presentationFromPreferenceValue(presentationPreference)
         )
         val returnTarget =
-            if (type == KeyboardType.TENKEY &&
+            if (type.isTenkeyRestartFamily &&
                 presentation == RestartInputModePresentation.TenkeyQwertyNumberProxy
             ) {
                 twoStateNumberReturnTargetFromPreferenceValue(
@@ -330,7 +339,7 @@ internal object RestartInputModePreference {
             }
 
             RestartInputModePresentation.TenkeyQwertyNumberProxy -> {
-                if (type == KeyboardType.TENKEY && inputMode == InputMode.ModeNumber) {
+                if (type.isTenkeyRestartFamily && inputMode == InputMode.ModeNumber) {
                     RestartInputModePresentation.TenkeyQwertyNumberProxy
                 } else {
                     RestartInputModePresentation.Native
@@ -356,10 +365,15 @@ internal data class RestartInputModeState(
 internal enum class RestartInputModeQwertyReturnSource {
     None,
     TenKeyDefault,
+    GojuonDefault,
     Sumire,
     TenKeyNumber,
+    GojuonNumber,
     Custom
 }
+
+private val KeyboardType?.isTenkeyRestartFamily: Boolean
+    get() = this == KeyboardType.TENKEY || this == KeyboardType.GOJUON
 
 internal data class RestartInputModePersistence(
     val target: KeyboardType,

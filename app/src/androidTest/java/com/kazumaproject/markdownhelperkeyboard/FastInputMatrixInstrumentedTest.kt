@@ -11,6 +11,7 @@ import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.Rect
+import android.hardware.display.DisplayManager
 import android.os.Bundle
 import android.os.Debug
 import android.os.ParcelFileDescriptor
@@ -33,8 +34,14 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.io.FileOutputStream
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -1088,6 +1095,255 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun keyboardSizeFullMatrixOnEmulators() {
+        val arguments = InstrumentationRegistry.getArguments()
+        val rounds = arguments.getString("matrixRounds")?.toIntOrNull() ?: 1
+        val captureVisuals =
+            arguments.getString("captureVisuals")?.toBooleanStrictOrNull() ?: true
+        val expectedDeviceClass = arguments.getString("expectedDeviceClass")
+            ?: throw IllegalArgumentException("expectedDeviceClass must be phone or tablet")
+        require(rounds in 1..10)
+        require(expectedDeviceClass == "phone" || expectedDeviceClass == "tablet")
+
+        runPhysicalDeviceSession("keyboard-size") { session ->
+            val isTablet = session.context.resources.getBoolean(
+                com.kazumaproject.core.R.bool.isTablet
+            )
+            val actualDeviceClass = if (isTablet) "tablet" else "phone"
+            if (actualDeviceClass != expectedDeviceClass) {
+                throw SetupException(
+                    "Device classification mismatch: expected=$expectedDeviceClass " +
+                        "actual=$actualDeviceClass smallestWidthDp=" +
+                        session.context.resources.configuration.smallestScreenWidthDp
+                )
+            }
+
+            val keyboardLayoutDao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext,
+                KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val customFixture = installKeyboardSizeCustomFixture(keyboardLayoutDao)
+            val failures = mutableListOf<String>()
+            var completedCases = 0
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+
+            try {
+                applyKeyboardSizeBasePreferences(
+                    preferences = session.preferences,
+                    customFixtureStableId = customFixture.stableId,
+                )
+                ensureTargetImeSelected(session)
+                scenario = launchHost(session.context)
+                val activeScenario = requireNotNull(scenario)
+
+                repeat(rounds) { zeroBasedRound ->
+                    val round = zeroBasedRound + 1
+                    KEYBOARD_SIZE_ORIENTATION_SEQUENCE.forEachIndexed { sequenceIndex, orientation ->
+                        val orientationRun = sequenceIndex + 1
+                        val orientationToken =
+                            "$actualDeviceClass-round-$round-step-$orientationRun-" +
+                                orientation.name.lowercase()
+                        try {
+                            rotateAndVerify(orientation)
+                        } catch (error: Throwable) {
+                            val failure =
+                                "$orientationToken rotation failed: ${error.message}"
+                            failures += failure
+                            Log.e(TAG, failure, error)
+                            sendProgress("KEYBOARD_SIZE_FAILURE $failure\n")
+                            saveScreenshot(session, "$orientationToken-rotation-failure")
+                            return@forEachIndexed
+                        }
+
+                        KeyboardSizeKeyboard.entries.forEach { keyboard ->
+                            val token = "$orientationToken-${keyboard.name.lowercase()}-normal"
+                            val result = runCatching {
+                                applyKeyboardSizeCasePreferences(
+                                    preferences = session.preferences,
+                                    keyboard = keyboard,
+                                    floating = false,
+                                )
+                                restartInput(activeScenario)
+                                val measurements = assertKeyboardSizeCase(
+                                    keyboard = keyboard,
+                                    orientation = orientation,
+                                    floating = false,
+                                    session = session,
+                                )
+                                if (keyboard == KeyboardSizeKeyboard.GOJUON) {
+                                    assertGojuonInput(activeScenario)
+                                }
+                                measurements
+                            }
+                            if (result.isSuccess) {
+                                completedCases += 1
+                                val line = result.getOrThrow().render(
+                                    round = round,
+                                    orientationRun = orientationRun,
+                                    keyboard = keyboard.name,
+                                    orientation = orientation.name,
+                                    surface = "normal",
+                                )
+                                Log.i(TAG, "KEYBOARD_SIZE_RESULT\t$line")
+                                sendProgress("KEYBOARD_SIZE_RESULT $line\n")
+                                if (captureVisuals) saveScreenshot(session, token)
+                            } else {
+                                recordKeyboardSizeFailure(
+                                    failures = failures,
+                                    session = session,
+                                    token = token,
+                                    error = result.exceptionOrNull(),
+                                )
+                            }
+                        }
+
+                        KeyboardSizeSymbolCase.entries.forEach { symbolCase ->
+                            val token =
+                                "$orientationToken-symbol-from-" +
+                                    symbolCase.source.name.lowercase()
+                            val result = runCatching {
+                                applyKeyboardSizeCasePreferences(
+                                    preferences = session.preferences,
+                                    keyboard = symbolCase.source,
+                                    floating = false,
+                                )
+                                restartInput(activeScenario)
+                                val sourceKey = awaitVisibleNodeBounds(symbolCase.openKeyId)
+                                check(injectTap(sourceKey.center)) {
+                                    "Unable to open symbols from ${symbolCase.source}"
+                                }
+                                try {
+                                    assertKeyboardSizeCase(
+                                        keyboard = symbolCase.source,
+                                        orientation = orientation,
+                                        floating = false,
+                                        session = session,
+                                        symbol = true,
+                                    ).also {
+                                        if (captureVisuals) saveScreenshot(session, token)
+                                    }
+                                } finally {
+                                    findVisibleNodeById("return_jp_keyboard_button")?.let { returnKey ->
+                                        check(injectTap(returnKey.screenRect().center)) {
+                                            "Unable to return from symbols to ${symbolCase.source}"
+                                        }
+                                    }
+                                }
+                            }
+                            if (result.isSuccess) {
+                                completedCases += 1
+                                val line = result.getOrThrow().render(
+                                    round = round,
+                                    orientationRun = orientationRun,
+                                    keyboard = "SYMBOL_FROM_${symbolCase.source.name}",
+                                    orientation = orientation.name,
+                                    surface = "normal",
+                                )
+                                Log.i(TAG, "KEYBOARD_SIZE_RESULT\t$line")
+                                sendProgress("KEYBOARD_SIZE_RESULT $line\n")
+                            } else {
+                                recordKeyboardSizeFailure(
+                                    failures = failures,
+                                    session = session,
+                                    token = token,
+                                    error = result.exceptionOrNull(),
+                                )
+                            }
+                        }
+
+                        val floatingToken = "$orientationToken-gojuon-floating"
+                        val floatingResult = runCatching {
+                            applyKeyboardSizeCasePreferences(
+                                preferences = session.preferences,
+                                keyboard = KeyboardSizeKeyboard.GOJUON,
+                                floating = true,
+                            )
+                            restartInput(activeScenario)
+                            val measurements = assertKeyboardSizeCase(
+                                keyboard = KeyboardSizeKeyboard.GOJUON,
+                                orientation = orientation,
+                                floating = true,
+                                session = session,
+                            )
+                            assertGojuonInput(activeScenario)
+                            if (captureVisuals) {
+                                saveScreenshot(session, "$floatingToken-floating")
+                            }
+
+                            applyKeyboardSizeCasePreferences(
+                                preferences = session.preferences,
+                                keyboard = KeyboardSizeKeyboard.GOJUON,
+                                floating = false,
+                            )
+                            restartInput(activeScenario)
+                            assertKeyboardSizeCase(
+                                keyboard = KeyboardSizeKeyboard.GOJUON,
+                                orientation = orientation,
+                                floating = false,
+                                session = session,
+                            )
+                            val gojuonKey = findVisibleNodeById("key_51")
+                                ?: throw SetupException(
+                                    "Gojūon input mode was not restored after floating mode"
+                                )
+                            check(gojuonKey.text?.toString() == "あ") {
+                                "Gojūon returned with unexpected input mode: text=${gojuonKey.text}"
+                            }
+                            if (captureVisuals) {
+                                saveScreenshot(session, "$floatingToken-returned-normal")
+                            }
+                            measurements
+                        }
+                        if (floatingResult.isSuccess) {
+                            completedCases += 1
+                            val line = floatingResult.getOrThrow().render(
+                                round = round,
+                                orientationRun = orientationRun,
+                                keyboard = KeyboardSizeKeyboard.GOJUON.name,
+                                orientation = orientation.name,
+                                surface = "floating-and-returned-normal",
+                            )
+                            Log.i(TAG, "KEYBOARD_SIZE_RESULT\t$line")
+                            sendProgress("KEYBOARD_SIZE_RESULT $line\n")
+                        } else {
+                            recordKeyboardSizeFailure(
+                                failures = failures,
+                                session = session,
+                                token = floatingToken,
+                                error = floatingResult.exceptionOrNull(),
+                            )
+                        }
+                    }
+                }
+            } finally {
+                scenario?.close()
+                runBlocking { keyboardLayoutDao.deleteLayout(customFixture.id) }
+            }
+
+            val expectedCases = rounds * KEYBOARD_SIZE_ORIENTATION_SEQUENCE.size *
+                (KeyboardSizeKeyboard.entries.size + KeyboardSizeSymbolCase.entries.size + 1)
+            val summary = buildString {
+                append("KEYBOARD_SIZE_SUMMARY ")
+                append("device=$actualDeviceClass ")
+                append("rounds=$rounds ")
+                append("completed=$completedCases/$expectedCases ")
+                append("failures=${failures.size}\n")
+            }
+            Log.i(TAG, summary.trim())
+            sendProgress(summary)
+            assertTrue(
+                buildString {
+                    append(summary)
+                    if (failures.isNotEmpty()) {
+                        append(failures.joinToString(separator = "\n", limit = 40))
+                    }
+                },
+                completedCases == expectedCases && failures.isEmpty(),
+            )
+        }
+    }
+
+    @Test
     fun rapidInputFullMatrixOnPhysicalDevice() {
         val arguments = InstrumentationRegistry.getArguments()
         val startCase = arguments.getString("startCase")?.toIntOrNull() ?: 1
@@ -1237,6 +1493,16 @@ class FastInputMatrixInstrumentedTest {
                         }
                     }
                 }
+            } catch (error: SetupException) {
+                val reportedMessage = error.message.orEmpty()
+                if (setupErrors.none { it == reportedMessage }) {
+                    val nextCase = (caseIndex + 1).coerceIn(startCase, endCase)
+                    val result =
+                        "case=$nextCase phase=matrix-setup SETUP_ERROR=${error.message}"
+                    setupErrors += result
+                    sendProgress("FAST_INPUT_SETUP_ERROR $result\n")
+                }
+                Log.e(TAG, "Fast-input matrix stopped after a setup error", error)
             } finally {
                 scenario?.close()
             }
@@ -1651,6 +1917,250 @@ class FastInputMatrixInstrumentedTest {
             allEventsInjected = injected,
             geometry = warm.renderTransition(after)
         )
+    }
+
+    private fun installKeyboardSizeCustomFixture(
+        dao: com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao,
+    ): KeyboardSizeCustomFixture = runBlocking {
+        val fixtureIdentifier = "keyboard-size-ci-key"
+        val stableId = "keyboard-size-ci-${System.currentTimeMillis()}"
+        val id = dao.insertFullKeyboardLayout(
+            layout = CustomKeyboardLayout(
+                name = "Keyboard Size CI",
+                columnCount = 1,
+                rowCount = 1,
+                isDirectMode = true,
+                sortOrder = dao.getMaxSortOrder() + 1,
+                stableId = stableId,
+            ),
+            keys = listOf(
+                KeyDefinition(
+                    ownerLayoutId = 0,
+                    label = KEYBOARD_SIZE_CUSTOM_LABEL,
+                    row = 0,
+                    column = 0,
+                    keyType = KeyType.NORMAL,
+                    isSpecialKey = false,
+                    keyIdentifier = fixtureIdentifier,
+                    action = "InputText:§",
+                )
+            ),
+            flicksMap = emptyMap(),
+            circularFlicksMap = emptyMap(),
+            twoStepFlicksMap = emptyMap(),
+            longPressFlicksMap = emptyMap(),
+            twoStepLongPressFlicksMap = emptyMap(),
+        )
+        KeyboardSizeCustomFixture(id = id, stableId = stableId)
+    }
+
+    private fun applyKeyboardSizeBasePreferences(
+        preferences: SharedPreferences,
+        customFixtureStableId: String,
+    ) {
+        val committed = preferences.edit()
+            .putInt("keyboard_height_preference", KEYBOARD_SIZE_TENKEY_PORTRAIT_HEIGHT_DP)
+            .putInt("keyboard_width_preference", KEYBOARD_SIZE_TENKEY_PORTRAIT_WIDTH_PERCENT)
+            .putInt("keyboard_height_landscape_preference", KEYBOARD_SIZE_TENKEY_LANDSCAPE_HEIGHT_DP)
+            .putInt("keyboard_width_landscape_preference", KEYBOARD_SIZE_TENKEY_LANDSCAPE_WIDTH_PERCENT)
+            .putInt("qwerty_keyboard_height_preference", KEYBOARD_SIZE_QWERTY_PORTRAIT_HEIGHT_DP)
+            .putInt("qwerty_keyboard_width_preference", KEYBOARD_SIZE_QWERTY_PORTRAIT_WIDTH_PERCENT)
+            .putInt("qwerty_keyboard_height_landscape_preference", KEYBOARD_SIZE_QWERTY_LANDSCAPE_HEIGHT_DP)
+            .putInt("qwerty_keyboard_width_landscape_preference", KEYBOARD_SIZE_QWERTY_LANDSCAPE_WIDTH_PERCENT)
+            .putInt("keyboard_vertical_margin_bottom_preference", 0)
+            .putInt("keyboard_vertical_margin_bottom_landscape_preference", 0)
+            .putInt("qwerty_keyboard_vertical_margin_bottom_preference", 0)
+            .putInt("qwerty_keyboard_vertical_margin_bottom_landscape_preference", 0)
+            .putInt("keyboard_margin_start_dp_preference", 0)
+            .putInt("keyboard_margin_end_dp_preference", 0)
+            .putInt("keyboard_margin_start_dp_landscape_preference", 0)
+            .putInt("keyboard_margin_end_dp_landscape_preference", 0)
+            .putInt("qwerty_keyboard_margin_start_dp_preference", 0)
+            .putInt("qwerty_keyboard_margin_end_dp_preference", 0)
+            .putInt("qwerty_keyboard_margin_start_dp_landscape_preference", 0)
+            .putInt("qwerty_keyboard_margin_end_dp_landscape_preference", 0)
+            .putBoolean("keyboard_position_preference", true)
+            .putBoolean("keyboard_position_landscape_preference", true)
+            .putBoolean("qwerty_keyboard_position_preference", true)
+            .putBoolean("qwerty_keyboard_position_landscape_preference", true)
+            .putBoolean("candidate_tab_visibility_preference", false)
+            .putBoolean("shortcut_toolbar_visibility_preference", false)
+            .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false)
+            .putBoolean("landscape_force_qwerty_preference", false)
+            .putBoolean("landscape_force_qwerty_romaji_preference", false)
+            .putBoolean("tenkey_kana_english_qwerty_preference", false)
+            .putBoolean("tablet_tenkey_kana_english_qwerty_preference", false)
+            .putBoolean("sumire_english_qwerty_preference", false)
+            .putBoolean("tenkey_restore_input_mode_on_restart_preference", false)
+            .putBoolean("sumire_restore_input_mode_on_restart_preference", false)
+            .putBoolean("flick_input_only_preference", true)
+            .putBoolean("live_conversion_preference", false)
+            .putBoolean("qwerty_glide_input_preference", false)
+            .putBoolean("qwerty_show_emoji_button_preference", true)
+            .putBoolean("zero_query_suggestion_preference", false)
+            .putBoolean("enable_typo_correction_japanese_flick_keyboard_preference", false)
+            .putBoolean("enable_typo_correction_qwerty_english_keyboard_preference", false)
+            .putBoolean("learn_dictionary_preference", false)
+            .putBoolean("gojuon_keyboard_type_migrated_v1", true)
+            .putBoolean("remember_last_custom_keyboard_preference", true)
+            .putString("last_used_custom_keyboard_stable_id", customFixtureStableId)
+            .putInt("keyboard_floating_position_x", -1)
+            .putInt("keyboard_floating_position_y", -1)
+            .commit()
+        check(committed) { "Failed to persist keyboard-size base preferences" }
+    }
+
+    private fun applyKeyboardSizeCasePreferences(
+        preferences: SharedPreferences,
+        keyboard: KeyboardSizeKeyboard,
+        floating: Boolean,
+    ) {
+        val order = buildList {
+            add(keyboard.preferenceName)
+            KeyboardSizeKeyboard.entries.forEach { candidate ->
+                if (candidate != keyboard) add(candidate.preferenceName)
+            }
+        }.joinToString(prefix = "[\"", separator = "\",\"", postfix = "\"]")
+        check(
+            preferences.edit()
+                .putString("keyboard_order_preference", order)
+                .putBoolean("save_last_used_keyboard", false)
+                .putInt("save_last_used_keyboard_int", 0)
+                .putBoolean("keyboard_floating_preference", floating)
+                .commit()
+        ) { "Failed to persist keyboard-size case for $keyboard floating=$floating" }
+    }
+
+    private fun assertKeyboardSizeCase(
+        keyboard: KeyboardSizeKeyboard,
+        orientation: TestOrientation,
+        floating: Boolean,
+        session: PhysicalDeviceSession,
+        symbol: Boolean = false,
+    ): KeyboardSizeMeasurements {
+        val expectedRootId = when {
+            symbol -> "keyboard_symbol_view"
+            floating -> keyboard.floatingRootViewId
+                ?: throw SetupException("$keyboard has no floating size case")
+            else -> keyboard.rootViewId
+        }
+        val representative = if (symbol) {
+            NodeLocator.Id("return_jp_keyboard_button")
+        } else {
+            keyboard.representativeKey
+        }
+        val expectedHeightDp = when {
+            symbol && orientation == TestOrientation.PORTRAIT -> 320
+            symbol -> 220
+            keyboard.family == KeyboardSizeFamily.TENKEY &&
+                orientation == TestOrientation.PORTRAIT ->
+                KEYBOARD_SIZE_TENKEY_PORTRAIT_HEIGHT_DP
+            keyboard.family == KeyboardSizeFamily.TENKEY ->
+                KEYBOARD_SIZE_TENKEY_LANDSCAPE_HEIGHT_DP
+            orientation == TestOrientation.PORTRAIT ->
+                KEYBOARD_SIZE_QWERTY_PORTRAIT_HEIGHT_DP
+            else -> KEYBOARD_SIZE_QWERTY_LANDSCAPE_HEIGHT_DP
+        }
+        val expectedWidthPercent = when {
+            keyboard.family == KeyboardSizeFamily.TENKEY &&
+                orientation == TestOrientation.PORTRAIT ->
+                KEYBOARD_SIZE_TENKEY_PORTRAIT_WIDTH_PERCENT
+            keyboard.family == KeyboardSizeFamily.TENKEY ->
+                KEYBOARD_SIZE_TENKEY_LANDSCAPE_WIDTH_PERCENT
+            orientation == TestOrientation.PORTRAIT ->
+                KEYBOARD_SIZE_QWERTY_PORTRAIT_WIDTH_PERCENT
+            else -> KEYBOARD_SIZE_QWERTY_LANDSCAPE_WIDTH_PERCENT
+        }
+
+        val deadline = SystemClock.uptimeMillis() + KEYBOARD_SIZE_SETUP_TIMEOUT_MS
+        val stable = ArrayDeque<KeyboardSizeSample>()
+        var lastError = "no samples"
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                val visibleRoots = KEYBOARD_SIZE_ROOT_IDS.filter { id ->
+                    findVisibleNodeById(id) != null
+                }
+                check(visibleRoots == listOf(expectedRootId)) {
+                    "Expected only $expectedRootId, visible roots=$visibleRoots"
+                }
+                val root = findVisibleNodeById(expectedRootId)
+                    ?: throw SetupException("$expectedRootId is not visible")
+                val rootBounds = root.screenRect()
+                val representativeBounds = findRequiredKey(root, representative).screenRect()
+                val screenshot = uiAutomation.takeScreenshot()
+                    ?: throw SetupException("Unable to capture display bounds")
+                val screenBounds = ScreenRect(0, 0, screenshot.width, screenshot.height)
+                val expectedWidthPx =
+                    (screenshot.width * (expectedWidthPercent / 100f)).toInt()
+                screenshot.recycle()
+                val expectedHeightPx = (
+                    expectedHeightDp * session.context.resources.displayMetrics.density
+                    ).toInt()
+
+                check(rootBounds.isValid && representativeBounds.isValid) {
+                    "Non-positive bounds: root=$rootBounds key=$representativeBounds"
+                }
+                check(rootBounds == rootBounds.intersect(screenBounds)) {
+                    "Keyboard is outside screen: root=$rootBounds screen=$screenBounds"
+                }
+                check(representativeBounds == representativeBounds.intersect(rootBounds)) {
+                    "Representative key is outside keyboard: key=$representativeBounds root=$rootBounds"
+                }
+                check(kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
+                    "Height mismatch for $keyboard: actual=${rootBounds.height} " +
+                        "expected=$expectedHeightPx dp=$expectedHeightDp"
+                }
+                check(kotlin.math.abs(rootBounds.width - expectedWidthPx) <= 2) {
+                    "Width mismatch for $keyboard: actual=${rootBounds.width} " +
+                        "expected=$expectedWidthPx percent=$expectedWidthPercent " +
+                        "screen=${screenBounds.width}"
+                }
+
+                val sample = KeyboardSizeSample(rootBounds, representativeBounds)
+                if (stable.lastOrNull() == sample) {
+                    stable.addLast(sample)
+                } else {
+                    stable.clear()
+                    stable.addLast(sample)
+                }
+                while (stable.size > KEYBOARD_SIZE_STABLE_SAMPLES) stable.removeFirst()
+                if (stable.size == KEYBOARD_SIZE_STABLE_SAMPLES) {
+                    return KeyboardSizeMeasurements(
+                        samples = stable.toList(),
+                        expectedHeightPx = expectedHeightPx,
+                        expectedWidthPx = expectedWidthPx,
+                    )
+                }
+            } catch (error: Throwable) {
+                lastError = error.message.orEmpty()
+                stable.clear()
+            }
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException(
+            "Timed out waiting for stable keyboard size: keyboard=$keyboard " +
+                "orientation=$orientation floating=$floating symbol=$symbol lastError=$lastError"
+        )
+    }
+
+    private fun assertGojuonInput(scenario: ActivityScenario<FastInputHostActivity>) {
+        val key = awaitVisibleNodeBounds("key_51")
+        check(injectTap(key.center)) { "Unable to tap representative Gojūon key" }
+        val actual = awaitEditorText(scenario) { it == "あ" }
+        check(actual == "あ") { "Gojūon key input mismatch: expected=[あ] actual=[$actual]" }
+    }
+
+    private fun recordKeyboardSizeFailure(
+        failures: MutableList<String>,
+        session: PhysicalDeviceSession,
+        token: String,
+        error: Throwable?,
+    ) {
+        val failure = "$token error=${error?.message ?: "unknown"}"
+        failures += failure
+        Log.e(TAG, failure, error)
+        sendProgress("KEYBOARD_SIZE_FAILURE $failure\n")
+        saveScreenshot(session, "$token-failure")
     }
 
     private fun applyCasePreferences(
@@ -2669,11 +3179,9 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun rotateAndVerify(orientation: TestOrientation) {
-        uiAutomation.setRotation(orientation.rotation)
-        val deadline = SystemClock.uptimeMillis() + ORIENTATION_TIMEOUT_MS
-        while (SystemClock.uptimeMillis() < deadline) {
+        fun hasExpectedAspectRatio(): Boolean {
             val screenshot = uiAutomation.takeScreenshot()
-            val rotated = screenshot?.let {
+            return screenshot?.let {
                 val matches = when (orientation) {
                     TestOrientation.PORTRAIT -> it.height >= it.width
                     TestOrientation.LANDSCAPE -> it.width > it.height
@@ -2681,13 +3189,42 @@ class FastInputMatrixInstrumentedTest {
                 it.recycle()
                 matches
             } ?: false
-            if (rotated) {
-                SystemClock.sleep(ORIENTATION_SETTLE_MS)
-                return
-            }
-            SystemClock.sleep(POLL_MS)
         }
-        throw SetupException("Device did not rotate to ${orientation.name}")
+
+        if (hasExpectedAspectRatio()) {
+            SystemClock.sleep(ORIENTATION_SETTLE_MS)
+            if (hasExpectedAspectRatio()) return
+        }
+
+        // Tablets commonly boot in their natural landscape orientation while phones boot in
+        // portrait. Rotate relative to the current display first instead of assuming that
+        // ROTATION_FREEZE_0 always means portrait.
+        val currentRotation = instrumentation.targetContext
+            .getSystemService(DisplayManager::class.java)
+            .displays
+            .minByOrNull { it.displayId }
+            ?.rotation
+            ?: UiAutomation.ROTATION_FREEZE_0
+        val candidateRotations = listOf(
+            (currentRotation + 1) % 4,
+            (currentRotation + 3) % 4,
+            (currentRotation + 2) % 4,
+            currentRotation,
+        ).distinct()
+        candidateRotations.forEach { rotation ->
+            uiAutomation.setRotation(rotation)
+            val deadline = SystemClock.uptimeMillis() + ORIENTATION_TIMEOUT_MS
+            while (SystemClock.uptimeMillis() < deadline) {
+                if (hasExpectedAspectRatio()) {
+                    SystemClock.sleep(ORIENTATION_SETTLE_MS)
+                    if (hasExpectedAspectRatio()) return
+                }
+                SystemClock.sleep(POLL_MS)
+            }
+        }
+        throw SetupException(
+            "Device did not rotate to ${orientation.name}; attempted=$candidateRotations"
+        )
     }
 
     private fun launchHost(context: Context): ActivityScenario<FastInputHostActivity> {
@@ -2742,9 +3279,19 @@ class FastInputMatrixInstrumentedTest {
             SystemClock.sleep(POLL_MS)
         }
 
-        val focusedWindow = shell(
-            "dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'"
-        ).replace('\n', ' ')
+        val focusedWindow = shell("dumpsys window windows")
+            .lineSequence()
+            .map(String::trim)
+            .filter { line ->
+                line.contains("mCurrentFocus") ||
+                    line.contains("mFocusedApp") ||
+                    line.contains("mTopFocusedDisplayId") ||
+                    line.contains("Application Not Responding") ||
+                    line.contains("Application Error")
+            }
+            .take(20)
+            .joinToString(separator = " | ")
+            .ifEmpty { "focus state unavailable" }
         throw SetupException(
             "Host activity did not gain window focus " +
                 "within ${HOST_WINDOW_FOCUS_TIMEOUT_MS}ms " +
@@ -3041,6 +3588,101 @@ class FastInputMatrixInstrumentedTest {
         }
     }
 
+    private enum class KeyboardSizeFamily {
+        TENKEY,
+        QWERTY,
+    }
+
+    private enum class KeyboardSizeKeyboard(
+        val preferenceName: String,
+        val rootViewId: String,
+        val floatingRootViewId: String?,
+        val representativeKey: NodeLocator,
+        val family: KeyboardSizeFamily,
+    ) {
+        TENKEY(
+            preferenceName = "TENKEY",
+            rootViewId = "keyboard_view",
+            floatingRootViewId = null,
+            representativeKey = NodeLocator.Id("key_1"),
+            family = KeyboardSizeFamily.TENKEY,
+        ),
+        GOJUON(
+            preferenceName = "GOJUON",
+            rootViewId = "gojuon_view",
+            floatingRootViewId = "gojuon_view_floating",
+            representativeKey = NodeLocator.Id("key_51"),
+            family = KeyboardSizeFamily.TENKEY,
+        ),
+        SUMIRE(
+            preferenceName = "SUMIRE",
+            rootViewId = "custom_layout_default",
+            floatingRootViewId = null,
+            representativeKey = NodeLocator.Label("あ"),
+            family = KeyboardSizeFamily.TENKEY,
+        ),
+        QWERTY(
+            preferenceName = "QWERTY",
+            rootViewId = "qwerty_view",
+            floatingRootViewId = null,
+            representativeKey = NodeLocator.Id("key_s"),
+            family = KeyboardSizeFamily.QWERTY,
+        ),
+        ROMAJI(
+            preferenceName = "ROMAJI",
+            rootViewId = "qwerty_view",
+            floatingRootViewId = null,
+            representativeKey = NodeLocator.Id("key_s"),
+            family = KeyboardSizeFamily.QWERTY,
+        ),
+        CUSTOM(
+            preferenceName = "CUSTOM",
+            rootViewId = "custom_layout_default",
+            floatingRootViewId = null,
+            representativeKey = NodeLocator.Label(KEYBOARD_SIZE_CUSTOM_LABEL),
+            family = KeyboardSizeFamily.TENKEY,
+        ),
+    }
+
+    private enum class KeyboardSizeSymbolCase(
+        val source: KeyboardSizeKeyboard,
+        val openKeyId: String,
+    ) {
+        GOJUON(KeyboardSizeKeyboard.GOJUON, "key_kigou"),
+        QWERTY(KeyboardSizeKeyboard.QWERTY, "key_emoji"),
+    }
+
+    private data class KeyboardSizeSample(
+        val keyboard: ScreenRect,
+        val representativeKey: ScreenRect,
+    )
+
+    private data class KeyboardSizeCustomFixture(
+        val id: Long,
+        val stableId: String,
+    )
+
+    private data class KeyboardSizeMeasurements(
+        val samples: List<KeyboardSizeSample>,
+        val expectedHeightPx: Int,
+        val expectedWidthPx: Int,
+    ) {
+        fun render(
+            round: Int,
+            orientationRun: Int,
+            keyboard: String,
+            orientation: String,
+            surface: String,
+        ): String {
+            val actual = samples.last().keyboard
+            return "round=$round orientationRun=$orientationRun " +
+                "orientation=$orientation keyboard=$keyboard surface=$surface " +
+                "actual=${actual.width}x${actual.height} " +
+                "expected=${expectedWidthPx}x${expectedHeightPx} " +
+                "stableSamples=${samples.size}"
+        }
+    }
+
     private enum class TestKeyboard(
         val rootViewId: String,
         val firstKey: NodeLocator,
@@ -3083,9 +3725,9 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
-    private enum class TestOrientation(val rotation: Int) {
-        PORTRAIT(UiAutomation.ROTATION_FREEZE_0),
-        LANDSCAPE(UiAutomation.ROTATION_FREEZE_90)
+    private enum class TestOrientation {
+        PORTRAIT,
+        LANDSCAPE,
     }
 
     private data class TestCase(
@@ -3343,6 +3985,34 @@ class FastInputMatrixInstrumentedTest {
 
     companion object {
         private const val TAG = "FastInputMatrix"
+        private const val KEYBOARD_SIZE_CUSTOM_LABEL = "SIZE-CI"
+        private const val KEYBOARD_SIZE_TENKEY_PORTRAIT_HEIGHT_DP = 236
+        private const val KEYBOARD_SIZE_TENKEY_PORTRAIT_WIDTH_PERCENT = 82
+        private const val KEYBOARD_SIZE_TENKEY_LANDSCAPE_HEIGHT_DP = 148
+        private const val KEYBOARD_SIZE_TENKEY_LANDSCAPE_WIDTH_PERCENT = 74
+        private const val KEYBOARD_SIZE_QWERTY_PORTRAIT_HEIGHT_DP = 252
+        private const val KEYBOARD_SIZE_QWERTY_PORTRAIT_WIDTH_PERCENT = 88
+        private const val KEYBOARD_SIZE_QWERTY_LANDSCAPE_HEIGHT_DP = 164
+        private const val KEYBOARD_SIZE_QWERTY_LANDSCAPE_WIDTH_PERCENT = 79
+        private const val KEYBOARD_SIZE_STABLE_SAMPLES = 3
+        private const val KEYBOARD_SIZE_SETUP_TIMEOUT_MS = 5_000L
+        private val KEYBOARD_SIZE_ORIENTATION_SEQUENCE = listOf(
+            TestOrientation.PORTRAIT,
+            TestOrientation.LANDSCAPE,
+            TestOrientation.PORTRAIT,
+        )
+        private val KEYBOARD_SIZE_ROOT_IDS = listOf(
+            "keyboard_view",
+            "gojuon_view",
+            "qwerty_view",
+            "custom_layout_default",
+            "keyboard_symbol_view",
+            "keyboard_view_floating",
+            "gojuon_view_floating",
+            "qwerty_view_floating",
+            "custom_layout_floating",
+            "floating_symbol_keyboard",
+        )
         private const val SEQUENCE_REPETITIONS = 8
         private const val DEFAULT_MATRIX_ROUNDS = 3
         private const val DEFAULT_RATE_TRIALS = 10

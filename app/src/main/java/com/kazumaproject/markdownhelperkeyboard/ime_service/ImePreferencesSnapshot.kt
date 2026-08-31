@@ -70,7 +70,6 @@ data class ImePreferencesSnapshot(
     val showCandidateInPasswordPreference: Boolean,
     val qwertyShowKeymapSymbolsPreference: Boolean,
     val qwertyRomajiShiftConversionPreference: Boolean,
-    val tabletGojuonLayoutPreference: Boolean,
     val isNgWordEnable: Boolean,
     val deleteKeyHighLight: Boolean,
     val customKeyboardSuggestionPreference: Boolean,
@@ -405,8 +404,6 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_show_keymap_symbols ?: false,
                 qwertyRomajiShiftConversionPreference =
                     appPreference.qwerty_romaji_shift_conversion_preference,
-                tabletGojuonLayoutPreference =
-                    appPreference.tablet_gojuon_layout_preference,
                 isNgWordEnable = appPreference.ng_word_preference ?: true,
                 deleteKeyHighLight = appPreference.delete_key_high_light_preference ?: true,
                 customKeyboardSuggestionPreference =

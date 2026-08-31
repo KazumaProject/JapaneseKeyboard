@@ -50,8 +50,8 @@
 
     <dimen name="key_elevation">1dp</dimen>
 
-    <dimen name="tablet_side_key_portrait_width">52dp</dimen>
-    <dimen name="tablet_side_key_width">80dp</dimen>
+    <dimen name="gojuon_side_key_portrait_width">52dp</dimen>
+    <dimen name="gojuon_side_key_width">80dp</dimen>
 
     <dimen name="qwerty_keyboard_height">280dp</dimen>
 
