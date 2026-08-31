@@ -101,7 +101,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         private const val VIEW_TYPE_EMPTY = 0
         private const val VIEW_TYPE_SUGGESTION = 1
         private const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
-        private const val VIEW_TYPE_GEMMA_ACTION = 3
+        private const val VIEW_TYPE_SELECTION_ACTION = 3
         private const val VIEW_TYPE_SHORTCUT = 4
 
         private val diffThreadIndex = AtomicInteger(0)
@@ -122,7 +122,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             val candidateIndex: Int,
         ) : SuggestionDisplayItem()
 
-        data class GemmaActionItem(
+        data class SelectionActionItem(
             val candidate: Candidate,
             val candidateIndex: Int,
         ) : SuggestionDisplayItem()
@@ -221,8 +221,8 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         oldItem.candidate.string == newItem.candidate.string &&
                         oldItem.candidate.type == newItem.candidate.type
 
-                oldItem is SuggestionDisplayItem.GemmaActionItem &&
-                    newItem is SuggestionDisplayItem.GemmaActionItem ->
+                oldItem is SuggestionDisplayItem.SelectionActionItem &&
+                    newItem is SuggestionDisplayItem.SelectionActionItem ->
                     oldItem.candidateIndex == newItem.candidateIndex &&
                         oldItem.candidate.string == newItem.candidate.string &&
                         oldItem.candidate.type == newItem.candidate.type
@@ -473,8 +473,8 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
         if (candidateSuggestions.isNotEmpty()) {
             return candidateSuggestions.mapIndexed { index, candidate ->
-                if (candidate.isSelectedTextGemmaActionCandidate()) {
-                    SuggestionDisplayItem.GemmaActionItem(candidate, index)
+                if (candidate.isSelectionActionCandidate()) {
+                    SuggestionDisplayItem.SelectionActionItem(candidate, index)
                 } else {
                     SuggestionDisplayItem.CandidateItem(candidate, index)
                 }
@@ -520,7 +520,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
-    inner class GemmaActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class SelectionActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val badgeText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_badge)
         val actionText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_text)
     }
@@ -555,7 +555,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     override fun getItemViewType(position: Int): Int {
         return when (displayItems[position]) {
             is SuggestionDisplayItem.CandidateItem -> VIEW_TYPE_SUGGESTION
-            is SuggestionDisplayItem.GemmaActionItem -> VIEW_TYPE_GEMMA_ACTION
+            is SuggestionDisplayItem.SelectionActionItem -> VIEW_TYPE_SELECTION_ACTION
             is SuggestionDisplayItem.HelperActionsItem -> VIEW_TYPE_EMPTY
             is SuggestionDisplayItem.ShortcutItem -> VIEW_TYPE_SHORTCUT
             is SuggestionDisplayItem.CustomLayoutItem -> VIEW_TYPE_CUSTOM_LAYOUT_PICKER
@@ -604,7 +604,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 SuggestionViewHolder(itemView)
             }
 
-            VIEW_TYPE_GEMMA_ACTION -> {
+            VIEW_TYPE_SELECTION_ACTION -> {
                 val itemView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_gemma_action_item, parent, false)
                 itemView.setBackgroundResource(
@@ -614,7 +614,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         com.kazumaproject.core.R.drawable.recyclerview_item_bg
                     }
                 )
-                GemmaActionViewHolder(itemView)
+                SelectionActionViewHolder(itemView)
             }
 
             VIEW_TYPE_SHORTCUT -> {
@@ -640,9 +640,9 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 item as SuggestionDisplayItem.CandidateItem,
             )
 
-            VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
-                holder as GemmaActionViewHolder,
-                item as SuggestionDisplayItem.GemmaActionItem,
+            VIEW_TYPE_SELECTION_ACTION -> onBindSelectionActionViewHolder(
+                holder as SelectionActionViewHolder,
+                item as SuggestionDisplayItem.SelectionActionItem,
             )
 
             VIEW_TYPE_SHORTCUT -> onBindShortcutViewHolder(
@@ -1044,9 +1044,9 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun onBindGemmaActionViewHolder(
-        holder: GemmaActionViewHolder,
-        item: SuggestionDisplayItem.GemmaActionItem,
+    private fun onBindSelectionActionViewHolder(
+        holder: SelectionActionViewHolder,
+        item: SuggestionDisplayItem.SelectionActionItem,
     ) {
         applyCandidateItemBackground(holder.itemView)
         val suggestion = item.candidate
@@ -1143,7 +1143,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val displayIndex = displayItems.indexOfFirst { item ->
             when (item) {
                 is SuggestionDisplayItem.CandidateItem -> item.candidateIndex == candidateIndex
-                is SuggestionDisplayItem.GemmaActionItem -> item.candidateIndex == candidateIndex
+                is SuggestionDisplayItem.SelectionActionItem -> item.candidateIndex == candidateIndex
                 else -> false
             }
         }
@@ -1152,7 +1152,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun Candidate.isSelectedTextGemmaActionCandidate(): Boolean {
+    private fun Candidate.isSelectionActionCandidate(): Boolean {
         return type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
             type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }

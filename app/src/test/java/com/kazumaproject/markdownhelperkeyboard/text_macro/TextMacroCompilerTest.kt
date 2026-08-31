@@ -12,7 +12,6 @@ class TextMacroCompilerTest {
     private val fixedContext = TextMacroContext(
         selection = "{date}",
         clipboard = "{time}",
-        app = "Example",
         locale = Locale.US,
         timeZone = TimeZone.getTimeZone("America/Toronto"),
         timestampMillis = 1_788_098_706_000L,
@@ -21,10 +20,10 @@ class TextMacroCompilerTest {
     @Test
     fun expandsAllVariablesAtOneFixedInstant() {
         val expanded = TextMacroCompiler.compile(
-            "{date:yyyy-MM-dd}|{time:HH:mm:ss}|{selection}|{clipboard}|{app}|{newline}x{cursor}y"
+            "{date:yyyy-MM-dd}|{time:HH:mm:ss}|{selection}|{clipboard}|{newline}x{cursor}y"
         ).expand(fixedContext)
 
-        assertEquals("2026-08-30|10:05:06|{date}|{time}|Example|\nxy", expanded.text)
+        assertEquals("2026-08-30|10:05:06|{date}|{time}|\nxy", expanded.text)
         assertEquals(expanded.text.length - 1, expanded.cursorOffset)
     }
 
@@ -68,12 +67,11 @@ class TextMacroCompilerTest {
 
     @Test
     fun exposesContextRequirementsWithoutExpanding() {
-        val compiled = TextMacroCompiler.compile("{selection}{clipboard}{app}{date}")
+        val compiled = TextMacroCompiler.compile("{selection}{clipboard}{date}")
         assertEquals(
             setOf(
                 TextMacroContextRequirement.SELECTION,
                 TextMacroContextRequirement.CLIPBOARD,
-                TextMacroContextRequirement.APP,
             ),
             compiled.requirements,
         )
@@ -125,4 +123,5 @@ class TextMacroCompilerTest {
         assertFalse(TextMacroCompiler.compile("{date}").requirements.isNotEmpty())
         assertTrue(TextMacroCompiler.compile("{selection}").requirements.isNotEmpty())
     }
+
 }

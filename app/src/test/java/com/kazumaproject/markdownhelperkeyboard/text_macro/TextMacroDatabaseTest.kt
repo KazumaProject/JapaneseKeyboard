@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.repository.TextMacroRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.DuplicateTextMacroNameException
 import com.kazumaproject.markdownhelperkeyboard.text_macro.database.TextMacro
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -50,6 +51,23 @@ class TextMacroDatabaseTest {
         assertTrue(repository.getEnabledByReading("a").isEmpty())
         repository.deleteById(beta)
         assertEquals(listOf("Alpha"), repository.observeAll().first().map { it.name })
+    }
+
+    @Test
+    fun callKeywordsMayBeSharedButMacroNamesMayNot() = runBlocking {
+        repository.save(TextMacro(name = "Date ISO", reading = "date", body = "{date}"))
+        repository.save(TextMacro(name = "Date short", reading = "date", body = "{date:MM/dd}"))
+
+        assertEquals(
+            listOf("Date ISO", "Date short"),
+            repository.getEnabledByReading("date").map { it.name },
+        )
+        assertThrows(DuplicateTextMacroNameException::class.java) {
+            runBlocking {
+                repository.save(TextMacro(name = "Date ISO", reading = "another", body = "x"))
+            }
+        }
+        Unit
     }
 
     @Test

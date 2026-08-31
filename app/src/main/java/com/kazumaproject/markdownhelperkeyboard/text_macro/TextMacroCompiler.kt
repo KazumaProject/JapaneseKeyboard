@@ -17,7 +17,6 @@ object TextMacroLimits {
 data class TextMacroContext(
     val selection: String? = null,
     val clipboard: String? = null,
-    val app: String? = null,
     val locale: Locale = Locale.getDefault(),
     val timeZone: TimeZone = TimeZone.getDefault(),
     val timestampMillis: Long = System.currentTimeMillis(),
@@ -31,7 +30,37 @@ data class ExpandedMacro(
 enum class TextMacroContextRequirement {
     SELECTION,
     CLIPBOARD,
-    APP,
+}
+
+/**
+ * The complete, intentionally small macro language exposed by both the compiler and editor UI.
+ * Keeping this catalog beside the compiler prevents the editor from advertising unsupported
+ * tokens or silently omitting newly supported ones.
+ */
+enum class TextMacroVariable(
+    val tokenName: String,
+    val acceptsPattern: Boolean = false,
+    val requirement: TextMacroContextRequirement? = null,
+) {
+    DATE(tokenName = "date", acceptsPattern = true),
+    TIME(tokenName = "time", acceptsPattern = true),
+    SELECTION(tokenName = "selection", requirement = TextMacroContextRequirement.SELECTION),
+    CLIPBOARD(tokenName = "clipboard", requirement = TextMacroContextRequirement.CLIPBOARD),
+    CURSOR(tokenName = "cursor"),
+    NEWLINE(tokenName = "newline"),
+    ;
+
+    fun source(argument: String? = null): String = buildString {
+        append('{').append(tokenName)
+        argument?.takeIf(String::isNotBlank)?.let { append(':').append(it) }
+        append('}')
+    }
+
+    companion object {
+        private val byTokenName = entries.associateBy(TextMacroVariable::tokenName)
+
+        fun fromTokenName(tokenName: String): TextMacroVariable? = byTokenName[tokenName]
+    }
 }
 
 class TextMacroSyntaxException(
@@ -103,9 +132,6 @@ data class CompiledTextMacro internal constructor(
         "clipboard" -> context.clipboard?.takeIf { it.isNotEmpty() }
             ?: throw TextMacroSyntaxException("Text clipboard is unavailable", 0)
 
-        "app" -> context.app?.takeIf { it.isNotEmpty() }
-            ?: throw TextMacroSyntaxException("Target application is unavailable", 0)
-
         "newline" -> "\n"
         else -> error("Compiler produced unsupported variable: ${part.name}")
     }
@@ -120,9 +146,6 @@ data class CompiledTextMacro internal constructor(
 }
 
 object TextMacroCompiler {
-    private val noArgumentVariables = setOf("clipboard", "selection", "cursor", "newline", "app")
-    private val knownVariables = noArgumentVariables + setOf("date", "time")
-
     fun compile(body: String): CompiledTextMacro {
         if (body.length > TextMacroLimits.BODY) {
             throw TextMacroSyntaxException(
@@ -181,16 +204,17 @@ object TextMacroCompiler {
                     val colon = token.indexOf(':')
                     val name = if (colon < 0) token else token.substring(0, colon)
                     val argument = if (colon < 0) null else token.substring(colon + 1)
-                    if (name !in knownVariables) {
+                    val variable = TextMacroVariable.fromTokenName(name)
+                    if (variable == null) {
                         throw TextMacroSyntaxException("Unknown macro token: $name", index)
                     }
-                    if (argument != null && name in noArgumentVariables) {
+                    if (argument != null && !variable.acceptsPattern) {
                         throw TextMacroSyntaxException("$name does not accept an argument", index)
                     }
                     if (argument != null && argument.isEmpty()) {
                         throw TextMacroSyntaxException("Empty date/time pattern", index)
                     }
-                    if (name == "date" || name == "time") {
+                    if (variable.acceptsPattern) {
                         argument?.let {
                             try {
                                 SimpleDateFormat(it, Locale.ROOT)
@@ -202,8 +226,8 @@ object TextMacroCompiler {
                             }
                         }
                     }
-                    when (name) {
-                        "cursor" -> {
+                    when (variable) {
+                        TextMacroVariable.CURSOR -> {
                             cursorCount += 1
                             if (cursorCount > 1) {
                                 throw TextMacroSyntaxException("Only one {cursor} is allowed", index)
@@ -213,11 +237,7 @@ object TextMacroCompiler {
 
                         else -> {
                             parts += CompiledTextMacroPart.Variable(name, argument)
-                            when (name) {
-                                "selection" -> requirements += TextMacroContextRequirement.SELECTION
-                                "clipboard" -> requirements += TextMacroContextRequirement.CLIPBOARD
-                                "app" -> requirements += TextMacroContextRequirement.APP
-                            }
+                            variable.requirement?.let(requirements::add)
                         }
                     }
                     index = close + 1

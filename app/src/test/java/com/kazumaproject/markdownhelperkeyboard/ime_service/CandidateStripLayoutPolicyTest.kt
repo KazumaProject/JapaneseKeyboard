@@ -10,7 +10,7 @@ import org.junit.Test
 class CandidateStripLayoutPolicyTest {
 
     @Test
-    fun gemmaActionsUseLinearHorizontalLayout() {
+    fun selectionActionsUseLinearHorizontalLayout() {
         assertTrue(
             CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
                 CandidateStripContent.SelectionActions(
