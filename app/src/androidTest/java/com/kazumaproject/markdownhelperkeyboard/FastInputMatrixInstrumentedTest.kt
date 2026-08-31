@@ -1237,6 +1237,16 @@ class FastInputMatrixInstrumentedTest {
                         }
                     }
                 }
+            } catch (error: SetupException) {
+                val reportedMessage = error.message.orEmpty()
+                if (setupErrors.none { it == reportedMessage }) {
+                    val nextCase = (caseIndex + 1).coerceIn(startCase, endCase)
+                    val result =
+                        "case=$nextCase phase=matrix-setup SETUP_ERROR=${error.message}"
+                    setupErrors += result
+                    sendProgress("FAST_INPUT_SETUP_ERROR $result\n")
+                }
+                Log.e(TAG, "Fast-input matrix stopped after a setup error", error)
             } finally {
                 scenario?.close()
             }
@@ -2742,9 +2752,19 @@ class FastInputMatrixInstrumentedTest {
             SystemClock.sleep(POLL_MS)
         }
 
-        val focusedWindow = shell(
-            "dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'"
-        ).replace('\n', ' ')
+        val focusedWindow = shell("dumpsys window windows")
+            .lineSequence()
+            .map(String::trim)
+            .filter { line ->
+                line.contains("mCurrentFocus") ||
+                    line.contains("mFocusedApp") ||
+                    line.contains("mTopFocusedDisplayId") ||
+                    line.contains("Application Not Responding") ||
+                    line.contains("Application Error")
+            }
+            .take(20)
+            .joinToString(separator = " | ")
+            .ifEmpty { "focus state unavailable" }
         throw SetupException(
             "Host activity did not gain window focus " +
                 "within ${HOST_WINDOW_FOCUS_TIMEOUT_MS}ms " +

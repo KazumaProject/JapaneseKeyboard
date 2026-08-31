@@ -219,6 +219,98 @@ detach_emulated_at_keyboard() {
   return 1
 }
 
+has_system_error_dialog() {
+  local window_dump="$1"
+
+  grep -Eq 'Application (Not Responding|Error):' "$window_dump"
+}
+
+suppress_system_error_dialogs() {
+  local attempt
+  local hide_error_dialogs
+  local window_dump="$fast_input_log_dir/window-after-dialog-suppression.txt"
+
+  adb -s "$fast_input_emulator_serial" shell dumpsys window windows \
+    > "$fast_input_log_dir/window-before-dialog-suppression.txt" || true
+
+  # A boot-time ANR in an unrelated system app (notably Nexus Launcher) can
+  # leave a focusable system dialog above the instrumentation host. The host is
+  # then resumed and its editor is focused, but it can never gain window focus.
+  # Suppress future crash/ANR UI for this disposable CI emulator and close any
+  # dialog that was already shown before this setting was applied.
+  if ! adb -s "$fast_input_emulator_serial" shell \
+    settings put global hide_error_dialogs 1; then
+    echo "Unable to suppress Android system error dialogs." |
+      tee -a "$fast_input_readiness_log"
+    return 1
+  fi
+  hide_error_dialogs="$(
+    adb -s "$fast_input_emulator_serial" shell \
+      settings get global hide_error_dialogs 2>/dev/null |
+      tr -d '\r' ||
+      true
+  )"
+  if [[ "$hide_error_dialogs" != "1" ]]; then
+    echo "hide_error_dialogs was [$hide_error_dialogs], expected [1]." |
+      tee -a "$fast_input_readiness_log"
+    return 1
+  fi
+
+  for ((attempt = 1; attempt <= 10; attempt += 1)); do
+    adb -s "$fast_input_emulator_serial" shell am broadcast \
+      -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+    sleep 1
+    if ! adb -s "$fast_input_emulator_serial" shell dumpsys window windows \
+      > "$window_dump"; then
+      echo "Unable to inspect Android windows after closing system dialogs." |
+        tee -a "$fast_input_readiness_log"
+      return 1
+    fi
+    if ! has_system_error_dialog "$window_dump"; then
+      echo "Android system error dialogs are suppressed." |
+        tee -a "$fast_input_readiness_log"
+      return 0
+    fi
+    echo "System error dialog is still present (attempt $attempt/10)." |
+      tee -a "$fast_input_readiness_log"
+    if ((attempt == 3)) &&
+      grep -q \
+        'Application Not Responding: com.google.android.apps.nexuslauncher' \
+        "$window_dump"; then
+      echo "Stopping the unresponsive CI launcher process." |
+        tee -a "$fast_input_readiness_log"
+      adb -s "$fast_input_emulator_serial" shell am force-stop \
+        com.google.android.apps.nexuslauncher || true
+    fi
+  done
+
+  echo "An Android crash/ANR dialog could not be dismissed." |
+    tee -a "$fast_input_readiness_log"
+  return 1
+}
+
+capture_device_diagnostics() {
+  local label="$1"
+  local diagnostic_dir="$fast_input_log_dir/$label"
+
+  mkdir -p "$diagnostic_dir"
+  adb -s "$fast_input_emulator_serial" exec-out screencap -p \
+    > "$diagnostic_dir/screen.png" || true
+  adb -s "$fast_input_emulator_serial" shell dumpsys window windows \
+    > "$diagnostic_dir/window.txt" || true
+  adb -s "$fast_input_emulator_serial" shell dumpsys activity top \
+    > "$diagnostic_dir/activity-top.txt" || true
+  adb -s "$fast_input_emulator_serial" shell dumpsys activity processes \
+    > "$diagnostic_dir/activity-processes.txt" || true
+  adb -s "$fast_input_emulator_serial" shell dumpsys input_method \
+    > "$diagnostic_dir/input-method.txt" || true
+  if adb -s "$fast_input_emulator_serial" shell test -d /data/anr; then
+    adb -s "$fast_input_emulator_serial" pull /data/anr \
+      "$diagnostic_dir/anr" >/dev/null 2>&1 ||
+      echo "Unable to pull /data/anr from the emulator."
+  fi
+}
+
 export ANDROID_SERIAL="$fast_input_emulator_serial"
 if ! wait_for_android_services 2>&1 | tee "$fast_input_readiness_log"; then
   exit 3
@@ -226,6 +318,11 @@ fi
 
 if ! detach_emulated_at_keyboard; then
   exit 4
+fi
+
+if ! suppress_system_error_dialogs; then
+  capture_device_diagnostics "system-dialog-readiness-failure"
+  exit 7
 fi
 
 adb -s "$fast_input_emulator_serial" shell \
@@ -278,6 +375,10 @@ set +e
 fast_input_gradle_status=${PIPESTATUS[0]}
 set -e
 
+if ((fast_input_gradle_status != 0)); then
+  capture_device_diagnostics "gradle-failure"
+fi
+
 adb -s "$fast_input_emulator_serial" logcat -d -v threadtime \
   > "$fast_input_log_dir/device-logcat.txt" || true
 
@@ -289,6 +390,22 @@ if adb -s "$fast_input_emulator_serial" shell \
 fi
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  fast_input_summary_line="$(
+    grep -h "FAST_INPUT_SUMMARY" \
+      "$fast_input_log_dir/gradle-connected-android-test.log" \
+      "$fast_input_log_dir/device-logcat.txt" 2>/dev/null |
+      tail -n 1 ||
+      true
+  )"
+  fast_input_failure_excerpt="$(
+    grep -h -E \
+      'FAST_INPUT_SETUP_ERROR|SetupException|AssertionError|FAILURE: Build failed|There were failing tests' \
+      "$fast_input_log_dir/gradle-connected-android-test.log" \
+      "$fast_input_log_dir/device-logcat.txt" 2>/dev/null |
+      head -n 8 |
+      cut -c 1-1200 ||
+      true
+  )"
   {
     echo "## Fast Input Regression"
     echo
@@ -297,10 +414,16 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo "- Capture visuals: $fast_input_capture_visuals"
     echo
     echo '```text'
-    grep "FAST_INPUT_SUMMARY" \
-      "$fast_input_log_dir/gradle-connected-android-test.log" \
-      "$fast_input_log_dir/device-logcat.txt" |
-      tail -n 1 || echo "FAST_INPUT_SUMMARY was not emitted."
+    if [[ -n "$fast_input_summary_line" ]]; then
+      echo "$fast_input_summary_line"
+    else
+      echo "FAST_INPUT_SUMMARY was not emitted."
+      if [[ -n "$fast_input_failure_excerpt" ]]; then
+        echo
+        echo "Failure excerpt:"
+        echo "$fast_input_failure_excerpt"
+      fi
+    fi
     echo '```'
   } >> "$GITHUB_STEP_SUMMARY"
 fi
