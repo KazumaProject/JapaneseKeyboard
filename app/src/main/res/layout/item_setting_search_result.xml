@@ -28,7 +28,7 @@
             android:id="@+id/setting_search_result_icon"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:tint="?attr/colorPrimary"
+            app:tint="?attr/colorPrimary"
             tools:src="@drawable/keyboard_24px" />
 
         <LinearLayout
@@ -102,7 +102,7 @@
             android:layout_height="24dp"
             android:layout_marginStart="8dp"
             android:src="@drawable/baseline_arrow_right_24"
-            android:tint="?attr/colorOnSurfaceVariant" />
+            app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 

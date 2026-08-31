@@ -35,8 +35,8 @@ class IMEServiceClipboardPreviewRegressionContractTest {
     fun onUpdateSelectionDoesNotClearAllSuggestionsForPlainSelectedTextBranch() {
         val body = functionBody(imeServiceLines(), "onUpdateSelection").joinToString("\n")
 
-        assertTrue(body.contains("clearSuggestions = hasSelectedTextGemmaActionCandidates()"))
-        assertFalse(body.contains("clearSelectedTextGemmaSession(clearSuggestions = true)"))
+        assertTrue(body.contains("clearSuggestions = hasSelectionActionCandidates()"))
+        assertFalse(body.contains("clearSelectionActionSession(clearSuggestions = true)"))
     }
 
     @Test

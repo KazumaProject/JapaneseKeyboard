@@ -15,6 +15,7 @@ enum class SettingCategory {
     CANDIDATE_CONVERSION,
     CONVERSION_ENGINE,
     DICTIONARY,
+    TEXT_MACRO,
     AI_CONVERSION,
     CLIPBOARD_SHORTCUT,
     OPERATION_FEEDBACK,
@@ -109,9 +110,12 @@ object SettingDestinations {
         "setting_management_learn_dictionary",
         "setting_management_user_dictionary",
         "setting_management_user_template",
+        "setting_management_text_macro",
         "setting_management_custom_keyboard",
         "user_dictionary_preference",
         "user_template_preference",
+        "text_macro_candidate_preference",
+        "text_macro_manage_preference",
         "custom_romaji_preference",
         "shortcut_toolbar_item_preference",
         "candidate_tab_order_preference",
@@ -523,6 +527,8 @@ object SettingDestinations {
         "show_learned_candidates_in_incognito_preference",
         "user_dictionary_preference",
         "user_template_preference",
+        "text_macro_candidate_preference",
+        "text_macro_manage_preference",
         "enable_ai_conversion_zenz_preference",
         "enable_zenz_rerank_preference",
         "zenz_model_select_preference",
@@ -578,6 +584,15 @@ object SettingDestinations {
             keywords = listOf("dictionary", "learn", "ng", "template"),
             destinationId = R.id.dictionaryPreferenceFragment,
             iconRes = CoreR.drawable.dictionary_24px,
+        ),
+        destination(
+            key = "setting_route_text_macro",
+            title = context.getString(R.string.setting_category_text_macro_title),
+            summary = context.getString(R.string.setting_category_text_macro_summary),
+            category = SettingCategory.TEXT_MACRO,
+            keywords = listOf("macro", "dynamic", "template", "snippet", "定型文"),
+            destinationId = R.id.textMacroFragment,
+            iconRes = CoreR.drawable.book_3_24px,
         ),
         destination(
             key = "setting_route_ai_conversion",
@@ -673,6 +688,18 @@ object SettingDestinations {
             ),
         ),
         destination(
+            key = "setting_management_text_macro",
+            title = context.getString(R.string.text_macro_title),
+            summary = context.getString(R.string.text_macro_management_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("macro", "dynamic", "template", "snippet"),
+            destinationId = R.id.textMacroFragment,
+            iconRes = CoreR.drawable.book_3_24px,
+            destinationType = SettingDestinationType.ManagementDestination(
+                destinationId = R.id.textMacroFragment,
+            ),
+        ),
+        destination(
             key = "setting_management_custom_keyboard",
             title = context.getString(R.string.custom_keyboard_fragment_label),
             summary = context.getString(R.string.setting_management_custom_keyboard_summary),
@@ -697,6 +724,7 @@ object SettingDestinations {
             SettingCategory.CANDIDATE_CONVERSION -> context.getString(R.string.setting_category_candidate_conversion_title)
             SettingCategory.CONVERSION_ENGINE -> context.getString(R.string.conversion_engine_category_title)
             SettingCategory.DICTIONARY -> context.getString(R.string.category_dictionary)
+            SettingCategory.TEXT_MACRO -> context.getString(R.string.setting_category_text_macro_title)
             SettingCategory.AI_CONVERSION -> context.getString(R.string.setting_category_ai_conversion_title)
             SettingCategory.CLIPBOARD_SHORTCUT -> context.getString(R.string.setting_category_clipboard_shortcut_title)
             SettingCategory.OPERATION_FEEDBACK -> context.getString(R.string.setting_category_operation_feedback_title)
@@ -715,6 +743,7 @@ object SettingDestinations {
             SettingCategory.CANDIDATE_CONVERSION -> CoreR.drawable.arrows_output_24px
             SettingCategory.CONVERSION_ENGINE -> CoreR.drawable.swap_horiz_24px
             SettingCategory.DICTIONARY -> CoreR.drawable.dictionary_24px
+            SettingCategory.TEXT_MACRO -> CoreR.drawable.book_3_24px
             SettingCategory.AI_CONVERSION -> CoreR.drawable.lightbulb_24dp
             SettingCategory.CLIPBOARD_SHORTCUT -> CoreR.drawable.content_paste_24px
             SettingCategory.OPERATION_FEEDBACK -> CoreR.drawable.baseline_settings_24
@@ -733,6 +762,7 @@ object SettingDestinations {
             "setting_route_conversion_engine" -> R.id.conversionEnginePreferenceFragment
             "setting_route_utility_candidates" -> R.id.utilityCandidatePreferenceFragment
             "setting_route_dictionary" -> R.id.dictionaryPreferenceFragment
+            "setting_route_text_macro" -> R.id.textMacroFragment
             "setting_route_ai_conversion" -> R.id.aiConversionPreferenceFragment
             "setting_route_clipboard_shortcut" -> R.id.clipboardShortcutPreferenceFragment
             "setting_route_operation_feedback" -> R.id.operationFeedbackPreferenceFragment
@@ -743,6 +773,7 @@ object SettingDestinations {
             "setting_management_learn_dictionary" -> R.id.navigation_learn_dictionary
             "setting_management_user_dictionary" -> R.id.navigation_user_dictionary
             "setting_management_user_template" -> R.id.userTemplateFragment
+            "setting_management_text_macro" -> R.id.textMacroFragment
             "setting_management_custom_keyboard" -> R.id.keyboardListFragment
             "setting_route_legacy_settings" -> R.id.settingMainFragment
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment
@@ -780,6 +811,7 @@ object SettingDestinations {
             "n_gram_rule_preference" -> R.id.ngramRuleFragment
             "candidate_order_override_preference" -> R.id.candidateOrderOverrideFragment
             "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
+            "text_macro_manage_preference" -> R.id.textMacroFragment
             "ng_word_preference" -> R.id.ngWordFragment
             "gemma_prompt_template_management_preference" -> R.id.gemmaPromptTemplateFragment
             "kana_keyboard_letter_size_preference" -> R.id.tenKeyCandidateLetterSizeFragment

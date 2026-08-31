@@ -38,6 +38,15 @@ class UserTemplateCandidateMapperTest {
         }
     }
 
+    @Test
+    fun legacyTemplateMacroLikeTextRemainsLiteral() {
+        val candidate = template("{date}", "date").toUserTemplateCandidate()
+
+        assertEquals("{date}", candidate.string)
+        assertEquals(CANDIDATE_TYPE_USER_TEMPLATE, candidate.type)
+        assertEquals(null, candidate.sourceId)
+    }
+
     private fun template(
         word: String,
         reading: String,

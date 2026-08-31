@@ -31,7 +31,7 @@
             android:padding="8dp"
             android:scaleType="center"
             android:src="@drawable/ic_drag_handle"
-            android:tint="?attr/colorOnSurfaceVariant"
+            app:tint="?attr/colorOnSurfaceVariant"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -51,7 +51,7 @@
                 android:layout_width="26dp"
                 android:layout_height="26dp"
                 android:layout_gravity="center"
-                android:tint="?attr/colorPrimary"
+                app:tint="?attr/colorPrimary"
                 tools:src="@drawable/baseline_settings_24" />
 
         </FrameLayout>
@@ -98,7 +98,7 @@
             android:padding="10dp"
             android:scaleType="center"
             android:src="@drawable/baseline_delete_24"
-            android:tint="?attr/colorError"
+            app:tint="?attr/colorError"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

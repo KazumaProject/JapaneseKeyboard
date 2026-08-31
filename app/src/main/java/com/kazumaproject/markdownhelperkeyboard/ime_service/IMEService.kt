@@ -187,6 +187,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UTILITY_LITERAL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
@@ -319,6 +320,12 @@ import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.TextMacroRepository
+import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroCompiler
+import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroContext
+import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroContextRequirement
+import com.kazumaproject.markdownhelperkeyboard.text_macro.ExpandedMacro
+import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroInputConnectionExecutor
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
@@ -463,14 +470,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val committedText: String = ""
     )
 
-    private sealed class SelectedTextGemmaAction {
-        object Translate : SelectedTextGemmaAction()
-        data class CustomPrompt(val template: GemmaPromptTemplate) : SelectedTextGemmaAction()
-    }
-
-    private data class SelectedTextGemmaSession(
+    private data class TextMacroEditorSnapshot(
+        val connection: InputConnection,
+        val packageName: String,
+        val input: String,
+        val selectionStart: Int,
+        val selectionEnd: Int,
         val selectedText: String,
-        val actions: List<SelectedTextGemmaAction>
     )
 
     private data class ZenzRerankEntry(
@@ -540,6 +546,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var userTemplateRepository: UserTemplateRepository
+
+    @Inject
+    lateinit var textMacroRepository: TextMacroRepository
 
     @Inject
     lateinit var candidateOrderOverrideRepository: CandidateOrderOverrideRepository
@@ -911,9 +920,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     handleSelectedTextSelection(text)
                 } else {
                     clearSelectedTextClipboardPreviewRefresh()
-                    if (selectedTextGemmaSession != null) {
-                        clearSelectedTextGemmaSession(
-                            clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                    if (selectionActionSession != null) {
+                        clearSelectionActionSession(
+                            clearSuggestions = hasSelectionActionCandidates()
                         )
                     }
                 }
@@ -1060,7 +1069,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
             customLayoutPickerShown = isCustomLayoutPickerShownForCandidateStrip(),
             customLayouts = customLayouts,
-            selectedTextGemmaActionsShown = candidates.isSelectedTextGemmaActionCandidates(),
+            selectionActionsShown = candidates.isSelectionActionCandidates(),
             editorTextSelected = shouldSuppressClipboardPreviewForSelectedText,
             clipboardPreviewEnabled = clipboardPreviewVisibility == true,
             clipboardPreviewDescriptionShown = clipboardPreviewTapToDelete != true,
@@ -1132,8 +1141,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customKeyboardSuggestionPreference == true
     }
 
-    private fun List<Candidate>.isSelectedTextGemmaActionCandidates(): Boolean {
-        return isNotEmpty() && all { isSelectedTextGemmaActionCandidate(it) }
+    private fun List<Candidate>.isSelectionActionCandidates(): Boolean {
+        return isNotEmpty() && all { isSelectionActionCandidate(it) }
     }
 
     private fun rememberZeroQueryKeyAfterCommit(committedText: String) {
@@ -1201,7 +1210,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
         if (isCustomLayoutPickerShownForCandidateStrip()) return false
-        if (isSelectedTextGemmaActionsShownForCandidateStrip()) return false
+        if (isSelectionActionsShownForCandidateStrip()) return false
         if (editorTextSelected) {
             return false
         }
@@ -1240,10 +1249,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentInputType == InputTypeForIME.TextWebEmailAddress
     }
 
-    private fun isSelectedTextGemmaActionsShownForCandidateStrip(): Boolean {
-        return currentCandidateStripCandidates.isSelectedTextGemmaActionCandidates() ||
-            currentCandidateStripFullCandidates.isSelectedTextGemmaActionCandidates() ||
-            currentCandidateStripContent is CandidateStripContent.GemmaActions
+    private fun isSelectionActionsShownForCandidateStrip(): Boolean {
+        return currentCandidateStripCandidates.isSelectionActionCandidates() ||
+            currentCandidateStripFullCandidates.isSelectionActionCandidates() ||
+            currentCandidateStripContent is CandidateStripContent.SelectionActions
     }
 
     private fun consumePendingZeroQueryAfterCommit() {
@@ -1346,7 +1355,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
-            if (candidate != null) {
+            if (candidate != null && candidate.type != CANDIDATE_TYPE_TEXT_MACRO) {
                 applyFirstSuggestion(candidate)
             } else {
                 applyRawComposingFallback(insertString)
@@ -1402,13 +1411,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var rightLongPressJob: Job? = null
     private var leftLongPressJob: Job? = null
     private var candidateTranslationJob: Job? = null
-    private var selectedTextGemmaActionJob: Job? = null
+    private var selectionActionJob: Job? = null
     private val customGemmaPromptActionLimit = 5
     private val candidateTranslationRequestId = AtomicLong(0L)
     private var candidateTranslationContextSnapshot: String? = null
-    private val selectedTextGemmaActionMenuRequestId = AtomicLong(0L)
-    private val selectedTextGemmaActionRequestId = AtomicLong(0L)
-    private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
+    private val selectionActionMenuRequestId = AtomicLong(0L)
+    private val selectionActionRequestId = AtomicLong(0L)
+    private val textMacroExecutionRequestId = AtomicLong(0L)
+    private var selectionActionSession: SelectionActionSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private var lastKeyboardLayoutRootView: View? = null
@@ -1536,6 +1546,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isLearnDictionaryMode: Boolean? = false
     private var isUserDictionaryEnable: Boolean? = false
     private var isUserTemplateEnable: Boolean? = false
+    private var isTextMacroCandidateEnable: Boolean = true
     private var suppressHentaiganaCandidates: Boolean = false
     private var zeroQuerySuggestionPreference: Boolean = false
     private var hankakuPreference: Boolean? = false
@@ -2104,6 +2115,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             override val previewText: String = beforeText
         }
 
+        data class MacroCommit(
+            val beforeText: String,
+            val prefix: String,
+            val suffix: String,
+        ) : EditHistoryEntry {
+            override val previewText: String = beforeText
+        }
+
     }
 
     private class EditHistoryBuffer {
@@ -2299,7 +2318,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter = FloatingCandidateListAdapter(
             pageSize = PAGE_SIZE,
         )
-        listAdapter.onSuggestionClicked = { suggestion: CandidateItem ->
+        listAdapter.onSuggestionClicked = suggestionClick@ { suggestion: CandidateItem ->
+            if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
+                suggestion.sourceId?.let(::executeTextMacro)
+                return@suggestionClick
+            }
             val tail = FloatingCandidateTailResolver.resolveTail(
                 originalInput = inputString.value,
                 selectedCandidateLength = suggestion.length.toInt()
@@ -2497,6 +2520,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inlineAutofillController?.startInputSession()
         }
         resetEditorSelectionSnapshot()
+        textMacroExecutionRequestId.incrementAndGet()
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
         gemmaInputSessionId += 1L
@@ -2682,6 +2706,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
+        isTextMacroCandidateEnable = preferences.isTextMacroCandidateEnable
         SystemNgramRuntime.setEnabled(this, preferences.systemNgramDictionaryEnabled)
         ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
@@ -5101,6 +5126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         showLearnedCandidatesInIncognitoPreference = true
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
+        isTextMacroCandidateEnable = true
         suppressHentaiganaCandidates = false
         hankakuPreference = null
         customDirectModeSpaceHankakuPreference = true
@@ -6180,9 +6206,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         clearSelectedTextClipboardPreviewRefresh()
-        if (selectedTextGemmaSession != null) {
-            clearSelectedTextGemmaSession(
-                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+        if (selectionActionSession != null) {
+            clearSelectionActionSession(
+                clearSuggestions = hasSelectionActionCandidates()
             )
         }
 
@@ -7322,6 +7348,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String
     ) {
         val selectedSuggestion = listAdapter.currentList.getOrNull(currentHighlightIndex) ?: return
+        if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) return
         val tail = FloatingCandidateTailResolver.resolveTail(
             originalInput = insertString,
             selectedCandidateLength = selectedSuggestion.length.toInt()
@@ -7352,6 +7379,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun floatingCandidateEnterPressed() {
         val selectedSuggestion = listAdapter.getHighlightedItem()
         if (selectedSuggestion != null) {
+            if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
+                selectedSuggestion.sourceId?.let(::executeTextMacro)
+                return
+            }
             val subString = stringInTail.get()
             if (subString.isNotEmpty()) {
                 commitText(selectedSuggestion.word, 1)
@@ -9457,6 +9488,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keyboardSelectionPopupWindow: PopupWindow? = null
 
     private fun shouldShowCandidateLongPressActions(candidate: Candidate): Boolean {
+        if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) return false
         return candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY ||
             isNgWordEnable == true ||
             gemmaTranslationManager.isTranslationAvailable()
@@ -9613,102 +9645,142 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleSelectedTextSelection(selectedText: String) {
         if (selectedTextClipboardPreviewRefreshText == selectedText) {
-            clearSelectedTextGemmaSession(
-                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            clearSelectionActionSession(
+                clearSuggestions = hasSelectionActionCandidates()
             )
             updateClipboardPreview()
             return
         }
         clearSelectedTextClipboardPreviewRefresh()
-        if (selectedTextGemmaSession?.selectedText != null &&
-            selectedTextGemmaSession?.selectedText != selectedText
+        if (selectionActionSession?.selectedText != null &&
+            selectionActionSession?.selectedText != selectedText
         ) {
-            clearSelectedTextGemmaSession(
-                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            clearSelectionActionSession(
+                clearSuggestions = hasSelectionActionCandidates()
             )
         }
-        if (AppVariantConfig.hasGemma &&
-            appPreference.enable_gemma_translation_preference &&
-            gemmaTranslationManager.isTranslationAvailable()
+        if (isTextMacroCandidateEnable || (
+                AppVariantConfig.hasGemma &&
+                    appPreference.enable_gemma_translation_preference &&
+                    gemmaTranslationManager.isTranslationAvailable()
+                )
         ) {
-            showSelectedTextGemmaActions(selectedText)
+            showSelectionActions(selectedText)
         } else {
-            clearSelectedTextGemmaSession(
-                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            clearSelectionActionSession(
+                clearSuggestions = hasSelectionActionCandidates()
             )
         }
     }
 
-    private fun showSelectedTextGemmaActions(selectedText: String) {
+    private fun showSelectionActions(selectedText: String) {
         clearZeroQueryAllState(refresh = false)
-        if (!gemmaTranslationManager.isTranslationAvailable()) {
-            clearSelectedTextGemmaSession(
-                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+        val gemmaAvailable = AppVariantConfig.hasGemma &&
+            appPreference.enable_gemma_translation_preference &&
+            gemmaTranslationManager.isTranslationAvailable()
+        if (!isTextMacroCandidateEnable && !gemmaAvailable) {
+            clearSelectionActionSession(
+                clearSuggestions = hasSelectionActionCandidates()
             )
             return
         }
-        if (selectedTextGemmaSession?.selectedText == selectedText &&
-            currentCandidateStripCandidates.any { isSelectedTextGemmaActionCandidate(it) }
+        if (selectionActionSession?.selectedText == selectedText &&
+            currentCandidateStripCandidates.any { isSelectionActionCandidate(it) }
         ) {
             return
         }
 
-        val requestId = selectedTextGemmaActionMenuRequestId.incrementAndGet()
+        val requestId = selectionActionMenuRequestId.incrementAndGet()
         ioScope.launch {
-            val templates = gemmaPromptTemplateRepository.getEnabledTemplates(
-                customGemmaPromptActionLimit
-            )
+            val localMacroEntries = if (
+                isTextMacroCandidateEnable &&
+                !isPrivateMode &&
+                currentInputType !in passwordTypes
+            ) {
+                textMacroRepository.getEnabledSelectionMacros(limit = 8).mapNotNull { macro ->
+                    val compiled = runCatching { TextMacroCompiler.compile(macro.body) }
+                        .getOrNull() ?: return@mapNotNull null
+                    if (TextMacroContextRequirement.SELECTION !in compiled.requirements) {
+                        return@mapNotNull null
+                    }
+                    SelectionActionEntry(
+                        candidate = Candidate(
+                            string = macro.name,
+                            type = CANDIDATE_TYPE_TEXT_MACRO,
+                            length = selectedText.length
+                                .coerceAtMost(UByte.MAX_VALUE.toInt())
+                                .toUByte(),
+                            score = Int.MAX_VALUE,
+                            sourceId = macro.id,
+                        ),
+                        action = SelectionAction.TextMacro(macro.id),
+                    )
+                }
+            } else {
+                emptyList()
+            }
+            val templates = if (gemmaAvailable) {
+                gemmaPromptTemplateRepository.getEnabledTemplates(customGemmaPromptActionLimit)
+            } else {
+                emptyList()
+            }
             withContext(Dispatchers.Main) {
-                if (selectedTextGemmaActionMenuRequestId.get() != requestId) return@withContext
+                if (selectionActionMenuRequestId.get() != requestId) return@withContext
                 val currentSelection = selectedEditorText
                 if (currentSelection != selectedText) return@withContext
 
                 val actions = buildList {
-                    add(SelectedTextGemmaAction.Translate)
-                    templates.forEach { template ->
-                        add(SelectedTextGemmaAction.CustomPrompt(template))
+                    if (gemmaAvailable) {
+                        add(SelectionAction.Translate)
+                        templates.forEach { template ->
+                            add(SelectionAction.CustomPrompt(template))
+                        }
                     }
                 }
-                if (actions.isEmpty()) {
-                    clearSelectedTextGemmaSession(
-                        clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                val session = SelectionActionSessionComposer.compose(
+                    selectedText = selectedText,
+                    localMacros = localMacroEntries,
+                    translationAndPrompts = buildSelectionActionEntries(
+                        selectedText = selectedText,
+                        actions = actions,
+                    ),
+                )
+                if (session == null) {
+                    clearSelectionActionSession(
+                        clearSuggestions = hasSelectionActionCandidates()
                     )
                     return@withContext
                 }
 
-                selectedTextGemmaSession = SelectedTextGemmaSession(
-                    selectedText = selectedText,
-                    actions = actions
+                selectionActionSession = session
+                clearZenzLiveSlot("selection actions")
+                setSuggestionAdaptersOnMain(
+                    session.entries.map(SelectionActionEntry::candidate)
                 )
-                val candidates = buildSelectedTextGemmaActionCandidates(
-                    selectedText = selectedText,
-                    actions = actions
-                )
-                clearZenzLiveSlot("selected text Gemma actions")
-                setSuggestionAdaptersOnMain(candidates)
                 suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
                 suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
             }
         }
     }
 
-    private fun buildSelectedTextGemmaActionCandidates(
+    private fun buildSelectionActionEntries(
         selectedText: String,
-        actions: List<SelectedTextGemmaAction>
-    ): List<Candidate> {
+        actions: List<SelectionAction>
+    ): List<SelectionActionEntry> {
         val candidateLength = selectedText.length
             .coerceIn(0, UByte.MAX_VALUE.toInt())
             .toUByte()
         return actions.mapIndexed { index, action ->
-            when (action) {
-                SelectedTextGemmaAction.Translate -> Candidate(
+            val candidate = when (action) {
+                is SelectionAction.TextMacro -> error("Text macros are built from repository rows")
+                SelectionAction.Translate -> Candidate(
                     string = getString(R.string.candidate_action_translate),
                     type = GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte(),
                     length = candidateLength,
                     score = Int.MAX_VALUE - index
                 )
 
-                is SelectedTextGemmaAction.CustomPrompt -> Candidate(
+                is SelectionAction.CustomPrompt -> Candidate(
                     string = action.template.title,
                     type = GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte(),
                     length = candidateLength,
@@ -9716,20 +9788,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     yomi = action.template.id.toString()
                 )
             }
+            SelectionActionEntry(candidate = candidate, action = action)
         }
     }
 
-    private fun hasSelectedTextGemmaActionCandidates(): Boolean {
-        return currentCandidateStripCandidates.any(::isSelectedTextGemmaActionCandidate) ||
-            currentCandidateStripFullCandidates.any(::isSelectedTextGemmaActionCandidate)
+    private fun hasSelectionActionCandidates(): Boolean {
+        return currentCandidateStripCandidates.any(::isSelectionActionCandidate) ||
+            currentCandidateStripFullCandidates.any(::isSelectionActionCandidate)
     }
 
     private fun markClipboardPreviewRefreshAfterPrimaryClipChanged() {
         selectedTextClipboardPreviewRefreshText =
             selectedEditorText.takeIf { it.isNotEmpty() }
         if (selectedTextClipboardPreviewRefreshText != null) {
-            clearSelectedTextGemmaSession(
-                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            clearSelectionActionSession(
+                clearSuggestions = hasSelectionActionCandidates()
             )
         }
     }
@@ -9738,23 +9811,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         selectedTextClipboardPreviewRefreshText = null
     }
 
-    private fun clearSelectedTextGemmaSession(clearSuggestions: Boolean) {
+    private fun clearSelectionActionSession(clearSuggestions: Boolean) {
         clearZeroQueryAllState(refresh = false)
-        selectedTextGemmaActionMenuRequestId.incrementAndGet()
-        cancelActiveSelectedTextGemmaAction()
-        selectedTextGemmaSession = null
+        selectionActionMenuRequestId.incrementAndGet()
+        cancelActiveSelectionAction()
+        selectionActionSession = null
         if (!clearSuggestions) return
-        clearZenzLiveSlot("selected text Gemma cleared")
+        clearZenzLiveSlot("selection actions cleared")
         setSuggestionAdaptersOnMain(emptyList())
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
     }
 
-    private fun handleSelectedTextGemmaActionClick(position: Int): Boolean {
-        val session = selectedTextGemmaSession ?: return false
-        val action = session.actions.getOrNull(position) ?: return false
-        when (action) {
-            SelectedTextGemmaAction.Translate -> executeSelectedTextGemmaAction(
+    private fun handleSelectionActionClick(candidate: Candidate, position: Int): Boolean {
+        val session = selectionActionSession ?: return false
+        val entry = session.entryFor(candidate, position) ?: return false
+        when (val action = entry.action) {
+            is SelectionAction.TextMacro -> executeTextMacro(action.id)
+
+            SelectionAction.Translate -> executeSelectionAction(
                 actionLabel = getString(R.string.candidate_action_translate),
                 sourceText = session.selectedText,
                 emptyResultMessage = getString(R.string.candidate_translation_empty),
@@ -9763,7 +9838,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 gemmaTranslationManager.translate(sourceText)
             }
 
-            is SelectedTextGemmaAction.CustomPrompt -> executeSelectedTextGemmaAction(
+            is SelectionAction.CustomPrompt -> executeSelectionAction(
                 actionLabel = action.template.title,
                 sourceText = session.selectedText,
                 emptyResultMessage = getString(R.string.candidate_gemma_prompt_empty),
@@ -9782,7 +9857,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
-    private fun executeSelectedTextGemmaAction(
+    private fun executeSelectionAction(
         actionLabel: String,
         sourceText: String,
         emptyResultMessage: String,
@@ -9790,8 +9865,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         transform: suspend (String) -> String
     ) {
         cancelActiveCandidateTranslation()
-        cancelActiveSelectedTextGemmaAction()
-        val requestId = selectedTextGemmaActionRequestId.incrementAndGet()
+        cancelActiveSelectionAction()
+        val requestId = selectionActionRequestId.incrementAndGet()
         setCandidateTranslationProgressVisible(true)
         showToastMessage(
             if (actionLabel == getString(R.string.candidate_action_translate)) {
@@ -9800,25 +9875,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 getString(R.string.candidate_gemma_prompt_in_progress, actionLabel)
             }
         )
-        selectedTextGemmaActionJob = ioScope.launch {
+        selectionActionJob = ioScope.launch {
             runCatching {
                 val transformedText = transform(sourceText)
                 transformedText.takeIf { it.isNotBlank() }
                     ?: throw IllegalStateException(emptyResultMessage)
             }.onSuccess { transformedText ->
                 withContext(Dispatchers.Main) {
-                    if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return@withContext
-                    finishSelectedTextGemmaAction(requestId)
-                    replaceSelectedTextWithGemmaResult(
+                    if (!isSelectionActionRequestCurrent(requestId)) return@withContext
+                    finishSelectionAction(requestId)
+                    replaceSelectedTextWithActionResult(
                         originalText = sourceText,
                         transformedText = transformedText
                     )
                 }
             }.onFailure { error ->
-                Timber.e(error, "Selected text Gemma action failed.")
+                Timber.e(error, "Selection model action failed.")
                 withContext(Dispatchers.Main) {
-                    if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return@withContext
-                    finishSelectedTextGemmaAction(requestId)
+                    if (!isSelectionActionRequestCurrent(requestId)) return@withContext
+                    finishSelectionAction(requestId)
                     if (error is CancellationException) return@withContext
                     showToastMessage(resolveThrowableMessage(error, failureMessage))
                 }
@@ -9826,13 +9901,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun replaceSelectedTextWithGemmaResult(
+    private fun replaceSelectedTextWithActionResult(
         originalText: String,
         transformedText: String
     ) {
         val inputConnection = currentInputConnection ?: run {
             showToastMessage(getString(R.string.candidate_translation_cancelled_context_changed))
-            clearSelectedTextGemmaSession(clearSuggestions = true)
+            clearSelectionActionSession(clearSuggestions = true)
             return
         }
         ioScope.launch {
@@ -9846,11 +9921,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showToastMessage(
                         getString(R.string.candidate_translation_cancelled_context_changed)
                     )
-                    clearSelectedTextGemmaSession(clearSuggestions = true)
+                    clearSelectionActionSession(clearSuggestions = true)
                     return@runOnMainThread
                 }
                 if (transformedText == originalText) {
-                    clearSelectedTextGemmaSession(clearSuggestions = true)
+                    clearSelectionActionSession(clearSuggestions = true)
                     return@runOnMainThread
                 }
 
@@ -9866,34 +9941,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         afterText = transformedText
                     )
                 )
-                clearSelectedTextGemmaSession(clearSuggestions = true)
+                clearSelectionActionSession(clearSuggestions = true)
             }
         }
     }
 
-    private fun isSelectedTextGemmaActionCandidate(candidate: Candidate): Boolean {
-        return candidate.type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
+    private fun isSelectionActionCandidate(candidate: Candidate): Boolean {
+        return (candidate.type == CANDIDATE_TYPE_TEXT_MACRO && candidate.yomi == null) ||
+                candidate.type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
                 candidate.type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }
 
-    private fun isSelectedTextGemmaActionRequestCurrent(requestId: Long): Boolean {
-        return selectedTextGemmaActionRequestId.get() == requestId
+    private fun isSelectionActionRequestCurrent(requestId: Long): Boolean {
+        return selectionActionRequestId.get() == requestId
     }
 
-    private fun finishSelectedTextGemmaAction(requestId: Long) {
-        if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return
-        selectedTextGemmaActionJob = null
+    private fun finishSelectionAction(requestId: Long) {
+        if (!isSelectionActionRequestCurrent(requestId)) return
+        selectionActionJob = null
         setCandidateTranslationProgressVisible(false)
     }
 
-    private fun cancelActiveSelectedTextGemmaAction() {
-        val currentJob = selectedTextGemmaActionJob
+    private fun cancelActiveSelectionAction() {
+        val currentJob = selectionActionJob
         if (currentJob?.isActive != true) return
-        selectedTextGemmaActionRequestId.incrementAndGet()
-        selectedTextGemmaActionJob = null
+        selectionActionRequestId.incrementAndGet()
+        selectionActionJob = null
         setCandidateTranslationProgressVisible(false)
         gemmaTranslationManager.cancelActiveTranslation()
-        currentJob.cancel(CancellationException("Selected text Gemma action cancelled."))
+        currentJob.cancel(CancellationException("Selection model action cancelled."))
     }
 
     private fun translateCandidateInPlace(candidate: Candidate, candidatePosition: Int) {
@@ -9943,7 +10019,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         transform: suspend (String) -> String
     ) {
         cancelActiveCandidateTranslation()
-        cancelActiveSelectedTextGemmaAction()
+        cancelActiveSelectionAction()
         val sourceText = displayTextFromCandidate(candidate)
         val expectedPreEditSnapshot = resolveCurrentPreEditText()
         val requestId = candidateTranslationRequestId.incrementAndGet()
@@ -10001,6 +10077,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     insertString = inputString.value,
                     requestedIndex = requestedIndex
                 ) ?: return inputString.value + stringInTail.get()
+                if (suggestions[selectedIndex].type == CANDIDATE_TYPE_TEXT_MACRO) {
+                    return inputString.value + stringInTail.get()
+                }
                 return getCandidateCommitString(suggestions[selectedIndex]) + stringInTail.get()
             }
         }
@@ -15766,7 +15845,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (candidates.size < 2) return null
 
         val rerankTargets = candidates.withIndex()
-            .filter { it.value.length.toInt() == insertString.length }
+            .filter {
+                it.value.type != CANDIDATE_TYPE_TEXT_MACRO &&
+                    it.value.length.toInt() == insertString.length
+            }
             .take(ZENZ_RERANK_TOP_K)
 
         if (rerankTargets.size < 2) return null
@@ -15977,7 +16059,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
                         CandidateItem(
-                            word = it.string, length = it.length
+                            word = it.string,
+                            length = it.length,
+                            candidateType = it.type,
+                            sourceId = it.sourceId,
                         )
                     },
                     insertString = insertString
@@ -16074,7 +16159,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentCandidateStripFullCandidates.isNotEmpty() ||
                 filteredCandidateList?.isNotEmpty() == true ||
                 currentCandidateStripContent is CandidateStripContent.Candidates ||
-                currentCandidateStripContent is CandidateStripContent.GemmaActions ||
+                currentCandidateStripContent is CandidateStripContent.SelectionActions ||
                 shortcutToolbarHiddenForCandidates ||
                 candidateRefreshRequests.value.flag != CandidateShowFlag.Idle
         if (hasStaleCandidateState) {
@@ -17696,7 +17781,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateSuggestionsForFloatingCandidate(segment.candidates.map {
                 CandidateItem(
                     word = displayTextFromCandidate(it),
-                    length = it.length
+                    length = it.length,
+                    candidateType = it.type,
+                    sourceId = it.sourceId,
                 )
             }, highlightedAbsoluteIndex = segmentHighlightIndex)
         }
@@ -18572,7 +18659,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
                 if (candidate.isZenzLiveLoadingSlot(inputString.value)) return@setOnItemLongClickListener
-                if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
+                if (isSelectionActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
                 if (shouldShowCandidateLongPressActions(candidate)) {
                     val candidatePosition = resolveCandidateLongPressPosition(
@@ -18705,7 +18792,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
                 if (candidate.isZenzLiveLoadingSlot(inputString.value)) return@setOnItemLongClickListener
-                if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
+                if (isSelectionActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
                 if (shouldShowCandidateLongPressActions(candidate)) {
                     val candidatePosition = resolveCandidateLongPressPosition(
@@ -19611,9 +19698,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 inputStringEmpty = inputString.value.isEmpty(),
                 tailEmpty = stringInTail.get().isEmpty(),
                 clipboardPreviewShown = content.hasClipboardPreview(),
-                selectedTextGemmaActionsShown = content is CandidateStripContent.GemmaActions,
+                selectionActionsShown = content is CandidateStripContent.SelectionActions,
                 suggestionsEmpty = content !is CandidateStripContent.Candidates &&
-                    content !is CandidateStripContent.GemmaActions &&
+                    content !is CandidateStripContent.SelectionActions &&
                     content !is CandidateStripContent.ZeroQuerySuggestions,
                 customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
                 symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
@@ -19684,6 +19771,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.TEMPLATE -> {
                 showUserTemplateListPopup()
+            }
+
+            ShortcutType.TEXT_MACRO -> {
+                showTextMacroListPopup()
             }
 
             ShortcutType.KEYBOARD_PICKER -> {
@@ -20778,7 +20869,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setSuggestionAdaptersOnMain(candidates)
         if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
             updateSuggestionsForFloatingCandidate(
-                candidates.map { CandidateItem(word = it.string, length = it.length) }
+                candidates.map {
+                    CandidateItem(
+                        word = it.string,
+                        length = it.length,
+                        candidateType = it.type,
+                        sourceId = it.sourceId,
+                    )
+                }
             )
         }
         if (applyFirstCandidate) {
@@ -20986,10 +21084,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("Zenz live loading slot click ignored: input=%s", insertString)
             return
         }
-        if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(
-                position
+        if (isSelectionActionCandidate(candidate) && handleSelectionActionClick(
+                candidate,
+                position,
             )
         ) {
+            return
+        }
+        if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
+            candidate.sourceId?.let(::executeTextMacro)
             return
         }
         if (
@@ -21582,6 +21685,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 restoreCompositionState(entry.beforeInput, entry.beforeTail)
                 true
             }
+
+            is EditHistoryEntry.MacroCommit -> {
+                val ic = currentInputConnection ?: return false
+                ic.beginBatchEdit()
+                try {
+                    val prefixDeleted = entry.prefix.isEmpty() ||
+                        deleteCommittedTextBeforeCursor(entry.prefix)
+                    val suffixDeleted = entry.suffix.isEmpty() ||
+                        deleteCommittedTextAfterCursor(entry.suffix)
+                    prefixDeleted && suffixDeleted && commitText(entry.beforeText, 1)
+                } finally {
+                    ic.endBatchEdit()
+                }
+            }
         }
     }
 
@@ -21610,6 +21727,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             is EditHistoryEntry.CompositionChange -> {
                 restoreCompositionState(entry.afterInput, entry.afterTail)
                 true
+            }
+
+            is EditHistoryEntry.MacroCommit -> {
+                if (entry.beforeText.isNotEmpty() && !deleteCommittedTextBeforeCursor(entry.beforeText)) {
+                    false
+                } else {
+                    currentInputConnection?.let { connection ->
+                        TextMacroInputConnectionExecutor.commit(
+                            connection,
+                            ExpandedMacro(
+                                text = entry.prefix + entry.suffix,
+                                cursorOffset = entry.prefix.length,
+                            ),
+                        )
+                    } == true
+                }
             }
         }
     }
@@ -21716,6 +21849,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 insertString = inputString.value,
                 requestedIndex = requestedIndex
             ) ?: return inputString.value + stringInTail.get()
+            if (suggestions[selectedIndex].type == CANDIDATE_TYPE_TEXT_MACRO) {
+                return inputString.value + stringInTail.get()
+            }
             return getCandidateCommitString(suggestions[selectedIndex]) + stringInTail.get()
         }
 
@@ -22022,7 +22158,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearPendingReconversionEntry()
         clearBunsetsuReconversionDraft()
         cancelActiveCandidateTranslation()
-        clearSelectedTextGemmaSession(clearSuggestions = true)
+        clearSelectionActionSession(clearSuggestions = true)
         setSuggestionAdaptersOnMain(emptyList())
         updateSuggestionsForFloatingCandidate(emptyList())
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
@@ -22314,6 +22450,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) ?: return
         suggestionClickNum = index + 1
         val nextSuggestion = suggestions[index]
+        if (nextSuggestion.type == CANDIDATE_TYPE_TEXT_MACRO) {
+            nextSuggestion.sourceId?.let(::executeTextMacro)
+            return
+        }
         processCandidate(
             candidate = nextSuggestion,
             insertString = insertString,
@@ -22871,7 +23011,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
                         CandidateItem(
-                            word = it.string, length = it.length
+                            word = it.string,
+                            length = it.length,
+                            candidateType = it.type,
+                            sourceId = it.sourceId,
                         )
                     },
                     insertString = insertString
@@ -22950,7 +23093,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
                         CandidateItem(
-                            word = it.string, length = it.length
+                            word = it.string,
+                            length = it.length,
+                            candidateType = it.type,
+                            sourceId = it.sourceId,
                         )
                     },
                     insertString = insertString
@@ -23074,7 +23220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     !it.containsMatchIn(candidate.string)
                 }
             }
-        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
@@ -23213,7 +23359,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         !it.containsMatchIn(candidate.string)
                     }
                 }
-            }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+            }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
         }
 
         val orderedCandidates = applyMergedCandidateOrder(
@@ -23343,7 +23489,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     !it.containsMatchIn(candidate.string)
                 }
             }
-        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
@@ -23389,6 +23535,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             promotedCandidates
         }
     }
+
+    /**
+     * A macro action may deliberately have the same display label as a conversion candidate.
+     * Keep it as a separate executable item while preserving the legacy string de-duplication
+     * behavior for ordinary conversion candidates.
+     */
+    private fun List<Candidate>.distinctIncludingTextMacroActions(): List<Candidate> =
+        distinctBy { candidate ->
+            if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
+                "text-macro:${candidate.sourceId}"
+            } else {
+                "text:${candidate.string}"
+            }
+        }
 
     private suspend fun getSuggestionListEnglishKana(
         insertString: String,
@@ -23468,13 +23628,236 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun getUserTemplateCandidates(insertString: String): List<Candidate> {
-        if (isUserTemplateEnable != true) return emptyList()
         return withContext(Dispatchers.IO) {
-            userTemplateRepository.searchByReading(
-                reading = insertString,
-                limit = 8
-            ).toUserTemplateCandidates()
+            val legacyTemplates = if (isUserTemplateEnable == true) {
+                userTemplateRepository.searchByReading(
+                    reading = insertString,
+                    limit = 8
+                ).toUserTemplateCandidates()
+            } else {
+                emptyList()
+            }
+            val contextualMacrosAllowed = !isPrivateMode && currentInputType !in passwordTypes
+            val macros = if (isTextMacroCandidateEnable) {
+                textMacroRepository.getEnabledByReading(insertString, limit = 8)
+                    .mapNotNull { macro ->
+                        val compiled = runCatching { TextMacroCompiler.compile(macro.body) }
+                            .getOrNull() ?: return@mapNotNull null
+                        if (TextMacroContextRequirement.SELECTION in compiled.requirements) {
+                            return@mapNotNull null
+                        }
+                        if (!contextualMacrosAllowed && compiled.requirements.isNotEmpty()) {
+                            return@mapNotNull null
+                        }
+                        Candidate(
+                            string = macro.name,
+                            type = CANDIDATE_TYPE_TEXT_MACRO,
+                            length = insertString.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+                            score = Int.MIN_VALUE + 52,
+                            yomi = macro.reading,
+                            sourceId = macro.id,
+                        )
+                    }
+            } else {
+                emptyList()
+            }
+            legacyTemplates + macros
         }
+    }
+
+    private fun showTextMacroListPopup() {
+        onKeyboardSwitchLongPressUp = true
+        val mainView = mainLayoutBinding ?: return
+        val requestId = textMacroExecutionRequestId.incrementAndGet()
+        ioScope.launch {
+            val macros = runCatching { textMacroRepository.getAllEnabled() }.getOrDefault(emptyList())
+            withContext(Dispatchers.Main.immediate) {
+                if (requestId != textMacroExecutionRequestId.get()) return@withContext
+                if (macros.isEmpty()) {
+                    Toast.makeText(
+                        this@IMEService,
+                        R.string.text_macro_context_unavailable,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@withContext
+                }
+                val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+                val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
+                val listView = popupView.findViewById<ListView>(R.id.popup_listview).apply {
+                    choiceMode = ListView.CHOICE_MODE_SINGLE
+                    adapter = ArrayAdapter(
+                        this@IMEService,
+                        R.layout.list_item_layout,
+                        macros.map { it.name },
+                    )
+                }
+                limitListViewVisibleItems(listView, maxVisible = 8)
+                keyboardSelectionPopupWindow = PopupWindow(
+                    popupView,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    true,
+                ).apply {
+                    setOnDismissListener { onKeyboardSwitchLongPressUp = false }
+                }
+                listView.setOnItemClickListener { _, _, position, _ ->
+                    keyboardSelectionPopupWindow?.dismiss()
+                    macros.getOrNull(position)?.let { executeTextMacro(it.id) }
+                }
+                keyboardSelectionPopupWindow?.let { popupWindow ->
+                    showPopupWindowSafely(
+                        popupWindow = popupWindow,
+                        anchorView = mainView.shortcutToolbarRecyclerview,
+                        gravity = Gravity.CENTER,
+                        x = 0,
+                        y = 0,
+                        source = "showTextMacroListPopup",
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Re-fetches and re-compiles by stable ID, then revalidates the editor immediately before
+     * committing. Definition/context text is intentionally never logged or sent to any model.
+     */
+    private fun executeTextMacro(id: Long) {
+        val connection = currentInputConnection ?: return
+        val packageName = currentInputEditorInfo?.packageName.orEmpty()
+        val input = inputString.value
+        val requestId = textMacroExecutionRequestId.incrementAndGet()
+        val sensitiveEditor = isPrivateMode || currentInputType in passwordTypes
+
+        ioScope.launch {
+            val result = runCatching {
+                val initial = readTextMacroEditorSnapshot(connection, packageName, input)
+                val macro = textMacroRepository.getById(id)
+                    ?.takeIf { it.enabled }
+                    ?: error("Macro is unavailable")
+                val compiled = TextMacroCompiler.compile(macro.body)
+                if (sensitiveEditor && compiled.requirements.isNotEmpty()) {
+                    error(getString(R.string.text_macro_sensitive_context_blocked))
+                }
+
+                val clipboard = if (TextMacroContextRequirement.CLIPBOARD in compiled.requirements) {
+                    if (clipboardUtil.isPrimaryClipSensitive()) {
+                        error(getString(R.string.text_macro_clipboard_sensitive))
+                    }
+                    clipboardUtil.getFirstClipboardTextOrNull()
+                        ?.takeIf(String::isNotEmpty)
+                        ?: error(getString(R.string.text_macro_context_unavailable))
+                } else {
+                    null
+                }
+                val selection = if (TextMacroContextRequirement.SELECTION in compiled.requirements) {
+                    initial.selectedText.takeIf(String::isNotEmpty)
+                        ?: error(getString(R.string.text_macro_context_unavailable))
+                } else {
+                    null
+                }
+                val expanded = compiled.expand(
+                    TextMacroContext(
+                        selection = selection,
+                        clipboard = clipboard,
+                    )
+                )
+                val latest = readTextMacroEditorSnapshot(connection, packageName, input)
+                require(initial.selectionStart == latest.selectionStart) { "Selection changed" }
+                require(initial.selectionEnd == latest.selectionEnd) { "Selection changed" }
+                require(initial.selectedText == latest.selectedText) { "Selection changed" }
+                Triple(initial, expanded, compiled.requirements.isNotEmpty())
+            }
+
+            withContext(Dispatchers.Main.immediate) {
+                if (requestId != textMacroExecutionRequestId.get()) return@withContext
+                result.onFailure { exception ->
+                    Toast.makeText(
+                        this@IMEService,
+                        exception.message ?: getString(R.string.text_macro_operation_failed, ""),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }.onSuccess { (snapshot, expanded, readsSensitiveContext) ->
+                    if (
+                        currentInputConnection !== snapshot.connection ||
+                        currentInputEditorInfo?.packageName.orEmpty() != snapshot.packageName ||
+                        inputString.value != snapshot.input ||
+                        (readsSensitiveContext &&
+                            (isPrivateMode || currentInputType in passwordTypes))
+                    ) {
+                        return@onSuccess
+                    }
+                    val finalSnapshot = runCatching {
+                        readTextMacroEditorSnapshot(
+                            snapshot.connection,
+                            snapshot.packageName,
+                            snapshot.input,
+                        )
+                    }.getOrNull() ?: return@onSuccess
+                    if (
+                        finalSnapshot.selectionStart != snapshot.selectionStart ||
+                        finalSnapshot.selectionEnd != snapshot.selectionEnd ||
+                        finalSnapshot.selectedText != snapshot.selectedText
+                    ) {
+                        return@onSuccess
+                    }
+                    commitExpandedTextMacro(
+                        connection = snapshot.connection,
+                        expanded = expanded,
+                        replacedText = snapshot.selectedText.ifEmpty { snapshot.input },
+                    )
+                }
+            }
+        }
+    }
+
+    private fun readTextMacroEditorSnapshot(
+        connection: InputConnection,
+        packageName: String,
+        input: String,
+    ): TextMacroEditorSnapshot {
+        val extracted = connection.getExtractedText(ExtractedTextRequest(), 0)
+            ?: error("Editor state is unavailable")
+        return TextMacroEditorSnapshot(
+            connection = connection,
+            packageName = packageName,
+            input = input,
+            selectionStart = extracted.selectionStart,
+            selectionEnd = extracted.selectionEnd,
+            selectedText = connection.getSelectedText(0)?.toString().orEmpty(),
+        )
+    }
+
+    private fun commitExpandedTextMacro(
+        connection: InputConnection,
+        expanded: ExpandedMacro,
+        replacedText: String,
+    ) {
+        connection.beginBatchEdit()
+        val committed = try {
+            setComposingText("", 0)
+            finishComposingText()
+            TextMacroInputConnectionExecutor.commit(connection, expanded)
+        } finally {
+            connection.endBatchEdit()
+        }
+        if (!committed) return
+
+        val cursor = expanded.cursorOffset.coerceIn(0, expanded.text.length)
+        pushEditHistoryEntry(
+            EditHistoryEntry.MacroCommit(
+                beforeText = replacedText,
+                prefix = expanded.text.substring(0, cursor),
+                suffix = expanded.text.substring(cursor),
+            )
+        )
+        _inputString.update { "" }
+        stringInTail.set("")
+        currentQwertyGlideCompositionText = null
+        clearSelectionActionSession(clearSuggestions = false)
+        clearSuggestionStateAfterCommit()
+        resetFlagsSuggestionClick()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun getRomajiCandidates(insertString: String): List<Candidate> {
@@ -25648,6 +26031,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val nextSuggestion = suggestions[index]
         val candidateType = nextSuggestion.type.toInt()
+        if (nextSuggestion.type == CANDIDATE_TYPE_TEXT_MACRO) {
+            stringInTail.set("")
+            applyComposingText(
+                text = insertString,
+                highlightLength = insertString.length,
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputConversionBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.orange)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.orange)
+                },
+                textColor = if (customComposingTextPreference == true) {
+                    inputCompositionTextColor
+                } else {
+                    null
+                },
+            )
+            return
+        }
         val suggestionText = nextSuggestion.string
         val suggestionLength = nextSuggestion.length.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {

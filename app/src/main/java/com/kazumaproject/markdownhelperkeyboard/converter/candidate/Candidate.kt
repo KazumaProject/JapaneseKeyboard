@@ -10,5 +10,7 @@ data class Candidate(
     val score: Int,
     val yomi: String? = null,
     val leftId: Short? = null,
-    val rightId: Short? = null
+    val rightId: Short? = null,
+    /** Stable source identity for action candidates whose display string must never be committed. */
+    val sourceId: Long? = null,
 )
