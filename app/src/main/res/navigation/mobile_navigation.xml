@@ -303,6 +303,9 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardListFragment"
         android:label="@string/custom_layout_fragment_title">
         <action
+            android:id="@+id/action_select_keyboard_layouts"
+            app:destination="@id/keyboardSelectionFragment" />
+        <action
             android:id="@+id/action_keyboardListFragment_to_keyboardEditorFragment"
             app:destination="@id/keyboardEditorFragment" />
     </fragment>
