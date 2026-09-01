@@ -13,7 +13,6 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -60,7 +59,6 @@ class ShortcutToolbarSizeSettingFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        (activity as? AppCompatActivity)?.supportActionBar?.hide()
         setupToolbar()
         setupControls()
         loadCurrentValues()
@@ -68,7 +66,6 @@ class ShortcutToolbarSizeSettingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        (activity as? AppCompatActivity)?.supportActionBar?.show()
         _binding = null
     }
 
