@@ -2047,10 +2047,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             pendingUserIconPaths.forEach { deleteUserIconFile(it) }
             pendingUserIconPaths.clear()
         }
-        (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = null
-            setDisplayHomeAsUpEnabled(false)
-        }
         viewModel.doneNavigatingToKeyEditor()
 
         _binding = null

@@ -92,11 +92,6 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         updateBuildStatus()
     }
 
-    override fun onResume() {
-        super.onResume()
-        requireActivity().title = ""
-    }
-
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
