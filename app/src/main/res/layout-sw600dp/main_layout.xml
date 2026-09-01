@@ -106,6 +106,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/inline_suggestion_toggle"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/recyclerview_size_button_bg"
+            android:contentDescription="@string/inline_suggestion_show_native_candidates"
+            android:scaleType="center"
+            android:src="@drawable/keyboard_24px"
+            android:tint="@color/keyboard_icon_color"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"
@@ -114,7 +129,7 @@
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/suggestion_visibility"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/inline_suggestion_toggle"
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView
@@ -124,7 +139,7 @@
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/suggestion_visibility"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/inline_suggestion_toggle"
             app:layout_constraintTop_toTopOf="parent">
 
             <HorizontalScrollView
