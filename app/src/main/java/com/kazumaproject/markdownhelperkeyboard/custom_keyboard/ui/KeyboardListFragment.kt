@@ -185,6 +185,11 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
+                    R.id.action_select_keyboard_layouts -> {
+                        findNavController().navigate(R.id.action_select_keyboard_layouts)
+                        true
+                    }
+
                     R.id.action_export_layouts -> {
                         launchExportPicker()
                         true
