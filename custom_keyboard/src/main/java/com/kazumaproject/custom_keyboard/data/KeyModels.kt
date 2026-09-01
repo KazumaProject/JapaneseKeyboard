@@ -177,6 +177,17 @@ data class SpacerItem(
     override val placement: GridPlacement
 ) : KeyboardLayoutItem
 
+private const val DELETED_KEY_SLOT_ID_PREFIX = "deleted_key_slot_"
+
+fun deletedKeySlot(id: String, placement: GridPlacement): SpacerItem =
+    SpacerItem(
+        id = "$DELETED_KEY_SLOT_ID_PREFIX$id",
+        placement = placement
+    )
+
+fun SpacerItem.isDeletedKeySlot(): Boolean =
+    id.startsWith(DELETED_KEY_SLOT_ID_PREFIX)
+
 data class FlexibleBounds(
     val rowUnitCount: Int,
     val columnUnitCount: Int,
@@ -282,7 +293,7 @@ fun KeyboardLayout.copyWithKeys(
 
 fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
     if (isFlexiblePlacementLayout) return true
-    if (items.any { it is SpacerItem }) return true
+    if (items.any { it is SpacerItem && !it.isDeletedKeySlot() }) return true
 
     return items.filterIsInstance<KeyItem>().any { item ->
         item.placement.rowUnits != item.keyData.row * 2 ||
