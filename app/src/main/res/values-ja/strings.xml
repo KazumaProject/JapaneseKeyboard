@@ -1767,4 +1767,6 @@
     <string name="keyboard_type_qwerty">英語（QWERTY）</string>
     <string name="keyboard_type_romaji">日本語 - ローマ字</string>
     <string name="keyboard_type_custom">カスタム - ユーザー定義</string>
+    <string name="inline_suggestion_show_native_candidates">通常の候補を表示</string>
+    <string name="inline_suggestion_show_autofill">自動入力候補を表示</string>
 </resources>

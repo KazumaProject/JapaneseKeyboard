@@ -232,7 +232,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAda
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineAutofillController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionDisplayState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionsRequestFactory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
@@ -750,7 +752,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suggestionAdapter: SuggestionAdapter? = null
     private var suggestionAdapterFull: SuggestionAdapter? = null
     private var inlineAutofillController: InlineAutofillController? = null
-    private var inlineSuggestionsDisplayed = false
+    private val inlineSuggestionDisplayState = InlineSuggestionDisplayState()
     private val inlineHostPreviousVisibility = IdentityHashMap<View, Pair<Boolean, Boolean>>()
     private var currentCandidateStripCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
@@ -780,6 +782,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private data class InlineSuggestionHost(
         val clipView: InlineSuggestionClipView,
         val container: LinearLayout,
+        val toggle: ImageView,
         val suggestionRecyclerView: RecyclerView,
         val suggestionVisibility: View,
     )
@@ -1870,6 +1873,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val cachedArrowDropUpDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
             applicationContext, com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+        )
+    }
+
+    private val cachedInlineSuggestionKeyboardDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            applicationContext, com.kazumaproject.core.R.drawable.keyboard_24px
+        )
+    }
+
+    private val cachedInlineSuggestionKeyDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            applicationContext, R.drawable.inline_suggestion_key_24
         )
     }
 
@@ -4165,6 +4180,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 InlineSuggestionHost(
                     clipView = binding.inlineSuggestionsClip,
                     container = binding.inlineSuggestionsContainer,
+                    toggle = binding.inlineSuggestionToggle,
                     suggestionRecyclerView = binding.suggestionRecyclerView,
                     suggestionVisibility = binding.suggestionVisibility,
                 )
@@ -4175,6 +4191,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 InlineSuggestionHost(
                     clipView = binding.inlineSuggestionsClip,
                     container = binding.inlineSuggestionsContainer,
+                    toggle = binding.inlineSuggestionToggle,
                     suggestionRecyclerView = binding.suggestionRecyclerView,
                     suggestionVisibility = binding.suggestionVisibility,
                 )
@@ -4188,6 +4205,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 InlineSuggestionHost(
                     clipView = binding.inlineSuggestionsClip,
                     container = binding.inlineSuggestionsContainer,
+                    toggle = binding.inlineSuggestionToggle,
                     suggestionRecyclerView = binding.suggestionRecyclerView,
                     suggestionVisibility = binding.suggestionVisibility,
                 )
@@ -4197,6 +4215,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 InlineSuggestionHost(
                     clipView = binding.inlineSuggestionsClip,
                     container = binding.inlineSuggestionsContainer,
+                    toggle = binding.inlineSuggestionToggle,
                     suggestionRecyclerView = binding.suggestionRecyclerView,
                     suggestionVisibility = binding.suggestionVisibility,
                 )
@@ -4207,7 +4226,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @RequiresApi(Build.VERSION_CODES.R)
     private fun renderInlineSuggestionViews(views: List<InlineContentView>) {
         assertMainThread("renderInlineSuggestionViews")
-        clearInlineSuggestionHosts(restoreNativeVisibility = true)
+        clearInlineSuggestionHosts(
+            restoreNativeVisibility = true,
+            preserveDisplayState = true,
+        )
+        inlineSuggestionDisplayState.updateAvailability(views.isNotEmpty())
         if (views.isEmpty()) return
 
         val host = activeInlineSuggestionHost() ?: return
@@ -4238,7 +4261,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             )
         }
-        inlineSuggestionsDisplayed = true
         enforceInlineSuggestionVisibility()
         Timber.d(
             "Inline suggestion host visible=${host.clipView.isVisible} " +
@@ -4246,25 +4268,69 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private fun clearInlineSuggestionHosts(restoreNativeVisibility: Boolean) {
+    private fun clearInlineSuggestionHosts(
+        restoreNativeVisibility: Boolean,
+        preserveDisplayState: Boolean = false,
+    ) {
         inlineSuggestionHosts().forEach { host ->
+            val inlineSurfaceWasVisible = host.clipView.isVisible
             host.container.removeAllViews()
             host.clipView.isVisible = false
+            host.toggle.isVisible = false
             val previous = inlineHostPreviousVisibility.remove(host.clipView)
-            if (restoreNativeVisibility && previous != null) {
+            if (restoreNativeVisibility && inlineSurfaceWasVisible && previous != null) {
                 host.suggestionRecyclerView.isVisible = previous.first
                 host.suggestionVisibility.isVisible = previous.second
             }
         }
-        inlineSuggestionsDisplayed = false
+        if (!preserveDisplayState) {
+            inlineSuggestionDisplayState.updateAvailability(false)
+        }
     }
 
     private fun enforceInlineSuggestionVisibility() {
-        if (!inlineSuggestionsDisplayed) return
-        val activeHost = activeInlineSuggestionHost() ?: return
-        activeHost.clipView.isVisible = true
-        activeHost.suggestionRecyclerView.isVisible = false
-        activeHost.suggestionVisibility.isVisible = false
+        val activeHost = activeInlineSuggestionHost()
+        inlineSuggestionHosts().forEach { host ->
+            val isActive = host.clipView === activeHost?.clipView
+            host.toggle.isVisible = isActive && inlineSuggestionDisplayState.hasSuggestions
+            if (!isActive) {
+                host.clipView.isVisible = false
+            }
+        }
+        if (!inlineSuggestionDisplayState.hasSuggestions || activeHost == null) return
+
+        activeHost.toggle.setOnClickListener {
+            toggleInlineSuggestionSurface()
+        }
+        when (inlineSuggestionDisplayState.surface) {
+            InlineSuggestionSurface.Inline -> {
+                activeHost.toggle.setImageDrawable(cachedInlineSuggestionKeyboardDrawable)
+                activeHost.toggle.contentDescription =
+                    getString(R.string.inline_suggestion_show_native_candidates)
+                inlineHostPreviousVisibility[activeHost.clipView] =
+                    activeHost.suggestionRecyclerView.isVisible to
+                        activeHost.suggestionVisibility.isVisible
+                activeHost.clipView.isVisible = true
+                activeHost.suggestionRecyclerView.isVisible = false
+                activeHost.suggestionVisibility.isVisible = false
+            }
+
+            InlineSuggestionSurface.Native -> {
+                activeHost.toggle.setImageDrawable(cachedInlineSuggestionKeyDrawable)
+                activeHost.toggle.contentDescription =
+                    getString(R.string.inline_suggestion_show_autofill)
+                activeHost.clipView.isVisible = false
+            }
+        }
+    }
+
+    private fun toggleInlineSuggestionSurface() {
+        if (!inlineSuggestionDisplayState.toggleSurface()) return
+        if (inlineSuggestionDisplayState.surface == InlineSuggestionSurface.Native) {
+            refreshCandidateStripContent()
+        } else {
+            enforceInlineSuggestionVisibility()
+        }
     }
 
     private fun updateFloatingKeyboardBackgroundBounds(
@@ -4591,6 +4657,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                    floatingView.inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                 } else {
                     floatingView.suggestionViewParent.background = null
                 }
@@ -4600,12 +4667,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                 floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                 floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                floatingView.inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
 
                 floatingView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                 floatingView.suggestionViewParent.setDrawableSolidColor(
                     customThemeBgColor ?: Color.WHITE
                 )
                 floatingView.suggestionVisibility.setDrawableSolidColor(
+                    customThemeSpecialKeyColor ?: Color.GRAY
+                )
+                floatingView.inlineSuggestionToggle.setDrawableSolidColor(
                     customThemeSpecialKeyColor ?: Color.GRAY
                 )
             }
@@ -4615,6 +4686,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                    floatingView.inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                 } else {
                     floatingView.suggestionViewParent.background = null
                 }
@@ -6019,12 +6091,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                     candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 }
                                 floatingKeyboardBinding?.apply {
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 }
                             }
                         }
@@ -6034,6 +6108,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 val symbolKeyBg =
                                     customThemeKeyColor ?: Color.WHITE
@@ -6068,6 +6143,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionVisibility.setDrawableSolidColor(
                                     customThemeSpecialKeyColor ?: Color.GRAY
                                 )
+                                inlineSuggestionToggle.setDrawableSolidColor(
+                                    customThemeSpecialKeyColor ?: Color.GRAY
+                                )
                                 candidateTabLayout.setLayerTypeSolidColor(
                                     customThemeBgColor ?: Color.WHITE
                                 )
@@ -6075,17 +6153,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionVisibility.setColorFilter(
                                     customThemeKeyTextColor ?: Color.BLACK
                                 )
+                                inlineSuggestionToggle.setColorFilter(
+                                    customThemeKeyTextColor ?: Color.BLACK
+                                )
                             }
                             floatingKeyboardBinding?.apply {
                                 root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
 
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
                                     customThemeBgColor ?: Color.WHITE
                                 )
                                 suggestionVisibility.setDrawableSolidColor(
+                                    customThemeSpecialKeyColor ?: Color.GRAY
+                                )
+                                inlineSuggestionToggle.setDrawableSolidColor(
                                     customThemeSpecialKeyColor ?: Color.GRAY
                                 )
                             }
@@ -6097,12 +6182,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                     candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 }
                                 floatingKeyboardBinding?.apply {
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 }
                             }
                         }
