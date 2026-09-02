@@ -68,6 +68,7 @@ data class ImePreferencesSnapshot(
     val qwertyRomajiHankakuSymbolPreference: Boolean,
     val qwertyShowKutoutenButtonsPreference: Boolean,
     val showCandidateInPasswordPreference: Boolean,
+    val inlineSuggestionEnabled: Boolean,
     val qwertyShowKeymapSymbolsPreference: Boolean,
     val qwertyRomajiShiftConversionPreference: Boolean,
     val isNgWordEnable: Boolean,
@@ -400,6 +401,7 @@ data class ImePreferencesSnapshot(
                 qwertyShowKutoutenButtonsPreference =
                     appPreference.qwerty_show_kutouten_buttons ?: false,
                 showCandidateInPasswordPreference = appPreference.show_candidates_password ?: true,
+                inlineSuggestionEnabled = appPreference.inline_suggestion_enabled_preference,
                 qwertyShowKeymapSymbolsPreference =
                     appPreference.qwerty_show_keymap_symbols ?: false,
                 qwertyRomajiShiftConversionPreference =
