@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.utility
 
+import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_UNICODE
@@ -68,8 +69,13 @@ object UtilityCandidateComposer {
                 val normalCandidates = remainingCandidates.filterNot {
                     it.type == CANDIDATE_TYPE_UNIT_CONVERSION
                 }
-                formulaCandidates + unitCandidates + otherUtilityCandidates +
-                    listOfNotNull(originalInput) + normalCandidates
+                val candidatesBeforeFormula = otherUtilityCandidates +
+                    unitCandidates + normalCandidates + listOfNotNull(originalInput)
+                val fullWidthCandidates = candidatesBeforeFormula.filter {
+                    it.isFullWidthCandidate()
+                }
+                candidatesBeforeFormula.filterNot { it.isFullWidthCandidate() } +
+                    formulaCandidates + fullWidthCandidates
             }
 
             UtilityTrigger.EXPLICIT_CALCULATION,
@@ -107,6 +113,17 @@ object UtilityCandidateComposer {
 
     private fun Candidate.isFormulaCandidate(): Boolean =
         type == CANDIDATE_TYPE_FORMULA_UNICODE || type == CANDIDATE_TYPE_FORMULA_TEX
+
+    /**
+     * Keep the engine's candidates carrying the visible [全] label after formula candidates.
+     * Type 21 is shared by symbol candidates, so only move it when its value is actually a
+     * full-width numeric/symbol string; this leaves superscript and other type-21 candidates in
+     * the ordinary group.
+     */
+    private fun Candidate.isFullWidthCandidate(): Boolean =
+        type == 22.toByte() ||
+            type == 30.toByte() ||
+            (type == 21.toByte() && string.isAllFullWidthNumericSymbol())
 
     private fun distinctFormulaCandidates(candidates: List<Candidate>): List<Candidate> {
         val emittedTexts = mutableSetOf<String>()

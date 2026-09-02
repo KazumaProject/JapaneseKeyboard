@@ -99,7 +99,7 @@ Sumireは、**プライバシーを絶対に妥協しない**
 
 ### ∑ 数式候補
 
-「設定 → 計算・単位換算候補 → 数式候補を表示」を有効にすると、入力中の簡易記法や LaTeX 数式を候補欄で組版できます。先頭に同じ数式の `[文字]` と `[TeX]` を表示し、タップするとそれぞれ Unicode 文字列または `$` のない正規化 LaTeX ソースを確定します。自動確定や自動置換は行いません。
+「設定 → 計算・単位換算候補 → 数式候補を表示」を有効にすると、入力中の簡易記法や LaTeX 数式を候補欄で組版できます。通常の候補の後、全角候補の前に同じ数式の `[文字]` と `[TeX]` を表示し、タップするとそれぞれ Unicode 文字列または `$` のない正規化 LaTeX ソースを確定します。自動確定や自動置換は行いません。
 
 | 入力例 | `[文字]` | `[TeX]` |
 |:--|:--|:--|
@@ -438,8 +438,8 @@ customizable keyboard layouts**, aiming to make typing a truly personal experien
 * ∑ **Formula Candidates**
   Recognizes shorthand and a supported LaTeX subset, renders formulas in the candidate strip, and
   offers separate Unicode (`[Text]`) and normalized bare LaTeX (`[TeX]`) candidates. Formula
-  candidates are opt-in through the calculator and unit-conversion settings and never commit
-  automatically.
+  candidates appear after ordinary candidates and before full-width candidates when present.
+  They are opt-in through the calculator and unit-conversion settings and never commit automatically.
 
 ### 🚀 Quick Start
 
