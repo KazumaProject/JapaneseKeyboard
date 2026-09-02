@@ -62,6 +62,7 @@ data class UtilityCandidateConfig(
     val calculationEnabled: Boolean = true,
     val unitConversionEnabled: Boolean = true,
     val includeExpressionCandidate: Boolean = true,
+    val formulaCandidateEnabled: Boolean = true,
     val angleMode: AngleMode = AngleMode.DEGREES,
     val calculationPrecision: Precision = Precision.Auto,
     val regionalUnitProfile: RegionalUnitProfile = RegionalUnitProfile.JAPAN,
@@ -96,16 +97,24 @@ data class UtilityCandidateConfig(
 
 enum class UtilityTrigger {
     NONE,
+    FORMULA,
     EXPLICIT_CALCULATION,
     EXPLICIT_UNIT_CONVERSION,
     AUTOMATIC_UNIT_CONVERSION,
 }
 
-enum class UtilityCandidateKind { CALCULATION, UNIT_CONVERSION, LITERAL }
+enum class UtilityCandidateKind {
+    CALCULATION,
+    UNIT_CONVERSION,
+    LITERAL,
+    FORMULA_UNICODE,
+    FORMULA_TEX,
+}
 
 data class UtilityCandidate(
     val text: String,
     val kind: UtilityCandidateKind,
+    val formulaPresentation: FormulaCandidatePresentation? = null,
 )
 
 data class UtilityCandidateResult(

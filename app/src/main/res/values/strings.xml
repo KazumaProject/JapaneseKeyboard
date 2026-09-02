@@ -2,11 +2,14 @@
 <resources>
     <string name="candidate_badge_calculation">[Calc]</string>
     <string name="candidate_badge_unit_conversion">[Convert]</string>
+    <string name="candidate_badge_formula_unicode">[Text]</string>
+    <string name="candidate_badge_formula_tex">[TeX]</string>
     <string name="utility_candidate_settings_title">Calculations and unit conversions</string>
     <string name="utility_candidate_settings_summary">Configure calculator and conversion candidates</string>
     <string name="utility_calculation_category_title">Calculator</string>
     <string name="utility_calculation_enabled_title">Show calculation candidates</string>
     <string name="utility_expression_candidate_title">Also show result with expression</string>
+    <string name="utility_formula_candidate_title">Show formula candidates</string>
     <string name="utility_angle_mode_title">Angle unit</string>
     <string name="utility_calculation_precision_title">Calculation precision</string>
     <string name="utility_unit_conversion_category_title">Unit conversions</string>
@@ -28,9 +31,9 @@
     <string name="utility_precision_digits">%1$d significant digits</string>
     <string name="utility_targets_disabled">Automatic candidates off</string>
     <string name="utility_reset_title">Reset all settings</string>
-    <string name="utility_reset_summary">Restore calculator and unit conversion defaults</string>
+    <string name="utility_reset_summary">Restore calculator, conversion, and formula defaults</string>
     <string name="utility_reset_confirm_title">Reset utility candidate settings?</string>
-    <string name="utility_reset_confirm_message">All calculator and unit conversion settings will be restored to their defaults.</string>
+    <string name="utility_reset_confirm_message">All calculator, conversion, and formula settings will be restored to their defaults.</string>
     <string name="utility_add_target">Add conversion target</string>
     <string name="utility_conversion_targets_title">Conversion targets</string>
     <string name="utility_remove_target">Remove</string>

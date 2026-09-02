@@ -2,11 +2,14 @@
 <resources>
     <string name="candidate_badge_calculation">[計算]</string>
     <string name="candidate_badge_unit_conversion">[換算]</string>
+    <string name="candidate_badge_formula_unicode">[文字]</string>
+    <string name="candidate_badge_formula_tex">[TeX]</string>
     <string name="utility_candidate_settings_title">計算・単位換算候補</string>
     <string name="utility_candidate_settings_summary">計算結果と単位換算候補を設定します</string>
     <string name="utility_calculation_category_title">計算</string>
     <string name="utility_calculation_enabled_title">計算候補を表示</string>
     <string name="utility_expression_candidate_title">式付き候補も表示</string>
+    <string name="utility_formula_candidate_title">数式候補を表示</string>
     <string name="utility_angle_mode_title">角度単位</string>
     <string name="utility_calculation_precision_title">計算精度</string>
     <string name="utility_unit_conversion_category_title">単位換算</string>
@@ -28,9 +31,9 @@
     <string name="utility_precision_digits">有効数字 %1$d 桁</string>
     <string name="utility_targets_disabled">自動候補は無効</string>
     <string name="utility_reset_title">すべての設定をリセット</string>
-    <string name="utility_reset_summary">計算・単位換算候補を既定値へ戻します</string>
+    <string name="utility_reset_summary">計算・単位換算・数式候補を既定値へ戻します</string>
     <string name="utility_reset_confirm_title">ユーティリティ候補設定をリセットしますか？</string>
-    <string name="utility_reset_confirm_message">計算・単位換算候補のすべての設定を既定値へ戻します。</string>
+    <string name="utility_reset_confirm_message">計算・単位換算・数式候補のすべての設定を既定値へ戻します。</string>
     <string name="utility_add_target">変換先を追加</string>
     <string name="utility_conversion_targets_title">変換先</string>
     <string name="utility_remove_target">削除</string>

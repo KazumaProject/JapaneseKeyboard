@@ -182,6 +182,8 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemT
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_UNICODE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
@@ -842,6 +844,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.UTILITY_CALCULATION_ENABLED_KEY,
         AppPreference.UTILITY_UNIT_CONVERSION_ENABLED_KEY,
         AppPreference.UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+        AppPreference.UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
         AppPreference.UTILITY_ANGLE_MODE_KEY,
         AppPreference.UTILITY_CALCULATION_PRECISION_KEY,
         AppPreference.UTILITY_REGIONAL_PROFILE_KEY,
@@ -1389,7 +1392,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
-            if (candidate != null && candidate.type != CANDIDATE_TYPE_TEXT_MACRO) {
+            if (
+                candidate != null &&
+                candidate.type != CANDIDATE_TYPE_TEXT_MACRO &&
+                candidate.type != CANDIDATE_TYPE_FORMULA_UNICODE &&
+                candidate.type != CANDIDATE_TYPE_FORMULA_TEX &&
+                candidate.presentation == null
+            ) {
                 applyFirstSuggestion(candidate)
             } else {
                 applyRawComposingFallback(insertString)
@@ -2360,9 +2369,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 originalInput = inputString.value,
                 selectedCandidateLength = suggestion.length.toInt()
             )
+            val commitWord = suggestion.formulaFallbackText ?: suggestion.word
             stringInTail.set(tail)
             if (tail.isNotEmpty()) {
-                commitText(suggestion.word, 1)
+                commitText(commitWord, 1)
                 finishComposingText()
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { tail }
@@ -2373,10 +2383,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingCandidateNextItem(insertString = tail)
                 }
             } else {
-                if (suggestion.word.isNotBlank()) {
-                    rememberZeroQueryKeyAfterCommit(suggestion.word)
+                if (commitWord.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(commitWord)
                 }
-                commitText(suggestion.word, 1)
+                commitText(commitWord, 1)
                 finishComposingText()
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { "" }
@@ -2637,7 +2647,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             refreshShortcutAvailability()
         }
 
+        val previousUtilityCandidateConfig = utilityCandidateConfig
         utilityCandidateConfig = appPreference.utility_candidate_config
+        if (
+            isInputViewActive &&
+            previousUtilityCandidateConfig != utilityCandidateConfig &&
+            inputString.value.isNotEmpty()
+        ) {
+            requestCandidateRefresh(CandidateShowFlag.Updating)
+        }
 
         val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
         val thresholdShape = FlickThresholdShape.fromPreferenceValue(
@@ -4646,8 +4664,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         clearZenzLiveSlot("onStartInputView")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
-        suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
-        suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
+        val candidateTextSize = appPreference.candidate_letter_size ?: 14.0f
+        suggestionAdapter?.setCandidateTextSize(candidateTextSize)
+        suggestionAdapterFull?.setCandidateTextSize(candidateTextSize)
+        listAdapter.setCandidateTextSize(candidateTextSize)
+        listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
         suggestionClickNum = 0
         setCurrentInputType(editorInfo)
         suggestionAdapter?.setClipboardDescriptionTextVisibility(
@@ -5851,6 +5872,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun resolveFloatingCandidateTextColor(): Int? {
+        return if (keyboardThemeMode == "custom") {
+            customThemeCandidateTextColor ?: Color.BLACK
+        } else {
+            // Let FormulaViewHolder resolve the color from its popup context.  The popup is
+            // themed separately from the service and therefore has the correct night-mode
+            // resource even when the service's base context does not.
+            null
+        }
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
@@ -6051,10 +6083,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 ?: ContextCompat.getColor(
                                                     this@IMEService,
                                                     com.kazumaproject.core.R.color.qwety_key_bg_color
-                                            )
+                                                )
                                         )
                                     }
-
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
                                     customThemeBgColor ?: Color.WHITE
@@ -6101,6 +6132,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
+                    // The physical-keyboard candidate popup is rendered in a separate
+                    // PopupWindow, so it does not inherit the candidate-strip TextView color.
+                    // Keep its formula renderer in sync with the active keyboard theme.
+                    listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
                     applyCandidateEmptyPopupThemeToAdapters()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = isKeyboardRounded == true
@@ -7358,11 +7393,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             originalInput = insertString,
             selectedCandidateLength = selectedSuggestion.length.toInt()
         )
+        val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
         stringInTail.set(tail)
-        Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $tail ${insertString.length} ${selectedSuggestion.length.toInt()}")
-        val spannableString = SpannableString(selectedSuggestion.word + tail)
+        Timber.d("displayComposingTextInHardwareKeyboardConnected: $commitWord ${selectedSuggestion.length} $insertString $tail ${insertString.length} ${selectedSuggestion.length.toInt()}")
+        val spannableString = SpannableString(commitWord + tail)
         setComposingTextAfterEdit(
-            inputString = selectedSuggestion.word,
+            inputString = commitWord,
             spannableString = spannableString,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputCompositionAfterBackgroundColor ?: getColor(
@@ -7389,8 +7425,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return
             }
             val subString = stringInTail.get()
+            val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
             if (subString.isNotEmpty()) {
-                commitText(selectedSuggestion.word, 1)
+                commitText(commitWord, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { subString }
                 listAdapter.updateHighlightPosition(-1)
@@ -7400,10 +7437,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingCandidateNextItem(insertString = subString)
                 }
             } else {
-                if (selectedSuggestion.word.isNotBlank()) {
-                    rememberZeroQueryKeyAfterCommit(selectedSuggestion.word)
+                if (commitWord.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(commitWord)
                 }
-                commitText(selectedSuggestion.word, 1)
+                commitText(commitWord, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { "" }
                 listAdapter.updateHighlightPosition(-1)
@@ -16161,12 +16198,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        CandidateItem(
-                            word = it.string,
-                            length = it.length,
-                            candidateType = it.type,
-                            sourceId = it.sourceId,
-                        )
+                        it.toFloatingCandidateItem()
                     },
                     insertString = insertString
                 )
@@ -16195,6 +16227,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input = input,
         existingCandidates = candidates,
         result = utilityCandidateProvider.provide(input, utilityCandidateConfig),
+    )
+
+    private fun Candidate.toFloatingCandidateItem(
+        displayWord: String = string,
+    ): CandidateItem = CandidateItem(
+        word = displayWord,
+        length = length,
+        candidateType = type,
+        sourceId = sourceId,
+        formulaSource = presentation?.normalizedTex,
+        formulaFallbackText = commitText,
     )
 
     private fun candidateForAutomaticApplication(
@@ -17408,7 +17451,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
-            candidate.string
+            candidate.commitText
         }
     }
 
@@ -17641,7 +17684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
-            candidate.string
+            candidate.presentation?.unicodeText ?: candidate.string
         }
     }
 
@@ -17887,12 +17930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             physicalKeyboardEnable.replayCache.first()
         ) {
             updateSuggestionsForFloatingCandidate(segment.candidates.map {
-                CandidateItem(
-                    word = displayTextFromCandidate(it),
-                    length = it.length,
-                    candidateType = it.type,
-                    sourceId = it.sourceId,
-                )
+                it.toFloatingCandidateItem(displayTextFromCandidate(it))
             }, highlightedAbsoluteIndex = segmentHighlightIndex)
         }
     }
@@ -21016,14 +21054,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setSuggestionAdaptersOnMain(candidates)
         if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
             updateSuggestionsForFloatingCandidate(
-                candidates.map {
-                    CandidateItem(
-                        word = it.string,
-                        length = it.length,
-                        candidateType = it.type,
-                        sourceId = it.sourceId,
-                    )
-                }
+                candidates.map { it.toFloatingCandidateItem() }
             )
         }
         if (applyFirstCandidate) {
@@ -22032,7 +22063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         position: Int,
     ) {
         val candidateLength = candidate.length.toInt()
-        val candidateString = candidate.string
+        val candidateString = candidate.commitText
         if (insertString.length > candidateLength) {
             recordCandidateLearning(
                 currentInputMode = currentInputMode,
@@ -22056,7 +22087,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         try {
             setComposingText("", 0)
             finishComposingText()
-            commitText(candidate.string, 1)
+            commitText(candidate.commitText, 1)
         } finally {
             endBatchEdit()
         }
@@ -22081,11 +22112,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when (candidate.type.toInt()) {
             CANDIDATE_TYPE_CALCULATION.toInt(),
             CANDIDATE_TYPE_UNIT_CONVERSION.toInt() -> {
-                commitUtilityCandidate(candidate.string)
+                commitUtilityCandidate(candidate.commitText)
             }
 
             CANDIDATE_TYPE_UTILITY_LITERAL.toInt() -> {
-                commitUtilityCandidate(candidate.string)
+                commitUtilityCandidate(candidate.commitText)
+            }
+
+            CANDIDATE_TYPE_FORMULA_UNICODE.toInt(),
+            CANDIDATE_TYPE_FORMULA_TEX.toInt() -> {
+                commitUtilityCandidate(candidate.commitText)
             }
 
             15 -> {
@@ -23191,12 +23227,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        CandidateItem(
-                            word = it.string,
-                            length = it.length,
-                            candidateType = it.type,
-                            sourceId = it.sourceId,
-                        )
+                        it.toFloatingCandidateItem()
                     },
                     insertString = insertString
                 )
@@ -23273,12 +23304,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        CandidateItem(
-                            word = it.string,
-                            length = it.length,
-                            candidateType = it.type,
-                            sourceId = it.sourceId,
-                        )
+                        it.toFloatingCandidateItem()
                     },
                     insertString = insertString
                 )
