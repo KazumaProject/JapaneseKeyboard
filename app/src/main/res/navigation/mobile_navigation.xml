@@ -420,7 +420,7 @@
     <fragment
         android:id="@+id/enableKeyboardFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.enable_keyboard_setting.EnableKeyboardFragment"
-        android:label="fragment_enable_keyboard"
+        android:label="@string/welcome_title"
         tools:layout="@layout/fragment_enable_keyboard" />
     <fragment
         android:id="@+id/shortcutSettingFragment"
@@ -517,7 +517,7 @@
     <fragment
         android:id="@+id/systemUserDictionaryBuilderFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui.SystemUserDictionaryBuilderFragment"
-        android:label=""
+        android:label="@string/system_user_dictionary_builder_title"
         tools:layout="@layout/fragment_system_user_dictionary_builder" />
     <fragment
         android:id="@+id/externalDictionarySettingsFragment"
