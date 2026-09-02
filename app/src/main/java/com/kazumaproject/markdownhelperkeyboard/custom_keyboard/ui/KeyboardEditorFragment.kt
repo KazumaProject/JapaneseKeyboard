@@ -415,10 +415,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     override fun onDestroyView() {
         super.onDestroyView()
         viewModel.clearSelectedItemForDeletion()
-        (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = null
-            setDisplayHomeAsUpEnabled(false)
-        }
         binding.flickKeyboardView.removeOnKeyEditListener()
         _binding = null
     }
