@@ -17,6 +17,19 @@ object SettingSearchIndex {
     private const val SINGLE_CHARACTER_RESULT_LIMIT = 20
     private const val MULTI_CHARACTER_RESULT_LIMIT = 50
     private val extraKeywordsByKey = mapOf(
+        "keyboard_selection_preference" to listOf(
+            "choose",
+            "select",
+            "apply",
+            "layout",
+            "keyboard layout",
+            "キーボードを選ぶ",
+            "キーボードを適用",
+            "レイアウト",
+            "レイアウトを選ぶ",
+            "選択",
+            "適用",
+        ),
         "shortcut_toolbar_size_setting_fragment_preference" to listOf(
             "shortcut",
             "toolbar",
