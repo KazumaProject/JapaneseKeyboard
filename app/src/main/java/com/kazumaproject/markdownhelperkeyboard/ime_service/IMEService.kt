@@ -1079,6 +1079,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 InlineSuggestionSurface.Inline -> R.drawable.more_horiz_24px
                 InlineSuggestionSurface.NormalCandidates -> R.drawable.inline_suggestion_key_24
             },
+            iconBackgroundResId = when (inlineSuggestionDisplayState.surface) {
+                InlineSuggestionSurface.Inline -> null
+                InlineSuggestionSurface.NormalCandidates ->
+                    com.kazumaproject.core.R.drawable.suggestion_icon_bg
+            },
         )
     }
 
