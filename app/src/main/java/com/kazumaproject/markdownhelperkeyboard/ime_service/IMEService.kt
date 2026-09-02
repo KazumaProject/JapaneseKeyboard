@@ -1075,7 +1075,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return InlineSuggestionToggle(
             contentDescription = getString(contentDescription),
             badge = null,
-            iconResId = com.kazumaproject.core.R.drawable.swap_horiz_24px,
+            iconResId = when (inlineSuggestionDisplayState.surface) {
+                InlineSuggestionSurface.Inline -> R.drawable.more_horiz_24px
+                InlineSuggestionSurface.NormalCandidates -> R.drawable.inline_suggestion_key_24
+            },
         )
     }
 
