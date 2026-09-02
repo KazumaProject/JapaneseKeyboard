@@ -189,6 +189,13 @@
     <string name="hide_candidate_password_title">Conversion candidates for passwords</string>
     <string name="hide_candidate_password_summary_on">Don\'t show conversion candidates while typing a password</string>
     <string name="hide_candidate_password_summary_off">Show conversion candidates while typing a password</string>
+    <string name="inline_suggestion_settings_category_title">Inline Suggestions</string>
+    <string name="inline_suggestion_enabled_title">Use inline autofill suggestions</string>
+    <string name="inline_suggestion_enabled_summary_on">Use Android Inline Suggestions API on Android 11 (API 30) or later to show suggestions supplied by an autofill service above the keyboard. The autofill service and the target input field must also support the API.</string>
+    <string name="inline_suggestion_enabled_summary_off">Do not show inline autofill suggestions. Use this keyboard\'s normal conversion candidates instead. Inline Suggestions requires Android 11 (API 30) or later.</string>
+    <string name="inline_suggestion_unsupported_summary">Inline Suggestions requires Android 11 (API 30) or later and support from the autofill service and target input field.</string>
+    <string name="inline_suggestion_show_normal_candidates_content_description">Show normal conversion candidates</string>
+    <string name="inline_suggestion_show_inline_candidates_content_description">Show inline autofill suggestions</string>
     <string name="password_compose_title">Text settings during password input</string>
     <string name="password_compose_summary_on">Treat as pre-edit text during password input.</string>
     <string name="password_compose_summary_off">Treat as committed text during password input.</string>
@@ -1769,6 +1776,4 @@
     <string name="keyboard_type_qwerty">English (QWERTY)</string>
     <string name="keyboard_type_romaji">Japanese – Romaji</string>
     <string name="keyboard_type_custom">Custom – User defined</string>
-    <string name="inline_suggestion_show_native_candidates">Show keyboard suggestions</string>
-    <string name="inline_suggestion_show_autofill">Show autofill suggestions</string>
 </resources>

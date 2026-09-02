@@ -228,17 +228,18 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActi
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.InlineSuggestionStripState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineAutofillController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionDisplayState
-import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionsRequestFactory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
@@ -405,7 +406,6 @@ import java.text.BreakIterator
 import java.text.SimpleDateFormat
 import java.util.ArrayDeque
 import java.util.Calendar
-import java.util.IdentityHashMap
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -752,8 +752,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suggestionAdapter: SuggestionAdapter? = null
     private var suggestionAdapterFull: SuggestionAdapter? = null
     private var inlineAutofillController: InlineAutofillController? = null
+    private var inlineSuggestionEnabled: Boolean = true
     private val inlineSuggestionDisplayState = InlineSuggestionDisplayState()
-    private val inlineHostPreviousVisibility = IdentityHashMap<View, Pair<Boolean, Boolean>>()
+    private var currentInlineSuggestionViews: List<View> = emptyList()
     private var currentCandidateStripCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
@@ -778,14 +779,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var integratedShortcutEntryExpanded: Boolean = false
     private var lastSuggestionLayoutKey: SuggestionLayoutKey? = null
     private var mainSuggestionGridSpacingDecoration: RecyclerView.ItemDecoration? = null
-
-    private data class InlineSuggestionHost(
-        val clipView: InlineSuggestionClipView,
-        val container: LinearLayout,
-        val toggle: ImageView,
-        val suggestionRecyclerView: RecyclerView,
-        val suggestionVisibility: View,
-    )
 
     private data class ClipboardPreviewSnapshot(
         val text: String,
@@ -827,6 +820,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private lateinit var runtimeInputSharedPreferences: SharedPreferences
     private var runtimeInputPreferenceListenerRegistered = false
     private val runtimeInputPreferenceKeys = setOf(
+        AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
@@ -1005,15 +999,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val fullContent = resolveCandidateStripContent(
             candidates = currentCandidateStripFullCandidates,
             candidatesShown = effectiveCandidatesShown,
-            includeZeroQuery = false
+            includeZeroQuery = false,
+            includeInlineSuggestionToggle = false,
         )
         currentCandidateStripContent = content
+        val inlineSuggestionState = InlineSuggestionStripState(
+            views = currentInlineSuggestionViews,
+            showInlineSuggestions =
+                inlineSuggestionDisplayState.surface == InlineSuggestionSurface.Inline &&
+                    currentInlineSuggestionViews.isNotEmpty(),
+            toggle = inlineSuggestionToggleForCandidateStrip(),
+        )
+        suggestionAdapter?.submitContent(content, inlineSuggestionState)
         if (isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
                 setMainSuggestionColumn(binding)
             }
+        } else {
+            setFloatingSuggestionColumn()
         }
-        suggestionAdapter?.submitContent(content)
         // The full candidate view is hidden during normal composing. Submitting to its
         // AsyncListDiffer on every keystroke still calculates a complete DiffUtil diff even
         // though the user cannot see it. Keep the state current, but submit only when that
@@ -1027,7 +1031,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
-        enforceInlineSuggestionVisibility()
     }
 
     private fun isFullCandidateViewVisible(): Boolean {
@@ -1041,14 +1044,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun resolveCandidateStripContent(
         candidates: List<Candidate>,
         candidatesShown: Boolean,
-        includeZeroQuery: Boolean
+        includeZeroQuery: Boolean,
+        includeInlineSuggestionToggle: Boolean = true,
     ): CandidateStripContent {
         val state = buildCandidateStripInputState(
             candidates = candidates,
             candidatesShown = candidatesShown,
-            includeZeroQuery = includeZeroQuery
+            includeZeroQuery = includeZeroQuery,
         )
-        return CandidateStripContentResolver.resolve(state)
+        return CandidateStripContentResolver.resolve(
+            if (includeInlineSuggestionToggle) {
+                state
+            } else {
+                state.copy(inlineSuggestionToggle = null)
+            }
+        )
+    }
+
+    private fun inlineSuggestionToggleForCandidateStrip(): InlineSuggestionToggle? {
+        if (!inlineSuggestionEnabled || !inlineSuggestionDisplayState.hasSuggestions) {
+            return null
+        }
+        val contentDescription = when (inlineSuggestionDisplayState.surface) {
+            InlineSuggestionSurface.Inline ->
+                R.string.inline_suggestion_show_normal_candidates_content_description
+
+            InlineSuggestionSurface.NormalCandidates ->
+                R.string.inline_suggestion_show_inline_candidates_content_description
+        }
+        return InlineSuggestionToggle(
+            contentDescription = getString(contentDescription),
+            badge = null,
+            iconResId = com.kazumaproject.core.R.drawable.swap_horiz_24px,
+        )
     }
 
     private fun buildCandidateStripInputState(
@@ -1100,6 +1128,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
             integratedShortcutEntryExpanded = integratedShortcutEntryExpanded,
             shortcutItems = currentShortcutItems,
+            inlineSuggestionToggle = inlineSuggestionToggleForCandidateStrip(),
         )
     }
 
@@ -1876,18 +1905,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private val cachedInlineSuggestionKeyboardDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            applicationContext, com.kazumaproject.core.R.drawable.keyboard_24px
-        )
-    }
-
-    private val cachedInlineSuggestionKeyDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            applicationContext, R.drawable.inline_suggestion_key_24
-        )
-    }
-
     private val cachedArrowRightDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
             applicationContext, com.kazumaproject.core.R.drawable.baseline_arrow_right_alt_24
@@ -2514,9 +2531,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 startScope(mainView)
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            inlineAutofillController?.onHostChanged()
-        }
         return keyboardContainer
     }
 
@@ -2527,6 +2541,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onInlineSuggestionsResponse(response: InlineSuggestionsResponse): Boolean {
+        if (!inlineSuggestionEnabled) return false
         return inlineAutofillController?.handleResponse(response) ?: false
     }
 
@@ -2615,6 +2630,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
+
+        val previousInlineSuggestionEnabled = inlineSuggestionEnabled
+        applyInlineSuggestionEnabled(appPreference.inline_suggestion_enabled_preference)
+        if (previousInlineSuggestionEnabled != inlineSuggestionEnabled) {
+            refreshShortcutAvailability()
+        }
 
         utilityCandidateConfig = appPreference.utility_candidate_config
 
@@ -2798,6 +2819,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyRomajiHankakuSymbolPreference = preferences.qwertyRomajiHankakuSymbolPreference
         qwertyShowKutoutenButtonsPreference = preferences.qwertyShowKutoutenButtonsPreference
         showCandidateInPasswordPreference = preferences.showCandidateInPasswordPreference
+        applyInlineSuggestionEnabled(preferences.inlineSuggestionEnabled)
         qwertyShowKeymapSymbolsPreference = preferences.qwertyShowKeymapSymbolsPreference
         qwertyRomajiShiftConversionPreference = preferences.qwertyRomajiShiftConversionPreference
         isNgWordEnable = preferences.isNgWordEnable
@@ -4169,167 +4191,73 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingView?.suggestionRecyclerView?.adapter = null
             floatingView?.candidatesRowView?.adapter = null
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            inlineAutofillController?.onHostChanged()
+        lastSuggestionLayoutKey = null
+        if (isFloatingMode) {
+            setFloatingSuggestionColumn()
         }
     }
 
-    private fun inlineSuggestionHosts(): List<InlineSuggestionHost> = buildList {
-        mainLayoutBinding?.let { binding ->
-            add(
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    toggle = binding.inlineSuggestionToggle,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
-            )
-        }
-        floatingKeyboardBinding?.let { binding ->
-            add(
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    toggle = binding.inlineSuggestionToggle,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
-            )
-        }
-    }
-
-    private fun activeInlineSuggestionHost(): InlineSuggestionHost? {
-        return if (isKeyboardFloatingMode == true) {
-            floatingKeyboardBinding?.let { binding ->
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    toggle = binding.inlineSuggestionToggle,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
+    private fun applyInlineSuggestionEnabled(enabled: Boolean) {
+        if (inlineSuggestionEnabled == enabled) return
+        inlineSuggestionEnabled = enabled
+        if (!enabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                inlineAutofillController?.clear()
             }
-        } else {
-            mainLayoutBinding?.let { binding ->
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    toggle = binding.inlineSuggestionToggle,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
-            }
+            currentInlineSuggestionViews = emptyList()
+            inlineSuggestionDisplayState.updateAvailability(false)
+            updateShortcutActiveStates()
+            refreshCandidateStripContent()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun renderInlineSuggestionViews(views: List<InlineContentView>) {
         assertMainThread("renderInlineSuggestionViews")
-        clearInlineSuggestionHosts(
-            restoreNativeVisibility = true,
-            preserveDisplayState = true,
-        )
-        inlineSuggestionDisplayState.updateAvailability(views.isNotEmpty())
-        if (views.isEmpty()) return
-
-        val host = activeInlineSuggestionHost() ?: return
-        Timber.d("Rendering ${views.size} inline suggestion views")
-        host.clipView.setBackgroundColor(
-            ContextCompat.getColor(this, com.kazumaproject.core.R.color.keyboard_bg)
-        )
-        inlineHostPreviousVisibility[host.clipView] =
-            host.suggestionRecyclerView.isVisible to host.suggestionVisibility.isVisible
-        views.forEach { view ->
-            (view.parent as? ViewGroup)?.removeView(view)
-            view.setZOrderedOnTop(true)
-            val frameworkWidth = view.layoutParams?.width
-                ?.takeIf { it > 0 }
-                ?: ViewGroup.LayoutParams.WRAP_CONTENT
-            val frameworkHeight = view.layoutParams?.height
-                ?.takeIf { it > 0 }
-                ?: ViewGroup.LayoutParams.MATCH_PARENT
-            host.container.addView(
-                view,
-                LinearLayout.LayoutParams(
-                    frameworkWidth,
-                    frameworkHeight,
-                ).apply {
-                    val margin = (4 * resources.displayMetrics.density).toInt()
-                    marginStart = margin
-                    marginEnd = margin
-                }
-            )
-        }
-        enforceInlineSuggestionVisibility()
-        Timber.d(
-            "Inline suggestion host visible=${host.clipView.isVisible} " +
-                "children=${host.container.childCount}"
-        )
-    }
-
-    private fun clearInlineSuggestionHosts(
-        restoreNativeVisibility: Boolean,
-        preserveDisplayState: Boolean = false,
-    ) {
-        inlineSuggestionHosts().forEach { host ->
-            val inlineSurfaceWasVisible = host.clipView.isVisible
-            host.container.removeAllViews()
-            host.clipView.isVisible = false
-            host.toggle.isVisible = false
-            val previous = inlineHostPreviousVisibility.remove(host.clipView)
-            if (restoreNativeVisibility && inlineSurfaceWasVisible && previous != null) {
-                host.suggestionRecyclerView.isVisible = previous.first
-                host.suggestionVisibility.isVisible = previous.second
-            }
-        }
-        if (!preserveDisplayState) {
+        if (!inlineSuggestionEnabled) {
+            currentInlineSuggestionViews = emptyList()
             inlineSuggestionDisplayState.updateAvailability(false)
+            updateShortcutActiveStates()
+            refreshCandidateStripContent()
+            return
         }
-    }
-
-    private fun enforceInlineSuggestionVisibility() {
-        val activeHost = activeInlineSuggestionHost()
-        inlineSuggestionHosts().forEach { host ->
-            val isActive = host.clipView === activeHost?.clipView
-            host.toggle.isVisible = isActive && inlineSuggestionDisplayState.hasSuggestions
-            if (!isActive) {
-                host.clipView.isVisible = false
-            }
+        currentInlineSuggestionViews = views
+        views.forEach { view ->
+            view.setZOrderedOnTop(true)
+            view.clipBounds = null
         }
-        if (!inlineSuggestionDisplayState.hasSuggestions || activeHost == null) return
-
-        activeHost.toggle.setOnClickListener {
-            toggleInlineSuggestionSurface()
-        }
-        when (inlineSuggestionDisplayState.surface) {
-            InlineSuggestionSurface.Inline -> {
-                activeHost.toggle.setImageDrawable(cachedInlineSuggestionKeyboardDrawable)
-                activeHost.toggle.contentDescription =
-                    getString(R.string.inline_suggestion_show_native_candidates)
-                inlineHostPreviousVisibility[activeHost.clipView] =
-                    activeHost.suggestionRecyclerView.isVisible to
-                        activeHost.suggestionVisibility.isVisible
-                activeHost.clipView.isVisible = true
-                activeHost.suggestionRecyclerView.isVisible = false
-                activeHost.suggestionVisibility.isVisible = false
-            }
-
-            InlineSuggestionSurface.Native -> {
-                activeHost.toggle.setImageDrawable(cachedInlineSuggestionKeyDrawable)
-                activeHost.toggle.contentDescription =
-                    getString(R.string.inline_suggestion_show_autofill)
-                activeHost.clipView.isVisible = false
-            }
-        }
+        inlineSuggestionDisplayState.updateAvailability(views.isNotEmpty())
+        updateShortcutActiveStates()
+        Timber.d("Rendering ${views.size} inline suggestion views")
+        refreshCandidateStripContent()
     }
 
     private fun toggleInlineSuggestionSurface() {
+        if (!inlineSuggestionEnabled) return
         if (!inlineSuggestionDisplayState.toggleSurface()) return
-        if (inlineSuggestionDisplayState.surface == InlineSuggestionSurface.Native) {
-            refreshCandidateStripContent()
+        refreshCandidateStripContent()
+        if (isKeyboardFloatingMode == true) {
+            floatingKeyboardBinding?.suggestionRecyclerView?.scrollToPosition(0)
         } else {
-            enforceInlineSuggestionVisibility()
+            mainLayoutBinding?.suggestionRecyclerView?.scrollToPosition(0)
+        }
+        updateShortcutActiveStates()
+    }
+
+    private fun setFloatingSuggestionColumn() {
+        val recyclerView = floatingKeyboardBinding?.suggestionRecyclerView ?: return
+        if (suggestionAdapter?.isInlineSuggestionStripShown() == true) {
+            val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
+            if (layoutManager?.orientation != LinearLayoutManager.HORIZONTAL) {
+                recyclerView.layoutManager =
+                    LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+                recyclerView.scrollToPosition(0)
+            }
+        } else if (recyclerView.layoutManager !is FlexboxLayoutManager) {
+            recyclerView.layoutManager = FlexboxLayoutManager(applicationContext).apply {
+                flexDirection = FlexDirection.COLUMN
+            }
+            recyclerView.scrollToPosition(0)
         }
     }
 
@@ -4657,7 +4585,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                    floatingView.inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                 } else {
                     floatingView.suggestionViewParent.background = null
                 }
@@ -4667,16 +4594,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                 floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                 floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                floatingView.inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
 
                 floatingView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                 floatingView.suggestionViewParent.setDrawableSolidColor(
                     customThemeBgColor ?: Color.WHITE
                 )
                 floatingView.suggestionVisibility.setDrawableSolidColor(
-                    customThemeSpecialKeyColor ?: Color.GRAY
-                )
-                floatingView.inlineSuggestionToggle.setDrawableSolidColor(
                     customThemeSpecialKeyColor ?: Color.GRAY
                 )
             }
@@ -4686,7 +4609,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                     floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                    floatingView.inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                 } else {
                     floatingView.suggestionViewParent.background = null
                 }
@@ -6091,14 +6013,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                     candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 }
                                 floatingKeyboardBinding?.apply {
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 }
                             }
                         }
@@ -6108,7 +6028,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                                inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 val symbolKeyBg =
                                     customThemeKeyColor ?: Color.WHITE
@@ -6143,9 +6062,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionVisibility.setDrawableSolidColor(
                                     customThemeSpecialKeyColor ?: Color.GRAY
                                 )
-                                inlineSuggestionToggle.setDrawableSolidColor(
-                                    customThemeSpecialKeyColor ?: Color.GRAY
-                                )
                                 candidateTabLayout.setLayerTypeSolidColor(
                                     customThemeBgColor ?: Color.WHITE
                                 )
@@ -6153,24 +6069,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionVisibility.setColorFilter(
                                     customThemeKeyTextColor ?: Color.BLACK
                                 )
-                                inlineSuggestionToggle.setColorFilter(
-                                    customThemeKeyTextColor ?: Color.BLACK
-                                )
                             }
                             floatingKeyboardBinding?.apply {
                                 root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                                inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
 
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
                                     customThemeBgColor ?: Color.WHITE
                                 )
                                 suggestionVisibility.setDrawableSolidColor(
-                                    customThemeSpecialKeyColor ?: Color.GRAY
-                                )
-                                inlineSuggestionToggle.setDrawableSolidColor(
                                     customThemeSpecialKeyColor ?: Color.GRAY
                                 )
                             }
@@ -6182,14 +6091,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                     candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 }
                                 floatingKeyboardBinding?.apply {
                                     root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                                     suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                                    inlineSuggestionToggle.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 }
                             }
                         }
@@ -18976,6 +18883,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 integratedShortcutEntryExpanded = !integratedShortcutEntryExpanded
                 refreshCandidateStripContent()
             }
+            adapter.setOnInlineSuggestionToggleClickListener {
+                toggleInlineSuggestionSurface()
+            }
             adapter.setOnZeroQueryCandidateClickListener { candidate ->
                 vibrate()
                 commitZeroQueryCandidate(candidate)
@@ -19148,11 +19058,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 lastSuggestionLayoutKey = null
                 return@measureDebugSection
             }
+            val inlineSuggestionStripShown =
+                (adapter as? SuggestionAdapter)?.isInlineSuggestionStripShown() == true
 
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
                 layoutKind = if (
+                    inlineSuggestionStripShown ||
                     columnNum == "1" ||
                     CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
                         currentCandidateStripContent
@@ -19200,7 +19113,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 SuggestionAdapter.VIEW_TYPE_CLIPBOARD_PREVIEW,
                                 SuggestionAdapter.VIEW_TYPE_SHORTCUT_ENTRY,
                                 SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
-                                SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
+                                SuggestionAdapter.VIEW_TYPE_SHORTCUT,
+                                SuggestionAdapter.VIEW_TYPE_INLINE_TOGGLE,
+                                SuggestionAdapter.VIEW_TYPE_INLINE_SUGGESTION -> spanCount
                                 else -> 1
                             }
                         }
@@ -19401,7 +19316,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val handwritingAvailable =
             gemmaTranslationManager.imageInputCapability() is GemmaImageCapability.Available
         val visibleItems = configuredShortcutItems.filter { type ->
-            type != ShortcutType.GEMMA_HANDWRITING || handwritingAvailable
+            when (type) {
+                ShortcutType.GEMMA_HANDWRITING -> handwritingAvailable
+                else -> true
+            }
         }
         currentShortcutItems = visibleItems
         shortcutAdapter?.submitList(visibleItems) {
@@ -19916,7 +19834,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     content !is CandidateStripContent.ZeroQuerySuggestions,
                 customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
                 symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
-                shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates
+                shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates,
             )
         )
     }

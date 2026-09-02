@@ -3,14 +3,17 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -43,6 +46,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.CandidateStripLayoutPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
 import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
@@ -53,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
+import java.util.IdentityHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -94,6 +99,18 @@ internal data class CandidateYomiPresentation(
     val textSize: Float
 )
 
+/**
+ * Framework-owned inline views shown by the compact candidate strip.
+ *
+ * The list deliberately uses View rather than InlineContentView so this adapter can still be
+ * loaded on Android versions earlier than API 30.
+ */
+internal data class InlineSuggestionStripState(
+    val views: List<View> = emptyList(),
+    val showInlineSuggestions: Boolean = false,
+    val toggle: InlineSuggestionToggle? = null,
+)
+
 internal fun resolveCandidateYomiPresentation(
     showCandidateYomiForLiveConversion: Boolean,
     isFirstCandidate: Boolean,
@@ -127,6 +144,8 @@ class SuggestionAdapter internal constructor(
         const val VIEW_TYPE_SHORTCUT_ENTRY = 6
         const val VIEW_TYPE_ZERO_QUERY_CLOSE = 7
         const val VIEW_TYPE_ZERO_QUERY_CANDIDATE = 8
+        const val VIEW_TYPE_INLINE_TOGGLE = 9
+        const val VIEW_TYPE_INLINE_SUGGESTION = 10
 
         private val diffThreadIndex = AtomicInteger(0)
         private val diffExecutor: Executor = Executors.newFixedThreadPool(2) { runnable ->
@@ -143,6 +162,8 @@ class SuggestionAdapter internal constructor(
     internal enum class SuggestionDisplayItemKind {
         CandidateItem,
         SelectionActionItem,
+        InlineSuggestionToggleItem,
+        InlineSuggestionItem,
         ZeroQueryCloseItem,
         ZeroQueryCandidateItem,
         QuickActionsItem,
@@ -155,7 +176,8 @@ class SuggestionAdapter internal constructor(
     internal enum class StartAnchorRole {
         QuickActions,
         ShortcutItems,
-        ShortcutEntry
+        ShortcutEntry,
+        InlineSuggestionToggle,
     }
 
     internal data class QuickActionsVisibilitySignature(
@@ -179,6 +201,15 @@ class SuggestionAdapter internal constructor(
         data class SelectionActionItem(
             val candidate: Candidate,
             val candidateIndex: Int,
+        ) : SuggestionDisplayItem()
+
+        data class InlineSuggestionToggleItem(
+            val toggle: InlineSuggestionToggle,
+        ) : SuggestionDisplayItem()
+
+        data class InlineSuggestionItem(
+            val view: View,
+            val index: Int,
         ) : SuggestionDisplayItem()
 
         object ZeroQueryCloseItem : SuggestionDisplayItem()
@@ -244,6 +275,7 @@ class SuggestionAdapter internal constructor(
     private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
     private var onShortcutItemClickListener: ((ShortcutType) -> Unit)? = null
     private var onShortcutEntryClickListener: ((View) -> Unit)? = null
+    private var onInlineSuggestionToggleClickListener: (() -> Unit)? = null
     private var onZeroQueryCandidateClickListener: ((Candidate) -> Unit)? = null
     private var onZeroQueryCloseClickListener: (() -> Unit)? = null
     private var onShowSoftKeyboardClick: (() -> Unit)? = null
@@ -267,6 +299,15 @@ class SuggestionAdapter internal constructor(
 
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
+
+    private var inlineSuggestionStripState = InlineSuggestionStripState()
+    private val attachedRecyclerViews = IdentityHashMap<RecyclerView, InlineSuggestionItemDecoration>()
+    private val inlineScrollListeners = IdentityHashMap<RecyclerView, RecyclerView.OnScrollListener>()
+    private val recyclerViewLayoutListeners =
+        IdentityHashMap<RecyclerView, View.OnLayoutChangeListener>()
+    private val originalClipToPadding = IdentityHashMap<RecyclerView, Boolean>()
+    private val originalRecyclerViewPadding = IdentityHashMap<RecyclerView, Rect>()
+    private val inlineViewLayoutListeners = IdentityHashMap<View, View.OnLayoutChangeListener>()
 
     private var showCustomTab: Boolean = true
 
@@ -321,6 +362,10 @@ class SuggestionAdapter internal constructor(
         this.onShortcutEntryClickListener = listener
     }
 
+    fun setOnInlineSuggestionToggleClickListener(listener: () -> Unit) {
+        this.onInlineSuggestionToggleClickListener = listener
+    }
+
     fun setOnZeroQueryCandidateClickListener(listener: (Candidate) -> Unit) {
         this.onZeroQueryCandidateClickListener = listener
     }
@@ -334,6 +379,32 @@ class SuggestionAdapter internal constructor(
     }
 
     fun release() {
+        attachedRecyclerViews.keys.toList().forEach { recyclerView ->
+            detachInlineSuggestionViews(recyclerView)
+            attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
+            inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
+            recyclerViewLayoutListeners.remove(recyclerView)?.let {
+                recyclerView.removeOnLayoutChangeListener(it)
+            }
+            originalClipToPadding.remove(recyclerView)?.let {
+                recyclerView.clipToPadding = it
+            }
+            originalRecyclerViewPadding.remove(recyclerView)?.let { padding ->
+                recyclerView.setPadding(padding.left, padding.top, padding.right, padding.bottom)
+            }
+        }
+        attachedRecyclerViews.clear()
+        inlineScrollListeners.clear()
+        recyclerViewLayoutListeners.clear()
+        originalClipToPadding.clear()
+        originalRecyclerViewPadding.clear()
+        inlineSuggestionStripState.views.forEach { view ->
+            inlineViewLayoutListeners.remove(view)?.let(view::removeOnLayoutChangeListener)
+            view.clipBounds = null
+            (view.parent as? ViewGroup)?.removeView(view)
+        }
+        inlineViewLayoutListeners.clear()
+        inlineSuggestionStripState = InlineSuggestionStripState()
         released = true
         onItemClickListener = null
         onItemLongClickListener = null
@@ -342,6 +413,7 @@ class SuggestionAdapter internal constructor(
         onCustomLayoutItemClickListener = null
         onShortcutItemClickListener = null
         onShortcutEntryClickListener = null
+        onInlineSuggestionToggleClickListener = null
         onZeroQueryCandidateClickListener = null
         onZeroQueryCloseClickListener = null
         onShowSoftKeyboardClick = null
@@ -560,6 +632,13 @@ class SuggestionAdapter internal constructor(
                         newItem is SuggestionDisplayItem.ShortcutItem ->
                     oldItem.shortcutType == newItem.shortcutType
 
+                oldItem is SuggestionDisplayItem.InlineSuggestionToggleItem &&
+                        newItem is SuggestionDisplayItem.InlineSuggestionToggleItem -> true
+
+                oldItem is SuggestionDisplayItem.InlineSuggestionItem &&
+                        newItem is SuggestionDisplayItem.InlineSuggestionItem ->
+                    oldItem.view === newItem.view
+
                 oldItem is SuggestionDisplayItem.CustomLayoutItem &&
                         newItem is SuggestionDisplayItem.CustomLayoutItem ->
                     oldItem.layout.stableId == newItem.layout.stableId
@@ -643,12 +722,22 @@ class SuggestionAdapter internal constructor(
     }
 
     fun submitContent(content: CandidateStripContent) {
+        submitContent(content, inlineSuggestionStripState)
+    }
+
+    internal fun submitContent(
+        content: CandidateStripContent,
+        inlineSuggestionState: InlineSuggestionStripState,
+    ) {
         val layoutModeChanged =
             CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(currentContent) !=
-                    CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(content)
+                    CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(content) ||
+                    inlineSuggestionStripState.showInlineSuggestions !=
+                    inlineSuggestionState.showInlineSuggestions
         val nextCandidates = content.candidatesForClicks()
         submitContent(
             content = content,
+            inlineSuggestionState = inlineSuggestionState,
             onCommitted = if (layoutModeChanged || candidateSuggestions != nextCandidates) {
                 { onListUpdated?.invoke() }
             } else {
@@ -659,12 +748,18 @@ class SuggestionAdapter internal constructor(
 
     private fun submitContent(
         content: CandidateStripContent,
+        inlineSuggestionState: InlineSuggestionStripState = this.inlineSuggestionStripState,
         onCommitted: (() -> Unit)?,
     ) {
         traceDebugSection("SuggestionAdapter.submitContent") {
-            if (currentContent == content) return
+            if (
+                currentContent == content &&
+                inlineSuggestionStripState == inlineSuggestionState
+            ) return
             currentContent = content
+            inlineSuggestionStripState = inlineSuggestionState
             candidateSuggestions = content.candidatesForClicks()
+            updateInlineSuggestionRecyclerViews()
             rebuildDisplayItems(onCommitted)
         }
     }
@@ -699,6 +794,12 @@ class SuggestionAdapter internal constructor(
     }
 
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
+        if (
+            inlineSuggestionStripState.showInlineSuggestions &&
+            inlineSuggestionStripState.views.isNotEmpty()
+        ) {
+            return buildInlineSuggestionItems()
+        }
         return when (val content = currentContent) {
             is CandidateStripContent.Candidates -> buildCandidateItems(content)
             is CandidateStripContent.SelectionActions -> buildSelectionActionItems(content)
@@ -713,10 +814,22 @@ class SuggestionAdapter internal constructor(
         }
     }
 
+    private fun buildInlineSuggestionItems(): List<SuggestionDisplayItem> = buildList {
+        inlineSuggestionStripState.toggle?.let { toggle ->
+            add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
+        }
+        inlineSuggestionStripState.views.forEachIndexed { index, view ->
+            add(SuggestionDisplayItem.InlineSuggestionItem(view, index))
+        }
+    }
+
     private fun buildCandidateItems(
         content: CandidateStripContent.Candidates
     ): List<SuggestionDisplayItem> =
         buildList {
+            content.inlineSuggestionToggle?.let { toggle ->
+                add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
+            }
             content.candidates.forEachIndexed { index, candidate ->
                 add(SuggestionDisplayItem.CandidateItem(candidate, index))
             }
@@ -726,6 +839,9 @@ class SuggestionAdapter internal constructor(
         content: CandidateStripContent.ZeroQuerySuggestions
     ): List<SuggestionDisplayItem> =
         buildList {
+            content.inlineSuggestionToggle?.let { toggle ->
+                add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
+            }
             add(SuggestionDisplayItem.ZeroQueryCloseItem)
             content.candidates.forEachIndexed { index, candidate ->
                 add(SuggestionDisplayItem.ZeroQueryCandidateItem(candidate, index))
@@ -736,6 +852,9 @@ class SuggestionAdapter internal constructor(
         content: CandidateStripContent.SelectionActions
     ): List<SuggestionDisplayItem> =
         buildList {
+            content.inlineSuggestionToggle?.let { toggle ->
+                add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
+            }
             if (content.showShortcutEntry) {
                 add(SuggestionDisplayItem.ShortcutEntryItem)
             }
@@ -746,15 +865,22 @@ class SuggestionAdapter internal constructor(
 
     private fun buildCustomLayoutItems(
         content: CandidateStripContent.CustomLayoutPicker
-    ): List<SuggestionDisplayItem> =
-        content.layouts.mapIndexed { index, layout ->
-            SuggestionDisplayItem.CustomLayoutItem(layout, index)
+    ): List<SuggestionDisplayItem> = buildList {
+        content.inlineSuggestionToggle?.let { toggle ->
+            add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
         }
+        content.layouts.forEachIndexed { index, layout ->
+            add(SuggestionDisplayItem.CustomLayoutItem(layout, index))
+        }
+    }
 
     private fun buildEmptyStateItems(
         content: CandidateStripContent.EmptyState
     ): List<SuggestionDisplayItem> =
         buildList {
+            content.inlineSuggestionToggle?.let { toggle ->
+                add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
+            }
             if (content.showZeroQueryToggle) {
                 add(SuggestionDisplayItem.ZeroQueryCloseItem)
             }
@@ -801,6 +927,9 @@ class SuggestionAdapter internal constructor(
         content: CandidateStripContent.ExpandedShortcutEntry
     ): List<SuggestionDisplayItem> =
         buildList {
+            content.inlineSuggestionToggle?.let { toggle ->
+                add(SuggestionDisplayItem.InlineSuggestionToggleItem(toggle))
+            }
             add(SuggestionDisplayItem.ShortcutEntryItem)
             content.shortcutItems.forEach { shortcutType ->
                 add(SuggestionDisplayItem.ShortcutItem(shortcutType))
@@ -817,6 +946,11 @@ class SuggestionAdapter internal constructor(
 
     internal fun buildDisplayItemKindsForTesting(): List<SuggestionDisplayItemKind> {
         return buildDisplayItems().map { it.kind() }
+    }
+
+    internal fun isInlineSuggestionStripShown(): Boolean {
+        return inlineSuggestionStripState.showInlineSuggestions &&
+            inlineSuggestionStripState.views.isNotEmpty()
     }
 
     internal fun buildZeroQueryDisplayTextsForTesting(): List<String> {
@@ -890,6 +1024,12 @@ class SuggestionAdapter internal constructor(
             is SuggestionDisplayItem.SelectionActionItem ->
                 SuggestionDisplayItemKind.SelectionActionItem
 
+            is SuggestionDisplayItem.InlineSuggestionToggleItem ->
+                SuggestionDisplayItemKind.InlineSuggestionToggleItem
+
+            is SuggestionDisplayItem.InlineSuggestionItem ->
+                SuggestionDisplayItemKind.InlineSuggestionItem
+
             SuggestionDisplayItem.ZeroQueryCloseItem ->
                 SuggestionDisplayItemKind.ZeroQueryCloseItem
 
@@ -935,6 +1075,9 @@ class SuggestionAdapter internal constructor(
             is SuggestionDisplayItem.ShortcutItem ->
                 StartAnchorSignature(role = StartAnchorRole.ShortcutItems)
 
+            is SuggestionDisplayItem.InlineSuggestionToggleItem ->
+                StartAnchorSignature(role = StartAnchorRole.InlineSuggestionToggle)
+
             else -> null
         }
     }
@@ -948,6 +1091,18 @@ class SuggestionAdapter internal constructor(
     inner class SelectionActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val badgeText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_badge)
         val actionText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_text)
+    }
+
+    inner class InlineSuggestionToggleViewHolder(itemView: View) :
+        RecyclerView.ViewHolder(itemView) {
+        val badgeText: MaterialTextView =
+            itemView.findViewById(R.id.suggestion_inline_toggle_badge)
+        val badgeIcon: ImageView = itemView.findViewById(R.id.suggestion_inline_toggle_icon)
+    }
+
+    inner class InlineSuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val container: FrameLayout = itemView as FrameLayout
+        var inlineView: View? = null
     }
 
     inner class ZeroQueryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -999,6 +1154,8 @@ class SuggestionAdapter internal constructor(
             SuggestionDisplayItem.ZeroQueryCloseItem -> VIEW_TYPE_ZERO_QUERY_CLOSE
             is SuggestionDisplayItem.ZeroQueryCandidateItem -> VIEW_TYPE_ZERO_QUERY_CANDIDATE
             is SuggestionDisplayItem.SelectionActionItem -> VIEW_TYPE_SELECTION_ACTION
+            is SuggestionDisplayItem.InlineSuggestionToggleItem -> VIEW_TYPE_INLINE_TOGGLE
+            is SuggestionDisplayItem.InlineSuggestionItem -> VIEW_TYPE_INLINE_SUGGESTION
             is SuggestionDisplayItem.QuickActionsItem -> VIEW_TYPE_EMPTY
             is SuggestionDisplayItem.ClipboardPreviewItem -> VIEW_TYPE_CLIPBOARD_PREVIEW
             SuggestionDisplayItem.ShortcutEntryItem -> VIEW_TYPE_SHORTCUT_ENTRY
@@ -1060,6 +1217,26 @@ class SuggestionAdapter internal constructor(
                 SelectionActionViewHolder(itemView)
             }
 
+            VIEW_TYPE_INLINE_TOGGLE -> {
+                val itemView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.suggestion_inline_toggle_item, parent, false)
+                InlineSuggestionToggleViewHolder(itemView)
+            }
+
+            VIEW_TYPE_INLINE_SUGGESTION -> {
+                val density = parent.resources.displayMetrics.density
+                val itemView = FrameLayout(parent.context).apply {
+                    layoutParams = RecyclerView.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        (58 * density).toInt(),
+                    )
+                    clipChildren = true
+                    clipToPadding = true
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+                InlineSuggestionViewHolder(itemView)
+            }
+
             VIEW_TYPE_SHORTCUT -> {
                 val itemView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_shortcut, parent, false)
@@ -1110,9 +1287,21 @@ class SuggestionAdapter internal constructor(
                 item as SuggestionDisplayItem.ZeroQueryCandidateItem,
             )
 
-            VIEW_TYPE_SELECTION_ACTION -> onBindSelectionActionViewHolder(
-                holder as SelectionActionViewHolder,
-                item as SuggestionDisplayItem.SelectionActionItem,
+            VIEW_TYPE_SELECTION_ACTION -> {
+                onBindSelectionActionViewHolder(
+                    holder as SelectionActionViewHolder,
+                    item as SuggestionDisplayItem.SelectionActionItem,
+                )
+            }
+
+            VIEW_TYPE_INLINE_TOGGLE -> onBindInlineSuggestionToggleViewHolder(
+                holder as InlineSuggestionToggleViewHolder,
+                item as SuggestionDisplayItem.InlineSuggestionToggleItem,
+            )
+
+            VIEW_TYPE_INLINE_SUGGESTION -> onBindInlineSuggestionViewHolder(
+                holder as InlineSuggestionViewHolder,
+                item as SuggestionDisplayItem.InlineSuggestionItem,
             )
 
             VIEW_TYPE_SHORTCUT -> onBindShortcutViewHolder(
@@ -1128,6 +1317,178 @@ class SuggestionAdapter internal constructor(
                 holder as CustomLayoutViewHolder,
                 item as SuggestionDisplayItem.CustomLayoutItem,
             )
+        }
+    }
+
+    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        if (holder is InlineSuggestionViewHolder) {
+            holder.inlineView?.post { updateInlineSuggestionClipBounds(holder) }
+        }
+    }
+
+    override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
+        if (holder is InlineSuggestionViewHolder) {
+            holder.inlineView
+                ?.takeIf { it.parent === holder.container }
+                ?.clipBounds = null
+        }
+        super.onViewDetachedFromWindow(holder)
+    }
+
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        if (holder is InlineSuggestionViewHolder) {
+            detachInlineSuggestionView(holder)
+        }
+        super.onViewRecycled(holder)
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        attachedRecyclerViews[recyclerView] = InlineSuggestionItemDecoration(
+            edgeSpacing = (4 * recyclerView.resources.displayMetrics.density).toInt(),
+            itemSpacing = (4 * recyclerView.resources.displayMetrics.density).toInt(),
+        )
+        inlineScrollListeners[recyclerView] = object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                updateInlineSuggestionClipBounds(recyclerView)
+            }
+        }.also(recyclerView::addOnScrollListener)
+        originalClipToPadding[recyclerView] = recyclerView.clipToPadding
+        originalRecyclerViewPadding[recyclerView] = Rect(
+            recyclerView.paddingLeft,
+            recyclerView.paddingTop,
+            recyclerView.paddingRight,
+            recyclerView.paddingBottom,
+        )
+        val layoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateInlineSuggestionClipBounds(recyclerView)
+        }
+        recyclerViewLayoutListeners[recyclerView] = layoutListener
+        recyclerView.addOnLayoutChangeListener(layoutListener)
+        updateInlineSuggestionRecyclerViews()
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        detachInlineSuggestionViews(recyclerView)
+        attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
+        inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
+        recyclerViewLayoutListeners.remove(recyclerView)?.let {
+            recyclerView.removeOnLayoutChangeListener(it)
+        }
+        originalClipToPadding.remove(recyclerView)?.let { recyclerView.clipToPadding = it }
+        originalRecyclerViewPadding.remove(recyclerView)?.let { padding ->
+            recyclerView.setPadding(padding.left, padding.top, padding.right, padding.bottom)
+        }
+        super.onDetachedFromRecyclerView(recyclerView)
+    }
+
+    private fun updateInlineSuggestionRecyclerViews() {
+        val showInline =
+            inlineSuggestionStripState.showInlineSuggestions &&
+                inlineSuggestionStripState.views.isNotEmpty()
+        attachedRecyclerViews.forEach { (recyclerView, decoration) ->
+            recyclerView.removeItemDecoration(decoration)
+            if (showInline) {
+                recyclerView.addItemDecoration(decoration)
+                recyclerView.setPadding(0, 0, 0, 0)
+                recyclerView.clipToPadding = true
+                recyclerView.post { updateInlineSuggestionClipBounds(recyclerView) }
+            } else {
+                originalRecyclerViewPadding[recyclerView]?.let { padding ->
+                    recyclerView.setPadding(
+                        padding.left,
+                        padding.top,
+                        padding.right,
+                        padding.bottom,
+                    )
+                }
+                recyclerView.clipToPadding = originalClipToPadding[recyclerView] ?: false
+            }
+        }
+    }
+
+    private fun onBindInlineSuggestionViewHolder(
+        holder: InlineSuggestionViewHolder,
+        item: SuggestionDisplayItem.InlineSuggestionItem,
+    ) {
+        detachInlineSuggestionView(holder)
+        val view = item.view
+        inlineViewLayoutListeners.remove(view)?.let(view::removeOnLayoutChangeListener)
+        (view.parent as? ViewGroup)?.removeView(view)
+        val width = view.layoutParams?.width?.takeIf { it > 0 }
+            ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        val height = view.layoutParams?.height?.takeIf { it > 0 }
+            ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        holder.container.addView(
+            view,
+            FrameLayout.LayoutParams(width, height).apply {
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+            }
+        )
+        holder.inlineView = view
+        val layoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            holder.itemView.post { updateInlineSuggestionClipBounds(holder) }
+        }
+        inlineViewLayoutListeners[view] = layoutListener
+        view.addOnLayoutChangeListener(layoutListener)
+        holder.itemView.contentDescription = null
+        view.clipBounds = null
+        holder.itemView.post { updateInlineSuggestionClipBounds(holder) }
+    }
+
+    private fun detachInlineSuggestionViews(recyclerView: RecyclerView) {
+        for (index in 0 until recyclerView.childCount) {
+            val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(index))
+            if (holder is InlineSuggestionViewHolder) {
+                detachInlineSuggestionView(holder)
+            }
+        }
+    }
+
+    private fun detachInlineSuggestionView(holder: InlineSuggestionViewHolder) {
+        holder.inlineView?.let { view ->
+            if (view.parent === holder.container) {
+                inlineViewLayoutListeners.remove(view)?.let(view::removeOnLayoutChangeListener)
+                view.clipBounds = null
+            }
+        }
+        holder.container.removeAllViews()
+        holder.inlineView = null
+    }
+
+    private fun updateInlineSuggestionClipBounds(holder: InlineSuggestionViewHolder) {
+        val view = holder.inlineView ?: return
+        if (view.parent !== holder.container) return
+        val recyclerView = holder.itemView.parent as? RecyclerView ?: return
+        val recyclerLocation = IntArray(2)
+        val viewLocation = IntArray(2)
+        recyclerView.getLocationInWindow(recyclerLocation)
+        view.getLocationInWindow(viewLocation)
+
+        val viewportLeft = recyclerLocation[0] + recyclerView.paddingLeft
+        val viewportTop = recyclerLocation[1] + recyclerView.paddingTop
+        val viewportRight = recyclerLocation[0] + recyclerView.width - recyclerView.paddingRight
+        val viewportBottom = recyclerLocation[1] + recyclerView.height - recyclerView.paddingBottom
+        val clip = Rect(
+            (viewportLeft - viewLocation[0]).coerceAtLeast(0),
+            (viewportTop - viewLocation[1]).coerceAtLeast(0),
+            (viewportRight - viewLocation[0]).coerceAtMost(view.width),
+            (viewportBottom - viewLocation[1]).coerceAtMost(view.height),
+        )
+        if (clip.left >= clip.right || clip.top >= clip.bottom) {
+            view.clipBounds = Rect(0, 0, 0, 0)
+        } else {
+            view.clipBounds = clip
+        }
+    }
+
+    private fun updateInlineSuggestionClipBounds(recyclerView: RecyclerView) {
+        for (index in 0 until recyclerView.childCount) {
+            val child = recyclerView.getChildAt(index)
+            (recyclerView.getChildViewHolder(child) as? InlineSuggestionViewHolder)?.let {
+                updateInlineSuggestionClipBounds(it)
+            }
         }
     }
 
@@ -1718,6 +2079,8 @@ class SuggestionAdapter internal constructor(
         applyCandidateItemBackground(holder.itemView)
         val suggestion = item.candidate
         val position = item.candidateIndex
+        holder.actionText.visibility = View.VISIBLE
+        holder.itemView.contentDescription = null
         holder.actionText.text = suggestion.string
         holder.actionText.textSize = candidateTextSize
         holder.badgeText.text = when (suggestion.type) {
@@ -1739,6 +2102,27 @@ class SuggestionAdapter internal constructor(
             onItemLongClickListener?.invoke(suggestion, position)
             true
         }
+    }
+
+    private fun onBindInlineSuggestionToggleViewHolder(
+        holder: InlineSuggestionToggleViewHolder,
+        item: SuggestionDisplayItem.InlineSuggestionToggleItem,
+    ) {
+        applyCandidateItemBackground(holder.itemView)
+        holder.badgeText.text = item.toggle.badge.orEmpty()
+        holder.badgeText.isVisible = !item.toggle.badge.isNullOrEmpty()
+        holder.badgeIcon.isVisible = item.toggle.iconResId != null
+        item.toggle.iconResId?.let(holder.badgeIcon::setImageResource)
+        holder.itemView.contentDescription = item.toggle.contentDescription
+        candidateTextColor?.let { color ->
+            holder.badgeText.setTextColor(color)
+            holder.badgeIcon.imageTintList = android.content.res.ColorStateList.valueOf(color)
+        }
+        holder.itemView.isPressed = false
+        holder.itemView.setOnClickListener {
+            onInlineSuggestionToggleClickListener?.invoke()
+        }
+        holder.itemView.setOnLongClickListener { true }
     }
 
     private fun onBindCustomLayoutViewHolder(

@@ -18,13 +18,13 @@ class InlineSuggestionDisplayStateTest {
     }
 
     @Test
-    fun availableSuggestionsCanToggleBetweenNativeAndInlineSurfaces() {
+    fun availableSuggestionsCanToggleBetweenNormalCandidatesAndInlineSurfaces() {
         val state = InlineSuggestionDisplayState().apply {
             updateAvailability(true)
         }
 
         assertTrue(state.toggleSurface())
-        assertEquals(InlineSuggestionSurface.Native, state.surface)
+        assertEquals(InlineSuggestionSurface.NormalCandidates, state.surface)
         assertTrue(state.toggleSurface())
         assertEquals(InlineSuggestionSurface.Inline, state.surface)
     }
@@ -38,7 +38,7 @@ class InlineSuggestionDisplayStateTest {
 
         state.updateAvailability(true)
 
-        assertEquals(InlineSuggestionSurface.Native, state.surface)
+        assertEquals(InlineSuggestionSurface.NormalCandidates, state.surface)
     }
 
     @Test

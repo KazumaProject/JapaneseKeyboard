@@ -106,6 +106,7 @@ object AppPreference {
     const val KEY_SOUND_KEY = "key_sound_preference"
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
+    const val INLINE_SUGGESTION_ENABLED_KEY = "inline_suggestion_enabled_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -137,6 +138,8 @@ object AppPreference {
     private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
     private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
         Pair(KEY_SOUND_VOLUME_PERCENT_KEY, 0)
+    private val INLINE_SUGGESTION_ENABLED_PREFERENCE =
+        Pair(INLINE_SUGGESTION_ENABLED_KEY, true)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val INCOGNITO_MODE_DETECTION_PREFERENCE =
         Pair("incognito_mode_detection_preference", true)
@@ -1446,6 +1449,15 @@ object AppPreference {
 
     fun isFullscreenModeAllowed(defaultValue: Boolean): Boolean =
         preferences.getBoolean(ALLOW_FULLSCREEN_MODE_KEY, defaultValue)
+
+    var inline_suggestion_enabled_preference: Boolean
+        get() = preferences.getBoolean(
+            INLINE_SUGGESTION_ENABLED_PREFERENCE.first,
+            INLINE_SUGGESTION_ENABLED_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(INLINE_SUGGESTION_ENABLED_PREFERENCE.first, value)
+        }
 
     var landscape_force_qwerty_romaji_preference: Boolean
         get() = preferences.getBoolean(
