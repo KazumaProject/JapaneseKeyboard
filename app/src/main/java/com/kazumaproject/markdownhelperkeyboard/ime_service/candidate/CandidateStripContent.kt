@@ -52,6 +52,7 @@ data class InlineSuggestionToggle(
     val contentDescription: String,
     val badge: String? = null,
     @DrawableRes val iconResId: Int? = null,
+    @DrawableRes val iconBackgroundResId: Int? = null,
 )
 
 data class QuickActionsState(

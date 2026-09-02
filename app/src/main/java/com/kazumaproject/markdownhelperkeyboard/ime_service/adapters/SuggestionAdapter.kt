@@ -2112,6 +2112,9 @@ class SuggestionAdapter internal constructor(
         holder.badgeText.text = item.toggle.badge.orEmpty()
         holder.badgeText.isVisible = !item.toggle.badge.isNullOrEmpty()
         holder.badgeIcon.isVisible = item.toggle.iconResId != null
+        holder.badgeIcon.background = item.toggle.iconBackgroundResId?.let { backgroundResId ->
+            ContextCompat.getDrawable(holder.itemView.context, backgroundResId)
+        }
         item.toggle.iconResId?.let(holder.badgeIcon::setImageResource)
         holder.itemView.contentDescription = item.toggle.contentDescription
         candidateTextColor?.let { color ->
