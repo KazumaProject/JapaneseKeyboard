@@ -41,11 +41,30 @@ class FormulaParserTest {
             result = provider.provide("25^2"),
         )
         assertEquals(listOf("25²", "25^{2}"), utilityCandidates.map { it.text })
-        assertEquals(CANDIDATE_TYPE_FORMULA_UNICODE, candidateType(candidates[0]))
-        assertEquals(CANDIDATE_TYPE_FORMULA_TEX, candidateType(candidates[1]))
-        assertEquals("25²", candidates[0].presentation?.unicodeText)
-        assertEquals("25^{2}", candidates[1].presentation?.normalizedTex)
-        assertEquals(listOf("25²", "25^{2}", "25^2"), candidates.map { it.commitText })
+        assertEquals(CANDIDATE_TYPE_FORMULA_UNICODE, candidateType(candidates[1]))
+        assertEquals(CANDIDATE_TYPE_FORMULA_TEX, candidateType(candidates[2]))
+        assertEquals("25²", candidates[1].presentation?.unicodeText)
+        assertEquals("25^{2}", candidates[2].presentation?.normalizedTex)
+        assertEquals(listOf("25^2", "25²", "25^{2}"), candidates.map { it.commitText })
+    }
+
+    @Test
+    fun formulaCandidatesFollowOrdinaryCandidatesAndPrecedeFullWidthCandidates() {
+        val composed = UtilityCandidateComposer.compose(
+            input = "25^2",
+            existingCandidates = listOf(
+                candidate("通常候補"),
+                candidate("２５", type = 22),
+                candidate("！", type = 21),
+                candidate("Ａ", type = 30),
+            ),
+            result = provider.provide("25^2"),
+        )
+
+        assertEquals(
+            listOf("通常候補", "25^2", "25²", "25^{2}", "２５", "！", "Ａ"),
+            composed.map { it.commitText },
+        )
     }
 
     @Test
@@ -55,7 +74,7 @@ class FormulaParserTest {
         val composed = UtilityCandidateComposer.compose("\\frac{a+b}{c+d}", existing, result)
 
         assertEquals(
-            listOf("(a+b)⁄(c+d)", "\\frac{a+b}{c+d}", "別候補"),
+            listOf("別候補", "(a+b)⁄(c+d)", "\\frac{a+b}{c+d}"),
             composed.map { it.commitText },
         )
     }
@@ -199,9 +218,9 @@ class FormulaParserTest {
 
     private fun candidateType(candidate: Candidate): Byte = candidate.type
 
-    private fun candidate(text: String) = Candidate(
+    private fun candidate(text: String, type: Int = 1) = Candidate(
         string = text,
-        type = 1,
+        type = type.toByte(),
         length = text.length.toUByte(),
         score = 0,
     )
