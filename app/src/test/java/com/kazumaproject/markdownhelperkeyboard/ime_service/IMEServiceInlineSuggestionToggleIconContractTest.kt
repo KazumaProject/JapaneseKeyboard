@@ -24,6 +24,16 @@ class IMEServiceInlineSuggestionToggleIconContractTest {
                 "InlineSuggestionSurface.NormalCandidates -> R.drawable.inline_suggestion_key_24"
             )
         )
+        assertTrue(
+            function.contains(
+                "InlineSuggestionSurface.Inline -> null"
+            )
+        )
+        assertTrue(
+            function.contains(
+                "com.kazumaproject.core.R.drawable.suggestion_icon_bg"
+            )
+        )
         assertFalse(function.contains("swap_horiz_24px"))
         assertFalse(function.contains("keyboard_24px"))
         assertFalse(function.contains("henkan"))
