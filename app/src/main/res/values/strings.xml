@@ -672,6 +672,8 @@
     <string name="keyboard_position_title">Position of Keyboard</string>
     <string name="keyboard_selection_fragment_title">List Keyboards</string>
     <string name="keyboard_selection_add_new_keyboard_title">Add Keyboard</string>
+    <string name="custom_keyboard_export_title">Export custom keyboards</string>
+    <string name="custom_keyboard_import_title">Import custom keyboards</string>
     <string name="export_title">Export</string>
     <string name="import_title">Import</string>
     <string name="import_other_dict_title">Import other dictionary</string>
