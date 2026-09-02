@@ -30,10 +30,24 @@ class IMEServiceInlineSuggestionToggleIconContractTest {
         assertFalse(function.contains("arrows_output"))
     }
 
+    @Test
+    fun toggleUsesOnlyTheOuterCandidateBackground() {
+        val layout = inlineToggleLayoutSource()
+
+        assertTrue(layout.contains("android:background=\"@drawable/recyclerview_item_bg\""))
+        assertFalse(layout.contains("android:background=\"@drawable/suggestion_icon_bg\""))
+    }
+
     private fun imeServiceSource(): String =
         listOf(
             File("app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"),
             File("src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"),
+        ).first { it.isFile }.readText()
+
+    private fun inlineToggleLayoutSource(): String =
+        listOf(
+            File("app/src/main/res/layout/suggestion_inline_toggle_item.xml"),
+            File("src/main/res/layout/suggestion_inline_toggle_item.xml"),
         ).first { it.isFile }.readText()
 
     private fun String.functionBody(start: String, end: String): String {
