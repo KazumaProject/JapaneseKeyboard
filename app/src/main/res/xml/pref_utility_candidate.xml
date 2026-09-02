@@ -5,6 +5,11 @@
     <PreferenceCategory android:title="@string/utility_calculation_category_title">
         <SwitchPreferenceCompat
             android:defaultValue="true"
+            android:key="utility_formula_candidate_enabled"
+            android:title="@string/utility_formula_candidate_title"
+            app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
             android:key="utility_calculation_enabled"
             android:title="@string/utility_calculation_enabled_title"
             app:iconSpaceReserved="false" />

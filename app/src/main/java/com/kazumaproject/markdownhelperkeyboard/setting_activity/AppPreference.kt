@@ -51,6 +51,7 @@ object AppPreference {
     const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
     const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
     const val UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY = "utility_expression_candidate_enabled"
+    const val UTILITY_FORMULA_CANDIDATE_ENABLED_KEY = "utility_formula_candidate_enabled"
     const val UTILITY_ANGLE_MODE_KEY = "utility_angle_mode"
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
@@ -1806,6 +1807,10 @@ object AppPreference {
                     UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
                     true,
                 ),
+                formulaCandidateEnabled = preferences.getBoolean(
+                    UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
+                    true,
+                ),
                 angleMode = preferences.getString(UTILITY_ANGLE_MODE_KEY, "degrees")
                     .toAngleMode(),
                 calculationPrecision = calculationPrecision,
@@ -1824,6 +1829,10 @@ object AppPreference {
             editor.putBoolean(
                 UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
                 value.includeExpressionCandidate,
+            )
+            editor.putBoolean(
+                UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
+                value.formulaCandidateEnabled,
             )
             editor.putString(
                 UTILITY_ANGLE_MODE_KEY,
@@ -1852,6 +1861,7 @@ object AppPreference {
             editor.remove(UTILITY_CALCULATION_ENABLED_KEY)
             editor.remove(UTILITY_UNIT_CONVERSION_ENABLED_KEY)
             editor.remove(UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY)
+            editor.remove(UTILITY_FORMULA_CANDIDATE_ENABLED_KEY)
             editor.remove(UTILITY_ANGLE_MODE_KEY)
             editor.remove(UTILITY_CALCULATION_PRECISION_KEY)
             editor.remove(UTILITY_REGIONAL_PROFILE_KEY)
