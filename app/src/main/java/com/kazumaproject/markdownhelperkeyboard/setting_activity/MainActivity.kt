@@ -34,6 +34,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
     private var currentDestinationId: Int? = null
+    private val destinationsWithOwnToolbar = setOf(
+        R.id.candidateViewHeightSettingFragment,
+        R.id.candidateHeightLandscapeSettingFragment,
+        R.id.shortcutToolbarSizeSettingFragment,
+    )
+    private val destinationsWithoutSharedActionBar =
+        destinationsWithOwnToolbar + R.id.enableKeyboardFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,6 +84,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 navView.menu.findItem(R.id.navigation_setting)?.isChecked = true
             }
+            updateSharedActionBarVisibility(destination.id)
             invalidateOptionsMenu()
         }
 
@@ -94,6 +102,14 @@ class MainActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         val navController = currentNavController()
         return navController.navigateUp() || super.onSupportNavigateUp()
+    }
+
+    private fun updateSharedActionBarVisibility(destinationId: Int) {
+        if (destinationId in destinationsWithoutSharedActionBar) {
+            supportActionBar?.hide()
+        } else {
+            supportActionBar?.show()
+        }
     }
 
     /**

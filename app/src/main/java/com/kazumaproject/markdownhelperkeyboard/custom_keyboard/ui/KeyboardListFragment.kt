@@ -67,13 +67,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
             }
         }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(false)
-        }
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardListBinding.bind(view)
@@ -172,6 +165,14 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = getString(R.string.custom_layout_fragment_title)
+        }
+        requireActivity().invalidateOptionsMenu()
     }
 
     // [ADD] Function to set up the menu
