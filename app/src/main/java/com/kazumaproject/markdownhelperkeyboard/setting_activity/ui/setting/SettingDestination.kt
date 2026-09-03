@@ -115,7 +115,6 @@ object SettingDestinations {
         "user_dictionary_preference",
         "user_template_preference",
         "text_macro_candidate_preference",
-        "text_macro_manage_preference",
         "custom_romaji_preference",
         "shortcut_toolbar_item_preference",
         "candidate_tab_order_preference",
@@ -528,7 +527,6 @@ object SettingDestinations {
         "user_dictionary_preference",
         "user_template_preference",
         "text_macro_candidate_preference",
-        "text_macro_manage_preference",
         "enable_ai_conversion_zenz_preference",
         "enable_zenz_rerank_preference",
         "zenz_model_select_preference",
@@ -584,15 +582,6 @@ object SettingDestinations {
             keywords = listOf("dictionary", "learn", "ng", "template"),
             destinationId = R.id.dictionaryPreferenceFragment,
             iconRes = CoreR.drawable.dictionary_24px,
-        ),
-        destination(
-            key = "setting_route_text_macro",
-            title = context.getString(R.string.setting_category_text_macro_title),
-            summary = context.getString(R.string.setting_category_text_macro_summary),
-            category = SettingCategory.TEXT_MACRO,
-            keywords = listOf("macro", "dynamic", "template", "snippet", "定型文"),
-            destinationId = R.id.textMacroFragment,
-            iconRes = CoreR.drawable.book_3_24px,
         ),
         destination(
             key = "setting_route_ai_conversion",
@@ -762,7 +751,6 @@ object SettingDestinations {
             "setting_route_conversion_engine" -> R.id.conversionEnginePreferenceFragment
             "setting_route_utility_candidates" -> R.id.utilityCandidatePreferenceFragment
             "setting_route_dictionary" -> R.id.dictionaryPreferenceFragment
-            "setting_route_text_macro" -> R.id.textMacroFragment
             "setting_route_ai_conversion" -> R.id.aiConversionPreferenceFragment
             "setting_route_clipboard_shortcut" -> R.id.clipboardShortcutPreferenceFragment
             "setting_route_operation_feedback" -> R.id.operationFeedbackPreferenceFragment
@@ -811,7 +799,6 @@ object SettingDestinations {
             "n_gram_rule_preference" -> R.id.ngramRuleFragment
             "candidate_order_override_preference" -> R.id.candidateOrderOverrideFragment
             "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
-            "text_macro_manage_preference" -> R.id.textMacroFragment
             "ng_word_preference" -> R.id.ngWordFragment
             "gemma_prompt_template_management_preference" -> R.id.gemmaPromptTemplateFragment
             "kana_keyboard_letter_size_preference" -> R.id.tenKeyCandidateLetterSizeFragment

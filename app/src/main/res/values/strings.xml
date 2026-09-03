@@ -1671,8 +1671,6 @@
     <string name="text_macro_candidate_title">Reading and selection suggestions</string>
     <string name="text_macro_candidate_summary_on">Show enabled macros for exact readings and selected text</string>
     <string name="text_macro_candidate_summary_off">Do not show automatic macro suggestions; toolbar execution remains available</string>
-    <string name="text_macro_manage">Manage macros</string>
-    <string name="text_macro_manage_summary">Add, edit, search, import, or export dynamic templates</string>
     <string name="text_macro_sensitive_warning">Definitions are stored as plain text on this device and in exported JSON. Do not save passwords or other secrets.</string>
     <string name="text_macro_search_hint">Search macro name, call keyword, or body</string>
     <string name="text_macro_add">Add macro</string>
