@@ -197,6 +197,61 @@ class CandidateStripContentResolverTest {
     }
 
     @Test
+    fun inlineSuggestionToggleIsIncludedWithNormalCandidates() {
+        val toggle = InlineSuggestionToggle(
+            contentDescription = "インライン自動入力候補を表示",
+            badge = "⇄",
+        )
+        val state = baseState(
+            candidates = listOf(candidate("通常候補")),
+            candidatesShown = true,
+            inputStringEmpty = false,
+            inlineSuggestionToggle = toggle,
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.Candidates)
+        assertEquals(toggle, (content as CandidateStripContent.Candidates).inlineSuggestionToggle)
+    }
+
+    @Test
+    fun inlineSuggestionToggleKeepsAnOtherwiseEmptyCandidateStripVisible() {
+        val toggle = InlineSuggestionToggle(
+            contentDescription = "インライン自動入力候補を表示",
+            badge = "⇄",
+        )
+
+        val content = CandidateStripContentResolver.resolve(
+            baseState(inlineSuggestionToggle = toggle)
+        )
+
+        assertTrue(content is CandidateStripContent.EmptyState)
+        assertEquals(toggle, (content as CandidateStripContent.EmptyState).inlineSuggestionToggle)
+    }
+
+    @Test
+    fun inlineSuggestionToggleIsIncludedWithCustomLayoutPicker() {
+        val toggle = InlineSuggestionToggle(
+            contentDescription = "インライン自動入力候補を表示",
+            badge = "⇄",
+        )
+
+        val content = CandidateStripContentResolver.resolve(
+            baseState(
+                customLayoutPickerShown = true,
+                customLayouts = listOf(customLayout("カスタム")),
+                inlineSuggestionToggle = toggle,
+            )
+        )
+
+        assertEquals(
+            toggle,
+            (content as CandidateStripContent.CustomLayoutPicker).inlineSuggestionToggle
+        )
+    }
+
+    @Test
     fun clipboardPreviewShown_whenClipboardTextIsLastPastedAndTapToDeleteDisabled() {
         val state = baseState(
             inputStringEmpty = true,
@@ -602,6 +657,7 @@ class CandidateStripContentResolverTest {
         shortcutToolbarIntegratedInSuggestion: Boolean = false,
         integratedShortcutEntryExpanded: Boolean = false,
         shortcutItems: List<ShortcutType> = emptyList(),
+        inlineSuggestionToggle: InlineSuggestionToggle? = null,
     ): CandidateStripInputState =
         CandidateStripInputState(
             candidates = candidates,
@@ -632,6 +688,7 @@ class CandidateStripContentResolverTest {
             shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion,
             integratedShortcutEntryExpanded = integratedShortcutEntryExpanded,
             shortcutItems = shortcutItems,
+            inlineSuggestionToggle = inlineSuggestionToggle,
         )
 
     private fun candidate(text: String): Candidate =

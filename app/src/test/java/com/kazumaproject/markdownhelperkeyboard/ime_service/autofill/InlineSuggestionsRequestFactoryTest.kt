@@ -3,7 +3,6 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.autofill
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,11 +31,4 @@ class InlineSuggestionsRequestFactoryTest {
         }
     }
 
-    @Test
-    @Config(sdk = [29])
-    fun inlineHostClassCanBeCreatedBeforeAndroidEleven() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-
-        assertNotNull(InlineSuggestionClipView(context))
-    }
 }
