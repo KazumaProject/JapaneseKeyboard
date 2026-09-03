@@ -640,6 +640,8 @@
     <string name="keyboard_position_title">キーボードの配置</string>
     <string name="keyboard_selection_fragment_title">キーボード一覧</string>
     <string name="keyboard_selection_add_new_keyboard_title">キーボードを追加</string>
+    <string name="custom_keyboard_export_title">カスタムキーボードの書き出し</string>
+    <string name="custom_keyboard_import_title">カスタムキーボードの読み込み</string>
     <string name="export_title">辞書の書き出し</string>
     <string name="import_title">辞書の読み込み</string>
     <string name="import_other_dict_title">スミレ以外の辞書の読み込み</string>

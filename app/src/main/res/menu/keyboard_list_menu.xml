@@ -10,10 +10,10 @@
 
     <item
         android:id="@+id/action_export_layouts"
-        android:title="@string/export_title" />
+        android:title="@string/custom_keyboard_export_title" />
 
     <item
         android:id="@+id/action_import_layouts"
-        android:title="@string/import_title" />
+        android:title="@string/custom_keyboard_import_title" />
 
 </menu>
