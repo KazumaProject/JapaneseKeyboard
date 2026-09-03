@@ -872,10 +872,11 @@
     <string name="candidate_height_tab_text">Text</string>
     <string name="candidate_height_tab_default">Defaults</string>
     <string name="candidate_default_height_title">Reset heights</string>
-    <string name="candidate_default_height_description">Set the heights restored by the reset button.</string>
+    <string name="candidate_default_height_description">Set the column and empty-input heights restored by the reset button.</string>
     <string name="candidate_default_height_use_current">Use current heights as defaults</string>
     <string name="candidate_default_height_restore_factory">Restore app defaults</string>
     <string name="candidate_default_height_save">Save</string>
+    <string name="candidate_empty_height_default">Empty input</string>
     <string name="candidate_height_sheet_summary_format">%1$s col / %2$sdp / %3$ssp</string>
     <string name="candidate_height_open_inspector">Adjust</string>
     <string name="candidate_height_close_inspector">Close</string>
