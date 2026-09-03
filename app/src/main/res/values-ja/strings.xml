@@ -1657,8 +1657,6 @@
     <string name="text_macro_candidate_title">読み・選択候補に表示</string>
     <string name="text_macro_candidate_summary_on">完全一致した読みと選択文字に対して有効なマクロを表示します</string>
     <string name="text_macro_candidate_summary_off">自動候補には表示しません。ツールバーからの明示実行は利用できます</string>
-    <string name="text_macro_manage">マクロを管理</string>
-    <string name="text_macro_manage_summary">動的定型文の追加・編集・検索・入出力を行います</string>
     <string name="text_macro_sensitive_warning">定義は端末内とエクスポートJSONに平文で保存されます。パスワードなどの機密情報を保存しないでください。</string>
     <string name="text_macro_search_hint">マクロ名・呼び出しキーワード・本文を検索</string>
     <string name="text_macro_add">マクロを追加</string>
