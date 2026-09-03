@@ -777,7 +777,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
-        updateSymbolKeymapTextSizes()
+        updateGuideTextSizes()
         updateSpecialKeyTextSizes()
         refreshSpecialKeyIconSizesWhenLaidOut()
     }
@@ -805,8 +805,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun updateSymbolKeymapTextSizes() {
-        defaultQWERTYButtonsRoman.distinct().forEach { view ->
+    private fun updateGuideTextSizes() {
+        val guideButtons = defaultQWERTYButtonsRoman.asList() + numberRowButtons.asList()
+        guideButtons.distinct().forEach { view ->
             view.guideTextSizeSp = symbolKeymapTextSizeSp
         }
     }
@@ -1311,6 +1312,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keyH, binding.keyJ, binding.keyK, binding.keyAtMark, binding.keyL,
             // Bottom row
             binding.keyZ, binding.keyX, binding.keyC, binding.keyN, binding.keyM
+        )
+    }
+
+    private val numberRowButtons: Array<QWERTYButton> by lazy {
+        arrayOf(
+            binding.key1, binding.key2, binding.key3, binding.key4, binding.key5,
+            binding.key6, binding.key7, binding.key8, binding.key9, binding.key0
         )
     }
 
