@@ -338,7 +338,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     }
 
     private fun resetSettings() {
-        appPreference.resetCandidateVisibleHeightsToUserDefaults(isLandscape = true)
+        appPreference.resetCandidateHeightSettingsToUserDefaults(isLandscape = true)
         appPreference.syncActiveCandidateVisibleHeightToImePreference(isLandscape = true)
         appPreference.candidate_letter_size = defaultCandidateTextSize
         applyCandidateTextSize(defaultCandidateTextSize, persist = false)
@@ -626,17 +626,18 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             saveDefaultHeightsFromInputs()
         }
         binding.useCurrentDefaultsButton.setOnClickListener {
-            appPreference.copyCandidateVisibleHeightsToUserDefaults(isLandscape = true)
+            appPreference.copyCandidateHeightSettingsToUserDefaults(isLandscape = true)
             syncDefaultHeightControls()
         }
         binding.restoreFactoryDefaultsButton.setOnClickListener {
-            appPreference.resetCandidateDefaultVisibleHeightsToFactoryDefaults(isLandscape = true)
+            appPreference.resetCandidateHeightDefaultsToFactoryDefaults(isLandscape = true)
             syncDefaultHeightControls()
         }
         listOf(
             binding.defaultHeightOneEditText,
             binding.defaultHeightTwoEditText,
-            binding.defaultHeightThreeEditText
+            binding.defaultHeightThreeEditText,
+            binding.defaultEmptyHeightEditText
         ).forEach { editText ->
             editText.setOnEditorActionListener { _, _, _ ->
                 saveDefaultHeightsFromInputs()
@@ -659,6 +660,10 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             binding.defaultHeightThreeInputLayout,
             binding.defaultHeightThreeEditText
         ) ?: return false
+        val empty = readDefaultHeightInput(
+            binding.defaultEmptyHeightInputLayout,
+            binding.defaultEmptyHeightEditText
+        ) ?: return false
 
         appPreference.setCandidateDefaultVisibleHeightDp(
             isLandscape = true,
@@ -674,6 +679,10 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             isLandscape = true,
             column = "3",
             heightDp = three
+        )
+        appPreference.setCandidateDefaultEmptyHeightDp(
+            isLandscape = true,
+            heightDp = empty
         )
         syncDefaultHeightControls()
         return true
@@ -710,6 +719,11 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
                 binding.defaultHeightThreeInputLayout,
                 binding.defaultHeightThreeEditText,
                 appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = true, column = "3")
+            )
+            setDefaultHeightText(
+                binding.defaultEmptyHeightInputLayout,
+                binding.defaultEmptyHeightEditText,
+                appPreference.getCandidateDefaultEmptyHeightDp(isLandscape = true)
             )
         } finally {
             isSyncingDefaultHeightControls = false
