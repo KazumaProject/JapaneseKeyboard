@@ -69,6 +69,20 @@ class KeyboardSelectionEntryPointTest {
         assertEquals(R.id.keyboardSelectionFragment, navAction.destination)
     }
 
+    @Test
+    fun customKeyboardBackupActionsUseCustomKeyboardLabels() {
+        val menuItems = xmlElements(R.menu.keyboard_list_menu, "item")
+
+        assertEquals(
+            R.string.custom_keyboard_export_title,
+            menuItems.first { it.androidId == R.id.action_export_layouts }.androidTitle,
+        )
+        assertEquals(
+            R.string.custom_keyboard_import_title,
+            menuItems.first { it.androidId == R.id.action_import_layouts }.androidTitle,
+        )
+    }
+
     private fun xmlElements(xmlRes: Int, tagName: String): List<XmlElement> {
         val parser = context.resources.getXml(xmlRes)
         return parser.use {
