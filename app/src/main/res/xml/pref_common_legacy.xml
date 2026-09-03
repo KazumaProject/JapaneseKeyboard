@@ -329,6 +329,13 @@
             app:summary="@string/reconversion_preference_summary" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="inline_suggestion_enabled_preference"
+            android:summaryOff="@string/inline_suggestion_enabled_summary_off"
+            android:summaryOn="@string/inline_suggestion_enabled_summary_on"
+            android:title="@string/inline_suggestion_enabled_title" />
+
+        <SwitchPreferenceCompat
             android:key="shortcut_toolbar_visibility_preference"
             android:title="@string/shortcut_toolbar_title"
             app:defaultValue="false"

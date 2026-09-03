@@ -97,6 +97,16 @@ Sumireは、**プライバシーを絶対に妥協しない**
 | カスタムキーボード | ユーザーが作成したキーボード配列を読み込むモードです。複数レイアウトの切り替え、フリック、ローマ字変換、定型文字列の入力に対応します。 |
 | フローティング | キーボードを画面下部に固定せず、独立したフローティングウィンドウとして表示できます。位置は保存され、通常の候補表示や入力処理と組み合わせて使えます。 |
 
+### ∑ 数式候補
+
+「設定 → 計算・単位換算候補 → 数式候補を表示」を有効にすると、入力中の簡易記法や LaTeX 数式を候補欄で組版できます。通常の候補の後、全角候補の前に同じ数式の `[文字]` と `[TeX]` を表示し、タップするとそれぞれ Unicode 文字列または `$` のない正規化 LaTeX ソースを確定します。自動確定や自動置換は行いません。
+
+| 入力例 | `[文字]` | `[TeX]` |
+|:--|:--|:--|
+| `25^2` | `25²` | `25^{2}` |
+| `1/2` | `½` | `\frac{1}{2}` |
+| `sqrt(x^2+y^2)` | `√(x²+y²)` | `\sqrt{x^{2}+y^{2}}` |
+
 ### ⚙️ ユーザー設定
 
 以下は `pref_*.xml` に定義されている設定項目です。保存値の初期値は `AppPreference.kt` を優先し、値を保存しない画面遷移や実行系の項目は「画面/操作」としています。`Zenz` と `Gemma` の設定は、これらを含む Full 版で表示されます。
@@ -424,6 +434,12 @@ customizable keyboard layouts**, aiming to make typing a truly personal experien
 * 📱 **Modern by Design**
   Developed in Kotlin from the ground up and optimized with Jetpack libraries for a smooth, fast,
   and responsive UI. It's also optimized for tablets and foldables.
+
+* ∑ **Formula Candidates**
+  Recognizes shorthand and a supported LaTeX subset, renders formulas in the candidate strip, and
+  offers separate Unicode (`[Text]`) and normalized bare LaTeX (`[TeX]`) candidates. Formula
+  candidates appear after ordinary candidates and before full-width candidates when present.
+  They are opt-in through the calculator and unit-conversion settings and never commit automatically.
 
 ### 🚀 Quick Start
 

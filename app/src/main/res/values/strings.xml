@@ -2,11 +2,14 @@
 <resources>
     <string name="candidate_badge_calculation">[Calc]</string>
     <string name="candidate_badge_unit_conversion">[Convert]</string>
+    <string name="candidate_badge_formula_unicode">[Text]</string>
+    <string name="candidate_badge_formula_tex">[TeX]</string>
     <string name="utility_candidate_settings_title">Calculations and unit conversions</string>
     <string name="utility_candidate_settings_summary">Configure calculator and conversion candidates</string>
     <string name="utility_calculation_category_title">Calculator</string>
     <string name="utility_calculation_enabled_title">Show calculation candidates</string>
     <string name="utility_expression_candidate_title">Also show result with expression</string>
+    <string name="utility_formula_candidate_title">Show formula candidates</string>
     <string name="utility_angle_mode_title">Angle unit</string>
     <string name="utility_calculation_precision_title">Calculation precision</string>
     <string name="utility_unit_conversion_category_title">Unit conversions</string>
@@ -28,9 +31,9 @@
     <string name="utility_precision_digits">%1$d significant digits</string>
     <string name="utility_targets_disabled">Automatic candidates off</string>
     <string name="utility_reset_title">Reset all settings</string>
-    <string name="utility_reset_summary">Restore calculator and unit conversion defaults</string>
+    <string name="utility_reset_summary">Restore calculator, conversion, and formula defaults</string>
     <string name="utility_reset_confirm_title">Reset utility candidate settings?</string>
-    <string name="utility_reset_confirm_message">All calculator and unit conversion settings will be restored to their defaults.</string>
+    <string name="utility_reset_confirm_message">All calculator, conversion, and formula settings will be restored to their defaults.</string>
     <string name="utility_add_target">Add conversion target</string>
     <string name="utility_conversion_targets_title">Conversion targets</string>
     <string name="utility_remove_target">Remove</string>
@@ -189,6 +192,13 @@
     <string name="hide_candidate_password_title">Conversion candidates for passwords</string>
     <string name="hide_candidate_password_summary_on">Don\'t show conversion candidates while typing a password</string>
     <string name="hide_candidate_password_summary_off">Show conversion candidates while typing a password</string>
+    <string name="inline_suggestion_settings_category_title">Inline Suggestions</string>
+    <string name="inline_suggestion_enabled_title">Use inline autofill suggestions</string>
+    <string name="inline_suggestion_enabled_summary_on">Use Android Inline Suggestions API on Android 11 (API 30) or later to show suggestions supplied by an autofill service above the keyboard. The autofill service and the target input field must also support the API.</string>
+    <string name="inline_suggestion_enabled_summary_off">Do not show inline autofill suggestions. Use this keyboard\'s normal conversion candidates instead. Inline Suggestions requires Android 11 (API 30) or later.</string>
+    <string name="inline_suggestion_unsupported_summary">Inline Suggestions requires Android 11 (API 30) or later and support from the autofill service and target input field.</string>
+    <string name="inline_suggestion_show_normal_candidates_content_description">Show normal conversion candidates</string>
+    <string name="inline_suggestion_show_inline_candidates_content_description">Show inline autofill suggestions</string>
     <string name="password_compose_title">Text settings during password input</string>
     <string name="password_compose_summary_on">Treat as pre-edit text during password input.</string>
     <string name="password_compose_summary_off">Treat as committed text during password input.</string>
@@ -672,6 +682,8 @@
     <string name="keyboard_position_title">Position of Keyboard</string>
     <string name="keyboard_selection_fragment_title">List Keyboards</string>
     <string name="keyboard_selection_add_new_keyboard_title">Add Keyboard</string>
+    <string name="custom_keyboard_export_title">Export custom keyboards</string>
+    <string name="custom_keyboard_import_title">Import custom keyboards</string>
     <string name="export_title">Export</string>
     <string name="import_title">Import</string>
     <string name="import_other_dict_title">Import other dictionary</string>
