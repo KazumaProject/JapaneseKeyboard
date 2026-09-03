@@ -34,4 +34,5 @@ data class CandidateStripInputState(
     val shortcutToolbarIntegratedInSuggestion: Boolean,
     val integratedShortcutEntryExpanded: Boolean,
     val shortcutItems: List<ShortcutType>,
+    val inlineSuggestionToggle: InlineSuggestionToggle? = null,
 )
