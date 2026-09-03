@@ -2543,7 +2543,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest {
+    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest? {
+        if (!inlineSuggestionEnabled) return null
         return InlineSuggestionsRequestFactory.create(this)
     }
 
