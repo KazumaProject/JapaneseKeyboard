@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="48dp"
+    android:layout_height="56dp"
+    android:background="@drawable/recyclerview_item_bg"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/suggestion_inline_toggle_badge"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:background="@null"
+        android:includeFontPadding="false"
+        android:gravity="center"
+        android:textColor="@color/main_text_color"
+        android:textSize="16sp" />
+
+    <ImageView
+        android:id="@+id/suggestion_inline_toggle_icon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:background="@null"
+        android:contentDescription="@null"
+        android:padding="4dp"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+</FrameLayout>
