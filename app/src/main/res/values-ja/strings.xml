@@ -843,10 +843,11 @@
     <string name="candidate_height_tab_text">文字</string>
     <string name="candidate_height_tab_default">デフォルト</string>
     <string name="candidate_default_height_title">リセット時の高さ</string>
-    <string name="candidate_default_height_description">リセットボタンを押した時に戻る高さを設定します。</string>
+    <string name="candidate_default_height_description">リセットボタンを押した時に戻る、列別と未入力時の高さを設定します。</string>
     <string name="candidate_default_height_use_current">現在の高さをデフォルトにする</string>
     <string name="candidate_default_height_restore_factory">アプリ初期値に戻す</string>
     <string name="candidate_default_height_save">保存</string>
+    <string name="candidate_empty_height_default">未入力時</string>
     <string name="candidate_height_sheet_summary_format">%1$s列 / %2$sdp / %3$ssp</string>
     <string name="candidate_height_open_inspector">高さを調整</string>
     <string name="candidate_height_close_inspector">閉じる</string>

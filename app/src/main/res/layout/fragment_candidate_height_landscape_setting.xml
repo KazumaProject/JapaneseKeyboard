@@ -487,6 +487,25 @@
                                 android:id="@+id/default_height_three_edit_text"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:imeOptions="actionNext"
+                                android:inputType="number"
+                                android:maxLength="3"
+                                android:selectAllOnFocus="true"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/default_empty_height_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:hint="@string/candidate_empty_height_default"
+                            app:suffixText="@string/unit_dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/default_empty_height_edit_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
                                 android:imeOptions="actionDone"
                                 android:inputType="number"
                                 android:maxLength="3"
