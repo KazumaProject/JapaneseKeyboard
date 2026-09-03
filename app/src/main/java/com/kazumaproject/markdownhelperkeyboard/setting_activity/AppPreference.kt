@@ -587,6 +587,16 @@ object AppPreference {
         Pair("candidate_default_height_landscape_column_2_dp_preference", 90)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP =
         Pair("candidate_default_height_landscape_column_3_dp_preference", 120)
+    private val CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP =
+        Pair(
+            "candidate_default_empty_height_dp_preference",
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP.second
+        )
+    private val CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP_LANDSCAPE =
+        Pair(
+            "candidate_default_empty_height_dp_landscape_preference",
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE.second
+        )
     private val CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED =
         Pair("candidate_height_per_column_migrated_preference", false)
 
@@ -1121,6 +1131,20 @@ object AppPreference {
             }
         }
     }
+
+    private fun candidateEmptyHeightPreferenceFor(isLandscape: Boolean): Pair<String, Int> =
+        if (isLandscape) {
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE
+        } else {
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP
+        }
+
+    private fun candidateDefaultEmptyHeightPreferenceFor(isLandscape: Boolean): Pair<String, Int> =
+        if (isLandscape) {
+            CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP_LANDSCAPE
+        } else {
+            CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP
+        }
 
     var clipboard_history_enable: Boolean?
         get() = preferences.getBoolean(
@@ -2715,9 +2739,30 @@ object AppPreference {
         }
     }
 
-    fun resetCandidateVisibleHeightsToUserDefaults(isLandscape: Boolean) {
+    fun getCandidateDefaultEmptyHeightDp(isLandscape: Boolean): Int {
+        val preference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
+        return readIntPreference(preference.first, preference.second)
+            .coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
+    }
+
+    fun setCandidateDefaultEmptyHeightDp(isLandscape: Boolean, heightDp: Int) {
+        val preference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
+        preferences.edit { editor ->
+            editor.putInt(
+                preference.first,
+                heightDp.coerceIn(
+                    MIN_CANDIDATE_VISIBLE_HEIGHT_DP,
+                    MAX_CANDIDATE_VISIBLE_HEIGHT_DP
+                )
+            )
+        }
+    }
+
+    fun resetCandidateHeightSettingsToUserDefaults(isLandscape: Boolean) {
         migrateCandidateHeightPerColumnPreferencesIfNeeded()
         val activeColumn = getCandidateColumn(isLandscape)
+        val emptyHeight = getCandidateDefaultEmptyHeightDp(isLandscape)
+        val emptyPreference = candidateEmptyHeightPreferenceFor(isLandscape)
         preferences.edit { editor ->
             listOf("1", "2", "3").forEach { column ->
                 val heightDp = getCandidateDefaultVisibleHeightDp(isLandscape, column)
@@ -2733,20 +2778,27 @@ object AppPreference {
                     )
                 }
             }
+            editor.putInt(emptyPreference.first, emptyHeight)
         }
     }
 
-    fun resetCandidateDefaultVisibleHeightsToFactoryDefaults(isLandscape: Boolean) {
+    fun resetCandidateHeightDefaultsToFactoryDefaults(isLandscape: Boolean) {
+        val emptyPreference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
         preferences.edit { editor ->
             listOf("1", "2", "3").forEach { column ->
                 val preference = candidateDefaultHeightPreferenceFor(isLandscape, column)
                 editor.putInt(preference.first, preference.second)
             }
+            editor.putInt(emptyPreference.first, emptyPreference.second)
         }
     }
 
-    fun copyCandidateVisibleHeightsToUserDefaults(isLandscape: Boolean) {
+    fun copyCandidateHeightSettingsToUserDefaults(isLandscape: Boolean) {
         migrateCandidateHeightPerColumnPreferencesIfNeeded()
+        val emptyPreference = candidateEmptyHeightPreferenceFor(isLandscape)
+        val emptyHeight = readIntPreference(emptyPreference.first, emptyPreference.second)
+            .coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
+        val defaultEmptyPreference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
         preferences.edit { editor ->
             listOf("1", "2", "3").forEach { column ->
                 val heightDp = getCandidateVisibleHeightDp(isLandscape, column)
@@ -2755,6 +2807,7 @@ object AppPreference {
                     heightDp
                 )
             }
+            editor.putInt(defaultEmptyPreference.first, emptyHeight)
         }
     }
 
