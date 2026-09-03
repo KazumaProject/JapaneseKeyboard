@@ -2,11 +2,14 @@
 <resources>
     <string name="candidate_badge_calculation">[計算]</string>
     <string name="candidate_badge_unit_conversion">[換算]</string>
+    <string name="candidate_badge_formula_unicode">[文字]</string>
+    <string name="candidate_badge_formula_tex">[TeX]</string>
     <string name="utility_candidate_settings_title">計算・単位換算候補</string>
     <string name="utility_candidate_settings_summary">計算結果と単位換算候補を設定します</string>
     <string name="utility_calculation_category_title">計算</string>
     <string name="utility_calculation_enabled_title">計算候補を表示</string>
     <string name="utility_expression_candidate_title">式付き候補も表示</string>
+    <string name="utility_formula_candidate_title">数式候補を表示</string>
     <string name="utility_angle_mode_title">角度単位</string>
     <string name="utility_calculation_precision_title">計算精度</string>
     <string name="utility_unit_conversion_category_title">単位換算</string>
@@ -28,9 +31,9 @@
     <string name="utility_precision_digits">有効数字 %1$d 桁</string>
     <string name="utility_targets_disabled">自動候補は無効</string>
     <string name="utility_reset_title">すべての設定をリセット</string>
-    <string name="utility_reset_summary">計算・単位換算候補を既定値へ戻します</string>
+    <string name="utility_reset_summary">計算・単位換算・数式候補を既定値へ戻します</string>
     <string name="utility_reset_confirm_title">ユーティリティ候補設定をリセットしますか？</string>
-    <string name="utility_reset_confirm_message">計算・単位換算候補のすべての設定を既定値へ戻します。</string>
+    <string name="utility_reset_confirm_message">計算・単位換算・数式候補のすべての設定を既定値へ戻します。</string>
     <string name="utility_add_target">変換先を追加</string>
     <string name="utility_conversion_targets_title">変換先</string>
     <string name="utility_remove_target">削除</string>
@@ -190,6 +193,13 @@
     <string name="hide_candidate_password_title">パスワード入力時の変換候補</string>
     <string name="hide_candidate_password_summary_on">パスワード入力中は変換候補を表示しません</string>
     <string name="hide_candidate_password_summary_off">パスワード入力中に変換候補を表示します</string>
+    <string name="inline_suggestion_settings_category_title">インライン候補</string>
+    <string name="inline_suggestion_enabled_title">インライン候補（自動入力）を使用</string>
+    <string name="inline_suggestion_enabled_summary_on">Android 11（API 30）以降の Inline Suggestions API を使い、自動入力サービスから提供された候補をキーボード上部に表示します。自動入力サービスと対象の入力欄もこの API に対応している必要があります。</string>
+    <string name="inline_suggestion_enabled_summary_off">インライン自動入力候補を表示せず、このキーボードの通常の変換候補を使用します。Inline Suggestions は Android 11（API 30）以降で利用できます。</string>
+    <string name="inline_suggestion_unsupported_summary">Inline Suggestions は Android 11（API 30）以降で、自動入力サービスと対象の入力欄が対応している場合に利用できます。</string>
+    <string name="inline_suggestion_show_normal_candidates_content_description">通常の変換候補を表示</string>
+    <string name="inline_suggestion_show_inline_candidates_content_description">インライン自動入力候補を表示</string>
     <string name="password_compose_title">パスワード入力中の文字列の設定</string>
     <string name="password_compose_summary_on">パスワード入力中に未確定文字として扱います。</string>
     <string name="password_compose_summary_off">パスワード入力中に確定文字として扱います。</string>
@@ -630,6 +640,8 @@
     <string name="keyboard_position_title">キーボードの配置</string>
     <string name="keyboard_selection_fragment_title">キーボード一覧</string>
     <string name="keyboard_selection_add_new_keyboard_title">キーボードを追加</string>
+    <string name="custom_keyboard_export_title">カスタムキーボードの書き出し</string>
+    <string name="custom_keyboard_import_title">カスタムキーボードの読み込み</string>
     <string name="export_title">辞書の書き出し</string>
     <string name="import_title">辞書の読み込み</string>
     <string name="import_other_dict_title">スミレ以外の辞書の読み込み</string>
@@ -1658,8 +1670,6 @@
     <string name="text_macro_candidate_title">読み・選択候補に表示</string>
     <string name="text_macro_candidate_summary_on">完全一致した読みと選択文字に対して有効なマクロを表示します</string>
     <string name="text_macro_candidate_summary_off">自動候補には表示しません。ツールバーからの明示実行は利用できます</string>
-    <string name="text_macro_manage">マクロを管理</string>
-    <string name="text_macro_manage_summary">動的定型文の追加・編集・検索・入出力を行います</string>
     <string name="text_macro_sensitive_warning">定義は端末内とエクスポートJSONに平文で保存されます。パスワードなどの機密情報を保存しないでください。</string>
     <string name="text_macro_search_hint">マクロ名・呼び出しキーワード・本文を検索</string>
     <string name="text_macro_add">マクロを追加</string>

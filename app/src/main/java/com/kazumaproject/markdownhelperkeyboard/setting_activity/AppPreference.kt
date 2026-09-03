@@ -51,6 +51,7 @@ object AppPreference {
     const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
     const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
     const val UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY = "utility_expression_candidate_enabled"
+    const val UTILITY_FORMULA_CANDIDATE_ENABLED_KEY = "utility_formula_candidate_enabled"
     const val UTILITY_ANGLE_MODE_KEY = "utility_angle_mode"
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
@@ -106,6 +107,7 @@ object AppPreference {
     const val KEY_SOUND_KEY = "key_sound_preference"
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
+    const val INLINE_SUGGESTION_ENABLED_KEY = "inline_suggestion_enabled_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -137,6 +139,8 @@ object AppPreference {
     private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
     private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
         Pair(KEY_SOUND_VOLUME_PERCENT_KEY, 0)
+    private val INLINE_SUGGESTION_ENABLED_PREFERENCE =
+        Pair(INLINE_SUGGESTION_ENABLED_KEY, true)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val INCOGNITO_MODE_DETECTION_PREFERENCE =
         Pair("incognito_mode_detection_preference", true)
@@ -1471,6 +1475,15 @@ object AppPreference {
     fun isFullscreenModeAllowed(defaultValue: Boolean): Boolean =
         preferences.getBoolean(ALLOW_FULLSCREEN_MODE_KEY, defaultValue)
 
+    var inline_suggestion_enabled_preference: Boolean
+        get() = preferences.getBoolean(
+            INLINE_SUGGESTION_ENABLED_PREFERENCE.first,
+            INLINE_SUGGESTION_ENABLED_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(INLINE_SUGGESTION_ENABLED_PREFERENCE.first, value)
+        }
+
     var landscape_force_qwerty_romaji_preference: Boolean
         get() = preferences.getBoolean(
             LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.first,
@@ -1818,6 +1831,10 @@ object AppPreference {
                     UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
                     true,
                 ),
+                formulaCandidateEnabled = preferences.getBoolean(
+                    UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
+                    true,
+                ),
                 angleMode = preferences.getString(UTILITY_ANGLE_MODE_KEY, "degrees")
                     .toAngleMode(),
                 calculationPrecision = calculationPrecision,
@@ -1836,6 +1853,10 @@ object AppPreference {
             editor.putBoolean(
                 UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
                 value.includeExpressionCandidate,
+            )
+            editor.putBoolean(
+                UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
+                value.formulaCandidateEnabled,
             )
             editor.putString(
                 UTILITY_ANGLE_MODE_KEY,
@@ -1864,6 +1885,7 @@ object AppPreference {
             editor.remove(UTILITY_CALCULATION_ENABLED_KEY)
             editor.remove(UTILITY_UNIT_CONVERSION_ENABLED_KEY)
             editor.remove(UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY)
+            editor.remove(UTILITY_FORMULA_CANDIDATE_ENABLED_KEY)
             editor.remove(UTILITY_ANGLE_MODE_KEY)
             editor.remove(UTILITY_CALCULATION_PRECISION_KEY)
             editor.remove(UTILITY_REGIONAL_PROFILE_KEY)
