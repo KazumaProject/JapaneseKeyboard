@@ -11,6 +11,7 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.textfield.TextInputEditText
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ItemTextMacroEditorBlockBinding
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroEditorBlock
@@ -43,11 +44,24 @@ class TextMacroEditorBlockAdapter(
         holder.bind(getItem(position), position, itemCount)
     }
 
+    override fun onBindViewHolder(
+        holder: ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>,
+    ) {
+        if (payloads.isNotEmpty() && payloads.all { it === ContentOnlyChanged }) {
+            holder.bindContentOnly(getItem(position))
+        } else {
+            holder.bind(getItem(position), position, itemCount)
+        }
+    }
+
     inner class ViewHolder(
         private val binding: ItemTextMacroEditorBlockBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var textWatcher: TextWatcher? = null
         private var patternWatcher: TextWatcher? = null
+        private var boundEditorId: Long? = null
 
         init {
             bindDragHandle()
@@ -63,6 +77,7 @@ class TextMacroEditorBlockAdapter(
         }
 
         fun bind(item: TextMacroDraftBlock, position: Int, count: Int) = with(binding) {
+            val sameItem = boundEditorId == item.editorId
             textMacroBlockUp.isEnabled = position > 0
             textMacroBlockDown.isEnabled = position < count - 1
             textMacroBlockUp.setOnClickListener { onMove(item.editorId, -1) }
@@ -78,12 +93,46 @@ class TextMacroEditorBlockAdapter(
             textMacroTextBlockInput.removeTextChangedListener(textWatcher)
             textMacroPatternInput.removeTextChangedListener(patternWatcher)
             when (val block = item.block) {
-                is TextMacroEditorBlock.Text -> bindText(item.editorId, block)
-                is TextMacroEditorBlock.Token -> bindToken(item.editorId, block)
+                is TextMacroEditorBlock.Text -> bindText(
+                    item.editorId,
+                    block,
+                    preserveFocusedInput = sameItem && textMacroTextBlockInput.hasFocus(),
+                )
+                is TextMacroEditorBlock.Token -> bindToken(
+                    item.editorId,
+                    block,
+                    preserveFocusedInput = sameItem && textMacroPatternInput.hasFocus(),
+                )
+            }
+            boundEditorId = item.editorId
+        }
+
+        fun bindContentOnly(item: TextMacroDraftBlock) = with(binding) {
+            when (val block = item.block) {
+                is TextMacroEditorBlock.Text -> {
+                    if (!textMacroTextBlockInput.hasFocus()) {
+                        updateInputText(textMacroTextBlockInput, textWatcher, block.value)
+                    }
+                }
+                is TextMacroEditorBlock.Token -> {
+                    val variable = TextMacroVariable.fromTokenName(block.name) ?: return@with
+                    textMacroBlockSyntax.text = variable.source(block.argument)
+                    if (variable.acceptsPattern && !textMacroPatternInput.hasFocus()) {
+                        updateInputText(
+                            textMacroPatternInput,
+                            patternWatcher,
+                            block.argument.orEmpty(),
+                        )
+                    }
+                }
             }
         }
 
-        private fun bindText(editorId: Long, block: TextMacroEditorBlock.Text) = with(binding) {
+        private fun bindText(
+            editorId: Long,
+            block: TextMacroEditorBlock.Text,
+            preserveFocusedInput: Boolean,
+        ) = with(binding) {
             textMacroBlockTitle.setText(R.string.text_macro_text_block_label)
             textMacroBlockSyntax.isVisible = false
             textMacroTextBlockLayout.isVisible = true
@@ -91,15 +140,19 @@ class TextMacroEditorBlockAdapter(
             textMacroBlockExample.isVisible = false
             textMacroBlockRestriction.isVisible = false
             textMacroPatternLayout.isVisible = false
-            if (textMacroTextBlockInput.text?.toString() != block.value) {
-                textMacroTextBlockInput.setText(block.value)
+            if (!preserveFocusedInput) {
+                updateInputText(textMacroTextBlockInput, null, block.value)
             }
             textWatcher = SimpleTextWatcher { onTextChanged(editorId, it) }.also {
                 textMacroTextBlockInput.addTextChangedListener(it)
             }
         }
 
-        private fun bindToken(editorId: Long, block: TextMacroEditorBlock.Token) = with(binding) {
+        private fun bindToken(
+            editorId: Long,
+            block: TextMacroEditorBlock.Token,
+            preserveFocusedInput: Boolean,
+        ) = with(binding) {
             val variable = TextMacroVariable.fromTokenName(block.name) ?: return@with
             val presentation = variable.presentation(root.context)
             textMacroBlockTitle.text = presentation.title
@@ -113,14 +166,25 @@ class TextMacroEditorBlockAdapter(
             textMacroBlockRestriction.text = presentation.restriction
             textMacroBlockRestriction.isVisible = presentation.restriction != null
             textMacroPatternLayout.isVisible = variable.acceptsPattern
-            if (textMacroPatternInput.text?.toString() != block.argument.orEmpty()) {
-                textMacroPatternInput.setText(block.argument.orEmpty())
+            if (!preserveFocusedInput) {
+                updateInputText(textMacroPatternInput, null, block.argument.orEmpty())
             }
             if (variable.acceptsPattern) {
                 patternWatcher = SimpleTextWatcher { onPatternChanged(editorId, it) }.also {
                     textMacroPatternInput.addTextChangedListener(it)
                 }
             }
+        }
+
+        private fun updateInputText(
+            input: TextInputEditText,
+            watcher: TextWatcher?,
+            value: String,
+        ) {
+            if (input.text?.toString() == value) return
+            input.removeTextChangedListener(watcher)
+            input.setTextKeepState(value)
+            watcher?.let(input::addTextChangedListener)
         }
     }
 
@@ -142,5 +206,22 @@ class TextMacroEditorBlockAdapter(
             oldItem: TextMacroDraftBlock,
             newItem: TextMacroDraftBlock,
         ): Boolean = oldItem == newItem
+
+        override fun getChangePayload(
+            oldItem: TextMacroDraftBlock,
+            newItem: TextMacroDraftBlock,
+        ): Any? {
+            if (oldItem.editorId != newItem.editorId) return null
+            return when {
+                oldItem.block is TextMacroEditorBlock.Text &&
+                    newItem.block is TextMacroEditorBlock.Text -> ContentOnlyChanged
+                oldItem.block is TextMacroEditorBlock.Token &&
+                    newItem.block is TextMacroEditorBlock.Token &&
+                    oldItem.block.name == newItem.block.name -> ContentOnlyChanged
+                else -> null
+            }
+        }
     }
+
+    private data object ContentOnlyChanged
 }
