@@ -5,17 +5,63 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class EnglishReadingDictionaryInstrumentedTest {
+
+    @Test
+    fun bundledEnglishReadingDictionaryUsesExactLookupForEveryReadingAndPrefix() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val reader = entryPoint.dictionaryBinaryReader()
+        val trie = reader.loadLoudsWithTermId(DictionaryFileKey.ENGLISH_READING_YOMI)
+        val lbsIndex = reader.loadYomiLbsIndex(DictionaryFileKey.ENGLISH_READING_YOMI, trie)
+        val leafIndex = reader.loadYomiLeafIndex(DictionaryFileKey.ENGLISH_READING_YOMI, trie)
+        val registeredReadings = trie.predictiveSearch("", lbsIndex).toSet()
+        val nonTerminalPrefixes = registeredReadings
+            .asSequence()
+            .flatMap { reading -> (1 until reading.length).asSequence().map(reading::take) }
+            .filterNot(registeredReadings::contains)
+            .toSet()
+
+        assertTrue("Bundled English-reading dictionary was empty", registeredReadings.isNotEmpty())
+        registeredReadings.forEach { reading ->
+            val nodeIndex = trie.getNodeIndex(reading, lbsIndex)
+            assertTrue("Registered reading did not resolve: $reading", nodeIndex > 0)
+            assertTrue(
+                "Registered reading did not resolve to a term ID: $reading",
+                trie.getTermIdShortArray(nodeIndex, leafIndex) >= 0,
+            )
+        }
+        nonTerminalPrefixes.forEach { prefix ->
+            val nodeIndex = trie.getNodeIndex(prefix, lbsIndex)
+            assertEquals("Non-terminal prefix resolved: $prefix", -1, nodeIndex)
+            assertEquals(
+                "Non-terminal prefix resolved to a term ID: $prefix",
+                -1,
+                trie.getTermIdShortArray(nodeIndex, leafIndex).toInt(),
+            )
+        }
+        println(
+            "ISSUE927_DICTIONARY_COVERAGE " +
+                "registered=${registeredReadings.size} " +
+                "nonTerminalPrefixes=${nonTerminalPrefixes.size}",
+        )
+    }
 
     @Test
     fun englishReadingCandidatesFollowTheSetting() = runBlocking {
@@ -54,6 +100,15 @@ class EnglishReadingDictionaryInstrumentedTest {
                 "Art gallery candidate was not found: $artGalleryCandidates",
                 artGalleryCandidates.any { it.string == "art gallery" },
             )
+            ISSUE_927_OVERMATCHES.forEach { (input, unexpectedWord) ->
+                val candidates = convert(engine, repository, input)
+                assertFalse(
+                    "Unexpected English-reading candidate for $input: $candidates",
+                    candidates.any {
+                        it.string.lowercase(Locale.ROOT) == unexpectedWord.lowercase(Locale.ROOT)
+                    },
+                )
+            }
 
             setEnabled(preferences, false)
             engine.applyDictionaryOverrideState(context)
@@ -104,5 +159,14 @@ class EnglishReadingDictionaryInstrumentedTest {
         preferences.edit()
             .putBoolean(DictionaryOverrideStore.ENGLISH_READING_ENABLED_PREFERENCE, enabled)
             .commit()
+    }
+
+    private companion object {
+        val ISSUE_927_OVERMATCHES = mapOf(
+            "すな" to "Sioux",
+            "すない" to "Through",
+            "てい" to "REM",
+            "りり" to "Rim",
+        )
     }
 }
