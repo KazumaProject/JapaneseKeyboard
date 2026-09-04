@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.content.Context
+import android.content.res.Configuration
 import android.content.res.XmlResourceParser
 import androidx.annotation.IdRes
 import androidx.annotation.XmlRes
@@ -16,6 +17,15 @@ object SettingSearchIndex {
     private const val APP_NS = "http://schemas.android.com/apk/res-auto"
     private const val SINGLE_CHARACTER_RESULT_LIMIT = 20
     private const val MULTI_CHARACTER_RESULT_LIMIT = 50
+    private val destinationCacheLock = Any()
+
+    @Volatile
+    private var destinationCache: DestinationCache? = null
+
+    private data class DestinationCache(
+        val configuration: Configuration,
+        val destinations: List<SettingDestination>,
+    )
     private val extraKeywordsByKey = mapOf(
         "keyboard_selection_preference" to listOf(
             "choose",
@@ -89,9 +99,7 @@ object SettingSearchIndex {
         val topLevel = SettingDestinations.categories(context) +
             SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
-        val xmlItems = sources().flatMap { source ->
-            readPreferenceXml(context, source)
-        }
+        val xmlItems = preferenceXmlDestinations(context)
         return (topLevel + xmlItems).distinctBy { destination ->
             val targetId = SettingDestinations.destinationId(destination.destination)
             "${destination.key}:${destination.category}:$targetId"
@@ -206,11 +214,28 @@ object SettingSearchIndex {
     ): List<SettingDestination> {
         val keySet = keys.toSet()
         val order = keys.withIndex().associate { it.value to it.index }
-        return sources()
-            .flatMap { source -> readPreferenceXml(context, source) }
+        return preferenceXmlDestinations(context)
             .filter { it.key in keySet }
             .distinctBy { it.key }
             .sortedBy { order[it.key] ?: Int.MAX_VALUE }
+    }
+
+    private fun preferenceXmlDestinations(context: Context): List<SettingDestination> {
+        val configuration = Configuration(context.resources.configuration)
+        destinationCache
+            ?.takeIf { it.configuration == configuration }
+            ?.let { return it.destinations }
+
+        return synchronized(destinationCacheLock) {
+            destinationCache
+                ?.takeIf { it.configuration == configuration }
+                ?.destinations
+                ?: sources()
+                    .flatMap { source -> readPreferenceXml(context, source) }
+                    .also { destinations ->
+                        destinationCache = DestinationCache(configuration, destinations)
+                    }
+        }
     }
 
     fun legacyDestinationsForKeys(
