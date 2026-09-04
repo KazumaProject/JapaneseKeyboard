@@ -8,7 +8,6 @@ import android.view.MenuItem
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.MenuProvider
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
@@ -33,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
+    private var bottomNavigationView: BottomNavigationView? = null
     private var currentDestinationId: Int? = null
     private val destinationsWithOwnToolbar = setOf(
         R.id.candidateViewHeightSettingFragment,
@@ -62,9 +62,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val navView: BottomNavigationView = binding.navView
         mainNavController = findMainNavController()
         val navController = mainNavController
+        installNavigationGraph(navController)
         val appBarConfiguration = AppBarConfiguration(
             setOf(
                 R.id.navigation_setting,
@@ -74,7 +74,6 @@ class MainActivity : AppCompatActivity() {
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
-        setupBottomNavigation(navView, navController)
         setupSettingHomeSwitchMenu(navController)
         applySettingHomeModeFromPreference(navController)
         navController.addOnDestinationChangedListener { _, destination, _ ->
@@ -82,7 +81,10 @@ class MainActivity : AppCompatActivity() {
             if (destination.id == R.id.navigation_setting ||
                 destination.id == R.id.settingMainFragment
             ) {
-                navView.menu.findItem(R.id.navigation_setting)?.isChecked = true
+                bottomNavigationView
+                    ?.menu
+                    ?.findItem(R.id.navigation_setting)
+                    ?.isChecked = true
             }
             updateSharedActionBarVisibility(destination.id)
             invalidateOptionsMenu()
@@ -149,39 +151,50 @@ class MainActivity : AppCompatActivity() {
         return navHostFragment.navController
     }
 
+    private fun installNavigationGraph(navController: NavController) {
+        if (navController.currentDestination != null) return
+        val graph = navController.navInflater.inflate(R.navigation.mobile_navigation)
+        graph.setStartDestination(preferredSettingHomeDestination())
+        navController.graph = graph
+    }
+
+    private fun preferredSettingHomeDestination(): Int =
+        if (appPreference.setting_use_new_home_screen_preference) {
+            R.id.navigation_setting
+        } else {
+            R.id.settingMainFragment
+        }
+
     fun applySettingHomeModeFromPreference(navController: NavController? = null) {
         val useNewDashboard = appPreference.setting_use_new_home_screen_preference
-        updateBottomNavigationVisibility(useNewDashboard)
-        updateNavHostBottomConstraint(useNewDashboard)
-        navController?.let { ensurePreferredSettingHomeIfNeeded(it) }
+        val resolvedNavController = navController ?: currentNavController()
+        updateBottomNavigationVisibility(useNewDashboard, resolvedNavController)
+        ensurePreferredSettingHomeIfNeeded(resolvedNavController)
     }
 
-    private fun updateBottomNavigationVisibility(useNewDashboard: Boolean) {
-        binding.navView.visibility = if (useNewDashboard) View.GONE else View.VISIBLE
-    }
-
-    private fun updateNavHostBottomConstraint(useNewDashboard: Boolean) {
-        ConstraintSet().apply {
-            clone(binding.container)
-            clear(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM)
-            if (useNewDashboard) {
-                connect(
-                    R.id.nav_host_fragment_activity_main,
-                    ConstraintSet.BOTTOM,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.BOTTOM,
-                )
-            } else {
-                connect(
-                    R.id.nav_host_fragment_activity_main,
-                    ConstraintSet.BOTTOM,
-                    R.id.nav_view,
-                    ConstraintSet.TOP,
-                )
-            }
-            setMargin(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM, 0)
-            applyTo(binding.container)
+    private fun updateBottomNavigationVisibility(
+        useNewDashboard: Boolean,
+        navController: NavController,
+    ) {
+        if (useNewDashboard) {
+            binding.navViewContainer.visibility = View.GONE
+            return
         }
+        binding.navViewContainer.visibility = View.VISIBLE
+        ensureBottomNavigation(navController)
+    }
+
+    private fun ensureBottomNavigation(navController: NavController): BottomNavigationView {
+        bottomNavigationView?.let { return it }
+        val navView = layoutInflater.inflate(
+            R.layout.view_legacy_bottom_navigation,
+            binding.navViewContainer,
+            false,
+        ) as BottomNavigationView
+        binding.navViewContainer.addView(navView)
+        setupBottomNavigation(navView, navController)
+        bottomNavigationView = navView
+        return navView
     }
 
     private fun setupBottomNavigation(
@@ -268,11 +281,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigateToPreferredSettingHome(navController: NavController): Boolean {
-        val targetDestinationId = if (appPreference.setting_use_new_home_screen_preference) {
-            R.id.navigation_setting
-        } else {
-            R.id.settingMainFragment
-        }
+        val targetDestinationId = preferredSettingHomeDestination()
         if (navController.currentDestination?.id == targetDestinationId) return false
         val currentDestinationId = navController.currentDestination?.id
         val popUpToDestinationId = if (currentDestinationId == R.id.settingMainFragment) {

@@ -302,10 +302,10 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
     }
 
     private fun applyBottomNavigationMargin() {
-        val navView = requireActivity().findViewById<BottomNavigationView>(R.id.nav_view)
+        val navView = activity?.findViewById<BottomNavigationView>(R.id.nav_view)
 
         fun updateBottomMargin() {
-            val bottomMargin = if (navView.isVisible && navView.height > 0) {
+            val bottomMargin = if (navView != null && navView.isVisible && navView.height > 0) {
                 navView.height
             } else {
                 0
@@ -327,7 +327,7 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
             updateBottomMargin()
         }
 
-        navView.doOnLayout {
+        navView?.doOnLayout {
             updateBottomMargin()
         }
 
@@ -335,8 +335,8 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
             updateBottomMargin()
         }
 
-        navView.addOnLayoutChangeListener(listener)
-        navViewLayoutChangeListener = listener
+        navView?.addOnLayoutChangeListener(listener)
+        navViewLayoutChangeListener = listener.takeIf { navView != null }
 
         rootContainer.post {
             updateBottomMargin()
