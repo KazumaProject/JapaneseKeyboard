@@ -35,7 +35,10 @@ jobs:
   fast-input-regression:
     name: Pixel 6 Pro API 35
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # The full physical-input suite intentionally runs 756 generated cases plus the
+    # existing 144-configuration and 800-trial regressions. Leave enough headroom for
+    # slower hosted emulators and optional multi-round dispatches.
+    timeout-minutes: 360
     env:
       ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
       ZENZ_DEBUG_NATIVE_ABIS: x86_64

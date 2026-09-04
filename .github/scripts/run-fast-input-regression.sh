@@ -42,8 +42,13 @@ if ! ime_emulator_prepare; then
   exit 3
 fi
 
-fast_input_test_method=\
-"com.kazumaproject.markdownhelperkeyboard.FastInputMatrixInstrumentedTest#rapidInputFullMatrixOnPhysicalDevice"
+fast_input_test_class=\
+"com.kazumaproject.markdownhelperkeyboard.FastInputMatrixInstrumentedTest"
+fast_input_test_methods=\
+"$fast_input_test_class#generatedTwoFingerInputAcrossAllKeyboardsOnPhysicalDevice,"\
+"$fast_input_test_class#qwertyOverlappingTwoFingerInputOnPhysicalDevice,"\
+"$fast_input_test_class#sumireThreeColumnRateSweepOnPhysicalDevice,"\
+"$fast_input_test_class#rapidInputFullMatrixOnPhysicalDevice"
 
 set +e
 ./gradlew \
@@ -51,7 +56,7 @@ set +e
   --stacktrace \
   --no-daemon \
   --max-workers=2 \
-  "-Pandroid.testInstrumentationRunnerArguments.class=$fast_input_test_method" \
+  "-Pandroid.testInstrumentationRunnerArguments.class=$fast_input_test_methods" \
   "-Pandroid.testInstrumentationRunnerArguments.startCase=$fast_input_start_case" \
   "-Pandroid.testInstrumentationRunnerArguments.endCase=$fast_input_end_case" \
   "-Pandroid.testInstrumentationRunnerArguments.matrixRounds=$fast_input_rounds" \
@@ -74,11 +79,12 @@ if adb -s "$IME_EMULATOR_SERIAL" shell test -d "$fast_input_device_output"; then
 fi
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-  fast_input_summary_line="$(
-    grep -h "FAST_INPUT_SUMMARY" \
+  fast_input_summary_lines="$(
+    grep -h -E \
+      'FAST_INPUT_(MULTITOUCH_|RATE_)?SUMMARY' \
       "$fast_input_log_dir/gradle-connected-android-test.log" \
       "$fast_input_log_dir/device-logcat.txt" 2>/dev/null |
-      tail -n 1 || true
+      tail -n 12 || true
   )"
   fast_input_failure_excerpt="$(
     grep -h -E \
@@ -96,8 +102,8 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo "- Capture visuals: $fast_input_capture_visuals"
     echo
     echo '```text'
-    if [[ -n "$fast_input_summary_line" ]]; then
-      echo "$fast_input_summary_line"
+    if [[ -n "$fast_input_summary_lines" ]]; then
+      echo "$fast_input_summary_lines"
     else
       echo "FAST_INPUT_SUMMARY was not emitted."
       if [[ -n "$fast_input_failure_excerpt" ]]; then

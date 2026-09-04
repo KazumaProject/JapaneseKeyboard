@@ -71,6 +71,9 @@ class StandardFlickInputController(
             false
         ).apply {
             setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+            isTouchable = false
+            isFocusable = false
+            isOutsideTouchable = false
             isClippingEnabled = false
             elevation = 8f
             animationStyle = 0

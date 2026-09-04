@@ -133,6 +133,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var keyPreviewPopup: PopupWindow? = null
     private val hitRect = Rect()
+    private val keyScreenLocation = IntArray(2)
+    private val touchStreamKeyBounds = linkedMapOf<View, Rect>()
 
     private var qwertyKeyListener: QWERTYKeyListener? = null
     private var qwertyKeyTouchCancelListener: QwertyKeyTouchCancelListener? = null
@@ -1473,6 +1475,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     clearAllPressed()
                 }
                 suppressedPointerIds.clear()
+                captureTouchStreamKeyBounds()
                 handlePointerDown(event, pointerIndex = 0)
             }
 
@@ -1519,8 +1522,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         if (pointerIndex >= 0) {
                             finishTrackedPointer(
                                 pointerId = pointerId,
-                                x = event.getX(pointerIndex),
-                                y = event.getY(pointerIndex)
+                                x = event.displayX(pointerIndex),
+                                y = event.displayY(pointerIndex),
+                                classifyFlick = false,
                             )
                         }
                     }
@@ -1562,8 +1566,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
                 finishTrackedPointer(
                     pointerId = pointerId,
-                    x = event.getX(pointerIndex),
-                    y = event.getY(pointerIndex)
+                    x = event.displayX(pointerIndex),
+                    y = event.displayY(pointerIndex)
                 )
             }
 
@@ -1579,8 +1583,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (!variationCommitted) {
                     finishTrackedPointer(
                         pointerId = liftedId,
-                        x = event.getX(event.actionIndex),
-                        y = event.getY(event.actionIndex)
+                        x = event.displayX(event.actionIndex),
+                        y = event.displayY(event.actionIndex)
                     )
                 }
                 clearAllPressed(clearSuppressedPointers = false)
@@ -2054,13 +2058,21 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val pid = event.getPointerId(pointerIndex)
         if (suppressedPointerIds.contains(pid)) return
 
-        val x = event.getX(pointerIndex)
-        val y = event.getY(pointerIndex)
+        val displayX = event.displayX(pointerIndex)
+        val displayY = event.displayY(pointerIndex)
 
-        pointerStartCoords.put(pid, Pair(x, y))
+        // The IME window can grow when the first candidate row appears. Local coordinates then
+        // jump even though the finger has not moved, so gesture deltas must stay in display space.
+        pointerStartCoords.put(
+            pid,
+            Pair(displayX, displayY)
+        )
         flickLockedPointers.remove(pid)
 
-        val view = findButtonUnder(x.toInt(), y.toInt())
+        // Resolve the key in display space as well. When the candidate row first appears the IME
+        // window is resized, and for a short transition its local MotionEvent coordinates can be
+        // based on the previous window origin. That used to turn an A/H/W press into 1/Y/etc.
+        val view = findButtonUnderDisplay(displayX, displayY)
         view?.let {
             val qwertyKey = qwertyButtonMap[it]
             qwertyKey?.let { key ->
@@ -2108,7 +2120,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun finishTrackedPointer(
         pointerId: Int,
         x: Float,
-        y: Float
+        y: Float,
+        classifyFlick: Boolean = true,
     ) {
         if (suppressedPointerIds.remove(pointerId)) {
             pointerButtonMap.remove(pointerId)
@@ -2118,7 +2131,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             return
         }
 
-        if (!flickLockedPointers.contains(pointerId)) {
+        // ACTION_POINTER_DOWN ends the older key for chorded typing, but it is not a movement or
+        // terminal event for that finger. Its coordinate sample can be translated while the IME
+        // window is resizing, so only MOVE/UP paths are allowed to infer a previously unseen flick.
+        if (classifyFlick && !flickLockedPointers.contains(pointerId)) {
             tryHandleFlickAt(pointerId = pointerId, x = x, y = y)
         }
         val wasFlick = flickLockedPointers.contains(pointerId)
@@ -2322,15 +2338,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (suppressedPointerIds.contains(pointerId) || pointerId == lockedPointerId) return
         if (flickLockedPointers.contains(pointerId)) return
 
-        val x = event.getX(pointerIndex)
-        val y = event.getY(pointerIndex)
+        val displayX = event.displayX(pointerIndex)
+        val displayY = event.displayY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
 
-        if (tryHandleFlickAt(pointerId, x, y)) {
+        if (tryHandleFlickAt(pointerId, displayX, displayY)) {
             return
         }
 
-        val currentView = findButtonUnder(x.toInt(), y.toInt())
+        val currentView = findButtonUnderDisplay(displayX, displayY)
         if (currentView != previousView) {
             previousView?.let {
                 it.isPressed = false
@@ -2340,7 +2356,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             currentView?.let {
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
-                pointerStartCoords.put(pointerId, Pair(x, y))
+                pointerStartCoords.put(pointerId, Pair(displayX, displayY))
 
                 if (it.id != binding.keySpace.id &&
                     it.id != binding.keyDelete.id &&
@@ -2438,6 +2454,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         pointerButtonMap.clear()
         pointerStartCoords.clear()
         flickLockedPointers.clear()
+        touchStreamKeyBounds.clear()
         dismissKeyPreview()
         if (clearSuppressedPointers) {
             suppressedPointerIds.clear()
@@ -2576,6 +2593,54 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
         }
         return nearestView
+    }
+
+    /**
+     * Display-coordinate counterpart of [findButtonUnder].
+     *
+     * InputMethod windows can change their origin while a candidate row is being attached. Key
+     * views already expose their current display bounds at that point, so matching raw pointer
+     * coordinates against those bounds avoids routing a press through a stale window transform.
+     */
+    private fun findButtonUnderDisplay(x: Float, y: Float): View? {
+        val displayX = x.toInt()
+        val displayY = y.toInt()
+        var nearestView: View? = null
+        var minDistSquared = Long.MAX_VALUE
+
+        val bounds = touchStreamKeyBounds.ifEmpty {
+            captureTouchStreamKeyBounds()
+            touchStreamKeyBounds
+        }
+        bounds.forEach { (child, rect) ->
+            if (rect.contains(displayX, displayY)) return child
+
+            val centerX = rect.centerX()
+            val centerY = rect.centerY()
+            val dx = (displayX - centerX).toLong()
+            val dy = (displayY - centerY).toLong()
+            val distSquared = dx * dx + dy * dy
+            if (distSquared < minDistSquared) {
+                minDistSquared = distSquared
+                nearestView = child
+            }
+        }
+        return nearestView
+    }
+
+    /** Freeze key geometry until every finger in the current touch stream has lifted. */
+    private fun captureTouchStreamKeyBounds() {
+        touchStreamKeyBounds.clear()
+        qwertyButtonMap.keys.forEach { child ->
+            if (!child.isVisible || child.width <= 0 || child.height <= 0) return@forEach
+            child.getLocationOnScreen(keyScreenLocation)
+            touchStreamKeyBounds[child] = Rect(
+                keyScreenLocation[0],
+                keyScreenLocation[1],
+                keyScreenLocation[0] + child.width,
+                keyScreenLocation[1] + child.height,
+            )
+        }
     }
 
     private fun getVisibleQwertyLetterViews(): List<QWERTYButton> {
