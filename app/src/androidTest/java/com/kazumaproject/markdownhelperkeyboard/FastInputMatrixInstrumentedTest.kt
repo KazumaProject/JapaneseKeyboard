@@ -4133,6 +4133,12 @@ class FastInputMatrixInstrumentedTest {
             block(session)
         } finally {
             restorePreferences(preferences, originalPreferences)
+            // A test can finish while rotation is frozen in landscape. Restoring the previous
+            // IME before unfreezing starts an asynchronous Gboard configuration change which can
+            // race the next test's `ime set` command. Let the display return to its stable state
+            // first, then restore the original IME.
+            uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
+            SystemClock.sleep(ORIENTATION_SETTLE_MS)
             if (originalIme != null) {
                 runCatching { setIme(context, originalIme) }
                     .onFailure { reportImeRestoreFailure("restore default", originalIme, it) }
@@ -4144,7 +4150,6 @@ class FastInputMatrixInstrumentedTest {
                 runCatching { disableIme(targetIme) }
                     .onFailure { reportImeRestoreFailure("restore enabled state", targetIme, it) }
             }
-            uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             sendProgress(
                 "FAST_INPUT_RESTORED preferences=true ime=${originalIme ?: targetIme} " +
                     "rotation=unfrozen\n"
@@ -4221,13 +4226,20 @@ class FastInputMatrixInstrumentedTest {
         val deadline = SystemClock.uptimeMillis() + IME_SWITCH_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
             shell("ime set $component")
+            var selectedSince = -1L
             val attemptDeadline = minOf(
                 deadline,
-                SystemClock.uptimeMillis() + IME_SWITCH_RETRY_MS
+                SystemClock.uptimeMillis() +
+                    IME_SWITCH_RETRY_MS +
+                    IME_SWITCH_STABILITY_MS
             )
             while (SystemClock.uptimeMillis() < attemptDeadline) {
                 if (sameComponent(currentIme(context), component)) {
-                    return
+                    val now = SystemClock.uptimeMillis()
+                    if (selectedSince < 0L) selectedSince = now
+                    if (now - selectedSince >= IME_SWITCH_STABILITY_MS) return
+                } else {
+                    selectedSince = -1L
                 }
                 SystemClock.sleep(POLL_MS)
             }
@@ -5010,6 +5022,7 @@ class FastInputMatrixInstrumentedTest {
         private const val IME_ENABLE_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_RETRY_MS = 1_000L
+        private const val IME_SWITCH_STABILITY_MS = 750L
         private const val TOTAL_CASES = 3 * 3 * 2 * 2 * 2 * 2
         private const val CASES_PER_ORIENTATION = TOTAL_CASES / 2
         private const val RATE_CONFIGURATIONS = 2 * 2 * 2 * 2
