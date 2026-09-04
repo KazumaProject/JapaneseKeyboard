@@ -8,9 +8,10 @@ import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
-import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.domain.key.KeyTextSizeDefaults
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
@@ -529,10 +530,11 @@ object AppPreference {
     private val FLICK_KEY_HEIGHT_SCALE_PERCENT =
         Pair("flick_key_height_scale_percent_preference", 160)
     private val FLICK_KEY_ICON_SCALE_PERCENT = Pair("flick_key_icon_scale_percent_preference", 80)
-    private val FLICK_KEY_TEXT_SIZE_SP = Pair("flick_key_text_size_sp_preference", 16.0f)
+    private val FLICK_KEY_TEXT_SIZE_SP =
+        Pair("flick_key_text_size_sp_preference", KeyTextSizeDefaults.SumireKeySp)
 
     private val FLICK_SPECIAL_KEY_TEXT_SIZE_SP =
-        Pair("flick_special_key_text_size_sp_preference", 12.0f)
+        Pair("flick_special_key_text_size_sp_preference", KeyTextSizeDefaults.SumireSpecialKeySp)
 
     private val FLICK_DIRECTIONAL_POPUP_SIZE_SCALE_PERCENT =
         Pair("flick_directional_popup_size_scale_percent_preference", 100)

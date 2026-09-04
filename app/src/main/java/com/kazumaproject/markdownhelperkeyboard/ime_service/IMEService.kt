@@ -133,6 +133,7 @@ import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyTextSizeDefaults
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
@@ -4900,12 +4901,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setOnQwertyNumberModeRequestedListener {
                     switchTenkeyTwoStateNumberToQwertyNumber()
                 }
-                val defaultLetterSize = when (currentInputModeForSession) {
-                    InputMode.ModeJapanese -> 17f
-                    InputMode.ModeEnglish -> 12f
-                    InputMode.ModeNumber -> 16f
-                    else -> 17f
-                }
+                val defaultLetterSize =
+                    KeyTextSizeDefaults.tenKeySizeSp(currentInputModeForSession)
                 keyboardView.setKeyLetterSize(
                     (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
                 )
@@ -11958,8 +11955,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 160,
             keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 160,
             iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 80,
-            textSizeSp = appPreference.flick_key_text_size_sp ?: 16.0f,
-            specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
+            textSizeSp = appPreference.flick_key_text_size_sp ?: KeyTextSizeDefaults.SumireKeySp,
+            specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp
+                ?: KeyTextSizeDefaults.SumireSpecialKeySp
         )
         flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
         applyCurrentFlickGuidePreference(flickView)
