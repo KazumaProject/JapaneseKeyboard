@@ -2566,6 +2566,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.startInputSession()
         }
@@ -5024,6 +5025,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -5031,6 +5033,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -11433,6 +11436,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutRomajiMode = false
     private var isCustomLayoutDirectMode = false
     private var customKeyboardShiftState = CustomKeyboardShiftState.OFF
+    private val customToggleInputState = CustomToggleInputState()
+    private var customToggleWasDirect: Boolean = false
     private val isCustomLayoutShiftPressed: Boolean
         get() = customKeyboardShiftState == CustomKeyboardShiftState.ONE_SHOT
     private val isCustomLayoutCapLock: Boolean
@@ -11985,6 +11990,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
+                resetCustomToggleState()
                 if (action != KeyAction.DoNothing) {
                     vibrate()
                     clearDeleteBufferWithView()
@@ -12299,6 +12305,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onFlickActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
+                resetCustomToggleState()
                 Timber.d("onFlickActionLongPress: $action")
                 if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
@@ -12730,8 +12737,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            override fun onToggleText(keyIdentity: String, values: List<String>) {
+                if (isKeyboardLayoutEditModeActive()) return
+                handleKeyReleaseFeedback()
+                clearDeleteBufferWithView()
+                handleCustomToggleText(
+                    keyIdentity = keyIdentity,
+                    values = values.map(::applyCustomLayoutShiftAndCapLock),
+                    mainView = mainView
+                )
+                consumeCustomKeyboardOneShotShift()
+            }
+
             override fun onAction(action: KeyAction, isFlick: Boolean) {
                 if (isKeyboardLayoutEditModeActive()) return
+                resetCustomToggleState()
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
                 Timber.d("onAction: $action $isFlick")
@@ -12800,7 +12820,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             }
                                         }
                                     } else {
-                                        handleOnKeyForSumire(
+                                        handleCustomKeyboardText(
                                             shiftedText,
                                             mainView,
                                             isFlick
@@ -13273,6 +13293,71 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyCustomLayoutShiftAndCapLock(text: String): String {
         return customKeyboardShiftState.transformAsciiLetters(text)
+    }
+
+    private fun resetCustomToggleState() {
+        customToggleInputState.reset()
+        customToggleWasDirect = false
+    }
+
+    private fun handleCustomToggleText(
+        keyIdentity: String,
+        values: List<String>,
+        mainView: MainLayoutBinding
+    ) {
+        val validValues = values.filter { it.length == 1 }
+        if (validValues.isEmpty()) {
+            resetCustomToggleState()
+            return
+        }
+        when (val mutation = customToggleInputState.next(keyIdentity, validValues)) {
+            null -> return
+            is CustomToggleInputState.Mutation.Append -> {
+                handleCustomKeyboardText(mutation.text, mainView, isFlick = false)
+                customToggleWasDirect = currentInputBehavior != ResolvedInputBehavior.COMPOSING_TEXT ||
+                    isCustomLayoutDirectMode
+            }
+            is CustomToggleInputState.Mutation.Replace -> {
+                val previous = mutation.previous
+                val next = mutation.next
+                if (customToggleWasDirect) {
+                    currentInputConnection?.let { connection ->
+                        connection.beginBatchEdit()
+                        connection.deleteSurroundingText(previous.length, 0)
+                        connection.commitText(next, 1)
+                        connection.endBatchEdit()
+                    }
+                } else {
+                    val current = inputString.value
+                    if (!current.endsWith(previous)) {
+                        resetCustomToggleState()
+                        handleCustomToggleText(keyIdentity, validValues, mainView)
+                        return
+                    }
+                    _inputString.update { current.dropLast(previous.length) + next }
+                }
+            }
+        }
+    }
+
+    private fun handleCustomKeyboardText(
+        text: String,
+        mainView: MainLayoutBinding,
+        isFlick: Boolean
+    ) {
+        if (dispatchDirectTextIfNeeded(text)) return
+        if (isCustomLayoutDirectMode) {
+            finishComposingText()
+            setComposingText("", 0)
+            commitText(text, 1)
+            return
+        }
+        if (applyPendingFlickTextMutation(text, isFlick)) return
+        if (text.length == 1) {
+            handleFlick(text.first(), inputString.value, StringBuilder(), mainView)
+        } else {
+            _inputString.update { it + text }
+        }
     }
 
     private fun handleOnKeyForSumire(
