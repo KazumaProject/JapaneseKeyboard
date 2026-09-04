@@ -176,6 +176,7 @@ import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.BuildConfig
+import com.kazumaproject.markdownhelperkeyboard.FastInputTestProtocol
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
@@ -5016,6 +5017,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
         consumePendingGemmaPickedImage()
+        if (BuildConfig.DEBUG) {
+            FastInputTestProtocol.tokenFrom(editorInfo?.privateImeOptions)?.let { token ->
+                sendBroadcast(FastInputTestProtocol.readyIntent(packageName, token))
+            }
+        }
     }
 
     override fun onWindowShown() {

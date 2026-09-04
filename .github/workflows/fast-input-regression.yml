@@ -27,6 +27,24 @@ on:
         required: true
         type: string
         default: '144'
+      test_scope:
+        description: Run the complete suite or only generated multi-touch input
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - generated
+      generated_surfaces:
+        description: ALL or comma-separated TENKEY,GOJUON,SUMIRE,QWERTY,ROMAJI,CUSTOM
+        required: true
+        type: string
+        default: ALL
+      generated_columns:
+        description: Comma-separated generated-test candidate columns (1,2,3)
+        required: true
+        type: string
+        default: '1,2,3'
 
 permissions:
   contents: read
@@ -92,6 +110,9 @@ jobs:
           FAST_INPUT_CAPTURE_VISUALS: ${{ inputs.capture_visuals }}
           FAST_INPUT_START_CASE: ${{ inputs.start_case }}
           FAST_INPUT_END_CASE: ${{ inputs.end_case }}
+          FAST_INPUT_TEST_SCOPE: ${{ inputs.test_scope }}
+          FAST_INPUT_GENERATED_SURFACES: ${{ inputs.generated_surfaces }}
+          FAST_INPUT_GENERATED_COLUMNS: ${{ inputs.generated_columns }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         with:
           api-level: 35

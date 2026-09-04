@@ -69,10 +69,11 @@ class FastInputHostActivity : Activity() {
      * matrix test only needs InputMethodService.onStartInput() to reload its preferences, so a
      * restart on the existing connection is both sufficient and deterministic.
      */
-    fun restartEditorInput(clearText: Boolean) {
+    fun restartEditorInput(clearText: Boolean, readinessToken: String? = null) {
         if (clearText) {
             editText.setText("")
         }
+        editText.privateImeOptions = readinessToken?.let(FastInputTestProtocol::privateImeOptions)
         editText.requestFocus()
         editText.setSelection(editText.text.length)
         getSystemService(InputMethodManager::class.java).restartInput(editText)

@@ -5,8 +5,10 @@ import android.app.Instrumentation
 import android.app.KeyguardManager
 import android.app.UiAutomation
 import android.content.ComponentName
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.PointF
@@ -30,6 +32,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -43,6 +46,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEn
 import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -1617,7 +1623,7 @@ class FastInputMatrixInstrumentedTest {
                             val generatedScenarios = buildRapidInputScenarios(surface, round)
                             for (orientation in TestOrientation.entries) {
                                 rotateAndVerify(orientation)
-                                prepareEmptyEditor(scenario)
+                                prepareEmptyEditor(scenario, surface)
                                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                                 assertDeviceReady(
                                     session.context,
@@ -1635,7 +1641,21 @@ class FastInputMatrixInstrumentedTest {
                                         )
                                         if (dimensions.orientation != orientation) continue
 
-                                        prepareEmptyEditor(scenario)
+                                        val trial = buildString {
+                                            append("surface=${surface.name} ")
+                                            append("columns=$columns ")
+                                            append("round=$round ")
+                                            append("scenario=${inputScenario.name} ")
+                                            append("seed=${inputScenario.seed} ")
+                                            append("orientation=${dimensions.orientation.name} ")
+                                            append("editor=${dimensions.editorState.name} ")
+                                            append("release=${dimensions.releaseOrder.name} ")
+                                            append("intervalMs=$intervalMs")
+                                        }
+                                        Log.i(TAG, "MULTITOUCH_TRIAL\t$trial")
+                                        sendProgress("FAST_INPUT_MULTITOUCH_TRIAL $trial\n")
+
+                                        prepareEmptyEditor(scenario, surface)
                                         val prefix = prepareRapidEditorState(
                                             scenario = scenario,
                                             surface = surface,
@@ -3060,8 +3080,40 @@ class FastInputMatrixInstrumentedTest {
 
     private fun restartInput(scenario: ActivityScenario<FastInputHostActivity>) {
         awaitHostWindowFocus(scenario)
-        scenario.onActivity { activity ->
-            activity.restartEditorInput(clearText = true)
+        val context = instrumentation.targetContext
+        val readinessToken =
+            "${SystemClock.uptimeMillis()}-${IME_RESTART_TOKEN_SEQUENCE.incrementAndGet()}"
+        val readySignal = CountDownLatch(1)
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (
+                    intent?.getStringExtra(FastInputTestProtocol.EXTRA_TOKEN) == readinessToken
+                ) {
+                    readySignal.countDown()
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(FastInputTestProtocol.ACTION_IME_READY),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        try {
+            scenario.onActivity { activity ->
+                activity.restartEditorInput(
+                    clearText = true,
+                    readinessToken = readinessToken,
+                )
+            }
+            if (!readySignal.await(IME_RESTART_READY_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                throw SetupException(
+                    "IME did not report keyboard readiness after restarting the host editor " +
+                        "(token=$readinessToken)"
+                )
+            }
+        } finally {
+            context.unregisterReceiver(receiver)
         }
 
         val deadline = SystemClock.uptimeMillis() + EDITOR_CONNECTION_TIMEOUT_MS
@@ -3113,7 +3165,10 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
-    private fun prepareEmptyEditor(scenario: ActivityScenario<FastInputHostActivity>) {
+    private fun prepareEmptyEditor(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        rapidSurface: RapidInputSurface? = null,
+    ) {
         restartInput(scenario)
         val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
@@ -3123,10 +3178,46 @@ class FastInputMatrixInstrumentedTest {
                     activity.editText.isShown &&
                     activity.editText.text.isNullOrEmpty()
             }
-            if (ready) return
+            if (ready) {
+                rapidSurface?.let(::awaitRapidInputSurfaceReady)
+                return
+            }
             SystemClock.sleep(POLL_MS)
         }
         throw SetupException("Host editor did not become focused and empty")
+    }
+
+    private fun awaitRapidInputSurfaceReady(surface: RapidInputSurface) {
+        val operation = surface.warmOperation
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var previous: ScreenRect? = null
+        var stableSamples = 0
+        var lastError = "${surface.rootViewId} is not visible"
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                val root = findVisibleNodeById(surface.rootViewId)
+                    ?: throw SetupException("${surface.rootViewId} is not visible")
+                val current = findRequiredKey(
+                    keyboardRoot = root,
+                    locator = surface.locatorFor(operation),
+                ).screenRect()
+                if (current.isValid && current == previous) {
+                    stableSamples += 1
+                    if (stableSamples >= GEOMETRY_STABLE_SAMPLES) return
+                } else {
+                    stableSamples = if (current.isValid) 1 else 0
+                }
+                previous = current
+            } catch (error: SetupException) {
+                lastError = error.message.orEmpty()
+                previous = null
+                stableSamples = 0
+            }
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException(
+            "Rapid-input surface ${surface.name} was not stable after editor restart: $lastError"
+        )
     }
 
     private fun readText(scenario: ActivityScenario<FastInputHostActivity>): String {
@@ -5017,12 +5108,14 @@ class FastInputMatrixInstrumentedTest {
         private const val IME_LAYOUT_SETTLE_MS = 350L
         private const val EDITOR_CONNECTION_TIMEOUT_MS = 10_000L
         private const val EDITOR_CONNECTION_STABLE_SAMPLES = 3
+        private const val IME_RESTART_READY_TIMEOUT_MS = 10_000L
         private const val IME_STATE_POLL_MS = 250L
         private const val IME_REGISTRATION_TIMEOUT_MS = 30_000L
         private const val IME_ENABLE_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_RETRY_MS = 1_000L
         private const val IME_SWITCH_STABILITY_MS = 750L
+        private val IME_RESTART_TOKEN_SEQUENCE = AtomicLong(0L)
         private const val TOTAL_CASES = 3 * 3 * 2 * 2 * 2 * 2
         private const val CASES_PER_ORIENTATION = TOTAL_CASES / 2
         private const val RATE_CONFIGURATIONS = 2 * 2 * 2 * 2

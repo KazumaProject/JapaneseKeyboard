@@ -6,6 +6,9 @@ fast_input_rounds="${FAST_INPUT_ROUNDS:-1}"
 fast_input_capture_visuals="${FAST_INPUT_CAPTURE_VISUALS:-true}"
 fast_input_start_case="${FAST_INPUT_START_CASE:-1}"
 fast_input_end_case="${FAST_INPUT_END_CASE:-144}"
+fast_input_test_scope="${FAST_INPUT_TEST_SCOPE:-all}"
+fast_input_generated_surfaces="${FAST_INPUT_GENERATED_SURFACES:-ALL}"
+fast_input_generated_columns="${FAST_INPUT_GENERATED_COLUMNS:-1,2,3}"
 fast_input_artifact_dir="${GITHUB_WORKSPACE:-.}/fast-input-artifacts"
 fast_input_log_dir="$fast_input_artifact_dir/logs"
 fast_input_device_dir="$fast_input_artifact_dir/device"
@@ -31,6 +34,20 @@ if [[ "$fast_input_capture_visuals" != "true" &&
   echo "FAST_INPUT_CAPTURE_VISUALS must be true or false."
   exit 2
 fi
+if [[ "$fast_input_test_scope" != "all" &&
+  "$fast_input_test_scope" != "generated" ]]; then
+  echo "FAST_INPUT_TEST_SCOPE must be all or generated."
+  exit 2
+fi
+surface_pattern='(TENKEY|GOJUON|SUMIRE|QWERTY|ROMAJI|CUSTOM)'
+if [[ ! "$fast_input_generated_surfaces" =~ ^(ALL|${surface_pattern}(,${surface_pattern})*)$ ]]; then
+  echo "FAST_INPUT_GENERATED_SURFACES must be ALL or a comma-separated surface list."
+  exit 2
+fi
+if [[ ! "$fast_input_generated_columns" =~ ^[123](,[123])*$ ]]; then
+  echo "FAST_INPUT_GENERATED_COLUMNS must be a comma-separated list containing 1, 2, or 3."
+  exit 2
+fi
 
 mkdir -p "$fast_input_log_dir" "$fast_input_device_dir"
 export IME_EMULATOR_LOG_DIR="$fast_input_log_dir"
@@ -44,23 +61,37 @@ fi
 
 fast_input_test_class=\
 "com.kazumaproject.markdownhelperkeyboard.FastInputMatrixInstrumentedTest"
-fast_input_test_methods=\
+if [[ "$fast_input_test_scope" == "generated" ]]; then
+  fast_input_test_methods=\
+"$fast_input_test_class#generatedTwoFingerInputAcrossAllKeyboardsOnPhysicalDevice"
+else
+  fast_input_test_methods=\
 "$fast_input_test_class#generatedTwoFingerInputAcrossAllKeyboardsOnPhysicalDevice,"\
 "$fast_input_test_class#qwertyOverlappingTwoFingerInputOnPhysicalDevice,"\
 "$fast_input_test_class#sumireThreeColumnRateSweepOnPhysicalDevice,"\
 "$fast_input_test_class#rapidInputFullMatrixOnPhysicalDevice"
+fi
+
+fast_input_gradle_args=(
+  :app:connectedFullStandardDebugAndroidTest
+  --stacktrace
+  --no-daemon
+  --max-workers=2
+  "-Pandroid.testInstrumentationRunnerArguments.class=$fast_input_test_methods"
+  "-Pandroid.testInstrumentationRunnerArguments.startCase=$fast_input_start_case"
+  "-Pandroid.testInstrumentationRunnerArguments.endCase=$fast_input_end_case"
+  "-Pandroid.testInstrumentationRunnerArguments.matrixRounds=$fast_input_rounds"
+  "-Pandroid.testInstrumentationRunnerArguments.captureVisuals=$fast_input_capture_visuals"
+  "-Pandroid.testInstrumentationRunnerArguments.matrixColumns=$fast_input_generated_columns"
+)
+if [[ "$fast_input_generated_surfaces" != "ALL" ]]; then
+  fast_input_gradle_args+=(
+    "-Pandroid.testInstrumentationRunnerArguments.matrixSurfaces=$fast_input_generated_surfaces"
+  )
+fi
 
 set +e
-./gradlew \
-  :app:connectedFullStandardDebugAndroidTest \
-  --stacktrace \
-  --no-daemon \
-  --max-workers=2 \
-  "-Pandroid.testInstrumentationRunnerArguments.class=$fast_input_test_methods" \
-  "-Pandroid.testInstrumentationRunnerArguments.startCase=$fast_input_start_case" \
-  "-Pandroid.testInstrumentationRunnerArguments.endCase=$fast_input_end_case" \
-  "-Pandroid.testInstrumentationRunnerArguments.matrixRounds=$fast_input_rounds" \
-  "-Pandroid.testInstrumentationRunnerArguments.captureVisuals=$fast_input_capture_visuals" \
+./gradlew "${fast_input_gradle_args[@]}" \
   2>&1 | tee "$fast_input_log_dir/gradle-connected-android-test.log"
 fast_input_gradle_status=${PIPESTATUS[0]}
 set -e
@@ -100,6 +131,9 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo "- Cases: $fast_input_start_case-$fast_input_end_case"
     echo "- Rounds: $fast_input_rounds"
     echo "- Capture visuals: $fast_input_capture_visuals"
+    echo "- Test scope: $fast_input_test_scope"
+    echo "- Generated surfaces: $fast_input_generated_surfaces"
+    echo "- Generated columns: $fast_input_generated_columns"
     echo
     echo '```text'
     if [[ -n "$fast_input_summary_lines" ]]; then
