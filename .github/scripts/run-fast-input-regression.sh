@@ -6,7 +6,7 @@ fast_input_rounds="${FAST_INPUT_ROUNDS:-1}"
 fast_input_generated_surfaces="${FAST_INPUT_GENERATED_SURFACES:-ALL}"
 fast_input_generated_columns="${FAST_INPUT_GENERATED_COLUMNS:-1,2,3}"
 fast_input_sumire_methods="${FAST_INPUT_SUMIRE_METHODS:-ALL}"
-fast_input_timeout_minutes="${FAST_INPUT_TIMEOUT_MINUTES:-35}"
+fast_input_timeout_minutes="${FAST_INPUT_TIMEOUT_MINUTES:-40}"
 fast_input_artifact_dir="${FAST_INPUT_ARTIFACT_DIR:-${GITHUB_WORKSPACE:-.}/fast-input-artifacts}"
 fast_input_log_dir="$fast_input_artifact_dir/logs"
 fast_input_summary_file="$fast_input_artifact_dir/summary-${FAST_INPUT_SUMMARY_SURFACE:-all}.txt"
@@ -140,7 +140,7 @@ fast_input_summary_line="$(grep -h -E 'FAST_INPUT_MULTITOUCH_SUMMARY' \
   tail -n 1 |
   sed -E 's/.*(FAST_INPUT_MULTITOUCH_SUMMARY)/\1/' || true)"
 fast_input_failure_excerpt="$(grep -h -E \
-  'FAST_INPUT_(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|category=(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|SetupException|AssertionError|FAILURE: Build failed|There were failing tests|timeout: sending signal|Terminated|Killed' \
+  'FAST_INPUT_(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|category=(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|SetupException|AssertionError|FAILURE: Build failed|There were failing tests|DeadObjectException|Error while injecting input event|timeout: sending signal|Terminated' \
   "$fast_input_log_dir/gradle-connected-android-test.log" \
   "$fast_input_log_dir/device-logcat.txt" 2>/dev/null | head -n 12 | cut -c 1-1200 || true)"
 

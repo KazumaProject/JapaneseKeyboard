@@ -1687,6 +1687,16 @@ class FastInputMatrixInstrumentedTest {
                                         session.targetIme,
                                         activeScenario,
                                     )
+                                    // The keyboard is bottom-anchored, so candidate updates do not
+                                    // change key coordinates. Resolve and validate the complete
+                                    // operation set once per stable surface/column/orientation;
+                                    // querying UiAutomation.windows for every trial can starve the
+                                    // emulator's AccessibilityManager during a long matrix run.
+                                    val points = resolveRapidInputPoints(
+                                        surface = surface,
+                                        operations = generatedScenarios
+                                            .flatMap { it.operations } + surface.warmOperation,
+                                    )
 
                                     for (scenarioIndex in generatedScenarios.indices) {
                                         val inputScenario = generatedScenarios[scenarioIndex]
@@ -1731,12 +1741,9 @@ class FastInputMatrixInstrumentedTest {
                                                     scenario = activeScenario,
                                                     surface = surface,
                                                     editorState = dimensions.editorState,
+                                                    points = points,
                                                 )
                                                 expected = prefix + inputScenario.expected
-                                                val points = resolveRapidInputPoints(
-                                                    surface = surface,
-                                                    operations = inputScenario.operations,
-                                                )
                                                 val injected = when (dimensions.releaseOrder) {
                                                     RapidReleaseOrder.ROLLING_OLDER_FIRST ->
                                                         injectRollingTwoFingerSequence(
@@ -2593,11 +2600,11 @@ class FastInputMatrixInstrumentedTest {
         scenario: ActivityScenario<FastInputHostActivity>,
         surface: RapidInputSurface,
         editorState: RapidEditorState,
+        points: Map<String, RapidTouchPoints>,
     ): String {
         if (editorState == RapidEditorState.COLD) return ""
         val operation = surface.warmOperation
-        val points = resolveRapidInputPoints(surface, listOf(operation)).getValue(operation.token)
-        check(injectRapidSingleGesture(operation, points)) {
+        check(injectRapidSingleGesture(operation, points.getValue(operation.token))) {
             "Unable to prime warm editor state for $surface"
         }
         val actual = awaitTextSettled(scenario)
@@ -2619,22 +2626,26 @@ class FastInputMatrixInstrumentedTest {
             try {
                 val root = findVisibleNodeById(surface.rootViewId)
                     ?: throw SetupException("${surface.rootViewId} is not visible")
-                return requiredTokens.associateWith { token ->
-                    val operation = operations.first { it.token == token }
-                    val bounds = findRequiredKey(
-                        keyboardRoot = root,
-                        locator = surface.locatorFor(operation),
-                    ).screenRect()
-                    RapidTouchPoints(
-                        start = bounds.center,
-                        ends = RapidDirection.entries.associateWith { direction ->
-                            direction.endPoint(
-                                bounds = bounds,
-                                minimumDistancePx = RAPID_MIN_FLICK_DISTANCE_DP *
-                                    instrumentation.targetContext.resources.displayMetrics.density,
-                            )
-                        },
-                    )
+                return try {
+                    requiredTokens.associateWith { token ->
+                        val operation = operations.first { it.token == token }
+                        val bounds = findRequiredKeyBounds(
+                            keyboardRoot = root,
+                            locator = surface.locatorFor(operation),
+                        )
+                        RapidTouchPoints(
+                            start = bounds.center,
+                            ends = RapidDirection.entries.associateWith { direction ->
+                                direction.endPoint(
+                                    bounds = bounds,
+                                    minimumDistancePx = RAPID_MIN_FLICK_DISTANCE_DP *
+                                        instrumentation.targetContext.resources.displayMetrics.density,
+                                )
+                            },
+                        )
+                    }
+                } finally {
+                    root.recycle()
                 }
             } catch (error: SetupException) {
                 lastError = error.message.orEmpty()
@@ -2656,7 +2667,7 @@ class FastInputMatrixInstrumentedTest {
         var currentDownAt = streamDownTime
         var currentOperation = operations.first()
         var currentPoint = points.getValue(currentOperation.token).start
-        var allInjected = injectPointerEvent(
+        var allInjected = injectRapidPointerEvent(
             downTime = streamDownTime,
             eventTime = streamDownTime,
             actionMasked = MotionEvent.ACTION_DOWN,
@@ -2675,7 +2686,7 @@ class FastInputMatrixInstrumentedTest {
             sleepUntil(currentDownAt + downIntervalMs)
             val nextDownAt = SystemClock.uptimeMillis()
             val nextStart = points.getValue(nextOperation.token).start
-            allInjected = injectPointerEvent(
+            allInjected = injectRapidPointerEvent(
                 downTime = streamDownTime,
                 eventTime = nextDownAt,
                 actionMasked = MotionEvent.ACTION_POINTER_DOWN,
@@ -2684,7 +2695,7 @@ class FastInputMatrixInstrumentedTest {
                 PointerSpec(availablePointerId, nextStart),
             ) && allInjected
             rapidEventDelay(downIntervalMs)
-            allInjected = injectPointerEvent(
+            allInjected = injectRapidPointerEvent(
                 downTime = streamDownTime,
                 eventTime = SystemClock.uptimeMillis(),
                 actionMasked = MotionEvent.ACTION_POINTER_UP,
@@ -2708,7 +2719,7 @@ class FastInputMatrixInstrumentedTest {
         }
 
         SystemClock.sleep(RAPID_FINAL_HOLD_MS)
-        allInjected = injectPointerEvent(
+        allInjected = injectRapidPointerEvent(
             downTime = streamDownTime,
             eventTime = SystemClock.uptimeMillis(),
             actionMasked = MotionEvent.ACTION_UP,
@@ -2741,7 +2752,7 @@ class FastInputMatrixInstrumentedTest {
             var firstPoint = firstTouchPoints.start
             var secondPoint = secondTouchPoints.start
 
-            allInjected = injectPointerEvent(
+            allInjected = injectRapidPointerEvent(
                 downTime = downTime,
                 eventTime = downTime,
                 actionMasked = MotionEvent.ACTION_DOWN,
@@ -2757,7 +2768,7 @@ class FastInputMatrixInstrumentedTest {
             ).also { allInjected = it.injected && allInjected }.point
 
             sleepUntil(downTime + downIntervalMs)
-            allInjected = injectPointerEvent(
+            allInjected = injectRapidPointerEvent(
                 downTime = downTime,
                 eventTime = SystemClock.uptimeMillis(),
                 actionMasked = MotionEvent.ACTION_POINTER_DOWN,
@@ -2770,7 +2781,7 @@ class FastInputMatrixInstrumentedTest {
             if (secondEnd != secondPoint) {
                 rapidEventDelay(downIntervalMs)
                 secondPoint = secondEnd
-                allInjected = injectPointerEvent(
+                allInjected = injectRapidPointerEvent(
                     downTime = downTime,
                     eventTime = SystemClock.uptimeMillis(),
                     actionMasked = MotionEvent.ACTION_MOVE,
@@ -2780,7 +2791,7 @@ class FastInputMatrixInstrumentedTest {
                 ) && allInjected
             }
             SystemClock.sleep(RAPID_FINAL_HOLD_MS)
-            allInjected = injectPointerEvent(
+            allInjected = injectRapidPointerEvent(
                 downTime = downTime,
                 eventTime = SystemClock.uptimeMillis(),
                 actionMasked = MotionEvent.ACTION_POINTER_UP,
@@ -2788,7 +2799,7 @@ class FastInputMatrixInstrumentedTest {
                 PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
                 PointerSpec(RAPID_POINTER_IDS[1], secondPoint),
             ) && allInjected
-            allInjected = injectPointerEvent(
+            allInjected = injectRapidPointerEvent(
                 downTime = downTime,
                 eventTime = SystemClock.uptimeMillis(),
                 actionMasked = MotionEvent.ACTION_UP,
@@ -2806,7 +2817,7 @@ class FastInputMatrixInstrumentedTest {
     ): Boolean {
         val start = touchPoints.start
         val end = operation.directionOrTap.endPoint(touchPoints)
-        return if (start == end) injectTap(start) else injectFlick(start, end)
+        return if (start == end) injectRapidTap(start) else injectRapidFlick(start, end)
     }
 
     private fun moveRapidPointerIfNeeded(
@@ -2819,7 +2830,7 @@ class FastInputMatrixInstrumentedTest {
         val end = operation.directionOrTap.endPoint(points.getValue(operation.token))
         if (end == pointer.point) return RapidMoveResult(pointer.point, true)
         rapidEventDelay(intervalMs)
-        val injected = injectPointerEvent(
+        val injected = injectRapidPointerEvent(
             downTime = downTime,
             eventTime = SystemClock.uptimeMillis(),
             actionMasked = MotionEvent.ACTION_MOVE,
@@ -3451,10 +3462,14 @@ class FastInputMatrixInstrumentedTest {
             try {
                 val root = findVisibleNodeById(surface.rootViewId)
                     ?: throw SetupException("${surface.rootViewId} is not visible")
-                val current = findRequiredKey(
-                    keyboardRoot = root,
-                    locator = surface.locatorFor(operation),
-                ).screenRect()
+                val current = try {
+                    findRequiredKeyBounds(
+                        keyboardRoot = root,
+                        locator = surface.locatorFor(operation),
+                    )
+                } finally {
+                    root.recycle()
+                }
                 if (current.isValid && current == previous) {
                     stableSamples += 1
                     if (stableSamples >= GEOMETRY_STABLE_SAMPLES) return
@@ -3649,23 +3664,27 @@ class FastInputMatrixInstrumentedTest {
     ): GeometrySnapshot {
         val root = findVisibleNodeById(keyboard.rootViewId)
             ?: throw SetupException("${keyboard.rootViewId} is not visible")
-        val rootBounds = root.screenRect()
-        val first = findRequiredKey(root, keyboard.firstKey)
-        val second = if (keyboard.firstKey == keyboard.secondKey) {
-            first
-        } else {
-            findRequiredKey(root, keyboard.secondKey)
+        return try {
+            val rootBounds = root.screenRect()
+            val first = findRequiredKeyBounds(root, keyboard.firstKey)
+            val second = if (keyboard.firstKey == keyboard.secondKey) {
+                first
+            } else {
+                findRequiredKeyBounds(root, keyboard.secondKey)
+            }
+            val prime = findRequiredKeyBounds(root, keyboard.primeKey)
+            val neighbor = keyboard.neighborKey?.let { findRequiredKeyBounds(root, it) }
+            GeometrySnapshot(
+                root = rootBounds,
+                first = first,
+                second = second,
+                prime = prime,
+                neighbor = neighbor,
+                candidate = candidateBounds
+            )
+        } finally {
+            root.recycle()
         }
-        val prime = findRequiredKey(root, keyboard.primeKey)
-        val neighbor = keyboard.neighborKey?.let { findRequiredKey(root, it) }
-        return GeometrySnapshot(
-            root = rootBounds,
-            first = first.screenRect(),
-            second = second.screenRect(),
-            prime = prime.screenRect(),
-            neighbor = neighbor?.screenRect(),
-            candidate = candidateBounds
-        )
     }
 
     private fun findRequiredKey(
@@ -3688,18 +3707,38 @@ class FastInputMatrixInstrumentedTest {
         } ?: throw SetupException("Key ${locator.render()} is not visible")
     }
 
+    private fun findRequiredKeyBounds(
+        keyboardRoot: AccessibilityNodeInfo,
+        locator: NodeLocator,
+    ): ScreenRect {
+        val node = findRequiredKey(keyboardRoot, locator)
+        return try {
+            node.screenRect()
+        } finally {
+            node.recycle()
+        }
+    }
+
     private fun findCursorLeftBounds(keyboard: TestKeyboard): ScreenRect {
         return when (keyboard) {
             TestKeyboard.TENKEY -> awaitVisibleNodeBounds("key_soft_left")
             TestKeyboard.SUMIRE -> {
                 val root = findVisibleNodeById(keyboard.rootViewId)
                     ?: throw SetupException("${keyboard.rootViewId} is not visible")
-                val labels = setOf("CursorMoveLeft", "Move Cursor Left", "カーソル左")
-                val node = findDescendant(root) { candidate ->
-                    candidate.text?.toString() in labels ||
-                        candidate.contentDescription?.toString() in labels
-                } ?: throw SetupException("Sumire cursor-left key is not visible")
-                node.screenRect()
+                try {
+                    val labels = setOf("CursorMoveLeft", "Move Cursor Left", "カーソル左")
+                    val node = findDescendant(root) { candidate ->
+                        candidate.text?.toString() in labels ||
+                            candidate.contentDescription?.toString() in labels
+                    } ?: throw SetupException("Sumire cursor-left key is not visible")
+                    try {
+                        node.screenRect()
+                    } finally {
+                        node.recycle()
+                    }
+                } finally {
+                    root.recycle()
+                }
             }
 
             TestKeyboard.QWERTY -> throw SetupException(
@@ -3711,27 +3750,39 @@ class FastInputMatrixInstrumentedTest {
     private fun findCandidateState(): CandidateState {
         val recycler = findVisibleNodeById("suggestion_recycler_view")
             ?: return CandidateState(bounds = null, texts = emptyList())
-        val texts = mutableListOf<String>()
-        forEachDescendant(recycler) { node ->
-            node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                if (it !in texts && texts.size < MAX_CANDIDATE_TEXTS) texts += it
+        return try {
+            val texts = mutableListOf<String>()
+            forEachDescendant(recycler) { node ->
+                node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    if (it !in texts && texts.size < MAX_CANDIDATE_TEXTS) texts += it
+                }
             }
+            CandidateState(
+                bounds = recycler.screenRect(),
+                texts = texts
+            )
+        } finally {
+            recycler.recycle()
         }
-        return CandidateState(
-            bounds = recycler.screenRect(),
-            texts = texts
-        )
     }
 
     private fun findVisibleNodeById(idName: String): AccessibilityNodeInfo? {
         for (window in uiAutomation.windows) {
-            val root = window.root ?: continue
-            val found = findDescendant(root) { node ->
-                node.isVisibleToUser &&
-                    node.viewIdResourceName?.endsWith(":id/$idName") == true &&
-                    node.screenRect().isValid
+            try {
+                val root = window.root ?: continue
+                try {
+                    val found = findDescendant(root) { node ->
+                        node.isVisibleToUser &&
+                            node.viewIdResourceName?.endsWith(":id/$idName") == true &&
+                            node.screenRect().isValid
+                    }
+                    if (found != null) return found
+                } finally {
+                    root.recycle()
+                }
+            } finally {
+                window.recycle()
             }
-            if (found != null) return found
         }
         return null
     }
@@ -3836,12 +3887,22 @@ class FastInputMatrixInstrumentedTest {
     ): AccessibilityNodeInfo? {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (predicate(node)) return node
-            for (index in 0 until node.childCount) {
-                node.getChild(index)?.let(queue::addLast)
+        try {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                val isRoot = node === root
+                try {
+                    if (predicate(node)) return AccessibilityNodeInfo.obtain(node)
+                    for (index in 0 until node.childCount) {
+                        node.getChild(index)?.let(queue::addLast)
+                    }
+                } finally {
+                    if (!isRoot) node.recycle()
+                }
             }
+        } finally {
+            queue.forEach { it.recycle() }
+            queue.clear()
         }
         return null
     }
@@ -3852,12 +3913,22 @@ class FastInputMatrixInstrumentedTest {
     ) {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            action(node)
-            for (index in 0 until node.childCount) {
-                node.getChild(index)?.let(queue::addLast)
+        try {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                val isRoot = node === root
+                try {
+                    action(node)
+                    for (index in 0 until node.childCount) {
+                        node.getChild(index)?.let(queue::addLast)
+                    }
+                } finally {
+                    if (!isRoot) node.recycle()
+                }
             }
+        } finally {
+            queue.forEach { it.recycle() }
+            queue.clear()
         }
     }
 
@@ -3953,6 +4024,57 @@ class FastInputMatrixInstrumentedTest {
         return allInjected
     }
 
+    private fun injectRapidTap(point: PointF): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        var injected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_DOWN,
+            point = point,
+        )
+        SystemClock.sleep(TAP_HOLD_MS)
+        injected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_UP,
+            point = point,
+        ) && injected
+        SystemClock.sleep(TAP_GAP_MS)
+        return injected
+    }
+
+    private fun injectRapidFlick(start: PointF, end: PointF): Boolean {
+        if (start == end) return injectRapidTap(start)
+
+        val downTime = SystemClock.uptimeMillis()
+        var allInjected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_DOWN,
+            point = start,
+        )
+        SystemClock.sleep(FLICK_STEP_MS)
+
+        repeat(FLICK_MOVE_STEPS) { index ->
+            val fraction = (index + 1f) / FLICK_MOVE_STEPS
+            val point = PointF(
+                start.x + (end.x - start.x) * fraction,
+                start.y + (end.y - start.y) * fraction,
+            )
+            allInjected = injectRapidSinglePointerEvent(
+                downTime = downTime,
+                action = MotionEvent.ACTION_MOVE,
+                point = point,
+            ) && allInjected
+            SystemClock.sleep(FLICK_STEP_MS)
+        }
+
+        allInjected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_UP,
+            point = end,
+        ) && allInjected
+        SystemClock.sleep(TAP_GAP_MS)
+        return allInjected
+    }
+
     private fun injectSinglePointerEvent(
         downTime: Long,
         action: Int,
@@ -3965,6 +4087,24 @@ class FastInputMatrixInstrumentedTest {
             point = point
         )
         return uiAutomation.injectInputEvent(event, true).also {
+            event.recycle()
+        }
+    }
+
+    private fun injectRapidSinglePointerEvent(
+        downTime: Long,
+        action: Int,
+        point: PointF,
+    ): Boolean {
+        val event = singlePointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            action = action,
+            point = point,
+        )
+        return try {
+            uiAutomation.injectInputEvent(event, false)
+        } finally {
             event.recycle()
         }
     }
@@ -4202,6 +4342,37 @@ class FastInputMatrixInstrumentedTest {
         actionMasked: Int,
         actionIndex: Int,
         vararg pointers: PointerSpec
+    ): Boolean = injectPointerEventWithMode(
+        downTime = downTime,
+        eventTime = eventTime,
+        actionMasked = actionMasked,
+        actionIndex = actionIndex,
+        synchronous = true,
+        pointers = pointers,
+    )
+
+    private fun injectRapidPointerEvent(
+        downTime: Long,
+        eventTime: Long,
+        actionMasked: Int,
+        actionIndex: Int,
+        vararg pointers: PointerSpec,
+    ): Boolean = injectPointerEventWithMode(
+        downTime = downTime,
+        eventTime = eventTime,
+        actionMasked = actionMasked,
+        actionIndex = actionIndex,
+        synchronous = false,
+        pointers = pointers,
+    )
+
+    private fun injectPointerEventWithMode(
+        downTime: Long,
+        eventTime: Long,
+        actionMasked: Int,
+        actionIndex: Int,
+        synchronous: Boolean,
+        pointers: Array<out PointerSpec>,
     ): Boolean {
         val properties = Array(pointers.size) { index ->
             MotionEvent.PointerProperties().apply {
@@ -4236,7 +4407,7 @@ class FastInputMatrixInstrumentedTest {
             0
         )
         return try {
-            uiAutomation.injectInputEvent(event, true)
+            uiAutomation.injectInputEvent(event, synchronous)
         } finally {
             event.recycle()
         }

@@ -224,6 +224,10 @@ ime_emulator_capture_diagnostics() {
     > "$diagnostic_dir/activity-top.txt" || true
   adb -s "$IME_EMULATOR_SERIAL" shell dumpsys activity processes \
     > "$diagnostic_dir/activity-processes.txt" || true
+  adb -s "$IME_EMULATOR_SERIAL" shell dumpsys meminfo \
+    > "$diagnostic_dir/meminfo.txt" || true
+  adb -s "$IME_EMULATOR_SERIAL" shell dumpsys procstats \
+    > "$diagnostic_dir/procstats.txt" || true
   adb -s "$IME_EMULATOR_SERIAL" shell dumpsys input_method \
     > "$diagnostic_dir/input-method.txt" || true
   adb -s "$IME_EMULATOR_SERIAL" shell dumpsys input \

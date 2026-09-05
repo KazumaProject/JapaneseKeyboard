@@ -152,14 +152,14 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6_pro
-          cores: 2
-          ram-size: 3072M
-          heap-size: 512M
+          cores: 4
+          ram-size: 4096M
+          heap-size: 1024M
           disk-size: 8192M
           ndk: 29.0.14206865
           cmake: 3.22.1
           enable-hw-keyboard: false
-          disable-animations: false
+          disable-animations: true
           disable-spellchecker: true
           pre-emulator-launch-script: >-
             avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
