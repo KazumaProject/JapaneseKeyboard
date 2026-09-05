@@ -23,6 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.xmlpull.v1.XmlPullParser
 import java.util.Locale
+import org.junit.Assert.assertFalse
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -43,6 +44,7 @@ class UtilityCandidatePreferenceTest {
         assertTrue(config.calculationEnabled)
         assertTrue(config.unitConversionEnabled)
         assertTrue(config.includeExpressionCandidate)
+        assertTrue(config.formulaCandidateEnabled)
         assertEquals(AngleMode.DEGREES, config.angleMode)
         assertEquals(Precision.Auto, config.calculationPrecision)
         assertEquals(RegionalUnitProfile.JAPAN, config.regionalUnitProfile)
@@ -62,6 +64,7 @@ class UtilityCandidatePreferenceTest {
         val updated = AppPreference.utility_candidate_config.copy(
             calculationEnabled = false,
             includeExpressionCandidate = false,
+            formulaCandidateEnabled = false,
             angleMode = AngleMode.RADIANS,
             calculationPrecision = Precision.SignificantDigits(9),
             regionalUnitProfile = RegionalUnitProfile.UNITED_KINGDOM,
@@ -69,6 +72,20 @@ class UtilityCandidatePreferenceTest {
         AppPreference.utility_candidate_config = updated
 
         assertEquals(updated, ImePreferencesSnapshot.from(AppPreference).utilityCandidateConfig)
+    }
+
+    @Test
+    fun resetRestoresFormulaCandidatesToTheDefaultOnState() {
+        AppPreference.utility_candidate_config = AppPreference.utility_candidate_config.copy(
+            formulaCandidateEnabled = false,
+        )
+        AppPreference.resetUtilityCandidateConfig()
+
+        assertTrue(AppPreference.utility_candidate_config.formulaCandidateEnabled)
+        assertFalse(
+            PreferenceManager.getDefaultSharedPreferences(context)
+                .contains(AppPreference.UTILITY_FORMULA_CANDIDATE_ENABLED_KEY),
+        )
     }
 
     @Test
@@ -151,6 +168,8 @@ class UtilityCandidatePreferenceTest {
         assertEquals("小数点以下 2 桁", japanese.utilityPrecisionLabel(Precision.DecimalPlaces(2)))
         assertEquals("有効数字 1 桁", japanese.utilityPrecisionLabel(Precision.SignificantDigits(1)))
         assertEquals("有効数字 2 桁", japanese.utilityPrecisionLabel(Precision.SignificantDigits(2)))
+        assertEquals("[Text]", english.getString(R.string.candidate_badge_formula_unicode))
+        assertEquals("[文字]", japanese.getString(R.string.candidate_badge_formula_unicode))
     }
 
     @Test
@@ -161,6 +180,7 @@ class UtilityCandidatePreferenceTest {
             null,
         )
         assertTrue(screen.findPreference<androidx.preference.Preference>(CALCULATION_KEY) != null)
+        assertTrue(screen.findPreference<androidx.preference.Preference>(FORMULA_KEY) != null)
         assertTrue(screen.findPreference<androidx.preference.Preference>(PRECISION_KEY) != null)
         TARGET_KEYS.forEach { key ->
             assertTrue(key, screen.findPreference<androidx.preference.Preference>(key) != null)
@@ -188,6 +208,13 @@ class UtilityCandidatePreferenceTest {
         assertEquals(
             PRECISION_KEY,
             SettingDestinations.highlightPreferenceKey(precisionResult.destination),
+        )
+
+        val formulaResult = SettingSearchIndex.searchable(context, SettingSearchScope.NEW_HOME)
+            .first { it.key == FORMULA_KEY }
+        assertEquals(
+            R.id.utilityCandidatePreferenceFragment,
+            SettingDestinations.destinationId(formulaResult.destination),
         )
     }
 
@@ -264,6 +291,7 @@ class UtilityCandidatePreferenceTest {
 
     private companion object {
         const val CALCULATION_KEY = "utility_calculation_enabled"
+        const val FORMULA_KEY = "utility_formula_candidate_enabled"
         const val PRECISION_KEY = "utility_calculation_precision"
         const val ROUTE_KEY = "setting_route_utility_candidates"
         val TARGET_KEYS = listOf(
