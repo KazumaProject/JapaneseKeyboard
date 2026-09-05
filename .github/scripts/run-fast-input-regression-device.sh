@@ -207,7 +207,7 @@ fast_input_summary_line="$(grep -h -E 'FAST_INPUT_MULTITOUCH_SUMMARY' \
   tail -n 1 |
   sed -E 's/.*(FAST_INPUT_MULTITOUCH_SUMMARY)/\1/' || true)"
 fast_input_failure_excerpt="$(grep -h -E \
-  'FAST_INPUT_(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|category=(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|SetupException|AssertionError|FAILURE: Build failed|There were failing tests|DeadObjectException|Error while injecting input event|timeout: sending signal|Terminated' \
+  'FAST_INPUT_(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|category=(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|SetupException|AssertionError|FAILURE: Build failed|There were failing tests|Error while injecting input event|timeout: sending signal|Terminated' \
   "$fast_input_log_dir/gradle-connected-android-test.log" \
   "$fast_input_log_dir/device-logcat.txt" 2>/dev/null | head -n 12 | cut -c 1-1200 || true)"
 
@@ -220,6 +220,9 @@ elif ((fast_input_gradle_status == 0)) && [[ -n "$fast_input_summary_line" ]]; t
   fast_input_status="COMPLETED"
 else
   fast_input_status="FAILED"
+fi
+if [[ "$fast_input_status" == "COMPLETED" ]]; then
+  fast_input_failure_excerpt=""
 fi
 fast_input_exit_status="$fast_input_gradle_status"
 if ((fast_input_gradle_status == 0)) && [[ "$fast_input_status" != "COMPLETED" ]]; then
