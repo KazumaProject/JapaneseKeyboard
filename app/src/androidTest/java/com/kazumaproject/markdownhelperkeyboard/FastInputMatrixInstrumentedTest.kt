@@ -1734,6 +1734,7 @@ class FastInputMatrixInstrumentedTest {
                                             }
                                             var actual = runCatching { readText(activeScenario) }
                                                 .getOrDefault("")
+                                            var allEventsInjected = false
                                             var outcome: RapidTrialOutcome
                                             try {
                                                 resetRapidInputTrial(activeScenario)
@@ -1744,7 +1745,7 @@ class FastInputMatrixInstrumentedTest {
                                                     points = points,
                                                 )
                                                 expected = prefix + inputScenario.expected
-                                                val injected = when (dimensions.releaseOrder) {
+                                                allEventsInjected = when (dimensions.releaseOrder) {
                                                     RapidReleaseOrder.ROLLING_OLDER_FIRST ->
                                                         injectRollingTwoFingerSequence(
                                                             operations = inputScenario.operations,
@@ -1762,16 +1763,17 @@ class FastInputMatrixInstrumentedTest {
                                                 actual = awaitTextSettled(
                                                     scenario = activeScenario,
                                                     failOnTimeout = true,
+                                                    timeoutMs = RAPID_RESULT_TIMEOUT_MS,
                                                 )
                                                 outcome = RapidTrialOutcome(
                                                     category = classifyRapidInputResult(
                                                         expected = expected,
                                                         actual = actual,
-                                                        allEventsInjected = injected,
+                                                        allEventsInjected = allEventsInjected,
                                                     ),
                                                     expected = expected,
                                                     actual = actual,
-                                                    allEventsInjected = injected,
+                                                    allEventsInjected = allEventsInjected,
                                                 )
                                             } catch (error: RapidResetException) {
                                                 outcome = RapidTrialOutcome(
@@ -1784,11 +1786,15 @@ class FastInputMatrixInstrumentedTest {
                                                 )
                                             } catch (error: ResultTimeoutException) {
                                                 outcome = RapidTrialOutcome(
-                                                    category = RapidResultCategory.RESULT_TIMEOUT,
+                                                    category = if (allEventsInjected) {
+                                                        RapidResultCategory.RESULT_TIMEOUT
+                                                    } else {
+                                                        RapidResultCategory.INJECTION_ERROR
+                                                    },
                                                     expected = expected,
                                                     actual = runCatching { readText(activeScenario) }
                                                         .getOrDefault(actual),
-                                                    allEventsInjected = false,
+                                                    allEventsInjected = allEventsInjected,
                                                     error = error.message,
                                                 )
                                             } catch (error: SetupException) {
@@ -3590,10 +3596,11 @@ class FastInputMatrixInstrumentedTest {
     private fun awaitTextSettled(
         scenario: ActivityScenario<FastInputHostActivity>,
         failOnTimeout: Boolean = false,
+        timeoutMs: Long = RESULT_TIMEOUT_MS,
     ): String {
         var previous: String? = null
         var stableSamples = 0
-        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
         while (SystemClock.uptimeMillis() < deadline) {
             val current = readText(scenario)
             if (current == previous) {
@@ -3608,7 +3615,7 @@ class FastInputMatrixInstrumentedTest {
         val latest = readText(scenario)
         if (failOnTimeout) {
             throw ResultTimeoutException(
-                "Editor text did not settle within ${RESULT_TIMEOUT_MS}ms; actual=[$latest]"
+                "Editor text did not settle within ${timeoutMs}ms; actual=[$latest]"
             )
         }
         return latest
@@ -5560,6 +5567,10 @@ class FastInputMatrixInstrumentedTest {
         private const val MAX_CANDIDATE_TEXTS = 8
         private const val SETUP_TIMEOUT_MS = 2_000L
         private const val RESULT_TIMEOUT_MS = 1_000L
+        // Hosted emulators can spend over one second applying candidate updates after the last
+        // injected event. This remains a strict settle timeout; it does not accept a partial or
+        // incorrect editor value.
+        private const val RAPID_RESULT_TIMEOUT_MS = 3_000L
         private const val ORIENTATION_TIMEOUT_MS = 4_000L
         private const val ORIENTATION_SETTLE_MS = 500L
         private const val HOST_WINDOW_FOCUS_TIMEOUT_MS = 15_000L
