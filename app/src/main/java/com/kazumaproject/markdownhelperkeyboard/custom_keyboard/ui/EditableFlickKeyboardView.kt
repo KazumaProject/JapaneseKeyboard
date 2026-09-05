@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.text.Spannable
@@ -32,8 +33,10 @@ import com.kazumaproject.custom_keyboard.data.KeyVisualStyleResolver
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.isDeletedKeySlot
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.AutoSizeButton
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.canonicalLayoutForEditor
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.columnDeleteSpecs
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.displayPlacement
@@ -60,6 +63,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     interface OnKeyEditListener {
         fun onKeySelected(keyId: String)
         fun onSpacerSelected(spacerId: String)
+        fun onDeletedKeySlotSelected(slotId: String) = Unit
         fun onKeysSwapped(draggedKeyId: String, targetKeyId: String)
         fun onRowDeleted(rowIndex: Int)
         fun onColumnDeleted(columnIndex: Int)
@@ -134,7 +138,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             displayLayout.items.forEach { item ->
                 when (item) {
                     is KeyItem -> addKeyItem(item, dragListener, selectedItemId, previewInsertedItemId, previewMovedItemIds)
-                    is SpacerItem -> addSpacerItem(item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
+                    is SpacerItem -> if (item.isDeletedKeySlot()) {
+                        addDeletedKeySlot(item)
+                    } else {
+                        addSpacerItem(item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
+                    }
                 }
             }
         } else {
@@ -293,6 +301,39 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         )
         decoratePreviewItem(spacerView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(spacerView)
+    }
+
+    private fun addDeletedKeySlot(item: SpacerItem) {
+        val addButton = AppCompatImageButton(context).apply {
+            tag = "deleted-key-slot:${item.id}"
+            isFocusable = true
+            isClickable = true
+            minimumHeight = 0
+            minimumWidth = 0
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+            setImageResource(com.kazumaproject.core.R.drawable.baseline_add_circle_outline_24)
+            imageTintList = ColorStateList.valueOf(context.getColorFromAttr(MaterialR.attr.colorOnSurface))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dpToPx(8).toFloat()
+                setColor(Color.argb(22, 33, 150, 243))
+                setStroke(dpToPx(1), Color.argb(150, 33, 150, 243))
+            }
+            contentDescription = context.getString(R.string.editor_add_key_to_empty_slot)
+            setOnClickListener {
+                if (placementMode) {
+                    mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+                } else {
+                    listener?.onDeletedKeySlotSelected(item.id)
+                }
+            }
+        }
+        addButton.layoutParams = createLayoutParams(
+            item.placement,
+            rowOffsetUnits = 2,
+            columnOffsetUnits = 2
+        )
+        addView(addButton)
     }
 
     private fun decoratePreviewItem(
