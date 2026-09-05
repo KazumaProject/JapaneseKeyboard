@@ -220,6 +220,16 @@ class DebugInlineAutofillService : AutofillService() {
                 username = "work@example.test",
                 password = "sumire-work-password",
             ),
+            QaDataset(
+                label = "🔐 開発用",
+                username = "development@example.test",
+                password = "sumire-development-password",
+            ),
+            QaDataset(
+                label = "🔐 検証用",
+                username = "staging@example.test",
+                password = "sumire-staging-password",
+            ),
         )
     }
 }

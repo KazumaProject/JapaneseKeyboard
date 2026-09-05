@@ -182,6 +182,8 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemT
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_UNICODE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
@@ -228,15 +230,18 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActi
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.InlineSuggestionStripState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineAutofillController
-import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionClipView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionDisplayState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineSuggestionsRequestFactory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
@@ -403,7 +408,6 @@ import java.text.BreakIterator
 import java.text.SimpleDateFormat
 import java.util.ArrayDeque
 import java.util.Calendar
-import java.util.IdentityHashMap
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -750,8 +754,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suggestionAdapter: SuggestionAdapter? = null
     private var suggestionAdapterFull: SuggestionAdapter? = null
     private var inlineAutofillController: InlineAutofillController? = null
-    private var inlineSuggestionsDisplayed = false
-    private val inlineHostPreviousVisibility = IdentityHashMap<View, Pair<Boolean, Boolean>>()
+    private var inlineSuggestionEnabled: Boolean = true
+    private val inlineSuggestionDisplayState = InlineSuggestionDisplayState()
+    private var currentInlineSuggestionViews: List<View> = emptyList()
     private var currentCandidateStripCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
@@ -776,13 +781,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var integratedShortcutEntryExpanded: Boolean = false
     private var lastSuggestionLayoutKey: SuggestionLayoutKey? = null
     private var mainSuggestionGridSpacingDecoration: RecyclerView.ItemDecoration? = null
-
-    private data class InlineSuggestionHost(
-        val clipView: InlineSuggestionClipView,
-        val container: LinearLayout,
-        val suggestionRecyclerView: RecyclerView,
-        val suggestionVisibility: View,
-    )
 
     private data class ClipboardPreviewSnapshot(
         val text: String,
@@ -824,6 +822,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private lateinit var runtimeInputSharedPreferences: SharedPreferences
     private var runtimeInputPreferenceListenerRegistered = false
     private val runtimeInputPreferenceKeys = setOf(
+        AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
@@ -845,6 +844,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.UTILITY_CALCULATION_ENABLED_KEY,
         AppPreference.UTILITY_UNIT_CONVERSION_ENABLED_KEY,
         AppPreference.UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
+        AppPreference.UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
         AppPreference.UTILITY_ANGLE_MODE_KEY,
         AppPreference.UTILITY_CALCULATION_PRECISION_KEY,
         AppPreference.UTILITY_REGIONAL_PROFILE_KEY,
@@ -1002,15 +1002,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val fullContent = resolveCandidateStripContent(
             candidates = currentCandidateStripFullCandidates,
             candidatesShown = effectiveCandidatesShown,
-            includeZeroQuery = false
+            includeZeroQuery = false,
+            includeInlineSuggestionToggle = false,
         )
         currentCandidateStripContent = content
+        val inlineSuggestionState = InlineSuggestionStripState(
+            views = currentInlineSuggestionViews,
+            showInlineSuggestions =
+                inlineSuggestionDisplayState.surface == InlineSuggestionSurface.Inline &&
+                    currentInlineSuggestionViews.isNotEmpty(),
+            toggle = inlineSuggestionToggleForCandidateStrip(),
+        )
+        suggestionAdapter?.submitContent(content, inlineSuggestionState)
         if (isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
                 setMainSuggestionColumn(binding)
             }
+        } else {
+            setFloatingSuggestionColumn()
         }
-        suggestionAdapter?.submitContent(content)
         // The full candidate view is hidden during normal composing. Submitting to its
         // AsyncListDiffer on every keystroke still calculates a complete DiffUtil diff even
         // though the user cannot see it. Keep the state current, but submit only when that
@@ -1024,7 +1034,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
-        enforceInlineSuggestionVisibility()
     }
 
     private fun isFullCandidateViewVisible(): Boolean {
@@ -1038,14 +1047,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun resolveCandidateStripContent(
         candidates: List<Candidate>,
         candidatesShown: Boolean,
-        includeZeroQuery: Boolean
+        includeZeroQuery: Boolean,
+        includeInlineSuggestionToggle: Boolean = true,
     ): CandidateStripContent {
         val state = buildCandidateStripInputState(
             candidates = candidates,
             candidatesShown = candidatesShown,
-            includeZeroQuery = includeZeroQuery
+            includeZeroQuery = includeZeroQuery,
         )
-        return CandidateStripContentResolver.resolve(state)
+        return CandidateStripContentResolver.resolve(
+            if (includeInlineSuggestionToggle) {
+                state
+            } else {
+                state.copy(inlineSuggestionToggle = null)
+            }
+        )
+    }
+
+    private fun inlineSuggestionToggleForCandidateStrip(): InlineSuggestionToggle? {
+        if (!inlineSuggestionEnabled || !inlineSuggestionDisplayState.hasSuggestions) {
+            return null
+        }
+        val contentDescription = when (inlineSuggestionDisplayState.surface) {
+            InlineSuggestionSurface.Inline ->
+                R.string.inline_suggestion_show_normal_candidates_content_description
+
+            InlineSuggestionSurface.NormalCandidates ->
+                R.string.inline_suggestion_show_inline_candidates_content_description
+        }
+        return InlineSuggestionToggle(
+            contentDescription = getString(contentDescription),
+            badge = null,
+            iconResId = when (inlineSuggestionDisplayState.surface) {
+                InlineSuggestionSurface.Inline -> R.drawable.more_horiz_24px
+                InlineSuggestionSurface.NormalCandidates -> R.drawable.inline_suggestion_key_24
+            },
+            iconBackgroundResId = when (inlineSuggestionDisplayState.surface) {
+                InlineSuggestionSurface.Inline -> null
+                InlineSuggestionSurface.NormalCandidates ->
+                    com.kazumaproject.core.R.drawable.suggestion_icon_bg
+            },
+        )
     }
 
     private fun buildCandidateStripInputState(
@@ -1097,6 +1139,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
             integratedShortcutEntryExpanded = integratedShortcutEntryExpanded,
             shortcutItems = currentShortcutItems,
+            inlineSuggestionToggle = inlineSuggestionToggleForCandidateStrip(),
         )
     }
 
@@ -1357,7 +1400,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
-            if (candidate != null && candidate.type != CANDIDATE_TYPE_TEXT_MACRO) {
+            if (
+                candidate != null &&
+                candidate.type != CANDIDATE_TYPE_TEXT_MACRO &&
+                candidate.type != CANDIDATE_TYPE_FORMULA_UNICODE &&
+                candidate.type != CANDIDATE_TYPE_FORMULA_TEX &&
+                candidate.presentation == null
+            ) {
                 applyFirstSuggestion(candidate)
             } else {
                 applyRawComposingFallback(insertString)
@@ -2328,9 +2377,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 originalInput = inputString.value,
                 selectedCandidateLength = suggestion.length.toInt()
             )
+            val commitWord = suggestion.formulaFallbackText ?: suggestion.word
             stringInTail.set(tail)
             if (tail.isNotEmpty()) {
-                commitText(suggestion.word, 1)
+                commitText(commitWord, 1)
                 finishComposingText()
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { tail }
@@ -2341,10 +2391,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingCandidateNextItem(insertString = tail)
                 }
             } else {
-                if (suggestion.word.isNotBlank()) {
-                    rememberZeroQueryKeyAfterCommit(suggestion.word)
+                if (commitWord.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(commitWord)
                 }
-                commitText(suggestion.word, 1)
+                commitText(commitWord, 1)
                 finishComposingText()
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { "" }
@@ -2499,19 +2549,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 startScope(mainView)
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            inlineAutofillController?.onHostChanged()
-        }
         return keyboardContainer
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest {
+    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest? {
+        if (!inlineSuggestionEnabled) return null
         return InlineSuggestionsRequestFactory.create(this)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onInlineSuggestionsResponse(response: InlineSuggestionsResponse): Boolean {
+        if (!inlineSuggestionEnabled) return false
         return inlineAutofillController?.handleResponse(response) ?: false
     }
 
@@ -2601,7 +2650,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
 
+        val previousInlineSuggestionEnabled = inlineSuggestionEnabled
+        applyInlineSuggestionEnabled(appPreference.inline_suggestion_enabled_preference)
+        if (previousInlineSuggestionEnabled != inlineSuggestionEnabled) {
+            refreshShortcutAvailability()
+        }
+
+        val previousUtilityCandidateConfig = utilityCandidateConfig
         utilityCandidateConfig = appPreference.utility_candidate_config
+        if (
+            isInputViewActive &&
+            previousUtilityCandidateConfig != utilityCandidateConfig &&
+            inputString.value.isNotEmpty()
+        ) {
+            requestCandidateRefresh(CandidateShowFlag.Updating)
+        }
 
         val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
         val thresholdShape = FlickThresholdShape.fromPreferenceValue(
@@ -2783,6 +2846,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyRomajiHankakuSymbolPreference = preferences.qwertyRomajiHankakuSymbolPreference
         qwertyShowKutoutenButtonsPreference = preferences.qwertyShowKutoutenButtonsPreference
         showCandidateInPasswordPreference = preferences.showCandidateInPasswordPreference
+        applyInlineSuggestionEnabled(preferences.inlineSuggestionEnabled)
         qwertyShowKeymapSymbolsPreference = preferences.qwertyShowKeymapSymbolsPreference
         qwertyRomajiShiftConversionPreference = preferences.qwertyRomajiShiftConversionPreference
         isNgWordEnable = preferences.isNgWordEnable
@@ -4154,117 +4218,74 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingView?.suggestionRecyclerView?.adapter = null
             floatingView?.candidatesRowView?.adapter = null
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            inlineAutofillController?.onHostChanged()
+        lastSuggestionLayoutKey = null
+        if (isFloatingMode) {
+            setFloatingSuggestionColumn()
         }
     }
 
-    private fun inlineSuggestionHosts(): List<InlineSuggestionHost> = buildList {
-        mainLayoutBinding?.let { binding ->
-            add(
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
-            )
-        }
-        floatingKeyboardBinding?.let { binding ->
-            add(
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
-            )
-        }
-    }
-
-    private fun activeInlineSuggestionHost(): InlineSuggestionHost? {
-        return if (isKeyboardFloatingMode == true) {
-            floatingKeyboardBinding?.let { binding ->
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
+    private fun applyInlineSuggestionEnabled(enabled: Boolean) {
+        if (inlineSuggestionEnabled == enabled) return
+        inlineSuggestionEnabled = enabled
+        if (!enabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                inlineAutofillController?.clear()
             }
-        } else {
-            mainLayoutBinding?.let { binding ->
-                InlineSuggestionHost(
-                    clipView = binding.inlineSuggestionsClip,
-                    container = binding.inlineSuggestionsContainer,
-                    suggestionRecyclerView = binding.suggestionRecyclerView,
-                    suggestionVisibility = binding.suggestionVisibility,
-                )
-            }
+            currentInlineSuggestionViews = emptyList()
+            inlineSuggestionDisplayState.updateAvailability(false)
+            updateShortcutActiveStates()
+            refreshCandidateStripContent()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun renderInlineSuggestionViews(views: List<InlineContentView>) {
         assertMainThread("renderInlineSuggestionViews")
-        clearInlineSuggestionHosts(restoreNativeVisibility = true)
-        if (views.isEmpty()) return
-
-        val host = activeInlineSuggestionHost() ?: return
-        Timber.d("Rendering ${views.size} inline suggestion views")
-        host.clipView.setBackgroundColor(
-            ContextCompat.getColor(this, com.kazumaproject.core.R.color.keyboard_bg)
-        )
-        inlineHostPreviousVisibility[host.clipView] =
-            host.suggestionRecyclerView.isVisible to host.suggestionVisibility.isVisible
+        if (!inlineSuggestionEnabled) {
+            currentInlineSuggestionViews = emptyList()
+            inlineSuggestionDisplayState.updateAvailability(false)
+            updateShortcutActiveStates()
+            refreshCandidateStripContent()
+            return
+        }
+        currentInlineSuggestionViews = views
         views.forEach { view ->
-            (view.parent as? ViewGroup)?.removeView(view)
             view.setZOrderedOnTop(true)
-            val frameworkWidth = view.layoutParams?.width
-                ?.takeIf { it > 0 }
-                ?: ViewGroup.LayoutParams.WRAP_CONTENT
-            val frameworkHeight = view.layoutParams?.height
-                ?.takeIf { it > 0 }
-                ?: ViewGroup.LayoutParams.MATCH_PARENT
-            host.container.addView(
-                view,
-                LinearLayout.LayoutParams(
-                    frameworkWidth,
-                    frameworkHeight,
-                ).apply {
-                    val margin = (4 * resources.displayMetrics.density).toInt()
-                    marginStart = margin
-                    marginEnd = margin
-                }
-            )
+            view.clipBounds = null
         }
-        inlineSuggestionsDisplayed = true
-        enforceInlineSuggestionVisibility()
-        Timber.d(
-            "Inline suggestion host visible=${host.clipView.isVisible} " +
-                "children=${host.container.childCount}"
-        )
+        inlineSuggestionDisplayState.updateAvailability(views.isNotEmpty())
+        updateShortcutActiveStates()
+        Timber.d("Rendering ${views.size} inline suggestion views")
+        refreshCandidateStripContent()
     }
 
-    private fun clearInlineSuggestionHosts(restoreNativeVisibility: Boolean) {
-        inlineSuggestionHosts().forEach { host ->
-            host.container.removeAllViews()
-            host.clipView.isVisible = false
-            val previous = inlineHostPreviousVisibility.remove(host.clipView)
-            if (restoreNativeVisibility && previous != null) {
-                host.suggestionRecyclerView.isVisible = previous.first
-                host.suggestionVisibility.isVisible = previous.second
+    private fun toggleInlineSuggestionSurface() {
+        if (!inlineSuggestionEnabled) return
+        if (!inlineSuggestionDisplayState.toggleSurface()) return
+        refreshCandidateStripContent()
+        if (isKeyboardFloatingMode == true) {
+            floatingKeyboardBinding?.suggestionRecyclerView?.scrollToPosition(0)
+        } else {
+            mainLayoutBinding?.suggestionRecyclerView?.scrollToPosition(0)
+        }
+        updateShortcutActiveStates()
+    }
+
+    private fun setFloatingSuggestionColumn() {
+        val recyclerView = floatingKeyboardBinding?.suggestionRecyclerView ?: return
+        if (suggestionAdapter?.isInlineSuggestionStripShown() == true) {
+            val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
+            if (layoutManager?.orientation != LinearLayoutManager.HORIZONTAL) {
+                recyclerView.layoutManager =
+                    LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+                recyclerView.scrollToPosition(0)
             }
+        } else if (recyclerView.layoutManager !is FlexboxLayoutManager) {
+            recyclerView.layoutManager = FlexboxLayoutManager(applicationContext).apply {
+                flexDirection = FlexDirection.COLUMN
+            }
+            recyclerView.scrollToPosition(0)
         }
-        inlineSuggestionsDisplayed = false
-    }
-
-    private fun enforceInlineSuggestionVisibility() {
-        if (!inlineSuggestionsDisplayed) return
-        val activeHost = activeInlineSuggestionHost() ?: return
-        activeHost.clipView.isVisible = true
-        activeHost.suggestionRecyclerView.isVisible = false
-        activeHost.suggestionVisibility.isVisible = false
     }
 
     private fun updateFloatingKeyboardBackgroundBounds(
@@ -4652,8 +4673,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         clearZenzLiveSlot("onStartInputView")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
-        suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
-        suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
+        val candidateTextSize = appPreference.candidate_letter_size ?: 14.0f
+        suggestionAdapter?.setCandidateTextSize(candidateTextSize)
+        suggestionAdapterFull?.setCandidateTextSize(candidateTextSize)
+        listAdapter.setCandidateTextSize(candidateTextSize)
+        listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
         suggestionClickNum = 0
         setCurrentInputType(editorInfo)
         suggestionAdapter?.setClipboardDescriptionTextVisibility(
@@ -5857,6 +5881,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun resolveFloatingCandidateTextColor(): Int? {
+        return if (keyboardThemeMode == "custom") {
+            customThemeCandidateTextColor ?: Color.BLACK
+        } else {
+            // Let FormulaViewHolder resolve the color from its popup context.  The popup is
+            // themed separately from the service and therefore has the correct night-mode
+            // resource even when the service's base context does not.
+            null
+        }
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
@@ -6057,10 +6092,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 ?: ContextCompat.getColor(
                                                     this@IMEService,
                                                     com.kazumaproject.core.R.color.qwety_key_bg_color
-                                            )
+                                                )
                                         )
                                     }
-
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
                                     customThemeBgColor ?: Color.WHITE
@@ -6107,6 +6141,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
+                    // The physical-keyboard candidate popup is rendered in a separate
+                    // PopupWindow, so it does not inherit the candidate-strip TextView color.
+                    // Keep its formula renderer in sync with the active keyboard theme.
+                    listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
                     applyCandidateEmptyPopupThemeToAdapters()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = isKeyboardRounded == true
@@ -7364,11 +7402,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             originalInput = insertString,
             selectedCandidateLength = selectedSuggestion.length.toInt()
         )
+        val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
         stringInTail.set(tail)
-        Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $tail ${insertString.length} ${selectedSuggestion.length.toInt()}")
-        val spannableString = SpannableString(selectedSuggestion.word + tail)
+        Timber.d("displayComposingTextInHardwareKeyboardConnected: $commitWord ${selectedSuggestion.length} $insertString $tail ${insertString.length} ${selectedSuggestion.length.toInt()}")
+        val spannableString = SpannableString(commitWord + tail)
         setComposingTextAfterEdit(
-            inputString = selectedSuggestion.word,
+            inputString = commitWord,
             spannableString = spannableString,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputCompositionAfterBackgroundColor ?: getColor(
@@ -7395,8 +7434,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return
             }
             val subString = stringInTail.get()
+            val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
             if (subString.isNotEmpty()) {
-                commitText(selectedSuggestion.word, 1)
+                commitText(commitWord, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { subString }
                 listAdapter.updateHighlightPosition(-1)
@@ -7406,10 +7446,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingCandidateNextItem(insertString = subString)
                 }
             } else {
-                if (selectedSuggestion.word.isNotBlank()) {
-                    rememberZeroQueryKeyAfterCommit(selectedSuggestion.word)
+                if (commitWord.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(commitWord)
                 }
-                commitText(selectedSuggestion.word, 1)
+                commitText(commitWord, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
                 _inputString.update { "" }
                 listAdapter.updateHighlightPosition(-1)
@@ -16167,12 +16207,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        CandidateItem(
-                            word = it.string,
-                            length = it.length,
-                            candidateType = it.type,
-                            sourceId = it.sourceId,
-                        )
+                        it.toFloatingCandidateItem()
                     },
                     insertString = insertString
                 )
@@ -16201,6 +16236,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input = input,
         existingCandidates = candidates,
         result = utilityCandidateProvider.provide(input, utilityCandidateConfig),
+    )
+
+    private fun Candidate.toFloatingCandidateItem(
+        displayWord: String = string,
+    ): CandidateItem = CandidateItem(
+        word = displayWord,
+        length = length,
+        candidateType = type,
+        sourceId = sourceId,
+        formulaSource = presentation?.normalizedTex,
+        formulaFallbackText = commitText,
     )
 
     private fun candidateForAutomaticApplication(
@@ -17414,7 +17460,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
-            candidate.string
+            candidate.commitText
         }
     }
 
@@ -17647,7 +17693,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
-            candidate.string
+            candidate.presentation?.unicodeText ?: candidate.string
         }
     }
 
@@ -17893,12 +17939,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             physicalKeyboardEnable.replayCache.first()
         ) {
             updateSuggestionsForFloatingCandidate(segment.candidates.map {
-                CandidateItem(
-                    word = displayTextFromCandidate(it),
-                    length = it.length,
-                    candidateType = it.type,
-                    sourceId = it.sourceId,
-                )
+                it.toFloatingCandidateItem(displayTextFromCandidate(it))
             }, highlightedAbsoluteIndex = segmentHighlightIndex)
         }
     }
@@ -18889,6 +18930,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 integratedShortcutEntryExpanded = !integratedShortcutEntryExpanded
                 refreshCandidateStripContent()
             }
+            adapter.setOnInlineSuggestionToggleClickListener {
+                toggleInlineSuggestionSurface()
+            }
             adapter.setOnZeroQueryCandidateClickListener { candidate ->
                 vibrate()
                 commitZeroQueryCandidate(candidate)
@@ -19061,11 +19105,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 lastSuggestionLayoutKey = null
                 return@measureDebugSection
             }
+            val inlineSuggestionStripShown =
+                (adapter as? SuggestionAdapter)?.isInlineSuggestionStripShown() == true
 
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
                 layoutKind = if (
+                    inlineSuggestionStripShown ||
                     columnNum == "1" ||
                     CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
                         currentCandidateStripContent
@@ -19113,7 +19160,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 SuggestionAdapter.VIEW_TYPE_CLIPBOARD_PREVIEW,
                                 SuggestionAdapter.VIEW_TYPE_SHORTCUT_ENTRY,
                                 SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
-                                SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
+                                SuggestionAdapter.VIEW_TYPE_SHORTCUT,
+                                SuggestionAdapter.VIEW_TYPE_INLINE_TOGGLE,
+                                SuggestionAdapter.VIEW_TYPE_INLINE_SUGGESTION -> spanCount
                                 else -> 1
                             }
                         }
@@ -19314,7 +19363,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val handwritingAvailable =
             gemmaTranslationManager.imageInputCapability() is GemmaImageCapability.Available
         val visibleItems = configuredShortcutItems.filter { type ->
-            type != ShortcutType.GEMMA_HANDWRITING || handwritingAvailable
+            when (type) {
+                ShortcutType.GEMMA_HANDWRITING -> handwritingAvailable
+                else -> true
+            }
         }
         currentShortcutItems = visibleItems
         shortcutAdapter?.submitList(visibleItems) {
@@ -19829,7 +19881,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     content !is CandidateStripContent.ZeroQuerySuggestions,
                 customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
                 symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
-                shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates
+                shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates,
             )
         )
     }
@@ -21011,14 +21063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setSuggestionAdaptersOnMain(candidates)
         if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
             updateSuggestionsForFloatingCandidate(
-                candidates.map {
-                    CandidateItem(
-                        word = it.string,
-                        length = it.length,
-                        candidateType = it.type,
-                        sourceId = it.sourceId,
-                    )
-                }
+                candidates.map { it.toFloatingCandidateItem() }
             )
         }
         if (applyFirstCandidate) {
@@ -22027,7 +22072,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         position: Int,
     ) {
         val candidateLength = candidate.length.toInt()
-        val candidateString = candidate.string
+        val candidateString = candidate.commitText
         if (insertString.length > candidateLength) {
             recordCandidateLearning(
                 currentInputMode = currentInputMode,
@@ -22051,7 +22096,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         try {
             setComposingText("", 0)
             finishComposingText()
-            commitText(candidate.string, 1)
+            commitText(candidate.commitText, 1)
         } finally {
             endBatchEdit()
         }
@@ -22076,11 +22121,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when (candidate.type.toInt()) {
             CANDIDATE_TYPE_CALCULATION.toInt(),
             CANDIDATE_TYPE_UNIT_CONVERSION.toInt() -> {
-                commitUtilityCandidate(candidate.string)
+                commitUtilityCandidate(candidate.commitText)
             }
 
             CANDIDATE_TYPE_UTILITY_LITERAL.toInt() -> {
-                commitUtilityCandidate(candidate.string)
+                commitUtilityCandidate(candidate.commitText)
+            }
+
+            CANDIDATE_TYPE_FORMULA_UNICODE.toInt(),
+            CANDIDATE_TYPE_FORMULA_TEX.toInt() -> {
+                commitUtilityCandidate(candidate.commitText)
             }
 
             15 -> {
@@ -23186,12 +23236,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        CandidateItem(
-                            word = it.string,
-                            length = it.length,
-                            candidateType = it.type,
-                            sourceId = it.sourceId,
-                        )
+                        it.toFloatingCandidateItem()
                     },
                     insertString = insertString
                 )
@@ -23268,12 +23313,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        CandidateItem(
-                            word = it.string,
-                            length = it.length,
-                            candidateType = it.type,
-                            sourceId = it.sourceId,
-                        )
+                        it.toFloatingCandidateItem()
                     },
                     insertString = insertString
                 )

@@ -73,9 +73,11 @@ object CandidateStripPresentationPolicy {
             reserveIndependentShortcutToolbarSpace =
                 shortcutPresentation.showIndependentToolbar && hideShortcutForCandidates,
             showIntegratedShortcutItems =
-                shortcutPresentation.showIntegratedShortcutItems && !hideShortcutForCandidates,
+                shortcutPresentation.showIntegratedShortcutItems &&
+                    !hideShortcutForCandidates,
             showIntegratedShortcutEntry =
-                shortcutPresentation.showIntegratedShortcutEntry && !hideShortcutForCandidates
+                shortcutPresentation.showIntegratedShortcutEntry &&
+                    !hideShortcutForCandidates
         )
     }
 }
