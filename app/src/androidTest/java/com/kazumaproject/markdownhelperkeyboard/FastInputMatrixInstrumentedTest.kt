@@ -5,17 +5,23 @@ import android.app.Instrumentation
 import android.app.KeyguardManager
 import android.app.UiAutomation
 import android.content.ComponentName
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.PointF
 import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.os.Bundle
 import android.os.Debug
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
+import android.os.ResultReceiver
 import android.os.SystemClock
 import android.provider.Settings
 import android.text.Spanned
@@ -30,29 +36,41 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONArray
+import org.json.JSONObject
+import kotlin.math.abs
+import kotlin.math.sign
+import kotlin.random.Random
 
 /**
  * Device instrumentation regression tests for rapid input while the IME candidate area changes.
  *
  * They can run on a physical device or an emulator. Emulator results must not be reported as
- * physical-device results. These tests intentionally do not change the product's touch routing.
- * They also preserve and restore every preference, including the independently persisted
+ * physical-device results. The generated test uses the same production touch routing as normal
+ * input and preserves and restores every preference, including the independently persisted
  * empty-candidate height and the visible-candidate height for each column count.
  */
 @RunWith(AndroidJUnit4::class)
@@ -62,6 +80,9 @@ class FastInputMatrixInstrumentedTest {
 
     private val uiAutomation: UiAutomation
         get() = instrumentation.uiAutomation
+
+    private var activeRapidTraceId: String? = null
+    private var activeRapidTraceEvents: MutableList<String>? = null
 
     @Test
     fun flickEditorPreviewFunctionalAndPerformanceOnPhysicalDevice() {
@@ -1542,6 +1563,490 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun generatedTwoFingerInputAcrossAllKeyboardsOnPhysicalDevice() {
+        val arguments = InstrumentationRegistry.getArguments()
+        val rounds = arguments.getString("matrixRounds")?.let { token ->
+            val parsed = requireNotNull(token.toIntOrNull()) {
+                "matrixRounds must be numeric: $token"
+            }
+            require(parsed in 1..10) {
+                "matrixRounds must be from 1 to 10: $parsed"
+            }
+            parsed
+        } ?: DEFAULT_GENERATED_MATRIX_ROUNDS
+        val requestedSurfaceTokens = arguments.getString("matrixSurfaces")
+            ?.split(',')
+            ?.map(String::trim)
+            ?.also { tokens ->
+                require(tokens.none { it.isEmpty() }) {
+                    "matrixSurfaces contains an empty value"
+                }
+            }
+            ?.map(String::uppercase)
+            .orEmpty()
+        require(requestedSurfaceTokens.size == requestedSurfaceTokens.toSet().size) {
+            "matrixSurfaces contains duplicate values: $requestedSurfaceTokens"
+        }
+        val requestedSurfaceNames = requestedSurfaceTokens.toSet()
+        val surfaces = when {
+            requestedSurfaceNames.isEmpty() || requestedSurfaceNames == setOf("ALL") -> {
+                RapidInputSurface.entries
+            }
+
+            else -> {
+                require("ALL" !in requestedSurfaceNames) {
+                    "matrixSurfaces cannot combine ALL with a surface name"
+                }
+                val unknownNames = requestedSurfaceNames -
+                    RapidInputSurface.entries.map { it.name }.toSet()
+                require(unknownNames.isEmpty()) { "Unknown matrixSurfaces: $unknownNames" }
+                RapidInputSurface.entries.filter { it.name in requestedSurfaceNames }
+            }
+        }
+        val requestedColumnTokens = arguments.getString("matrixColumns")
+            ?.split(',')
+            ?.map(String::trim)
+            ?.also { tokens ->
+                require(tokens.none { it.isEmpty() }) {
+                    "matrixColumns contains an empty value"
+                }
+            }
+            .orEmpty()
+        val requestedColumns = requestedColumnTokens
+            .map { token ->
+                requireNotNull(token.toIntOrNull()) {
+                    "matrixColumns contains a non-numeric value: $token"
+                }
+            }
+        require(requestedColumns.size == requestedColumns.toSet().size) {
+            "matrixColumns contains duplicate values after normalization: $requestedColumns"
+        }
+        val candidateColumns = if (requestedColumns.isEmpty()) {
+            RAPID_CANDIDATE_COLUMNS
+        } else {
+            require(requestedColumns.all { it in RAPID_CANDIDATE_COLUMNS }) {
+                "matrixColumns must contain only 1, 2, or 3: $requestedColumns"
+            }
+            requestedColumns
+        }
+        val requestedSumireMethodTokens = arguments.getString("matrixSumireMethods")
+            ?.split(',')
+            ?.map(String::trim)
+            ?.also { tokens ->
+                require(tokens.none { it.isEmpty() }) {
+                    "matrixSumireMethods contains an empty value"
+                }
+            }
+            ?.map(String::lowercase)
+            .orEmpty()
+        require(
+            requestedSumireMethodTokens.size == requestedSumireMethodTokens.toSet().size
+        ) {
+            "matrixSumireMethods contains duplicate values: $requestedSumireMethodTokens"
+        }
+        val requestedSumireMethodNames = requestedSumireMethodTokens.toSet()
+        val sumireInputMethods = when {
+            requestedSumireMethodNames.isEmpty() || requestedSumireMethodNames == setOf("all") -> {
+                RAPID_SUMIRE_INPUT_METHODS
+            }
+
+            else -> {
+                require("all" !in requestedSumireMethodNames) {
+                    "matrixSumireMethods cannot combine ALL with a method name"
+                }
+                val unknownNames = requestedSumireMethodNames -
+                    RAPID_SUMIRE_INPUT_METHODS.toSet()
+                require(unknownNames.isEmpty()) {
+                    "Unknown matrixSumireMethods: $unknownNames"
+                }
+                RAPID_SUMIRE_INPUT_METHODS.filter { it in requestedSumireMethodNames }
+            }
+        }
+        runPhysicalDeviceSession("generated-multitouch") { session ->
+            val keyboardLayoutDao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext,
+                KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val failures = mutableListOf<String>()
+            val setupErrors = mutableListOf<String>()
+            val categoryCounts = RapidResultCategory.entries
+                .associateWith { 0 }
+                .toMutableMap()
+            var completedTrials = 0
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var customFixture: RapidInputCustomFixture? = null
+            val expectedTrials = surfaces.sumOf { surface ->
+                val methodCount = if (surface == RapidInputSurface.SUMIRE) {
+                    sumireInputMethods.size
+                } else {
+                    1
+                }
+                methodCount * candidateColumns.size * rounds *
+                    RAPID_SCENARIOS_PER_SURFACE * RAPID_MULTITOUCH_INTERVALS_MS.size
+            }
+
+            try {
+                customFixture = installRapidInputCustomFixture(keyboardLayoutDao)
+                scenario = launchHost(session.context)
+                val activeScenario = requireNotNull(scenario)
+                for (surface in surfaces) {
+                    val methodsForSurface: List<String?> = if (
+                        surface == RapidInputSurface.SUMIRE
+                    ) {
+                        sumireInputMethods
+                    } else {
+                        listOf(null)
+                    }
+                    for (sumireInputMethod in methodsForSurface) {
+                        for (columns in candidateColumns) {
+                            applyRapidInputSurfacePreferences(
+                                preferences = session.preferences,
+                                surface = surface,
+                                customFixtureStableId = requireNotNull(customFixture).stableId,
+                                candidateColumns = columns,
+                                sumireInputMethod = sumireInputMethod,
+                            )
+                            ensureTargetImeSelected(session)
+
+                            repeat(rounds) { zeroBasedRound ->
+                                val round = zeroBasedRound + 1
+                                val generatedScenarios = buildRapidInputScenarios(surface, round)
+                                for (orientation in TestOrientation.entries) {
+                                    rotateAndVerify(orientation)
+                                    restartInput(activeScenario)
+                                    awaitRapidInputSurfaceReady(surface)
+                                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                                    assertDeviceReady(
+                                        session.context,
+                                        session.targetIme,
+                                        activeScenario,
+                                    )
+                                    // The keyboard is bottom-anchored, so candidate updates do not
+                                    // change key coordinates. Resolve and validate the complete
+                                    // operation set once per stable surface/column/orientation;
+                                    // querying UiAutomation.windows for every trial can starve the
+                                    // emulator's AccessibilityManager during a long matrix run.
+                                    val points = resolveRapidInputPoints(
+                                        surface = surface,
+                                        operations = generatedScenarios
+                                            .flatMap { it.operations } + surface.warmOperation,
+                                    )
+
+                                    for (scenarioIndex in generatedScenarios.indices) {
+                                        val inputScenario = generatedScenarios[scenarioIndex]
+                                        for (intervalIndex in RAPID_MULTITOUCH_INTERVALS_MS.indices) {
+                                            val intervalMs = RAPID_MULTITOUCH_INTERVALS_MS[intervalIndex]
+                                            val dimensions = rapidTrialDimensions(
+                                                scenarioIndex = scenarioIndex,
+                                                intervalIndex = intervalIndex,
+                                            )
+                                            if (dimensions.orientation != orientation) continue
+
+                                            val traceId = listOf(
+                                                surface.name.lowercase(),
+                                                sumireInputMethod ?: "none",
+                                                columns,
+                                                round,
+                                                inputScenario.name,
+                                                dimensions.orientation.name.lowercase(),
+                                                dimensions.editorState.name.lowercase(),
+                                                dimensions.releaseOrder.name.lowercase(),
+                                                intervalMs,
+                                            ).joinToString("-")
+                                            val trial = buildString {
+                                                append("traceId=$traceId ")
+                                                append("surface=${surface.name} ")
+                                                sumireInputMethod?.let {
+                                                    append("sumireMethod=$it ")
+                                                }
+                                                append("columns=$columns ")
+                                                append("round=$round ")
+                                                append("scenario=${inputScenario.name} ")
+                                                append("seed=${inputScenario.seed} ")
+                                                append("orientation=${dimensions.orientation.name} ")
+                                                append("editor=${dimensions.editorState.name} ")
+                                                append("release=${dimensions.releaseOrder.name} ")
+                                                append("intervalMs=$intervalMs")
+                                            }
+                                            Log.i(TAG, "MULTITOUCH_TRIAL\t$trial")
+                                            sendProgress("FAST_INPUT_MULTITOUCH_TRIAL $trial\n")
+
+                                            var expected = if (
+                                                dimensions.editorState == RapidEditorState.WARM
+                                            ) {
+                                                surface.warmExpected + inputScenario.expected
+                                            } else {
+                                                inputScenario.expected
+                                            }
+                                            var rapidTrace = RapidInputTrace(
+                                                traceId = traceId,
+                                                surface = surface.name,
+                                                operations = inputScenario.operations,
+                                                pointerIds = RAPID_POINTER_IDS.toList(),
+                                                intervalMs = intervalMs,
+                                                releaseOrder = dimensions.releaseOrder,
+                                                expectedText = expected,
+                                            )
+                                            val traceEvents = mutableListOf<String>()
+                                            activeRapidTraceId = traceId
+                                            activeRapidTraceEvents = traceEvents
+                                            var actual = runCatching { readText(activeScenario) }
+                                                .getOrDefault("")
+                                            var allEventsInjected = false
+                                            var outcome: RapidTrialOutcome
+                                            try {
+                                                resetRapidInputTrial(activeScenario, traceId)
+                                                val prefix = prepareRapidEditorState(
+                                                    scenario = activeScenario,
+                                                    surface = surface,
+                                                    editorState = dimensions.editorState,
+                                                    points = points,
+                                                )
+                                                expected = prefix + inputScenario.expected
+                                                rapidTrace = rapidTrace.copy(expectedText = expected)
+                                                allEventsInjected = when (dimensions.releaseOrder) {
+                                                    RapidReleaseOrder.ROLLING_OLDER_FIRST ->
+                                                        injectRollingTwoFingerSequence(
+                                                            operations = inputScenario.operations,
+                                                            points = points,
+                                                            downIntervalMs = intervalMs,
+                                                        )
+
+                                                    RapidReleaseOrder.PAIRED_NEWER_FIRST ->
+                                                        injectPairedTwoFingerSequence(
+                                                            operations = inputScenario.operations,
+                                                            points = points,
+                                                            downIntervalMs = intervalMs,
+                                                        )
+                                                }
+                                                actual = awaitTextSettled(
+                                                    scenario = activeScenario,
+                                                    failOnTimeout = true,
+                                                    timeoutMs = RAPID_RESULT_TIMEOUT_MS,
+                                                    expectedText = expected,
+                                                )
+                                                outcome = RapidTrialOutcome(
+                                                    category = classifyRapidInputResult(
+                                                        expected = expected,
+                                                        actual = actual,
+                                                        allEventsInjected = allEventsInjected,
+                                                    ),
+                                                    expected = expected,
+                                                    actual = actual,
+                                                    allEventsInjected = allEventsInjected,
+                                                )
+                                            } catch (error: RapidResetException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.RESET_ERROR,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: ResultMismatchException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.INPUT_MISMATCH,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = allEventsInjected,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: ResultTimeoutException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = if (allEventsInjected) {
+                                                        RapidResultCategory.RESULT_TIMEOUT
+                                                    } else {
+                                                        RapidResultCategory.INJECTION_ERROR
+                                                    },
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = allEventsInjected,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: SetupException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.SETUP_ERROR,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: Throwable) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.SETUP_ERROR,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message ?: error::class.java.simpleName,
+                                                )
+                                            }
+                                            finally {
+                                                if (activeRapidTraceId == traceId) {
+                                                    activeRapidTraceId = null
+                                                    activeRapidTraceEvents = null
+                                                }
+                                            }
+                                            completedTrials += 1
+                                            categoryCounts[outcome.category] =
+                                                categoryCounts.getValue(outcome.category) + 1
+
+                                            val result = buildString {
+                                                append(trial)
+                                                append(" operations=${inputScenario.operations.size} ")
+                                                append("category=${outcome.category.name} ")
+                                                append("events=${outcome.allEventsInjected} ")
+                                                append("expectedLength=${outcome.expected.length} ")
+                                                append("actualLength=${outcome.actual.length} ")
+                                                append("firstMismatch=")
+                                                val mismatchIndex = firstMismatchIndex(
+                                                    outcome.expected,
+                                                    outcome.actual,
+                                                )
+                                                append(mismatchIndex)
+                                                append(" expected=[${outcome.expected}] actual=[${outcome.actual}]")
+                                                if (outcome.category != RapidResultCategory.PASS) {
+                                                    append(" tracePointers=")
+                                                    append(rapidTrace.pointerIds.joinToString(","))
+                                                    append(" traceExpected=[")
+                                                    append(rapidTrace.expectedText)
+                                                    append("] rawEventTrace=")
+                                                    append(
+                                                        traceEvents.joinToString(
+                                                            separator = "|",
+                                                            limit = 256,
+                                                        )
+                                                    )
+                                                    val warmPrefixLength = if (
+                                                        dimensions.editorState == RapidEditorState.WARM
+                                                    ) {
+                                                        surface.warmExpected.length
+                                                    } else {
+                                                        0
+                                                    }
+                                                    append(" mismatchOperationIndex=")
+                                                    append(
+                                                        (mismatchIndex - warmPrefixLength)
+                                                            .takeIf { it >= 0 } ?: -1
+                                                    )
+                                                    append(" operationTrace=")
+                                                    append(
+                                                        inputScenario.operations.mapIndexed { index, operation ->
+                                                            "$index:${operation.token}:${operation.directionOrTap.name}"
+                                                        }.joinToString(",")
+                                                    )
+                                                }
+                                                outcome.error?.let { error ->
+                                                    append(" error=[${error.replace('\n', ' ')}]")
+                                                }
+                                            }
+                                            Log.i(TAG, "MULTITOUCH_RESULT\t$result")
+                                            sendProgress("FAST_INPUT_MULTITOUCH_RESULT $result\n")
+
+                                            if (outcome.category != RapidResultCategory.PASS) {
+                                                failures += result
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (error: Throwable) {
+                val failure =
+                    "surfaces=${surfaces.joinToString(",")} error=" +
+                        (error.message ?: error::class.java.simpleName)
+                setupErrors += failure
+                Log.e(TAG, "FAST_INPUT_SETUP_ERROR $failure", error)
+                sendProgress("FAST_INPUT_SETUP_ERROR $failure\n")
+            } finally {
+                scenario?.close()
+                customFixture?.let { fixture ->
+                    runCatching { runBlocking { keyboardLayoutDao.deleteLayout(fixture.id) } }
+                        .onFailure { error ->
+                            val failure = "Unable to delete generated custom fixture: ${error.message}"
+                            setupErrors += failure
+                            Log.e(TAG, "FAST_INPUT_SETUP_ERROR $failure", error)
+                        }
+                }
+            }
+
+            val passCount = categoryCounts.getValue(RapidResultCategory.PASS)
+            val inputMismatchCount = categoryCounts.getValue(RapidResultCategory.INPUT_MISMATCH)
+            val injectionErrorCount = categoryCounts.getValue(RapidResultCategory.INJECTION_ERROR)
+            val resetErrorCount = categoryCounts.getValue(RapidResultCategory.RESET_ERROR)
+            val resultTimeoutCount = categoryCounts.getValue(RapidResultCategory.RESULT_TIMEOUT)
+            val setupErrorCount =
+                categoryCounts.getValue(RapidResultCategory.SETUP_ERROR) + setupErrors.size
+            val failureCount = failures.size + setupErrors.size
+            val matrixPassed = completedTrials == expectedTrials &&
+                passCount == expectedTrials &&
+                resetErrorCount == 0 &&
+                setupErrorCount == 0 &&
+                injectionErrorCount == 0 &&
+                inputMismatchCount == 0 &&
+                resultTimeoutCount == 0
+            val summaryJson = JSONObject()
+                .put("schemaVersion", 1)
+                .put("surface", surfaces.joinToString(","))
+                .put("sumireMethods", sumireInputMethods.joinToString(","))
+                .put("rounds", rounds)
+                .put("columns", JSONArray(candidateColumns))
+                .put("plannedTrials", expectedTrials)
+                .put("completedTrials", completedTrials)
+                .put("pass", passCount)
+                .put("resetErrors", resetErrorCount)
+                .put("setupErrors", setupErrorCount)
+                .put("injectionErrors", injectionErrorCount)
+                .put("inputMismatches", inputMismatchCount)
+                .put("resultTimeouts", resultTimeoutCount)
+                .put("failures", failureCount)
+                .put("status", if (matrixPassed) "PASS" else "FAIL")
+            val summaryJsonLine = buildString {
+                append("FAST_INPUT_MULTITOUCH_SUMMARY_JSON ")
+                append(summaryJson.toString())
+            }
+            val summary = buildString {
+                append("FAST_INPUT_MULTITOUCH_SUMMARY ")
+                append("surfaces=${surfaces.joinToString(",")} ")
+                append("sumireMethods=${sumireInputMethods.joinToString(",")} ")
+                append("trials=$completedTrials/$expectedTrials ")
+                append("rounds=$rounds columns=${candidateColumns.joinToString(",")} ")
+                append("pass=$passCount ")
+                append("resetErrors=$resetErrorCount ")
+                append("setupErrors=$setupErrorCount ")
+                append("injectionErrors=$injectionErrorCount ")
+                append("inputMismatches=$inputMismatchCount ")
+                append("resultTimeouts=$resultTimeoutCount ")
+                append("failures=$failureCount\n")
+            }
+            Log.i(TAG, summary.trim())
+            Log.i(TAG, summaryJsonLine)
+            sendProgress(summary)
+            sendProgress("$summaryJsonLine\n")
+            assertTrue(
+                buildString {
+                    append(summary)
+                    if (failures.isNotEmpty()) {
+                        append("Generated multitouch failures:\n")
+                        append(failures.joinToString(separator = "\n", limit = 30))
+                    }
+                    if (setupErrors.isNotEmpty()) {
+                        append("Generated multitouch setup errors:\n")
+                        append(setupErrors.joinToString(separator = "\n", limit = 30))
+                    }
+                },
+                matrixPassed,
+            )
+        }
+    }
+
+    @Test
     fun emptyCandidatePresentationStaysHiddenAfterImeReopenOnCustomKeyboard() {
         runPhysicalDeviceSession("custom-empty-candidate-reopen") { session ->
             var scenario: ActivityScenario<FastInputHostActivity>? = null
@@ -1917,6 +2422,571 @@ class FastInputMatrixInstrumentedTest {
             allEventsInjected = injected,
             geometry = warm.renderTransition(after)
         )
+    }
+
+    private fun installRapidInputCustomFixture(
+        dao: com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao,
+    ): RapidInputCustomFixture = runBlocking {
+        val stableId = "rapid-input-ci-${System.currentTimeMillis()}"
+        val keys = RAPID_KANA_ROWS.mapIndexed { index, row ->
+            KeyDefinition(
+                ownerLayoutId = 0,
+                label = row.label,
+                row = index / 3,
+                column = index % 3,
+                keyType = KeyType.STANDARD_FLICK,
+                isSpecialKey = false,
+                keyIdentifier = row.token,
+            )
+        } + KeyDefinition(
+            ownerLayoutId = 0,
+            label = RAPID_DAKUTEN_LABEL,
+            row = 2,
+            column = 1,
+            keyType = KeyType.NORMAL,
+            isSpecialKey = false,
+            keyIdentifier = RAPID_DAKUTEN_TOKEN,
+            action = "ToggleDakutenOnly",
+        )
+        val flicksMap = RAPID_KANA_ROWS.associate { row ->
+            row.token to RapidDirection.entries.map { direction ->
+                FlickMapping(
+                    ownerKeyId = 0,
+                    stateIndex = 0,
+                    flickDirection = direction.persistedDirection,
+                    actionType = "INPUT_TEXT",
+                    actionValue = row.outputs[direction.ordinal],
+                )
+            }
+        }
+        val id = dao.insertFullKeyboardLayout(
+            layout = CustomKeyboardLayout(
+                name = "Generated Fast Input CI",
+                columnCount = 3,
+                rowCount = 3,
+                isDirectMode = false,
+                sortOrder = dao.getMaxSortOrder() + 1,
+                stableId = stableId,
+            ),
+            keys = keys,
+            flicksMap = flicksMap,
+            circularFlicksMap = emptyMap(),
+            twoStepFlicksMap = emptyMap(),
+            longPressFlicksMap = emptyMap(),
+            twoStepLongPressFlicksMap = emptyMap(),
+        )
+        RapidInputCustomFixture(id = id, stableId = stableId)
+    }
+
+    private fun applyRapidInputSurfacePreferences(
+        preferences: SharedPreferences,
+        surface: RapidInputSurface,
+        customFixtureStableId: String,
+        candidateColumns: Int,
+        sumireInputMethod: String?,
+    ) {
+        val baseKeyboard = when (surface) {
+            RapidInputSurface.TENKEY -> TestKeyboard.TENKEY
+            RapidInputSurface.SUMIRE, RapidInputSurface.GOJUON,
+            RapidInputSurface.CUSTOM -> TestKeyboard.SUMIRE
+            RapidInputSurface.QWERTY, RapidInputSurface.ROMAJI -> TestKeyboard.QWERTY
+        }
+        applyCasePreferences(
+            preferences = preferences,
+            case = TestCase(
+                keyboard = baseKeyboard,
+                columns = candidateColumns,
+                candidateTabVisible = true,
+                toolbarVisible = true,
+                toolbarIntegrated = true,
+                orientation = TestOrientation.PORTRAIT,
+            ),
+        )
+
+        val editor = preferences.edit()
+            .putBoolean("tenkey_show_switch_ime_button_preference", false)
+            .putBoolean("gojuon_keyboard_type_migrated_v1", true)
+            .putBoolean("qwerty_glide_input_preference", false)
+            .putInt("flick_sensitivity_preference", 100)
+            .putString("flick_threshold_shape_preference", "radial")
+            .putInt("long_press_timeout_preference", 2000)
+            .putString("keyboard_order_preference", surface.keyboardOrder)
+            .putBoolean("save_last_used_keyboard", surface == RapidInputSurface.CUSTOM)
+        if (surface == RapidInputSurface.SUMIRE) {
+            editor
+                .putString(
+                    "sumire_input_method_preference",
+                    sumireInputMethod ?: "toggle",
+                )
+                .putString("sumire_keyboard_style_preference", "default")
+        }
+        if (surface == RapidInputSurface.CUSTOM) {
+            editor
+                .putBoolean("remember_last_custom_keyboard_preference", true)
+                .putString("last_used_custom_keyboard_stable_id", customFixtureStableId)
+        }
+        check(editor.commit()) { "Failed to configure rapid-input surface $surface" }
+    }
+
+    private fun buildRapidInputScenarios(
+        surface: RapidInputSurface,
+        round: Int,
+    ): List<RapidInputScenario> = when (surface) {
+        RapidInputSurface.TENKEY,
+        RapidInputSurface.SUMIRE,
+        RapidInputSurface.CUSTOM -> buildKanaRapidInputScenarios(surface, round)
+        RapidInputSurface.GOJUON -> buildGojuonRapidInputScenarios(round)
+        RapidInputSurface.QWERTY -> buildQwertyRapidInputScenarios(round)
+        RapidInputSurface.ROMAJI -> buildRomajiRapidInputScenarios(round)
+    }.also { scenarios ->
+        check(scenarios.size == RAPID_SCENARIOS_PER_SURFACE) {
+            "$surface produced ${scenarios.size} scenarios"
+        }
+    }
+
+    private fun buildKanaRapidInputScenarios(
+        surface: RapidInputSurface,
+        round: Int,
+    ): List<RapidInputScenario> {
+        val allDirections = RapidDirection.entries
+        val directionCoverage = RAPID_KANA_ROWS.flatMapIndexed { rowIndex, _ ->
+            allDirections.map { direction -> RapidOperation.Kana(rowIndex, direction) }
+        }
+        val dakutenCoverage = RAPID_DAKUTEN_ROW_INDICES.flatMap { rowIndex ->
+            allDirections.flatMap { direction ->
+                listOf(
+                    RapidOperation.Kana(rowIndex, direction),
+                    RapidOperation.Dakuten,
+                )
+            }
+        }
+        val repeatedBursts = RAPID_KANA_ROWS.flatMapIndexed { rowIndex, _ ->
+            val direction = allDirections[(rowIndex + round) % allDirections.size]
+            List(RAPID_REPEAT_BURST_LENGTH) { RapidOperation.Kana(rowIndex, direction) }
+        }
+        val alternating = List(RAPID_GENERATED_OPERATION_COUNT) { index ->
+            RapidOperation.Kana(
+                rowIndex = if (index % 2 == 0) index % 3 else 3 + (index % 3),
+                direction = allDirections[(index * 2 + round) % allDirections.size],
+            )
+        }
+        val permutations = (0 until 2).map { variant ->
+            val seed = rapidSeed(surface, round, variant)
+            directionCoverage.shuffled(Random(seed)).let { shuffled ->
+                rapidScenario("permuted-$variant", shuffled, seed)
+            }
+        }
+        return listOf(
+            rapidScenario("direction-coverage", directionCoverage),
+            rapidScenario("dakuten-coverage", dakutenCoverage),
+            rapidScenario("repeated-bursts", repeatedBursts),
+            rapidScenario("alternating-rows", alternating),
+        )
+            .plus(permutations)
+    }
+
+    private fun buildGojuonRapidInputScenarios(round: Int): List<RapidInputScenario> {
+        val base = RAPID_GOJUON_BASE_KEYS.map { key -> key.toOperation() }
+        val voiced = RAPID_GOJUON_VOICED_KEYS.map { key -> key.toOperation() }
+        val modifiers = RAPID_GOJUON_MODIFIER_KEYS.map { key -> key.toOperation() }
+        val mixed = buildList {
+            repeat(2) { index ->
+                addAll(if (index % 2 == 0) base.take(18) else voiced)
+                addAll(modifiers)
+            }
+        }
+        return listOf(
+            rapidScenario("base-coverage", base),
+            rapidScenario("voiced-coverage", voiced),
+            rapidScenario("small-handakuten", modifiers),
+            rapidScenario("mixed-modifiers", mixed),
+            shuffledRapidScenario("permuted-base", base, rapidSeed(RapidInputSurface.GOJUON, round, 0)),
+            shuffledRapidScenario("permuted-all", base + voiced + modifiers, rapidSeed(RapidInputSurface.GOJUON, round, 1)),
+        )
+    }
+
+    private fun buildQwertyRapidInputScenarios(round: Int): List<RapidInputScenario> {
+        val alphabet = RAPID_QWERTY_LETTERS.map(::qwertyOperation)
+        val keyboardRows = RAPID_QWERTY_ROWS.flatMap { row -> row.map(::qwertyOperation) }
+        val repeated = RAPID_QWERTY_REPEAT_KEYS.flatMap { char ->
+            List(RAPID_REPEAT_BURST_LENGTH) { qwertyOperation(char) }
+        }
+        val alternating = List(RAPID_GENERATED_OPERATION_COUNT) { index ->
+            qwertyOperation(
+                if (index % 2 == 0) {
+                    RAPID_QWERTY_ROWS[0][index % RAPID_QWERTY_ROWS[0].length]
+                } else {
+                    RAPID_QWERTY_ROWS[2][index % RAPID_QWERTY_ROWS[2].length]
+                }
+            )
+        }
+        return listOf(
+            rapidScenario("alphabet-forward", alphabet),
+            rapidScenario("alphabet-reverse", alphabet.reversed()),
+            rapidScenario("keyboard-rows", keyboardRows),
+            rapidScenario("repeated-bursts", repeated),
+            rapidScenario("alternating-rows", alternating),
+            shuffledRapidScenario(
+                "permuted-alphabet",
+                alphabet + alphabet,
+                rapidSeed(RapidInputSurface.QWERTY, round, 0),
+            ),
+        )
+    }
+
+    private fun buildRomajiRapidInputScenarios(round: Int): List<RapidInputScenario> =
+        List(RAPID_SCENARIOS_PER_SURFACE) { variant ->
+            val seed = rapidSeed(RapidInputSurface.ROMAJI, round, variant)
+            val ordered = when (variant) {
+                0 -> RAPID_ROMAJI_SYLLABLES
+                1 -> RAPID_ROMAJI_SYLLABLES.reversed()
+                else -> RAPID_ROMAJI_SYLLABLES.shuffled(Random(seed))
+            }
+            val selected = if (variant < 2) ordered else ordered.take(RAPID_ROMAJI_SYLLABLES_PER_TRACE)
+            val source = selected.joinToString(separator = "") { it.roman }
+            RapidInputScenario(
+                name = "syllables-$variant",
+                operations = source.map(::qwertyOperation),
+                expected = selected.joinToString(separator = "") { it.kana },
+                seed = seed,
+            )
+        }
+
+    private fun rapidScenario(
+        name: String,
+        operations: List<RapidOperation>,
+        seed: Int = RAPID_COVERAGE_SEED,
+    ) = RapidInputScenario(
+        name = name,
+        operations = operations,
+        expected = expectedRapidInputText(operations),
+        seed = seed,
+    )
+
+    private fun shuffledRapidScenario(
+        name: String,
+        operations: List<RapidOperation>,
+        seed: Int,
+    ) = rapidScenario(name, operations.shuffled(Random(seed)), seed)
+
+    private fun qwertyOperation(char: Char) = RapidOperation.Direct(
+        token = "qwerty-$char",
+        locator = NodeLocator.Id("key_$char"),
+        direction = RapidDirection.TAP,
+        output = char.toString(),
+    )
+
+    private fun rapidSeed(surface: RapidInputSurface, round: Int, variant: Int): Int =
+        RAPID_BASE_SEED + surface.ordinal * 10_000 + round * 100 + variant
+
+    private fun expectedRapidInputText(operations: List<RapidOperation>): String {
+        val expected = StringBuilder()
+        operations.forEach { operation ->
+            when (operation) {
+                is RapidOperation.Kana -> expected.append(
+                    RAPID_KANA_ROWS[operation.rowIndex].outputs[operation.direction.ordinal]
+                )
+
+                RapidOperation.Dakuten -> {
+                    check(expected.isNotEmpty()) { "Dakuten operation requires preceding text" }
+                    val last = expected.last()
+                    expected.setCharAt(
+                        expected.lastIndex,
+                        RAPID_DAKUTEN_TRANSFORMS[last]
+                            ?: error("No dakuten oracle mapping for [$last]"),
+                    )
+                }
+
+                is RapidOperation.Direct -> expected.append(operation.output)
+            }
+        }
+        return expected.toString()
+    }
+
+    private fun rapidTrialDimensions(
+        scenarioIndex: Int,
+        intervalIndex: Int,
+    ) = RapidTrialDimensions(
+        releaseOrder = RapidReleaseOrder.entries[(scenarioIndex + intervalIndex) % 2],
+        orientation = TestOrientation.entries[(scenarioIndex / 2 + intervalIndex) % 2],
+        editorState = RapidEditorState.entries[(scenarioIndex + intervalIndex / 2) % 2],
+    )
+
+    private fun prepareRapidEditorState(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        surface: RapidInputSurface,
+        editorState: RapidEditorState,
+        points: Map<String, RapidTouchPoints>,
+    ): String {
+        if (editorState == RapidEditorState.COLD) return ""
+        val operation = surface.warmOperation
+        check(injectRapidSingleGesture(operation, points.getValue(operation.token))) {
+            "Unable to prime warm editor state for $surface"
+        }
+        val actual = awaitTextSettled(scenario)
+        check(actual == surface.warmExpected) {
+            "Warm-state prime mismatch for $surface: " +
+                "expected=[${surface.warmExpected}] actual=[$actual]"
+        }
+        return actual
+    }
+
+    private fun resolveRapidInputPoints(
+        surface: RapidInputSurface,
+        operations: List<RapidOperation>,
+    ): Map<String, RapidTouchPoints> {
+        val requiredTokens = operations.mapTo(linkedSetOf()) { it.token }
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var lastError = "keyboard root unavailable"
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                val root = findVisibleNodeById(surface.rootViewId)
+                    ?: throw SetupException("${surface.rootViewId} is not visible")
+                return try {
+                    requiredTokens.associateWith { token ->
+                        val operation = operations.first { it.token == token }
+                        val bounds = findRequiredKeyBounds(
+                            keyboardRoot = root,
+                            locator = surface.locatorFor(operation),
+                        )
+                        RapidTouchPoints(
+                            start = bounds.center,
+                            ends = RapidDirection.entries.associateWith { direction ->
+                                direction.endPoint(
+                                    bounds = bounds,
+                                    minimumDistancePx = RAPID_MIN_FLICK_DISTANCE_DP *
+                                        instrumentation.targetContext.resources.displayMetrics.density,
+                                )
+                            },
+                        )
+                    }
+                } finally {
+                    root.recycle()
+                }
+            } catch (error: SetupException) {
+                lastError = error.message.orEmpty()
+                SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+            }
+        }
+        throw SetupException("Unable to resolve generated input keys: $lastError")
+    }
+
+    private fun injectRollingTwoFingerSequence(
+        operations: List<RapidOperation>,
+        points: Map<String, RapidTouchPoints>,
+        downIntervalMs: Long,
+    ): Boolean {
+        if (operations.isEmpty()) return true
+        val streamDownTime = SystemClock.uptimeMillis()
+        var currentPointerId = RAPID_POINTER_IDS.first()
+        var availablePointerId = RAPID_POINTER_IDS.last()
+        var currentDownAt = streamDownTime
+        var currentOperation = operations.first()
+        var currentPoint = points.getValue(currentOperation.token).start
+        var allInjected = injectRapidPointerEvent(
+            downTime = streamDownTime,
+            eventTime = streamDownTime,
+            actionMasked = MotionEvent.ACTION_DOWN,
+            actionIndex = 0,
+            PointerSpec(currentPointerId, currentPoint),
+        )
+        currentPoint = moveRapidPointerIfNeeded(
+            downTime = streamDownTime,
+            operation = currentOperation,
+            points = points,
+            pointer = PointerSpec(currentPointerId, currentPoint),
+            intervalMs = downIntervalMs,
+        ).also { allInjected = it.injected && allInjected }.point
+
+        operations.drop(1).forEach { nextOperation ->
+            sleepUntil(currentDownAt + downIntervalMs)
+            val nextDownAt = SystemClock.uptimeMillis()
+            val nextStart = points.getValue(nextOperation.token).start
+            allInjected = injectRapidPointerEvent(
+                downTime = streamDownTime,
+                eventTime = nextDownAt,
+                actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+                actionIndex = 1,
+                PointerSpec(currentPointerId, currentPoint),
+                PointerSpec(availablePointerId, nextStart),
+            ) && allInjected
+            rapidEventDelay(downIntervalMs)
+            allInjected = injectRapidPointerEvent(
+                downTime = streamDownTime,
+                eventTime = SystemClock.uptimeMillis(),
+                actionMasked = MotionEvent.ACTION_POINTER_UP,
+                actionIndex = 0,
+                PointerSpec(currentPointerId, currentPoint),
+                PointerSpec(availablePointerId, nextStart),
+            ) && allInjected
+
+            val releasedPointerId = currentPointerId
+            currentPointerId = availablePointerId
+            availablePointerId = releasedPointerId
+            currentDownAt = nextDownAt
+            currentOperation = nextOperation
+            currentPoint = moveRapidPointerIfNeeded(
+                downTime = streamDownTime,
+                operation = currentOperation,
+                points = points,
+                pointer = PointerSpec(currentPointerId, nextStart),
+                intervalMs = downIntervalMs,
+            ).also { allInjected = it.injected && allInjected }.point
+        }
+
+        SystemClock.sleep(RAPID_FINAL_HOLD_MS)
+        allInjected = injectRapidPointerEvent(
+            downTime = streamDownTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_UP,
+            actionIndex = 0,
+            PointerSpec(currentPointerId, currentPoint),
+        ) && allInjected
+        rapidInterGestureDelay(downIntervalMs)
+        return allInjected
+    }
+
+    private fun injectPairedTwoFingerSequence(
+        operations: List<RapidOperation>,
+        points: Map<String, RapidTouchPoints>,
+        downIntervalMs: Long,
+    ): Boolean {
+        var allInjected = true
+        operations.chunked(2).forEach { pair ->
+            if (pair.size == 1) {
+                val operation = pair.single()
+                val touchPoints = points.getValue(operation.token)
+                allInjected = injectRapidSingleGesture(operation, touchPoints) && allInjected
+                return@forEach
+            }
+
+            val firstOperation = pair[0]
+            val secondOperation = pair[1]
+            val firstTouchPoints = points.getValue(firstOperation.token)
+            val secondTouchPoints = points.getValue(secondOperation.token)
+            val downTime = SystemClock.uptimeMillis()
+            var firstPoint = firstTouchPoints.start
+            var secondPoint = secondTouchPoints.start
+
+            allInjected = injectRapidPointerEvent(
+                downTime = downTime,
+                eventTime = downTime,
+                actionMasked = MotionEvent.ACTION_DOWN,
+                actionIndex = 0,
+                PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
+            ) && allInjected
+            firstPoint = moveRapidPointerIfNeeded(
+                downTime = downTime,
+                operation = firstOperation,
+                points = points,
+                pointer = PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
+                intervalMs = downIntervalMs,
+            ).also { allInjected = it.injected && allInjected }.point
+
+            sleepUntil(downTime + downIntervalMs)
+            allInjected = injectRapidPointerEvent(
+                downTime = downTime,
+                eventTime = SystemClock.uptimeMillis(),
+                actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+                actionIndex = 1,
+                PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
+                PointerSpec(RAPID_POINTER_IDS[1], secondPoint),
+            ) && allInjected
+
+            val secondEnd = secondOperation.directionOrTap.endPoint(secondTouchPoints)
+            if (secondEnd != secondPoint) {
+                rapidEventDelay(downIntervalMs)
+                secondPoint = secondEnd
+                allInjected = injectRapidPointerEvent(
+                    downTime = downTime,
+                    eventTime = SystemClock.uptimeMillis(),
+                    actionMasked = MotionEvent.ACTION_MOVE,
+                    actionIndex = 0,
+                    PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
+                    PointerSpec(RAPID_POINTER_IDS[1], secondPoint),
+                ) && allInjected
+            }
+            SystemClock.sleep(RAPID_FINAL_HOLD_MS)
+            allInjected = injectRapidPointerEvent(
+                downTime = downTime,
+                eventTime = SystemClock.uptimeMillis(),
+                actionMasked = MotionEvent.ACTION_POINTER_UP,
+                actionIndex = 1,
+                PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
+                PointerSpec(RAPID_POINTER_IDS[1], secondPoint),
+            ) && allInjected
+            allInjected = injectRapidPointerEvent(
+                downTime = downTime,
+                eventTime = SystemClock.uptimeMillis(),
+                actionMasked = MotionEvent.ACTION_UP,
+                actionIndex = 0,
+                PointerSpec(RAPID_POINTER_IDS[0], firstPoint),
+            ) && allInjected
+            rapidInterGestureDelay(downIntervalMs)
+        }
+        return allInjected
+    }
+
+    private fun injectRapidSingleGesture(
+        operation: RapidOperation,
+        touchPoints: RapidTouchPoints,
+    ): Boolean {
+        val start = touchPoints.start
+        val end = operation.directionOrTap.endPoint(touchPoints)
+        return if (start == end) injectRapidTap(start) else injectRapidFlick(start, end)
+    }
+
+    private fun moveRapidPointerIfNeeded(
+        downTime: Long,
+        operation: RapidOperation,
+        points: Map<String, RapidTouchPoints>,
+        pointer: PointerSpec,
+        intervalMs: Long,
+    ): RapidMoveResult {
+        val end = operation.directionOrTap.endPoint(points.getValue(operation.token))
+        if (end == pointer.point) return RapidMoveResult(pointer.point, true)
+        rapidEventDelay(intervalMs)
+        val injected = injectRapidPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_MOVE,
+            actionIndex = 0,
+            PointerSpec(pointer.id, end),
+        )
+        return RapidMoveResult(end, injected)
+    }
+
+    private fun sleepUntil(targetUptimeMs: Long) {
+        val remaining = targetUptimeMs - SystemClock.uptimeMillis()
+        if (remaining > 0L) SystemClock.sleep(remaining)
+    }
+
+    private fun rapidEventDelay(intervalMs: Long) {
+        val delayMs = (intervalMs / 4).coerceAtMost(RAPID_MAX_EVENT_DELAY_MS)
+        if (delayMs > 0L) SystemClock.sleep(delayMs)
+    }
+
+    private fun rapidInterGestureDelay(intervalMs: Long) {
+        val delayMs = (intervalMs / 2).coerceAtMost(TAP_GAP_MS)
+        if (delayMs > 0L) SystemClock.sleep(delayMs)
+    }
+
+    private fun classifyRapidInputResult(
+        expected: String,
+        actual: String,
+        allEventsInjected: Boolean,
+    ): RapidResultCategory = when {
+        !allEventsInjected -> RapidResultCategory.INJECTION_ERROR
+        actual == expected -> RapidResultCategory.PASS
+        else -> RapidResultCategory.INPUT_MISMATCH
+    }
+
+    private fun firstMismatchIndex(expected: String, actual: String): Int {
+        val commonLength = minOf(expected.length, actual.length)
+        for (index in 0 until commonLength) {
+            if (expected[index] != actual[index]) return index
+        }
+        return if (expected.length == actual.length) -1 else commonLength
     }
 
     private fun installKeyboardSizeCustomFixture(
@@ -2312,8 +3382,40 @@ class FastInputMatrixInstrumentedTest {
 
     private fun restartInput(scenario: ActivityScenario<FastInputHostActivity>) {
         awaitHostWindowFocus(scenario)
-        scenario.onActivity { activity ->
-            activity.restartEditorInput(clearText = true)
+        val context = instrumentation.targetContext
+        val readinessToken =
+            "${SystemClock.uptimeMillis()}-${IME_RESTART_TOKEN_SEQUENCE.incrementAndGet()}"
+        val readySignal = CountDownLatch(1)
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (
+                    intent?.getStringExtra(FastInputTestProtocol.EXTRA_TOKEN) == readinessToken
+                ) {
+                    readySignal.countDown()
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(FastInputTestProtocol.ACTION_IME_READY),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        try {
+            scenario.onActivity { activity ->
+                activity.restartEditorInput(
+                    clearText = true,
+                    readinessToken = readinessToken,
+                )
+            }
+            if (!readySignal.await(IME_RESTART_READY_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                throw SetupException(
+                    "IME did not report keyboard readiness after restarting the host editor " +
+                        "(token=$readinessToken)"
+                )
+            }
+        } finally {
+            context.unregisterReceiver(receiver)
         }
 
         val deadline = SystemClock.uptimeMillis() + EDITOR_CONNECTION_TIMEOUT_MS
@@ -2365,7 +3467,90 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
-    private fun prepareEmptyEditor(scenario: ActivityScenario<FastInputHostActivity>) {
+    private fun resetRapidInputTrial(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        traceId: String,
+    ) {
+        try {
+            awaitHostWindowFocus(scenario)
+            val token =
+                "${SystemClock.uptimeMillis()}-${IME_RESET_TOKEN_SEQUENCE.incrementAndGet()}"
+            val resetSignal = CountDownLatch(1)
+            val response = AtomicReference<FastInputResetResponse?>()
+            val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                    if (
+                        resultData?.getString(FastInputTestProtocol.EXTRA_RESET_TOKEN) == token
+                    ) {
+                        response.set(
+                            FastInputResetResponse(
+                                resultCode = resultCode,
+                                error = resultData.getString(
+                                    FastInputTestProtocol.EXTRA_RESET_ERROR
+                                ),
+                            )
+                        )
+                        resetSignal.countDown()
+                    }
+                }
+            }
+
+            scenario.onActivity { activity ->
+                activity.resetEditorForFastInputTest(token, receiver, traceId)
+            }
+            if (!resetSignal.await(RESET_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                throw RapidResetException(
+                    "IME reset ACK timed out after ${RESET_TIMEOUT_MS}ms (token=$token)"
+                )
+            }
+            val resetResponse = response.get()
+                ?: throw RapidResetException("IME reset ACK was empty (token=$token)")
+            if (resetResponse.resultCode != FastInputTestProtocol.RESET_ACK) {
+                throw RapidResetException(
+                    "IME rejected reset (token=$token error=${resetResponse.error})"
+                )
+            }
+
+            val deadline = SystemClock.uptimeMillis() + RESET_TIMEOUT_MS
+            var stableSamples = 0
+            var lastState = "host activity unavailable"
+            while (SystemClock.uptimeMillis() < deadline) {
+                var emptyAndFocused = false
+                scenario.onActivity { activity ->
+                    val editor = activity.editText
+                    emptyAndFocused = editor.text.isNullOrEmpty() &&
+                        editor.hasFocus() &&
+                        editor.isShown
+                    lastState =
+                        "empty=${editor.text.isNullOrEmpty()} focused=${editor.hasFocus()} " +
+                            "shown=${editor.isShown}"
+                }
+                if (emptyAndFocused) {
+                    stableSamples += 1
+                    if (stableSamples >= EDITOR_CONNECTION_STABLE_SAMPLES) return
+                } else {
+                    stableSamples = 0
+                }
+                SystemClock.sleep(POLL_MS)
+            }
+            throw RapidResetException(
+                "Editor was not empty and stable after IME reset " +
+                    "within ${RESET_TIMEOUT_MS}ms ($lastState)"
+            )
+        } catch (error: RapidResetException) {
+            throw error
+        } catch (error: Throwable) {
+            throw RapidResetException(
+                "Fast-input trial reset failed: ${error.message ?: error::class.java.simpleName}",
+                error,
+            )
+        }
+    }
+
+    private fun prepareEmptyEditor(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        rapidSurface: RapidInputSurface? = null,
+    ) {
         restartInput(scenario)
         val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
@@ -2375,10 +3560,50 @@ class FastInputMatrixInstrumentedTest {
                     activity.editText.isShown &&
                     activity.editText.text.isNullOrEmpty()
             }
-            if (ready) return
+            if (ready) {
+                rapidSurface?.let(::awaitRapidInputSurfaceReady)
+                return
+            }
             SystemClock.sleep(POLL_MS)
         }
         throw SetupException("Host editor did not become focused and empty")
+    }
+
+    private fun awaitRapidInputSurfaceReady(surface: RapidInputSurface) {
+        val operation = surface.warmOperation
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var previous: ScreenRect? = null
+        var stableSamples = 0
+        var lastError = "${surface.rootViewId} is not visible"
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                val root = findVisibleNodeById(surface.rootViewId)
+                    ?: throw SetupException("${surface.rootViewId} is not visible")
+                val current = try {
+                    findRequiredKeyBounds(
+                        keyboardRoot = root,
+                        locator = surface.locatorFor(operation),
+                    )
+                } finally {
+                    root.recycle()
+                }
+                if (current.isValid && current == previous) {
+                    stableSamples += 1
+                    if (stableSamples >= GEOMETRY_STABLE_SAMPLES) return
+                } else {
+                    stableSamples = if (current.isValid) 1 else 0
+                }
+                previous = current
+            } catch (error: SetupException) {
+                lastError = error.message.orEmpty()
+                previous = null
+                stableSamples = 0
+            }
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException(
+            "Rapid-input surface ${surface.name} was not stable after editor restart: $lastError"
+        )
     }
 
     private fun readText(scenario: ActivityScenario<FastInputHostActivity>): String {
@@ -2480,11 +3705,23 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun awaitTextSettled(
-        scenario: ActivityScenario<FastInputHostActivity>
+        scenario: ActivityScenario<FastInputHostActivity>,
+        failOnTimeout: Boolean = false,
+        timeoutMs: Long = RESULT_TIMEOUT_MS,
+        expectedText: String? = null,
     ): String {
+        if (expectedText != null) {
+            return awaitExpectedTextSettled(
+                scenario = scenario,
+                expectedText = expectedText,
+                failOnTimeout = failOnTimeout,
+                timeoutMs = timeoutMs,
+            )
+        }
+
         var previous: String? = null
         var stableSamples = 0
-        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
         while (SystemClock.uptimeMillis() < deadline) {
             val current = readText(scenario)
             if (current == previous) {
@@ -2496,7 +3733,63 @@ class FastInputMatrixInstrumentedTest {
             }
             SystemClock.sleep(POLL_MS)
         }
-        return readText(scenario)
+        val latest = readText(scenario)
+        if (failOnTimeout) {
+            throw ResultTimeoutException(
+                "Editor text did not settle within ${timeoutMs}ms; actual=[$latest]"
+            )
+        }
+        return latest
+    }
+
+    private fun awaitExpectedTextSettled(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        expectedText: String,
+        failOnTimeout: Boolean,
+        timeoutMs: Long,
+    ): String {
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
+        val policy = FastInputTextSettlePolicy(
+            expectedText = expectedText,
+            stableSamplesRequired = TEXT_STABLE_SAMPLES,
+        )
+        var latest = readText(scenario)
+        while (SystemClock.uptimeMillis() < deadline) {
+            latest = readText(scenario)
+            if (policy.observe(latest)) {
+                // Keep a short second quiet window after the expected value appears. This catches
+                // a queued extra commit without adding any wait between the injected touch events.
+                val postDeadline = minOf(
+                    deadline,
+                    SystemClock.uptimeMillis() + RAPID_POST_EXPECTED_SETTLE_MS,
+                )
+                val postPolicy = FastInputTextSettlePolicy(
+                    expectedText = expectedText,
+                    stableSamplesRequired = TEXT_STABLE_SAMPLES,
+                )
+                while (SystemClock.uptimeMillis() < postDeadline) {
+                    latest = readText(scenario)
+                    if (latest != expectedText) {
+                        throw ResultMismatchException(
+                            "Editor text changed after reaching expected value; " +
+                                "expected=[$expectedText] actual=[$latest]",
+                        )
+                    }
+                    if (postPolicy.observe(latest)) return latest
+                    SystemClock.sleep(POLL_MS)
+                }
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+
+        latest = readText(scenario)
+        if (failOnTimeout) {
+            throw ResultTimeoutException(
+                "Editor text did not reach expected value within ${timeoutMs}ms; " +
+                    "expected=[$expectedText] actual=[$latest]",
+            )
+        }
+        return latest
     }
 
     private fun awaitStableGeometry(
@@ -2549,23 +3842,27 @@ class FastInputMatrixInstrumentedTest {
     ): GeometrySnapshot {
         val root = findVisibleNodeById(keyboard.rootViewId)
             ?: throw SetupException("${keyboard.rootViewId} is not visible")
-        val rootBounds = root.screenRect()
-        val first = findRequiredKey(root, keyboard.firstKey)
-        val second = if (keyboard.firstKey == keyboard.secondKey) {
-            first
-        } else {
-            findRequiredKey(root, keyboard.secondKey)
+        return try {
+            val rootBounds = root.screenRect()
+            val first = findRequiredKeyBounds(root, keyboard.firstKey)
+            val second = if (keyboard.firstKey == keyboard.secondKey) {
+                first
+            } else {
+                findRequiredKeyBounds(root, keyboard.secondKey)
+            }
+            val prime = findRequiredKeyBounds(root, keyboard.primeKey)
+            val neighbor = keyboard.neighborKey?.let { findRequiredKeyBounds(root, it) }
+            GeometrySnapshot(
+                root = rootBounds,
+                first = first,
+                second = second,
+                prime = prime,
+                neighbor = neighbor,
+                candidate = candidateBounds
+            )
+        } finally {
+            root.recycle()
         }
-        val prime = findRequiredKey(root, keyboard.primeKey)
-        val neighbor = keyboard.neighborKey?.let { findRequiredKey(root, it) }
-        return GeometrySnapshot(
-            root = rootBounds,
-            first = first.screenRect(),
-            second = second.screenRect(),
-            prime = prime.screenRect(),
-            neighbor = neighbor?.screenRect(),
-            candidate = candidateBounds
-        )
     }
 
     private fun findRequiredKey(
@@ -2580,8 +3877,24 @@ class FastInputMatrixInstrumentedTest {
                 is NodeLocator.Label ->
                     node.text?.toString() == locator.label ||
                         node.contentDescription?.toString() == locator.label
+
+                is NodeLocator.AnyLabel ->
+                    node.text?.toString() in locator.labels ||
+                        node.contentDescription?.toString() in locator.labels
             }
         } ?: throw SetupException("Key ${locator.render()} is not visible")
+    }
+
+    private fun findRequiredKeyBounds(
+        keyboardRoot: AccessibilityNodeInfo,
+        locator: NodeLocator,
+    ): ScreenRect {
+        val node = findRequiredKey(keyboardRoot, locator)
+        return try {
+            node.screenRect()
+        } finally {
+            node.recycle()
+        }
     }
 
     private fun findCursorLeftBounds(keyboard: TestKeyboard): ScreenRect {
@@ -2590,12 +3903,20 @@ class FastInputMatrixInstrumentedTest {
             TestKeyboard.SUMIRE -> {
                 val root = findVisibleNodeById(keyboard.rootViewId)
                     ?: throw SetupException("${keyboard.rootViewId} is not visible")
-                val labels = setOf("CursorMoveLeft", "Move Cursor Left", "カーソル左")
-                val node = findDescendant(root) { candidate ->
-                    candidate.text?.toString() in labels ||
-                        candidate.contentDescription?.toString() in labels
-                } ?: throw SetupException("Sumire cursor-left key is not visible")
-                node.screenRect()
+                try {
+                    val labels = setOf("CursorMoveLeft", "Move Cursor Left", "カーソル左")
+                    val node = findDescendant(root) { candidate ->
+                        candidate.text?.toString() in labels ||
+                            candidate.contentDescription?.toString() in labels
+                    } ?: throw SetupException("Sumire cursor-left key is not visible")
+                    try {
+                        node.screenRect()
+                    } finally {
+                        node.recycle()
+                    }
+                } finally {
+                    root.recycle()
+                }
             }
 
             TestKeyboard.QWERTY -> throw SetupException(
@@ -2607,27 +3928,39 @@ class FastInputMatrixInstrumentedTest {
     private fun findCandidateState(): CandidateState {
         val recycler = findVisibleNodeById("suggestion_recycler_view")
             ?: return CandidateState(bounds = null, texts = emptyList())
-        val texts = mutableListOf<String>()
-        forEachDescendant(recycler) { node ->
-            node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                if (it !in texts && texts.size < MAX_CANDIDATE_TEXTS) texts += it
+        return try {
+            val texts = mutableListOf<String>()
+            forEachDescendant(recycler) { node ->
+                node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    if (it !in texts && texts.size < MAX_CANDIDATE_TEXTS) texts += it
+                }
             }
+            CandidateState(
+                bounds = recycler.screenRect(),
+                texts = texts
+            )
+        } finally {
+            recycler.recycle()
         }
-        return CandidateState(
-            bounds = recycler.screenRect(),
-            texts = texts
-        )
     }
 
     private fun findVisibleNodeById(idName: String): AccessibilityNodeInfo? {
         for (window in uiAutomation.windows) {
-            val root = window.root ?: continue
-            val found = findDescendant(root) { node ->
-                node.isVisibleToUser &&
-                    node.viewIdResourceName?.endsWith(":id/$idName") == true &&
-                    node.screenRect().isValid
+            try {
+                val root = window.root ?: continue
+                try {
+                    val found = findDescendant(root) { node ->
+                        node.isVisibleToUser &&
+                            node.viewIdResourceName?.endsWith(":id/$idName") == true &&
+                            node.screenRect().isValid
+                    }
+                    if (found != null) return found
+                } finally {
+                    root.recycle()
+                }
+            } finally {
+                window.recycle()
             }
-            if (found != null) return found
         }
         return null
     }
@@ -2650,21 +3983,28 @@ class FastInputMatrixInstrumentedTest {
         throw SetupException("Timed out waiting for visible key id=$idName")
     }
 
+    private fun displayBounds(): ScreenRect {
+        val display = instrumentation.targetContext
+            .getSystemService(DisplayManager::class.java)
+            .displays
+            .minByOrNull { it.displayId }
+            ?: throw SetupException("No display is available")
+        val size = Point()
+        display.getRealSize(size)
+        return ScreenRect(0, 0, size.x, size.y).also {
+            check(it.isValid) { "Display returned invalid dimensions: $size" }
+        }
+    }
+
     private fun awaitScreenAlignedNodeBounds(idName: String): ScreenRect {
         val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
         var previous: ScreenRect? = null
         var stableSamples = 0
         while (SystemClock.uptimeMillis() < deadline) {
             val nodeBounds = findVisibleNodeById(idName)?.screenRect()
-            val screenshot = uiAutomation.takeScreenshot()
-            val screenBounds = screenshot?.let { shot ->
-                val bounds = ScreenRect(0, 0, shot.width, shot.height)
-                shot.recycle()
-                bounds
-            }
+            val screenBounds = displayBounds()
             if (
                 nodeBounds != null &&
-                screenBounds != null &&
                 nodeBounds == nodeBounds.intersect(screenBounds)
             ) {
                 if (nodeBounds == previous) {
@@ -2725,12 +4065,22 @@ class FastInputMatrixInstrumentedTest {
     ): AccessibilityNodeInfo? {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (predicate(node)) return node
-            for (index in 0 until node.childCount) {
-                node.getChild(index)?.let(queue::addLast)
+        try {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                val isRoot = node === root
+                try {
+                    if (predicate(node)) return AccessibilityNodeInfo.obtain(node)
+                    for (index in 0 until node.childCount) {
+                        node.getChild(index)?.let(queue::addLast)
+                    }
+                } finally {
+                    if (!isRoot) node.recycle()
+                }
             }
+        } finally {
+            queue.forEach { it.recycle() }
+            queue.clear()
         }
         return null
     }
@@ -2741,12 +4091,22 @@ class FastInputMatrixInstrumentedTest {
     ) {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            action(node)
-            for (index in 0 until node.childCount) {
-                node.getChild(index)?.let(queue::addLast)
+        try {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                val isRoot = node === root
+                try {
+                    action(node)
+                    for (index in 0 until node.childCount) {
+                        node.getChild(index)?.let(queue::addLast)
+                    }
+                } finally {
+                    if (!isRoot) node.recycle()
+                }
             }
+        } finally {
+            queue.forEach { it.recycle() }
+            queue.clear()
         }
     }
 
@@ -2842,6 +4202,57 @@ class FastInputMatrixInstrumentedTest {
         return allInjected
     }
 
+    private fun injectRapidTap(point: PointF): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        var injected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_DOWN,
+            point = point,
+        )
+        SystemClock.sleep(TAP_HOLD_MS)
+        injected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_UP,
+            point = point,
+        ) && injected
+        SystemClock.sleep(TAP_GAP_MS)
+        return injected
+    }
+
+    private fun injectRapidFlick(start: PointF, end: PointF): Boolean {
+        if (start == end) return injectRapidTap(start)
+
+        val downTime = SystemClock.uptimeMillis()
+        var allInjected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_DOWN,
+            point = start,
+        )
+        SystemClock.sleep(FLICK_STEP_MS)
+
+        repeat(FLICK_MOVE_STEPS) { index ->
+            val fraction = (index + 1f) / FLICK_MOVE_STEPS
+            val point = PointF(
+                start.x + (end.x - start.x) * fraction,
+                start.y + (end.y - start.y) * fraction,
+            )
+            allInjected = injectRapidSinglePointerEvent(
+                downTime = downTime,
+                action = MotionEvent.ACTION_MOVE,
+                point = point,
+            ) && allInjected
+            SystemClock.sleep(FLICK_STEP_MS)
+        }
+
+        allInjected = injectRapidSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_UP,
+            point = end,
+        ) && allInjected
+        SystemClock.sleep(TAP_GAP_MS)
+        return allInjected
+    }
+
     private fun injectSinglePointerEvent(
         downTime: Long,
         action: Int,
@@ -2854,6 +4265,24 @@ class FastInputMatrixInstrumentedTest {
             point = point
         )
         return uiAutomation.injectInputEvent(event, true).also {
+            event.recycle()
+        }
+    }
+
+    private fun injectRapidSinglePointerEvent(
+        downTime: Long,
+        action: Int,
+        point: PointF,
+    ): Boolean {
+        val event = singlePointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            action = action,
+            point = point,
+        )
+        return try {
+            uiAutomation.injectInputEvent(event, false)
+        } finally {
             event.recycle()
         }
     }
@@ -3091,6 +4520,37 @@ class FastInputMatrixInstrumentedTest {
         actionMasked: Int,
         actionIndex: Int,
         vararg pointers: PointerSpec
+    ): Boolean = injectPointerEventWithMode(
+        downTime = downTime,
+        eventTime = eventTime,
+        actionMasked = actionMasked,
+        actionIndex = actionIndex,
+        synchronous = true,
+        pointers = pointers,
+    )
+
+    private fun injectRapidPointerEvent(
+        downTime: Long,
+        eventTime: Long,
+        actionMasked: Int,
+        actionIndex: Int,
+        vararg pointers: PointerSpec,
+    ): Boolean = injectPointerEventWithMode(
+        downTime = downTime,
+        eventTime = eventTime,
+        actionMasked = actionMasked,
+        actionIndex = actionIndex,
+        synchronous = false,
+        pointers = pointers,
+    )
+
+    private fun injectPointerEventWithMode(
+        downTime: Long,
+        eventTime: Long,
+        actionMasked: Int,
+        actionIndex: Int,
+        synchronous: Boolean,
+        pointers: Array<out PointerSpec>,
     ): Boolean {
         val properties = Array(pointers.size) { index ->
             MotionEvent.PointerProperties().apply {
@@ -3124,8 +4584,34 @@ class FastInputMatrixInstrumentedTest {
             InputDevice.SOURCE_TOUCHSCREEN,
             0
         )
+        activeRapidTraceEvents?.add(
+            buildString {
+                append("traceId=")
+                append(activeRapidTraceId)
+                append(" stage=inject action=")
+                append(MotionEvent.actionToString(actionMasked))
+                append(" actionIndex=")
+                append(actionIndex)
+                append(" eventTime=")
+                append(eventTime)
+                append(" synchronous=")
+                append(synchronous)
+                append(" pointers=")
+                append(
+                    pointers.joinToString("|") { pointer ->
+                        buildString {
+                            append(pointer.id)
+                            append("@")
+                            append(pointer.point.x)
+                            append(",")
+                            append(pointer.point.y)
+                        }
+                    }
+                )
+            }
+        )
         return try {
-            uiAutomation.injectInputEvent(event, true)
+            uiAutomation.injectInputEvent(event, synchronous)
         } finally {
             event.recycle()
         }
@@ -3180,15 +4666,11 @@ class FastInputMatrixInstrumentedTest {
 
     private fun rotateAndVerify(orientation: TestOrientation) {
         fun hasExpectedAspectRatio(): Boolean {
-            val screenshot = uiAutomation.takeScreenshot()
-            return screenshot?.let {
-                val matches = when (orientation) {
-                    TestOrientation.PORTRAIT -> it.height >= it.width
-                    TestOrientation.LANDSCAPE -> it.width > it.height
-                }
-                it.recycle()
-                matches
-            } ?: false
+            val bounds = displayBounds()
+            return when (orientation) {
+                TestOrientation.PORTRAIT -> bounds.height >= bounds.width
+                TestOrientation.LANDSCAPE -> bounds.width > bounds.height
+            }
         }
 
         if (hasExpectedAspectRatio()) {
@@ -3381,6 +4863,12 @@ class FastInputMatrixInstrumentedTest {
             block(session)
         } finally {
             restorePreferences(preferences, originalPreferences)
+            // A test can finish while rotation is frozen in landscape. Restoring the previous
+            // IME before unfreezing starts an asynchronous Gboard configuration change which can
+            // race the next test's `ime set` command. Let the display return to its stable state
+            // first, then restore the original IME.
+            uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
+            SystemClock.sleep(ORIENTATION_SETTLE_MS)
             if (originalIme != null) {
                 runCatching { setIme(context, originalIme) }
                     .onFailure { reportImeRestoreFailure("restore default", originalIme, it) }
@@ -3392,7 +4880,6 @@ class FastInputMatrixInstrumentedTest {
                 runCatching { disableIme(targetIme) }
                     .onFailure { reportImeRestoreFailure("restore enabled state", targetIme, it) }
             }
-            uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             sendProgress(
                 "FAST_INPUT_RESTORED preferences=true ime=${originalIme ?: targetIme} " +
                     "rotation=unfrozen\n"
@@ -3469,13 +4956,20 @@ class FastInputMatrixInstrumentedTest {
         val deadline = SystemClock.uptimeMillis() + IME_SWITCH_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
             shell("ime set $component")
+            var selectedSince = -1L
             val attemptDeadline = minOf(
                 deadline,
-                SystemClock.uptimeMillis() + IME_SWITCH_RETRY_MS
+                SystemClock.uptimeMillis() +
+                    IME_SWITCH_RETRY_MS +
+                    IME_SWITCH_STABILITY_MS
             )
             while (SystemClock.uptimeMillis() < attemptDeadline) {
                 if (sameComponent(currentIme(context), component)) {
-                    return
+                    val now = SystemClock.uptimeMillis()
+                    if (selectedSince < 0L) selectedSince = now
+                    if (now - selectedSince >= IME_SWITCH_STABILITY_MS) return
+                } else {
+                    selectedSince = -1L
                 }
                 SystemClock.sleep(POLL_MS)
             }
@@ -3585,6 +5079,10 @@ class FastInputMatrixInstrumentedTest {
 
         data class Label(val label: String) : NodeLocator {
             override fun render(): String = "label/$label"
+        }
+
+        data class AnyLabel(val labels: Set<String>) : NodeLocator {
+            override fun render(): String = "label/${labels.joinToString("|")}"
         }
     }
 
@@ -3945,6 +5443,230 @@ class FastInputMatrixInstrumentedTest {
         val point: PointF
     )
 
+    private enum class RapidInputSurface(
+        val rootViewId: String,
+        val keyboardOrder: String,
+        val warmExpected: String,
+    ) {
+        TENKEY(
+            "keyboard_view",
+            """["TENKEY","GOJUON","SUMIRE","QWERTY","ROMAJI","CUSTOM"]""",
+            "あ",
+        ),
+        GOJUON(
+            "gojuon_view",
+            """["GOJUON","TENKEY","SUMIRE","QWERTY","ROMAJI","CUSTOM"]""",
+            "あ",
+        ),
+        SUMIRE(
+            "custom_layout_default",
+            """["SUMIRE","TENKEY","GOJUON","QWERTY","ROMAJI","CUSTOM"]""",
+            "あ",
+        ),
+        QWERTY(
+            "qwerty_view",
+            """["QWERTY","TENKEY","GOJUON","SUMIRE","ROMAJI","CUSTOM"]""",
+            "a",
+        ),
+        ROMAJI(
+            "qwerty_view",
+            """["ROMAJI","TENKEY","GOJUON","SUMIRE","QWERTY","CUSTOM"]""",
+            "あ",
+        ),
+        CUSTOM(
+            "custom_layout_default",
+            """["CUSTOM","TENKEY","GOJUON","SUMIRE","QWERTY","ROMAJI"]""",
+            "あ",
+        );
+
+        val warmOperation: RapidOperation
+            get() = when (this) {
+                TENKEY, SUMIRE, CUSTOM -> RapidOperation.Kana(0, RapidDirection.TAP)
+                GOJUON -> RAPID_GOJUON_BASE_KEYS.first().toOperation()
+                QWERTY, ROMAJI -> RapidOperation.Direct(
+                    token = "qwerty-a",
+                    locator = NodeLocator.Id("key_a"),
+                    direction = RapidDirection.TAP,
+                    output = warmExpected,
+                )
+            }
+
+        fun locatorFor(operation: RapidOperation): NodeLocator = when (operation) {
+            is RapidOperation.Kana -> {
+                val row = RAPID_KANA_ROWS[operation.rowIndex]
+                when (this) {
+                    TENKEY -> NodeLocator.Id(row.tenKeyViewId)
+                    SUMIRE, CUSTOM -> NodeLocator.Label(row.label)
+                    GOJUON, QWERTY, ROMAJI -> error(
+                        "Kana-row operation is not valid for $this"
+                    )
+                }
+            }
+
+            RapidOperation.Dakuten -> when (this) {
+                TENKEY -> NodeLocator.Id("key_small_letter")
+                SUMIRE -> NodeLocator.AnyLabel(setOf("^_^", " 小゛゜", "小゛゜"))
+                CUSTOM -> NodeLocator.Label(RAPID_DAKUTEN_LABEL)
+                GOJUON, QWERTY, ROMAJI -> error(
+                    "Dakuten key operation is not valid for $this"
+                )
+            }
+
+            is RapidOperation.Direct -> operation.locator
+        }
+    }
+
+    private enum class RapidDirection(
+        val persistedDirection: FlickDirection,
+        private val normalizedX: Float,
+        private val normalizedY: Float,
+    ) {
+        TAP(FlickDirection.TAP, 0f, 0f),
+        LEFT(FlickDirection.UP_LEFT_FAR, -0.70f, 0f),
+        UP(FlickDirection.UP, 0f, -0.70f),
+        RIGHT(FlickDirection.UP_RIGHT_FAR, 0.70f, 0f),
+        DOWN(FlickDirection.DOWN, 0f, 0.70f);
+
+        fun endPoint(bounds: ScreenRect, minimumDistancePx: Float): PointF {
+            fun delta(size: Int, factor: Float): Float = if (factor == 0f) {
+                0f
+            } else {
+                factor.sign * maxOf(size * abs(factor), minimumDistancePx)
+            }
+            return PointF(
+                bounds.center.x + delta(bounds.width, normalizedX),
+                bounds.center.y + delta(bounds.height, normalizedY),
+            )
+        }
+
+        fun endPoint(points: RapidTouchPoints): PointF = points.ends.getValue(this)
+    }
+
+    private sealed interface RapidOperation {
+        val token: String
+        val directionOrTap: RapidDirection
+
+        data class Kana(
+            val rowIndex: Int,
+            val direction: RapidDirection,
+        ) : RapidOperation {
+            override val token: String
+                get() = RAPID_KANA_ROWS[rowIndex].token
+            override val directionOrTap: RapidDirection
+                get() = direction
+        }
+
+        data object Dakuten : RapidOperation {
+            override val token: String = RAPID_DAKUTEN_TOKEN
+            override val directionOrTap: RapidDirection = RapidDirection.TAP
+        }
+
+        data class Direct(
+            override val token: String,
+            val locator: NodeLocator,
+            val direction: RapidDirection,
+            val output: String,
+        ) : RapidOperation {
+            override val directionOrTap: RapidDirection
+                get() = direction
+        }
+    }
+
+    private enum class RapidReleaseOrder {
+        ROLLING_OLDER_FIRST,
+        PAIRED_NEWER_FIRST,
+    }
+
+    private enum class RapidEditorState {
+        COLD,
+        WARM,
+    }
+
+    private enum class RapidResultCategory {
+        PASS,
+        INPUT_MISMATCH,
+        INJECTION_ERROR,
+        RESET_ERROR,
+        SETUP_ERROR,
+        RESULT_TIMEOUT,
+    }
+
+    private data class RapidKanaRow(
+        val token: String,
+        val tenKeyViewId: String,
+        val label: String,
+        val outputs: List<String>,
+    )
+
+    private data class RapidInputScenario(
+        val name: String,
+        val operations: List<RapidOperation>,
+        val expected: String,
+        val seed: Int,
+    )
+
+    private data class RapidInputTrace(
+        val traceId: String,
+        val surface: String,
+        val operations: List<RapidOperation>,
+        val pointerIds: List<Int>,
+        val intervalMs: Long,
+        val releaseOrder: RapidReleaseOrder,
+        val expectedText: String,
+    )
+
+    private data class RapidTrialDimensions(
+        val releaseOrder: RapidReleaseOrder,
+        val orientation: TestOrientation,
+        val editorState: RapidEditorState,
+    )
+
+    private data class RapidGojuonKey(
+        val viewId: String,
+        val output: String,
+        val direction: RapidDirection = RapidDirection.TAP,
+    ) {
+        fun toOperation() = RapidOperation.Direct(
+            token = "gojuon-$viewId",
+            locator = NodeLocator.Id(viewId),
+            direction = direction,
+            output = output,
+        )
+    }
+
+    private data class RapidRomajiSyllable(
+        val roman: String,
+        val kana: String,
+    )
+
+    private data class RapidInputCustomFixture(
+        val id: Long,
+        val stableId: String,
+    )
+
+    private data class RapidTouchPoints(
+        val start: PointF,
+        val ends: Map<RapidDirection, PointF>,
+    )
+
+    private data class RapidMoveResult(
+        val point: PointF,
+        val injected: Boolean,
+    )
+
+    private data class RapidTrialOutcome(
+        val category: RapidResultCategory,
+        val expected: String,
+        val actual: String,
+        val allEventsInjected: Boolean,
+        val error: String? = null,
+    )
+
+    private data class FastInputResetResponse(
+        val resultCode: Int,
+        val error: String?,
+    )
+
     private enum class RateCategory {
         EXPECTED,
         YA_NA,
@@ -3983,6 +5705,19 @@ class FastInputMatrixInstrumentedTest {
         cause: Throwable? = null
     ) : RuntimeException(message, cause)
 
+    private class RapidResetException(
+        message: String,
+        cause: Throwable? = null,
+    ) : RuntimeException(message, cause)
+
+    private class ResultTimeoutException(
+        message: String,
+    ) : RuntimeException(message)
+
+    private class ResultMismatchException(
+        message: String,
+    ) : RuntimeException(message)
+
     companion object {
         private const val TAG = "FastInputMatrix"
         private const val KEYBOARD_SIZE_CUSTOM_LABEL = "SIZE-CI"
@@ -4015,6 +5750,7 @@ class FastInputMatrixInstrumentedTest {
         )
         private const val SEQUENCE_REPETITIONS = 8
         private const val DEFAULT_MATRIX_ROUNDS = 3
+        private const val DEFAULT_GENERATED_MATRIX_ROUNDS = 1
         private const val DEFAULT_RATE_TRIALS = 10
         private const val TAP_HOLD_MS = 18L
         private const val TAP_GAP_MS = 12L
@@ -4042,6 +5778,11 @@ class FastInputMatrixInstrumentedTest {
         private const val MAX_CANDIDATE_TEXTS = 8
         private const val SETUP_TIMEOUT_MS = 2_000L
         private const val RESULT_TIMEOUT_MS = 1_000L
+        // Hosted emulators can spend several seconds applying candidate updates after the last
+        // injected event, especially for long Romaji sequences. This remains a strict bounded
+        // settle timeout; it does not accept a partial or incorrect editor value.
+        private const val RAPID_RESULT_TIMEOUT_MS = 10_000L
+        private const val RAPID_POST_EXPECTED_SETTLE_MS = 256L
         private const val ORIENTATION_TIMEOUT_MS = 4_000L
         private const val ORIENTATION_SETTLE_MS = 500L
         private const val HOST_WINDOW_FOCUS_TIMEOUT_MS = 15_000L
@@ -4049,16 +5790,170 @@ class FastInputMatrixInstrumentedTest {
         private const val IME_LAYOUT_SETTLE_MS = 350L
         private const val EDITOR_CONNECTION_TIMEOUT_MS = 10_000L
         private const val EDITOR_CONNECTION_STABLE_SAMPLES = 3
+        private const val IME_RESTART_READY_TIMEOUT_MS = 10_000L
         private const val IME_STATE_POLL_MS = 250L
         private const val IME_REGISTRATION_TIMEOUT_MS = 30_000L
         private const val IME_ENABLE_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_RETRY_MS = 1_000L
+        private const val IME_SWITCH_STABILITY_MS = 750L
+        private val IME_RESTART_TOKEN_SEQUENCE = AtomicLong(0L)
+        private val IME_RESET_TOKEN_SEQUENCE = AtomicLong(0L)
+        private const val RESET_TIMEOUT_MS = 5_000L
         private const val TOTAL_CASES = 3 * 3 * 2 * 2 * 2 * 2
         private const val CASES_PER_ORIENTATION = TOTAL_CASES / 2
         private const val RATE_CONFIGURATIONS = 2 * 2 * 2 * 2
         private const val RATE_CONFIGURATIONS_PER_ORIENTATION =
             RATE_CONFIGURATIONS / 2
         private val RATE_INTERVALS_MS = longArrayOf(120L, 80L, 60L, 40L, 30L)
+        private const val RAPID_DAKUTEN_TOKEN = "rapid-dakuten"
+        private const val RAPID_DAKUTEN_LABEL = "小゛゜"
+        private const val RAPID_SCENARIOS_PER_SURFACE = 6
+        private const val RAPID_GENERATED_OPERATION_COUNT = 48
+        private const val RAPID_REPEAT_BURST_LENGTH = 8
+        private const val RAPID_ROMAJI_SYLLABLES_PER_TRACE = 24
+        private const val RAPID_BASE_SEED = 0x5A17
+        private const val RAPID_COVERAGE_SEED = 0
+        private const val RAPID_FINAL_HOLD_MS = 8L
+        private const val RAPID_MAX_EVENT_DELAY_MS = 4L
+        private const val RAPID_MIN_FLICK_DISTANCE_DP = 48f
+        private val RAPID_POINTER_IDS = intArrayOf(7, 19)
+        private val RAPID_CANDIDATE_COLUMNS = listOf(1, 2, 3)
+        private val RAPID_SUMIRE_INPUT_METHODS = listOf(
+            "toggle",
+            "flick",
+            "switch-mode-effective",
+        )
+        private val RAPID_MULTITOUCH_INTERVALS_MS =
+            longArrayOf(120L, 60L, 30L, 16L, 8L, 4L, 0L)
+        // The built-in dakuten key cycles つ through small-tsu before づ, so keep
+        // this oracle to kana that have an unambiguous one-press dakuten result.
+        private val RAPID_DAKUTEN_ROW_INDICES = intArrayOf(1, 2, 5)
+        private val RAPID_KANA_ROWS = listOf(
+            RapidKanaRow("rapid-a", "key_1", "あ", listOf("あ", "い", "う", "え", "お")),
+            RapidKanaRow("rapid-ka", "key_2", "か", listOf("か", "き", "く", "け", "こ")),
+            RapidKanaRow("rapid-sa", "key_3", "さ", listOf("さ", "し", "す", "せ", "そ")),
+            RapidKanaRow("rapid-ta", "key_4", "た", listOf("た", "ち", "つ", "て", "と")),
+            RapidKanaRow("rapid-na", "key_5", "な", listOf("な", "に", "ぬ", "ね", "の")),
+            RapidKanaRow("rapid-ha", "key_6", "は", listOf("は", "ひ", "ふ", "へ", "ほ")),
+        )
+        private val RAPID_DAKUTEN_TRANSFORMS = mapOf(
+            'か' to 'が', 'き' to 'ぎ', 'く' to 'ぐ', 'け' to 'げ', 'こ' to 'ご',
+            'さ' to 'ざ', 'し' to 'じ', 'す' to 'ず', 'せ' to 'ぜ', 'そ' to 'ぞ',
+            'た' to 'だ', 'ち' to 'ぢ', 'つ' to 'づ', 'て' to 'で', 'と' to 'ど',
+            'は' to 'ば', 'ひ' to 'び', 'ふ' to 'ぶ', 'へ' to 'べ', 'ほ' to 'ぼ',
+        )
+        private const val RAPID_QWERTY_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+        private val RAPID_QWERTY_ROWS = listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
+        private const val RAPID_QWERTY_REPEAT_KEYS = "asdfjklyuiop"
+        private val RAPID_GOJUON_BASE_KEYS = buildList {
+            fun addRow(firstId: Int, outputs: String) {
+                outputs.forEachIndexed { index, output ->
+                    add(RapidGojuonKey("key_${firstId + index}", output.toString()))
+                }
+            }
+            addRow(51, "あいうえお")
+            addRow(46, "かきくけこ")
+            addRow(41, "さしすせそ")
+            addRow(36, "たちつてと")
+            addRow(31, "なにぬねの")
+            addRow(26, "はひふへほ")
+            addRow(21, "まみむめも")
+            add(RapidGojuonKey("key_16", "や"))
+            add(RapidGojuonKey("key_18", "ゆ"))
+            add(RapidGojuonKey("key_20", "よ"))
+            addRow(11, "らりるれろ")
+            add(RapidGojuonKey("key_6", "わ"))
+            add(RapidGojuonKey("key_7", "を"))
+            add(RapidGojuonKey("key_8", "ん"))
+        }
+        private val RAPID_GOJUON_VOICED_KEYS = buildList {
+            fun addVoicedRow(firstId: Int, outputs: String) {
+                outputs.forEachIndexed { index, output ->
+                    add(
+                        RapidGojuonKey(
+                            viewId = "key_${firstId + index}",
+                            output = output.toString(),
+                            direction = RapidDirection.LEFT,
+                        )
+                    )
+                }
+            }
+            addVoicedRow(46, "がぎぐげご")
+            addVoicedRow(41, "ざじずぜぞ")
+            addVoicedRow(36, "だぢづでど")
+            addVoicedRow(26, "ばびぶべぼ")
+        }
+        private val RAPID_GOJUON_MODIFIER_KEYS = buildList {
+            "ぱぴぷぺぽ".forEachIndexed { index, output ->
+                add(
+                    RapidGojuonKey(
+                        viewId = "key_${26 + index}",
+                        output = output.toString(),
+                        direction = RapidDirection.RIGHT,
+                    )
+                )
+            }
+            "ぁぃぅぇぉ".forEachIndexed { index, output ->
+                add(
+                    RapidGojuonKey(
+                        viewId = "key_${51 + index}",
+                        output = output.toString(),
+                        direction = RapidDirection.UP,
+                    )
+                )
+            }
+            add(RapidGojuonKey("key_38", "っ", RapidDirection.UP))
+            add(RapidGojuonKey("key_16", "ゃ", RapidDirection.UP))
+            add(RapidGojuonKey("key_18", "ゅ", RapidDirection.UP))
+            add(RapidGojuonKey("key_20", "ょ", RapidDirection.UP))
+        }
+        private val RAPID_ROMAJI_SYLLABLES = listOf(
+            RapidRomajiSyllable("a", "あ"),
+            RapidRomajiSyllable("i", "い"),
+            RapidRomajiSyllable("u", "う"),
+            RapidRomajiSyllable("e", "え"),
+            RapidRomajiSyllable("o", "お"),
+            RapidRomajiSyllable("ka", "か"),
+            RapidRomajiSyllable("ki", "き"),
+            RapidRomajiSyllable("ku", "く"),
+            RapidRomajiSyllable("ke", "け"),
+            RapidRomajiSyllable("ko", "こ"),
+            RapidRomajiSyllable("sa", "さ"),
+            RapidRomajiSyllable("shi", "し"),
+            RapidRomajiSyllable("su", "す"),
+            RapidRomajiSyllable("se", "せ"),
+            RapidRomajiSyllable("so", "そ"),
+            RapidRomajiSyllable("ta", "た"),
+            RapidRomajiSyllable("chi", "ち"),
+            RapidRomajiSyllable("tsu", "つ"),
+            RapidRomajiSyllable("te", "て"),
+            RapidRomajiSyllable("to", "と"),
+            RapidRomajiSyllable("na", "な"),
+            RapidRomajiSyllable("ni", "に"),
+            RapidRomajiSyllable("nu", "ぬ"),
+            RapidRomajiSyllable("ne", "ね"),
+            RapidRomajiSyllable("no", "の"),
+            RapidRomajiSyllable("ha", "は"),
+            RapidRomajiSyllable("hi", "ひ"),
+            RapidRomajiSyllable("fu", "ふ"),
+            RapidRomajiSyllable("he", "へ"),
+            RapidRomajiSyllable("ho", "ほ"),
+            RapidRomajiSyllable("ma", "ま"),
+            RapidRomajiSyllable("mi", "み"),
+            RapidRomajiSyllable("mu", "む"),
+            RapidRomajiSyllable("me", "め"),
+            RapidRomajiSyllable("mo", "も"),
+            RapidRomajiSyllable("ya", "や"),
+            RapidRomajiSyllable("yu", "ゆ"),
+            RapidRomajiSyllable("yo", "よ"),
+            RapidRomajiSyllable("ra", "ら"),
+            RapidRomajiSyllable("ri", "り"),
+            RapidRomajiSyllable("ru", "る"),
+            RapidRomajiSyllable("re", "れ"),
+            RapidRomajiSyllable("ro", "ろ"),
+            RapidRomajiSyllable("wa", "わ"),
+            RapidRomajiSyllable("wo", "を"),
+        )
     }
 }

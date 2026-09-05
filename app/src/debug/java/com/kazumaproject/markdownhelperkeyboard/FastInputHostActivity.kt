@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.app.Activity
 import android.os.Bundle
+import android.os.ResultReceiver
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -57,7 +58,6 @@ class FastInputHostActivity : Activity() {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             editText.requestFocus()
-            getSystemService(InputMethodManager::class.java).restartInput(editText)
             requestImeForEditor()
         }
     }
@@ -69,14 +69,29 @@ class FastInputHostActivity : Activity() {
      * matrix test only needs InputMethodService.onStartInput() to reload its preferences, so a
      * restart on the existing connection is both sufficient and deterministic.
      */
-    fun restartEditorInput(clearText: Boolean) {
+    fun restartEditorInput(clearText: Boolean, readinessToken: String? = null) {
         if (clearText) {
-            editText.setText("")
+            editText.editableText.clear()
         }
+        editText.privateImeOptions = readinessToken?.let(FastInputTestProtocol::privateImeOptions)
         editText.requestFocus()
         editText.setSelection(editText.text.length)
         getSystemService(InputMethodManager::class.java).restartInput(editText)
         requestImeForEditor()
+    }
+
+    fun resetEditorForFastInputTest(
+        token: String,
+        receiver: ResultReceiver,
+        traceId: String? = null,
+    ) {
+        editText.editableText.clear()
+        editText.setSelection(0)
+        getSystemService(InputMethodManager::class.java).sendAppPrivateCommand(
+            editText,
+            FastInputTestProtocol.ACTION_RESET_FOR_TEST,
+            FastInputTestProtocol.resetCommand(token, receiver, traceId),
+        )
     }
 
     fun requestImeForEditor() {

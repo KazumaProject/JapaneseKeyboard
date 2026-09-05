@@ -151,6 +151,7 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.domain.state.toInputMode
 import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
+import com.kazumaproject.core.domain.touch.PointerGestureTrace
 import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -176,6 +177,7 @@ import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.BuildConfig
+import com.kazumaproject.markdownhelperkeyboard.FastInputTestProtocol
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
@@ -1519,6 +1521,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _dakutenPressed = MutableStateFlow(false)
     private val candidateRefreshCoordinator = CandidateRefreshCoordinator()
     private val candidateRefreshRequests = candidateRefreshCoordinator.requests
+    private val fastInputResetCoordinator = ImeTransientStateResetCoordinator()
     private var defaultInputFinalizeJob: Job? = null
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
@@ -2606,6 +2609,183 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
+    }
+
+    override fun onAppPrivateCommand(action: String?, data: Bundle?) {
+        super.onAppPrivateCommand(action, data)
+        if (!BuildConfig.DEBUG || action != FastInputTestProtocol.ACTION_RESET_FOR_TEST) {
+            return
+        }
+
+        @Suppress("DEPRECATION")
+        val receiver = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            data?.getParcelable(
+                FastInputTestProtocol.EXTRA_RESET_RESULT_RECEIVER,
+                ResultReceiver::class.java,
+            )
+        } else {
+            data?.getParcelable(FastInputTestProtocol.EXTRA_RESET_RESULT_RECEIVER)
+        }
+        val token = data?.getString(FastInputTestProtocol.EXTRA_RESET_TOKEN).orEmpty()
+        if (receiver == null || token.isBlank()) return
+
+        PointerGestureTrace.end()
+        data?.getString(FastInputTestProtocol.EXTRA_TRACE_ID)?.let(PointerGestureTrace::begin)
+        runCatching { resetFastInputTestState() }
+            .onSuccess {
+                receiver.send(
+                    FastInputTestProtocol.RESET_ACK,
+                    Bundle().apply {
+                        putString(FastInputTestProtocol.EXTRA_RESET_TOKEN, token)
+                    },
+                )
+                PointerGestureTrace.log("reset", "ack")
+            }
+            .onFailure { error ->
+                PointerGestureTrace.log(
+                    "reset",
+                    "error=" + (error.message ?: error::class.java.simpleName),
+                )
+                Timber.e(error, "Fast-input test reset failed")
+                receiver.send(
+                    FastInputTestProtocol.RESET_ERROR,
+                    Bundle().apply {
+                        putString(FastInputTestProtocol.EXTRA_RESET_TOKEN, token)
+                        putString(
+                            FastInputTestProtocol.EXTRA_RESET_ERROR,
+                            error.message ?: error::class.java.simpleName,
+                        )
+                    },
+                )
+            }
+    }
+
+    /**
+     * Clears only transient input state for the debug fast-input matrix.
+     *
+     * The selected keyboard surface and its candidate-column preference are deliberately not
+     * changed here. Surface, column, and orientation changes still use onStartInput/restartInput;
+     * this path is only the between-trial barrier.
+     */
+    private fun resetFastInputTestState() {
+        val inputConnection = currentInputConnection
+            ?: error("InputConnection is unavailable during fast-input test reset")
+        val generation = fastInputResetCoordinator.reset(
+            ImeTransientStateResetCoordinator.Actions(
+                cancelAsyncWork = ::cancelFastInputAsyncWork,
+                resetGestureState = ::resetFastInputGestureState,
+                clearTransientState = ::clearFastInputTransientState,
+                clearViewsAndEffects = ::clearFastInputViewsAndEffects,
+                clearInputConnection = {
+                    clearFastInputInputConnection(inputConnection)
+                },
+            )
+        )
+        PointerGestureTrace.log("reset", "generation=" + generation + " complete")
+    }
+
+    private fun cancelFastInputAsyncWork() {
+        flickInputPreviewCoordinator.cancel(restore = false)
+        flickInputPreviewCoordinator.resetForEditorSession()
+        qwertyGlideInputCoordinator?.cancelPending()
+        candidateRequestTracker.invalidate()
+        candidateRefreshCoordinator.invalidate()
+        defaultInputFinalizeJob?.cancel()
+        defaultInputFinalizeJob = null
+        cancelActiveCandidateTranslation()
+        cancelActiveSelectionAction()
+        customKeyboardRenderJob?.cancel()
+        customKeyboardRenderJob = null
+        numberKeyboardRenderJob?.cancel()
+        numberKeyboardRenderJob = null
+        conversionLearningSession.cancel()
+        stopDeleteLongPress()
+        stopAllOngoingKeyLongPresses()
+    }
+
+    private fun resetFastInputGestureState() {
+        mainLayoutBinding?.apply {
+            keyboardView.resetTouchStateForFastInputTest()
+            gojuonView.resetTouchStateForFastInputTest()
+            qwertyView.resetTouchStateForFastInputTest()
+            customLayoutDefault.resetTouchStateForFastInputTest()
+            (root as? InkTouchDispatchFrameLayout)?.resetTouchStateForFastInputTest()
+        }
+        floatingKeyboardBinding?.apply {
+            keyboardViewFloating.resetTouchStateForFastInputTest()
+            gojuonViewFloating.resetTouchStateForFastInputTest()
+            qwertyViewFloating.resetTouchStateForFastInputTest()
+            customLayoutFloating.resetTouchStateForFastInputTest()
+            (root as? InkTouchDispatchFrameLayout)?.resetTouchStateForFastInputTest()
+        }
+    }
+
+    private fun clearFastInputTransientState() {
+        clearZeroQueryAllState(refresh = false)
+        clearFunctionKeyConversionSource()
+        _inputString.update { "" }
+        stringInTail.set("")
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        bunsetusMultipleDetect = false
+        isContinuousTapInputEnabled.set(false)
+        leftCursorKeyLongKeyPressed.set(false)
+        rightCursorKeyLongKeyPressed.set(false)
+        _dakutenPressed.value = false
+        englishSpaceKeyPressed.set(false)
+        lastFlickConvertedNextHiragana.set(false)
+        onDeleteLongPressUp.set(false)
+        isSpaceKeyLongPressed = false
+        onKeyboardSwitchLongPressUp = false
+        isFirstClickHasStringTail = false
+        lastCandidate = ""
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        clearDeletedBuffer()
+        _selectMode.update { false }
+        hasConvertedKatakana = false
+        romajiConverter?.clear()
+        hardKeyboardShiftPressd = false
+        resetSumireKeyboardDakutenMode()
+        initialCursorDetectInFloatingCandidateView = false
+        initialCursorXPosition = 0
+        countToggleKatakana = 0
+        currentEnterKeyIndex = 0
+        currentSpaceKeyIndex = 0
+        currentKatakanaKeyIndex = 0
+        currentDakutenKeyIndex = 0
+        clearPendingReconversionEntry()
+        clearBunsetsuReconversionDraft()
+        bunsetsuPositionList = emptyList()
+        bunsetsuSplitPatterns = emptyList()
+        clearBunsetsuConversionSession()
+    }
+
+    private fun clearFastInputViewsAndEffects() {
+        clearZenzLiveSlot("fast-input-test-reset")
+        setSuggestionAdapterSuggestionsOnMain(emptyList())
+        setSuggestionAdaptersOnMain(emptyList())
+        updateSuggestionsForFloatingCandidate(emptyList())
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionClickNum = 0
+        filteredCandidateList = emptyList()
+        _keyboardSymbolViewState.update { SymbolKeyboardState() }
+        refreshEditHistoryUi()
+        clearAndPauseKeyboardTouchEffects()
+    }
+
+    private fun clearFastInputInputConnection(inputConnection: InputConnection) {
+        inputConnection.beginBatchEdit()
+        try {
+            inputConnection.finishComposingText()
+            check(inputConnection.setComposingText("", 1)) {
+                "InputConnection rejected empty composing text"
+            }
+            inputConnection.finishComposingText()
+        } finally {
+            inputConnection.endBatchEdit()
+        }
     }
 
     private fun startKanaKanjiConversionSession(backend: ConversionBackend) {
@@ -5016,6 +5196,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
         consumePendingGemmaPickedImage()
+        if (BuildConfig.DEBUG) {
+            FastInputTestProtocol.tokenFrom(editorInfo?.privateImeOptions)?.let { token ->
+                sendBroadcast(FastInputTestProtocol.readyIntent(packageName, token))
+            }
+        }
     }
 
     override fun onWindowShown() {
@@ -5024,6 +5209,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        PointerGestureTrace.end()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -5078,6 +5264,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        PointerGestureTrace.end()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.destroy()
             inlineAutofillController = null
@@ -17418,11 +17605,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun scheduleDefaultInputFinalize(string: String) {
         val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
+        val resetGeneration = fastInputResetCoordinator.currentGeneration()
         defaultInputFinalizeJob = scope.launch {
             measureDebugStage("IMEService.input.finalizeDelay") {
                 delay(timeToDelay)
             }
 
+            if (!fastInputResetCoordinator.isCurrent(resetGeneration)) {
+                return@launch
+            }
             if (inputString.value != string || isLiveConversionEnable == true) {
                 return@launch
             }
@@ -26714,6 +26905,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelCandidateTranslationIfPreEditMutates()
         val committed = currentInputConnection.commitText(p0, p1)
         if (committed) composingTextArbiter.markCanonicalFinished()
+        PointerGestureTrace.log(
+            "input-connection",
+            "commitText text=" +
+                p0?.toString()?.replace("\n", "\\n") +
+                " cursorPosition=" + p1 +
+                " accepted=" + committed,
+        )
         return committed
     }
 

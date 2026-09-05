@@ -51,6 +51,15 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
 
     var suppressTouchEffectMotionEvents: Boolean = false
 
+    fun resetTouchStateForFastInputTest() {
+        clearFallbackTarget()
+        lastStableTarget = null
+        lastStableTargetScreenX = 0
+        lastStableTargetScreenY = 0
+        lastStableTargetWidth = 0
+        lastStableTargetHeight = 0
+    }
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (!suppressTouchEffectMotionEvents) {
             runCatching {

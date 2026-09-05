@@ -23,7 +23,7 @@ import com.kazumaproject.custom_keyboard.view.StandardFlickPopupView
 class StandardFlickInputController(
     context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(context: Context) : this(
         context = context,
@@ -48,6 +48,7 @@ class StandardFlickInputController(
     var listener: StandardFlickListener? = null
     private var popupWindowAnchorProvider: (() -> View?)? = null
     private var characterMap: Map<FlickDirection, String> = emptyMap()
+    private var attachedView: View? = null
     private var anchorView: View? = null
     private var segmentedDrawable: SegmentedBackgroundDrawable? = null
 
@@ -71,6 +72,9 @@ class StandardFlickInputController(
             false
         ).apply {
             setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+            isTouchable = false
+            isFocusable = false
+            isOutsideTouchable = false
             isClippingEnabled = false
             elevation = 8f
             animationStyle = 0
@@ -109,6 +113,8 @@ class StandardFlickInputController(
         map: Map<FlickDirection, String>,
         drawable: SegmentedBackgroundDrawable
     ) {
+        attachedView?.takeUnless { it === button }?.setOnTouchListener(null)
+        attachedView = button
         val completeMap = mutableMapOf<FlickDirection, String>()
         completeMap[FlickDirection.TAP] = map[FlickDirection.TAP] ?: ""
         completeMap[FlickDirection.UP] = map[FlickDirection.UP] ?: ""
@@ -250,11 +256,24 @@ class StandardFlickInputController(
         }
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         listener?.onCanceled()
         activeGestureConfig = null
         dismissPopup()
+        segmentedDrawable?.highlightDirection = null
+        anchorView?.isPressed = false
     }
+
+    override fun dispose() {
+        resetGestureState()
+        attachedView?.setOnTouchListener(null)
+        attachedView = null
+        anchorView = null
+        characterMap = emptyMap()
+        segmentedDrawable = null
+    }
+
+    fun cancel() = dispose()
 
     private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
         if (!keyAnchor.isAttachedToWindow) return false

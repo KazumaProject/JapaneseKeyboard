@@ -27,7 +27,7 @@ import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 class CenterGuideFlickInputController(
     private val context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -110,15 +110,22 @@ class CenterGuideFlickInputController(
         }
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         listener?.onCanceled()
         activeGestureConfig = null
         isTouchActive = false
         popupHost.dismiss()
+        attachedView?.isPressed = false
+    }
+
+    override fun dispose() {
+        resetGestureState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
         textMap = emptyMap()
     }
+
+    fun cancel() = dispose()
 
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
         when (event.actionMasked) {

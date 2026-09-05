@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Rect
 import android.os.Looper
 import android.view.ContextThemeWrapper
+import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import androidx.test.core.app.ApplicationProvider
@@ -134,6 +135,53 @@ class FlickKeyboardViewTouchDispatchTest {
         )
     }
 
+    @Test
+    fun secondPointerDown_commitsFirstPointerAtItsLatestPosition() {
+        val listener = RecordingKeyboardActionListener()
+        val keyboardView = keyboardView(listener)
+        keyboardView.setKeyboard(petalFlickCharacterLayout())
+        layoutKeyboard(keyboardView)
+
+        val characterKey = keyboardView.getChildAt(0)
+        val centerX = characterKey.centerX()
+        val centerY = characterKey.centerY()
+        val finalX = centerX + 160f
+
+        keyboardView.dispatchTouch(
+            action = MotionEvent.ACTION_DOWN,
+            pointers = listOf(Pointer(0, centerX, centerY)),
+            downTime = 700L,
+            eventTime = 700L
+        )
+        keyboardView.dispatchTouch(
+            action = MotionEvent.ACTION_MOVE,
+            pointers = listOf(Pointer(0, centerX + 20f, centerY)),
+            downTime = 700L,
+            eventTime = 701L
+        )
+
+        // The final movement sample is carried by ACTION_POINTER_DOWN. The router must forward
+        // it before committing the first pointer, otherwise this RIGHT flick is committed as TAP.
+        keyboardView.dispatchTouch(
+            action = MotionEvent.ACTION_POINTER_DOWN,
+            actionIndex = 1,
+            pointers = listOf(
+                Pointer(0, finalX, centerY),
+                Pointer(1, -100f, -100f)
+            ),
+            downTime = 700L,
+            eventTime = 702L
+        )
+        keyboardView.dispatchTouch(
+            action = MotionEvent.ACTION_UP,
+            pointers = listOf(Pointer(1, -100f, -100f)),
+            downTime = 700L,
+            eventTime = 703L
+        )
+
+        assertTrue(listener.actions == listOf(KeyAction.Text("え")))
+    }
+
     private fun keyboardView(
         listener: FlickKeyboardView.OnKeyboardActionListener
     ): FlickKeyboardView {
@@ -215,6 +263,31 @@ class FlickKeyboardViewTouchDispatchTest {
         )
     }
 
+    private fun petalFlickCharacterLayout(): KeyboardLayout {
+        val characterKey = KeyData(
+            label = "あ",
+            row = 0,
+            column = 0,
+            isFlickable = true,
+            action = KeyAction.Text("あ"),
+            keyId = "a",
+            keyType = KeyType.PETAL_FLICK
+        )
+        return KeyboardLayout(
+            keys = listOf(characterKey),
+            flickKeyMaps = mapOf(
+                "a" to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Input("あ"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え")
+                    )
+                )
+            ),
+            columnCount = 1,
+            rowCount = 1
+        )
+    }
+
     private fun layoutKeyboard(keyboardView: FlickKeyboardView) {
         val widthSpec = View.MeasureSpec.makeMeasureSpec(240, View.MeasureSpec.EXACTLY)
         val heightSpec = View.MeasureSpec.makeMeasureSpec(120, View.MeasureSpec.EXACTLY)
@@ -229,10 +302,58 @@ class FlickKeyboardViewTouchDispatchTest {
         downTime: Long,
         eventTime: Long
     ) {
-        val event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0)
+        dispatchTouch(
+            action = action,
+            pointers = listOf(Pointer(0, x, y)),
+            downTime = downTime,
+            eventTime = eventTime
+        )
+    }
+
+    private fun FlickKeyboardView.dispatchTouch(
+        action: Int,
+        actionIndex: Int = 0,
+        pointers: List<Pointer>,
+        downTime: Long,
+        eventTime: Long
+    ) {
+        val pointerProperties = Array(pointers.size) {
+            MotionEvent.PointerProperties().apply {
+                id = pointers[it].id
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }
+        }
+        val pointerCoords = Array(pointers.size) {
+            MotionEvent.PointerCoords().apply {
+                x = pointers[it].x
+                y = pointers[it].y
+                pressure = 1f
+                size = 1f
+            }
+        }
+        val encodedAction = action or
+            (actionIndex shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+        val event = MotionEvent.obtain(
+            downTime,
+            eventTime,
+            encodedAction,
+            pointers.size,
+            pointerProperties,
+            pointerCoords,
+            0,
+            0,
+            1f,
+            1f,
+            0,
+            0,
+            InputDevice.SOURCE_TOUCHSCREEN,
+            0
+        )
         onTouchEvent(event)
         event.recycle()
     }
+
+    private data class Pointer(val id: Int, val x: Float, val y: Float)
 
     private fun View.centerX(): Float = left + width / 2f
 

@@ -22,7 +22,7 @@ import kotlin.math.atan2
 class FlickLongPressInputController(
     private val context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -112,20 +112,28 @@ class FlickLongPressInputController(
         normalMap: Map<TfbiFlickDirection, String>,
         longPressMap: Map<TfbiFlickDirection, String>
     ) {
+        attachedView?.takeUnless { it === view }?.setOnTouchListener(null)
         attachedView = view
         this.normalMap = normalMap
         this.longPressMap = longPressMap
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         clearLongPressCallback()
         resetState()
+        attachedView?.isPressed = false
+    }
+
+    override fun dispose() {
+        resetGestureState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
         normalMap = emptyMap()
         longPressMap = emptyMap()
     }
+
+    fun cancel() = dispose()
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
         val view = attachedView ?: return false

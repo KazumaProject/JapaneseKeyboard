@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "jobs": [
+    {
+      "surface": "TENKEY",
+      "job_key": "TENKEY",
+      "sumire_method": "ALL"
+    },
+    {
+      "surface": "GOJUON",
+      "job_key": "GOJUON",
+      "sumire_method": "ALL"
+    },
+    {
+      "surface": "SUMIRE",
+      "job_key": "SUMIRE-toggle",
+      "sumire_method": "toggle"
+    },
+    {
+      "surface": "SUMIRE",
+      "job_key": "SUMIRE-flick",
+      "sumire_method": "flick"
+    },
+    {
+      "surface": "SUMIRE",
+      "job_key": "SUMIRE-switch-mode-effective",
+      "sumire_method": "switch-mode-effective"
+    },
+    {
+      "surface": "QWERTY",
+      "job_key": "QWERTY",
+      "sumire_method": "ALL"
+    },
+    {
+      "surface": "ROMAJI",
+      "job_key": "ROMAJI",
+      "sumire_method": "ALL"
+    },
+    {
+      "surface": "CUSTOM",
+      "job_key": "CUSTOM",
+      "sumire_method": "ALL"
+    }
+  ]
+}

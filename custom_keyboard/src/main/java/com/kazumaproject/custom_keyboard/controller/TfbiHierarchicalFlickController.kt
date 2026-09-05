@@ -36,7 +36,7 @@ import kotlin.math.atan2
 class TfbiHierarchicalFlickController(
     private val context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -193,6 +193,7 @@ class TfbiHierarchicalFlickController(
         view: View,
         node: TfbiFlickNode.StatefulKey
     ) {
+        attachedView?.takeUnless { it === view }?.setOnTouchListener(null)
         this.attachedView = view
         this.rootNode = node
 
@@ -216,12 +217,19 @@ class TfbiHierarchicalFlickController(
     /**
      * コントローラーを View からデタッチし、リソースを解放します。
      */
-    fun cancel() {
+    override fun resetGestureState() {
         listener?.onCanceled()
         resetState()
+        attachedView?.isPressed = false
+    }
+
+    override fun dispose() {
+        resetGestureState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
     }
+
+    fun cancel() = dispose()
 
     // --- タッチイベント処理 ---
 
