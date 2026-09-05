@@ -1627,6 +1627,11 @@
     <string name="incremental_conversion_session_title">Session-based conversion engine</string>
     <string name="incremental_conversion_session_summary_on">Keep conversion state and update candidates incrementally. Applies from the next input session.</string>
     <string name="incremental_conversion_session_summary_off">Use the conventional conversion engine.</string>
+    <string name="numeric_notation_preference_title">Preferred numeric notation</string>
+    <string name="numeric_notation_preference_summary">Choose whether numeric candidates start with half-width digits, full-width digits, or Kanji. All forms remain available.</string>
+    <string name="numeric_notation_half_width_first">Half-width digits first</string>
+    <string name="numeric_notation_full_width_first">Full-width digits first</string>
+    <string name="numeric_notation_kanji_first">Kanji numerals first</string>
     <string name="prediction_behavior_category_title">Prediction behavior</string>
     <string name="prediction_language_category_title">Prediction languages</string>
     <string name="prediction_source_category_title">Prediction sources</string>

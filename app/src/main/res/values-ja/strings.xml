@@ -1587,6 +1587,11 @@
     <string name="incremental_conversion_session_title">セッション型変換エンジン</string>
     <string name="incremental_conversion_session_summary_on">変換状態を保持し、差分更新で候補を生成します。次の入力セッションから反映されます。</string>
     <string name="incremental_conversion_session_summary_off">従来の変換エンジンを使用します。</string>
+    <string name="numeric_notation_preference_title">数値候補の優先表記</string>
+    <string name="numeric_notation_preference_summary">数字を半角・全角・漢数字のどの表記から表示するかを選択します。候補はすべて保持されます。</string>
+    <string name="numeric_notation_half_width_first">半角数字優先</string>
+    <string name="numeric_notation_full_width_first">全角数字優先</string>
+    <string name="numeric_notation_kanji_first">漢数字優先</string>
     <string name="prediction_behavior_category_title">予測変換</string>
     <string name="prediction_language_category_title">対象言語</string>
     <string name="prediction_source_category_title">候補ソース</string>

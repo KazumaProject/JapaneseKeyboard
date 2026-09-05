@@ -362,6 +362,7 @@ data class ImePreferencesSnapshot(
                         appPreference.emoji_candidate_enable_preference,
                     showEmoticonCandidates =
                         appPreference.emoticon_candidate_enable_preference,
+                    numericNotationPreference = appPreference.numeric_notation_preference,
                 ),
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 flickThresholdShapePreferenceValue =

@@ -62,6 +62,18 @@
         <item>aggressive</item>
     </string-array>
 
+    <string-array name="numeric_notation_preference_entries">
+        <item>@string/numeric_notation_half_width_first</item>
+        <item>@string/numeric_notation_full_width_first</item>
+        <item>@string/numeric_notation_kanji_first</item>
+    </string-array>
+
+    <string-array name="numeric_notation_preference_values">
+        <item>half_width</item>
+        <item>full_width</item>
+        <item>kanji</item>
+    </string-array>
+
     <string-array name="keyboard_background_image_display_mode_entries">
         <item>@string/keyboard_background_image_display_mode_fit</item>
         <item>@string/keyboard_background_image_display_mode_center_crop</item>

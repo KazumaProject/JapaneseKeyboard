@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import android.content.Context
 import android.os.Build
-import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.convertFullWidthToHalfWidth
@@ -46,12 +45,10 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFi
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideValidator
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsDigit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsFullWidthNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthAlnumToHalfWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthNumbersToHalfWidth
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createValueBasedSymbolCandidates
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllFullWidthAscii
@@ -60,12 +57,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.replaceJa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toSubscriptDigits
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toSuperscriptDigits
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
-import com.kazumaproject.toFullWidthDigitsEfficient
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -78,11 +71,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-private const val POS_ID_COUNTER_GENERIC: Short = 2011
-private const val POS_ID_COUNTER_TIME: Short = 2015
-private const val POS_ID_NUMBER_ARABIC: Short = 2044
-private const val POS_ID_NUMBER_SEPARATED: Short = 2045
-private const val POS_ID_NUMBER_KANJI: Short = 2046
 private const val ENGLISH_READING_CAPITALIZED_SCORE_OFFSET = 1_500
 private const val ENGLISH_READING_UPPERCASE_SCORE_OFFSET = 3_000
 
@@ -1214,109 +1202,33 @@ class KanaKanjiEngine {
         }
         conversionContext.ensureActive()
 
-        if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
-            val fullWidth = Candidate(
-                string = input.toFullWidthDigitsEfficient(),
-                type = 22,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+        if (NumericCandidateProvider.isDigitSequence(input)) {
+            val numericCandidates = generateNumberCandidatesForDigitInput(
+                input = input,
+                predictionConfig = predictionConfig,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
-            val halfWidth = Candidate(
-                string = input.convertFullWidthToHalfWidth(),
-                type = 31,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+            return prioritizeNumericCandidate(
+                input = input,
+                candidates = resultNBestFinalDeferred + numericCandidates,
+                numericCandidates = numericCandidates,
             )
-            val timeConversion = createCandidatesForTime(input)
-            val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
-            val numberCandidates = if (numberValue != null) {
-                buildList {
-                    // Full Kanji style (e.g., 百二十三)
-                    add(
-                        Candidate(
-                            string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
-                            score = 2000,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Comma-separated style (e.g., 1,234)
-                    add(
-                        Candidate(
-                            string = input.addCommasToNumber(),
-                            type = 19,
-                            score = 8001,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Original number string itself (e.g., 123)
-                    add(
-                        Candidate(
-                            string = input,
-                            type = 18,
-                            score = 8002,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Mixed Kanji style (e.g., 12万3456)
-                    add(
-                        Candidate(
-                            string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            val superscriptCandidate = Candidate(
-                string = input.toSuperscriptDigits(),
-                type = 21,
-                score = 8000,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val subscriptCandidate = Candidate(
-                string = input.toSubscriptDigits(),
-                type = 20,
-                score = 8001,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val valueBasedCandidates = if (predictionConfig.showSymbolCandidates && numberValue != null) {
-                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
-            } else {
-                emptyList()
-            }
-
-            // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val numericCandidates = generateNumberCandidates(
+                input = input,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
+                numericNotationPreference = predictionConfig.numericNotationPreference,
+                candidateSegmentCollector = candidateSegmentCollector,
+            )
+            if (numericCandidates.isNotEmpty()) {
+                return prioritizeNumericCandidate(
+                    input = input,
+                    candidates = resultNBestFinalDeferred + numericCandidates,
+                    numericCandidates = numericCandidates,
+                )
+            }
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
             val finalList = resultWithHankaku.sortedBy { it.score }
             // 3. Combine and return all generated candidates.
@@ -1608,6 +1520,8 @@ class KanaKanjiEngine {
         val numbersDeferred = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
 
         val mozcUTPersonNames =
@@ -1624,8 +1538,11 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+        val resultListFinal = prioritizeNumericCandidate(
+            input = input,
+            candidates = resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }),
+            numericCandidates = numbersDeferred,
+        )
 
         val englishReadingDeferred = deferredEnglishReadingCandidates(input, resultList)
         return resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
@@ -1729,114 +1646,43 @@ class KanaKanjiEngine {
         }
         conversionContext.ensureActive()
 
-        if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
-            val fullWidth = Candidate(
-                string = input.toFullWidthDigitsEfficient(),
-                type = 22,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+        if (NumericCandidateProvider.isDigitSequence(input)) {
+            val numericCandidates = generateNumberCandidatesForDigitInput(
+                input = input,
+                predictionConfig = predictionConfig,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
-            val halfWidth = Candidate(
-                string = input.convertFullWidthToHalfWidth(),
-                type = 31,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+            val finalList = prioritizeNumericCandidate(
+                input = input,
+                candidates = resultNBestFinalDeferred.candidates + numericCandidates,
+                numericCandidates = numericCandidates,
             )
-            val timeConversion = createCandidatesForTime(input)
-            val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
-            val numberCandidates = if (numberValue != null) {
-                buildList {
-                    // Full Kanji style (e.g., 百二十三)
-                    add(
-                        Candidate(
-                            string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
-                            score = 2000,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Comma-separated style (e.g., 1,234)
-                    add(
-                        Candidate(
-                            string = input.addCommasToNumber(),
-                            type = 19,
-                            score = 8001,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Original number string itself (e.g., 123)
-                    add(
-                        Candidate(
-                            string = input,
-                            type = 18,
-                            score = 8002,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Mixed Kanji style (e.g., 12万3456)
-                    add(
-                        Candidate(
-                            string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            val superscriptCandidate = Candidate(
-                string = input.toSuperscriptDigits(),
-                type = 21,
-                score = 8000,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val subscriptCandidate = Candidate(
-                string = input.toSubscriptDigits(),
-                type = 20,
-                score = 8001,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val valueBasedCandidates = if (predictionConfig.showSymbolCandidates && numberValue != null) {
-                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
-            } else {
-                emptyList()
-            }
-
-            val finalList =
-                resultNBestFinalDeferred.candidates + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
             )
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val numericCandidates = generateNumberCandidates(
+                input = input,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
+                numericNotationPreference = predictionConfig.numericNotationPreference,
+                candidateSegmentCollector = candidateSegmentCollector,
+            )
+            if (numericCandidates.isNotEmpty()) {
+                val finalList = prioritizeNumericCandidate(
+                    input = input,
+                    candidates = resultNBestFinalDeferred.candidates + numericCandidates,
+                    numericCandidates = numericCandidates,
+                )
+                return BunsetsuCandidateResult(
+                    candidates = finalList,
+                    splitPatterns = resultNBestFinalDeferred.splitPatterns,
+                    splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                )
+            }
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
@@ -2142,6 +1988,8 @@ class KanaKanjiEngine {
         val numbersDeferred = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
 
         val mozcUTPersonNames =
@@ -2160,10 +2008,14 @@ class KanaKanjiEngine {
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
-            resultList.sortedWith(
-                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
-                    .thenBy { it.score }
-                    .thenBy { it.string },
+            prioritizeNumericCandidate(
+                input = input,
+                candidates = resultList.sortedWith(
+                    compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                        .thenBy { it.score }
+                        .thenBy { it.string },
+                ),
+                numericCandidates = numbersDeferred,
             ) + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
@@ -2272,116 +2124,43 @@ class KanaKanjiEngine {
         }
         conversionContext.ensureActive()
 
-        if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
-            val fullWidth = Candidate(
-                string = input.toFullWidthDigitsEfficient(),
-                type = 22,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+        if (NumericCandidateProvider.isDigitSequence(input)) {
+            val numericCandidates = generateNumberCandidatesForDigitInput(
+                input = input,
+                predictionConfig = predictionConfig,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
-            val halfWidth = Candidate(
-                string = input.convertFullWidthToHalfWidth(),
-                type = 31,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+            val finalList = prioritizeNumericCandidate(
+                input = input,
+                candidates = resultNBestFinalDeferred.candidates + numericCandidates,
+                numericCandidates = numericCandidates,
             )
-            val timeConversion = createCandidatesForTime(input)
-            val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
-            val numberCandidates = if (numberValue != null) {
-                buildList {
-                    // Full Kanji style (e.g., 百二十三)
-                    add(
-                        Candidate(
-                            string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
-                            score = 2000,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Comma-separated style (e.g., 1,234)
-                    add(
-                        Candidate(
-                            string = input.addCommasToNumber(),
-                            type = 19,
-                            score = 8001,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Original number string itself (e.g., 123)
-                    add(
-                        Candidate(
-                            string = input,
-                            type = 18,
-                            score = 8002,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Mixed Kanji style (e.g., 12万3456)
-                    add(
-                        Candidate(
-                            string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            val superscriptCandidate = Candidate(
-                string = input.toSuperscriptDigits(),
-                type = 21,
-                score = 8000,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val subscriptCandidate = Candidate(
-                string = input.toSubscriptDigits(),
-                type = 20,
-                score = 8001,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val valueBasedCandidates = if (predictionConfig.showSymbolCandidates && numberValue != null) {
-                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
-            } else {
-                emptyList()
-            }
-
-            val finalList =
-                resultNBestFinalDeferred.candidates + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
-
-            // 3. Combine and return all generated candidates.
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
             )
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val numericCandidates = generateNumberCandidates(
+                input = input,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
+                numericNotationPreference = predictionConfig.numericNotationPreference,
+                candidateSegmentCollector = candidateSegmentCollector,
+            )
+            if (numericCandidates.isNotEmpty()) {
+                val finalList = prioritizeNumericCandidate(
+                    input = input,
+                    candidates = resultNBestFinalDeferred.candidates + numericCandidates,
+                    numericCandidates = numericCandidates,
+                )
+                return BunsetsuCandidateResult(
+                    candidates = finalList,
+                    splitPatterns = resultNBestFinalDeferred.splitPatterns,
+                    splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                )
+            }
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
@@ -2666,6 +2445,8 @@ class KanaKanjiEngine {
         val numbersDeferred = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
 
         val mozcUTPersonNames =
@@ -2683,10 +2464,14 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
-        val resultListFinal = resultList.sortedWith(
-            compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
-                .thenBy { it.score }
-                .thenBy { it.string },
+        val resultListFinal = prioritizeNumericCandidate(
+            input = input,
+            candidates = resultList.sortedWith(
+                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                    .thenBy { it.score }
+                    .thenBy { it.string },
+            ),
+            numericCandidates = numbersDeferred,
         )
 
         val finalList =
@@ -2796,109 +2581,33 @@ class KanaKanjiEngine {
         }
         conversionContext.ensureActive()
 
-        if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
-            val fullWidth = Candidate(
-                string = input.toFullWidthDigitsEfficient(),
-                type = 22,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+        if (NumericCandidateProvider.isDigitSequence(input)) {
+            val numericCandidates = generateNumberCandidatesForDigitInput(
+                input = input,
+                predictionConfig = predictionConfig,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
-            val halfWidth = Candidate(
-                string = input.convertFullWidthToHalfWidth(),
-                type = 31,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+            return prioritizeNumericCandidate(
+                input = input,
+                candidates = resultNBestFinalDeferred + numericCandidates,
+                numericCandidates = numericCandidates,
             )
-            val timeConversion = createCandidatesForTime(input)
-            val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
-            val numberCandidates = if (numberValue != null) {
-                buildList {
-                    // Full Kanji style (e.g., 百二十三)
-                    add(
-                        Candidate(
-                            string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
-                            score = 2000,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Comma-separated style (e.g., 1,234)
-                    add(
-                        Candidate(
-                            string = input.addCommasToNumber(),
-                            type = 19,
-                            score = 8001,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Original number string itself (e.g., 123)
-                    add(
-                        Candidate(
-                            string = input,
-                            type = 18,
-                            score = 8002,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Mixed Kanji style (e.g., 12万3456)
-                    add(
-                        Candidate(
-                            string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            val superscriptCandidate = Candidate(
-                string = input.toSuperscriptDigits(),
-                type = 21,
-                score = 8000,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val subscriptCandidate = Candidate(
-                string = input.toSubscriptDigits(),
-                type = 20,
-                score = 8001,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val valueBasedCandidates = if (predictionConfig.showSymbolCandidates && numberValue != null) {
-                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
-            } else {
-                emptyList()
-            }
-
-            // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val numericCandidates = generateNumberCandidates(
+                input = input,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
+                numericNotationPreference = predictionConfig.numericNotationPreference,
+                candidateSegmentCollector = candidateSegmentCollector,
+            )
+            if (numericCandidates.isNotEmpty()) {
+                return prioritizeNumericCandidate(
+                    input = input,
+                    candidates = resultNBestFinalDeferred + numericCandidates,
+                    numericCandidates = numericCandidates,
+                )
+            }
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
             val finalList = resultWithHankaku.sortedBy { it.score }
@@ -3188,6 +2897,8 @@ class KanaKanjiEngine {
         val numbersDeferred = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
 
         val mozcUTPersonNames =
@@ -3204,8 +2915,11 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+        val resultListFinal = prioritizeNumericCandidate(
+            input = input,
+            candidates = resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }),
+            numericCandidates = numbersDeferred,
+        )
 
         return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
@@ -3302,109 +3016,33 @@ class KanaKanjiEngine {
         }
         conversionContext.ensureActive()
 
-        if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
-            val fullWidth = Candidate(
-                string = input.toFullWidthDigitsEfficient(),
-                type = 22,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+        if (NumericCandidateProvider.isDigitSequence(input)) {
+            val numericCandidates = generateNumberCandidatesForDigitInput(
+                input = input,
+                predictionConfig = predictionConfig,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
-            val halfWidth = Candidate(
-                string = input.convertFullWidthToHalfWidth(),
-                type = 31,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+            return prioritizeNumericCandidate(
+                input = input,
+                candidates = resultNBestFinalDeferred + numericCandidates,
+                numericCandidates = numericCandidates,
             )
-            val timeConversion = createCandidatesForTime(input)
-            val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
-            val numberCandidates = if (numberValue != null) {
-                buildList {
-                    // Full Kanji style (e.g., 百二十三)
-                    add(
-                        Candidate(
-                            string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
-                            score = 2000,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Comma-separated style (e.g., 1,234)
-                    add(
-                        Candidate(
-                            string = input.addCommasToNumber(),
-                            type = 19,
-                            score = 8001,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Original number string itself (e.g., 123)
-                    add(
-                        Candidate(
-                            string = input,
-                            type = 18,
-                            score = 8002,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Mixed Kanji style (e.g., 12万3456)
-                    add(
-                        Candidate(
-                            string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            val superscriptCandidate = Candidate(
-                string = input.toSuperscriptDigits(),
-                type = 21,
-                score = 8000,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val subscriptCandidate = Candidate(
-                string = input.toSubscriptDigits(),
-                type = 20,
-                score = 8001,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val valueBasedCandidates = if (predictionConfig.showSymbolCandidates && numberValue != null) {
-                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
-            } else {
-                emptyList()
-            }
-
-            // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val numericCandidates = generateNumberCandidates(
+                input = input,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
+                numericNotationPreference = predictionConfig.numericNotationPreference,
+                candidateSegmentCollector = candidateSegmentCollector,
+            )
+            if (numericCandidates.isNotEmpty()) {
+                return prioritizeNumericCandidate(
+                    input = input,
+                    candidates = resultNBestFinalDeferred + numericCandidates,
+                    numericCandidates = numericCandidates,
+                )
+            }
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
             val finalList = resultWithHankaku.sortedBy { it.score }
             return finalList
@@ -3688,6 +3326,8 @@ class KanaKanjiEngine {
         val numbersDeferred = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
 
         val mozcUTPersonNames =
@@ -3704,8 +3344,11 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+        val resultListFinal = prioritizeNumericCandidate(
+            input = input,
+            candidates = resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }),
+            numericCandidates = numbersDeferred,
+        )
 
         return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
@@ -3804,114 +3447,43 @@ class KanaKanjiEngine {
         }
         conversionContext.ensureActive()
 
-        if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
-            val fullWidth = Candidate(
-                string = input.toFullWidthDigitsEfficient(),
-                type = 22,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+        if (NumericCandidateProvider.isDigitSequence(input)) {
+            val numericCandidates = generateNumberCandidatesForDigitInput(
+                input = input,
+                predictionConfig = predictionConfig,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
-            val halfWidth = Candidate(
-                string = input.convertFullWidthToHalfWidth(),
-                type = 31,
-                length = input.length.toUByte(),
-                score = 8000,
-                leftId = 2040,
-                rightId = 2040
+            val finalList = prioritizeNumericCandidate(
+                input = input,
+                candidates = resultNBestFinalDeferred.candidates + numericCandidates,
+                numericCandidates = numericCandidates,
             )
-            val timeConversion = createCandidatesForTime(input)
-            val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
-            val numberCandidates = if (numberValue != null) {
-                buildList {
-                    // Full Kanji style (e.g., 百二十三)
-                    add(
-                        Candidate(
-                            string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
-                            score = 2000,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Comma-separated style (e.g., 1,234)
-                    add(
-                        Candidate(
-                            string = input.addCommasToNumber(),
-                            type = 19,
-                            score = 8001,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Original number string itself (e.g., 123)
-                    add(
-                        Candidate(
-                            string = input,
-                            type = 18,
-                            score = 8002,
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                    // Mixed Kanji style (e.g., 12万3456)
-                    add(
-                        Candidate(
-                            string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
-                            length = input.length.toUByte(),
-                            leftId = 2040,
-                            rightId = 2040
-                        )
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            val superscriptCandidate = Candidate(
-                string = input.toSuperscriptDigits(),
-                type = 21,
-                score = 8000,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val subscriptCandidate = Candidate(
-                string = input.toSubscriptDigits(),
-                type = 20,
-                score = 8001,
-                length = input.length.toUByte(),
-                leftId = 2040,
-                rightId = 2040
-            )
-
-            val valueBasedCandidates = if (predictionConfig.showSymbolCandidates && numberValue != null) {
-                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
-            } else {
-                emptyList()
-            }
-
-            val finalList =
-                resultNBestFinalDeferred.candidates + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
             )
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val numericCandidates = generateNumberCandidates(
+                input = input,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
+                numericNotationPreference = predictionConfig.numericNotationPreference,
+                candidateSegmentCollector = candidateSegmentCollector,
+            )
+            if (numericCandidates.isNotEmpty()) {
+                val finalList = prioritizeNumericCandidate(
+                    input = input,
+                    candidates = resultNBestFinalDeferred.candidates + numericCandidates,
+                    numericCandidates = numericCandidates,
+                )
+                return BunsetsuCandidateResult(
+                    candidates = finalList,
+                    splitPatterns = resultNBestFinalDeferred.splitPatterns,
+                    splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                )
+            }
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
@@ -4210,6 +3782,8 @@ class KanaKanjiEngine {
         val numbersDeferred = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
 
         val mozcUTPersonNames =
@@ -4228,10 +3802,14 @@ class KanaKanjiEngine {
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
-            resultList.sortedWith(
-                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
-                    .thenBy { it.score }
-                    .thenBy { it.string },
+            prioritizeNumericCandidate(
+                input = input,
+                candidates = resultList.sortedWith(
+                    compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                        .thenBy { it.score }
+                        .thenBy { it.string },
+                ),
+                numericCandidates = numbersDeferred,
             ) + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
@@ -4265,16 +3843,16 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
     ): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
-        val explicitDigitInput = input.takeIf { value ->
-            value.isNotEmpty() && value.all { it in '0'..'9' || it in '０'..'９' }
-        }
-        val directJapaneseNumber = input.toNumber()
-        val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input)
-        val preferredNumberCandidate = when {
-            numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
-            directJapaneseNumber != null -> directJapaneseNumber.second
-            explicitDigitInput != null -> explicitDigitInput.convertFullWidthNumbersToHalfWidth()
-            else -> null
+        val numericCandidates = generateNumberCandidates(
+            input = input,
+            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+        )
+        val digitTemporalCandidates = if (NumericCandidateProvider.isDigitSequence(input)) {
+            val normalizedInput = input.convertFullWidthNumbersToHalfWidth()
+            createCandidatesForTime(normalizedInput) + createCandidatesForDateInDigit(normalizedInput)
+        } else {
+            emptyList()
         }
         val listJapaneseCandidates = buildList {
             add(Candidate(
@@ -4310,27 +3888,6 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 score = 3000
             ))
-            if (preferredNumberCandidate != null && preferredNumberCandidate != input) {
-                add(Candidate(
-                    string = preferredNumberCandidate,
-                    type = (1).toByte(),
-                    length = input.length.toUByte(),
-                    score = 3000
-                ))
-            }
-        }
-
-        val digitCandidates = when {
-            directJapaneseNumber != null -> createDigitCandidates(
-                directJapaneseNumber.second, input.length.toUByte()
-            )
-
-            numberUnitCandidates.isNotEmpty() -> emptyList()
-            explicitDigitInput != null -> createDigitCandidates(
-                explicitDigitInput,
-                input.length.toUByte(),
-            )
-            else -> emptyList()
         }
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
@@ -4367,10 +3924,15 @@ class KanaKanjiEngine {
         }
 
         val numbersConverted =
-            digitCandidates + numberUnitCandidates + (englishDeferred + englishZenkaku).sortedBy { it.score }
+            numericCandidates + digitTemporalCandidates +
+                (englishDeferred + englishZenkaku).sortedBy { it.score }
         val temporalCandidates = createTemporalDictionaryCandidates(input)
 
-        return listJapaneseCandidates + numbersConverted + temporalCandidates
+        return prioritizeNumericCandidate(
+            input = input,
+            candidates = listJapaneseCandidates + numbersConverted + temporalCandidates,
+            numericCandidates = numericCandidates,
+        )
     }
 
     private fun createTemporalDictionaryCandidates(input: String): List<Candidate> = when (input) {
@@ -4448,144 +4010,6 @@ class KanaKanjiEngine {
 
         return baseCandidates
     }
-
-    private fun createDigitCandidates(inputDigits: String, inputLength: UByte): List<Candidate> {
-        val halfWidthDigits = inputDigits.convertFullWidthNumbersToHalfWidth()
-        val fullWidthDigits = halfWidthDigits.toFullWidthDigitsEfficient()
-
-        val fullWidth = Candidate(
-            string = fullWidthDigits,
-            type = 22,
-            length = inputLength,
-            score = 8000,
-            leftId = POS_ID_NUMBER_ARABIC,
-            rightId = POS_ID_NUMBER_ARABIC
-        )
-        val halfWidth = Candidate(
-            string = halfWidthDigits.convertFullWidthToHalfWidth(),
-            type = 31,
-            length = inputLength,
-            score = 8000,
-            leftId = POS_ID_NUMBER_ARABIC,
-            rightId = POS_ID_NUMBER_ARABIC
-        )
-        val timeConversion = createCandidatesForTime(halfWidthDigits)
-        val dateConversion = createCandidatesForDateInDigit(halfWidthDigits)
-
-        val numberValue = halfWidthDigits.toLongOrNull()
-        val numberCandidates = if (numberValue != null) {
-            buildList {
-                add(
-                    Candidate(
-                        string = numberValue.toKanji(),
-                        type = 17,
-                        score = 2000,
-                        length = inputLength,
-                        leftId = POS_ID_NUMBER_KANJI,
-                        rightId = POS_ID_NUMBER_KANJI
-                    )
-                )
-                add(
-                    Candidate(
-                        string = halfWidthDigits.addCommasToNumber(),
-                        type = 19,
-                        score = 8001,
-                        length = inputLength,
-                        leftId = POS_ID_NUMBER_SEPARATED,
-                        rightId = POS_ID_NUMBER_SEPARATED
-                    )
-                )
-                add(
-                    Candidate(
-                        string = halfWidthDigits,
-                        type = 18,
-                        score = 8002,
-                        length = inputLength,
-                        leftId = POS_ID_NUMBER_ARABIC,
-                        rightId = POS_ID_NUMBER_ARABIC
-                    )
-                )
-                add(
-                    Candidate(
-                        string = numberValue.convertToKanjiNotation(),
-                        type = 23,
-                        score = 7900,
-                        length = inputLength,
-                        leftId = POS_ID_NUMBER_KANJI,
-                        rightId = POS_ID_NUMBER_KANJI
-                    )
-                )
-            }
-        } else {
-            emptyList()
-        }
-
-        return listOf(fullWidth, halfWidth) + timeConversion + dateConversion + numberCandidates
-    }
-
-    private fun createCandidatesForJapaneseNumberWithUnit(input: String): List<Candidate> {
-        val unitMappings = listOf(
-            "にん" to "人", "えん" to "円", "ぷん" to "分", "ふん" to "分", "じ" to "時"
-        )
-
-        for ((readingSuffix, unit) in unitMappings) {
-            if (!input.endsWith(readingSuffix) || input.length <= readingSuffix.length) continue
-
-            val numberReading = normalizeJapaneseNumberReadingForCounter(
-                input.removeSuffix(readingSuffix),
-                readingSuffix,
-            ) ?: continue
-            val number = numberReading.toNumber() ?: continue
-            val isTimeLike = unit == "時" || unit == "分"
-            val rightId = if (unit == "時") POS_ID_COUNTER_TIME else POS_ID_COUNTER_GENERIC
-
-            return listOf(
-                Candidate(
-                    string = "${number.second}$unit",
-                    type = if (isTimeLike) CANDIDATE_TYPE_TIME else 18,
-                    length = input.length.toUByte(),
-                    score = 8000,
-                    leftId = POS_ID_NUMBER_ARABIC,
-                    rightId = rightId
-                ), Candidate(
-                    string = "${number.first}$unit",
-                    type = if (isTimeLike) 30 else 22,
-                    length = input.length.toUByte(),
-                    score = 8001,
-                    leftId = POS_ID_NUMBER_ARABIC,
-                    rightId = rightId
-                )
-            )
-        }
-
-        return emptyList()
-    }
-
-    private fun normalizeJapaneseNumberReadingForCounter(
-        numberReading: String,
-        counterReading: String,
-    ): String? {
-        fun isStandaloneOrAfterPlace(alias: String): Boolean {
-            if (numberReading == alias) return true
-            val prefix = numberReading.dropLast(alias.length)
-            return listOf("じゅう", "ひゃく", "せん", "まん", "おく", "ちょう")
-                .any(prefix::endsWith)
-        }
-
-        // 「し」は単独の四としては有効だが、現在扱っている助数詞の
-        // 直前では通常語との衝突が大きい（しじ、しえん、しにん等）。
-        if (numberReading.endsWith("し") && isStandaloneOrAfterPlace("し")) return null
-        if (counterReading != "じ") return numberReading
-
-        return when {
-            numberReading.endsWith("よ") && isStandaloneOrAfterPlace("よ") ->
-                numberReading.dropLast(1) + "よん"
-            numberReading.endsWith("く") && isStandaloneOrAfterPlace("く") ->
-                numberReading.dropLast(1) + "きゅう"
-            else -> numberReading
-        }
-    }
-
 
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray.getNodeIds().map { nodeId ->
         emojiTangoTrie.getLetterShortArray(nodeId, emojiSuccinctBitVectorTangoLBS)
@@ -5443,91 +4867,84 @@ class KanaKanjiEngine {
     private fun generateNumberCandidates(
         input: String,
         showSymbolCandidates: Boolean = true,
+        numericNotationPreference: NumericNotationPreference =
+            NumericNotationPreference.HALF_WIDTH_FIRST,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
-        val numPair = input.toNumber()
-        val expoPair = input.toNumberExponent()
+        val candidates = NumericCandidateProvider.generate(
+            input = input,
+            notationPreference = numericNotationPreference,
+            showSymbolCandidates = showSymbolCandidates,
+        )
+        recordNumericCandidateSegments(
+            input = input,
+            candidates = candidates,
+            candidateSegmentCollector = candidateSegmentCollector,
+        )
+        return candidates
+    }
 
-        return if (numPair != null) {
-            val (firstNum, secondNum) = numPair // firstNum: 全角, secondNum: 半角
-            val numberAsLong = secondNum.toLongOrNull()
+    private fun generateNumberCandidatesForDigitInput(
+        input: String,
+        predictionConfig: PredictionConfig,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+    ): List<Candidate> {
+        val numericCandidates = generateNumberCandidates(
+            input = input,
+            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
+        )
+        val normalizedInput = input.convertFullWidthNumbersToHalfWidth()
+        val temporalCandidates = createCandidatesForTime(normalizedInput) +
+            createCandidatesForDateInDigit(normalizedInput)
+        recordNumericCandidateSegments(
+            input = input,
+            candidates = temporalCandidates,
+            candidateSegmentCollector = candidateSegmentCollector,
+        )
+        return numericCandidates + temporalCandidates
+    }
 
-            // 候補リストを構築
-            val candidates = mutableListOf<Candidate>()
+    private fun prioritizeNumericCandidate(
+        input: String,
+        candidates: List<Candidate>,
+        numericCandidates: List<Candidate>,
+    ): List<Candidate> {
+        if (!NumericCandidateProvider.shouldPrioritize(input)) {
+            val numericCandidateSet = numericCandidates.toSet()
+            if (numericCandidateSet.isEmpty()) return candidates
+            return candidates.filterNot(numericCandidateSet::contains) +
+                candidates.filter(numericCandidateSet::contains)
+        }
+        val preferredString = numericCandidates.firstOrNull()?.string ?: return candidates
+        val preferredIndex = candidates.indexOfFirst { it.string == preferredString }
+        if (preferredIndex <= 0) return candidates
 
-            // 1. 伝統的な漢数字 (例: 十, 百二十三)
-            if (numberAsLong != null) {
-                candidates.add(
-                    Candidate(
-                        string = numberAsLong.toKanji(), type = 32, // 新しいタイプ
-                        length = input.length.toUByte(), score = 8000, // 優先度を調整
-                        leftId = POS_ID_NUMBER_KANJI, rightId = POS_ID_NUMBER_KANJI
-                    )
-                )
-            }
+        return buildList(candidates.size) {
+            add(candidates[preferredIndex])
+            addAll(candidates.subList(0, preferredIndex))
+            addAll(candidates.subList(preferredIndex + 1, candidates.size))
+        }
+    }
 
-            // 2. 単位付き漢数字 (例: 1億2345万)
-            if (numberAsLong != null) {
-                candidates.add(
-                    Candidate(
-                        string = numberAsLong.convertToKanjiNotation(),
-                        type = 17,
-                        length = input.length.toUByte(),
-                        score = 8000,
-                        leftId = POS_ID_NUMBER_KANJI,
-                        rightId = POS_ID_NUMBER_KANJI
-                    )
-                )
-            }
-
-            // 3. 全角・半角数字 (例: １２３, 123)
-            listOf(firstNum, secondNum).forEach {
-                candidates.add(
-                    Candidate(
-                        string = it,
-                        type = if (it == firstNum) (30).toByte() else (31).toByte(),
-                        length = input.length.toUByte(),
-                        score = 8002,
-                        leftId = POS_ID_NUMBER_ARABIC,
-                        rightId = POS_ID_NUMBER_ARABIC
-                    )
-                )
-            }
-
-            // 4. カンマ区切り数字 (例: 123,456)
-            candidates.add(
-                Candidate(
-                    string = secondNum.addCommasToNumber(),
-                    type = 19,
-                    length = input.length.toUByte(),
-                    score = 8001,
-                    leftId = POS_ID_NUMBER_SEPARATED,
-                    rightId = POS_ID_NUMBER_SEPARATED
-                )
+    private fun recordNumericCandidateSegments(
+        input: String,
+        candidates: List<Candidate>,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>?,
+    ) {
+        candidateSegmentCollector ?: return
+        candidates.forEach { candidate ->
+            candidateSegmentCollector.putIfAbsent(
+                candidate.string,
+                listOf(
+                    CandidateConversionSegment(
+                        inputStart = 0,
+                        inputEnd = input.length,
+                        output = candidate.string,
+                    ),
+                ),
             )
-
-            // 5. 指数表記 (例: 10⁸)
-            if (expoPair != null) {
-                candidates.add(
-                    Candidate(
-                        string = expoPair.first,
-                        type = 20,
-                        length = input.length.toUByte(),
-                        score = 8003,
-                        leftId = POS_ID_NUMBER_ARABIC,
-                        rightId = POS_ID_NUMBER_ARABIC
-                    )
-                )
-            }
-
-            candidates += createJapaneseNumberValueBasedCandidates(
-                input = input,
-                showSymbolCandidates = showSymbolCandidates,
-            )
-
-            candidates
-
-        } else {
-            emptyList()
         }
     }
 

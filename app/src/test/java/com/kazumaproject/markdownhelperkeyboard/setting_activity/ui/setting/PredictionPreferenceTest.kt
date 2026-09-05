@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumericNotationPreference
 import com.kazumaproject.markdownhelperkeyboard.ime_service.ImePreferencesSnapshot
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.assertEquals
@@ -35,6 +36,10 @@ class PredictionPreferenceTest {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
         assertEquals(PredictionConfig(), snapshot.predictionConfig)
+        assertEquals(
+            NumericNotationPreference.HALF_WIDTH_FIRST,
+            snapshot.predictionConfig.numericNotationPreference,
+        )
         assertEquals(4, snapshot.nBest)
         assertEquals(4, snapshot.userDictionaryPredictionCandidateLimit)
         assertEquals(4, snapshot.learnDictionaryPredictionCandidateLimit)
@@ -58,6 +63,7 @@ class PredictionPreferenceTest {
         AppPreference.symbol_candidate_enable_preference = false
         AppPreference.emoji_candidate_enable_preference = false
         AppPreference.emoticon_candidate_enable_preference = false
+        AppPreference.numeric_notation_preference = NumericNotationPreference.KANJI_FIRST
         AppPreference.user_dictionary_prediction_candidate_limit_preference = 2
         AppPreference.learn_dictionary_prediction_candidate_limit_preference = 7
 
@@ -79,6 +85,7 @@ class PredictionPreferenceTest {
         assertFalse(prediction.showSymbolCandidates)
         assertFalse(prediction.showEmojiCandidates)
         assertFalse(prediction.showEmoticonCandidates)
+        assertEquals(NumericNotationPreference.KANJI_FIRST, prediction.numericNotationPreference)
         assertEquals(2, snapshot.userDictionaryPredictionCandidateLimit)
         assertEquals(7, snapshot.learnDictionaryPredictionCandidateLimit)
     }
@@ -175,6 +182,14 @@ class PredictionPreferenceTest {
             val preference = screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key)
             assertTrue(preference?.isChecked == true)
         }
+
+        val numericPreference = screen.findPreference<androidx.preference.ListPreference>(
+            "numeric_notation_preference",
+        )
+        assertEquals("numeric_notation_preference", numericPreference?.key)
+        assertEquals("half_width", numericPreference?.value)
+        assertEquals(3, numericPreference?.entries?.size)
+        assertEquals(3, numericPreference?.entryValues?.size)
     }
 
     private companion object {
@@ -194,6 +209,7 @@ class PredictionPreferenceTest {
             "symbol_candidate_enable_preference",
             "emoji_candidate_enable_preference",
             "emoticon_candidate_enable_preference",
+            "numeric_notation_preference",
         )
         val DICTIONARY_KEYS = listOf(
             "user_dictionary_prediction_candidate_limit_preference",
