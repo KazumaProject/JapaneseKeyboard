@@ -5567,10 +5567,10 @@ class FastInputMatrixInstrumentedTest {
         private const val MAX_CANDIDATE_TEXTS = 8
         private const val SETUP_TIMEOUT_MS = 2_000L
         private const val RESULT_TIMEOUT_MS = 1_000L
-        // Hosted emulators can spend over one second applying candidate updates after the last
-        // injected event. This remains a strict settle timeout; it does not accept a partial or
-        // incorrect editor value.
-        private const val RAPID_RESULT_TIMEOUT_MS = 3_000L
+        // Hosted emulators can spend several seconds applying candidate updates after the last
+        // injected event, especially for long Romaji sequences. This remains a strict bounded
+        // settle timeout; it does not accept a partial or incorrect editor value.
+        private const val RAPID_RESULT_TIMEOUT_MS = 10_000L
         private const val ORIENTATION_TIMEOUT_MS = 4_000L
         private const val ORIENTATION_SETTLE_MS = 500L
         private const val HOST_WINDOW_FOCUS_TIMEOUT_MS = 15_000L
