@@ -11,6 +11,17 @@ enum class PredictionAggressiveness(val preferenceValue: String) {
     }
 }
 
+enum class NumericNotationPreference(val preferenceValue: String) {
+    HALF_WIDTH_FIRST("half_width"),
+    FULL_WIDTH_FIRST("full_width"),
+    KANJI_FIRST("kanji");
+
+    companion object {
+        fun fromPreference(value: String?): NumericNotationPreference =
+            entries.firstOrNull { it.preferenceValue == value } ?: HALF_WIDTH_FIRST
+    }
+}
+
 /** Runtime settings for dictionary-based completion candidates. */
 data class PredictionConfig(
     val japanesePredictionEnabled: Boolean = true,
@@ -28,6 +39,8 @@ data class PredictionConfig(
     val showSymbolCandidates: Boolean = true,
     val showEmojiCandidates: Boolean = true,
     val showEmoticonCandidates: Boolean = true,
+    val numericNotationPreference: NumericNotationPreference =
+        NumericNotationPreference.HALF_WIDTH_FIRST,
 ) {
     val normalizedMinimumInputLength: Int
         get() = minimumInputLength.coerceIn(MIN_INPUT_LENGTH, MAX_INPUT_LENGTH)

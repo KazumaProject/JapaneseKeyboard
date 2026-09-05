@@ -96,6 +96,15 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     @Test
+    fun getCandidatesEnglishKana_keeps_lexical_counter_homophones_before_numeric_candidates() {
+        val candidates = engine.getCandidatesEnglishKana("にほん")
+
+        assertEquals("にほん", candidates.first().string)
+        assertTrue(candidates.any { it.string == "2本" })
+        assertTrue(candidates.any { it.string == "二本" })
+    }
+
+    @Test
     fun getCandidatesEnglishKana_keeps_valid_cardinal_and_counter_candidates() {
         val fourThousand = engine.getCandidatesEnglishKana("よんせん")
         assertTrue(fourThousand.any { it.string == "4000" })

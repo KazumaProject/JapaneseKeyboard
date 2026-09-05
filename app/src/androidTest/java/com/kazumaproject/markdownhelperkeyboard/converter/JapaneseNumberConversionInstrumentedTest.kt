@@ -61,6 +61,9 @@ class JapaneseNumberConversionInstrumentedTest {
         val validInputs = linkedMapOf(
             "よんせん" to setOf("4000", "四千"),
             "きゅうちょう" to setOf("9000000000000", "九兆"),
+            "ひゃくえん" to setOf("100円", "１００円", "百円"),
+            "50えん" to setOf("50円", "５０円", "五十円"),
+            "いちじかんはん" to setOf("1時間半", "１時間半", "一時間半"),
             "さんにん" to setOf("3人"),
             "にじゅっぷん" to setOf("20分"),
             "ろくじ" to setOf("6時"),
@@ -92,6 +95,12 @@ class JapaneseNumberConversionInstrumentedTest {
                 "$input unexpectedly generated ${candidates.map { it.string }}",
                 candidates.none { it.string in forbidden },
             )
+        }
+        validInputs.forEach { (input, required) ->
+            val candidates = engine.convertOriginal(input, repository)
+            standardResults[input] = candidates
+            val values = candidates.mapTo(hashSetOf()) { it.string }
+            assertTrue("$input missing $required from $values", values.containsAll(required))
         }
 
         val benchmarkCorpus = (forbiddenByInput.keys + validInputs.keys).toList()

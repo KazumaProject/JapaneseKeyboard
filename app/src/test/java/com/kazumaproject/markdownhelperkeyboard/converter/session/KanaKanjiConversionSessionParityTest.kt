@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumericNotationPreference
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -65,6 +66,82 @@ class KanaKanjiConversionSessionParityTest {
                     legacyResult.candidateSegmentsByString,
                     incrementalResult.candidateSegmentsByString,
                 )
+            }
+        }
+    }
+
+    @Test
+    fun numericNotationPreferenceIsAppliedAcrossConversionModesAndBunsetsu() = runBlocking {
+        val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
+        val cases = mapOf(
+            "50えん" to listOf("50円", "５０円", "五十円"),
+            "５０えん" to listOf("50円", "５０円", "五十円"),
+            "いちじかんはん" to listOf("1時間半", "１時間半", "一時間半"),
+        )
+        val modes = listOf(
+            CandidateQueryMode.PREDICTION,
+            CandidateQueryMode.CONVERSION,
+            CandidateQueryMode.NO_TAB_DEFAULT,
+            CandidateQueryMode.EISUKANA,
+        )
+
+        for (preference in NumericNotationPreference.entries) {
+            for ((input, forms) in cases) {
+                for (mode in modes) {
+                    for (bunsetsu in listOf(false, true)) {
+                        val result = session.query(
+                            request(input, mode, bunsetsu).copy(
+                                predictionConfig = PredictionConfig(
+                                    numericNotationPreference = preference,
+                                ),
+                            ),
+                        )
+                        val strings = result.candidates.map { it.string }
+                        val expectedFirst = when (preference) {
+                            NumericNotationPreference.HALF_WIDTH_FIRST -> forms[0]
+                            NumericNotationPreference.FULL_WIDTH_FIRST -> forms[1]
+                            NumericNotationPreference.KANJI_FIRST -> forms[2]
+                        }
+                        assertEquals(
+                            "$input/$mode/bunsetsu=$bunsetsu/$preference",
+                            expectedFirst,
+                            strings.firstOrNull(),
+                        )
+                        assertTrue(
+                            "$input/$mode/bunsetsu=$bunsetsu missing forms from $strings",
+                            strings.containsAll(forms),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun numericCounterHomophonesRemainAvailableWithoutOverridingLexicalCandidates() = runBlocking {
+        val numericForms = setOf("2本", "２本", "二本")
+
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(
+                CandidateQueryMode.PREDICTION,
+                CandidateQueryMode.CONVERSION,
+                CandidateQueryMode.NO_TAB_DEFAULT,
+                CandidateQueryMode.EISUKANA,
+            )) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(
+                        request("にほん", mode, bunsetsu),
+                    )
+                    assertFalse(
+                        "$backend/$mode/bunsetsu=$bunsetsu promoted ${result.candidates.firstOrNull()}",
+                        result.candidates.firstOrNull()?.string in numericForms,
+                    )
+                    assertTrue(
+                        "$backend/$mode/bunsetsu=$bunsetsu missing numeric candidates",
+                        result.candidates.any { it.string in numericForms },
+                    )
+                }
             }
         }
     }

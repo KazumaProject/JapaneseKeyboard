@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBack
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
 import com.kazumaproject.core.R as CoreR
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumericNotationPreference
 
 internal object CustomThemeColorPreferenceKeys {
     const val CANDIDATE_TEXT_COLOR = "custom_theme_candidate_text_color"
@@ -165,6 +166,11 @@ object AppPreference {
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
     private val INCREMENTAL_CONVERSION_SESSION_PREFERENCE =
         Pair("incremental_conversion_session_preference", false)
+    private val NUMERIC_NOTATION_PREFERENCE =
+        Pair(
+            "numeric_notation_preference",
+            NumericNotationPreference.HALF_WIDTH_FIRST.preferenceValue,
+        )
     private val JAPANESE_PREDICTION_ENABLE_PREFERENCE =
         Pair("japanese_prediction_enable_preference", true)
     private val ENGLISH_PREDICTION_ENABLE_PREFERENCE =
@@ -1810,6 +1816,17 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var numeric_notation_preference: NumericNotationPreference
+        get() = NumericNotationPreference.fromPreference(
+            preferences.getString(
+                NUMERIC_NOTATION_PREFERENCE.first,
+                NUMERIC_NOTATION_PREFERENCE.second,
+            ),
+        )
+        set(value) = preferences.edit {
+            it.putString(NUMERIC_NOTATION_PREFERENCE.first, value.preferenceValue)
         }
 
     var utility_candidate_config: UtilityCandidateConfig
