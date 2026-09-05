@@ -1420,6 +1420,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         scope.coroutineContext.cancelChildren()
     }
 
+    fun resetTouchStateForFastInputTest() {
+        cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         release()

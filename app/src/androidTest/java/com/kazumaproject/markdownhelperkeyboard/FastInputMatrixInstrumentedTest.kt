@@ -11,13 +11,17 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.PointF
 import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.os.Bundle
 import android.os.Debug
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
+import android.os.ResultReceiver
 import android.os.SystemClock
 import android.provider.Settings
 import android.text.Spanned
@@ -49,6 +53,7 @@ import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -62,8 +67,8 @@ import kotlin.random.Random
  * Device instrumentation regression tests for rapid input while the IME candidate area changes.
  *
  * They can run on a physical device or an emulator. Emulator results must not be reported as
- * physical-device results. These tests intentionally do not change the product's touch routing.
- * They also preserve and restore every preference, including the independently persisted
+ * physical-device results. The generated test uses the same production touch routing as normal
+ * input and preserves and restores every preference, including the independently persisted
  * empty-candidate height and the visible-candidate height for each column count.
  */
 @RunWith(AndroidJUnit4::class)
@@ -1556,7 +1561,7 @@ class FastInputMatrixInstrumentedTest {
     fun generatedTwoFingerInputAcrossAllKeyboardsOnPhysicalDevice() {
         val arguments = InstrumentationRegistry.getArguments()
         val rounds = arguments.getString("matrixRounds")?.toIntOrNull()
-            ?: DEFAULT_MATRIX_ROUNDS
+            ?: DEFAULT_GENERATED_MATRIX_ROUNDS
         require(rounds > 0)
         val requestedSurfaceNames = arguments.getString("matrixSurfaces")
             ?.split(',')
@@ -1565,12 +1570,20 @@ class FastInputMatrixInstrumentedTest {
             ?.map(String::uppercase)
             ?.toSet()
             .orEmpty()
-        val surfaces = if (requestedSurfaceNames.isEmpty()) {
-            RapidInputSurface.entries
-        } else {
-            val unknownNames = requestedSurfaceNames - RapidInputSurface.entries.map { it.name }.toSet()
-            require(unknownNames.isEmpty()) { "Unknown matrixSurfaces: $unknownNames" }
-            RapidInputSurface.entries.filter { it.name in requestedSurfaceNames }
+        val surfaces = when {
+            requestedSurfaceNames.isEmpty() || requestedSurfaceNames == setOf("ALL") -> {
+                RapidInputSurface.entries
+            }
+
+            else -> {
+                require("ALL" !in requestedSurfaceNames) {
+                    "matrixSurfaces cannot combine ALL with a surface name"
+                }
+                val unknownNames = requestedSurfaceNames -
+                    RapidInputSurface.entries.map { it.name }.toSet()
+                require(unknownNames.isEmpty()) { "Unknown matrixSurfaces: $unknownNames" }
+                RapidInputSurface.entries.filter { it.name in requestedSurfaceNames }
+            }
         }
         val requestedColumnTokens = arguments.getString("matrixColumns")
             ?.split(',')
@@ -1592,133 +1605,251 @@ class FastInputMatrixInstrumentedTest {
             }
             requestedColumns
         }
+        val requestedSumireMethodNames = arguments.getString("matrixSumireMethods")
+            ?.split(',')
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            ?.toSet()
+            .orEmpty()
+        val sumireInputMethods = when {
+            requestedSumireMethodNames.isEmpty() || requestedSumireMethodNames == setOf("ALL") -> {
+                RAPID_SUMIRE_INPUT_METHODS
+            }
 
+            else -> {
+                require("ALL" !in requestedSumireMethodNames) {
+                    "matrixSumireMethods cannot combine ALL with a method name"
+                }
+                val unknownNames = requestedSumireMethodNames -
+                    RAPID_SUMIRE_INPUT_METHODS.toSet()
+                require(unknownNames.isEmpty()) {
+                    "Unknown matrixSumireMethods: $unknownNames"
+                }
+                RAPID_SUMIRE_INPUT_METHODS.filter { it in requestedSumireMethodNames }
+            }
+        }
         runPhysicalDeviceSession("generated-multitouch") { session ->
             val keyboardLayoutDao = EntryPointAccessors.fromApplication(
                 session.context.applicationContext,
                 KanaKanjiEngineEntryPoint::class.java,
             ).keyboardLayoutDao()
-            val customFixture = installRapidInputCustomFixture(keyboardLayoutDao)
             val failures = mutableListOf<String>()
-            val screenshots = mutableSetOf<String>()
+            val setupErrors = mutableListOf<String>()
+            val categoryCounts = RapidResultCategory.entries
+                .associateWith { 0 }
+                .toMutableMap()
             var completedTrials = 0
             var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var customFixture: RapidInputCustomFixture? = null
+            val expectedTrials = surfaces.sumOf { surface ->
+                val methodCount = if (surface == RapidInputSurface.SUMIRE) {
+                    sumireInputMethods.size
+                } else {
+                    1
+                }
+                methodCount * candidateColumns.size * rounds *
+                    RAPID_SCENARIOS_PER_SURFACE * RAPID_MULTITOUCH_INTERVALS_MS.size
+            }
 
             try {
+                customFixture = installRapidInputCustomFixture(keyboardLayoutDao)
                 scenario = launchHost(session.context)
+                val activeScenario = requireNotNull(scenario)
                 for (surface in surfaces) {
-                    for (columns in candidateColumns) {
-                        applyRapidInputSurfacePreferences(
-                            preferences = session.preferences,
-                            surface = surface,
-                            customFixtureStableId = customFixture.stableId,
-                            candidateColumns = columns,
-                        )
-                        ensureTargetImeSelected(session)
-                        restartInput(scenario)
-                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val methodsForSurface: List<String?> = if (
+                        surface == RapidInputSurface.SUMIRE
+                    ) {
+                        sumireInputMethods
+                    } else {
+                        listOf(null)
+                    }
+                    for (sumireInputMethod in methodsForSurface) {
+                        for (columns in candidateColumns) {
+                            applyRapidInputSurfacePreferences(
+                                preferences = session.preferences,
+                                surface = surface,
+                                customFixtureStableId = requireNotNull(customFixture).stableId,
+                                candidateColumns = columns,
+                                sumireInputMethod = sumireInputMethod,
+                            )
+                            ensureTargetImeSelected(session)
 
-                        repeat(rounds) { zeroBasedRound ->
-                            val round = zeroBasedRound + 1
-                            val generatedScenarios = buildRapidInputScenarios(surface, round)
-                            for (orientation in TestOrientation.entries) {
-                                rotateAndVerify(orientation)
-                                prepareEmptyEditor(scenario, surface)
-                                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
-                                assertDeviceReady(
-                                    session.context,
-                                    session.targetIme,
-                                    scenario,
-                                )
+                            repeat(rounds) { zeroBasedRound ->
+                                val round = zeroBasedRound + 1
+                                val generatedScenarios = buildRapidInputScenarios(surface, round)
+                                for (orientation in TestOrientation.entries) {
+                                    rotateAndVerify(orientation)
+                                    restartInput(activeScenario)
+                                    awaitRapidInputSurfaceReady(surface)
+                                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                                    assertDeviceReady(
+                                        session.context,
+                                        session.targetIme,
+                                        activeScenario,
+                                    )
 
-                                for (scenarioIndex in generatedScenarios.indices) {
-                                    val inputScenario = generatedScenarios[scenarioIndex]
-                                    for (intervalIndex in RAPID_MULTITOUCH_INTERVALS_MS.indices) {
-                                        val intervalMs = RAPID_MULTITOUCH_INTERVALS_MS[intervalIndex]
-                                        val dimensions = rapidTrialDimensions(
-                                            scenarioIndex = scenarioIndex,
-                                            intervalIndex = intervalIndex,
-                                        )
-                                        if (dimensions.orientation != orientation) continue
+                                    for (scenarioIndex in generatedScenarios.indices) {
+                                        val inputScenario = generatedScenarios[scenarioIndex]
+                                        for (intervalIndex in RAPID_MULTITOUCH_INTERVALS_MS.indices) {
+                                            val intervalMs = RAPID_MULTITOUCH_INTERVALS_MS[intervalIndex]
+                                            val dimensions = rapidTrialDimensions(
+                                                scenarioIndex = scenarioIndex,
+                                                intervalIndex = intervalIndex,
+                                            )
+                                            if (dimensions.orientation != orientation) continue
 
-                                        val trial = buildString {
-                                            append("surface=${surface.name} ")
-                                            append("columns=$columns ")
-                                            append("round=$round ")
-                                            append("scenario=${inputScenario.name} ")
-                                            append("seed=${inputScenario.seed} ")
-                                            append("orientation=${dimensions.orientation.name} ")
-                                            append("editor=${dimensions.editorState.name} ")
-                                            append("release=${dimensions.releaseOrder.name} ")
-                                            append("intervalMs=$intervalMs")
-                                        }
-                                        Log.i(TAG, "MULTITOUCH_TRIAL\t$trial")
-                                        sendProgress("FAST_INPUT_MULTITOUCH_TRIAL $trial\n")
+                                            val trial = buildString {
+                                                append("surface=${surface.name} ")
+                                                sumireInputMethod?.let {
+                                                    append("sumireMethod=$it ")
+                                                }
+                                                append("columns=$columns ")
+                                                append("round=$round ")
+                                                append("scenario=${inputScenario.name} ")
+                                                append("seed=${inputScenario.seed} ")
+                                                append("orientation=${dimensions.orientation.name} ")
+                                                append("editor=${dimensions.editorState.name} ")
+                                                append("release=${dimensions.releaseOrder.name} ")
+                                                append("intervalMs=$intervalMs")
+                                            }
+                                            Log.i(TAG, "MULTITOUCH_TRIAL\t$trial")
+                                            sendProgress("FAST_INPUT_MULTITOUCH_TRIAL $trial\n")
 
-                                        prepareEmptyEditor(scenario, surface)
-                                        val prefix = prepareRapidEditorState(
-                                            scenario = scenario,
-                                            surface = surface,
-                                            editorState = dimensions.editorState,
-                                        )
-                                        val points = resolveRapidInputPoints(
-                                            surface = surface,
-                                            operations = inputScenario.operations,
-                                        )
-                                        val expected = prefix + inputScenario.expected
-                                        val injected = when (dimensions.releaseOrder) {
-                                            RapidReleaseOrder.ROLLING_OLDER_FIRST ->
-                                                injectRollingTwoFingerSequence(
-                                                    operations = inputScenario.operations,
-                                                    points = points,
-                                                    downIntervalMs = intervalMs,
+                                            var expected = if (
+                                                dimensions.editorState == RapidEditorState.WARM
+                                            ) {
+                                                surface.warmExpected + inputScenario.expected
+                                            } else {
+                                                inputScenario.expected
+                                            }
+                                            var actual = runCatching { readText(activeScenario) }
+                                                .getOrDefault("")
+                                            var outcome: RapidTrialOutcome
+                                            try {
+                                                resetRapidInputTrial(activeScenario)
+                                                val prefix = prepareRapidEditorState(
+                                                    scenario = activeScenario,
+                                                    surface = surface,
+                                                    editorState = dimensions.editorState,
                                                 )
-
-                                            RapidReleaseOrder.PAIRED_NEWER_FIRST ->
-                                                injectPairedTwoFingerSequence(
+                                                expected = prefix + inputScenario.expected
+                                                val points = resolveRapidInputPoints(
+                                                    surface = surface,
                                                     operations = inputScenario.operations,
-                                                    points = points,
-                                                    downIntervalMs = intervalMs,
                                                 )
-                                        }
-                                        val actual = awaitTextSettled(scenario)
-                                        val category = classifyRapidInputResult(
-                                            expected = expected,
-                                            actual = actual,
-                                            allEventsInjected = injected,
-                                        )
-                                        completedTrials += 1
+                                                val injected = when (dimensions.releaseOrder) {
+                                                    RapidReleaseOrder.ROLLING_OLDER_FIRST ->
+                                                        injectRollingTwoFingerSequence(
+                                                            operations = inputScenario.operations,
+                                                            points = points,
+                                                            downIntervalMs = intervalMs,
+                                                        )
 
-                                        val result = buildString {
-                                            append("surface=${surface.name} ")
-                                            append("columns=$columns ")
-                                            append("round=$round ")
-                                            append("scenario=${inputScenario.name} ")
-                                            append("seed=${inputScenario.seed} ")
-                                            append("orientation=${dimensions.orientation.name} ")
-                                            append("editor=${dimensions.editorState.name} ")
-                                            append("release=${dimensions.releaseOrder.name} ")
-                                            append("intervalMs=$intervalMs ")
-                                            append("operations=${inputScenario.operations.size} ")
-                                            append("category=${category.name} ")
-                                            append("events=$injected ")
-                                            append("expectedLength=${expected.length} ")
-                                            append("actualLength=${actual.length} ")
-                                            append("firstMismatch=")
-                                            append(firstMismatchIndex(expected, actual))
-                                            append(" expected=[$expected] actual=[$actual]")
-                                        }
-                                        Log.i(TAG, "MULTITOUCH_RESULT\t$result")
-                                        sendProgress("FAST_INPUT_MULTITOUCH_RESULT $result\n")
+                                                    RapidReleaseOrder.PAIRED_NEWER_FIRST ->
+                                                        injectPairedTwoFingerSequence(
+                                                            operations = inputScenario.operations,
+                                                            points = points,
+                                                            downIntervalMs = intervalMs,
+                                                        )
+                                                }
+                                                actual = awaitTextSettled(
+                                                    scenario = activeScenario,
+                                                    failOnTimeout = true,
+                                                )
+                                                outcome = RapidTrialOutcome(
+                                                    category = classifyRapidInputResult(
+                                                        expected = expected,
+                                                        actual = actual,
+                                                        allEventsInjected = injected,
+                                                    ),
+                                                    expected = expected,
+                                                    actual = actual,
+                                                    allEventsInjected = injected,
+                                                )
+                                            } catch (error: RapidResetException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.RESET_ERROR,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: ResultTimeoutException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.RESULT_TIMEOUT,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: SetupException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.SETUP_ERROR,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: Throwable) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.SETUP_ERROR,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = false,
+                                                    error = error.message ?: error::class.java.simpleName,
+                                                )
+                                            }
+                                            completedTrials += 1
+                                            categoryCounts[outcome.category] =
+                                                categoryCounts.getValue(outcome.category) + 1
 
-                                        if (category != RapidResultCategory.PASS) {
-                                            failures += result
-                                            val screenshotToken =
-                                                "multitouch-${surface.name.lowercase()}-c$columns-" +
-                                                    "${inputScenario.name.lowercase()}-" +
-                                                    dimensions.releaseOrder.name.lowercase()
-                                            if (screenshots.add(screenshotToken)) {
-                                                saveScreenshot(session, screenshotToken)
+                                            val result = buildString {
+                                                append(trial)
+                                                append(" operations=${inputScenario.operations.size} ")
+                                                append("category=${outcome.category.name} ")
+                                                append("events=${outcome.allEventsInjected} ")
+                                                append("expectedLength=${outcome.expected.length} ")
+                                                append("actualLength=${outcome.actual.length} ")
+                                                append("firstMismatch=")
+                                                val mismatchIndex = firstMismatchIndex(
+                                                    outcome.expected,
+                                                    outcome.actual,
+                                                )
+                                                append(mismatchIndex)
+                                                append(" expected=[${outcome.expected}] actual=[${outcome.actual}]")
+                                                if (outcome.category != RapidResultCategory.PASS) {
+                                                    val warmPrefixLength = if (
+                                                        dimensions.editorState == RapidEditorState.WARM
+                                                    ) {
+                                                        surface.warmExpected.length
+                                                    } else {
+                                                        0
+                                                    }
+                                                    append(" mismatchOperationIndex=")
+                                                    append(
+                                                        (mismatchIndex - warmPrefixLength)
+                                                            .takeIf { it >= 0 } ?: -1
+                                                    )
+                                                    append(" operationTrace=")
+                                                    append(
+                                                        inputScenario.operations.mapIndexed { index, operation ->
+                                                            "$index:${operation.token}:${operation.directionOrTap.name}"
+                                                        }.joinToString(",")
+                                                    )
+                                                }
+                                                outcome.error?.let { error ->
+                                                    append(" error=[${error.replace('\n', ' ')}]")
+                                                }
+                                            }
+                                            Log.i(TAG, "MULTITOUCH_RESULT\t$result")
+                                            sendProgress("FAST_INPUT_MULTITOUCH_RESULT $result\n")
+
+                                            if (outcome.category != RapidResultCategory.PASS) {
+                                                failures += result
                                             }
                                         }
                                     }
@@ -1727,18 +1858,46 @@ class FastInputMatrixInstrumentedTest {
                         }
                     }
                 }
+            } catch (error: Throwable) {
+                val failure =
+                    "surfaces=${surfaces.joinToString(",")} error=" +
+                        (error.message ?: error::class.java.simpleName)
+                setupErrors += failure
+                Log.e(TAG, "FAST_INPUT_SETUP_ERROR $failure", error)
+                sendProgress("FAST_INPUT_SETUP_ERROR $failure\n")
             } finally {
                 scenario?.close()
-                runBlocking { keyboardLayoutDao.deleteLayout(customFixture.id) }
+                customFixture?.let { fixture ->
+                    runCatching { runBlocking { keyboardLayoutDao.deleteLayout(fixture.id) } }
+                        .onFailure { error ->
+                            val failure = "Unable to delete generated custom fixture: ${error.message}"
+                            setupErrors += failure
+                            Log.e(TAG, "FAST_INPUT_SETUP_ERROR $failure", error)
+                        }
+                }
             }
 
-            val expectedTrials = surfaces.size * candidateColumns.size * rounds *
-                RAPID_SCENARIOS_PER_SURFACE * RAPID_MULTITOUCH_INTERVALS_MS.size
+            val passCount = categoryCounts.getValue(RapidResultCategory.PASS)
+            val inputMismatchCount = categoryCounts.getValue(RapidResultCategory.INPUT_MISMATCH)
+            val injectionErrorCount = categoryCounts.getValue(RapidResultCategory.INJECTION_ERROR)
+            val resetErrorCount = categoryCounts.getValue(RapidResultCategory.RESET_ERROR)
+            val resultTimeoutCount = categoryCounts.getValue(RapidResultCategory.RESULT_TIMEOUT)
+            val setupErrorCount =
+                categoryCounts.getValue(RapidResultCategory.SETUP_ERROR) + setupErrors.size
+            val failureCount = failures.size + setupErrors.size
             val summary = buildString {
                 append("FAST_INPUT_MULTITOUCH_SUMMARY ")
+                append("surfaces=${surfaces.joinToString(",")} ")
+                append("sumireMethods=${sumireInputMethods.joinToString(",")} ")
                 append("trials=$completedTrials/$expectedTrials ")
                 append("rounds=$rounds columns=${candidateColumns.joinToString(",")} ")
-                append("failures=${failures.size}\n")
+                append("pass=$passCount ")
+                append("resetErrors=$resetErrorCount ")
+                append("setupErrors=$setupErrorCount ")
+                append("injectionErrors=$injectionErrorCount ")
+                append("inputMismatches=$inputMismatchCount ")
+                append("resultTimeouts=$resultTimeoutCount ")
+                append("failures=$failureCount\n")
             }
             Log.i(TAG, summary.trim())
             sendProgress(summary)
@@ -1749,8 +1908,17 @@ class FastInputMatrixInstrumentedTest {
                         append("Generated multitouch failures:\n")
                         append(failures.joinToString(separator = "\n", limit = 30))
                     }
+                    if (setupErrors.isNotEmpty()) {
+                        append("Generated multitouch setup errors:\n")
+                        append(setupErrors.joinToString(separator = "\n", limit = 30))
+                    }
                 },
-                completedTrials == expectedTrials && failures.isEmpty(),
+                completedTrials == expectedTrials &&
+                    resetErrorCount == 0 &&
+                    setupErrorCount == 0 &&
+                    injectionErrorCount == 0 &&
+                    inputMismatchCount == 0 &&
+                    resultTimeoutCount == 0,
             )
         }
     }
@@ -2192,6 +2360,7 @@ class FastInputMatrixInstrumentedTest {
         surface: RapidInputSurface,
         customFixtureStableId: String,
         candidateColumns: Int,
+        sumireInputMethod: String?,
     ) {
         val baseKeyboard = when (surface) {
             RapidInputSurface.TENKEY -> TestKeyboard.TENKEY
@@ -2220,6 +2389,14 @@ class FastInputMatrixInstrumentedTest {
             .putInt("long_press_timeout_preference", 2000)
             .putString("keyboard_order_preference", surface.keyboardOrder)
             .putBoolean("save_last_used_keyboard", surface == RapidInputSurface.CUSTOM)
+        if (surface == RapidInputSurface.SUMIRE) {
+            editor
+                .putString(
+                    "sumire_input_method_preference",
+                    sumireInputMethod ?: "toggle",
+                )
+                .putString("sumire_keyboard_style_preference", "default")
+        }
         if (surface == RapidInputSurface.CUSTOM) {
             editor
                 .putBoolean("remember_last_custom_keyboard_preference", true)
@@ -2674,9 +2851,7 @@ class FastInputMatrixInstrumentedTest {
     ): RapidResultCategory = when {
         !allEventsInjected -> RapidResultCategory.INJECTION_ERROR
         actual == expected -> RapidResultCategory.PASS
-        actual.length < expected.length -> RapidResultCategory.MISSING
-        actual.length > expected.length -> RapidResultCategory.EXTRA
-        else -> RapidResultCategory.MISMATCH
+        else -> RapidResultCategory.INPUT_MISMATCH
     }
 
     private fun firstMismatchIndex(expected: String, actual: String): Int {
@@ -3165,6 +3340,85 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
+    private fun resetRapidInputTrial(
+        scenario: ActivityScenario<FastInputHostActivity>,
+    ) {
+        try {
+            awaitHostWindowFocus(scenario)
+            val token =
+                "${SystemClock.uptimeMillis()}-${IME_RESET_TOKEN_SEQUENCE.incrementAndGet()}"
+            val resetSignal = CountDownLatch(1)
+            val response = AtomicReference<FastInputResetResponse?>()
+            val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                    if (
+                        resultData?.getString(FastInputTestProtocol.EXTRA_RESET_TOKEN) == token
+                    ) {
+                        response.set(
+                            FastInputResetResponse(
+                                resultCode = resultCode,
+                                error = resultData.getString(
+                                    FastInputTestProtocol.EXTRA_RESET_ERROR
+                                ),
+                            )
+                        )
+                        resetSignal.countDown()
+                    }
+                }
+            }
+
+            scenario.onActivity { activity ->
+                activity.resetEditorForFastInputTest(token, receiver)
+            }
+            if (!resetSignal.await(RESET_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                throw RapidResetException(
+                    "IME reset ACK timed out after ${RESET_TIMEOUT_MS}ms (token=$token)"
+                )
+            }
+            val resetResponse = response.get()
+                ?: throw RapidResetException("IME reset ACK was empty (token=$token)")
+            if (resetResponse.resultCode != FastInputTestProtocol.RESET_ACK) {
+                throw RapidResetException(
+                    "IME rejected reset (token=$token error=${resetResponse.error})"
+                )
+            }
+
+            val deadline = SystemClock.uptimeMillis() + RESET_TIMEOUT_MS
+            var stableSamples = 0
+            var lastState = "host activity unavailable"
+            while (SystemClock.uptimeMillis() < deadline) {
+                var emptyAndFocused = false
+                scenario.onActivity { activity ->
+                    val editor = activity.editText
+                    emptyAndFocused = editor.text.isNullOrEmpty() &&
+                        editor.hasFocus() &&
+                        editor.isShown
+                    lastState =
+                        "empty=${editor.text.isNullOrEmpty()} focused=${editor.hasFocus()} " +
+                            "shown=${editor.isShown}"
+                }
+                if (emptyAndFocused) {
+                    stableSamples += 1
+                    if (stableSamples >= EDITOR_CONNECTION_STABLE_SAMPLES) return
+                } else {
+                    stableSamples = 0
+                }
+                SystemClock.sleep(POLL_MS)
+            }
+            throw RapidResetException(
+                "Editor was not empty and stable after IME reset " +
+                    "within ${RESET_TIMEOUT_MS}ms ($lastState)"
+            )
+        } catch (error: RapidResetException) {
+            throw error
+        } catch (error: Throwable) {
+            throw RapidResetException(
+                "Fast-input trial reset failed: ${error.message ?: error::class.java.simpleName}",
+                error,
+            )
+        }
+    }
+
     private fun prepareEmptyEditor(
         scenario: ActivityScenario<FastInputHostActivity>,
         rapidSurface: RapidInputSurface? = null,
@@ -3319,7 +3573,8 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun awaitTextSettled(
-        scenario: ActivityScenario<FastInputHostActivity>
+        scenario: ActivityScenario<FastInputHostActivity>,
+        failOnTimeout: Boolean = false,
     ): String {
         var previous: String? = null
         var stableSamples = 0
@@ -3335,7 +3590,13 @@ class FastInputMatrixInstrumentedTest {
             }
             SystemClock.sleep(POLL_MS)
         }
-        return readText(scenario)
+        val latest = readText(scenario)
+        if (failOnTimeout) {
+            throw ResultTimeoutException(
+                "Editor text did not settle within ${RESULT_TIMEOUT_MS}ms; actual=[$latest]"
+            )
+        }
+        return latest
     }
 
     private fun awaitStableGeometry(
@@ -3493,21 +3754,28 @@ class FastInputMatrixInstrumentedTest {
         throw SetupException("Timed out waiting for visible key id=$idName")
     }
 
+    private fun displayBounds(): ScreenRect {
+        val display = instrumentation.targetContext
+            .getSystemService(DisplayManager::class.java)
+            .displays
+            .minByOrNull { it.displayId }
+            ?: throw SetupException("No display is available")
+        val size = Point()
+        display.getRealSize(size)
+        return ScreenRect(0, 0, size.x, size.y).also {
+            check(it.isValid) { "Display returned invalid dimensions: $size" }
+        }
+    }
+
     private fun awaitScreenAlignedNodeBounds(idName: String): ScreenRect {
         val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
         var previous: ScreenRect? = null
         var stableSamples = 0
         while (SystemClock.uptimeMillis() < deadline) {
             val nodeBounds = findVisibleNodeById(idName)?.screenRect()
-            val screenshot = uiAutomation.takeScreenshot()
-            val screenBounds = screenshot?.let { shot ->
-                val bounds = ScreenRect(0, 0, shot.width, shot.height)
-                shot.recycle()
-                bounds
-            }
+            val screenBounds = displayBounds()
             if (
                 nodeBounds != null &&
-                screenBounds != null &&
                 nodeBounds == nodeBounds.intersect(screenBounds)
             ) {
                 if (nodeBounds == previous) {
@@ -4023,15 +4291,11 @@ class FastInputMatrixInstrumentedTest {
 
     private fun rotateAndVerify(orientation: TestOrientation) {
         fun hasExpectedAspectRatio(): Boolean {
-            val screenshot = uiAutomation.takeScreenshot()
-            return screenshot?.let {
-                val matches = when (orientation) {
-                    TestOrientation.PORTRAIT -> it.height >= it.width
-                    TestOrientation.LANDSCAPE -> it.width > it.height
-                }
-                it.recycle()
-                matches
-            } ?: false
+            val bounds = displayBounds()
+            return when (orientation) {
+                TestOrientation.PORTRAIT -> bounds.height >= bounds.width
+                TestOrientation.LANDSCAPE -> bounds.width > bounds.height
+            }
         }
 
         if (hasExpectedAspectRatio()) {
@@ -4945,10 +5209,11 @@ class FastInputMatrixInstrumentedTest {
 
     private enum class RapidResultCategory {
         PASS,
-        MISSING,
-        EXTRA,
-        MISMATCH,
+        INPUT_MISMATCH,
         INJECTION_ERROR,
+        RESET_ERROR,
+        SETUP_ERROR,
+        RESULT_TIMEOUT,
     }
 
     private data class RapidKanaRow(
@@ -5004,6 +5269,19 @@ class FastInputMatrixInstrumentedTest {
         val injected: Boolean,
     )
 
+    private data class RapidTrialOutcome(
+        val category: RapidResultCategory,
+        val expected: String,
+        val actual: String,
+        val allEventsInjected: Boolean,
+        val error: String? = null,
+    )
+
+    private data class FastInputResetResponse(
+        val resultCode: Int,
+        val error: String?,
+    )
+
     private enum class RateCategory {
         EXPECTED,
         YA_NA,
@@ -5042,6 +5320,15 @@ class FastInputMatrixInstrumentedTest {
         cause: Throwable? = null
     ) : RuntimeException(message, cause)
 
+    private class RapidResetException(
+        message: String,
+        cause: Throwable? = null,
+    ) : RuntimeException(message, cause)
+
+    private class ResultTimeoutException(
+        message: String,
+    ) : RuntimeException(message)
+
     companion object {
         private const val TAG = "FastInputMatrix"
         private const val KEYBOARD_SIZE_CUSTOM_LABEL = "SIZE-CI"
@@ -5074,6 +5361,7 @@ class FastInputMatrixInstrumentedTest {
         )
         private const val SEQUENCE_REPETITIONS = 8
         private const val DEFAULT_MATRIX_ROUNDS = 3
+        private const val DEFAULT_GENERATED_MATRIX_ROUNDS = 1
         private const val DEFAULT_RATE_TRIALS = 10
         private const val TAP_HOLD_MS = 18L
         private const val TAP_GAP_MS = 12L
@@ -5116,6 +5404,8 @@ class FastInputMatrixInstrumentedTest {
         private const val IME_SWITCH_RETRY_MS = 1_000L
         private const val IME_SWITCH_STABILITY_MS = 750L
         private val IME_RESTART_TOKEN_SEQUENCE = AtomicLong(0L)
+        private val IME_RESET_TOKEN_SEQUENCE = AtomicLong(0L)
+        private const val RESET_TIMEOUT_MS = 5_000L
         private const val TOTAL_CASES = 3 * 3 * 2 * 2 * 2 * 2
         private const val CASES_PER_ORIENTATION = TOTAL_CASES / 2
         private const val RATE_CONFIGURATIONS = 2 * 2 * 2 * 2
@@ -5135,6 +5425,11 @@ class FastInputMatrixInstrumentedTest {
         private const val RAPID_MIN_FLICK_DISTANCE_DP = 48f
         private val RAPID_POINTER_IDS = intArrayOf(7, 19)
         private val RAPID_CANDIDATE_COLUMNS = listOf(1, 2, 3)
+        private val RAPID_SUMIRE_INPUT_METHODS = listOf(
+            "toggle",
+            "flick",
+            "switch-mode-effective",
+        )
         private val RAPID_MULTITOUCH_INTERVALS_MS =
             longArrayOf(120L, 60L, 30L, 16L, 8L, 4L, 0L)
         // The built-in dakuten key cycles つ through small-tsu before づ, so keep

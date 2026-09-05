@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       rounds:
-        description: Number of repetitions for every configuration
+        description: Number of repetitions for every generated configuration
         required: true
         type: choice
         default: '1'
@@ -12,29 +12,6 @@ on:
           - '1'
           - '3'
           - '10'
-      capture_visuals:
-        description: Save empty and active screenshots for every configuration
-        required: true
-        type: boolean
-        default: true
-      start_case:
-        description: First matrix case to run (1-144)
-        required: true
-        type: string
-        default: '1'
-      end_case:
-        description: Last matrix case to run (1-144)
-        required: true
-        type: string
-        default: '144'
-      test_scope:
-        description: Run the complete suite or only generated multi-touch input
-        required: true
-        type: choice
-        default: all
-        options:
-          - all
-          - generated
       generated_surfaces:
         description: ALL or comma-separated TENKEY,GOJUON,SUMIRE,QWERTY,ROMAJI,CUSTOM
         required: true
@@ -50,13 +27,71 @@ permissions:
   contents: read
 
 jobs:
-  fast-input-regression:
-    name: Pixel 6 Pro API 35
+  select-fast-input-jobs:
+    name: Select Fast Input jobs
     runs-on: ubuntu-latest
-    # The full physical-input suite intentionally runs 756 generated cases plus the
-    # existing 144-configuration and 800-trial regressions. Leave enough headroom for
-    # slower hosted emulators and optional multi-round dispatches.
-    timeout-minutes: 360
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - name: Build requested job matrix
+        id: select
+        env:
+          REQUESTED_SURFACES: ${{ inputs.generated_surfaces }}
+        run: |
+          set -euo pipefail
+          requested_surfaces="${REQUESTED_SURFACES//[[:space:]]/}"
+          requested_surfaces="${requested_surfaces^^}"
+          if [[ -z "$requested_surfaces" ]]; then
+            echo "generated_surfaces must not be empty."
+            exit 1
+          fi
+
+          all_matrix='[
+            {"surface":"TENKEY","job_key":"TENKEY","sumire_method":"ALL"},
+            {"surface":"GOJUON","job_key":"GOJUON","sumire_method":"ALL"},
+            {"surface":"SUMIRE","job_key":"SUMIRE-toggle","sumire_method":"toggle"},
+            {"surface":"SUMIRE","job_key":"SUMIRE-flick","sumire_method":"flick"},
+            {"surface":"SUMIRE","job_key":"SUMIRE-switch-mode-effective","sumire_method":"switch-mode-effective"},
+            {"surface":"QWERTY","job_key":"QWERTY","sumire_method":"ALL"},
+            {"surface":"ROMAJI","job_key":"ROMAJI","sumire_method":"ALL"},
+            {"surface":"CUSTOM","job_key":"CUSTOM","sumire_method":"ALL"}
+          ]'
+
+          if [[ "$requested_surfaces" != "ALL" ]]; then
+            IFS=',' read -r -a requested_surface_list <<< "$requested_surfaces"
+            for surface in "${requested_surface_list[@]}"; do
+              case "$surface" in
+                TENKEY|GOJUON|SUMIRE|QWERTY|ROMAJI|CUSTOM) ;;
+                *)
+                  echo "Unknown generated surface: $surface"
+                  exit 1
+                  ;;
+              esac
+            done
+          fi
+
+          selected_matrix="$(jq -c --arg requested "$requested_surfaces" '
+            if $requested == "ALL" then .
+            else
+              ($requested | split(",")) as $surfaces |
+              map(select(.surface as $surface | ($surfaces | index($surface)) != null))
+            end
+          ' <<< "$all_matrix")"
+          if [[ "$selected_matrix" == "[]" ]]; then
+            echo "No fast-input jobs selected for generated_surfaces=$requested_surfaces."
+            exit 1
+          fi
+          echo "matrix={\"include\":$selected_matrix}" >> "$GITHUB_OUTPUT"
+
+  fast-input-regression:
+    needs: select-fast-input-jobs
+    name: Pixel 6 Pro API 35 — ${{ matrix.job_key }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.select-fast-input-jobs.outputs.matrix) }}
+    timeout-minutes: 45
     env:
       ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
       ZENZ_DEBUG_NATIVE_ABIS: x86_64
@@ -103,16 +138,14 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run the fast-input matrix
+      - name: Run generated two-finger input matrix
         uses: reactivecircus/android-emulator-runner@v2
         env:
           FAST_INPUT_ROUNDS: ${{ inputs.rounds }}
-          FAST_INPUT_CAPTURE_VISUALS: ${{ inputs.capture_visuals }}
-          FAST_INPUT_START_CASE: ${{ inputs.start_case }}
-          FAST_INPUT_END_CASE: ${{ inputs.end_case }}
-          FAST_INPUT_TEST_SCOPE: ${{ inputs.test_scope }}
-          FAST_INPUT_GENERATED_SURFACES: ${{ inputs.generated_surfaces }}
+          FAST_INPUT_GENERATED_SURFACES: ${{ matrix.surface }}
           FAST_INPUT_GENERATED_COLUMNS: ${{ inputs.generated_columns }}
+          FAST_INPUT_SUMIRE_METHODS: ${{ matrix.sumire_method }}
+          FAST_INPUT_SUMMARY_SURFACE: ${{ matrix.job_key }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         with:
           api-level: 35
@@ -128,10 +161,6 @@ jobs:
           enable-hw-keyboard: false
           disable-animations: false
           disable-spellchecker: true
-          # android-emulator-runner only adds hw.keyboard=yes when this input is true.
-          # Explicitly override the Pixel profile as the first line of defense. The
-          # test script also detaches x86_64 ranchu's translated PS/2 keyboard.
-          # Keep this folded into one command because the action parses each line separately.
           pre-emulator-launch-script: >-
             avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
             sed -i '/^[[:space:]]*hw\.keyboard[[:space:]]*=/d' "$avd_config" &&
@@ -142,15 +171,97 @@ jobs:
             -noaudio -no-boot-anim -camera-back none
           script: bash .github/scripts/run-fast-input-regression.sh
 
-      - name: Upload test results and screenshots
+      - name: Upload generated test logs and ADB diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: fast-input-regression-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            fast-input-artifacts/
-            app/build/reports/androidTests/connected/
-            app/build/outputs/androidTest-results/connected/
+          name: fast-input-regression-${{ matrix.job_key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fast-input-artifacts/
           if-no-files-found: warn
           retention-days: 14
           compression-level: 0
+
+      - name: Upload generated test summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fast-input-summary-${{ matrix.job_key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fast-input-artifacts/summary-${{ matrix.job_key }}.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  fast-input-regression-summary:
+    name: Fast Input Regression Summary
+    if: always()
+    needs: fast-input-regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download per-surface summaries
+        uses: actions/download-artifact@v7
+        with:
+          pattern: fast-input-summary-*
+          path: fast-input-summaries
+          merge-multiple: true
+
+      - name: Publish and validate aggregate result
+        env:
+          MATRIX_RESULT: ${{ needs.fast-input-regression.result }}
+          REQUESTED_SURFACES: ${{ inputs.generated_surfaces }}
+          REQUESTED_COLUMNS: ${{ inputs.generated_columns }}
+          REQUESTED_ROUNDS: ${{ inputs.rounds }}
+        run: |
+          set -euo pipefail
+          if [[ "$REQUESTED_SURFACES" == "ALL" ]]; then
+            expected_surfaces=(TENKEY GOJUON SUMIRE QWERTY ROMAJI CUSTOM)
+          else
+            IFS=',' read -r -a expected_surfaces <<< "$REQUESTED_SURFACES"
+          fi
+          IFS=',' read -r -a expected_columns <<< "$REQUESTED_COLUMNS"
+          expected_trials=$((REQUESTED_ROUNDS * ${#expected_columns[@]} * 6 * 7))
+          {
+            echo "## Fast Input Regression — aggregate"
+            echo
+            echo "- Matrix result: ${MATRIX_RESULT}"
+            echo "- Requested surfaces: ${REQUESTED_SURFACES}"
+            echo "- Requested columns: ${REQUESTED_COLUMNS}"
+            echo "- Rounds: ${REQUESTED_ROUNDS}"
+            echo "- Expected trials per surface: ${expected_trials}"
+            echo
+            echo '```text'
+            while IFS= read -r summary_file; do
+              cat "$summary_file"
+            done < <(find fast-input-summaries -type f -name 'summary-*.txt' -print 2>/dev/null | sort)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$MATRIX_RESULT" != success ]]; then
+            echo "The generated two-finger matrix did not succeed: $MATRIX_RESULT"
+            exit 1
+          fi
+
+          validate_summary() {
+            local job_key="$1"
+            local summary_file="fast-input-summaries/summary-${job_key}.txt"
+            if [[ ! -f "$summary_file" ]]; then
+              echo "Missing summary for requested job: $job_key"
+              exit 1
+            fi
+            grep -Fxq 'status=COMPLETED' "$summary_file"
+            grep -Eq "^FAST_INPUT_MULTITOUCH_SUMMARY .*trials=${expected_trials}/${expected_trials} " "$summary_file"
+            grep -Eq "^FAST_INPUT_MULTITOUCH_SUMMARY .*pass=${expected_trials} " "$summary_file"
+            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*resetErrors=0 ' "$summary_file"
+            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*setupErrors=0 ' "$summary_file"
+            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*injectionErrors=0 ' "$summary_file"
+            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*inputMismatches=0 ' "$summary_file"
+            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*resultTimeouts=0 ' "$summary_file"
+          }
+
+          for surface in "${expected_surfaces[@]}"; do
+            if [[ "$surface" == SUMIRE ]]; then
+              validate_summary "SUMIRE-toggle"
+              validate_summary "SUMIRE-flick"
+              validate_summary "SUMIRE-switch-mode-effective"
+            else
+              validate_summary "$surface"
+            fi
+          done

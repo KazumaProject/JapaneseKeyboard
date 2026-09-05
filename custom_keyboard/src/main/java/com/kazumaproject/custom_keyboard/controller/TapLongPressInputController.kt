@@ -66,6 +66,22 @@ class TapLongPressInputController(
         clearGesture()
     }
 
+    /**
+     * Clears a pending gesture without detaching the listeners installed by [attach].
+     *
+     * The generated fast-input test resets the state between trials while reusing the keyboard
+     * views. Calling [cancel] here would make the next normal key permanently inert.
+     */
+    fun resetGestureStateForFastInputTest() {
+        val view = attachedView
+        view?.removeCallbacks(longPressRunnable)
+        if (isLongPressTriggered) {
+            listener?.onLongPressCanceled()
+        }
+        view?.isPressed = false
+        clearGesture()
+    }
+
     private fun handleTouchEvent(event: MotionEvent): Boolean {
         val view = attachedView ?: return false
         when (event.actionMasked) {

@@ -1268,6 +1268,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
         uiScope.cancel()
     }
 
+    fun resetTouchStateForFastInputTest() {
+        skipNextTouches = false
+        cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+    }
+
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (changedView == this && visibility != View.VISIBLE) {

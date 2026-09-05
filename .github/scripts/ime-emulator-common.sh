@@ -214,8 +214,10 @@ ime_emulator_capture_diagnostics() {
   local diagnostic_dir="$IME_EMULATOR_LOG_DIR/$label"
   mkdir -p "$diagnostic_dir"
 
-  adb -s "$IME_EMULATOR_SERIAL" exec-out screencap -p \
-    > "$diagnostic_dir/screen.png" || true
+  if [[ "${IME_EMULATOR_CAPTURE_SCREENSHOTS:-true}" == "true" ]]; then
+    adb -s "$IME_EMULATOR_SERIAL" exec-out screencap -p \
+      > "$diagnostic_dir/screen.png" || true
+  fi
   adb -s "$IME_EMULATOR_SERIAL" shell dumpsys window windows \
     > "$diagnostic_dir/window.txt" || true
   adb -s "$IME_EMULATOR_SERIAL" shell dumpsys activity top \

@@ -2,12 +2,13 @@
 
 set -euo pipefail
 
+fast_input_device_serial="${ANDROID_SERIAL:-${FAST_INPUT_DEVICE_SERIAL:-23241FDF6003NG}}"
 fast_input_rounds="${FAST_INPUT_ROUNDS:-1}"
 fast_input_generated_surfaces="${FAST_INPUT_GENERATED_SURFACES:-ALL}"
 fast_input_generated_columns="${FAST_INPUT_GENERATED_COLUMNS:-1,2,3}"
 fast_input_sumire_methods="${FAST_INPUT_SUMIRE_METHODS:-ALL}"
-fast_input_timeout_minutes="${FAST_INPUT_TIMEOUT_MINUTES:-35}"
-fast_input_artifact_dir="${FAST_INPUT_ARTIFACT_DIR:-${GITHUB_WORKSPACE:-.}/fast-input-artifacts}"
+fast_input_timeout_minutes="${FAST_INPUT_TIMEOUT_MINUTES:-90}"
+fast_input_artifact_dir="${FAST_INPUT_ARTIFACT_DIR:-${GITHUB_WORKSPACE:-.}/fast-input-artifacts-device}"
 fast_input_log_dir="$fast_input_artifact_dir/logs"
 fast_input_summary_file="$fast_input_artifact_dir/summary-${FAST_INPUT_SUMMARY_SURFACE:-all}.txt"
 fast_input_test_class="com.kazumaproject.markdownhelperkeyboard.FastInputMatrixInstrumentedTest"
@@ -24,8 +25,8 @@ if ! is_positive_integer "$fast_input_rounds" || ((fast_input_rounds > 10)); the
   exit 2
 fi
 if ! is_positive_integer "$fast_input_timeout_minutes" ||
-  ((fast_input_timeout_minutes < 1 || fast_input_timeout_minutes > 40)); then
-  echo "FAST_INPUT_TIMEOUT_MINUTES must be an integer from 1 to 40."
+  ((fast_input_timeout_minutes < 1 || fast_input_timeout_minutes > 120)); then
+  echo "FAST_INPUT_TIMEOUT_MINUTES must be an integer from 1 to 120."
   exit 2
 fi
 surface_pattern='(TENKEY|GOJUON|SUMIRE|QWERTY|ROMAJI|CUSTOM)'
@@ -45,40 +46,15 @@ if [[ "$fast_input_sumire_methods" != "ALL" &&
   exit 2
 fi
 
-mkdir -p "$fast_input_log_dir"
-export IME_EMULATOR_LOG_DIR="$fast_input_log_dir"
-export IME_EMULATOR_READINESS_LOG="$fast_input_log_dir/android-readiness.log"
-# The generated test is text-and-accessibility based. Keep the emulator diagnostic bundle
-# textual as well; screenshot capture is the failure path that caused the deleted CI run to hang.
-export IME_EMULATOR_CAPTURE_SCREENSHOTS=false
-source "${BASH_SOURCE[0]%/*}/ime-emulator-common.sh"
-
-write_summary() {
-  local status="$1"
-  local summary_line="$2"
-  local failure_excerpt="$3"
-  {
-    echo "surface=${FAST_INPUT_SUMMARY_SURFACE:-$fast_input_generated_surfaces}"
-    echo "status=$status"
-    echo "elapsedSeconds=$fast_input_elapsed_seconds"
-    echo "rounds=$fast_input_rounds"
-    echo "columns=$fast_input_generated_columns"
-    echo "sumireMethods=$fast_input_sumire_methods"
-    if [[ -n "$summary_line" ]]; then
-      echo "$summary_line"
-    else
-      echo "FAST_INPUT_MULTITOUCH_SUMMARY was not emitted."
+if [[ -z "${ANDROID_HOME:-}" && -z "${ANDROID_SDK_ROOT:-}" ]]; then
+  fast_input_adb_path="$(command -v adb || true)"
+  if [[ -n "$fast_input_adb_path" ]]; then
+    fast_input_sdk_root="$(cd "$(dirname "$fast_input_adb_path")/.." && pwd)"
+    if [[ -d "$fast_input_sdk_root/platform-tools" ]]; then
+      export ANDROID_HOME="$fast_input_sdk_root"
+      export ANDROID_SDK_ROOT="$fast_input_sdk_root"
     fi
-    if [[ -n "$failure_excerpt" ]]; then
-      echo "failure_excerpt=$failure_excerpt"
-    fi
-  } > "$fast_input_summary_file"
-}
-
-if ! ime_emulator_prepare; then
-  ime_emulator_capture_diagnostics "emulator-readiness-failure"
-  write_summary "SETUP_ERROR" "" "Emulator preparation failed."
-  exit 3
+  fi
 fi
 
 run_fast_input_with_timeout() {
@@ -108,6 +84,93 @@ run_fast_input_with_timeout() {
   wait "$command_pid"
 }
 
+mkdir -p "$fast_input_log_dir"
+export ANDROID_SERIAL="$fast_input_device_serial"
+
+capture_device_diagnostics() {
+  local label="$1"
+  local diagnostic_dir="$fast_input_log_dir/$label"
+  mkdir -p "$diagnostic_dir"
+  adb -s "$fast_input_device_serial" shell dumpsys window windows \
+    > "$diagnostic_dir/window.txt" || true
+  adb -s "$fast_input_device_serial" shell dumpsys activity top \
+    > "$diagnostic_dir/activity-top.txt" || true
+  adb -s "$fast_input_device_serial" shell dumpsys activity processes \
+    > "$diagnostic_dir/activity-processes.txt" || true
+  adb -s "$fast_input_device_serial" shell dumpsys input_method \
+    > "$diagnostic_dir/input-method.txt" || true
+  adb -s "$fast_input_device_serial" shell dumpsys input \
+    > "$diagnostic_dir/input.txt" || true
+  adb -s "$fast_input_device_serial" shell dumpsys display \
+    > "$diagnostic_dir/display.txt" || true
+  adb -s "$fast_input_device_serial" shell wm size \
+    > "$diagnostic_dir/wm-size.txt" || true
+  adb -s "$fast_input_device_serial" shell wm density \
+    > "$diagnostic_dir/wm-density.txt" || true
+  adb -s "$fast_input_device_serial" shell settings list secure \
+    > "$diagnostic_dir/settings-secure.txt" || true
+}
+
+write_summary() {
+  local status="$1"
+  local summary_line="$2"
+  local failure_excerpt="$3"
+  {
+    echo "deviceSerial=$fast_input_device_serial"
+    echo "status=$status"
+    echo "elapsedSeconds=$fast_input_elapsed_seconds"
+    echo "rounds=$fast_input_rounds"
+    echo "surfaces=$fast_input_generated_surfaces"
+    echo "columns=$fast_input_generated_columns"
+    echo "sumireMethods=$fast_input_sumire_methods"
+    if [[ -n "$summary_line" ]]; then
+      echo "$summary_line"
+    else
+      echo "FAST_INPUT_MULTITOUCH_SUMMARY was not emitted."
+    fi
+    if [[ -n "$failure_excerpt" ]]; then
+      echo "failure_excerpt=$failure_excerpt"
+    fi
+  } > "$fast_input_summary_file"
+}
+
+adb start-server >/dev/null 2>&1 || true
+if ! adb -s "$fast_input_device_serial" wait-for-device; then
+  write_summary "SETUP_ERROR" "" "ADB could not reach $fast_input_device_serial."
+  exit 3
+fi
+
+device_model="$(adb -s "$fast_input_device_serial" shell getprop ro.product.model | tr -d '\r' || true)"
+device_sdk="$(adb -s "$fast_input_device_serial" shell getprop ro.build.version.sdk | tr -d '\r' || true)"
+echo "Physical device: serial=$fast_input_device_serial model=$device_model sdk=$device_sdk"
+if [[ "$device_model" != *"Pixel 6"* ]]; then
+  capture_device_diagnostics "device-model-failure"
+  write_summary "SETUP_ERROR" "" "Expected Pixel 6, got [$device_model]."
+  exit 3
+fi
+
+device_ready=false
+for attempt in {1..60}; do
+  boot_completed="$(adb -s "$fast_input_device_serial" shell getprop sys.boot_completed | tr -d '\r' || true)"
+  input_method_service="$(adb -s "$fast_input_device_serial" shell service check input_method | tr -d '\r' || true)"
+  if [[ "$boot_completed" == "1" && "$input_method_service" == *"found"* ]]; then
+    device_ready=true
+    break
+  fi
+  echo "Device readiness attempt $attempt/60: boot=$boot_completed input_method=[$input_method_service]"
+  sleep 2
+done
+if [[ "$device_ready" != true ]]; then
+  capture_device_diagnostics "device-readiness-failure"
+  write_summary "SETUP_ERROR" "" "Android services did not become ready."
+  exit 3
+fi
+
+# The physical path intentionally has no KVM, AVD, AT-keyboard, or emulator-graphics setup.
+adb -s "$fast_input_device_serial" shell input keyevent KEYCODE_WAKEUP || true
+adb -s "$fast_input_device_serial" shell wm dismiss-keyguard || true
+adb -s "$fast_input_device_serial" logcat -c || true
+
 fast_input_gradle_args=(
   :app:connectedFullStandardDebugAndroidTest
   --stacktrace
@@ -128,10 +191,10 @@ fast_input_gradle_status=${PIPESTATUS[0]}
 set -e
 
 if ((fast_input_gradle_status != 0)); then
-  ime_emulator_capture_diagnostics "gradle-failure"
+  capture_device_diagnostics "gradle-failure"
 fi
-ime_emulator_capture_diagnostics "final-device-state"
-adb -s "$IME_EMULATOR_SERIAL" logcat -d -v threadtime \
+capture_device_diagnostics "final-device-state"
+adb -s "$fast_input_device_serial" logcat -d -v threadtime \
   > "$fast_input_log_dir/device-logcat.txt" || true
 
 fast_input_summary_line="$(grep -h -E 'FAST_INPUT_MULTITOUCH_SUMMARY' \
@@ -162,10 +225,11 @@ write_summary "$fast_input_status" "$fast_input_summary_line" "$fast_input_failu
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   {
-    echo "## Fast Input Regression — ${FAST_INPUT_SUMMARY_SURFACE:-$fast_input_generated_surfaces}"
+    echo "## Fast Input Regression — physical Pixel 6"
     echo
     echo "- Mode: generated two-finger input only"
     echo "- Elapsed seconds: $fast_input_elapsed_seconds"
+    echo "- Device: $fast_input_device_serial ($device_model)"
     echo "- Rounds: $fast_input_rounds"
     echo "- Surfaces: $fast_input_generated_surfaces"
     echo "- Columns: $fast_input_generated_columns"

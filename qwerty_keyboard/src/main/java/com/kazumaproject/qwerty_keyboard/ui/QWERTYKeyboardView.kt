@@ -1945,6 +1945,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    fun resetTouchStateForFastInputTest() {
+        notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ActionCancel)
+        setCursorMode(false)
+        dismissVariationPopup()
+        cancelQwertyGlideCandidate(notify = false)
+        clearAllPressed()
+        suppressedPointerIds.clear()
+        lastNonGlideKeyUpTime = 0L
+    }
+
     private fun clearPendingQwertyGlideCandidateForLongPress(pointerId: Int) {
         if (glideCandidatePointerId == pointerId && !glideStarted) {
             clearQwertyGlideState(clearTrail = true)

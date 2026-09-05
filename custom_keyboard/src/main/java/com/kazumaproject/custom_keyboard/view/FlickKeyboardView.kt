@@ -2838,6 +2838,23 @@ class FlickKeyboardView @JvmOverloads constructor(
         pointerDownTime.clear()
     }
 
+    fun resetTouchStateForFastInputTest() {
+        doubleTapActionDispatcher.cancel()
+        cancelTextPreview()
+        cancelTrackedTouchState()
+        listener?.onLongPressActionCanceled(KeyAction.Cancel)
+        flickControllers.forEach { it.cancel() }
+        crossFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.forEach { it.cancel() }
+        tfbiControllers.forEach { it.cancel() }
+        flickLongPressControllers.forEach { it.cancel() }
+        stickyTfbiControllers.forEach { it.cancel() }
+        hierarchicalTfbiControllers.forEach { it.cancel() }
+        tapLongPressControllers.forEach { it.resetGestureStateForFastInputTest() }
+        setCursorMode(false)
+    }
+
     private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
         val location = IntArray(2)
         for (i in 0 until childCount) {
@@ -3027,7 +3044,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                         val existingPointerIndex = event.findPointerIndex(existingPointerId)
                         if (existingPointerIndex != -1) {
                             // A second finger starts a new key gesture; the first finger should be
-                            // committed at its current position, not canceled.
+                            // committed at its current position, not canceled. The current
+                            // position can be the last movement sample carried by this
+                            // ACTION_POINTER_DOWN event. Deliver it before ACTION_UP so the child
+                            // controller can resolve a fast flick instead of committing TAP.
+                            dispatchPointerEvent(
+                                source = event,
+                                pointerIndex = existingPointerIndex,
+                                target = target,
+                                action = MotionEvent.ACTION_MOVE,
+                                downTime = downTime
+                            )
                             dispatchPointerEvent(
                                 source = event,
                                 pointerIndex = existingPointerIndex,
