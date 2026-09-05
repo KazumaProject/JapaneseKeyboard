@@ -119,7 +119,13 @@ class KanaKanjiConversionSessionParityTest {
 
     @Test
     fun numericCounterHomophonesRemainAvailableWithoutOverridingLexicalCandidates() = runBlocking {
-        val numericForms = setOf("2本", "２本", "二本")
+        val numericCandidateTypes = setOf(17, 19, 20, 21, 30, 31, 32, 47)
+        val cases = mapOf(
+            "にほん" to setOf("2本", "２本", "二本"),
+            "にかい" to setOf("2階", "２階", "二階", "2回", "２回", "二回"),
+            "にじ" to setOf("2時", "２時", "二時"),
+            "にけん" to setOf("2件", "２件", "二件", "2軒", "２軒", "二軒"),
+        )
 
         for (backend in ConversionBackend.entries) {
             val session = KanaKanjiConversionSession(engine, backend)
@@ -130,16 +136,57 @@ class KanaKanjiConversionSessionParityTest {
                 CandidateQueryMode.EISUKANA,
             )) {
                 for (bunsetsu in listOf(false, true)) {
-                    val result = session.query(
-                        request("にほん", mode, bunsetsu),
+                    cases.forEach { (input, numericForms) ->
+                        val result = session.query(
+                            request(input, mode, bunsetsu),
+                        )
+                        assertFalse(
+                            "$backend/$mode/bunsetsu=$bunsetsu/$input promoted " +
+                                result.candidates.firstOrNull(),
+                            result.candidates.firstOrNull()?.let { candidate ->
+                                candidate.string in numericForms &&
+                                    candidate.type.toInt() in numericCandidateTypes
+                            } == true,
+                        )
+                        assertTrue(
+                            "$backend/$mode/bunsetsu=$bunsetsu/$input missing numeric candidates",
+                            result.candidates.any { candidate ->
+                                candidate.string in numericForms &&
+                                    candidate.type.toInt() in numericCandidateTypes
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun structuredNumericSegmentsSurviveEverySessionModeAndBackend() = runBlocking {
+        val expected = listOf(
+            Triple(0, 1, "2"),
+            Triple(1, 4, "時間"),
+            Triple(4, 6, "半"),
+        )
+        val modes = listOf(
+            CandidateQueryMode.PREDICTION,
+            CandidateQueryMode.CONVERSION,
+            CandidateQueryMode.NO_TAB_DEFAULT,
+            CandidateQueryMode.EISUKANA,
+        )
+
+        for (backend in ConversionBackend.entries) {
+            for (mode in modes) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = KanaKanjiConversionSession(engine, backend).query(
+                        request("にじかんはん", mode, bunsetsu),
                     )
-                    assertFalse(
-                        "$backend/$mode/bunsetsu=$bunsetsu promoted ${result.candidates.firstOrNull()}",
-                        result.candidates.firstOrNull()?.string in numericForms,
-                    )
-                    assertTrue(
-                        "$backend/$mode/bunsetsu=$bunsetsu missing numeric candidates",
-                        result.candidates.any { it.string in numericForms },
+                    assertEquals(
+                        "$backend/$mode/bunsetsu=$bunsetsu",
+                        expected,
+                        result.candidateSegmentsByString.getValue("2時間半").map {
+                            Triple(it.inputStart, it.inputEnd, it.output)
+                        },
                     )
                 }
             }

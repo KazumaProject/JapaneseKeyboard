@@ -55,8 +55,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllFull
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.replaceJapaneseCharactersForEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.runBlocking
@@ -89,8 +87,9 @@ internal fun createJapaneseNumberValueBasedCandidates(
     showSymbolCandidates: Boolean = true,
 ): List<Candidate> {
     if (!showSymbolCandidates) return emptyList()
-    val numberValue = input.toNumber()?.second?.toLongOrNull() ?: return emptyList()
-    return createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+    val numberValue = NumericNumberParser.parse(input)?.value ?: return emptyList()
+    if (numberValue.bitLength() > 63) return emptyList()
+    return createValueBasedSymbolCandidates(numberValue.toLong(), input.length.toUByte())
 }
 
 class KanaKanjiEngine {
@@ -3841,12 +3840,14 @@ class KanaKanjiEngine {
     fun getCandidatesEnglishKana(
         input: String,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
         val numericCandidates = generateNumberCandidates(
             input = input,
             showSymbolCandidates = predictionConfig.showSymbolCandidates,
             numericNotationPreference = predictionConfig.numericNotationPreference,
+            candidateSegmentCollector = candidateSegmentCollector,
         )
         val digitTemporalCandidates = if (NumericCandidateProvider.isDigitSequence(input)) {
             val normalizedInput = input.convertFullWidthNumbersToHalfWidth()
@@ -3854,6 +3855,11 @@ class KanaKanjiEngine {
         } else {
             emptyList()
         }
+        recordNumericCandidateSegments(
+            input = input,
+            candidates = digitTemporalCandidates,
+            candidateSegmentCollector = candidateSegmentCollector,
+        )
         val listJapaneseCandidates = buildList {
             add(Candidate(
                 string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
@@ -4871,17 +4877,18 @@ class KanaKanjiEngine {
             NumericNotationPreference.HALF_WIDTH_FIRST,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
-        val candidates = NumericCandidateProvider.generate(
+        val renderedCandidates = NumericCandidateProvider.generateRendered(
             input = input,
             notationPreference = numericNotationPreference,
             showSymbolCandidates = showSymbolCandidates,
         )
-        recordNumericCandidateSegments(
-            input = input,
-            candidates = candidates,
-            candidateSegmentCollector = candidateSegmentCollector,
-        )
-        return candidates
+        renderedCandidates.forEach { rendered ->
+            candidateSegmentCollector?.set(
+                rendered.candidate.string,
+                rendered.segments,
+            )
+        }
+        return renderedCandidates.map { it.candidate }
     }
 
     private fun generateNumberCandidatesForDigitInput(

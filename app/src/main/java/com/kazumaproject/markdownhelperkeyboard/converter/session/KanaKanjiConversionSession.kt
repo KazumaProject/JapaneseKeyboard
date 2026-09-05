@@ -86,12 +86,17 @@ class KanaKanjiConversionSession(
         incrementalState?.beginQueryTransaction()
         try {
             val result = when (request.mode) {
-                CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
-                    candidates = engine.getCandidatesEnglishKana(
-                        input = request.input,
-                        predictionConfig = request.predictionConfig,
-                    ),
-                )
+                CandidateQueryMode.EISUKANA -> {
+                    val segmentCollector = request.newCandidateSegmentCollector()
+                    KanaKanjiQueryResult(
+                        candidates = engine.getCandidatesEnglishKana(
+                            input = request.input,
+                            predictionConfig = request.predictionConfig,
+                            candidateSegmentCollector = segmentCollector,
+                        ),
+                        candidateSegmentsByString = segmentCollector.orEmpty(),
+                    )
+                }
 
                 CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
                 CandidateQueryMode.PREDICTION -> queryPrediction(request)

@@ -114,6 +114,51 @@ class NumericCandidateProviderTest {
         assertEquals("1", withoutSymbols.first().string)
     }
 
+    @Test
+    fun bundledCatalogCoversTheSharedCounterAndUnitVocabulary() {
+        val expectedSurfaces = setOf(
+            "時", "時間", "分", "秒", "日", "週", "週間", "か月", "月", "年",
+            "円", "ドル", "ユーロ", "%", "℃", "mm", "cm", "m", "km", "mg", "g", "kg", "ml", "l",
+            "人", "名", "個", "箇", "本", "匹", "羽", "頭", "枚", "冊", "台", "代",
+            "軒", "棟", "戸", "件", "点", "杯", "缶", "瓶", "箱", "袋", "粒", "束", "房",
+            "着", "足", "面", "通", "部", "巻", "章", "口", "席", "列", "基", "株", "式", "丁",
+            "階", "回", "番", "号", "番目", "位", "組", "対", "段", "度", "倍", "割",
+        )
+        val actualSurfaces = BundledNumericSuffixCatalog.definitions
+            .flatMap { it.canonicalSurfaces }
+            .toSet()
+
+        assertTrue(expectedSurfaces.all(actualSurfaces::contains))
+    }
+
+    @Test
+    fun homophonousReadingsKeepEveryCatalogInterpretation() {
+        val cases = mapOf(
+            "ごかい" to setOf("5階", "5回"),
+            "にけん" to setOf("2件", "2軒"),
+            "にこ" to setOf("2個", "2戸"),
+            "にだい" to setOf("2台", "2代"),
+            "にど" to setOf("2℃", "2度"),
+        )
+
+        cases.forEach { (input, expected) ->
+            val strings = NumericCandidateProvider.generate(input, showSymbolCandidates = false)
+                .map { it.string }
+            assertTrue("$input: $strings", strings.containsAll(expected))
+        }
+    }
+
+    @Test
+    fun lexicalPriorityPolicyIsGenericAcrossShortHomophonousExpressions() {
+        listOf("にほん", "にかい", "にじ", "にけん").forEach { input ->
+            assertFalse(input, NumericCandidateProvider.shouldPrioritize(input))
+            assertTrue(
+                "$input has no numeric interpretation",
+                NumericCandidateProvider.generate(input).isNotEmpty(),
+            )
+        }
+    }
+
     private fun strings(
         input: String,
         preference: NumericNotationPreference,
