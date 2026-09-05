@@ -13,6 +13,7 @@ internal object FastInputTestProtocol {
     const val ACTION_RESET_FOR_TEST =
         "com.kazumaproject.markdownhelperkeyboard.action.FAST_INPUT_RESET"
     const val EXTRA_RESET_TOKEN = "fast_input_reset_token"
+    const val EXTRA_TRACE_ID = "fast_input_trace_id"
     const val EXTRA_RESET_RESULT_RECEIVER = "fast_input_reset_result_receiver"
     const val EXTRA_RESET_ERROR = "fast_input_reset_error"
     const val RESET_ACK = 1
@@ -29,8 +30,15 @@ internal object FastInputTestProtocol {
         .setPackage(packageName)
         .putExtra(EXTRA_TOKEN, token)
 
-    fun resetCommand(token: String, receiver: ResultReceiver): Bundle = Bundle().apply {
+    fun resetCommand(
+        token: String,
+        receiver: ResultReceiver,
+        traceId: String? = null,
+    ): Bundle = Bundle().apply {
         putString(EXTRA_RESET_TOKEN, token)
+        traceId?.takeIf(String::isNotBlank)?.let {
+            putString(EXTRA_TRACE_ID, it)
+        }
         putParcelable(EXTRA_RESET_RESULT_RECEIVER, receiver)
     }
 }

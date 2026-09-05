@@ -4,7 +4,8 @@ import com.kazumaproject.core.domain.key.Key
 
 data class PressedKey(
     var key: Key,
-    var pointer: Int,
+    /** Stable MotionEvent pointer id. This is not a pointer index. */
+    var pointerId: Int,
     var initialX: Float,
     var initialY: Float,
 )

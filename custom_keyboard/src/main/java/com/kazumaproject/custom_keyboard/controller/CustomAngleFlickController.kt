@@ -30,7 +30,7 @@ import kotlin.math.atan2
 class CustomAngleFlickController(
     context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -73,6 +73,7 @@ class CustomAngleFlickController(
     }
 
     private var anchorView: View? = null
+    private var attachedView: View? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
@@ -149,12 +150,29 @@ class CustomAngleFlickController(
         enabledSlots = effectiveRanges.keys.toSet()
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         listener?.onCanceled()
+        longPressJob?.cancel()
+        longPressJob = null
         activeGestureConfig = null
+        attachedView?.isPressed = false
+        anchorView = null
+        isLongPressModeActive = false
+        previousDirection = CircularFlickDirection.TAP
         hidePopup()
+    }
+
+    override fun dispose() {
+        resetGestureState()
+        attachedView?.setOnTouchListener(null)
+        attachedView = null
+        keyMaps = emptyList()
+        mapSwitchLabels = emptyList()
         controllerScope.cancel()
     }
+
+    /** Backward-compatible teardown entry point for existing callers. */
+    fun cancel() = dispose()
 
     @SuppressLint("ClickableViewAccessibility")
     fun attach(
@@ -163,6 +181,8 @@ class CustomAngleFlickController(
         switchLabels: List<String?>
     ) {
         if (maps.isEmpty()) return
+        attachedView?.takeUnless { it === button }?.setOnTouchListener(null)
+        attachedView = button
         this.keyMaps = maps
         this.mapSwitchLabels = switchLabels
         currentMapIndex = 0

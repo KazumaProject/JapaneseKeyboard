@@ -56,6 +56,8 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.domain.touch.PointerEventResolver
+import com.kazumaproject.core.domain.touch.PointerGestureTrace
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.gojuon_keyboard.databinding.GojuonLayoutBinding
@@ -823,6 +825,12 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
+            PointerGestureTrace.log(
+                "view",
+                "surface=GOJUON action=" + MotionEvent.actionToString(event.actionMasked) +
+                    " actionIndex=" + event.actionIndex +
+                    " pointers=" + PointerEventResolver.describe(event),
+            )
             if (this.visibility != View.VISIBLE) {
                 return false
             }
@@ -838,26 +846,18 @@ class GojuonKeyboardView @JvmOverloads constructor(
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val pointerIndex = event.actionIndex
-                    val pointerId = event.getPointerId(pointerIndex)
+                    val pointer = PointerEventResolver.at(event, pointerIndex) ?: return true
+                    val pointerId = pointer.pointerId
                     val key = pressedKeyByMotionEvent(event, pointerIndex)
                     flickListener?.onFlick(
                         gestureType = GestureType.Down, key = key, char = null
                     )
-                    pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        PressedKey(
-                            key = key,
-                            pointer = pointerId,
-                            initialX = event.getRawX(pointerIndex),
-                            initialY = event.getRawY(pointerIndex),
-                        )
-                    } else {
-                        PressedKey(
-                            key = key,
-                            pointer = pointerId,
-                            initialX = event.getX(pointerIndex),
-                            initialY = event.getY(pointerIndex),
-                        )
-                    }
+                    pressedKey = PressedKey(
+                        key = key,
+                        pointerId = pointerId,
+                        initialX = pointer.screenX,
+                        initialY = pointer.screenY,
+                    )
                     setKeyPressed()
                     if (currentInputMode.get() == InputMode.ModeEnglish &&
                         key == Key.KeyKuten
@@ -916,8 +916,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
                 MotionEvent.ACTION_UP -> {
                     resetLongPressAction()
-                    if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
-                        val gestureType = getGestureType(event, event.actionIndex)
+                    val liftedPointer = PointerEventResolver.actionPointer(event)
+                    if (liftedPointer != null &&
+                        pressedKey.pointerId == liftedPointer.pointerId
+                    ) {
+                        val gestureType = getGestureType(event, liftedPointer.pointerIndex)
                         val keyInfo = currentInputMode.get().next(
                             keyMap = keyMap, key = pressedKey.key, isGojuon = true
                         )
@@ -1060,7 +1063,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val trackedPointerIndex = event.findPointerIndex(pressedKey.pointer)
+                    val trackedPointerIndex = event.findPointerIndex(pressedKey.pointerId)
                     if (trackedPointerIndex < 0) {
                         cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
                         return true
@@ -1089,9 +1092,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     longPressJob?.cancel()
                     if (event.pointerCount == 2) {
                         isLongPressed = false
-                        val newPointerIndex = event.actionIndex
-                        val newPointerId = event.getPointerId(newPointerIndex)
-                        val trackedPointerIndex = event.findPointerIndex(pressedKey.pointer)
+                        val newPointer = PointerEventResolver.actionPointer(event)
+                            ?: return true
+                        val newPointerIndex = newPointer.pointerIndex
+                        val newPointerId = newPointer.pointerId
+                        val trackedPointerIndex = event.findPointerIndex(pressedKey.pointerId)
                         if (trackedPointerIndex < 0) {
                             cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
                             return true
@@ -1162,17 +1167,9 @@ class GojuonKeyboardView @JvmOverloads constructor(
                         }
                         pressedKey = pressedKey.copy(
                             key = key,
-                            pointer = newPointerId,
-                            initialX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawX(newPointerIndex)
-                            } else {
-                                event.getX(newPointerIndex)
-                            },
-                            initialY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawY(newPointerIndex)
-                            } else {
-                                event.getY(newPointerIndex)
-                            },
+                            pointerId = newPointerId,
+                            initialX = newPointer.screenX,
+                            initialY = newPointer.screenY,
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
@@ -1189,9 +1186,12 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
                 MotionEvent.ACTION_POINTER_UP -> {
                     if (event.pointerCount == 2) {
-                        if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                        val liftedPointer = PointerEventResolver.actionPointer(event)
+                        if (liftedPointer != null &&
+                            pressedKey.pointerId == liftedPointer.pointerId
+                        ) {
                             resetLongPressAction()
-                            val gestureType = getGestureType(event, event.actionIndex)
+                            val gestureType = getGestureType(event, liftedPointer.pointerIndex)
                             val keyInfo = currentInputMode.get()
                                 .next(keyMap = keyMap, key = pressedKey.key, isGojuon = true)
                             if (keyInfo == KeyInfo.Null) {
@@ -1305,16 +1305,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
-        val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer)
-        } else {
-            event.getX(pointer)
-        }
-        val finalY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawY(pointer)
-        } else {
-            event.getY(pointer)
-        }
+        val finalX = PointerEventResolver.screenX(event, pointer)
+        val finalY = PointerEventResolver.screenY(event, pointer)
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when (
@@ -3091,13 +3083,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
     // --- Utility to get consistent absolute coordinates ---
     private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer) to event.getRawY(pointer)
-        } else {
-            val location = IntArray(2)
-            this.getLocationOnScreen(location)
-            (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
-        }
+        return PointerEventResolver.screenX(event, pointer) to
+            PointerEventResolver.screenY(event, pointer)
     }
 
     private fun resetLongPressAction() {
@@ -3393,6 +3380,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     GestureType.Null -> null
                 }
             }
+            PointerGestureTrace.log(
+                "gesture",
+                "surface=GOJUON pointerId=" + pressedKey.pointerId +
+                    " key=" + pressedKey.key +
+                    " gesture=" + gestureType +
+                    " output=" + charToSend,
+            )
             flickListener?.onFlick(
                 gestureType = gestureType,
                 key = pressedKey.key,

@@ -16,7 +16,7 @@ import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
  */
 class TapLongPressInputController(
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     interface Listener {
         fun onPress()
@@ -52,19 +52,26 @@ class TapLongPressInputController(
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         val view = attachedView
         view?.removeCallbacks(longPressRunnable)
         if (isLongPressTriggered) {
             listener?.onLongPressCanceled()
         }
         view?.isPressed = false
+        clearGesture()
+    }
+
+    override fun dispose() {
+        resetGestureState()
+        val view = attachedView
         view?.setOnTouchListener(null)
         view?.setOnClickListener(null)
         attachedView = null
         listener = null
-        clearGesture()
     }
+
+    fun cancel() = dispose()
 
     /**
      * Clears a pending gesture without detaching the listeners installed by [attach].
@@ -72,15 +79,8 @@ class TapLongPressInputController(
      * The generated fast-input test resets the state between trials while reusing the keyboard
      * views. Calling [cancel] here would make the next normal key permanently inert.
      */
-    fun resetGestureStateForFastInputTest() {
-        val view = attachedView
-        view?.removeCallbacks(longPressRunnable)
-        if (isLongPressTriggered) {
-            listener?.onLongPressCanceled()
-        }
-        view?.isPressed = false
-        clearGesture()
-    }
+    @Deprecated("Use resetGestureState() for reusable controller instances")
+    fun resetGestureStateForFastInputTest() = resetGestureState()
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
         val view = attachedView ?: return false

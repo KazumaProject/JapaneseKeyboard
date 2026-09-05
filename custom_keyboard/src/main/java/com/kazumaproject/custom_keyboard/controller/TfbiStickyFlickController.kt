@@ -26,7 +26,7 @@ import kotlin.math.atan2
 class TfbiStickyFlickController(
     private val context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -101,6 +101,7 @@ class TfbiStickyFlickController(
         view: View,
         provider: (TfbiFlickDirection, TfbiFlickDirection) -> String
     ) {
+        attachedView?.takeUnless { it === view }?.setOnTouchListener(null)
         this.attachedView = view
         this.characterMapProvider = provider
 
@@ -148,11 +149,18 @@ class TfbiStickyFlickController(
         guidePopupHost.applyPopupViewStyle(popupStyle)
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         resetState()
+        attachedView?.isPressed = false
+    }
+
+    override fun dispose() {
+        resetGestureState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
     }
+
+    fun cancel() = dispose()
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
         val view = attachedView ?: return false

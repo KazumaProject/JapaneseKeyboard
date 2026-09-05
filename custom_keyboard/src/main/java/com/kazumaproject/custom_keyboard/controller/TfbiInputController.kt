@@ -16,6 +16,7 @@ import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.controller.TfbiGuidePopupHost
+import com.kazumaproject.custom_keyboard.controller.GestureStateResettable
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
 import com.kazumaproject.custom_keyboard.controller.isTfbiGuideTapCell
 import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideFingerPosition
@@ -36,7 +37,7 @@ enum class TfbiFlickDirection {
 class TfbiInputController(
     private val context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -171,6 +172,7 @@ class TfbiInputController(
         provider: (TfbiFlickDirection, TfbiFlickDirection) -> String,
         longPressProvider: (TfbiFlickDirection, TfbiFlickDirection) -> String = { _, _ -> "" }
     ) {
+        attachedView?.takeUnless { it === view }?.setOnTouchListener(null)
         this.attachedView = view
         this.characterMapProvider = provider
         this.longPressCharacterMapProvider = longPressProvider
@@ -178,15 +180,22 @@ class TfbiInputController(
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
-    fun cancel() {
+    override fun resetGestureState() {
         listener?.onCanceled()
         activeGestureConfig = null
         clearLongPressCallback(attachedView)
         isTouchActive = false
         resetState()
+        attachedView?.isPressed = false
+    }
+
+    override fun dispose() {
+        resetGestureState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
     }
+
+    fun cancel() = dispose()
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
         // Log.d("TfbInput", "handleTouchEvent: ${MotionEvent.actionToString(event.action)}")

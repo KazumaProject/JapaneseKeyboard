@@ -60,6 +60,24 @@ ime_emulator_wait_for_android_services() {
   return 1
 }
 
+ime_emulator_wait_for_device() {
+  local timeout_seconds="${IME_EMULATOR_DEVICE_WAIT_TIMEOUT_SECONDS:-120}"
+  local started_at="$SECONDS"
+  local device_state
+
+  while true; do
+    device_state="$(adb -s "$IME_EMULATOR_SERIAL" get-state 2>/dev/null || true)"
+    if [[ "$device_state" == "device" ]]; then
+      return 0
+    fi
+    if (($SECONDS - started_at >= timeout_seconds)); then
+      echo "ADB device $IME_EMULATOR_SERIAL did not become ready within ${timeout_seconds}s (state=${device_state:-unavailable})." >&2
+      return 124
+    fi
+    sleep 2
+  done
+}
+
 ime_emulator_android_runtime_config() {
   adb -s "$IME_EMULATOR_SERIAL" shell am get-config 2>/dev/null |
     tr -d '\r' |
@@ -82,7 +100,7 @@ ime_emulator_detach_at_keyboard() {
     > "$IME_EMULATOR_LOG_DIR/input-service-before-keyboard-detach.txt" || true
   adb_root_output="$(adb -s "$IME_EMULATOR_SERIAL" root 2>&1 || true)"
   echo "adb root: $adb_root_output" | tee -a "$IME_EMULATOR_READINESS_LOG"
-  if ! adb -s "$IME_EMULATOR_SERIAL" wait-for-device; then
+  if ! ime_emulator_wait_for_device; then
     echo "The emulator did not reconnect after restarting adbd as root." |
       tee -a "$IME_EMULATOR_READINESS_LOG"
     return 1

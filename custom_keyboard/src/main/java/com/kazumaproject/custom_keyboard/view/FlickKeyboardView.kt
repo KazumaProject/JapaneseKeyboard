@@ -9,7 +9,6 @@ import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
-import android.os.Build
 import android.os.SystemClock
 import android.text.Spannable
 import android.text.SpannableString
@@ -46,12 +45,17 @@ import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettingsSource
+import com.kazumaproject.core.domain.touch.PointerEventResolver
+import com.kazumaproject.core.domain.touch.PointerGestureEvent
+import com.kazumaproject.core.domain.touch.PointerGestureRouter
+import com.kazumaproject.core.domain.touch.PointerGestureTrace
 import com.kazumaproject.custom_keyboard.controller.CenterGuideFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
 import com.kazumaproject.custom_keyboard.controller.CancellableTask
 import com.kazumaproject.custom_keyboard.controller.DoubleTapActionDispatcher
 import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
+import com.kazumaproject.custom_keyboard.controller.GestureStateResettable
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TapTaskScheduler
 import com.kazumaproject.custom_keyboard.controller.TapLongPressInputController
@@ -603,31 +607,31 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         removeAllViews()
 
-        flickControllers.forEach { it.cancel() }
+        flickControllers.forEach { it.dispose() }
         flickControllers.clear()
 
-        crossFlickControllers.forEach { it.cancel() }
+        crossFlickControllers.forEach { it.dispose() }
         crossFlickControllers.clear()
 
-        centerGuideFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.forEach { it.dispose() }
         centerGuideFlickControllers.clear()
 
-        standardFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.forEach { it.dispose() }
         standardFlickControllers.clear()
 
-        tfbiControllers.forEach { it.cancel() }
+        tfbiControllers.forEach { it.dispose() }
         tfbiControllers.clear()
 
-        flickLongPressControllers.forEach { it.cancel() }
+        flickLongPressControllers.forEach { it.dispose() }
         flickLongPressControllers.clear()
 
-        stickyTfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.forEach { it.dispose() }
         stickyTfbiControllers.clear()
 
-        hierarchicalTfbiControllers.forEach { it.cancel() }
+        hierarchicalTfbiControllers.forEach { it.dispose() }
         hierarchicalTfbiControllers.clear()
 
-        tapLongPressControllers.forEach { it.cancel() }
+        tapLongPressControllers.forEach { it.dispose() }
         tapLongPressControllers.clear()
 
         keyInfos.clear()
@@ -2721,47 +2725,47 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun detachKeyBehavior(controller: Any?) {
         when (controller) {
             is CustomAngleFlickController -> {
-                controller.cancel()
+                controller.dispose()
                 flickControllers.remove(controller)
             }
 
             is CrossFlickInputController -> {
-                controller.cancel()
+                controller.dispose()
                 crossFlickControllers.remove(controller)
             }
 
             is CenterGuideFlickInputController -> {
-                controller.cancel()
+                controller.dispose()
                 centerGuideFlickControllers.remove(controller)
             }
 
             is StandardFlickInputController -> {
-                controller.cancel()
+                controller.dispose()
                 standardFlickControllers.remove(controller)
             }
 
             is TfbiInputController -> {
-                controller.cancel()
+                controller.dispose()
                 tfbiControllers.remove(controller)
             }
 
             is FlickLongPressInputController -> {
-                controller.cancel()
+                controller.dispose()
                 flickLongPressControllers.remove(controller)
             }
 
             is TfbiStickyFlickController -> {
-                controller.cancel()
+                controller.dispose()
                 stickyTfbiControllers.remove(controller)
             }
 
             is TfbiHierarchicalFlickController -> {
-                controller.cancel()
+                controller.dispose()
                 hierarchicalTfbiControllers.remove(controller)
             }
 
             is TapLongPressInputController -> {
-                controller.cancel()
+                controller.dispose()
                 tapLongPressControllers.remove(controller)
             }
         }
@@ -2799,29 +2803,29 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private val motionTargets = mutableMapOf<Int, MotionTarget>()
     private val pointerDownTime = mutableMapOf<Int, Long>()
+    private val pointerGestureRouter = PointerGestureRouter()
     private val TAG = "FlickKeyboardViewTouch"
 
     private fun cancelTrackedTouchState() {
         cancelTextPreview()
+        pointerGestureRouter.reset()
         if (motionTargets.isEmpty() && pointerDownTime.isEmpty()) return
 
         val eventTime = SystemClock.uptimeMillis()
         motionTargets.toList().forEach { (trackedPointerId, target) ->
-            var cancelEvent: MotionEvent? = null
             try {
-                cancelEvent = MotionEvent.obtain(
-                    pointerDownTime[trackedPointerId] ?: eventTime,
-                    eventTime,
-                    MotionEvent.ACTION_CANCEL,
-                    target.view.width / 2f,
-                    target.view.height / 2f,
-                    0
+                dispatchSemanticPointerEvent(
+                    semanticEvent = PointerGestureEvent.Cancel(
+                        pointerId = trackedPointerId,
+                        eventTime = eventTime,
+                        screenX = target.displayOriginX + target.view.width / 2f,
+                        screenY = target.displayOriginY + target.view.height / 2f,
+                    ),
+                    target = target,
+                    downTime = pointerDownTime[trackedPointerId] ?: eventTime,
                 )
-                target.view.dispatchTouchEvent(cancelEvent)
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to dispatch ACTION_CANCEL while clearing touch state", e)
-            } finally {
-                cancelEvent?.recycle()
             }
 
             try {
@@ -2843,16 +2847,28 @@ class FlickKeyboardView @JvmOverloads constructor(
         cancelTextPreview()
         cancelTrackedTouchState()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
-        flickControllers.forEach { it.cancel() }
-        crossFlickControllers.forEach { it.cancel() }
-        centerGuideFlickControllers.forEach { it.cancel() }
-        standardFlickControllers.forEach { it.cancel() }
-        tfbiControllers.forEach { it.cancel() }
-        flickLongPressControllers.forEach { it.cancel() }
-        stickyTfbiControllers.forEach { it.cancel() }
-        hierarchicalTfbiControllers.forEach { it.cancel() }
-        tapLongPressControllers.forEach { it.resetGestureStateForFastInputTest() }
+        resetGestureControllers()
         setCursorMode(false)
+    }
+
+    private inline fun forEachGestureController(action: (GestureStateResettable) -> Unit) {
+        flickControllers.forEach(action)
+        crossFlickControllers.forEach(action)
+        centerGuideFlickControllers.forEach(action)
+        standardFlickControllers.forEach(action)
+        tfbiControllers.forEach(action)
+        flickLongPressControllers.forEach(action)
+        stickyTfbiControllers.forEach(action)
+        hierarchicalTfbiControllers.forEach(action)
+        tapLongPressControllers.forEach(action)
+    }
+
+    private fun resetGestureControllers() {
+        forEachGestureController { it.resetGestureState() }
+    }
+
+    private fun disposeGestureControllers() {
+        forEachGestureController { it.dispose() }
     }
 
     private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
@@ -2880,19 +2896,11 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun MotionEvent.displayX(pointerIndex: Int): Float {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            getRawX(pointerIndex)
-        } else {
-            getX(pointerIndex) + rawX - x
-        }
+        return PointerEventResolver.screenX(this, pointerIndex)
     }
 
     private fun MotionEvent.displayY(pointerIndex: Int): Float {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            getRawY(pointerIndex)
-        } else {
-            getY(pointerIndex) + rawY - y
-        }
+        return PointerEventResolver.screenY(this, pointerIndex)
     }
 
     private fun dispatchPointerEvent(
@@ -2903,15 +2911,71 @@ class FlickKeyboardView @JvmOverloads constructor(
         downTime: Long,
         eventTime: Long = source.eventTime
     ) {
-        val displayX = source.displayX(pointerIndex)
-        val displayY = source.displayY(pointerIndex)
+        val sample = PointerEventResolver.at(source, pointerIndex) ?: return
+        val semanticEvent = when (action and MotionEvent.ACTION_MASK) {
+            MotionEvent.ACTION_DOWN -> PointerGestureEvent.Down(
+                pointerId = sample.pointerId,
+                eventTime = eventTime,
+                screenX = sample.screenX,
+                screenY = sample.screenY,
+            )
+
+            MotionEvent.ACTION_MOVE -> PointerGestureEvent.Move(
+                pointerId = sample.pointerId,
+                eventTime = eventTime,
+                screenX = sample.screenX,
+                screenY = sample.screenY,
+            )
+
+            MotionEvent.ACTION_UP -> PointerGestureEvent.Up(
+                pointerId = sample.pointerId,
+                eventTime = eventTime,
+                screenX = sample.screenX,
+                screenY = sample.screenY,
+            )
+
+            MotionEvent.ACTION_CANCEL -> PointerGestureEvent.Cancel(
+                pointerId = sample.pointerId,
+                eventTime = eventTime,
+                screenX = sample.screenX,
+                screenY = sample.screenY,
+            )
+
+            else -> return
+        }
+        dispatchSemanticPointerEvent(
+            semanticEvent = semanticEvent,
+            target = target,
+            downTime = downTime,
+            metaState = source.metaState,
+        )
+    }
+
+    private fun dispatchSemanticPointerEvent(
+        semanticEvent: PointerGestureEvent,
+        target: MotionTarget,
+        downTime: Long,
+        metaState: Int = 0,
+    ) {
+        val action = when (semanticEvent) {
+            is PointerGestureEvent.Down -> MotionEvent.ACTION_DOWN
+            is PointerGestureEvent.Move -> MotionEvent.ACTION_MOVE
+            is PointerGestureEvent.Up -> MotionEvent.ACTION_UP
+            is PointerGestureEvent.Cancel -> MotionEvent.ACTION_CANCEL
+        }
+        PointerGestureTrace.log(
+            "view-dispatch",
+            "surface=CUSTOM action=" + MotionEvent.actionToString(action) +
+                " pointerId=" + semanticEvent.pointerId +
+                " targetViewId=" + target.view.id,
+        )
         val childEvent = MotionEvent.obtain(
             downTime,
-            eventTime,
+            semanticEvent.eventTime,
             action,
-            displayX,
-            displayY,
-            source.metaState
+            semanticEvent.screenX,
+            semanticEvent.screenY,
+            metaState,
         )
         childEvent.offsetLocation(
             -target.displayOriginX,
@@ -2941,8 +3005,31 @@ class FlickKeyboardView @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val action = event.actionMasked
-        val pointerIndex = event.actionIndex
-        val pointerId = event.getPointerId(pointerIndex)
+        val actionPointer = PointerEventResolver.actionPointer(event)
+        val pointerIndex = actionPointer?.pointerIndex ?: 0
+        val pointerId = actionPointer?.pointerId ?: -1
+        PointerGestureTrace.log(
+            "view",
+            "surface=CUSTOM action=" + MotionEvent.actionToString(action) +
+                " actionIndex=" + event.actionIndex +
+                " pointers=" + PointerEventResolver.describe(event),
+        )
+        pointerGestureRouter.route(event) { semanticEvent ->
+            if (!PointerGestureTrace.isActive()) return@route
+            val semanticType = when (semanticEvent) {
+                is PointerGestureEvent.Down -> "DOWN"
+                is PointerGestureEvent.Move -> "MOVE"
+                is PointerGestureEvent.Up -> "UP"
+                is PointerGestureEvent.Cancel -> "CANCEL"
+            }
+            PointerGestureTrace.log(
+                "router",
+                "surface=CUSTOM type=" + semanticType +
+                    " pointerId=" + semanticEvent.pointerId +
+                    " screenX=" + semanticEvent.screenX +
+                    " screenY=" + semanticEvent.screenY,
+            )
+        }
 
         if (isCursorMode) {
             when (event.actionMasked) {
@@ -3041,8 +3128,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     )
 
                     if (target != null && downTime != null) {
-                        val existingPointerIndex = event.findPointerIndex(existingPointerId)
-                        if (existingPointerIndex != -1) {
+                        val existingPointer = PointerEventResolver.forId(event, existingPointerId)
+                        if (existingPointer != null) {
                             // A second finger starts a new key gesture; the first finger should be
                             // committed at its current position, not canceled. The current
                             // position can be the last movement sample carried by this
@@ -3050,14 +3137,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                             // controller can resolve a fast flick instead of committing TAP.
                             dispatchPointerEvent(
                                 source = event,
-                                pointerIndex = existingPointerIndex,
+                                pointerIndex = existingPointer.pointerIndex,
                                 target = target,
                                 action = MotionEvent.ACTION_MOVE,
                                 downTime = downTime
                             )
                             dispatchPointerEvent(
                                 source = event,
-                                pointerIndex = existingPointerIndex,
+                                pointerIndex = existingPointer.pointerIndex,
                                 target = target,
                                 action = MotionEvent.ACTION_UP,
                                 downTime = downTime
@@ -3089,19 +3176,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                 motionTargets.clear()
                 pointerDownTime.clear()
 
-                val newPointerId = event.getPointerId(pointerIndex)
+                val newPointer = actionPointer ?: return true
+                val newPointerId = newPointer.pointerId
 
                 pointerDownTime[newPointerId] = event.eventTime
                 val targetView = findTargetView(
-                    displayX = event.displayX(pointerIndex),
-                    displayY = event.displayY(pointerIndex)
+                    displayX = newPointer.screenX,
+                    displayY = newPointer.screenY
                 )
 
                 targetView?.let { target ->
                     motionTargets[newPointerId] = target
                     dispatchPointerEvent(
                         source = event,
-                        pointerIndex = pointerIndex,
+                        pointerIndex = newPointer.pointerIndex,
                         target = target,
                         action = MotionEvent.ACTION_DOWN,
                         downTime = event.eventTime
@@ -3134,19 +3222,21 @@ class FlickKeyboardView @JvmOverloads constructor(
                     return false
                 }
 
+                val liftedPointer = actionPointer ?: return true
                 Log.d(
                     "FlickKeyboardView",
-                    "ACTION_POINTER_UP: pointerId=$pointerId, index=$pointerIndex"
+                    "ACTION_POINTER_UP: pointerId=${liftedPointer.pointerId}, " +
+                        "index=${liftedPointer.pointerIndex}"
                 )
 
-                motionTargets[pointerId]?.let { target ->
-                    val downTime = pointerDownTime[pointerId]!!
+                motionTargets[liftedPointer.pointerId]?.let { target ->
+                    val downTime = pointerDownTime[liftedPointer.pointerId] ?: return@let
 
                     Log.d("FlickKeyboardView", "ACTION_POINTER_UP: Found target! $target")
 
                     dispatchPointerEvent(
                         source = event,
-                        pointerIndex = pointerIndex,
+                        pointerIndex = liftedPointer.pointerIndex,
                         target = target,
                         action = MotionEvent.ACTION_UP,
                         downTime = downTime
@@ -3154,12 +3244,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                 } ?: run {
                     Log.e(
                         "FlickKeyboardView",
-                        "ACTION_POINTER_UP: No target found for pointerId=$pointerId"
+                        "ACTION_POINTER_UP: No target found for " +
+                            "pointerId=${liftedPointer.pointerId}"
                     )
                 }
 
-                motionTargets.remove(pointerId)
-                pointerDownTime.remove(pointerId)
+                motionTargets.remove(liftedPointer.pointerId)
+                pointerDownTime.remove(liftedPointer.pointerId)
                 return true
             }
 
@@ -3167,15 +3258,21 @@ class FlickKeyboardView @JvmOverloads constructor(
                 val actionToDispatch =
                     if (action == MotionEvent.ACTION_UP) MotionEvent.ACTION_UP else MotionEvent.ACTION_CANCEL
 
-                motionTargets[pointerId]?.let { target ->
-                    val downTime = pointerDownTime[pointerId]!!
-                    dispatchPointerEvent(
-                        source = event,
-                        pointerIndex = pointerIndex,
-                        target = target,
-                        action = actionToDispatch,
-                        downTime = downTime
-                    )
+                if (action == MotionEvent.ACTION_CANCEL) {
+                    dispatchEndEventToTrackedTargets(event, actionToDispatch)
+                } else {
+                    val liftedPointer = actionPointer ?: return true
+                    motionTargets[liftedPointer.pointerId]?.let { target ->
+                        val downTime =
+                            pointerDownTime[liftedPointer.pointerId] ?: return@let
+                        dispatchPointerEvent(
+                            source = event,
+                            pointerIndex = liftedPointer.pointerIndex,
+                            target = target,
+                            action = actionToDispatch,
+                            downTime = downTime
+                        )
+                    }
                 }
 
                 if (action == MotionEvent.ACTION_CANCEL) {
@@ -3216,15 +3313,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         cancelTrackedTouchState()
         super.onDetachedFromWindow()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
-        flickControllers.forEach { it.cancel() }
-        crossFlickControllers.forEach { it.cancel() }
-        centerGuideFlickControllers.forEach { it.cancel() }
-        standardFlickControllers.forEach { it.cancel() }
-        tfbiControllers.forEach { it.cancel() }
-        flickLongPressControllers.forEach { it.cancel() }
-        stickyTfbiControllers.forEach { it.cancel() }
-        hierarchicalTfbiControllers.forEach { it.cancel() }
-        tapLongPressControllers.forEach { it.cancel() }
+        disposeGestureControllers()
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
@@ -3266,6 +3355,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         motionTargets.forEach { (trackedPointerId, target) ->
             val trackedPointerIndex = sourceEvent.findPointerIndex(trackedPointerId)
             if (trackedPointerIndex == -1) {
+                if (actionToDispatch == MotionEvent.ACTION_CANCEL) {
+                    val eventTime = sourceEvent.eventTime
+                    dispatchSemanticPointerEvent(
+                        semanticEvent = PointerGestureEvent.Cancel(
+                            pointerId = trackedPointerId,
+                            eventTime = eventTime,
+                            screenX = target.displayOriginX + target.view.width / 2f,
+                            screenY = target.displayOriginY + target.view.height / 2f,
+                        ),
+                        target = target,
+                        downTime = pointerDownTime[trackedPointerId] ?: eventTime,
+                        metaState = sourceEvent.metaState,
+                    )
+                }
                 target.view.isPressed = false
                 target.view.isSelected = false
                 target.view.refreshDrawableState()

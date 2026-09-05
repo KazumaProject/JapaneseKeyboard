@@ -80,13 +80,17 @@ class FastInputHostActivity : Activity() {
         requestImeForEditor()
     }
 
-    fun resetEditorForFastInputTest(token: String, receiver: ResultReceiver) {
+    fun resetEditorForFastInputTest(
+        token: String,
+        receiver: ResultReceiver,
+        traceId: String? = null,
+    ) {
         editText.editableText.clear()
         editText.setSelection(0)
         getSystemService(InputMethodManager::class.java).sendAppPrivateCommand(
             editText,
             FastInputTestProtocol.ACTION_RESET_FOR_TEST,
-            FastInputTestProtocol.resetCommand(token, receiver),
+            FastInputTestProtocol.resetCommand(token, receiver, traceId),
         )
     }
 

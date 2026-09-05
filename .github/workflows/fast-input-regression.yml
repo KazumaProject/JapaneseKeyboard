@@ -32,43 +32,39 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.select.outputs.matrix }}
+      rounds: ${{ steps.select.outputs.rounds }}
+      surfaces: ${{ steps.select.outputs.surfaces }}
+      columns: ${{ steps.select.outputs.columns }}
+      jobs: ${{ steps.select.outputs.jobs }}
     steps:
+      - name: Checkout workflow contract
+        uses: actions/checkout@v6
+
       - name: Build requested job matrix
         id: select
         env:
+          REQUESTED_ROUNDS: ${{ inputs.rounds }}
           REQUESTED_SURFACES: ${{ inputs.generated_surfaces }}
+          REQUESTED_COLUMNS: ${{ inputs.generated_columns }}
         run: |
           set -euo pipefail
-          requested_surfaces="${REQUESTED_SURFACES//[[:space:]]/}"
-          requested_surfaces="${requested_surfaces^^}"
-          if [[ -z "$requested_surfaces" ]]; then
-            echo "generated_surfaces must not be empty."
-            exit 1
-          fi
+          source .github/scripts/fast-input-contract.sh
+          fast_input_contract_normalize \
+            "$REQUESTED_ROUNDS" \
+            "$REQUESTED_SURFACES" \
+            "$REQUESTED_COLUMNS" \
+            ALL
+          requested_rounds="$FAST_INPUT_CONTRACT_ROUNDS"
+          requested_surfaces="$FAST_INPUT_CONTRACT_SURFACES"
+          requested_columns="$FAST_INPUT_CONTRACT_COLUMNS"
 
-          all_matrix='[
-            {"surface":"TENKEY","job_key":"TENKEY","sumire_method":"ALL"},
-            {"surface":"GOJUON","job_key":"GOJUON","sumire_method":"ALL"},
-            {"surface":"SUMIRE","job_key":"SUMIRE-toggle","sumire_method":"toggle"},
-            {"surface":"SUMIRE","job_key":"SUMIRE-flick","sumire_method":"flick"},
-            {"surface":"SUMIRE","job_key":"SUMIRE-switch-mode-effective","sumire_method":"switch-mode-effective"},
-            {"surface":"QWERTY","job_key":"QWERTY","sumire_method":"ALL"},
-            {"surface":"ROMAJI","job_key":"ROMAJI","sumire_method":"ALL"},
-            {"surface":"CUSTOM","job_key":"CUSTOM","sumire_method":"ALL"}
-          ]'
-
-          if [[ "$requested_surfaces" != "ALL" ]]; then
-            IFS=',' read -r -a requested_surface_list <<< "$requested_surfaces"
-            for surface in "${requested_surface_list[@]}"; do
-              case "$surface" in
-                TENKEY|GOJUON|SUMIRE|QWERTY|ROMAJI|CUSTOM) ;;
-                *)
-                  echo "Unknown generated surface: $surface"
-                  exit 1
-                  ;;
-              esac
-            done
-          fi
+          jq -e '
+            .schemaVersion == 1 and
+            (.jobs | type == "array") and
+            (.jobs | length > 0) and
+            all(.jobs[]; (.surface and .job_key and .sumire_method))
+          ' .github/fast-input-matrix.json >/dev/null
+          all_matrix="$(jq -c '.jobs' .github/fast-input-matrix.json)"
 
           selected_matrix="$(jq -c --arg requested "$requested_surfaces" '
             if $requested == "ALL" then .
@@ -81,6 +77,11 @@ jobs:
             echo "No fast-input jobs selected for generated_surfaces=$requested_surfaces."
             exit 1
           fi
+          selected_jobs="$(jq -c '[.[] | {job_key, surface, sumire_method}]' <<< "$selected_matrix")"
+          echo "rounds=$requested_rounds" >> "$GITHUB_OUTPUT"
+          echo "surfaces=$requested_surfaces" >> "$GITHUB_OUTPUT"
+          echo "columns=$requested_columns" >> "$GITHUB_OUTPUT"
+          echo "jobs=$selected_jobs" >> "$GITHUB_OUTPUT"
           echo "matrix={\"include\":$selected_matrix}" >> "$GITHUB_OUTPUT"
 
   fast-input-regression:
@@ -141,9 +142,9 @@ jobs:
       - name: Run generated two-finger input matrix
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          FAST_INPUT_ROUNDS: ${{ inputs.rounds }}
+          FAST_INPUT_ROUNDS: ${{ needs.select-fast-input-jobs.outputs.rounds }}
           FAST_INPUT_GENERATED_SURFACES: ${{ matrix.surface }}
-          FAST_INPUT_GENERATED_COLUMNS: ${{ inputs.generated_columns }}
+          FAST_INPUT_GENERATED_COLUMNS: ${{ needs.select-fast-input-jobs.outputs.columns }}
           FAST_INPUT_SUMIRE_METHODS: ${{ matrix.sumire_method }}
           FAST_INPUT_SUMMARY_SURFACE: ${{ matrix.job_key }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -193,7 +194,7 @@ jobs:
   fast-input-regression-summary:
     name: Fast Input Regression Summary
     if: always()
-    needs: fast-input-regression
+    needs: [select-fast-input-jobs, fast-input-regression]
     runs-on: ubuntu-latest
     steps:
       - name: Download per-surface summaries
@@ -206,18 +207,12 @@ jobs:
       - name: Publish and validate aggregate result
         env:
           MATRIX_RESULT: ${{ needs.fast-input-regression.result }}
-          REQUESTED_SURFACES: ${{ inputs.generated_surfaces }}
-          REQUESTED_COLUMNS: ${{ inputs.generated_columns }}
-          REQUESTED_ROUNDS: ${{ inputs.rounds }}
+          REQUESTED_SURFACES: ${{ needs.select-fast-input-jobs.outputs.surfaces }}
+          REQUESTED_COLUMNS: ${{ needs.select-fast-input-jobs.outputs.columns }}
+          REQUESTED_ROUNDS: ${{ needs.select-fast-input-jobs.outputs.rounds }}
+          REQUESTED_JOBS_JSON: ${{ needs.select-fast-input-jobs.outputs.jobs }}
         run: |
           set -euo pipefail
-          if [[ "$REQUESTED_SURFACES" == "ALL" ]]; then
-            expected_surfaces=(TENKEY GOJUON SUMIRE QWERTY ROMAJI CUSTOM)
-          else
-            IFS=',' read -r -a expected_surfaces <<< "$REQUESTED_SURFACES"
-          fi
-          IFS=',' read -r -a expected_columns <<< "$REQUESTED_COLUMNS"
-          expected_trials=$((REQUESTED_ROUNDS * ${#expected_columns[@]} * 6 * 7))
           {
             echo "## Fast Input Regression — aggregate"
             echo
@@ -225,7 +220,7 @@ jobs:
             echo "- Requested surfaces: ${REQUESTED_SURFACES}"
             echo "- Requested columns: ${REQUESTED_COLUMNS}"
             echo "- Rounds: ${REQUESTED_ROUNDS}"
-            echo "- Expected trials per surface: ${expected_trials}"
+            echo "- Trial counts: validated from each generated summary JSON"
             echo
             echo '```text'
             while IFS= read -r summary_file; do
@@ -241,27 +236,53 @@ jobs:
 
           validate_summary() {
             local job_key="$1"
-            local summary_file="fast-input-summaries/summary-${job_key}.txt"
+            local expected_surface="$2"
+            local expected_sumire_method="$3"
+            local summary_file="fast-input-summaries/summary-$job_key.txt"
             if [[ ! -f "$summary_file" ]]; then
               echo "Missing summary for requested job: $job_key"
               exit 1
             fi
             grep -Fxq 'status=COMPLETED' "$summary_file"
-            grep -Eq "^FAST_INPUT_MULTITOUCH_SUMMARY .*trials=${expected_trials}/${expected_trials} " "$summary_file"
-            grep -Eq "^FAST_INPUT_MULTITOUCH_SUMMARY .*pass=${expected_trials} " "$summary_file"
-            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*resetErrors=0 ' "$summary_file"
-            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*setupErrors=0 ' "$summary_file"
-            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*injectionErrors=0 ' "$summary_file"
-            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*inputMismatches=0 ' "$summary_file"
-            grep -Eq '^FAST_INPUT_MULTITOUCH_SUMMARY .*resultTimeouts=0 ' "$summary_file"
+            local summary_json_line
+            summary_json_line="$(grep -E '^FAST_INPUT_MULTITOUCH_SUMMARY_JSON ' \
+              "$summary_file" | tail -n 1 || true)"
+            if [[ -z "$summary_json_line" ]]; then
+              echo "Missing generated summary JSON for requested job: $job_key"
+              exit 1
+            fi
+            local summary_json
+            summary_json="$(printf '%s' "$summary_json_line" |
+              sed -E 's/^FAST_INPUT_MULTITOUCH_SUMMARY_JSON //')"
+            jq -e \
+              --arg expected_rounds "$REQUESTED_ROUNDS" \
+              --arg expected_columns "$REQUESTED_COLUMNS" \
+              --arg expected_surface "$expected_surface" \
+              --arg expected_sumire_method "$expected_sumire_method" '
+                .schemaVersion == 1 and
+                .status == "PASS" and
+                .plannedTrials == .completedTrials and
+                .pass == .plannedTrials and
+                .resetErrors == 0 and
+                .setupErrors == 0 and
+                .injectionErrors == 0 and
+                .inputMismatches == 0 and
+                .resultTimeouts == 0 and
+                .failures == 0 and
+                .rounds == ($expected_rounds | tonumber) and
+                (.columns | map(tostring) | join(",")) == $expected_columns and
+                (.surface | split(",") | index($expected_surface)) != null and
+                ($expected_sumire_method == "" or
+                  (.sumireMethods | split(",") | index($expected_sumire_method)) != null)
+              ' <<< "$summary_json"
           }
 
-          for surface in "${expected_surfaces[@]}"; do
-            if [[ "$surface" == SUMIRE ]]; then
-              validate_summary "SUMIRE-toggle"
-              validate_summary "SUMIRE-flick"
-              validate_summary "SUMIRE-switch-mode-effective"
+          while IFS=$'\t' read -r job_key surface sumire_method; do
+            if [[ "$sumire_method" == "ALL" ]]; then
+              validate_summary "$job_key" "$surface" ""
             else
-              validate_summary "$surface"
+              validate_summary "$job_key" "$surface" "$sumire_method"
             fi
-          done
+          done < <(
+            jq -r '.[] | [.job_key, .surface, .sumire_method] | @tsv' <<< "$REQUESTED_JOBS_JSON"
+          )

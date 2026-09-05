@@ -16,36 +16,26 @@ fast_input_test_method="$fast_input_test_class#generatedTwoFingerInputAcrossAllK
 fast_input_started_at="$(date +%s)"
 fast_input_elapsed_seconds=0
 
+source "${BASH_SOURCE[0]%/*}/fast-input-contract.sh"
+fast_input_contract_normalize \
+  "$fast_input_rounds" \
+  "$fast_input_generated_surfaces" \
+  "$fast_input_generated_columns" \
+  "$fast_input_sumire_methods"
+fast_input_rounds="$FAST_INPUT_CONTRACT_ROUNDS"
+fast_input_generated_surfaces="$FAST_INPUT_CONTRACT_SURFACES"
+fast_input_generated_columns="$FAST_INPUT_CONTRACT_COLUMNS"
+fast_input_sumire_methods="$FAST_INPUT_CONTRACT_SUMIRE_METHODS"
+
 is_positive_integer() {
   [[ "$1" =~ ^[1-9][0-9]*$ ]]
 }
 
-if ! is_positive_integer "$fast_input_rounds" || ((fast_input_rounds > 10)); then
-  echo "FAST_INPUT_ROUNDS must be an integer from 1 to 10."
-  exit 2
-fi
 if ! is_positive_integer "$fast_input_timeout_minutes" ||
   ((fast_input_timeout_minutes < 1 || fast_input_timeout_minutes > 120)); then
   echo "FAST_INPUT_TIMEOUT_MINUTES must be an integer from 1 to 120."
   exit 2
 fi
-surface_pattern='(TENKEY|GOJUON|SUMIRE|QWERTY|ROMAJI|CUSTOM)'
-if [[ "$fast_input_generated_surfaces" != "ALL" &&
-  ! "$fast_input_generated_surfaces" =~ ^${surface_pattern}(,${surface_pattern})*$ ]]; then
-  echo "FAST_INPUT_GENERATED_SURFACES must be ALL or a comma-separated surface list."
-  exit 2
-fi
-if [[ ! "$fast_input_generated_columns" =~ ^[123](,[123])*$ ]]; then
-  echo "FAST_INPUT_GENERATED_COLUMNS must be a comma-separated list containing 1, 2, or 3."
-  exit 2
-fi
-sumire_method_pattern='(toggle|flick|switch-mode-effective)'
-if [[ "$fast_input_sumire_methods" != "ALL" &&
-  ! "$fast_input_sumire_methods" =~ ^${sumire_method_pattern}(,${sumire_method_pattern})*$ ]]; then
-  echo "FAST_INPUT_SUMIRE_METHODS must be ALL or a comma-separated method list."
-  exit 2
-fi
-
 if [[ -z "${ANDROID_HOME:-}" && -z "${ANDROID_SDK_ROOT:-}" ]]; then
   fast_input_adb_path="$(command -v adb || true)"
   if [[ -n "$fast_input_adb_path" ]]; then
@@ -87,6 +77,24 @@ run_fast_input_with_timeout() {
 mkdir -p "$fast_input_log_dir"
 export ANDROID_SERIAL="$fast_input_device_serial"
 
+fast_input_wait_for_device() {
+  local timeout_seconds="$1"
+  local started_at="$SECONDS"
+  local device_state
+
+  while true; do
+    device_state="$(adb -s "$fast_input_device_serial" get-state 2>/dev/null || true)"
+    if [[ "$device_state" == "device" ]]; then
+      return 0
+    fi
+    if (($SECONDS - started_at >= timeout_seconds)); then
+      echo "ADB device $fast_input_device_serial did not become ready within ${timeout_seconds}s (state=${device_state:-unavailable})." >&2
+      return 124
+    fi
+    sleep 2
+  done
+}
+
 capture_device_diagnostics() {
   local label="$1"
   local diagnostic_dir="$fast_input_log_dir/$label"
@@ -119,6 +127,7 @@ write_summary() {
   local status="$1"
   local summary_line="$2"
   local failure_excerpt="$3"
+  local summary_json_line="$4"
   {
     echo "deviceSerial=$fast_input_device_serial"
     echo "status=$status"
@@ -132,6 +141,9 @@ write_summary() {
     else
       echo "FAST_INPUT_MULTITOUCH_SUMMARY was not emitted."
     fi
+    if [[ -n "$summary_json_line" ]]; then
+      echo "$summary_json_line"
+    fi
     if [[ -n "$failure_excerpt" ]]; then
       echo "failure_excerpt=$failure_excerpt"
     fi
@@ -139,8 +151,8 @@ write_summary() {
 }
 
 adb start-server >/dev/null 2>&1 || true
-if ! adb -s "$fast_input_device_serial" wait-for-device; then
-  write_summary "SETUP_ERROR" "" "ADB could not reach $fast_input_device_serial."
+if ! fast_input_wait_for_device 120; then
+  write_summary "SETUP_ERROR" "" "ADB could not reach $fast_input_device_serial within 120 seconds." ""
   exit 3
 fi
 
@@ -149,7 +161,7 @@ device_sdk="$(adb -s "$fast_input_device_serial" shell getprop ro.build.version.
 echo "Physical device: serial=$fast_input_device_serial model=$device_model sdk=$device_sdk"
 if [[ "$device_model" != *"Pixel 6"* ]]; then
   capture_device_diagnostics "device-model-failure"
-  write_summary "SETUP_ERROR" "" "Expected Pixel 6, got [$device_model]."
+  write_summary "SETUP_ERROR" "" "Expected Pixel 6, got [$device_model]." ""
   exit 3
 fi
 
@@ -166,7 +178,7 @@ for attempt in {1..60}; do
 done
 if [[ "$device_ready" != true ]]; then
   capture_device_diagnostics "device-readiness-failure"
-  write_summary "SETUP_ERROR" "" "Android services did not become ready."
+  write_summary "SETUP_ERROR" "" "Android services did not become ready." ""
   exit 3
 fi
 
@@ -201,22 +213,38 @@ capture_device_diagnostics "final-device-state"
 adb -s "$fast_input_device_serial" logcat -d -v threadtime \
   > "$fast_input_log_dir/device-logcat.txt" || true
 
-fast_input_summary_line="$(grep -h -E 'FAST_INPUT_MULTITOUCH_SUMMARY' \
+fast_input_summary_line="$(grep -h -E 'FAST_INPUT_MULTITOUCH_SUMMARY ' \
   "$fast_input_log_dir/gradle-connected-android-test.log" \
   "$fast_input_log_dir/device-logcat.txt" 2>/dev/null |
   tail -n 1 |
   sed -E 's/.*(FAST_INPUT_MULTITOUCH_SUMMARY)/\1/' || true)"
+fast_input_summary_json_line="$(grep -h -E 'FAST_INPUT_MULTITOUCH_SUMMARY_JSON ' \
+  "$fast_input_log_dir/gradle-connected-android-test.log" \
+  "$fast_input_log_dir/device-logcat.txt" 2>/dev/null |
+  tail -n 1 |
+  sed -E 's/.*(FAST_INPUT_MULTITOUCH_SUMMARY_JSON)/\1/' || true)"
 fast_input_failure_excerpt="$(grep -h -E \
   'FAST_INPUT_(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|category=(RESET_ERROR|SETUP_ERROR|INJECTION_ERROR|RESULT_TIMEOUT|INPUT_MISMATCH)|SetupException|AssertionError|FAILURE: Build failed|There were failing tests|Error while injecting input event|timeout: sending signal|Terminated' \
   "$fast_input_log_dir/gradle-connected-android-test.log" \
   "$fast_input_log_dir/device-logcat.txt" 2>/dev/null | head -n 12 | cut -c 1-1200 || true)"
+fast_input_trace_excerpt="$(grep -h -E 'FastInputTrace|FAST_INPUT_TRACE' \
+  "$fast_input_log_dir/gradle-connected-android-test.log" \
+  "$fast_input_log_dir/device-logcat.txt" 2>/dev/null |
+  tail -n 40 | cut -c 1-1200 || true)"
+if [[ -n "$fast_input_trace_excerpt" ]]; then
+  if [[ -n "$fast_input_failure_excerpt" ]]; then
+    fast_input_failure_excerpt+=$'\n'
+  fi
+  fast_input_failure_excerpt+="trace_excerpt=$fast_input_trace_excerpt"
+fi
 
 fast_input_finished_at="$(date +%s)"
 fast_input_elapsed_seconds=$((fast_input_finished_at - fast_input_started_at))
 
 if ((fast_input_gradle_status == 124 || fast_input_gradle_status == 137)); then
   fast_input_status="RESULT_TIMEOUT"
-elif ((fast_input_gradle_status == 0)) && [[ -n "$fast_input_summary_line" ]]; then
+elif ((fast_input_gradle_status == 0)) &&
+  [[ -n "$fast_input_summary_line" && -n "$fast_input_summary_json_line" ]]; then
   fast_input_status="COMPLETED"
 else
   fast_input_status="FAILED"
@@ -228,7 +256,11 @@ fast_input_exit_status="$fast_input_gradle_status"
 if ((fast_input_gradle_status == 0)) && [[ "$fast_input_status" != "COMPLETED" ]]; then
   fast_input_exit_status=1
 fi
-write_summary "$fast_input_status" "$fast_input_summary_line" "$fast_input_failure_excerpt"
+write_summary \
+  "$fast_input_status" \
+  "$fast_input_summary_line" \
+  "$fast_input_failure_excerpt" \
+  "$fast_input_summary_json_line"
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   {
@@ -246,6 +278,9 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo '```text'
     if [[ -n "$fast_input_summary_line" ]]; then
       echo "$fast_input_summary_line"
+      if [[ -n "$fast_input_summary_json_line" ]]; then
+        echo "$fast_input_summary_json_line"
+      fi
     else
       echo "FAST_INPUT_MULTITOUCH_SUMMARY was not emitted."
       if [[ -n "$fast_input_failure_excerpt" ]]; then

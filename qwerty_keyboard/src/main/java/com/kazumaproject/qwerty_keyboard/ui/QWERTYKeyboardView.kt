@@ -13,7 +13,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
-import android.os.Build
 import android.os.SystemClock
 import android.text.Spannable
 import android.text.SpannableString
@@ -58,10 +57,12 @@ import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.touch.PointerEventResolver
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
+import com.kazumaproject.core.domain.touch.PointerGestureTrace
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
@@ -135,6 +136,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val hitRect = Rect()
     private val keyScreenLocation = IntArray(2)
     private val touchStreamKeyBounds = linkedMapOf<View, Rect>()
+    // Glide points are delivered to the decoder and drawn on this view's local canvas. Keep the
+    // screen origin captured with the frozen key geometry so a moving IME window cannot change
+    // the coordinate transform in the middle of a touch stream.
+    private var touchStreamOriginX = 0f
+    private var touchStreamOriginY = 0f
 
     private var qwertyKeyListener: QWERTYKeyListener? = null
     private var qwertyKeyTouchCancelListener: QwertyKeyTouchCancelListener? = null
@@ -240,6 +246,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * 上フリックジェスチャー中として「ロック」されたポインターIDのセット
      */
     private val flickLockedPointers = mutableSetOf<Int>()
+
+    /**
+     * Pointers that left their original key without producing a flick.
+     *
+     * The original key remains the owner of the stream, but a cancelled pointer must not be
+     * converted into a tap when it is released outside that key.
+     */
+    private val cancelledPointerIds = mutableSetOf<Int>()
 
     /** Persisted 1..200 sensitivity setting and its density-scaled runtime threshold. */
     private var flickSensitivity = 100
@@ -1379,10 +1393,21 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 else -> zRowLetterViews.indexOf(view)
             }
             val ch = view.text?.firstOrNull()?.lowercaseChar() ?: ('a' + index)
+            val displayBounds = displayBoundsForTouchStream(view)
+            val localLeft = if (touchStreamKeyBounds.isNotEmpty() && displayBounds != null) {
+                displayBounds.left - touchStreamOriginX
+            } else {
+                view.left.toFloat()
+            }
+            val localTop = if (touchStreamKeyBounds.isNotEmpty() && displayBounds != null) {
+                displayBounds.top - touchStreamOriginY
+            } else {
+                view.top.toFloat()
+            }
             QwertyKeyProximity(
                 char = ch,
-                centerX = view.left + view.width / 2f,
-                centerY = view.top + view.height / 2f,
+                centerX = localLeft + view.width / 2f,
+                centerY = localTop + view.height / 2f,
                 width = view.width.toFloat(),
                 height = view.height.toFloat(),
                 rowIndex = row,
@@ -1425,6 +1450,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        PointerGestureTrace.log(
+            "view",
+            "surface=QWERTY action=" + MotionEvent.actionToString(event.actionMasked) +
+                " actionIndex=" + event.actionIndex +
+                " pointers=" + PointerEventResolver.describe(event),
+        )
 
         if (isCursorMode) {
             when (event.actionMasked) {
@@ -1480,8 +1511,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
-                val newPointerIndex = event.actionIndex
-                val newPointerId = event.getPointerId(newPointerIndex)
+                val newPointer = PointerEventResolver.actionPointer(event) ?: return true
+                val newPointerIndex = newPointer.pointerIndex
+                val newPointerId = newPointer.pointerId
 
                 if (variationPopup?.isShowing == true) {
                     val variationPointerId = longPressedPointerId
@@ -1556,8 +1588,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_UP -> {
-                val pointerIndex = event.actionIndex
-                val pointerId = event.getPointerId(pointerIndex)
+                val liftedPointer = PointerEventResolver.actionPointer(event) ?: return true
+                val pointerIndex = liftedPointer.pointerIndex
+                val pointerId = liftedPointer.pointerId
 
                 if (variationPopup?.isShowing == true && pointerId == longPressedPointerId) {
                     finishVariationGesture(pointerId = pointerId, commitSelection = true)
@@ -1572,7 +1605,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_UP -> {
-                val liftedId = event.getPointerId(event.actionIndex)
+                val liftedPointer = PointerEventResolver.actionPointer(event) ?: return true
+                val liftedId = liftedPointer.pointerId
                 val variationCommitted =
                     variationPopup?.isShowing == true &&
                         liftedId == longPressedPointerId &&
@@ -1583,8 +1617,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (!variationCommitted) {
                     finishTrackedPointer(
                         pointerId = liftedId,
-                        x = event.displayX(event.actionIndex),
-                        y = event.displayY(event.actionIndex)
+                        x = liftedPointer.screenX,
+                        y = liftedPointer.screenY
                     )
                 }
                 clearAllPressed(clearSuppressedPointers = false)
@@ -1602,19 +1636,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun MotionEvent.displayX(pointerIndex: Int): Float {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            getRawX(pointerIndex)
-        } else {
-            getX(pointerIndex) + rawX - x
-        }
+        return PointerEventResolver.screenX(this, pointerIndex)
     }
 
     private fun MotionEvent.displayY(pointerIndex: Int): Float {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            getRawY(pointerIndex)
-        } else {
-            getY(pointerIndex) + rawY - y
-        }
+        return PointerEventResolver.screenY(this, pointerIndex)
     }
 
     private fun handleQwertyGlideTouchEvent(event: MotionEvent): Boolean {
@@ -1651,8 +1677,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     cancelQwertyGlideCandidate(notify = glideStarted)
                     return true
                 }
-                val x = event.getX(pointerIndex)
-                val y = event.getY(pointerIndex)
+                val x = event.displayX(pointerIndex)
+                val y = event.displayY(pointerIndex)
                 val keyHit = classifyQwertyGlideKeyHit(x, y)
                 val moveHandling = QwertyGlideKeyClassifier.decideMoveHandling(
                     glidePointerId = glideCandidatePointerId,
@@ -1753,9 +1779,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun beginQwertyGlideCandidateIfPossible(event: MotionEvent, pointerIndex: Int) {
-        val pointerId = event.getPointerId(pointerIndex)
-        val x = event.getX(pointerIndex)
-        val y = event.getY(pointerIndex)
+        val pointer = PointerEventResolver.at(event, pointerIndex) ?: return
+        val pointerId = pointer.pointerId
+        if (touchStreamKeyBounds.isEmpty()) {
+            captureTouchStreamKeyBounds()
+        }
+        val x = pointer.screenX
+        val y = pointer.screenY
         if (findExactQwertyGlideLetterViewUnder(x, y) == null) return
         if (SystemClock.uptimeMillis() - lastNonGlideKeyUpTime < glideFastTypingSuppressMillis) return
 
@@ -1764,8 +1794,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         glideDownTime = event.eventTime
         glideRawPoints.clear()
         glideTrailPoints.clear()
-        glideLastSampleX = x
-        glideLastSampleY = y
+        glideLastSampleX = x - touchStreamOriginX
+        glideLastSampleY = y - touchStreamOriginY
         appendQwertyGlidePoint(x, y, event.eventTime, pointerId, force = true)
     }
 
@@ -1792,17 +1822,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         y: Float
     ): Boolean {
         val pressedView = pointerButtonMap[pointerId] ?: return false
-        pressedView.getHitRect(glideHitRect)
-        glideHitRect.inset(-pendingGlideLongPressSlop, -pendingGlideLongPressSlop)
-        return glideHitRect.contains(x.toInt(), y.toInt())
+        val bounds = displayBoundsForTouchStream(pressedView)?.let(::Rect) ?: return false
+        bounds.inset(-pendingGlideLongPressSlop, -pendingGlideLongPressSlop)
+        return bounds.contains(x.toInt(), y.toInt())
     }
 
     private fun handleQwertyGlidePointerUp(event: MotionEvent): Boolean {
         val pointerId = glideCandidatePointerId ?: return false
-        val liftedId = event.getPointerId(event.actionIndex)
+        val liftedPointer = PointerEventResolver.actionPointer(event) ?: return false
+        val liftedId = liftedPointer.pointerId
         if (liftedId != pointerId) return false
-        val upX = event.getX(event.actionIndex)
-        val upY = event.getY(event.actionIndex)
+        val upX = liftedPointer.screenX
+        val upY = liftedPointer.screenY
         if (findExactQwertyGlideLetterViewUnder(upX, upY) != null) {
             appendQwertyGlidePoint(
                 x = upX,
@@ -1847,8 +1878,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         pointerId: Int
     ) {
         for (historyIndex in 0 until event.historySize) {
-            val hx = event.getHistoricalX(pointerIndex, historyIndex)
-            val hy = event.getHistoricalY(pointerIndex, historyIndex)
+            val hx = PointerEventResolver.historicalScreenX(event, pointerIndex, historyIndex)
+            val hy = PointerEventResolver.historicalScreenY(event, pointerIndex, historyIndex)
             if (findExactQwertyGlideLetterViewUnder(hx, hy) == null) {
                 continue
             }
@@ -1868,21 +1899,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         pointerId: Int,
         force: Boolean = false
     ) {
-        if (!force && hypot(x - glideLastSampleX, y - glideLastSampleY) < glideSamplingMinDistance) {
+        val localX = x - touchStreamOriginX
+        val localY = y - touchStreamOriginY
+        if (!force &&
+            hypot(localX - glideLastSampleX, localY - glideLastSampleY) < glideSamplingMinDistance
+        ) {
             return
         }
-        glideLastSampleX = x
-        glideLastSampleY = y
+        glideLastSampleX = localX
+        glideLastSampleY = localY
         val relativeTime = (eventTime - glideDownTime).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         glideRawPoints.add(
             QwertyInputPointerPoint(
-                x = x.toInt(),
-                y = y.toInt(),
+                x = localX.toInt(),
+                y = localY.toInt(),
                 time = relativeTime,
                 pointerId = pointerId
             )
         )
-        glideTrailPoints.add(x to y)
+        glideTrailPoints.add(localX to localY)
         invalidate()
     }
 
@@ -2065,11 +2100,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun handlePointerDown(event: MotionEvent, pointerIndex: Int) {
-        val pid = event.getPointerId(pointerIndex)
+        val pointer = PointerEventResolver.at(event, pointerIndex) ?: return
+        val pid = pointer.pointerId
         if (suppressedPointerIds.contains(pid)) return
 
-        val displayX = event.displayX(pointerIndex)
-        val displayY = event.displayY(pointerIndex)
+        val displayX = pointer.screenX
+        val displayY = pointer.screenY
 
         // The IME window can grow when the first candidate row appears. Local coordinates then
         // jump even though the finger has not moved, so gesture deltas must stay in display space.
@@ -2085,6 +2121,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val view = findButtonUnderDisplay(displayX, displayY)
         view?.let {
             val qwertyKey = qwertyButtonMap[it]
+            PointerGestureTrace.log(
+                "gesture",
+                "surface=QWERTY down pointerId=" + pid +
+                    " key=" + qwertyKey,
+            )
             qwertyKey?.let { key ->
                 qwertyKeyListener?.onPressedQWERTYKey(key)
             }
@@ -2133,6 +2174,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         y: Float,
         classifyFlick: Boolean = true,
     ) {
+        if (cancelledPointerIds.remove(pointerId)) {
+            pointerButtonMap.remove(pointerId)
+            pointerStartCoords.remove(pointerId)
+            flickLockedPointers.remove(pointerId)
+            cancelLongPressForPointer(pointerId)
+            return
+        }
         if (suppressedPointerIds.remove(pointerId)) {
             pointerButtonMap.remove(pointerId)
             pointerStartCoords.remove(pointerId)
@@ -2148,6 +2196,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             tryHandleFlickAt(pointerId = pointerId, x = x, y = y)
         }
         val wasFlick = flickLockedPointers.contains(pointerId)
+        PointerGestureTrace.log(
+            "gesture",
+            "surface=QWERTY up pointerId=" + pointerId +
+                " key=" + pointerButtonMap[pointerId]?.let(qwertyButtonMap::get) +
+                " flick=" + wasFlick,
+        )
         pointerStartCoords.remove(pointerId)
 
         if (!wasFlick) {
@@ -2356,35 +2410,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             return
         }
 
-        val currentView = findButtonUnderDisplay(displayX, displayY)
-        if (currentView != previousView) {
-            previousView?.let {
-                it.isPressed = false
+        if (previousView != null && findButtonUnderDisplay(displayX, displayY) != previousView) {
+            if (cancelledPointerIds.add(pointerId)) {
+                previousView.isPressed = false
                 dismissKeyPreview()
                 cancelLongPressForPointer(pointerId)
-            }
-            currentView?.let {
-                it.isPressed = true
-                pointerButtonMap.put(pointerId, it)
-                pointerStartCoords.put(pointerId, Pair(displayX, displayY))
-
-                if (it.id != binding.keySpace.id &&
-                    it.id != binding.keyDelete.id &&
-                    it.id != binding.keyShift.id &&
-                    it.id != binding.key123.id &&
-                    it.id != binding.keyReturn.id &&
-                    it.id != binding.keySwitchDefault.id &&
-                    it.id != binding.keyEmoji.id &&
-                    it.id != binding.switchNumberLayout.id &&
-                    it.id != binding.cursorRight.id &&
-                    it.id != binding.cursorLeft.id
-                ) {
-                    showKeyPreview(it)
-                }
-            } ?: run {
+                notifyQwertyTouchCanceledForPointer(
+                    pointerId,
+                    KeyTouchCancelReason.PointerInterrupted,
+                )
                 pointerButtonMap.remove(pointerId)
                 pointerStartCoords.remove(pointerId)
-                cancelLongPressForPointer(pointerId)
             }
         }
     }
@@ -2395,7 +2431,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         val (startX, startY) = pointerStartCoords[pointerId] ?: return false
         val previousView = pointerButtonMap[pointerId]
-        return when (detectFlickDirection(x, y, startX, startY, flickThreshold)) {
+        val direction = detectFlickDirection(x, y, startX, startY, flickThreshold)
+        PointerGestureTrace.log(
+            "gesture",
+            "surface=QWERTY direction pointerId=" + pointerId +
+                " direction=" + direction,
+        )
+        return when (direction) {
             FlickDirection.UP -> {
                 when {
                     enableDeleteUpFlick &&
@@ -2464,7 +2506,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         pointerButtonMap.clear()
         pointerStartCoords.clear()
         flickLockedPointers.clear()
+        cancelledPointerIds.clear()
         touchStreamKeyBounds.clear()
+        touchStreamOriginX = 0f
+        touchStreamOriginY = 0f
         dismissKeyPreview()
         if (clearSuppressedPointers) {
             suppressedPointerIds.clear()
@@ -2641,6 +2686,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     /** Freeze key geometry until every finger in the current touch stream has lifted. */
     private fun captureTouchStreamKeyBounds() {
         touchStreamKeyBounds.clear()
+        getLocationOnScreen(keyScreenLocation)
+        touchStreamOriginX = keyScreenLocation[0].toFloat()
+        touchStreamOriginY = keyScreenLocation[1].toFloat()
         qwertyButtonMap.keys.forEach { child ->
             if (!child.isVisible || child.width <= 0 || child.height <= 0) return@forEach
             child.getLocationOnScreen(keyScreenLocation)
@@ -2665,12 +2713,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun View.toQwertyGlideKeyRect(): QwertyGlideKeyClassifier.KeyRect {
-        getHitRect(glideHitRect)
+        val bounds = displayBoundsForTouchStream(this) ?: return QwertyGlideKeyClassifier.KeyRect(
+            left = 0,
+            top = 0,
+            right = 0,
+            bottom = 0,
+        )
         return QwertyGlideKeyClassifier.KeyRect(
-            left = glideHitRect.left,
-            top = glideHitRect.top,
-            right = glideHitRect.right,
-            bottom = glideHitRect.bottom
+            left = bounds.left,
+            top = bounds.top,
+            right = bounds.right,
+            bottom = bounds.bottom
         )
     }
 
@@ -2712,9 +2765,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val yi = y.toInt()
         return getVisibleQwertyLetterViews().firstOrNull { key ->
             if (!key.isVisible) return@firstOrNull false
-            key.getHitRect(glideHitRect)
-            glideHitRect.contains(xi, yi)
+            displayBoundsForTouchStream(key)?.contains(xi, yi) == true
         }
+    }
+
+    private fun displayBoundsForTouchStream(view: View): Rect? {
+        touchStreamKeyBounds[view]?.let { return it }
+        if (!view.isVisible || view.width <= 0 || view.height <= 0) return null
+        view.getLocationOnScreen(keyScreenLocation)
+        return Rect(
+            keyScreenLocation[0],
+            keyScreenLocation[1],
+            keyScreenLocation[0] + view.width,
+            keyScreenLocation[1] + view.height,
+        )
     }
 
     override fun dispatchDraw(canvas: Canvas) {

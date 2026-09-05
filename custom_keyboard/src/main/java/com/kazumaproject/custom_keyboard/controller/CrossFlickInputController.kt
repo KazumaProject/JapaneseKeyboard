@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class CrossFlickInputController(
     private val context: Context,
     private val gestureConfigSource: GestureSessionConfigSource
-) {
+) : GestureStateResettable {
 
     constructor(
         context: Context,
@@ -100,6 +100,7 @@ class CrossFlickInputController(
 
     private var inputMode: InputMode = InputMode.ACTION
     private var anchorView: View? = null
+    private var attachedView: View? = null
     private var initialTouchPoint = PointF(0f, 0f)
     private var currentDirection = FlickDirection.TAP
     private var activeGestureConfig: GestureSessionConfig? = null
@@ -177,19 +178,38 @@ class CrossFlickInputController(
         invalidateDirectionalPopupCache()
     }
 
-    // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に FlickKeyboardView から呼ばれる。
-    fun cancel() {
+    override fun resetGestureState() {
         listener?.onCanceled()
         activeGestureConfig = null
         longPressJob?.cancel()
-        controllerScope.cancel()
+        longPressJob = null
+        isLongPressMode = false
+        isLongPressTriggered = false
         restoreOriginalButtonText()
+        dismissAllPopups(clearDirectionalCache = false)
+        attachedView?.isPressed = false
+        anchorView = null
+    }
+
+    override fun dispose() {
+        resetGestureState()
+        attachedView?.setOnTouchListener(null)
+        attachedView = null
+        flickActionMap = emptyMap()
+        textMap = emptyMap()
+        longPressTextMap = emptyMap()
+        controllerScope.cancel()
         dismissAllPopups(clearDirectionalCache = true)
     }
+
+    // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に呼ばれる。
+    fun cancel() = dispose()
 
     // ACTION モードでビューにアタッチする。CROSS_FLICK キー（アイコン付き特殊キー）向け。
     @SuppressLint("ClickableViewAccessibility")
     fun attach(view: View, map: Map<FlickDirection, FlickAction>) {
+        attachedView?.takeUnless { it === view }?.setOnTouchListener(null)
+        attachedView = view
         inputMode = InputMode.ACTION
         flickActionMap = map.mapValues { (_, action) -> action.withDisplayMetadata() }
         textMap = emptyMap()
@@ -206,6 +226,8 @@ class CrossFlickInputController(
         map: Map<FlickDirection, String>,
         longPressMap: Map<FlickDirection, String> = emptyMap()
     ) {
+        attachedView?.takeUnless { it === view }?.setOnTouchListener(null)
+        attachedView = view
         inputMode = InputMode.TEXT
         textMap = map
         longPressTextMap = longPressMap

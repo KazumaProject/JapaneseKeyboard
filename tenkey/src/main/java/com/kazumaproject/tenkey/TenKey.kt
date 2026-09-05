@@ -46,6 +46,8 @@ import com.kazumaproject.core.domain.state.PressedKey
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.domain.state.toInputMode
 import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
+import com.kazumaproject.core.domain.touch.PointerEventResolver
+import com.kazumaproject.core.domain.touch.PointerGestureTrace
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
@@ -1449,31 +1451,29 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
+            PointerGestureTrace.log(
+                "view",
+                "surface=TENKEY action=" + MotionEvent.actionToString(event.actionMasked) +
+                    " actionIndex=" + event.actionIndex +
+                    " pointers=" + PointerEventResolver.describe(event),
+            )
             if (view.visibility != View.VISIBLE) {
                 return false
             }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val pointerIndex = event.actionIndex
-                    val pointerId = event.getPointerId(pointerIndex)
+                    val pointer = PointerEventResolver.at(event, pointerIndex) ?: return true
+                    val pointerId = pointer.pointerId
                     val key = pressedKeyByMotionEvent(event, pointerIndex)
                     flickListener?.onFlick(GestureType.Down, key, null)
 
-                    pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        PressedKey(
-                            key = key,
-                            pointer = pointerId,
-                            initialX = event.getRawX(pointerIndex),
-                            initialY = event.getRawY(pointerIndex),
-                        )
-                    } else {
-                        PressedKey(
-                            key = key,
-                            pointer = pointerId,
-                            initialX = event.getX(pointerIndex),
-                            initialY = event.getY(pointerIndex),
-                        )
-                    }
+                    pressedKey = PressedKey(
+                        key = key,
+                        pointerId = pointerId,
+                        initialX = pointer.screenX,
+                        initialY = pointer.screenY,
+                    )
 
                     if (isCursorMode) {
                         flickTextPreviewEmitter.cancel()
@@ -1516,8 +1516,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         return false
                     }
 
-                    if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
-                        val gestureType = getGestureType(event, event.actionIndex)
+                    val liftedPointer = PointerEventResolver.actionPointer(event)
+                    if (liftedPointer != null &&
+                        pressedKey.pointerId == liftedPointer.pointerId
+                    ) {
+                        val gestureType = getGestureType(event, liftedPointer.pointerIndex)
                         Log.d("TenKey: ACTION_UP in pointer", "called $pressedKey")
 
                         dispatchResolvedGesture(pressedKey.key, gestureType)
@@ -1539,7 +1542,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val trackedPointerIndex = event.findPointerIndex(pressedKey.pointer)
+                    val trackedPointerIndex = event.findPointerIndex(pressedKey.pointerId)
                     if (trackedPointerIndex < 0) {
                         cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
                         return true
@@ -1629,9 +1632,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                     if (event.pointerCount == 2) {
                         isLongPressed = false
-                        val newPointerIndex = event.actionIndex
-                        val newPointerId = event.getPointerId(newPointerIndex)
-                        val trackedPointerIndex = event.findPointerIndex(pressedKey.pointer)
+                        val newPointer = PointerEventResolver.actionPointer(event)
+                            ?: return true
+                        val newPointerIndex = newPointer.pointerIndex
+                        val newPointerId = newPointer.pointerId
+                        val trackedPointerIndex = event.findPointerIndex(pressedKey.pointerId)
                         if (trackedPointerIndex < 0) {
                             cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
                             return true
@@ -1647,17 +1652,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         }
                         pressedKey = pressedKey.copy(
                             key = key,
-                            pointer = newPointerId,
-                            initialX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawX(newPointerIndex)
-                            } else {
-                                event.getX(newPointerIndex)
-                            },
-                            initialY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawY(newPointerIndex)
-                            } else {
-                                event.getY(newPointerIndex)
-                            },
+                            pointerId = newPointerId,
+                            initialX = newPointer.screenX,
+                            initialY = newPointer.screenY,
                         )
                         setKeyPressed()
                         flickTextPreviewEmitter.begin(
@@ -1677,10 +1674,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                 MotionEvent.ACTION_POINTER_UP -> {
                     if (event.pointerCount == 2) {
-                        if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                        val liftedPointer = PointerEventResolver.actionPointer(event)
+                        if (liftedPointer != null &&
+                            pressedKey.pointerId == liftedPointer.pointerId
+                        ) {
                             resetLongPressAction()
                             if (isCursorMode) return true
-                            val gestureType = getGestureType(event, event.actionIndex)
+                            val gestureType = getGestureType(event, liftedPointer.pointerIndex)
                             Log.d("TenKey: ACTION_POINTER_UP", "called [${pressedKey.key}]")
                             dispatchResolvedGesture(pressedKey.key, gestureType)
                             val button = getButtonFromKey(pressedKey.key)
@@ -2041,27 +2041,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Get absolute coordinates for the given pointer **/
     private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer) to event.getRawY(pointer)
-        } else {
-            val location = IntArray(2)
-            this.getLocationOnScreen(location)
-            (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
-        }
+        return PointerEventResolver.screenX(event, pointer) to
+            PointerEventResolver.screenY(event, pointer)
     }
 
     /** Determine whether the movement is a tap or a flick in a direction **/
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
-        val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer)
-        } else {
-            event.getX(pointer)
-        }
-        val finalY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawY(pointer)
-        } else {
-            event.getY(pointer)
-        }
+        val finalX = PointerEventResolver.screenX(event, pointer)
+        val finalY = PointerEventResolver.screenY(event, pointer)
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when (
@@ -2114,6 +2101,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun dispatchResolvedGesture(key: Key, gestureType: GestureType) {
+        PointerGestureTrace.log(
+            "gesture",
+            "surface=TENKEY pointerId=" + pressedKey.pointerId +
+                " key=" + key +
+                " gesture=" + gestureType,
+        )
         val keyInfo = currentInputMode.value.next(
             keyMap = keyMap,
             key = key,

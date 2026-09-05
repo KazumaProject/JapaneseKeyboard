@@ -59,6 +59,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlin.random.Random
@@ -78,6 +80,9 @@ class FastInputMatrixInstrumentedTest {
 
     private val uiAutomation: UiAutomation
         get() = instrumentation.uiAutomation
+
+    private var activeRapidTraceId: String? = null
+    private var activeRapidTraceEvents: MutableList<String>? = null
 
     @Test
     fun flickEditorPreviewFunctionalAndPerformanceOnPhysicalDevice() {
@@ -1560,16 +1565,29 @@ class FastInputMatrixInstrumentedTest {
     @Test
     fun generatedTwoFingerInputAcrossAllKeyboardsOnPhysicalDevice() {
         val arguments = InstrumentationRegistry.getArguments()
-        val rounds = arguments.getString("matrixRounds")?.toIntOrNull()
-            ?: DEFAULT_GENERATED_MATRIX_ROUNDS
-        require(rounds > 0)
-        val requestedSurfaceNames = arguments.getString("matrixSurfaces")
+        val rounds = arguments.getString("matrixRounds")?.let { token ->
+            val parsed = requireNotNull(token.toIntOrNull()) {
+                "matrixRounds must be numeric: $token"
+            }
+            require(parsed in 1..10) {
+                "matrixRounds must be from 1 to 10: $parsed"
+            }
+            parsed
+        } ?: DEFAULT_GENERATED_MATRIX_ROUNDS
+        val requestedSurfaceTokens = arguments.getString("matrixSurfaces")
             ?.split(',')
             ?.map(String::trim)
-            ?.filter(String::isNotEmpty)
+            ?.also { tokens ->
+                require(tokens.none { it.isEmpty() }) {
+                    "matrixSurfaces contains an empty value"
+                }
+            }
             ?.map(String::uppercase)
-            ?.toSet()
             .orEmpty()
+        require(requestedSurfaceTokens.size == requestedSurfaceTokens.toSet().size) {
+            "matrixSurfaces contains duplicate values: $requestedSurfaceTokens"
+        }
+        val requestedSurfaceNames = requestedSurfaceTokens.toSet()
         val surfaces = when {
             requestedSurfaceNames.isEmpty() || requestedSurfaceNames == setOf("ALL") -> {
                 RapidInputSurface.entries
@@ -1588,7 +1606,11 @@ class FastInputMatrixInstrumentedTest {
         val requestedColumnTokens = arguments.getString("matrixColumns")
             ?.split(',')
             ?.map(String::trim)
-            ?.filter(String::isNotEmpty)
+            ?.also { tokens ->
+                require(tokens.none { it.isEmpty() }) {
+                    "matrixColumns contains an empty value"
+                }
+            }
             .orEmpty()
         val requestedColumns = requestedColumnTokens
             .map { token ->
@@ -1596,7 +1618,9 @@ class FastInputMatrixInstrumentedTest {
                     "matrixColumns contains a non-numeric value: $token"
                 }
             }
-            .distinct()
+        require(requestedColumns.size == requestedColumns.toSet().size) {
+            "matrixColumns contains duplicate values after normalization: $requestedColumns"
+        }
         val candidateColumns = if (requestedColumns.isEmpty()) {
             RAPID_CANDIDATE_COLUMNS
         } else {
@@ -1605,19 +1629,29 @@ class FastInputMatrixInstrumentedTest {
             }
             requestedColumns
         }
-        val requestedSumireMethodNames = arguments.getString("matrixSumireMethods")
+        val requestedSumireMethodTokens = arguments.getString("matrixSumireMethods")
             ?.split(',')
             ?.map(String::trim)
-            ?.filter(String::isNotEmpty)
-            ?.toSet()
+            ?.also { tokens ->
+                require(tokens.none { it.isEmpty() }) {
+                    "matrixSumireMethods contains an empty value"
+                }
+            }
+            ?.map(String::lowercase)
             .orEmpty()
+        require(
+            requestedSumireMethodTokens.size == requestedSumireMethodTokens.toSet().size
+        ) {
+            "matrixSumireMethods contains duplicate values: $requestedSumireMethodTokens"
+        }
+        val requestedSumireMethodNames = requestedSumireMethodTokens.toSet()
         val sumireInputMethods = when {
-            requestedSumireMethodNames.isEmpty() || requestedSumireMethodNames == setOf("ALL") -> {
+            requestedSumireMethodNames.isEmpty() || requestedSumireMethodNames == setOf("all") -> {
                 RAPID_SUMIRE_INPUT_METHODS
             }
 
             else -> {
-                require("ALL" !in requestedSumireMethodNames) {
+                require("all" !in requestedSumireMethodNames) {
                     "matrixSumireMethods cannot combine ALL with a method name"
                 }
                 val unknownNames = requestedSumireMethodNames -
@@ -1708,7 +1742,19 @@ class FastInputMatrixInstrumentedTest {
                                             )
                                             if (dimensions.orientation != orientation) continue
 
+                                            val traceId = listOf(
+                                                surface.name.lowercase(),
+                                                sumireInputMethod ?: "none",
+                                                columns,
+                                                round,
+                                                inputScenario.name,
+                                                dimensions.orientation.name.lowercase(),
+                                                dimensions.editorState.name.lowercase(),
+                                                dimensions.releaseOrder.name.lowercase(),
+                                                intervalMs,
+                                            ).joinToString("-")
                                             val trial = buildString {
+                                                append("traceId=$traceId ")
                                                 append("surface=${surface.name} ")
                                                 sumireInputMethod?.let {
                                                     append("sumireMethod=$it ")
@@ -1732,12 +1778,24 @@ class FastInputMatrixInstrumentedTest {
                                             } else {
                                                 inputScenario.expected
                                             }
+                                            var rapidTrace = RapidInputTrace(
+                                                traceId = traceId,
+                                                surface = surface.name,
+                                                operations = inputScenario.operations,
+                                                pointerIds = RAPID_POINTER_IDS.toList(),
+                                                intervalMs = intervalMs,
+                                                releaseOrder = dimensions.releaseOrder,
+                                                expectedText = expected,
+                                            )
+                                            val traceEvents = mutableListOf<String>()
+                                            activeRapidTraceId = traceId
+                                            activeRapidTraceEvents = traceEvents
                                             var actual = runCatching { readText(activeScenario) }
                                                 .getOrDefault("")
                                             var allEventsInjected = false
                                             var outcome: RapidTrialOutcome
                                             try {
-                                                resetRapidInputTrial(activeScenario)
+                                                resetRapidInputTrial(activeScenario, traceId)
                                                 val prefix = prepareRapidEditorState(
                                                     scenario = activeScenario,
                                                     surface = surface,
@@ -1745,6 +1803,7 @@ class FastInputMatrixInstrumentedTest {
                                                     points = points,
                                                 )
                                                 expected = prefix + inputScenario.expected
+                                                rapidTrace = rapidTrace.copy(expectedText = expected)
                                                 allEventsInjected = when (dimensions.releaseOrder) {
                                                     RapidReleaseOrder.ROLLING_OLDER_FIRST ->
                                                         injectRollingTwoFingerSequence(
@@ -1764,6 +1823,7 @@ class FastInputMatrixInstrumentedTest {
                                                     scenario = activeScenario,
                                                     failOnTimeout = true,
                                                     timeoutMs = RAPID_RESULT_TIMEOUT_MS,
+                                                    expectedText = expected,
                                                 )
                                                 outcome = RapidTrialOutcome(
                                                     category = classifyRapidInputResult(
@@ -1782,6 +1842,15 @@ class FastInputMatrixInstrumentedTest {
                                                     actual = runCatching { readText(activeScenario) }
                                                         .getOrDefault(actual),
                                                     allEventsInjected = false,
+                                                    error = error.message,
+                                                )
+                                            } catch (error: ResultMismatchException) {
+                                                outcome = RapidTrialOutcome(
+                                                    category = RapidResultCategory.INPUT_MISMATCH,
+                                                    expected = expected,
+                                                    actual = runCatching { readText(activeScenario) }
+                                                        .getOrDefault(actual),
+                                                    allEventsInjected = allEventsInjected,
                                                     error = error.message,
                                                 )
                                             } catch (error: ResultTimeoutException) {
@@ -1816,6 +1885,12 @@ class FastInputMatrixInstrumentedTest {
                                                     error = error.message ?: error::class.java.simpleName,
                                                 )
                                             }
+                                            finally {
+                                                if (activeRapidTraceId == traceId) {
+                                                    activeRapidTraceId = null
+                                                    activeRapidTraceEvents = null
+                                                }
+                                            }
                                             completedTrials += 1
                                             categoryCounts[outcome.category] =
                                                 categoryCounts.getValue(outcome.category) + 1
@@ -1835,6 +1910,17 @@ class FastInputMatrixInstrumentedTest {
                                                 append(mismatchIndex)
                                                 append(" expected=[${outcome.expected}] actual=[${outcome.actual}]")
                                                 if (outcome.category != RapidResultCategory.PASS) {
+                                                    append(" tracePointers=")
+                                                    append(rapidTrace.pointerIds.joinToString(","))
+                                                    append(" traceExpected=[")
+                                                    append(rapidTrace.expectedText)
+                                                    append("] rawEventTrace=")
+                                                    append(
+                                                        traceEvents.joinToString(
+                                                            separator = "|",
+                                                            limit = 256,
+                                                        )
+                                                    )
                                                     val warmPrefixLength = if (
                                                         dimensions.editorState == RapidEditorState.WARM
                                                     ) {
@@ -1898,6 +1984,33 @@ class FastInputMatrixInstrumentedTest {
             val setupErrorCount =
                 categoryCounts.getValue(RapidResultCategory.SETUP_ERROR) + setupErrors.size
             val failureCount = failures.size + setupErrors.size
+            val matrixPassed = completedTrials == expectedTrials &&
+                passCount == expectedTrials &&
+                resetErrorCount == 0 &&
+                setupErrorCount == 0 &&
+                injectionErrorCount == 0 &&
+                inputMismatchCount == 0 &&
+                resultTimeoutCount == 0
+            val summaryJson = JSONObject()
+                .put("schemaVersion", 1)
+                .put("surface", surfaces.joinToString(","))
+                .put("sumireMethods", sumireInputMethods.joinToString(","))
+                .put("rounds", rounds)
+                .put("columns", JSONArray(candidateColumns))
+                .put("plannedTrials", expectedTrials)
+                .put("completedTrials", completedTrials)
+                .put("pass", passCount)
+                .put("resetErrors", resetErrorCount)
+                .put("setupErrors", setupErrorCount)
+                .put("injectionErrors", injectionErrorCount)
+                .put("inputMismatches", inputMismatchCount)
+                .put("resultTimeouts", resultTimeoutCount)
+                .put("failures", failureCount)
+                .put("status", if (matrixPassed) "PASS" else "FAIL")
+            val summaryJsonLine = buildString {
+                append("FAST_INPUT_MULTITOUCH_SUMMARY_JSON ")
+                append(summaryJson.toString())
+            }
             val summary = buildString {
                 append("FAST_INPUT_MULTITOUCH_SUMMARY ")
                 append("surfaces=${surfaces.joinToString(",")} ")
@@ -1913,7 +2026,9 @@ class FastInputMatrixInstrumentedTest {
                 append("failures=$failureCount\n")
             }
             Log.i(TAG, summary.trim())
+            Log.i(TAG, summaryJsonLine)
             sendProgress(summary)
+            sendProgress("$summaryJsonLine\n")
             assertTrue(
                 buildString {
                     append(summary)
@@ -1926,12 +2041,7 @@ class FastInputMatrixInstrumentedTest {
                         append(setupErrors.joinToString(separator = "\n", limit = 30))
                     }
                 },
-                completedTrials == expectedTrials &&
-                    resetErrorCount == 0 &&
-                    setupErrorCount == 0 &&
-                    injectionErrorCount == 0 &&
-                    inputMismatchCount == 0 &&
-                    resultTimeoutCount == 0,
+                matrixPassed,
             )
         }
     }
@@ -3359,6 +3469,7 @@ class FastInputMatrixInstrumentedTest {
 
     private fun resetRapidInputTrial(
         scenario: ActivityScenario<FastInputHostActivity>,
+        traceId: String,
     ) {
         try {
             awaitHostWindowFocus(scenario)
@@ -3385,7 +3496,7 @@ class FastInputMatrixInstrumentedTest {
             }
 
             scenario.onActivity { activity ->
-                activity.resetEditorForFastInputTest(token, receiver)
+                activity.resetEditorForFastInputTest(token, receiver, traceId)
             }
             if (!resetSignal.await(RESET_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                 throw RapidResetException(
@@ -3597,7 +3708,17 @@ class FastInputMatrixInstrumentedTest {
         scenario: ActivityScenario<FastInputHostActivity>,
         failOnTimeout: Boolean = false,
         timeoutMs: Long = RESULT_TIMEOUT_MS,
+        expectedText: String? = null,
     ): String {
+        if (expectedText != null) {
+            return awaitExpectedTextSettled(
+                scenario = scenario,
+                expectedText = expectedText,
+                failOnTimeout = failOnTimeout,
+                timeoutMs = timeoutMs,
+            )
+        }
+
         var previous: String? = null
         var stableSamples = 0
         val deadline = SystemClock.uptimeMillis() + timeoutMs
@@ -3616,6 +3737,56 @@ class FastInputMatrixInstrumentedTest {
         if (failOnTimeout) {
             throw ResultTimeoutException(
                 "Editor text did not settle within ${timeoutMs}ms; actual=[$latest]"
+            )
+        }
+        return latest
+    }
+
+    private fun awaitExpectedTextSettled(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        expectedText: String,
+        failOnTimeout: Boolean,
+        timeoutMs: Long,
+    ): String {
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
+        val policy = FastInputTextSettlePolicy(
+            expectedText = expectedText,
+            stableSamplesRequired = TEXT_STABLE_SAMPLES,
+        )
+        var latest = readText(scenario)
+        while (SystemClock.uptimeMillis() < deadline) {
+            latest = readText(scenario)
+            if (policy.observe(latest)) {
+                // Keep a short second quiet window after the expected value appears. This catches
+                // a queued extra commit without adding any wait between the injected touch events.
+                val postDeadline = minOf(
+                    deadline,
+                    SystemClock.uptimeMillis() + RAPID_POST_EXPECTED_SETTLE_MS,
+                )
+                val postPolicy = FastInputTextSettlePolicy(
+                    expectedText = expectedText,
+                    stableSamplesRequired = TEXT_STABLE_SAMPLES,
+                )
+                while (SystemClock.uptimeMillis() < postDeadline) {
+                    latest = readText(scenario)
+                    if (latest != expectedText) {
+                        throw ResultMismatchException(
+                            "Editor text changed after reaching expected value; " +
+                                "expected=[$expectedText] actual=[$latest]",
+                        )
+                    }
+                    if (postPolicy.observe(latest)) return latest
+                    SystemClock.sleep(POLL_MS)
+                }
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+
+        latest = readText(scenario)
+        if (failOnTimeout) {
+            throw ResultTimeoutException(
+                "Editor text did not reach expected value within ${timeoutMs}ms; " +
+                    "expected=[$expectedText] actual=[$latest]",
             )
         }
         return latest
@@ -4412,6 +4583,32 @@ class FastInputMatrixInstrumentedTest {
             0,
             InputDevice.SOURCE_TOUCHSCREEN,
             0
+        )
+        activeRapidTraceEvents?.add(
+            buildString {
+                append("traceId=")
+                append(activeRapidTraceId)
+                append(" stage=inject action=")
+                append(MotionEvent.actionToString(actionMasked))
+                append(" actionIndex=")
+                append(actionIndex)
+                append(" eventTime=")
+                append(eventTime)
+                append(" synchronous=")
+                append(synchronous)
+                append(" pointers=")
+                append(
+                    pointers.joinToString("|") { pointer ->
+                        buildString {
+                            append(pointer.id)
+                            append("@")
+                            append(pointer.point.x)
+                            append(",")
+                            append(pointer.point.y)
+                        }
+                    }
+                )
+            }
         )
         return try {
             uiAutomation.injectInputEvent(event, synchronous)
@@ -5408,6 +5605,16 @@ class FastInputMatrixInstrumentedTest {
         val seed: Int,
     )
 
+    private data class RapidInputTrace(
+        val traceId: String,
+        val surface: String,
+        val operations: List<RapidOperation>,
+        val pointerIds: List<Int>,
+        val intervalMs: Long,
+        val releaseOrder: RapidReleaseOrder,
+        val expectedText: String,
+    )
+
     private data class RapidTrialDimensions(
         val releaseOrder: RapidReleaseOrder,
         val orientation: TestOrientation,
@@ -5507,6 +5714,10 @@ class FastInputMatrixInstrumentedTest {
         message: String,
     ) : RuntimeException(message)
 
+    private class ResultMismatchException(
+        message: String,
+    ) : RuntimeException(message)
+
     companion object {
         private const val TAG = "FastInputMatrix"
         private const val KEYBOARD_SIZE_CUSTOM_LABEL = "SIZE-CI"
@@ -5571,6 +5782,7 @@ class FastInputMatrixInstrumentedTest {
         // injected event, especially for long Romaji sequences. This remains a strict bounded
         // settle timeout; it does not accept a partial or incorrect editor value.
         private const val RAPID_RESULT_TIMEOUT_MS = 10_000L
+        private const val RAPID_POST_EXPECTED_SETTLE_MS = 256L
         private const val ORIENTATION_TIMEOUT_MS = 4_000L
         private const val ORIENTATION_SETTLE_MS = 500L
         private const val HOST_WINDOW_FOCUS_TIMEOUT_MS = 15_000L
