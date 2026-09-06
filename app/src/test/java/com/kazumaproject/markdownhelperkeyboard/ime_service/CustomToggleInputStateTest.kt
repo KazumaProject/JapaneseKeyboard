@@ -42,4 +42,22 @@ class CustomToggleInputStateTest {
 
         assertEquals(CustomToggleInputState.Mutation.Append("a"), state.next("key", values))
     }
+
+    @Test
+    fun transformedOutputs_keepCanonicalSequence() {
+        val values = listOf("a", "b", "c")
+
+        assertEquals(
+            CustomToggleInputState.Mutation.Append("A"),
+            state.next("key", values, listOf("A", "B", "C"))
+        )
+        assertEquals(
+            CustomToggleInputState.Mutation.Replace("A", "b"),
+            state.next("key", values, listOf("a", "b", "c"))
+        )
+        assertEquals(
+            CustomToggleInputState.Mutation.Replace("b", "C"),
+            state.next("key", values, listOf("A", "B", "C"))
+        )
+    }
 }
