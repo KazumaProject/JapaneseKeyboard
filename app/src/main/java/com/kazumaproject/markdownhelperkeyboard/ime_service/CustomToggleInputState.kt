@@ -9,30 +9,44 @@ internal class CustomToggleInputState {
     private var keyIdentity: String? = null
     private var values: List<String> = emptyList()
     private var index = -1
+    private var lastEmittedText: String? = null
 
-    fun next(keyIdentity: String, values: List<String>): Mutation? {
-        if (values.isEmpty()) {
+    fun next(
+        keyIdentity: String,
+        values: List<String>,
+        outputValues: List<String> = values,
+    ): Mutation? {
+        if (values.isEmpty() || values.size != outputValues.size) {
             reset()
             return null
         }
         if (values.size == 1) {
             reset()
-            return Mutation.Append(values.first())
+            return Mutation.Append(outputValues.first())
         }
-        if (this.keyIdentity != keyIdentity || this.values != values || index !in values.indices) {
+        if (
+            this.keyIdentity != keyIdentity ||
+            this.values != values ||
+            index !in values.indices ||
+            lastEmittedText == null
+        ) {
             this.keyIdentity = keyIdentity
-            this.values = values
+            this.values = values.toList()
             index = 0
-            return Mutation.Append(values.first())
+            lastEmittedText = outputValues.first()
+            return Mutation.Append(lastEmittedText.orEmpty())
         }
-        val previous = values[index]
+        val previous = checkNotNull(lastEmittedText)
         index = (index + 1) % values.size
-        return Mutation.Replace(previous, values[index])
+        val next = outputValues[index]
+        lastEmittedText = next
+        return Mutation.Replace(previous, next)
     }
 
     fun reset() {
         keyIdentity = null
         values = emptyList()
         index = -1
+        lastEmittedText = null
     }
 }
