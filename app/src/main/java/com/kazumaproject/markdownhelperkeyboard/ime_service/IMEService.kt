@@ -487,7 +487,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private data class CustomToggleEditorSelection(
         val connection: InputConnection,
-        val text: String,
         val selectionStart: Int,
         val selectionEnd: Int,
     )
@@ -6235,12 +6234,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+        invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
         }
-
-        invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
 
         updateEditorSelectionSnapshot(
             newSelStart = newSelStart,
@@ -13333,6 +13331,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.getOrNull() ?: return null
         if (
             extracted.text == null ||
+            extracted.startOffset < 0 ||
             extracted.selectionStart < 0 ||
             extracted.selectionEnd < 0
         ) {
@@ -13340,9 +13339,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         return CustomToggleEditorSelection(
             connection = connection,
-            text = extracted.text.toString(),
-            selectionStart = extracted.selectionStart,
-            selectionEnd = extracted.selectionEnd,
+            selectionStart = extracted.startOffset + extracted.selectionStart,
+            selectionEnd = extracted.startOffset + extracted.selectionEnd,
         )
     }
 
@@ -13418,14 +13416,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (before.connection !== after.connection) return false
         if (before.selectionStart != before.selectionEnd) return false
-        if (before.selectionStart > before.text.length) return false
-        val expectedText = before.text.substring(0, before.selectionStart) +
-            text +
-            before.text.substring(before.selectionStart)
         val expectedCursor = before.selectionStart + text.length
-        return after.selectionStart == expectedCursor &&
-            after.selectionEnd == expectedCursor &&
-            after.text == expectedText
+        if (after.selectionStart != expectedCursor || after.selectionEnd != expectedCursor) {
+            return false
+        }
+        val textBeforeCursor = runCatching {
+            after.connection.getTextBeforeCursor(text.length, 0)?.toString()
+        }.getOrNull()
+        return textBeforeCursor == text
     }
 
     private fun handleCustomToggleText(
@@ -13461,7 +13459,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     null
                 }
-                handleCustomKeyboardText(mutation.text, mainView, isFlick = false)
+                if (isDirect) customToggleEditInProgress = true
+                try {
+                    handleCustomKeyboardText(mutation.text, mainView, isFlick = false)
+                } finally {
+                    if (isDirect) customToggleEditInProgress = false
+                }
                 if (isDirect) {
                     val after = currentInputConnection?.let(::captureCustomToggleEditorSelection)
                     if (
