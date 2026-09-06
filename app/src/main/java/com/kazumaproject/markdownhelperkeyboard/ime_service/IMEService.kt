@@ -106,6 +106,7 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.data.floating_candidate.CandidateInputRange
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -139,7 +140,8 @@ import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
-import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
+import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateComposition
+import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateCompositionResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardInputMode
@@ -192,7 +194,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidatePresentation
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
@@ -457,6 +461,226 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val activeSplitPatternIndex: Int = 0
     )
 
+    /**
+     * Immutable candidate data returned by one query.
+     *
+     * The presentation list keeps conversion metadata attached to the concrete candidate object.
+     * The string-keyed map is retained only for the existing candidate-order override repository;
+     * composing code never uses it to recover a range.
+     */
+    private data class CandidateQuerySnapshot(
+        val input: String,
+        val presentations: List<CandidatePresentation>,
+        val conversionSegmentsByCandidateString: Map<String, List<CandidateConversionSegment>> =
+            emptyMap(),
+    ) {
+        val candidates: List<Candidate>
+            get() = presentations.map(CandidatePresentation::candidate)
+
+        fun withCandidates(updatedCandidates: List<Candidate>): CandidateQuerySnapshot = copy(
+            presentations = updatedCandidates.map { candidate ->
+                presentations.firstOrNull { it.candidate === candidate }
+                    ?: createPresentation(
+                        input = input,
+                        candidate = candidate,
+                        conversionSegments = emptyList(),
+                        hasConversionMetadata = false,
+                    )
+            },
+        )
+
+        fun inputRangeFor(
+            candidate: Candidate,
+            displayWord: String = candidate.string,
+        ): CandidateInputRange? {
+            val presentation = presentations.firstOrNull { it.candidate === candidate }
+                ?: createPresentation(
+                    input = input,
+                    candidate = candidate,
+                    conversionSegments = emptyList(),
+                    hasConversionMetadata = false,
+                    displayWord = displayWord,
+                )
+            if (displayWord == candidate.string) return presentation.inputRange
+            return resolveInputRange(
+                input = input,
+                candidate = candidate,
+                conversionSegments = presentation.conversionSegments,
+                hasConversionMetadata = presentation.inputRange != null,
+                displayWord = displayWord,
+            )
+        }
+
+        companion object {
+            fun create(
+                input: String,
+                candidates: List<Candidate>,
+                candidateConversionMetadata: List<CandidateConversionMetadata> = emptyList(),
+                conversionSegmentsByCandidateString:
+                    Map<String, List<CandidateConversionSegment>> = emptyMap(),
+            ): CandidateQuerySnapshot {
+                return CandidateQuerySnapshot(
+                    input = input,
+                    presentations = candidates.map { candidate ->
+                        val metadata = candidateConversionMetadata.firstOrNull {
+                            it.candidate === candidate
+                        }
+                        createPresentation(
+                            input = input,
+                            candidate = candidate,
+                            conversionSegments = metadata?.conversionSegments.orEmpty(),
+                            hasConversionMetadata = metadata != null,
+                        )
+                    },
+                    conversionSegmentsByCandidateString = conversionSegmentsByCandidateString,
+                )
+            }
+
+            private fun createPresentation(
+                input: String,
+                candidate: Candidate,
+                conversionSegments: List<CandidateConversionSegment>,
+                hasConversionMetadata: Boolean,
+                displayWord: String = candidate.string,
+            ): CandidatePresentation {
+                val range = if (hasConversionMetadata) {
+                    resolveInputRange(
+                        input = input,
+                        candidate = candidate,
+                        conversionSegments = conversionSegments,
+                        hasConversionMetadata = true,
+                        displayWord = displayWord,
+                    )
+                } else {
+                    resolveKnownExternalRange(input, candidate)
+                }
+                return CandidatePresentation(
+                    candidate = candidate,
+                    inputRange = range,
+                    conversionSegments = conversionSegments,
+                )
+            }
+
+            /**
+             * Materializes the source range at the presentation boundary. Candidate.length is
+             * used only for legacy prefix-candidate types, whose contract explicitly represents
+             * the source prefix length. All normal conversion candidates use path segments.
+             */
+            private fun resolveInputRange(
+                input: String,
+                candidate: Candidate,
+                conversionSegments: List<CandidateConversionSegment>,
+                hasConversionMetadata: Boolean,
+                displayWord: String,
+            ): CandidateInputRange? {
+                if (conversionSegments.isNotEmpty()) {
+                    val output = StringBuilder()
+                    val sourceStart = conversionSegments.first().inputStart
+                    var expectedInputStart = sourceStart
+                    for (segment in conversionSegments) {
+                        if (
+                            segment.inputStart < 0 ||
+                            segment.inputStart != expectedInputStart ||
+                            segment.inputEnd <= segment.inputStart ||
+                            segment.inputEnd > input.length
+                        ) {
+                            return null
+                        }
+                        output.append(segment.output)
+                        expectedInputStart = segment.inputEnd
+                        if (output.toString() == displayWord) {
+                            return CandidateInputRange(sourceStart, segment.inputEnd)
+                        }
+                        if (!displayWord.startsWith(output)) return null
+                    }
+                    return null
+                }
+
+                if (!hasConversionMetadata || displayWord != candidate.string) return null
+
+                val sourceLengthTypes = setOf(
+                    CANDIDATE_TYPE_USER_DICTIONARY,
+                    CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                    CANDIDATE_TYPE_USER_TEMPLATE,
+                )
+                if (candidate.type in sourceLengthTypes) {
+                    return CandidateInputRange(
+                        start = 0,
+                        endExclusive = candidate.length.toInt().coerceIn(0, input.length),
+                    )
+                }
+
+                // Prefix candidates (types 5/7/8/15) are intentionally partial candidates. Their
+                // source span is materialized here; downstream composing code consumes this
+                // explicit range rather than reading Candidate.length.
+                val isPrefixCandidate = candidate.type.toInt() in setOf(5, 7, 8, 15)
+                val endExclusive = if (isPrefixCandidate) {
+                    candidate.length.toInt().coerceIn(0, input.length)
+                } else {
+                    input.length
+                }
+                return CandidateInputRange(0, endExclusive)
+            }
+
+            /**
+             * Candidates coming from a separate provider have no conversion path. Only providers
+             * whose source span is explicit in the candidate contract are allowed here. Unknown
+             * candidates return null so a stale/short display string cannot replace the whole
+             * composing region.
+             */
+            private fun resolveKnownExternalRange(
+                input: String,
+                candidate: Candidate,
+            ): CandidateInputRange? {
+                val sourceLengthTypes = setOf(
+                    CANDIDATE_TYPE_USER_DICTIONARY,
+                    CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                    CANDIDATE_TYPE_USER_TEMPLATE,
+                )
+                if (candidate.type in sourceLengthTypes) {
+                    return CandidateInputRange(
+                        start = 0,
+                        endExclusive = candidate.length.toInt().coerceIn(0, input.length),
+                    )
+                }
+                val candidateType = candidate.type.toInt()
+                val isPartialCandidate = candidateType in setOf(5, 7, 8, 15)
+                if (isPartialCandidate) {
+                    return CandidateInputRange(
+                        start = 0,
+                        endExclusive = candidate.length.toInt().coerceIn(0, input.length),
+                    )
+                }
+                val fullInputCandidateTypes = setOf(
+                    1, 2, 3, 4, 6,
+                    9, 10, 11, 12, 13, 14,
+                    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+                    30, 31, 32, 33, 36, 38, 39, 40,
+                    CANDIDATE_TYPE_TIME.toInt(),
+                    CANDIDATE_TYPE_ERA.toInt(),
+                )
+                if (
+                    !isPartialCandidate &&
+                    candidateType in fullInputCandidateTypes &&
+                    candidate.length.toInt() == input.length
+                ) {
+                    return CandidateInputRange(0, input.length)
+                }
+                val utilityTypes = setOf(
+                    CANDIDATE_TYPE_CALCULATION,
+                    CANDIDATE_TYPE_UNIT_CONVERSION,
+                    CANDIDATE_TYPE_UTILITY_LITERAL,
+                    CANDIDATE_TYPE_FORMULA_UNICODE,
+                    CANDIDATE_TYPE_FORMULA_TEX,
+                )
+                if (candidate.type in utilityTypes) {
+                    return CandidateInputRange(0, input.length)
+                }
+                return null
+            }
+        }
+    }
+
     private sealed class BunsetsuDisplayedSelection {
         object LoadingZenzSlot : BunsetsuDisplayedSelection()
         data class ZenzResultSlot(val candidate: Candidate) : BunsetsuDisplayedSelection()
@@ -497,7 +721,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rightContext: String,
         val cacheKey: String,
         val rerankTargets: List<IndexedValue<Candidate>>,
-        val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>>,
+        val candidateSnapshot: CandidateQuerySnapshot,
     )
 
     private data class ZenzContext(
@@ -759,6 +983,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentInlineSuggestionViews: List<View> = emptyList()
     private var currentCandidateStripCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
+    /** The immutable query snapshot that produced the currently visible software candidates. */
+    private var currentCandidateQuerySnapshot: CandidateQuerySnapshot? = null
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
     private var pendingZeroQueryKeyAfterCommit: String? = null
     private var zeroQueryCandidates: List<Candidate> = emptyList()
@@ -938,6 +1164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
                 collapseShortcutEntryExpansion(refreshContent = false)
                 currentCandidateStripCandidates = candidates
+                currentCandidateQuerySnapshot = null
                 refreshCandidateStripContent()
             }
         }
@@ -945,13 +1172,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setSuggestionAdaptersOnMain(
         candidates: List<Candidate>,
-        fullCandidates: List<Candidate> = candidates
+        fullCandidates: List<Candidate> = candidates,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
     ) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdaptersOnMain") {
                 collapseShortcutEntryExpansion(refreshContent = false)
                 currentCandidateStripCandidates = candidates
                 currentCandidateStripFullCandidates = fullCandidates
+                currentCandidateQuerySnapshot = candidateSnapshot
                 refreshCandidateStripContent()
             }
         }
@@ -961,6 +1190,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidates: List<Candidate>,
         insertString: String,
         fullCandidates: List<Candidate> = candidates,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
         token: CandidateRequestToken? = null,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
@@ -968,6 +1198,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             collapseShortcutEntryExpansion(refreshContent = false)
             currentCandidateStripCandidates = candidates
             currentCandidateStripFullCandidates = fullCandidates
+            currentCandidateQuerySnapshot = candidateSnapshot
             refreshCandidateStripContent()
         }
     }
@@ -1394,7 +1625,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun applyFirstSuggestionOnMainIfCurrent(
         insertString: String,
-        candidate: Candidate?
+        candidate: Candidate?,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
     ): Boolean = withContext(Dispatchers.Main.immediate) {
         if (!shouldApplyCandidateResult(insertString)) return@withContext false
         isContinuousTapInputEnabled.set(true)
@@ -1407,7 +1639,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidate.type != CANDIDATE_TYPE_FORMULA_TEX &&
                 candidate.presentation == null
             ) {
-                applyFirstSuggestion(candidate)
+                applyFirstSuggestionUsingCompositionRange(
+                    candidate = candidate,
+                    insertString = insertString,
+                    candidateSnapshot = candidateSnapshot,
+                )
             } else {
                 applyRawComposingFallback(insertString)
             }
@@ -1425,6 +1661,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         true
+    }
+
+    /**
+     * Applies an automatically selected candidate using the same complete-composition model as
+     * manual candidate selection. A live-conversion candidate may be shorter than the query input,
+     * so passing only candidate.string to InputConnection would recreate the old data-loss path.
+     */
+    private fun applyFirstSuggestionUsingCompositionRange(
+        candidate: Candidate,
+        insertString: String,
+        candidateSnapshot: CandidateQuerySnapshot?,
+    ) {
+        val replacementText = getCandidateCommitString(candidate)
+        val composition = resolveCandidateComposition(
+            candidate = candidate,
+            insertString = insertString,
+            replacementText = replacementText,
+            candidateSnapshot = candidateSnapshot,
+            reason = "automatic preview",
+        ) ?: return
+        val composedPrefix = composition.text.removeSuffix(composition.tail)
+        lastCandidate = replacementText
+        stringInTail.set(composition.tail)
+        setComposingTextAfterEdit(
+            inputString = composedPrefix,
+            spannableString = SpannableString(composition.text),
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            },
+        )
     }
 
     private suspend fun updateBunsetsuSpaceKeyIfNeededOnMain(
@@ -2108,11 +2382,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzLiveLatestResultMeta: ZenzLiveResultMeta? = null
     private var zenzRerankJob: Job? = null
     private var zenzRerankRequestToken: Long = 0L
-    @Volatile
-    private var latestCandidateSegmentInput: String = ""
-    @Volatile
-    private var latestCandidateSegmentsByString:
-        Map<String, List<CandidateConversionSegment>> = emptyMap()
     private val zenzRerankCache = object : LinkedHashMap<String, List<Candidate>>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Candidate>>?): Boolean {
             return size > 24
@@ -2373,31 +2642,59 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestion.sourceId?.let(::executeTextMacro)
                 return@suggestionClick
             }
-            val tail = FloatingCandidateTailResolver.resolveTail(
-                originalInput = inputString.value,
-                selectedCandidateLength = suggestion.length.toInt()
-            )
             val commitWord = suggestion.formulaFallbackText ?: suggestion.word
-            stringInTail.set(tail)
-            if (tail.isNotEmpty()) {
-                commitText(commitWord, 1)
-                finishComposingText()
+            val originalInput = suggestion.resolveCompositionInput(inputString.value)
+            if (!suggestion.hasCompleteCompositionInput(originalInput)) {
+                preserveCurrentCandidateComposition(
+                    inputLength = originalInput.length,
+                    expectedLength = suggestion.compositionInputLength,
+                    candidateText = commitWord,
+                    reason = "composition input incomplete (tap)",
+                )
+                return@suggestionClick
+            }
+            val inputRange = suggestion.inputRange
+            if (inputRange == null) {
+                preserveWholeCandidateComposition(
+                    originalInput = originalInput,
+                    candidateText = commitWord,
+                    inputRange = null,
+                    reason = "presentation metadata missing (tap)",
+                )
+                return@suggestionClick
+            }
+            val composition = FloatingCandidateCompositionResolver.resolve(
+                originalInput = originalInput,
+                replacementText = commitWord,
+                inputRange = inputRange,
+            )
+            if (composition == null) {
+                preserveWholeCandidateComposition(
+                    originalInput = originalInput,
+                    candidateText = commitWord,
+                    inputRange = inputRange,
+                    reason = "presentation range invalid (tap)",
+                )
+                return@suggestionClick
+            }
+            val committedPrefix = composition.text.removeSuffix(composition.tail)
+            commitFloatingCandidateComposition(
+                committedPrefix = committedPrefix,
+                tail = composition.tail,
+            )
+            if (composition.tail.isNotEmpty()) {
                 updateSuggestionsForFloatingCandidate(emptyList())
-                _inputString.update { tail }
                 listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
                 currentHighlightIndex = RecyclerView.NO_POSITION
                 scope.launch {
                     delay(64)
-                    floatingCandidateNextItem(insertString = tail)
+                    floatingCandidateNextItem(insertString = composition.tail)
                 }
             } else {
-                if (commitWord.isNotBlank()) {
-                    rememberZeroQueryKeyAfterCommit(commitWord)
+                if (committedPrefix.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(committedPrefix)
                 }
-                commitText(commitWord, 1)
-                finishComposingText()
                 updateSuggestionsForFloatingCandidate(emptyList())
-                _inputString.update { "" }
                 listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
                 currentHighlightIndex = RecyclerView.NO_POSITION
                 consumePendingZeroQueryAfterCommit()
@@ -7398,16 +7695,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         val selectedSuggestion = listAdapter.currentList.getOrNull(currentHighlightIndex) ?: return
         if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) return
-        val tail = FloatingCandidateTailResolver.resolveTail(
-            originalInput = insertString,
-            selectedCandidateLength = selectedSuggestion.length.toInt()
-        )
         val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
-        stringInTail.set(tail)
-        Timber.d("displayComposingTextInHardwareKeyboardConnected: $commitWord ${selectedSuggestion.length} $insertString $tail ${insertString.length} ${selectedSuggestion.length.toInt()}")
-        val spannableString = SpannableString(commitWord + tail)
+        val originalInput = selectedSuggestion.resolveCompositionInput(insertString)
+        if (!selectedSuggestion.hasCompleteCompositionInput(originalInput)) {
+            preserveCurrentCandidateComposition(
+                inputLength = originalInput.length,
+                expectedLength = selectedSuggestion.compositionInputLength,
+                candidateText = commitWord,
+                reason = "composition input incomplete (hardware preview)",
+            )
+            return
+        }
+        val inputRange = selectedSuggestion.inputRange
+        if (inputRange == null) {
+            preserveWholeCandidateComposition(
+                originalInput = originalInput,
+                candidateText = commitWord,
+                inputRange = null,
+                reason = "presentation metadata missing (hardware preview)",
+            )
+            return
+        }
+        val composition = FloatingCandidateCompositionResolver.resolve(
+            originalInput = originalInput,
+            replacementText = commitWord,
+            inputRange = inputRange,
+        )
+        if (composition == null) {
+            preserveWholeCandidateComposition(
+                originalInput = originalInput,
+                candidateText = commitWord,
+                inputRange = inputRange,
+                reason = "presentation range invalid (hardware preview)",
+            )
+            return
+        }
+        stringInTail.set(composition.tail)
+        val composedPrefix = composition.text.removeSuffix(composition.tail)
+        Timber.d(
+            "displayComposingTextInHardwareKeyboardConnected: candidate=%s inputLength=%d range=%d..%d tailLength=%d composingLength=%d",
+            commitWord,
+            originalInput.length,
+            inputRange.start,
+            inputRange.endExclusive,
+            composition.tail.length,
+            composition.text.length,
+        )
+        val spannableString = SpannableString(composition.text)
         setComposingTextAfterEdit(
-            inputString = commitWord,
+            inputString = composedPrefix,
             spannableString = spannableString,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputCompositionAfterBackgroundColor ?: getColor(
@@ -7433,29 +7769,107 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 selectedSuggestion.sourceId?.let(::executeTextMacro)
                 return
             }
-            val subString = stringInTail.get()
             val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
-            if (subString.isNotEmpty()) {
-                commitText(commitWord, 1)
+            val originalInput = selectedSuggestion.resolveCompositionInput(inputString.value)
+            if (!selectedSuggestion.hasCompleteCompositionInput(originalInput)) {
+                preserveCurrentCandidateComposition(
+                    inputLength = originalInput.length,
+                    expectedLength = selectedSuggestion.compositionInputLength,
+                    candidateText = commitWord,
+                    reason = "composition input incomplete (enter)",
+                )
+                return
+            }
+            val inputRange = selectedSuggestion.inputRange
+            if (inputRange == null) {
+                preserveWholeCandidateComposition(
+                    originalInput = originalInput,
+                    candidateText = commitWord,
+                    inputRange = null,
+                    reason = "presentation metadata missing (enter)",
+                )
+                return
+            }
+            val composition = FloatingCandidateCompositionResolver.resolve(
+                originalInput = originalInput,
+                replacementText = commitWord,
+                inputRange = inputRange,
+            )
+            if (composition == null) {
+                preserveWholeCandidateComposition(
+                    originalInput = originalInput,
+                    candidateText = commitWord,
+                    inputRange = inputRange,
+                    reason = "presentation range invalid (enter)",
+                )
+                return
+            }
+            val committedPrefix = composition.text.removeSuffix(composition.tail)
+            commitFloatingCandidateComposition(
+                committedPrefix = committedPrefix,
+                tail = composition.tail,
+            )
+            if (composition.tail.isNotEmpty()) {
                 updateSuggestionsForFloatingCandidate(emptyList())
-                _inputString.update { subString }
                 listAdapter.updateHighlightPosition(-1)
                 currentHighlightIndex = -1
                 scope.launch {
                     delay(64)
-                    floatingCandidateNextItem(insertString = subString)
+                    floatingCandidateNextItem(insertString = composition.tail)
                 }
             } else {
-                if (commitWord.isNotBlank()) {
-                    rememberZeroQueryKeyAfterCommit(commitWord)
+                if (committedPrefix.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(committedPrefix)
                 }
-                commitText(commitWord, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
-                _inputString.update { "" }
                 listAdapter.updateHighlightPosition(-1)
                 currentHighlightIndex = -1
                 consumePendingZeroQueryAfterCommit()
             }
+        }
+    }
+
+    /**
+     * Floating candidate selection commits the selected prefix and keeps the
+     * source text outside the selected conversion range as the next composing
+     * input.  Clearing the old composing region first is essential: Android
+     * treats commitText() as a replacement of the whole current composing
+     * region, so committing only the prefix while the tail is still composing
+     * would discard the tail.
+     */
+    private fun commitFloatingCandidateComposition(
+        committedPrefix: String,
+        tail: String,
+    ) {
+        beginBatchEdit()
+        try {
+            setComposingText("", 0)
+            finishComposingText()
+            if (committedPrefix.isNotEmpty()) {
+                commitText(committedPrefix, 1)
+            }
+
+            stringInTail.set("")
+            _inputString.update { tail }
+            if (tail.isNotEmpty()) {
+                setComposingTextAfterEdit(
+                    inputString = tail,
+                    spannableString = SpannableString(tail),
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+            }
+        } finally {
+            endBatchEdit()
         }
     }
 
@@ -15985,7 +16399,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun prepareZenzRerankPlan(
         insertString: String,
-        candidates: List<Candidate>
+        candidates: List<Candidate>,
+        candidateSnapshot: CandidateQuerySnapshot,
     ): ZenzRerankPlan? {
         if (zenzRerankPreference != true) return null
         if (zenzaiEnableStatePreference == true) return null
@@ -16016,11 +16431,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             rightContext = zenzContext.rightContext,
             cacheKey = cacheKey,
             rerankTargets = rerankTargets,
-            candidateSegmentsByString = if (latestCandidateSegmentInput == insertString) {
-                latestCandidateSegmentsByString
-            } else {
-                emptyMap()
-            },
+            candidateSnapshot = candidateSnapshot,
         )
     }
 
@@ -16096,7 +16507,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyMergedCandidateOrder(
             input = insertString,
             candidates = reranked,
-            candidateSegmentsByString = plan.candidateSegmentsByString,
+            candidateSegmentsByString = plan.candidateSnapshot.conversionSegmentsByCandidateString,
         )
     }
 
@@ -16180,6 +16591,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun updateDisplayedCandidates(
         insertString: String,
         candidates: List<Candidate>,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
         token: CandidateRequestToken? = null,
     ) {
         if (!shouldApplyCandidateResult(insertString, token)) {
@@ -16207,7 +16619,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        it.toFloatingCandidateItem()
+                        it.toFloatingCandidateItem(
+                            inputRange = candidateSnapshot?.inputRangeFor(it),
+                            compositionInputLength = insertString.length + stringInTail.get().length,
+                        )
                     },
                     insertString = insertString
                 )
@@ -16218,6 +16633,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates,
                     insertString = insertString,
                     fullCandidates = composeUtilityCandidates(insertString, localCandidates),
+                    candidateSnapshot = candidateSnapshot,
                     token = token,
                 )
             }
@@ -16240,14 +16656,140 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun Candidate.toFloatingCandidateItem(
         displayWord: String = string,
+        inputRange: CandidateInputRange? = null,
+        compositionInputLength: Int? = null,
     ): CandidateItem = CandidateItem(
         word = displayWord,
         length = length,
         candidateType = type,
         sourceId = sourceId,
+        inputRange = inputRange,
+        compositionInputLength = compositionInputLength,
         formulaSource = presentation?.normalizedTex,
         formulaFallbackText = commitText,
     )
+
+    /**
+     * Resolves the source range for a software candidate row. A current query snapshot is
+     * authoritative, including a null result: falling back to a different query's length would
+     * reintroduce the asynchronous candidate/range mix-up this snapshot is meant to prevent.
+     */
+    private fun resolveSoftwareCandidateInputRange(
+        candidate: Candidate,
+        input: String,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
+    ): CandidateInputRange? {
+        (candidateSnapshot ?: currentCandidateQuerySnapshot)?.let { snapshot ->
+            if (snapshot.input != input) return null
+            return snapshot.inputRangeFor(candidate)
+        }
+
+        val candidateLength = candidate.length.toInt()
+        val isPrefixCandidate = candidate.type.toInt() in setOf(5, 7, 8, 15)
+        if (isPrefixCandidate) {
+            return CandidateInputRange(
+                start = 0,
+                endExclusive = candidateLength.coerceIn(0, input.length),
+            )
+        }
+
+        val sourceLengthTypes = setOf(
+            CANDIDATE_TYPE_USER_DICTIONARY,
+            CANDIDATE_TYPE_LEARNED_DICTIONARY,
+            CANDIDATE_TYPE_USER_TEMPLATE,
+        )
+        if (candidate.type in sourceLengthTypes) {
+            return CandidateInputRange(
+                start = 0,
+                endExclusive = candidateLength.coerceIn(0, input.length),
+            )
+        }
+
+        return if (candidateLength == input.length) {
+            CandidateInputRange(0, input.length)
+        } else {
+            null
+        }
+    }
+
+    private fun resolveCandidateCompositionInput(
+        insertString: String,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
+    ): String {
+        val snapshot = candidateSnapshot ?: currentCandidateQuerySnapshot
+        return if (snapshot?.input == insertString) {
+            // The query snapshot is authoritative. stringInTail may already contain the tail
+            // derived from a previous preview of this same query, so appending it here would
+            // duplicate the source text before the range resolver gets a chance to inspect it.
+            snapshot.input
+        } else {
+            val tail = stringInTail.get()
+            if (tail.isNotEmpty() && insertString.endsWith(tail)) {
+                insertString
+            } else {
+                insertString + tail
+            }
+        }
+    }
+
+    private fun resolveCandidateComposition(
+        candidate: Candidate,
+        insertString: String,
+        replacementText: String,
+        candidateSnapshot: CandidateQuerySnapshot? = null,
+        reason: String,
+    ): FloatingCandidateComposition? {
+        val originalInput = resolveCandidateCompositionInput(
+            insertString = insertString,
+            candidateSnapshot = candidateSnapshot,
+        )
+        val inputRange = resolveSoftwareCandidateInputRange(
+            candidate = candidate,
+            input = originalInput,
+            candidateSnapshot = candidateSnapshot,
+        )
+        if (inputRange == null) {
+            preserveWholeCandidateComposition(
+                originalInput = originalInput,
+                candidateText = replacementText,
+                inputRange = null,
+                reason = "presentation metadata missing ($reason)",
+            )
+            return null
+        }
+        val composition = FloatingCandidateCompositionResolver.resolve(
+            originalInput = originalInput,
+            replacementText = replacementText,
+            inputRange = inputRange,
+        )
+        if (composition == null) {
+            preserveWholeCandidateComposition(
+                originalInput = originalInput,
+                candidateText = replacementText,
+                inputRange = inputRange,
+                reason = "presentation range invalid ($reason)",
+            )
+            return null
+        }
+        return composition
+    }
+
+    private fun CandidateItem.resolveCompositionInput(currentInput: String): String {
+        val tail = stringInTail.get()
+        val expectedLength = compositionInputLength
+        return when {
+            expectedLength == null && tail.isNotEmpty() && currentInput.endsWith(tail) -> currentInput
+            expectedLength == null -> currentInput + tail
+            currentInput.length == expectedLength -> currentInput
+            currentInput.length + tail.length == expectedLength -> currentInput + tail
+            currentInput.length > expectedLength -> currentInput
+            else -> currentInput + tail
+        }
+    }
+
+    private fun CandidateItem.hasCompleteCompositionInput(input: String): Boolean {
+        return compositionInputLength == null || input.length == compositionInputLength
+    }
 
     private fun candidateForAutomaticApplication(
         input: String,
@@ -16368,6 +16910,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateDisplayedCandidates(
                 insertString = insertString,
                 candidates = reranked,
+                candidateSnapshot = plan.candidateSnapshot.withCandidates(reranked),
                 token = candidateToken,
             )
             updateBunsetsuSpaceKeyIfNeeded(mainView, reranked, insertString)
@@ -17503,6 +18046,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    /**
+     * A candidate without a trustworthy source range must never be applied as if it covered the
+     * complete composing input. Keeping the raw input is lossless and leaves the inconsistency
+     * visible in diagnostics for the producer of the candidate snapshot to fix.
+     */
+    private fun preserveWholeCandidateComposition(
+        originalInput: String,
+        candidateText: String,
+        inputRange: CandidateInputRange?,
+        reason: String,
+    ) {
+        Timber.e(
+            "Candidate composition range unavailable; preserving whole composing input. " +
+                "reason=%s inputLength=%d range=%s candidate=%s",
+            reason,
+            originalInput.length,
+            inputRange,
+            candidateText,
+        )
+        if (inputRange != null && !inputRange.isValidFor(originalInput)) {
+            // A known range that does not fit this source proves that the source itself is stale
+            // or incomplete. Sending it would recreate the original data-loss bug, so keep the
+            // editor's current composing region untouched.
+            return
+        }
+        stringInTail.set("")
+        applyRawComposingFallback(originalInput)
+    }
+
+    /**
+     * If a floating row reports the length of the composing input but the caller only supplies a
+     * shorter fragment, do not send that fragment to InputConnection. Leaving the existing
+     * composing region untouched is lossless; the next candidate refresh can repair the row with
+     * a complete query snapshot.
+     */
+    private fun preserveCurrentCandidateComposition(
+        inputLength: Int,
+        expectedLength: Int?,
+        candidateText: String,
+        reason: String,
+    ) {
+        Timber.e(
+            "Candidate composition input incomplete; leaving current composing text unchanged. " +
+                "reason=%s inputLength=%d expectedLength=%s candidate=%s",
+            reason,
+            inputLength,
+            expectedLength,
+            candidateText,
+        )
+    }
+
     private fun liveConversionApplyDelayMillis(): Long {
         val originalDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
 
@@ -17711,7 +18305,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val previousSplitPatterns = bunsetsuSplitPatterns
         val targetReadingLength = targetSegment.reading.length
         val candidates = try {
-            getSuggestionList(targetSegment.reading, mainView).filter {
+            getSuggestionList(targetSegment.reading, mainView).candidates.filter {
                 it.length.toInt() == targetReadingLength
             }
         } finally {
@@ -17938,8 +18532,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
             physicalKeyboardEnable.replayCache.first()
         ) {
+            val focusedInputRange = buildBunsetsuSegmentRanges(session.segments)
+                .getOrNull(safeFocusedIndex)
+                ?.let { range ->
+                    CandidateInputRange(
+                        start = range.first,
+                        endExclusive = range.last + 1,
+                    )
+                }
             updateSuggestionsForFloatingCandidate(segment.candidates.map {
-                it.toFloatingCandidateItem(displayTextFromCandidate(it))
+                it.toFloatingCandidateItem(
+                    displayWord = displayTextFromCandidate(it),
+                    inputRange = focusedInputRange,
+                    compositionInputLength = session.rawInput.length,
+                )
             }, highlightedAbsoluteIndex = segmentHighlightIndex)
         }
     }
@@ -21063,7 +21669,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setSuggestionAdaptersOnMain(candidates)
         if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
             updateSuggestionsForFloatingCandidate(
-                candidates.map { it.toFloatingCandidateItem() }
+                candidates.map {
+                    it.toFloatingCandidateItem(
+                        inputRange = CandidateInputRange(0, inputString.value.length),
+                        compositionInputLength = inputString.value.length,
+                    )
+                }
             )
         }
         if (applyFirstCandidate) {
@@ -21306,13 +21917,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitQwertyGlideCandidate(candidate)
                 return
             }
-            processCandidate(
+            val committed = processCandidate(
                 candidate = candidate,
                 insertString = insertString,
                 currentInputMode = currentInputMode,
                 position = position
             )
+            if (!committed) return
             setCursorLeftAfterCommitPair(candidate.string)
+            val preserveComposingInput = inputString.value.isNotEmpty()
+            resetFlagsSuggestionClick(preserveComposingInput = preserveComposingInput)
+            consumePendingZeroQueryAfterCommit()
+            return
         }
         resetFlagsSuggestionClick()
         consumePendingZeroQueryAfterCommit()
@@ -21984,40 +22600,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshEditHistoryUi()
     }
 
-    private fun handleExactLengthMatch(
-        insertString: String,
-        candidateString: String,
-        candidate: Candidate,
-        currentInputMode: InputMode,
-        position: Int
-    ) {
-        recordCandidateLearning(
-            currentInputMode = currentInputMode,
-            originalReading = insertString + stringInTail.get(),
-            segmentReading = insertString,
-            output = candidateString,
-            candidate = candidate,
-            candidateIndex = position,
-            complete = stringInTail.get().isEmpty(),
-        )
-        commitLearnedCandidate(insertString, candidateString)
-    }
-
-    private fun commitAndClearInput(candidateString: String) {
-        val reading = inputString.value
-        if (reading.isNotEmpty() && stringInTail.get().isEmpty()) {
-            rememberCommittedTextForReconversion(
-                reading = reading,
-                committedText = candidateString
-            )
-        }
-        if (candidateString.isNotBlank() && stringInTail.get().isEmpty()) {
-            rememberZeroQueryKeyAfterCommit(candidateString)
-        }
-        _inputString.update { "" }
-        commitText(candidateString, 1)
-    }
-
     private fun resolveCurrentHenkanCommitText(): String {
         bunsetsuConversionSession?.let { session ->
             val convertedText = session.segments.joinToString(separator = "") { it.displayText }
@@ -22065,29 +22647,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetFlagsEnterKeyNotHenkan()
     }
 
-    private fun handlePartialOrExcessLength(
-        insertString: String,
-        candidate: Candidate,
-        currentInputMode: InputMode,
-        position: Int,
-    ) {
-        val candidateLength = candidate.length.toInt()
-        val candidateString = candidate.commitText
-        if (insertString.length > candidateLength) {
-            recordCandidateLearning(
-                currentInputMode = currentInputMode,
-                originalReading = insertString,
-                segmentReading = insertString.substring(0, candidateLength),
-                output = candidateString,
-                candidate = candidate,
-                candidateIndex = position,
-                complete = false,
-            )
-            stringInTail.set(insertString.substring(candidateLength))
-        }
-        commitAndClearInput(candidateString)
-    }
-
     private fun commitQwertyGlideCandidate(candidate: Candidate) {
         if (candidate.string.isNotBlank() && stringInTail.get().isEmpty()) {
             rememberZeroQueryKeyAfterCommit(candidate.string)
@@ -22106,86 +22665,108 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         consumePendingZeroQueryAfterCommit()
     }
 
+    private fun commitCandidateUsingCompositionRange(
+        candidate: Candidate,
+        insertString: String,
+        replacementText: String,
+        currentInputMode: InputMode,
+        position: Int,
+    ): Boolean {
+        val originalInput = resolveCandidateCompositionInput(insertString)
+        val inputRange = resolveSoftwareCandidateInputRange(
+            candidate = candidate,
+            input = originalInput,
+        )
+        val composition = resolveCandidateComposition(
+            candidate = candidate,
+            insertString = insertString,
+            replacementText = replacementText,
+            reason = "software commit",
+        ) ?: return false
+        val resolvedRange = inputRange ?: return false
+        val segmentReading = originalInput.substring(
+            resolvedRange.start,
+            resolvedRange.endExclusive,
+        )
+        recordCandidateLearning(
+            currentInputMode = currentInputMode,
+            originalReading = originalInput,
+            segmentReading = segmentReading,
+            output = replacementText,
+            candidate = candidate,
+            candidateIndex = position,
+            complete = composition.tail.isEmpty(),
+        )
+        val committedPrefix = composition.text.removeSuffix(composition.tail)
+        if (composition.tail.isEmpty()) {
+            if (originalInput.isNotEmpty() && committedPrefix.isNotEmpty()) {
+                rememberCommittedTextForReconversion(
+                    reading = originalInput,
+                    committedText = committedPrefix,
+                )
+            }
+            if (committedPrefix.isNotBlank()) {
+                rememberZeroQueryKeyAfterCommit(committedPrefix)
+            }
+        }
+        commitFloatingCandidateComposition(
+            committedPrefix = committedPrefix,
+            tail = composition.tail,
+        )
+        return true
+    }
+
     private fun processCandidate(
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
-    ) {
-        Timber.d("processCandidate ${candidate.type.toInt()} ${insertString.length == candidate.length.toInt()}")
+    ): Boolean {
+        Timber.d("processCandidate ${candidate.type.toInt()} inputLength=${insertString.length}")
         val qwertyGlideDecision = QwertyGlideCommitPolicy.resolveTapCommitDecision(
             candidate = candidate,
             insertString = insertString
         )
         if (qwertyGlideDecision is QwertyGlideTapCommitDecision.CommitQwertyGlideCandidate) {
             commitQwertyGlideCandidate(candidate)
-            return
+            return true
         }
-        when (candidate.type.toInt()) {
+        return when (candidate.type.toInt()) {
             CANDIDATE_TYPE_CALCULATION.toInt(),
             CANDIDATE_TYPE_UNIT_CONVERSION.toInt() -> {
                 commitUtilityCandidate(candidate.commitText)
+                true
             }
 
             CANDIDATE_TYPE_UTILITY_LITERAL.toInt() -> {
                 commitUtilityCandidate(candidate.commitText)
+                true
             }
 
             CANDIDATE_TYPE_FORMULA_UNICODE.toInt(),
             CANDIDATE_TYPE_FORMULA_TEX.toInt() -> {
                 commitUtilityCandidate(candidate.commitText)
+                true
             }
 
             15 -> {
                 val readingCorrection = candidate.string.correctReading()
-                commitAndClearInput(readingCorrection.first)
-            }
-
-            9,
-            11,
-            12,
-            13,
-            14,
-            28,
-            30,
-            CANDIDATE_TYPE_TIME.toInt(),
-            CANDIDATE_TYPE_ERA.toInt(),
-            CANDIDATE_TYPE_USER_TEMPLATE.toInt(),
-            GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE,
-            GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE -> {
-                commitAndClearInput(candidate.string)
+                commitCandidateUsingCompositionRange(
+                    candidate = candidate,
+                    insertString = insertString,
+                    replacementText = readingCorrection.first,
+                    currentInputMode = currentInputMode,
+                    position = position,
+                )
             }
 
             else -> {
-                if (insertString.length == candidate.length.toInt()) {
-                    handleExactLengthMatch(
-                        insertString = insertString,
-                        candidateString = candidate.string,
-                        candidate = candidate,
-                        currentInputMode = currentInputMode,
-                        position = position
-                    )
-                } else {
-                    handlePartialOrExcessLength(
-                        insertString = insertString,
-                        candidate = candidate,
-                        currentInputMode = currentInputMode,
-                        position = position,
-                    )
-                }
+                commitCandidateUsingCompositionRange(
+                    candidate = candidate,
+                    insertString = insertString,
+                    replacementText = getCandidateCommitString(candidate),
+                    currentInputMode = currentInputMode,
+                    position = position,
+                )
             }
         }
-    }
-
-    private fun commitLearnedCandidate(insertString: String, candidateString: String) {
-        if (insertString.isNotEmpty() && stringInTail.get().isEmpty()) {
-            rememberCommittedTextForReconversion(
-                reading = insertString,
-                committedText = candidateString
-            )
-        }
-        if (candidateString.isNotBlank() && stringInTail.get().isEmpty()) {
-            rememberZeroQueryKeyAfterCommit(candidateString)
-        }
-        _inputString.update { "" }
-        commitText(candidateString, 1)
     }
 
     private fun isLearningWriteEnabled(): Boolean =
@@ -22418,7 +22999,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         kanaKanjiConversionDispatcher.close()
     }
 
-    private fun resetFlagsSuggestionClick() {
+    private fun resetFlagsSuggestionClick(preserveComposingInput: Boolean = false) {
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22435,7 +23016,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (stringInTail.get().isEmpty()) {
             clearSuggestionStateAfterCommit()
         }
-        _inputString.update { "" }
+        if (!preserveComposingInput) {
+            _inputString.update { "" }
+        }
         refreshReconversionUi()
     }
 
@@ -22448,7 +23031,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun resetFlagsEnterKey() {
+    private fun resetFlagsEnterKey(preserveComposingInput: Boolean = false) {
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22460,7 +23043,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         clearBunsetsuConversionSession()
-        _inputString.update { "" }
+        if (!preserveComposingInput) {
+            _inputString.update { "" }
+        }
         refreshReconversionUi()
     }
 
@@ -22646,14 +23231,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             nextSuggestion.sourceId?.let(::executeTextMacro)
             return
         }
-        processCandidate(
+        val committed = processCandidate(
             candidate = nextSuggestion,
             insertString = insertString,
             currentInputMode = currentInputMode,
             position = index
         )
+        if (!committed) return
         clearSuggestionStateAfterCommit()
-        resetFlagsEnterKey()
+        resetFlagsEnterKey(preserveComposingInput = inputString.value.isNotEmpty())
         consumePendingZeroQueryAfterCommit()
     }
 
@@ -23035,15 +23621,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             emitZenzLiveRequest(insertString)
         }
-        val candidates = getSuggestionList(insertString, mainView, token)
+        val candidateSnapshot = getSuggestionList(insertString, mainView, token)
+        val candidates = candidateSnapshot.candidates
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
             candidates
         }
-        val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
+        val rerankPlan = prepareZenzRerankPlan(
+            insertString = insertString,
+            candidates = filtered,
+            candidateSnapshot = candidateSnapshot.withCandidates(filtered),
+        )
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
         val displayedCandidates = cachedReranked ?: filtered
+        val displayedCandidateSnapshot = candidateSnapshot.withCandidates(displayedCandidates)
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
@@ -23055,19 +23647,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // This is the completed conversion candidate, not a raw composing fallback. Keep the
             // candidate-strip DiffUtil work out of the visible live-conversion critical path.
             delayBeforeApplyingLiveConversion()
-            if (!shouldApplyCandidateResult(insertString, token)) return
+                if (!shouldApplyCandidateResult(insertString, token)) return
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
                     candidate = candidateForAutomaticApplication(
                         insertString,
                         displayedCandidates.firstOrNull(),
                     ),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) return
         }
         updateDisplayedCandidates(
             insertString = insertString,
             candidates = displayedCandidates,
+            candidateSnapshot = displayedCandidateSnapshot,
             token = token,
         )
 
@@ -23081,7 +23675,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidate = candidateForAutomaticApplication(
                         insertString,
                         displayedCandidates.firstOrNull(),
-                    )
+                    ),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23095,7 +23690,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidate = composeUtilityCandidates(
                         insertString,
                         displayedCandidates,
-                    ).firstOrNull()
+                    ).firstOrNull(),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23136,15 +23732,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             emitZenzLiveRequest(insertString)
         }
-        val candidates = getSuggestionListOriginal(insertString, mainView, token)
+        val candidateSnapshot = getSuggestionListOriginal(insertString, mainView, token)
+        val candidates = candidateSnapshot.candidates
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
             candidates
         }
-        val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
+        val rerankPlan = prepareZenzRerankPlan(
+            insertString = insertString,
+            candidates = filtered,
+            candidateSnapshot = candidateSnapshot.withCandidates(filtered),
+        )
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
         val displayedCandidates = cachedReranked ?: filtered
+        val displayedCandidateSnapshot = candidateSnapshot.withCandidates(displayedCandidates)
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
@@ -23161,12 +23763,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         insertString,
                         displayedCandidates.firstOrNull(),
                     ),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) return
         }
         updateDisplayedCandidates(
             insertString = insertString,
             candidates = displayedCandidates,
+            candidateSnapshot = displayedCandidateSnapshot,
             token = token,
         )
 
@@ -23180,7 +23784,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidate = candidateForAutomaticApplication(
                         insertString,
                         displayedCandidates.firstOrNull(),
-                    )
+                    ),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23194,7 +23799,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidate = composeUtilityCandidates(
                         insertString,
                         displayedCandidates,
-                    ).firstOrNull()
+                    ).firstOrNull(),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23222,13 +23828,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         beginZenzRerankRequest()
         clearZenzLiveSlot("candidate tab without Zenz live")
-        val candidates = getSuggestionListWithoutPrediction(insertString, token)
+        val candidateSnapshot = getSuggestionListWithoutPrediction(insertString, token)
+        val candidates = candidateSnapshot.candidates
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
             candidates
         }
         val displayedCandidates = composeUtilityCandidates(insertString, filtered)
+        val displayedCandidateSnapshot = candidateSnapshot.withCandidates(displayedCandidates)
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
@@ -23236,7 +23844,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        it.toFloatingCandidateItem()
+                        it.toFloatingCandidateItem(
+                            inputRange = displayedCandidateSnapshot.inputRangeFor(it),
+                            compositionInputLength =
+                                insertString.length + stringInTail.get().length,
+                        )
                     },
                     insertString = insertString
                 )
@@ -23246,6 +23858,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateSuggestionAdaptersOnMain(
                     candidates = displayedCandidates,
                     insertString = insertString,
+                    candidateSnapshot = displayedCandidateSnapshot,
                     token = token,
                 )
             }
@@ -23261,7 +23874,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidate = candidateForAutomaticApplication(
                         insertString,
                         filtered.firstOrNull(),
-                    )
+                    ),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23272,7 +23886,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
                     insertString = insertString,
-                    candidate = displayedCandidates.firstOrNull()
+                    candidate = displayedCandidates.firstOrNull(),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23299,13 +23914,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         beginZenzRerankRequest()
         clearZenzLiveSlot("eisukana tab")
-        val candidates = getSuggestionListEnglishKana(insertString)
+        val candidateSnapshot = getSuggestionListEnglishKana(insertString)
+        val candidates = candidateSnapshot.candidates
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
             candidates
         }
         val displayedCandidates = composeUtilityCandidates(insertString, filtered)
+        val displayedCandidateSnapshot = candidateSnapshot.withCandidates(displayedCandidates)
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
@@ -23313,7 +23930,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!suppressSuggestions) {
                 updateFloatingCandidatesOnMain(
                     candidates = displayedCandidates.map {
-                        it.toFloatingCandidateItem()
+                        it.toFloatingCandidateItem(
+                            inputRange = displayedCandidateSnapshot.inputRangeFor(it),
+                            compositionInputLength =
+                                insertString.length + stringInTail.get().length,
+                        )
                     },
                     insertString = insertString
                 )
@@ -23323,6 +23944,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateSuggestionAdaptersOnMain(
                     candidates = displayedCandidates,
                     insertString = insertString,
+                    candidateSnapshot = displayedCandidateSnapshot,
                     token = token,
                 )
             }
@@ -23338,7 +23960,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidate = candidateForAutomaticApplication(
                         insertString,
                         filtered.firstOrNull(),
-                    )
+                    ),
+                    candidateSnapshot = displayedCandidateSnapshot,
                 )
             ) {
                 return
@@ -23350,7 +23973,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         mainView: MainLayoutBinding,
         token: CandidateRequestToken,
-    ): List<Candidate> {
+    ): CandidateQuerySnapshot {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
                 val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
@@ -23456,14 +24079,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
-        return orderedCandidates
+        return CandidateQuerySnapshot.create(
+            input = insertString,
+            candidates = orderedCandidates,
+            candidateConversionMetadata = coreResult.candidateConversionMetadata,
+            conversionSegmentsByCandidateString = coreResult.candidateSegmentsByString,
+        )
     }
 
     private suspend fun getSuggestionList(
         insertString: String,
         mainView: MainLayoutBinding,
         token: CandidateRequestToken? = null,
-    ): List<Candidate> = measureDebugStage("IMEService.getSuggestionList") { coroutineScope {
+    ): CandidateQuerySnapshot = measureDebugStage("IMEService.getSuggestionList") { coroutineScope {
         // These lookups do not depend on one another. Starting them together moves Room and
         // template latency under the converter's CPU time instead of paying it serially first.
         val userDictionaryDeferred = async(Dispatchers.IO) {
@@ -23596,7 +24224,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
-        orderedCandidates
+        CandidateQuerySnapshot.create(
+            input = insertString,
+            candidates = orderedCandidates,
+            candidateConversionMetadata = coreResult.candidateConversionMetadata,
+            conversionSegmentsByCandidateString = coreResult.candidateSegmentsByString,
+        )
     } }
 
     private suspend fun getLeftContext(
@@ -23634,7 +24267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun getSuggestionListWithoutPrediction(
         insertString: String,
         token: CandidateRequestToken,
-    ): List<Candidate> {
+    ): CandidateQuerySnapshot {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
                 val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
@@ -23725,7 +24358,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
-        return orderedCandidates
+        return CandidateQuerySnapshot.create(
+            input = insertString,
+            candidates = orderedCandidates,
+            candidateConversionMetadata = coreResult.candidateConversionMetadata,
+            conversionSegmentsByCandidateString = coreResult.candidateSegmentsByString,
+        )
     }
 
     private suspend fun applyMergedCandidateOrder(
@@ -23740,10 +24378,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         return if (appPreference.candidate_order_override_enable_preference == true) {
-            if (candidateSegmentsByString.isNotEmpty()) {
-                latestCandidateSegmentInput = input
-                latestCandidateSegmentsByString = candidateSegmentsByString
-            }
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
@@ -23772,15 +24406,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun getSuggestionListEnglishKana(
         insertString: String,
-    ): List<Candidate> {
-        val engineCandidates = withContext(kanaKanjiConversionDispatcher) {
+    ): CandidateQuerySnapshot {
+        val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
                 mode = CandidateQueryMode.EISUKANA,
                 learnRepository = null,
-            ).candidates
+            )
         }
-        return engineCandidates.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        val engineCandidates = coreResult.candidates.withoutHentaiganaCandidatesIfNeeded()
+            .distinctBy { it.string }
+        return CandidateQuerySnapshot.create(
+            input = insertString,
+            candidates = engineCandidates,
+            candidateConversionMetadata = coreResult.candidateConversionMetadata,
+            conversionSegmentsByCandidateString = coreResult.candidateSegmentsByString,
+        )
     }
 
     private suspend fun queryKanaKanjiCore(
@@ -23821,8 +24462,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
                 beamWidth = conversionBeamWidth,
                 predictionConfig = predictionConfig,
-                collectCandidateSegments =
-                    appPreference.candidate_order_override_enable_preference == true,
+                // The composing range is presentation data, not a hardware-keyboard-only
+                // concern. Keep the exact path/source span for every conversion query so the
+                // software and physical-keyboard paths consume the same immutable snapshot.
+                collectCandidateSegments = true,
             )
         )
         if (BuildConfig.DEBUG) {
@@ -26236,11 +26879,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isFirstClickHasStringTail = false
 
     private fun setSuggestionComposingText(suggestions: List<Candidate>, insertString: String) {
-        if (suggestionClickNum == 1 && stringInTail.get().isNotEmpty()) {
-            isFirstClickHasStringTail = true
-        }
-
-        Timber.d("setSuggestionComposingText: $isFirstClickHasStringTail $suggestionClickNum ${stringInTail.get()}")
+        Timber.d("setSuggestionComposingText: $suggestionClickNum ${stringInTail.get()}")
 
         val index = resolveNonLoadingCandidateIndex(
             suggestions = suggestions,
@@ -26272,35 +26911,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             return
         }
-        val suggestionText = nextSuggestion.string
-        val suggestionLength = nextSuggestion.length.toInt()
-        if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
-            val tail = insertString.substring(suggestionLength)
-            if (!isFirstClickHasStringTail) stringInTail.set(tail)
-        } else if (candidateType == 15) {
-            val (correctedReading) = nextSuggestion.string.correctReading()
-            val fullText = correctedReading + stringInTail
-            applyComposingText(
-                text = fullText,
-                highlightLength = correctedReading.length,
-                backgroundColor = if (customComposingTextPreference == true) {
-                    inputConversionBackgroundColor
-                        ?: getColor(com.kazumaproject.core.R.color.orange)
-                } else {
-                    getColor(com.kazumaproject.core.R.color.orange)
-                },
-                textColor = if (customComposingTextPreference == true) {
-                    inputConversionTextColor
-                } else {
-                    null
-                }
-            )
-            return
+        val replacementText = if (candidateType == 15) {
+            nextSuggestion.string.correctReading().first
+        } else {
+            getCandidateCommitString(nextSuggestion)
         }
-        val fullText = suggestionText + stringInTail
-        applyComposingText(
-            text = fullText,
-            highlightLength = suggestionText.length,
+        val composition = resolveCandidateComposition(
+            candidate = nextSuggestion,
+            insertString = insertString,
+            replacementText = replacementText,
+            reason = "software preview",
+        ) ?: return
+        val compositionInput = resolveCandidateCompositionInput(insertString)
+        val inputRange = resolveSoftwareCandidateInputRange(nextSuggestion, compositionInput)
+            ?: return
+        stringInTail.set(composition.tail)
+        Timber.d(
+            "setSuggestionComposingText: candidate=%s inputLength=%d range=%d..%d " +
+                "tailLength=%d composingLength=%d",
+            replacementText,
+            compositionInput.length,
+            inputRange.start,
+            inputRange.endExclusive,
+            composition.tail.length,
+            composition.text.length,
+        )
+        applyComposingTextRange(
+            text = composition.text,
+            highlightStart = composition.selectedTextStart,
+            highlightEnd = composition.selectedTextEndExclusive,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputConversionBackgroundColor
                     ?: getColor(com.kazumaproject.core.R.color.orange)
@@ -26311,7 +26950,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 inputConversionTextColor
             } else {
                 null
-            }
+            },
         )
     }
 

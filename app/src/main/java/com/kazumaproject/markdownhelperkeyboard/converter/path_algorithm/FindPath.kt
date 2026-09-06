@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.IncrementalGraphMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheckResult
@@ -1043,7 +1044,7 @@ class FindPath(
         beamWidth: Int = 20,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
-        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        candidateSegmentCollector: MutableList<CandidateConversionMetadata>? = null,
     ): MutableList<Candidate> = backwardAStar(
         graph = graph,
         length = length,
@@ -1063,7 +1064,7 @@ class FindPath(
         beamWidth: Int = 20,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
-        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        candidateSegmentCollector: MutableList<CandidateConversionMetadata>? = null,
     ): MutableList<Candidate> {
         cancellationCheck()
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
@@ -1161,10 +1162,7 @@ class FindPath(
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
 
                 if (foundStrings.add(stringFromNode)) {
-                    candidateSegmentCollector?.set(
-                        stringFromNode,
-                        getConversionSegmentsFromPath(element),
-                    )
+                    val conversionSegments = getConversionSegmentsFromPath(element)
                     val candidate = Candidate(
                         string = stringFromNode,
                         type = resolveCandidateType(
@@ -1176,6 +1174,12 @@ class FindPath(
                         score = element.priorityCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
+                    )
+                    candidateSegmentCollector?.add(
+                        CandidateConversionMetadata(
+                            candidate = candidate,
+                            conversionSegments = conversionSegments,
+                        )
                     )
                     resultFinal.add(candidate)
                 }
@@ -1599,7 +1603,7 @@ class FindPath(
         candidateTrace: MutableList<CandidateTrace>? = null,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
-        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        candidateSegmentCollector: MutableList<CandidateConversionMetadata>? = null,
     ): BunsetsuCandidateResult = backwardAStarWithBunsetsu(
         graph = graph,
         length = length,
@@ -1627,7 +1631,7 @@ class FindPath(
         candidateTrace: MutableList<CandidateTrace>? = null,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
-        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        candidateSegmentCollector: MutableList<CandidateConversionMetadata>? = null,
     ): BunsetsuCandidateResult {
         cancellationCheck()
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
@@ -1845,10 +1849,7 @@ class FindPath(
                 )
 
                 if (foundStrings.add(stringFromNode)) {
-                    candidateSegmentCollector?.set(
-                        stringFromNode,
-                        getConversionSegmentsFromPath(element),
-                    )
+                    val conversionSegments = getConversionSegmentsFromPath(element)
                     if (pathMatchesSystemNgram(element, systemNgramDictionary)) {
                         systemNgramMatchedCandidates.add(stringFromNode)
                     }
@@ -1872,6 +1873,12 @@ class FindPath(
                         score = totalCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
+                    )
+                    candidateSegmentCollector?.add(
+                        CandidateConversionMetadata(
+                            candidate = candidate,
+                            conversionSegments = conversionSegments,
+                        )
                     )
                     resultFinal.add(candidate)
                 }

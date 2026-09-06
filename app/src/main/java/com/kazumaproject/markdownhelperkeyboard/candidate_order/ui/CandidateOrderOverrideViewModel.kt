@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateO
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.SavedCandidateOrderGroup
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
@@ -144,7 +145,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, message = null) }
             val scope = uiState.value.scope
-            val candidateSegments = LinkedHashMap<String, List<CandidateConversionSegment>>()
+            val candidateMetadata = mutableListOf<CandidateConversionMetadata>()
             val candidates = withContext(Dispatchers.Default) {
                 kanaKanjiEngine.getCandidates(
                     input = reading,
@@ -163,15 +164,18 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                         .enable_typo_correction_japanese_flick_keyboard_offset_score_preference,
                     omissionSearchOffsetScore = appPreference.omission_search_offset_score_preference,
                     beamWidth = appPreference.conversion_beam_width_preference,
-                    candidateSegmentCollector = candidateSegments,
+                    candidateSegmentCollector = candidateMetadata,
                 )
             }
-                .let { filterCandidateOrderEditableCandidates(reading, it) }
+            val candidateSegments = candidateMetadata.associate {
+                it.candidate.string to it.conversionSegments
+            }
+            val editableCandidates = filterCandidateOrderEditableCandidates(reading, candidates)
 
             val candidatesForScope = if (scope == CandidateOrderScope.LEXICAL_UNIT) {
-                candidates.filterToSameStructureAsFirst(reading, candidateSegments)
+                editableCandidates.filterToSameStructureAsFirst(reading, candidateSegments)
             } else {
-                candidates
+                editableCandidates
             }
 
             val orderedCandidates = withContext(Dispatchers.IO) {
