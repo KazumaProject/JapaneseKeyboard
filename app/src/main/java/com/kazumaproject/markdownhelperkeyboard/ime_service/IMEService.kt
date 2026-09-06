@@ -485,6 +485,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val selectedText: String,
     )
 
+    private data class CustomToggleEditorSelection(
+        val connection: InputConnection,
+        val text: String,
+        val selectionStart: Int,
+        val selectionEnd: Int,
+    )
+
     private data class ZenzRerankEntry(
         val originalPosition: Int,
         val candidate: Candidate,
@@ -6232,6 +6239,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
         }
+
+        invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
 
         updateEditorSelectionSnapshot(
             newSelStart = newSelStart,
@@ -12741,9 +12750,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isKeyboardLayoutEditModeActive()) return
                 handleKeyReleaseFeedback()
                 clearDeleteBufferWithView()
+                val isDirect = isCustomToggleDirectInput()
+                if (customToggleWasDirect != isDirect) {
+                    resetCustomToggleState()
+                }
+                val canonicalValues = values.filter { it.length == 1 }
+                val outputValues = canonicalValues.map(::applyCustomLayoutShiftAndCapLock)
                 handleCustomToggleText(
                     keyIdentity = keyIdentity,
-                    values = values.map(::applyCustomLayoutShiftAndCapLock),
+                    values = canonicalValues,
+                    outputValues = outputValues,
                     mainView = mainView
                 )
                 consumeCustomKeyboardOneShotShift()
@@ -13295,43 +13311,197 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return customKeyboardShiftState.transformAsciiLetters(text)
     }
 
+    private fun isCustomToggleDirectInput(): Boolean {
+        return currentInputBehavior != ResolvedInputBehavior.COMPOSING_TEXT ||
+            isCustomLayoutDirectMode
+    }
+
     private fun resetCustomToggleState() {
         customToggleInputState.reset()
         customToggleWasDirect = false
+        customToggleExpectedEditorSelection = null
+    }
+
+    private var customToggleExpectedEditorSelection: CustomToggleEditorSelection? = null
+    private var customToggleEditInProgress = false
+
+    private fun captureCustomToggleEditorSelection(
+        connection: InputConnection
+    ): CustomToggleEditorSelection? {
+        val extracted = runCatching {
+            connection.getExtractedText(ExtractedTextRequest(), 0)
+        }.getOrNull() ?: return null
+        if (
+            extracted.text == null ||
+            extracted.selectionStart < 0 ||
+            extracted.selectionEnd < 0
+        ) {
+            return null
+        }
+        return CustomToggleEditorSelection(
+            connection = connection,
+            text = extracted.text.toString(),
+            selectionStart = extracted.selectionStart,
+            selectionEnd = extracted.selectionEnd,
+        )
+    }
+
+    private fun invalidateCustomToggleStateForSelection(
+        newSelStart: Int,
+        newSelEnd: Int,
+    ) {
+        if (customToggleEditInProgress) return
+        val expected = customToggleExpectedEditorSelection ?: return
+        if (newSelStart < 0 || newSelEnd < 0) return
+        if (
+            currentInputConnection !== expected.connection ||
+            newSelStart != expected.selectionStart ||
+            newSelEnd != expected.selectionEnd
+        ) {
+            resetCustomToggleState()
+        }
+    }
+
+    private fun replaceCustomToggleDirectText(
+        previous: String,
+        next: String,
+    ): Boolean {
+        val connection = currentInputConnection ?: return false
+        val expected = customToggleExpectedEditorSelection ?: return false
+        if (expected.connection !== connection) return false
+
+        val selection = captureCustomToggleEditorSelection(connection) ?: return false
+        if (
+            selection.selectionStart != expected.selectionStart ||
+            selection.selectionEnd != expected.selectionEnd
+        ) {
+            return false
+        }
+
+        val textBeforeCursor = runCatching {
+            connection.getTextBeforeCursor(previous.length, 0)?.toString()
+        }.getOrNull() ?: return false
+        if (textBeforeCursor != previous) return false
+
+        var batchStarted = false
+        var committed = false
+        customToggleEditInProgress = true
+        try {
+            batchStarted = runCatching { connection.beginBatchEdit() }.getOrDefault(false)
+            if (batchStarted) {
+                val deleted = runCatching {
+                    connection.deleteSurroundingText(previous.length, 0)
+                }.getOrDefault(false)
+                committed = deleted && runCatching {
+                    connection.commitText(next, 1)
+                }.getOrDefault(false)
+            }
+        } finally {
+            if (batchStarted) {
+                runCatching { connection.endBatchEdit() }
+            }
+            customToggleEditInProgress = false
+        }
+
+        if (!committed) return false
+        // Both values are one UTF-16 code unit, so replacing the preceding value leaves the
+        // collapsed cursor at the same absolute position. Keep the validated position even if
+        // the editor does not expose a second extracted-text snapshot after the batch edit.
+        customToggleExpectedEditorSelection = expected
+        return true
+    }
+
+    private fun customToggleAppendWasCommitted(
+        before: CustomToggleEditorSelection,
+        after: CustomToggleEditorSelection,
+        text: String,
+    ): Boolean {
+        if (before.connection !== after.connection) return false
+        if (before.selectionStart != before.selectionEnd) return false
+        if (before.selectionStart > before.text.length) return false
+        val expectedText = before.text.substring(0, before.selectionStart) +
+            text +
+            before.text.substring(before.selectionStart)
+        val expectedCursor = before.selectionStart + text.length
+        return after.selectionStart == expectedCursor &&
+            after.selectionEnd == expectedCursor &&
+            after.text == expectedText
     }
 
     private fun handleCustomToggleText(
         keyIdentity: String,
         values: List<String>,
+        outputValues: List<String>,
         mainView: MainLayoutBinding
     ) {
-        val validValues = values.filter { it.length == 1 }
-        if (validValues.isEmpty()) {
+        if (values.size != outputValues.size) {
             resetCustomToggleState()
             return
         }
-        when (val mutation = customToggleInputState.next(keyIdentity, validValues)) {
+        val validPairs = values.zip(outputValues)
+            .filter { (value, output) -> value.length == 1 && output.length == 1 }
+        if (validPairs.isEmpty()) {
+            resetCustomToggleState()
+            return
+        }
+        val canonicalValues = validPairs.map { it.first }
+        val emittedValues = validPairs.map { it.second }
+        when (
+            val mutation = customToggleInputState.next(
+                keyIdentity = keyIdentity,
+                values = canonicalValues,
+                outputValues = emittedValues,
+            )
+        ) {
             null -> return
             is CustomToggleInputState.Mutation.Append -> {
+                val isDirect = isCustomToggleDirectInput()
+                val before = if (isDirect) {
+                    currentInputConnection?.let(::captureCustomToggleEditorSelection)
+                } else {
+                    null
+                }
                 handleCustomKeyboardText(mutation.text, mainView, isFlick = false)
-                customToggleWasDirect = currentInputBehavior != ResolvedInputBehavior.COMPOSING_TEXT ||
-                    isCustomLayoutDirectMode
+                if (isDirect) {
+                    val after = currentInputConnection?.let(::captureCustomToggleEditorSelection)
+                    if (
+                        before == null ||
+                        after == null ||
+                        !customToggleAppendWasCommitted(before, after, mutation.text)
+                    ) {
+                        resetCustomToggleState()
+                        return
+                    }
+                    customToggleWasDirect = true
+                    customToggleExpectedEditorSelection = after
+                } else {
+                    customToggleWasDirect = false
+                    customToggleExpectedEditorSelection = null
+                }
             }
             is CustomToggleInputState.Mutation.Replace -> {
                 val previous = mutation.previous
                 val next = mutation.next
                 if (customToggleWasDirect) {
-                    currentInputConnection?.let { connection ->
-                        connection.beginBatchEdit()
-                        connection.deleteSurroundingText(previous.length, 0)
-                        connection.commitText(next, 1)
-                        connection.endBatchEdit()
+                    if (!replaceCustomToggleDirectText(previous, next)) {
+                        resetCustomToggleState()
+                        handleCustomToggleText(
+                            keyIdentity = keyIdentity,
+                            values = canonicalValues,
+                            outputValues = emittedValues,
+                            mainView = mainView,
+                        )
                     }
                 } else {
                     val current = inputString.value
                     if (!current.endsWith(previous)) {
                         resetCustomToggleState()
-                        handleCustomToggleText(keyIdentity, validValues, mainView)
+                        handleCustomToggleText(
+                            keyIdentity = keyIdentity,
+                            values = canonicalValues,
+                            outputValues = emittedValues,
+                            mainView = mainView,
+                        )
                         return
                     }
                     _inputString.update { current.dropLast(previous.length) + next }
@@ -13354,7 +13524,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (applyPendingFlickTextMutation(text, isFlick)) return
         if (text.length == 1) {
-            handleFlick(text.first(), inputString.value, StringBuilder(), mainView)
+            if (isFlickOnlyMode == true || isFlick) {
+                handleFlick(text.first(), inputString.value, StringBuilder(), mainView)
+            } else {
+                handleTap(text.first(), inputString.value, StringBuilder(), mainView)
+            }
         } else {
             _inputString.update { it + text }
         }

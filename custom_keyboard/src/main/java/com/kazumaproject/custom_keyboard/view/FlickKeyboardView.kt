@@ -2078,6 +2078,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 dispatchCommittedKeyAction(keyData, action, isFlick)
                             }
 
+                            override fun onFlick(
+                                action: KeyAction,
+                                isFlick: Boolean,
+                                direction: FlickDirection,
+                                isLongPress: Boolean
+                            ) {
+                                dispatchCommittedKeyAction(
+                                    keyData = keyData,
+                                    action = action,
+                                    isFlick = isFlick,
+                                    isLongPress = isLongPress,
+                                )
+                            }
+
                             override fun onTextSelectionChanged(
                                 text: String?,
                                 isFlick: Boolean
@@ -2643,11 +2657,13 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun dispatchCommittedKeyAction(
         keyData: KeyData,
         action: KeyAction,
-        isFlick: Boolean
+        isFlick: Boolean,
+        isLongPress: Boolean = false,
     ) {
         val dispatch = dispatch@{
             val toggleValues = if (
                 !isFlick &&
+                !isLongPress &&
                 keyData.keyType == KeyType.PETAL_FLICK &&
                 keyData.textInputBehavior == KeyTextInputBehavior.TOGGLE
             ) {

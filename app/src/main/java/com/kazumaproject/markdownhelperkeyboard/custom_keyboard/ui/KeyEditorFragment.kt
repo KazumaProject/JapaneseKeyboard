@@ -1155,10 +1155,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                             (binding.keyLabelEdittext.text.toString().isNotEmpty() && hasAnyOutput)
                 } else {
                     // Petal: label must be filled
+                    val hasToggleOutput = currentToggleFlickItems.any { it.output.isNotEmpty() }
                     val toggleOutputsAreValid = selectedTextInputBehavior != KeyTextInputBehavior.TOGGLE ||
-                        currentToggleFlickItems.all { it.output.isEmpty() || it.output.length == 1 }
+                        (hasToggleOutput &&
+                            currentToggleFlickItems.all {
+                                it.output.isEmpty() || it.output.length == 1
+                            })
                     binding.textCharInputLayout.error = if (toggleOutputsAreValid) {
                         null
+                    } else if (!hasToggleOutput &&
+                        selectedTextInputBehavior == KeyTextInputBehavior.TOGGLE
+                    ) {
+                        "トグル出力を1つ以上設定してください"
                     } else {
                         "トグル出力は1文字で設定してください"
                     }
@@ -1774,6 +1782,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
+
+        if (
+            selectedTextInputBehavior == KeyTextInputBehavior.TOGGLE &&
+            currentToggleFlickItems.none { it.output.isNotEmpty() }
+        ) {
+            return
+        }
 
         val newLabel: String
         val newKeyType: KeyType
