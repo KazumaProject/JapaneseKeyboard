@@ -755,6 +755,87 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun liquidGlassRepeatedDeleteDoesNotRestoreEarlierInputOnPhysicalDevice() {
+        runPhysicalDeviceSession("liquid-glass-repeated-delete") { session ->
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+
+                listOf(TestKeyboard.TENKEY, TestKeyboard.QWERTY).forEach { keyboard ->
+                    val testCase = TestCase(
+                        keyboard = keyboard,
+                        columns = 1,
+                        candidateTabVisible = false,
+                        toolbarVisible = false,
+                        toolbarIntegrated = false,
+                        orientation = TestOrientation.PORTRAIT,
+                    )
+                    applyCasePreferences(session.preferences, testCase)
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("liquid_glass_preference", true)
+                            .putInt("liquid_glass_blur_preference", 220)
+                            .putString("keyboard_touch_effect_type_preference", "none")
+                            .commit()
+                    )
+
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    assertDeviceReady(session.context, session.targetIme, scenario)
+                    prepareEmptyEditor(scenario)
+
+                    val geometry = awaitStableGeometry(keyboard, requireCandidateContent = false)
+                    assertTrue(
+                        "Input injection failed for liquid glass ${keyboard.name}",
+                        injectSequence(
+                            first = geometry.first.center,
+                            second = geometry.second.center,
+                            repetitions = 3,
+                        ),
+                    )
+                    var previousText = awaitTextSettled(scenario)
+                    assertTrue(
+                        "Input did not reach the editor for liquid glass ${keyboard.name}",
+                        previousText.isNotEmpty(),
+                    )
+
+                    val deleteBounds = findVisibleNodeById("key_delete")?.screenRect()
+                        ?: throw SetupException("Delete key is not visible")
+                    repeat(previousText.length) { index ->
+                        assertTrue(
+                            "Delete injection failed for liquid glass ${keyboard.name} #$index",
+                            injectTapWithoutTrailingGap(
+                                point = deleteBounds.center,
+                                holdMs = 0L,
+                            ),
+                        )
+                        val beforeDelete = previousText
+                        val nextText = awaitEditorText(scenario) {
+                            it.length < beforeDelete.length
+                        }
+                        assertTrue(
+                            "Editor text did not shrink for liquid glass ${keyboard.name} " +
+                                "#${index + 1}: [$nextText] after [$beforeDelete]",
+                            nextText.length < beforeDelete.length,
+                        )
+                        previousText = nextText
+                    }
+
+                    assertEquals(
+                        "Repeated delete did not clear liquid glass input for ${keyboard.name}",
+                        "",
+                        awaitTextSettled(scenario),
+                    )
+                }
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
     fun composingTextCursorMoveAndCommitClearsCandidatesOnPhysicalDevice() {
         runPhysicalDeviceSession("composing-selection-commit-candidate-clear") { session ->
             val testCase = TestCase(
