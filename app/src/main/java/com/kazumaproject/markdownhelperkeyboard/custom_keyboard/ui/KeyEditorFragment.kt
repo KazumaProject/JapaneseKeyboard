@@ -1651,6 +1651,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val originalKey = currentKeyData ?: return
 
         if (
+            binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
+            binding.inputStyleChipGroup.checkedChipId == R.id.chip_petal_flick &&
             selectedTextInputBehavior == KeyTextInputBehavior.TOGGLE &&
             currentToggleFlickItems.none { it.output.isNotEmpty() }
         ) {
