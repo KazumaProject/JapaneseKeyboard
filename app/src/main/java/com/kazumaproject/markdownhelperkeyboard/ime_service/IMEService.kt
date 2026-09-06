@@ -16481,12 +16481,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 2. ピクセル値の計算
         val heightPx = when {
-
-            isSymbol || keyboardSymbolViewState.value.isShown -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 val clampedHeight = if (isPortrait) {
                     prefs.qwertyHeightPref.coerceIn(100, 420)
@@ -16525,25 +16519,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates,
             inputStringEmpty = inputString.value.isEmpty()
         )
-        val presentation = resolveCandidateStripPresentation(candidatesShown = candidatesShown)
+        val presentation = resolveCandidateStripPresentation(
+            candidatesShown = candidatesShown,
+            symbolKeyboardShown = false,
+        )
         val candidateStripHeightDp = resolveCandidateStripHeightDp(
             candidatesShown = candidatesShown,
             candidateHeightDp = prefs.candidateHeight,
             emptyHeightDp = prefs.candidateEmptyHeight
         )
-        val baseKeyboardHeight = if (isSymbol) {
-            // The input root keeps the navigation-bar inset as bottom padding. Give the
-            // symbol surface matching container space so its fixed 320dp/220dp body is
-            // not clipped, especially after rotating to landscape.
-            heightPx + maxOf(
-                systemBottomInset,
-                if (isPortrait) applicationContext.dpToPx(50) else 0,
-            )
-        } else if (isPortrait) {
-            heightPx + applicationContext.dpToPx(candidateStripHeightDp)
-        } else {
-            heightPx + applicationContext.dpToPx(candidateStripHeightDp)
-        }
+        val baseKeyboardHeight = heightPx + applicationContext.dpToPx(candidateStripHeightDp)
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
@@ -16555,7 +16540,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
 
-            !addCandidateTabHeight && presentation.showIndependentShortcutToolbar && !isSymbol ->
+            !addCandidateTabHeight && presentation.showIndependentShortcutToolbar ->
                 baseKeyboardHeight + shortcutToolbarHeightPx()
 
             else -> baseKeyboardHeight
@@ -16615,7 +16600,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (isSymbol) {
             (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.height = heightPx
+                val bottomSpace = maxOf(
+                    systemBottomInset,
+                    if (isPortrait) applicationContext.dpToPx(50) else 0,
+                )
+                param.height = (finalKeyboardHeight - bottomSpace).coerceAtLeast(0)
                 param.width = finalKeyboardWidth
                 mainView.keyboardSymbolView.layoutParams = param
             }
@@ -19863,7 +19852,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun resolveCandidateStripPresentation(
         candidatesShown: Boolean = shortcutToolbarHiddenForCandidates,
         resetCandidateTabSelection: Boolean = false,
-        content: CandidateStripContent = currentCandidateStripContent
+        content: CandidateStripContent = currentCandidateStripContent,
+        symbolKeyboardShown: Boolean = keyboardSymbolViewState.value.isShown,
     ): CandidateStripPresentation {
         return CandidateStripPresentationPolicy.resolve(
             CandidateStripPresentationState(
@@ -19880,7 +19870,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     content !is CandidateStripContent.SelectionActions &&
                     content !is CandidateStripContent.ZeroQuerySuggestions,
                 customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
-                symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
+                symbolKeyboardShown = symbolKeyboardShown,
                 shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates,
             )
         )
