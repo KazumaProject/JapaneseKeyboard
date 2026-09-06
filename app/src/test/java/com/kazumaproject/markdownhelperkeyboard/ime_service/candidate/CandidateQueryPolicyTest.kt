@@ -92,4 +92,30 @@ class CandidateQueryPolicyTest {
 
         assertFalse(tracker.isCurrent(old))
     }
+
+    @Test
+    fun sameInputFromAnEarlierEditorMutationIsRejected() {
+        val tracker = CandidateRequestTracker()
+        tracker.restart(
+            backend = ConversionBackend.LEGACY,
+            editorMutationRevision = 4L,
+        )
+        val beforeDelete = tracker.begin(
+            input = "test",
+            mode = CandidateQueryMode.NO_TAB_DEFAULT,
+            backend = ConversionBackend.LEGACY,
+            editorMutationRevision = 4L,
+        )
+        val afterDeleteAndRetype = tracker.begin(
+            input = "test",
+            mode = CandidateQueryMode.NO_TAB_DEFAULT,
+            backend = ConversionBackend.LEGACY,
+            editorMutationRevision = 6L,
+        )
+
+        assertFalse(tracker.isCurrent(beforeDelete))
+        assertTrue(tracker.isCurrent(afterDeleteAndRetype))
+        assertEquals(4L, beforeDelete.editorMutationRevision)
+        assertEquals(6L, afterDeleteAndRetype.editorMutationRevision)
+    }
 }
