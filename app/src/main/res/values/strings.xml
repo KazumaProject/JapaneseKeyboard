@@ -629,6 +629,13 @@
     <string name="ng_word_enable_title_on">Enable NG Words</string>
     <string name="ng_word_enable_title_off">Disable NG Words</string>
     <string name="ng_word_fragment_title">NG Words List</string>
+    <string name="ng_word_match_mode_title">Match mode</string>
+    <string name="ng_word_match_mode_partial">Partial match</string>
+    <string name="ng_word_match_mode_exact">Exact match</string>
+    <string name="ng_word_register_dialog_title">Register NG Word</string>
+    <string name="candidate_action_hide_word">Hide this word</string>
+    <string name="ng_word_empty_input_message">Enter a reading and a word.</string>
+    <string name="ng_word_already_registered_message">This NG word is already registered.</string>
     <string name="romaji_map_fragment_title">Edit Romaji Map</string>
     <string name="romaji_conversion_map_fragment_title">Custom Romaji Map</string>
     <string name="clipboard_fragment_title">Clipboard History</string>

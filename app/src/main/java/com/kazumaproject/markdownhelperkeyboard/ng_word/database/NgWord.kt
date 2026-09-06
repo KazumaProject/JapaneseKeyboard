@@ -11,5 +11,6 @@ import androidx.room.PrimaryKey
 data class NgWord(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val yomi: String,
-    val tango: String
+    val tango: String,
+    val matchMode: NgWordMatchMode = NgWordMatchMode.PARTIAL,
 )
