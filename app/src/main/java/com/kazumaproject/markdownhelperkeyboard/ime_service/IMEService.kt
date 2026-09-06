@@ -106,6 +106,7 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.data.floating_candidate.CandidateInputRange
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -139,6 +140,8 @@ import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
+import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateComposition
+import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateCompositionResolver
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
@@ -455,6 +458,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val focusedIndex: Int = 0,
         val splitPatterns: List<List<Int>> = emptyList(),
         val activeSplitPatternIndex: Int = 0
+    )
+
+    /**
+     * The immutable source and the currently queried prefix for physical-keyboard conversion.
+     *
+     * CandidateItem.length is a range in the source reading, not a length of the displayed
+     * candidate. Keeping both values prevents a shorter preview from becoming the next source
+     * for InputConnection.setComposingText().
+     */
+    private data class PhysicalCandidateCompositionSession(
+        val sourceText: String,
+        val queryText: String,
+        val generation: Long,
     )
 
     private sealed class BunsetsuDisplayedSelection {
@@ -1513,6 +1529,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
+    private var physicalCandidateCompositionSession: PhysicalCandidateCompositionSession? = null
+    private var physicalCandidateCompositionGeneration: Long = 0L
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
@@ -2373,6 +2391,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestion.sourceId?.let(::executeTextMacro)
                 return@suggestionClick
             }
+
+            if (isPhysicalFloatingCandidatePathActive()) {
+                val composition = resolvePhysicalCandidateComposition(
+                    suggestion = suggestion,
+                    insertString = inputString.value,
+                    reason = "click"
+                ) ?: return@suggestionClick
+                val committedText = commitPhysicalCandidateComposition(composition)
+
+                updateSuggestionsForFloatingCandidate(emptyList())
+                listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+                currentHighlightIndex = RecyclerView.NO_POSITION
+                if (composition.tail.isNotEmpty()) {
+                    beginPhysicalCandidateCompositionSession(composition.tail)
+                    scope.launch {
+                        delay(64)
+                        floatingCandidateNextItem(insertString = composition.tail)
+                    }
+                } else {
+                    if (committedText.isNotBlank()) {
+                        rememberZeroQueryKeyAfterCommit(committedText)
+                    }
+                    consumePendingZeroQueryAfterCommit()
+                }
+                return@suggestionClick
+            }
+
             val tail = FloatingCandidateTailResolver.resolveTail(
                 originalInput = inputString.value,
                 selectedCandidateLength = suggestion.length.toInt()
@@ -5027,6 +5072,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
+        clearPhysicalCandidateCompositionSession("finish input")
         super.onFinishInput()
     }
 
@@ -5034,6 +5080,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
+        clearPhysicalCandidateCompositionSession("finish input view")
         flickInputPreviewCoordinator.cancel(restore = false)
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
@@ -5102,6 +5149,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         pendingGemmaPickedImagePath = null
         clearZeroQueryAllState(refresh = false)
+        clearPhysicalCandidateCompositionSession("destroy")
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         collapseShortcutEntryExpansion()
@@ -6862,6 +6910,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun cancelFloatingCandidateConversion(insertString: String) {
+        clearPhysicalCandidateCompositionSession("conversion cancelled")
         preservePreEditOnNextSelectionUpdate = insertString
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
@@ -6911,6 +6960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     isHenkan.set(true)
                     Timber.d("KEYCODE_SPACE is pressed: $normalizedInsertString $stringInTail")
+                    beginPhysicalCandidateCompositionSession(normalizedInsertString)
                     _inputString.update { normalizedInsertString }
 
                     if (shouldUseBunsetsuCursorMoveSession()) {
@@ -7393,11 +7443,247 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun isPhysicalFloatingCandidatePathActive(): Boolean {
+        return physicalKeyboardEnable.replayCache.firstOrNull() == true &&
+                !isBunsetsuCursorMoveSessionActive()
+    }
+
+    private fun clearPhysicalCandidateCompositionSession(reason: String) {
+        physicalCandidateCompositionSession?.let {
+            Timber.d(
+                "clearPhysicalCandidateCompositionSession: generation=%d reason=%s",
+                it.generation,
+                reason
+            )
+        }
+        physicalCandidateCompositionSession = null
+    }
+
+    private fun beginPhysicalCandidateCompositionSession(input: String) {
+        if (!isPhysicalFloatingCandidatePathActive() || input.isEmpty()) return
+
+        val current = physicalCandidateCompositionSession
+        val session = when {
+            current == null -> {
+                PhysicalCandidateCompositionSession(
+                    sourceText = input,
+                    queryText = input,
+                    generation = ++physicalCandidateCompositionGeneration,
+                )
+            }
+
+            current.sourceText == input -> current.copy(queryText = input)
+
+            current.sourceText.startsWith(input) && current.queryText.startsWith(input) ->
+                current.copy(queryText = input)
+
+            else -> {
+                PhysicalCandidateCompositionSession(
+                    sourceText = input,
+                    queryText = input,
+                    generation = ++physicalCandidateCompositionGeneration,
+                )
+            }
+        }
+        physicalCandidateCompositionSession = session
+        Timber.d(
+            "beginPhysicalCandidateCompositionSession: generation=%d sourceLength=%d queryLength=%d",
+            session.generation,
+            session.sourceText.length,
+            session.queryText.length
+        )
+    }
+
+    private fun ensurePhysicalCandidateCompositionSession(
+        insertString: String
+    ): PhysicalCandidateCompositionSession? {
+        if (!isPhysicalFloatingCandidatePathActive() || insertString.isEmpty()) return null
+
+        val current = physicalCandidateCompositionSession
+        val currentTail = stringInTail.get()
+        val sourceText = when {
+            current != null &&
+                    current.sourceText.startsWith(insertString) &&
+                    current.queryText.startsWith(insertString) -> current.sourceText
+
+            currentTail.isNotEmpty() && !insertString.endsWith(currentTail) ->
+                insertString + currentTail
+
+            else -> insertString
+        }
+        val session = if (
+            current != null &&
+            current.sourceText == sourceText &&
+            sourceText.startsWith(insertString)
+        ) {
+            current.copy(queryText = insertString)
+        } else {
+            PhysicalCandidateCompositionSession(
+                sourceText = sourceText,
+                queryText = insertString,
+                generation = ++physicalCandidateCompositionGeneration,
+            )
+        }
+        physicalCandidateCompositionSession = session
+        return session
+    }
+
+    private fun resolvePhysicalCandidateComposition(
+        suggestion: CandidateItem,
+        insertString: String,
+        reason: String,
+    ): FloatingCandidateComposition? {
+        val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return null
+        val candidateLength = suggestion.length.toInt()
+        if (
+            candidateLength < 0 ||
+            candidateLength > session.queryText.length ||
+            !session.sourceText.startsWith(session.queryText)
+        ) {
+            Timber.e(
+                "Invalid physical candidate range: reason=%s generation=%d candidateLength=%d " +
+                        "sourceLength=%d queryLength=%d",
+                reason,
+                session.generation,
+                candidateLength,
+                session.sourceText.length,
+                session.queryText.length
+            )
+            return null
+        }
+
+        val composition = FloatingCandidateCompositionResolver.resolve(
+            originalInput = session.sourceText,
+            replacementText = suggestion.formulaFallbackText ?: suggestion.word,
+            inputRange = CandidateInputRange(start = 0, endExclusive = candidateLength),
+        ) ?: run {
+            Timber.e(
+                "Could not resolve physical candidate composition: reason=%s generation=%d",
+                reason,
+                session.generation
+            )
+            return null
+        }
+        stringInTail.set(composition.tail)
+        Timber.d(
+            "resolvePhysicalCandidateComposition: reason=%s generation=%d candidateLength=%d " +
+                    "sourceLength=%d queryLength=%d replacementLength=%d tailLength=%d",
+            reason,
+            session.generation,
+            candidateLength,
+            session.sourceText.length,
+            session.queryText.length,
+            (suggestion.formulaFallbackText ?: suggestion.word).length,
+            composition.tail.length
+        )
+        return composition
+    }
+
+    private fun setPhysicalCandidateComposingText(
+        composition: FloatingCandidateComposition,
+    ) {
+        val spannableString = SpannableString(composition.text)
+        val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+        val selectedStart = composition.selectedTextStart.coerceIn(0, spannableString.length)
+        val selectedEnd = composition.selectedTextEndExclusive.coerceIn(
+            selectedStart,
+            spannableString.length
+        )
+        if (selectedStart < selectedEnd) {
+            spannableString.setSpan(
+                BackgroundColorSpan(
+                    if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor ?: getColor(
+                            com.kazumaproject.core.R.color.blue
+                        )
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    }
+                ),
+                selectedStart,
+                selectedEnd,
+                spanFlag
+            )
+            if (customComposingTextPreference == true) {
+                inputCompositionTextColor?.let { color ->
+                    spannableString.setSpan(
+                        ForegroundColorSpan(color),
+                        selectedStart,
+                        selectedEnd,
+                        spanFlag
+                    )
+                }
+            }
+        }
+        if (spannableString.isNotEmpty()) {
+            spannableString.setSpan(
+                UnderlineSpan(),
+                0,
+                spannableString.length,
+                spanFlag
+            )
+        }
+        setComposingText(spannableString, 1)
+    }
+
+    private fun commitPhysicalCandidateComposition(
+        composition: FloatingCandidateComposition,
+    ): String {
+        val committedText = composition.text.substring(0, composition.selectedTextEndExclusive)
+        val tail = composition.tail
+        beginBatchEdit()
+        try {
+            // setComposingText() replaces the entire active composing region. End that region
+            // before committing only the selected prefix, then explicitly recompose the tail.
+            setComposingText("", 0)
+            finishComposingText()
+            if (committedText.isNotEmpty()) {
+                commitText(committedText, 1)
+            }
+            stringInTail.set("")
+            _inputString.update { tail }
+            if (tail.isNotEmpty()) {
+                val spannableString = SpannableString(tail)
+                setComposingTextAfterEdit(
+                    inputString = tail,
+                    spannableString = spannableString,
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+            }
+        } finally {
+            endBatchEdit()
+        }
+        clearPhysicalCandidateCompositionSession("candidate committed")
+        return committedText
+    }
+
     private fun displayComposingTextInHardwareKeyboardConnected(
         insertString: String
     ) {
         val selectedSuggestion = listAdapter.currentList.getOrNull(currentHighlightIndex) ?: return
         if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) return
+        if (isPhysicalFloatingCandidatePathActive()) {
+            val composition = resolvePhysicalCandidateComposition(
+                suggestion = selectedSuggestion,
+                insertString = insertString,
+                reason = "preview"
+            ) ?: return
+            setPhysicalCandidateComposingText(composition)
+            return
+        }
+
+        // Bunsetsu cursor-move conversion has its own source/range bookkeeping. Keep its
+        // existing composing behavior when this shared navigation method is reached.
         val tail = FloatingCandidateTailResolver.resolveTail(
             originalInput = insertString,
             selectedCandidateLength = selectedSuggestion.length.toInt()
@@ -7433,6 +7719,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 selectedSuggestion.sourceId?.let(::executeTextMacro)
                 return
             }
+
+            if (isPhysicalFloatingCandidatePathActive()) {
+                val composition = resolvePhysicalCandidateComposition(
+                    suggestion = selectedSuggestion,
+                    insertString = inputString.value,
+                    reason = "enter"
+                ) ?: return
+                val committedText = commitPhysicalCandidateComposition(composition)
+                updateSuggestionsForFloatingCandidate(emptyList())
+                listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+                currentHighlightIndex = RecyclerView.NO_POSITION
+                if (composition.tail.isNotEmpty()) {
+                    beginPhysicalCandidateCompositionSession(composition.tail)
+                    scope.launch {
+                        delay(64)
+                        floatingCandidateNextItem(insertString = composition.tail)
+                    }
+                } else {
+                    if (committedText.isNotBlank()) {
+                        rememberZeroQueryKeyAfterCommit(committedText)
+                    }
+                    consumePendingZeroQueryAfterCommit()
+                }
+                return
+            }
+
             val subString = stringInTail.get()
             val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
             if (subString.isNotEmpty()) {
@@ -15660,6 +15972,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     isHenkan.set(false)
                     henkanPressedWithBunsetsuDetect = false
                 } else {
+                    clearPhysicalCandidateCompositionSession("physical keyboard disabled")
                     requestCursorUpdates(0)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
@@ -22258,6 +22571,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
+        clearPhysicalCandidateCompositionSession("reset all flags")
         clearZeroQueryAllState(refresh = false)
         customKeyboardRenderJob?.cancel()
         customKeyboardRenderJob = null
@@ -22318,6 +22632,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearDirectCommitCompositionState(reason: String) {
+        clearPhysicalCandidateCompositionSession(reason)
         clearZeroQueryAllState(refresh = false)
         clearFunctionKeyConversionSource()
         qwertyGlideInputCoordinator?.cancelPending()
@@ -22409,6 +22724,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsSuggestionClick() {
+        clearPhysicalCandidateCompositionSession("suggestion clicked")
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22439,6 +22755,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsEnterKey() {
+        clearPhysicalCandidateCompositionSession("enter key")
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22455,6 +22772,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
+        clearPhysicalCandidateCompositionSession("enter key without conversion")
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22473,6 +22791,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsKeySpace() {
+        clearPhysicalCandidateCompositionSession("space key")
         onDeleteLongPressUp.set(false)
         _dakutenPressed.value = false
         isContinuousTapInputEnabled.set(false)
@@ -22481,6 +22800,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsDeleteKey() {
+        clearPhysicalCandidateCompositionSession("delete key")
         conversionLearningSession.cancel()
         suggestionClickNum = 0
         _dakutenPressed.value = false
@@ -26694,7 +27014,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
-        return composingTextArbiter.finishCanonical()
+        val finished = composingTextArbiter.finishCanonical()
+        clearPhysicalCandidateCompositionSession("finish composing text")
+        return finished
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
@@ -26703,7 +27025,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val committed = currentInputConnection.commitText(p0, p1)
-        if (committed) composingTextArbiter.markCanonicalFinished()
+        if (committed) {
+            composingTextArbiter.markCanonicalFinished()
+            clearPhysicalCandidateCompositionSession("commit text")
+        }
         return committed
     }
 
