@@ -1,0 +1,16 @@
+[
+  {
+    "scenario": "foreground",
+    "result": "expected-stop",
+    "capturedRows": 1,
+    "error": "Lab left the foreground",
+    "externalSelectionPreserved": null
+  },
+  {
+    "scenario": "ime",
+    "result": "expected-stop",
+    "capturedRows": 1,
+    "error": "Selected IME changed",
+    "externalSelectionPreserved": true
+  }
+]
