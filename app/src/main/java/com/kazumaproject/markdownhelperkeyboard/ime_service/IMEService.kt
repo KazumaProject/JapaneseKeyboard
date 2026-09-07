@@ -11617,12 +11617,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when (persistence.target) {
             KeyboardType.TENKEY,
             KeyboardType.GOJUON -> {
-                appPreference.tenkey_last_input_mode_preference = value
-                appPreference.tenkey_last_input_mode_presentation_preference = presentationValue
-                appPreference.tenkey_last_qwerty_number_return_target_preference =
-                    tenkeyQwertyNumberReturnTargetValue
-                appPreference.tenkey_last_input_mode_saved_at_epoch_millis_preference =
-                    savedAtEpochMillis
+                appPreference.saveTenkeyRestartInputMode(
+                    value,
+                    presentationValue,
+                    tenkeyQwertyNumberReturnTargetValue,
+                    savedAtEpochMillis,
+                )
                 tenkeyLastInputModePreference = value
                 tenkeyLastInputModePresentationPreference = presentationValue
                 tenkeyLastQwertyNumberReturnTargetPreference =
@@ -11631,10 +11631,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             KeyboardType.SUMIRE -> {
-                appPreference.sumire_last_input_mode_preference = value
-                appPreference.sumire_last_input_mode_presentation_preference = presentationValue
-                appPreference.sumire_last_input_mode_saved_at_epoch_millis_preference =
-                    savedAtEpochMillis
+                appPreference.saveSumireRestartInputMode(
+                    value,
+                    presentationValue,
+                    savedAtEpochMillis,
+                )
                 sumireLastInputModePreference = value
                 sumireLastInputModePresentationPreference = presentationValue
                 sumireLastInputModeSavedAtEpochMillis = savedAtEpochMillis
