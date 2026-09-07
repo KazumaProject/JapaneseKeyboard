@@ -29,7 +29,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
@@ -63,7 +62,7 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
 
     private var actions: List<PhysicalKeyboardShortcutAction> = emptyList()
 
-    private var navViewLayoutChangeListener: View.OnLayoutChangeListener? = null
+    private var navigationContainerLayoutChangeListener: View.OnLayoutChangeListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -214,14 +213,14 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        val navView = activity?.findViewById<BottomNavigationView>(R.id.nav_view)
-        val listener = navViewLayoutChangeListener
+        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container)
+        val listener = navigationContainerLayoutChangeListener
 
-        if (navView != null && listener != null) {
-            navView.removeOnLayoutChangeListener(listener)
+        if (navigationContainer != null && listener != null) {
+            navigationContainer.removeOnLayoutChangeListener(listener)
         }
 
-        navViewLayoutChangeListener = null
+        navigationContainerLayoutChangeListener = null
 
         super.onDestroyView()
     }
@@ -302,11 +301,15 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
     }
 
     private fun applyBottomNavigationMargin() {
-        val navView = requireActivity().findViewById<BottomNavigationView>(R.id.nav_view)
+        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container)
 
         fun updateBottomMargin() {
-            val bottomMargin = if (navView.isVisible && navView.height > 0) {
-                navView.height
+            val bottomMargin = if (
+                navigationContainer != null &&
+                navigationContainer.isVisible &&
+                navigationContainer.height > 0
+            ) {
+                navigationContainer.height
             } else {
                 0
             }
@@ -327,7 +330,7 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
             updateBottomMargin()
         }
 
-        navView.doOnLayout {
+        navigationContainer?.doOnLayout {
             updateBottomMargin()
         }
 
@@ -335,8 +338,8 @@ class PhysicalKeyboardShortcutEditFragment : Fragment() {
             updateBottomMargin()
         }
 
-        navView.addOnLayoutChangeListener(listener)
-        navViewLayoutChangeListener = listener
+        navigationContainer?.addOnLayoutChangeListener(listener)
+        navigationContainerLayoutChangeListener = listener.takeIf { navigationContainer != null }
 
         rootContainer.post {
             updateBottomMargin()
