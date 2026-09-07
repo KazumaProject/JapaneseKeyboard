@@ -42,6 +42,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             ),
             DisplayAction(
+                KeyAction.DeleteAfterCursor,
+                context.getString(R.string.action_delete_after_cursor_one),
+                com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            ),
+            DisplayAction(
                 KeyAction.Space,
                 context.getString(R.string.action_space),
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
@@ -191,6 +196,7 @@ object KeyActionMapper {
             KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.DeleteAfterCursor -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.Space,
             KeyAction.ForceHalfWidthSpace,
             KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
@@ -266,6 +272,7 @@ object KeyActionMapper {
 
             is KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol"
             is KeyAction.DeleteAfterCursorUntilSymbol -> "DeleteAfterCursorUntilSymbol"
+            is KeyAction.DeleteAfterCursor -> "DeleteAfterCursor"
             is KeyAction.ToggleKatakana -> "SwitchKatakana"
             is KeyAction.VoiceInput -> "VoiceInput"
             is KeyAction.SwitchDirectMode -> "SwitchDirectMode"
@@ -320,6 +327,7 @@ object KeyActionMapper {
             "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
             "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
             "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
+            "DeleteAfterCursor" -> KeyAction.DeleteAfterCursor
             "SwitchKatakana" -> KeyAction.ToggleKatakana
             "SwitchRomajiEnglish" -> KeyAction.SwitchRomajiEnglish
             "VoiceInput" -> KeyAction.VoiceInput
