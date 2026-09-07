@@ -64,7 +64,7 @@ internal object NumericNumberFormatter {
         return if (restStart == digitsText.length) {
             digitsText
         } else {
-            first + digitsText.substring(restStart).chunked(3).joinToString("", prefix = ",")
+            first + digitsText.substring(restStart).chunked(3).joinToString(",", prefix = ",")
         }
     }
 

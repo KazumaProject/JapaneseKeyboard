@@ -223,7 +223,7 @@
     <string name="category_ng_word_summary">You can register words by long-pressing a conversion candidate.</string>
     <string name="category_learning_dictionary_title">Learning Dictionary</string>
     <string name="learn_dictionary_allow_mixed_symbols_numbers_title">Learn Japanese containing symbols and numbers</string>
-    <string name="learn_dictionary_allow_mixed_symbols_numbers_summary">Learn mixed phrases such as “令和8年” while excluding candidates made only of symbols or numbers.</string>
+    <string name="learn_dictionary_allow_mixed_symbols_numbers_summary">Learn mixed phrases such as “令和8年” and numeric conversions such as “ひゃく → 100”. Symbol-only candidates are excluded.</string>
     <string name="category_user_dictionary_title">User Dictionary</string>
     <string name="dictionary_candidate_label_category_title">Candidate labels</string>
     <string name="show_dictionary_candidate_labels_title">Show dictionary candidate labels</string>

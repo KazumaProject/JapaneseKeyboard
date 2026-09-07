@@ -1207,7 +1207,7 @@ class KanaKanjiEngine {
                 predictionConfig = predictionConfig,
                 candidateSegmentCollector = candidateSegmentCollector,
             )
-            return prioritizeNumericCandidate(
+            return composeNumericCandidates(
                 input = input,
                 candidates = resultNBestFinalDeferred + numericCandidates,
                 numericCandidates = numericCandidates,
@@ -1222,7 +1222,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
             if (numericCandidates.isNotEmpty()) {
-                return prioritizeNumericCandidate(
+                return composeNumericCandidates(
                     input = input,
                     candidates = resultNBestFinalDeferred + numericCandidates,
                     numericCandidates = numericCandidates,
@@ -1537,7 +1537,7 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal = prioritizeNumericCandidate(
+        val resultListFinal = composeNumericCandidates(
             input = input,
             candidates = resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }),
             numericCandidates = numbersDeferred,
@@ -1651,7 +1651,7 @@ class KanaKanjiEngine {
                 predictionConfig = predictionConfig,
                 candidateSegmentCollector = candidateSegmentCollector,
             )
-            val finalList = prioritizeNumericCandidate(
+            val finalList = composeNumericCandidates(
                 input = input,
                 candidates = resultNBestFinalDeferred.candidates + numericCandidates,
                 numericCandidates = numericCandidates,
@@ -1671,7 +1671,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
             if (numericCandidates.isNotEmpty()) {
-                val finalList = prioritizeNumericCandidate(
+                val finalList = composeNumericCandidates(
                     input = input,
                     candidates = resultNBestFinalDeferred.candidates + numericCandidates,
                     numericCandidates = numericCandidates,
@@ -2007,7 +2007,7 @@ class KanaKanjiEngine {
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
-            prioritizeNumericCandidate(
+            composeNumericCandidates(
                 input = input,
                 candidates = resultList.sortedWith(
                     compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
@@ -2129,7 +2129,7 @@ class KanaKanjiEngine {
                 predictionConfig = predictionConfig,
                 candidateSegmentCollector = candidateSegmentCollector,
             )
-            val finalList = prioritizeNumericCandidate(
+            val finalList = composeNumericCandidates(
                 input = input,
                 candidates = resultNBestFinalDeferred.candidates + numericCandidates,
                 numericCandidates = numericCandidates,
@@ -2149,7 +2149,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
             if (numericCandidates.isNotEmpty()) {
-                val finalList = prioritizeNumericCandidate(
+                val finalList = composeNumericCandidates(
                     input = input,
                     candidates = resultNBestFinalDeferred.candidates + numericCandidates,
                     numericCandidates = numericCandidates,
@@ -2463,7 +2463,7 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
-        val resultListFinal = prioritizeNumericCandidate(
+        val resultListFinal = composeNumericCandidates(
             input = input,
             candidates = resultList.sortedWith(
                 compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
@@ -2586,7 +2586,7 @@ class KanaKanjiEngine {
                 predictionConfig = predictionConfig,
                 candidateSegmentCollector = candidateSegmentCollector,
             )
-            return prioritizeNumericCandidate(
+            return composeNumericCandidates(
                 input = input,
                 candidates = resultNBestFinalDeferred + numericCandidates,
                 numericCandidates = numericCandidates,
@@ -2601,7 +2601,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
             if (numericCandidates.isNotEmpty()) {
-                return prioritizeNumericCandidate(
+                return composeNumericCandidates(
                     input = input,
                     candidates = resultNBestFinalDeferred + numericCandidates,
                     numericCandidates = numericCandidates,
@@ -2914,7 +2914,7 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal = prioritizeNumericCandidate(
+        val resultListFinal = composeNumericCandidates(
             input = input,
             candidates = resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }),
             numericCandidates = numbersDeferred,
@@ -3021,7 +3021,7 @@ class KanaKanjiEngine {
                 predictionConfig = predictionConfig,
                 candidateSegmentCollector = candidateSegmentCollector,
             )
-            return prioritizeNumericCandidate(
+            return composeNumericCandidates(
                 input = input,
                 candidates = resultNBestFinalDeferred + numericCandidates,
                 numericCandidates = numericCandidates,
@@ -3036,7 +3036,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
             if (numericCandidates.isNotEmpty()) {
-                return prioritizeNumericCandidate(
+                return composeNumericCandidates(
                     input = input,
                     candidates = resultNBestFinalDeferred + numericCandidates,
                     numericCandidates = numericCandidates,
@@ -3343,7 +3343,7 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal = prioritizeNumericCandidate(
+        val resultListFinal = composeNumericCandidates(
             input = input,
             candidates = resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }),
             numericCandidates = numbersDeferred,
@@ -3452,7 +3452,7 @@ class KanaKanjiEngine {
                 predictionConfig = predictionConfig,
                 candidateSegmentCollector = candidateSegmentCollector,
             )
-            val finalList = prioritizeNumericCandidate(
+            val finalList = composeNumericCandidates(
                 input = input,
                 candidates = resultNBestFinalDeferred.candidates + numericCandidates,
                 numericCandidates = numericCandidates,
@@ -3472,7 +3472,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
             if (numericCandidates.isNotEmpty()) {
-                val finalList = prioritizeNumericCandidate(
+                val finalList = composeNumericCandidates(
                     input = input,
                     candidates = resultNBestFinalDeferred.candidates + numericCandidates,
                     numericCandidates = numericCandidates,
@@ -3801,7 +3801,7 @@ class KanaKanjiEngine {
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
-            prioritizeNumericCandidate(
+            composeNumericCandidates(
                 input = input,
                 candidates = resultList.sortedWith(
                     compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
@@ -3934,7 +3934,7 @@ class KanaKanjiEngine {
                 (englishDeferred + englishZenkaku).sortedBy { it.score }
         val temporalCandidates = createTemporalDictionaryCandidates(input)
 
-        return prioritizeNumericCandidate(
+        return composeNumericCandidates(
             input = input,
             candidates = listJapaneseCandidates + numbersConverted + temporalCandidates,
             numericCandidates = numericCandidates,
@@ -4913,26 +4913,12 @@ class KanaKanjiEngine {
         return numericCandidates + temporalCandidates
     }
 
-    private fun prioritizeNumericCandidate(
+    private fun composeNumericCandidates(
         input: String,
         candidates: List<Candidate>,
         numericCandidates: List<Candidate>,
     ): List<Candidate> {
-        if (!NumericCandidateProvider.shouldPrioritize(input)) {
-            val numericCandidateSet = numericCandidates.toSet()
-            if (numericCandidateSet.isEmpty()) return candidates
-            return candidates.filterNot(numericCandidateSet::contains) +
-                candidates.filter(numericCandidateSet::contains)
-        }
-        val preferredString = numericCandidates.firstOrNull()?.string ?: return candidates
-        val preferredIndex = candidates.indexOfFirst { it.string == preferredString }
-        if (preferredIndex <= 0) return candidates
-
-        return buildList(candidates.size) {
-            add(candidates[preferredIndex])
-            addAll(candidates.subList(0, preferredIndex))
-            addAll(candidates.subList(preferredIndex + 1, candidates.size))
-        }
+        return NumericCandidateComposer.compose(input, candidates, numericCandidates)
     }
 
     private fun recordNumericCandidateSegments(

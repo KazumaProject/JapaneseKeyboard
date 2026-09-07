@@ -33,24 +33,11 @@ internal object NumericCandidateProvider {
         showSymbolCandidates = showSymbolCandidates,
     ).map { it.candidate }
 
-    /**
-     * Numeric preference is applied for explicit digits and unambiguous readings.  A very short
-     * numeric prefix followed by a counter/unit is intentionally left to the lexical ranking;
-     * this is a grammar-level ambiguity policy that applies equally to every catalog definition.
-     */
-    fun shouldPrioritize(input: String): Boolean {
-        if (isDigitSequence(input)) return true
-        val expressions = parser.parse(input)
-        if (expressions.isEmpty()) return false
-        return expressions.none { expression ->
-            val sourceReading = expression.number.sourceReading ?: return@none false
-            sourceReading.length <= 1 && expression.suffixes.any {
-                it.type in setOf(
-                    NumericSuffixType.COUNTER,
-                    NumericSuffixType.TIME,
-                    NumericSuffixType.ORDINAL,
-                )
-            }
-        }
-    }
+    /** Explicit numeric spelling, including a following counter, opts into notation ordering. */
+    fun shouldPrioritize(input: String): Boolean =
+        input.firstOrNull()?.let { it in '0'..'9' || it in '０'..'９' } == true &&
+            parser.parse(input).isNotEmpty()
+
+    fun isLearnableConversion(input: String, output: String): Boolean =
+        generate(input, showSymbolCandidates = false).any { it.string == output }
 }

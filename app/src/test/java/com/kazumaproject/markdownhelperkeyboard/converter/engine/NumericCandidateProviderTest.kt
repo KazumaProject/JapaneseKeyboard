@@ -7,6 +7,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NumericCandidateProviderTest {
+    @Test
+    fun digitGroupingSeparatesEveryThreeDigitsForDigitsAndReadings() {
+        for (input in listOf("1234567", "１２３４５６７", "ひゃくにじゅうさんまんよんせんごひゃくろくじゅうなな")) {
+            val surfaces = NumericCandidateProvider.generate(input).map { it.string }
+            assertTrue("$input: $surfaces", "1,234,567" in surfaces)
+            assertFalse("$input: $surfaces", "1,234567" in surfaces)
+        }
+        assertEquals("123,456,789", NumericNumberFormatter.addDigitGrouping("123456789"))
+        assertEquals("12,345,678", NumericNumberFormatter.addDigitGrouping("12345678"))
+        assertEquals("123", NumericNumberFormatter.addDigitGrouping("123"))
+    }
+
 
     @Test
     fun notationPreferenceOrdersTheSameFormsForStandaloneNumbers() {

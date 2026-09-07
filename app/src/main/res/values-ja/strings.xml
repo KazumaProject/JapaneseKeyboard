@@ -225,7 +225,7 @@
     <string name="category_ng_word_summary">変換候補を長押しで登録できます。</string>
     <string name="category_learning_dictionary_title">学習辞書</string>
     <string name="learn_dictionary_allow_mixed_symbols_numbers_title">記号・数字を含む日本語を学習</string>
-    <string name="learn_dictionary_allow_mixed_symbols_numbers_summary">「令和8年」などを学習します。記号・数字だけの候補は学習しません。</string>
+    <string name="learn_dictionary_allow_mixed_symbols_numbers_summary">「令和8年」などの表現や「ひゃく → 100」のような数値変換を学習します。記号だけの候補は学習しません。</string>
     <string name="category_user_dictionary_title">ユーザー辞書</string>
     <string name="dictionary_candidate_label_category_title">候補ラベル</string>
     <string name="show_dictionary_candidate_labels_title">辞書候補のラベルを表示</string>

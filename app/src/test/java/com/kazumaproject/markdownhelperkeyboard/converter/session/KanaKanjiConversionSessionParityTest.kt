@@ -102,11 +102,13 @@ class KanaKanjiConversionSessionParityTest {
                             NumericNotationPreference.FULL_WIDTH_FIRST -> forms[1]
                             NumericNotationPreference.KANJI_FIRST -> forms[2]
                         }
-                        assertEquals(
-                            "$input/$mode/bunsetsu=$bunsetsu/$preference",
-                            expectedFirst,
-                            strings.firstOrNull(),
-                        )
+                        if (input.first() in '0'..'9' || input.first() in '０'..'９') {
+                            assertEquals(
+                                "$input/$mode/bunsetsu=$bunsetsu/$preference",
+                                expectedFirst,
+                                strings.firstOrNull(),
+                            )
+                        }
                         assertTrue(
                             "$input/$mode/bunsetsu=$bunsetsu missing forms from $strings",
                             strings.containsAll(forms),
@@ -502,6 +504,48 @@ class KanaKanjiConversionSessionParityTest {
             legacyResult.bunsetsuResult?.splitPatterns,
             incrementalResult.bunsetsuResult?.splitPatterns,
         )
+    }
+
+    @Test
+    fun selectedNumericReadingIsPersistedAndReusedAcrossBackends() = runBlocking {
+        val database = androidx.room.Room.inMemoryDatabaseBuilder(
+            androidx.test.core.app.ApplicationProvider.getApplicationContext(),
+            com.kazumaproject.markdownhelperkeyboard.database.AppDatabase::class.java,
+        ).allowMainThreadQueries().build()
+        try {
+            val repository = com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository(database.learnDao())
+            for (backend in ConversionBackend.entries) {
+                val session = KanaKanjiConversionSession(engine, backend)
+                val query = request("ひゃく", CandidateQueryMode.CONVERSION, false)
+                    .copy(learnRepository = repository)
+                val initial = session.query(query).candidates
+                val index = initial.indexOfFirst { it.string == "１００" }
+                assertTrue(index >= 0)
+                val candidate = initial[index]
+                val learning = com.kazumaproject.markdownhelperkeyboard.learning.session.ConversionLearningSession()
+                learning.beginIfNeeded("ひゃく")
+                learning.record(com.kazumaproject.markdownhelperkeyboard.learning.session.LearningFragment(
+                    reading = "ひゃく", output = candidate.string,
+                    candidateScore = candidate.score, candidateIndex = index,
+                    leftId = candidate.leftId, rightId = candidate.rightId,
+                    explicitlySelected = true,
+                ))
+                repository.upsertLearnedDataBatch(learning.finish(false), true)
+                assertTrue(repository.findLearnDataByInput("ひゃく").orEmpty().any { it.out == "１００" })
+                for (mode in listOf(CandidateQueryMode.CONVERSION, CandidateQueryMode.PREDICTION, CandidateQueryMode.NO_TAB_DEFAULT)) {
+                    for (bunsetsu in listOf(false, true)) {
+                        val result = session.query(query.copy(mode = mode, bunsetsuSeparation = bunsetsu)).candidates
+                        assertEquals("$backend/$mode/$bunsetsu", "１００", result.first().string)
+                        assertEquals(1, result.count { it.string == "１００" })
+                    }
+                }
+                assertTrue(repository.findLearnDataByInput("にひゃく").isNullOrEmpty())
+                repository.deleteByInput("ひゃく")
+                assertEquals(initial.fingerprint(), session.query(query).candidates.fingerprint())
+            }
+        } finally {
+            database.close()
+        }
     }
 
     private fun request(
