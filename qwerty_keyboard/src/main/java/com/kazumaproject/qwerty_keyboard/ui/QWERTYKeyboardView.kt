@@ -44,6 +44,8 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.data.qwerty.CapsLockState
@@ -289,6 +291,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var customBorderColor: Int = Color.BLACK
     private var borderWidth: Int = 1
 
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
+
     init {
         isClickable = true
         isFocusable = true
@@ -426,9 +430,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
         // メンバ変数に代入
+        if (this.keyboardSkinId != skinId) { dismissKeyPreview(); dismissVariationPopup() }
+        this.keyboardSkinId = skinId
         this.themeMode = themeMode
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
@@ -564,6 +571,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * @param radius キーの角丸の半径 (px)
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = true) }
         // 1. 色の計算
         // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
         val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
@@ -2469,6 +2477,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (isTablet) return
         if (!showPopupView) return
         dismissKeyPreview()
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+            val label = (view as? android.widget.TextView)?.text?.toString().orEmpty()
+            if (label.isEmpty()) return
+            val w = (view.width * 1.6f).toInt().coerceAtLeast(1)
+            val h = (view.height * 2.55f).toInt().coerceAtLeast(1)
+            val location = IntArray(2).also(view::getLocationOnScreen)
+            val xOffset = (-(w - view.width) / 2).coerceAtLeast(-location[0])
+                .coerceAtMost(resources.displayMetrics.widthPixels - location[0] - w)
+            val content = android.widget.TextView(context).apply {
+                text = if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) label.uppercase() else label
+                setTextColor(skin.palette.text)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 32f)
+                gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+                includeFontPadding = false
+                setPadding(0, (6 * resources.displayMetrics.density).toInt(), 0, 0)
+                background = com.kazumaproject.core.ui.skin.CupertinoKeyPreviewDrawable(
+                    keyboardSkinId == KeyboardSkinId.CUPERTINO_DARK, view.width.toFloat(),
+                    -xOffset.toFloat(), resources.displayMetrics.density)
+            }
+            val popup = PopupWindow(content, w, h, false).apply {
+                isTouchable = false
+                elevation = 0f
+                animationStyle = 0
+            }
+            skin.showPopup(content)
+            popup.showAsDropDown(view, xOffset, -h)
+            keyPreviewPopup = popup
+            return
+        }
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
@@ -2801,13 +2838,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             sizeScalePercent = styleSet.keyPreview.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = styleSet.keyPreview.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = styleSet.keyPreview.backgroundColor,
-            textColor = styleSet.keyPreview.textColor
+            textColor = styleSet.keyPreview.textColor,
+            skinId = styleSet.keyPreview.skinId
         )
         variationPopupStyle = PopupViewStyle(
             sizeScalePercent = styleSet.variation.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = styleSet.variation.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = styleSet.variation.backgroundColor,
-            textColor = styleSet.variation.textColor
+            textColor = styleSet.variation.textColor,
+            skinId = styleSet.variation.skinId
         )
         variationPopupView?.applyPopupViewStyle(variationPopupStyle)
     }
