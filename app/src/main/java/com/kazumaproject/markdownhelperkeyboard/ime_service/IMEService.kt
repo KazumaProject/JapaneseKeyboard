@@ -12291,6 +12291,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12369,6 +12370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12519,6 +12521,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12808,6 +12811,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -13046,6 +13051,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         handleDeleteKeyTap(insertString, suggestions)
                         stopDeleteLongPress()
+                    }
+
+                    KeyAction.CommitAndInsertSpace -> {
+                        handleCommitAndInsertSpace()
                     }
 
                     KeyAction.ForceNewLine -> {
@@ -13330,6 +13339,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
         })
@@ -26293,6 +26304,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
+    }
+
+    /**
+     * Commits the raw composing text and inserts one half-width space at the
+     * logical cursor position. The input connection keeps the composing text
+     * cursor at the end of the rendered left+tail text, so the selection is
+     * moved back across the tail after the replacement is committed.
+     */
+    private fun handleCommitAndInsertSpace() {
+        if (dispatchDirectSpaceIfNeeded()) return
+
+        val inputConnection = currentInputConnection ?: return
+        val insertString = inputString.value
+        val tail = stringInTail.get()
+        val extractedText = getExtractedText(ExtractedTextRequest(), 0)
+        val currentCursorPosition = extractedText?.selectionEnd
+            ?: inputConnection.getTextBeforeCursor(Int.MAX_VALUE, 0)?.length
+            ?: 0
+        val committedText = "$insertString $tail"
+
+        beginBatchEdit()
+        val committed = try {
+            commitText(committedText, 1)
+        } finally {
+            endBatchEdit()
+        }
+        if (!committed) return
+
+        val newCursorPosition = (currentCursorPosition - tail.length + 1).coerceAtLeast(0)
+        setSelection(newCursorPosition, newCursorPosition)
+        qwertyGlideInputCoordinator?.cancelPending()
+        currentQwertyGlideCompositionText = null
+        suppressNextQwertyGlideSuggestionRefresh = false
+        clearSelectionActionSession(clearSuggestions = false)
+        clearSuggestionStateAfterCommit()
+        resetFlagsEnterKeyNotHenkan()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun setSpaceKeyActionEnglishAndNumberEmpty(isFlick: Boolean) {
