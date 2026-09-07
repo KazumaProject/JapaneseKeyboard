@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_skin_title">Keyboard skin</string>
+    <string name="keyboard_skin_default">Default</string>
+    <string name="keyboard_skin_cupertino_light">Cupertino Light</string>
+    <string name="keyboard_skin_cupertino_dark">Cupertino Dark</string>
+    <string name="keyboard_skin_summary">Use the skin’s colors, keys, and popups. Your existing appearance settings are preserved and restored when you select Default.</string>
+</resources>

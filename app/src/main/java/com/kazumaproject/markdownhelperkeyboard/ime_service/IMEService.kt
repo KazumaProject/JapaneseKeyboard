@@ -104,6 +104,8 @@ import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
@@ -1745,6 +1747,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertySpecialKeyTextSize: Float? = 12.0f
     private var qwertySpecialKeyIconSize: Float? = 18.0f
 
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
     private var keyboardThemeMode: String? = "default"
     private var customThemeBgColor: Int? = Color.WHITE
     private var customThemeKeyColor: Int? = Color.LTGRAY
@@ -2770,7 +2773,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
+    private fun applyImePreferences(savedPreferences: ImePreferencesSnapshot) {
+        val preferences = savedPreferences.withKeyboardSkinAppearance()
+        keyboardSkinId = preferences.keyboardSkin
         val deleteKeyFlickPreferencesChanged =
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
                     isDeleteUpFlickPreference != preferences.isDeleteUpFlickPreference ||
@@ -3295,7 +3300,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         assertMainThread("applyKeyboardBackgroundImageToViewIfNeeded")
         val requestId = keyboardBackgroundImageRequestId.incrementAndGet()
         keyboardBackgroundImageRequestIds[imageView] = requestId
-        val uriString = appPreference.keyboard_background_image_uri
+        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_image_uri else ""
         val displayMode = appPreference.keyboard_background_image_display_mode
         clearKeyboardBackgroundImage(imageView)
         if (uriString.isBlank()) {
@@ -3367,7 +3372,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surfaceName: String
     ): Boolean {
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        val uriString = appPreference.keyboard_background_video_uri
+        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_video_uri else ""
         if (uriString.isBlank()) {
             releasePlayer()
             playerView.isVisible = false
@@ -3433,7 +3438,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         playerView.setKeepContentOnPlayerReset(true)
 
-        val uriString = appPreference.keyboard_background_video_uri
+        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_video_uri else ""
         if (uriString.isBlank()) {
             releaseFloatingKeyboardBackgroundVideoPlayer()
             playerView.isVisible = false
@@ -4530,6 +4535,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+            mainView.root.background = skin.keyboardDrawable(resources)
+            mainView.suggestionViewParent.background = skin.keyboardDrawable(resources)
+            mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
+            return
+        }
         val isDynamic = DynamicColors.isDynamicColorAvailable()
         if (isKeyboardRounded == true) {
             val fallbackColor = getColor(com.kazumaproject.core.R.color.keyboard_bg)
@@ -4619,12 +4630,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyImeGlassSurfaceAlpha(mainView)
 
         mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
-        mainView.root.clipToOutline = isKeyboardRounded == true
+        mainView.root.clipToOutline = keyboardSkinId != KeyboardSkinId.DEFAULT || isKeyboardRounded == true
     }
 
     private fun applyFloatingKeyboardContainerBackgrounds(
         floatingView: FloatingKeyboardLayoutBinding
     ) {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+            floatingView.root.background = skin.keyboardDrawable(resources, floating = true)
+            floatingView.suggestionViewParent.background = skin.keyboardDrawable(resources)
+            return
+        }
         val isDynamic = DynamicColors.isDynamicColorAvailable()
         when (keyboardThemeMode) {
             "default" -> {
@@ -4797,6 +4813,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 floatingKeyboardLayoutBinding.keyboardViewFloating.applyKeyboardTheme(
+                    skinId = keyboardSkinId,
                     themeMode = keyboardThemeMode ?: "default",
                     currentNightMode = currentNightMode,
                     isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
@@ -6158,11 +6175,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val symbolKeyBg =
                                     customThemeKeyColor ?: Color.WHITE
                                 keyboardSymbolView.setKeyboardTheme(
-                                    backgroundColor = manipulateColor(symbolKeyBg, 1.2f),
+                                    skinId = keyboardSkinId,
+                                    backgroundColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.background
+                                        ?: manipulateColor(symbolKeyBg, 1.2f),
                                     iconColor = customThemeKeyTextColor ?: Color.BLACK,
-                                    selectedIconColor = manipulateColor(
-                                        customThemeKeyTextColor ?: Color.BLACK, 0.6f
-                                    ),
+                                    selectedIconColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.selection
+                                        ?: manipulateColor(customThemeKeyTextColor ?: Color.BLACK, 0.6f),
                                     keyBackgroundColor = symbolKeyBg,
                                     liquidGlassEnable = liquidGlassThemePreference ?: false
                                 )
@@ -6232,7 +6250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
                     applyCandidateEmptyPopupThemeToAdapters()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
-                    mainView.root.clipToOutline = isKeyboardRounded == true
+                    mainView.root.clipToOutline = keyboardSkinId != KeyboardSkinId.DEFAULT || isKeyboardRounded == true
                     applyKeyboardBackgroundIfNeeded(mainView)
                     if (isKeyboardFloatingMode == true) {
                         floatingKeyboardBinding?.let { applyFloatingKeyboardBackgroundIfNeeded(it) }
@@ -8663,6 +8681,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tenKeyFlickTextPreviewListener
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.applyKeyboardTheme(
+            skinId = keyboardSkinId,
             themeMode = keyboardThemeMode ?: "default",
             currentNightMode = currentNightMode,
             isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
@@ -8810,6 +8829,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setOnFlickTextPreviewListener(tenKeyFlickTextPreviewListener)
             applyKeyboardTheme(
+                skinId = keyboardSkinId,
                 themeMode = keyboardThemeMode ?: "default",
                 currentNightMode = currentNightMode,
                 isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
@@ -9018,6 +9038,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         gojuonView.apply {
             applyKeyboardTheme(
+                skinId = keyboardSkinId,
                 themeMode = keyboardThemeMode ?: "default",
                 currentNightMode = currentNightMode,
                 isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
@@ -11922,33 +11943,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun popupBackgroundColorOrNull(): Int? =
-        if (appPreference.key_popup_use_custom_color) appPreference.key_popup_background_color else null
+        KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.key
+            ?: if (appPreference.key_popup_use_custom_color) appPreference.key_popup_background_color else null
 
     private fun popupTextColorOrNull(): Int? =
-        if (appPreference.key_popup_use_custom_color) appPreference.key_popup_text_color else null
+        KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.text
+            ?: if (appPreference.key_popup_use_custom_color) appPreference.key_popup_text_color else null
 
     private fun currentTenKeyPopupViewStyle(): PopupViewStyle {
         return PopupViewStyle(
-            sizeScalePercent = appPreference.tenkey_popup_size_scale_percent ?: 100,
+            sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.tenkey_popup_size_scale_percent ?: 100 else 100,
             textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f,
             backgroundColor = popupBackgroundColorOrNull(),
-            textColor = popupTextColorOrNull()
+            textColor = popupTextColorOrNull(),
+            skinId = keyboardSkinId
         )
     }
 
     private fun currentQwertyPopupViewStyleSet(): QwertyPopupViewStyleSet {
         return QwertyPopupViewStyleSet(
             keyPreview = PopupViewStyle(
-                sizeScalePercent = appPreference.qwerty_key_preview_popup_size_scale_percent ?: 100,
+                sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.qwerty_key_preview_popup_size_scale_percent ?: 100 else 100,
                 textSizeSp = appPreference.qwerty_key_preview_popup_text_size_sp ?: 28.0f,
                 backgroundColor = popupBackgroundColorOrNull(),
-                textColor = popupTextColorOrNull()
+                textColor = popupTextColorOrNull(),
+                skinId = keyboardSkinId
             ),
             variation = PopupViewStyle(
-                sizeScalePercent = appPreference.qwerty_variation_popup_size_scale_percent ?: 100,
+                sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.qwerty_variation_popup_size_scale_percent ?: 100 else 100,
                 textSizeSp = appPreference.qwerty_variation_popup_text_size_sp ?: 28.0f,
                 backgroundColor = popupBackgroundColorOrNull(),
-                textColor = popupTextColorOrNull()
+                textColor = popupTextColorOrNull(),
+                skinId = keyboardSkinId
             )
         )
     }
@@ -11956,28 +11982,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun currentFlickPopupViewStyleSet(): FlickPopupViewStyleSet {
         return FlickPopupViewStyleSet(
             directional = PopupViewStyle(
-                sizeScalePercent = appPreference.flick_directional_popup_size_scale_percent ?: 100,
+                sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.flick_directional_popup_size_scale_percent ?: 100 else 100,
                 textSizeSp = appPreference.flick_directional_popup_text_size_sp ?: 28.0f,
                 backgroundColor = popupBackgroundColorOrNull(),
-                textColor = popupTextColorOrNull()
+                textColor = popupTextColorOrNull(),
+                skinId = keyboardSkinId
             ),
             cross = PopupViewStyle(
-                sizeScalePercent = appPreference.flick_cross_popup_size_scale_percent ?: 100,
+                sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.flick_cross_popup_size_scale_percent ?: 100 else 100,
                 textSizeSp = appPreference.flick_cross_popup_text_size_sp ?: 18.0f,
                 backgroundColor = popupBackgroundColorOrNull(),
-                textColor = popupTextColorOrNull()
+                textColor = popupTextColorOrNull(),
+                skinId = keyboardSkinId
             ),
             standard = PopupViewStyle(
-                sizeScalePercent = appPreference.flick_standard_popup_size_scale_percent ?: 100,
+                sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.flick_standard_popup_size_scale_percent ?: 100 else 100,
                 textSizeSp = appPreference.flick_standard_popup_text_size_sp ?: 19.0f,
                 backgroundColor = popupBackgroundColorOrNull(),
-                textColor = popupTextColorOrNull()
+                textColor = popupTextColorOrNull(),
+                skinId = keyboardSkinId
             ),
             tfbi = PopupViewStyle(
-                sizeScalePercent = appPreference.flick_tfbi_popup_size_scale_percent ?: 100,
+                sizeScalePercent = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.flick_tfbi_popup_size_scale_percent ?: 100 else 100,
                 textSizeSp = appPreference.flick_tfbi_popup_text_size_sp ?: 20.0f,
                 backgroundColor = popupBackgroundColorOrNull(),
-                textColor = popupTextColorOrNull()
+                textColor = popupTextColorOrNull(),
+                skinId = keyboardSkinId
             )
         )
     }
@@ -12011,6 +12041,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickView.setPopupWindowAnchorProvider(null)
         }
         flickView.applyKeyboardTheme(
+            skinId = keyboardSkinId,
             themeMode = keyboardThemeMode ?: "default",
             currentNightMode = currentNightMode,
             isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
@@ -20572,6 +20603,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         qwertyView.apply {
             applyKeyboardTheme(
+                skinId = keyboardSkinId,
                 themeMode = keyboardThemeMode ?: "default",
                 currentNightMode = currentNightMode,
                 isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),

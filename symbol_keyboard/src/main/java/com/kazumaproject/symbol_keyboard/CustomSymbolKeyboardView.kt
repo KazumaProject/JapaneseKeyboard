@@ -37,6 +37,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.tabs.TabLayout
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
@@ -257,13 +259,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     /**
      * 動的にテーマカラーを適用するメソッド
      */
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
+
     fun setKeyboardTheme(
         @ColorInt backgroundColor: Int,
         @ColorInt iconColor: Int,
         @ColorInt selectedIconColor: Int,
         @ColorInt keyBackgroundColor: Int,
         liquidGlassEnable: Boolean,
+        skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT,
     ) {
+        keyboardSkinId = skinId
         this.themeBackgroundColor = backgroundColor
         this.themeIconColor = iconColor
         this.themeSelectedIconColor = selectedIconColor
@@ -388,6 +394,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
      * TenKeyの getDynamicNeumorphDrawable と同等の実装
      */
     private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources) }
         // 1. 色の計算 (TenKeyと同じ係数を使用)
         // ハイライト色: 明るくする (1.2f)
         val highlightColor = manipulateColor(baseColor, 1.2f)
@@ -915,6 +922,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             }
         }
 
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+            content.background = skin.popupDrawable(resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER)
+            skin.showPopup(content)
+        }
         variants.forEach { variant ->
             content.addView(
                 TextView(context).apply {
@@ -951,7 +962,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         ).apply {
             isOutsideTouchable = true
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            elevation = dpToPx(8).toFloat()
+            elevation = if (keyboardSkinId == KeyboardSkinId.DEFAULT) dpToPx(8).toFloat() else 0f
+            if (keyboardSkinId != KeyboardSkinId.DEFAULT) animationStyle = 0
             showAsDropDown(
                 anchor,
                 (anchor.width - content.measuredWidth) / 2,

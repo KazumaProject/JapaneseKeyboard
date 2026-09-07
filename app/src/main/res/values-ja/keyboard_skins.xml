@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_skin_title">着せ替え</string>
+    <string name="keyboard_skin_default">デフォルト</string>
+    <string name="keyboard_skin_cupertino_light">クパチーノ ライト</string>
+    <string name="keyboard_skin_cupertino_dark">クパチーノ ダーク</string>
+    <string name="keyboard_skin_summary">着せ替えの色・キー・ポップアップを使用します。既存の色や背景の設定は保存され、デフォルトに戻すと復元されます。</string>
+</resources>

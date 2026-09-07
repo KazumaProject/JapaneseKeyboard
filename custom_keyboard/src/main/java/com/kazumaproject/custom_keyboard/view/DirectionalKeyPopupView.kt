@@ -10,6 +10,8 @@ import android.graphics.RectF
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -69,7 +71,10 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         invalidate()
     }
 
+    private var skinId = KeyboardSkinId.DEFAULT
+
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        skinId = style.skinId
         popupBackgroundColor = style.backgroundColor
         popupTextColor = style.textColor
         setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp.coerceIn(8f, 48f))
@@ -81,6 +86,27 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
      * ▼▼▼ 変更点: 背景の描画後に、枠線も描画する処理を追加 ▼▼▼
      */
     override fun onDraw(canvas: Canvas) {
+        KeyboardSkinRegistry.find(skinId)?.let { skin ->
+            val direction = currentDirection.skinDirection()
+            skin.popupDrawable(resources, direction).apply {
+                setBounds(0, 0, width, height)
+                draw(canvas)
+            }
+            val cx = width * when (direction) {
+                com.kazumaproject.core.ui.skin.PopupDirection.LEFT -> 1f / 3
+                com.kazumaproject.core.ui.skin.PopupDirection.RIGHT -> 2f / 3
+                else -> .5f
+            }
+            val cy = height * when (direction) {
+                com.kazumaproject.core.ui.skin.PopupDirection.TOP -> 1f / 3
+                com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM -> 2f / 3
+                else -> .5f
+            }
+            paint.color = skin.palette.text
+            paint.textAlign = Paint.Align.CENTER
+            canvas.drawText(text.toString(), cx, cy - (paint.ascent() + paint.descent()) / 2, paint)
+            return
+        }
         val w = width.toFloat()
         val h = height.toFloat()
         if (w == 0f || h == 0f) return

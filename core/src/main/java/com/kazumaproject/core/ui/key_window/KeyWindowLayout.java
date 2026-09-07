@@ -17,6 +17,16 @@ import com.kazumaproject.core.R;
  */
 public class KeyWindowLayout extends FrameLayout {
 
+    private com.kazumaproject.core.domain.skin.KeyboardSkinId skinId = com.kazumaproject.core.domain.skin.KeyboardSkinId.DEFAULT;
+    private com.kazumaproject.core.ui.skin.PopupDirection skinDirection = com.kazumaproject.core.ui.skin.PopupDirection.CENTER;
+    private boolean skinSelected;
+    public com.kazumaproject.core.domain.skin.KeyboardSkinId getSkinId() { return skinId; }
+    public void setSkinId(com.kazumaproject.core.domain.skin.KeyboardSkinId value) { skinId = value; invalidate(); }
+    public com.kazumaproject.core.ui.skin.PopupDirection getSkinDirection() { return skinDirection; }
+    public void setSkinDirection(com.kazumaproject.core.ui.skin.PopupDirection value) { skinDirection = value; invalidate(); }
+    public boolean getSkinSelected() { return skinSelected; }
+    public void setSkinSelected(boolean value) { skinSelected = value; invalidate(); }
+
     public static float DEFAULT_STROKE_WIDTH = -1;
 
     private ArrowDirection mArrowDirection;
@@ -70,7 +80,12 @@ public class KeyWindowLayout extends FrameLayout {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        if (mKeyWindows != null) mKeyWindows.draw(canvas);
+        com.kazumaproject.core.ui.skin.KeyboardSkin skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(skinId);
+        if (skin != null) {
+            android.graphics.drawable.Drawable drawable = skin.popupDrawable(getResources(), skinDirection, skinSelected);
+            drawable.setBounds(0, 0, getWidth(), getHeight());
+            drawable.draw(canvas);
+        } else if (mKeyWindows != null) mKeyWindows.draw(canvas);
         super.dispatchDraw(canvas);
     }
 
