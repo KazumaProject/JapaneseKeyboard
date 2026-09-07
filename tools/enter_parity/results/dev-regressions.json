@@ -1,0 +1,76 @@
+{
+  "counts": {
+    "mismatch": 4
+  },
+  "cases": [
+    {
+      "id": "text-40/a1/m0/n0/c0",
+      "status": "mismatch",
+      "reference": {
+        "text": "seed\n",
+        "actions": [],
+        "focus": "editor"
+      },
+      "target": {
+        "text": "seed\n",
+        "actions": [],
+        "focus": "editor"
+      },
+      "transportEqual": false
+    },
+    {
+      "id": "number/a3/m0/n0/c0",
+      "status": "mismatch",
+      "reference": {
+        "text": "seed",
+        "actions": [
+          3
+        ],
+        "focus": "editor"
+      },
+      "target": {
+        "text": "seed",
+        "actions": [
+          6
+        ],
+        "focus": "editor"
+      },
+      "transportEqual": false
+    },
+    {
+      "id": "null/a2/m0/n0/c0",
+      "status": "mismatch",
+      "reference": {
+        "text": "seed",
+        "actions": [
+          2
+        ],
+        "focus": "editor"
+      },
+      "target": {
+        "text": "seed\n",
+        "actions": [],
+        "focus": "editor"
+      },
+      "transportEqual": false
+    },
+    {
+      "id": "regression/maps-photo-comment",
+      "status": "mismatch",
+      "reference": {
+        "text": "seed\n",
+        "actions": [],
+        "focus": "editor"
+      },
+      "target": {
+        "text": "seed",
+        "actions": [
+          6
+        ],
+        "focus": "editor"
+      },
+      "transportEqual": false
+    }
+  ],
+  "scope": "Four selected source-dev regressions; expected to differ from Gboard"
+}
