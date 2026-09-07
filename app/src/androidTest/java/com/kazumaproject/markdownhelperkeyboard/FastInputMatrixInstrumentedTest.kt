@@ -27,6 +27,7 @@ import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -1208,6 +1209,7 @@ class FastInputMatrixInstrumentedTest {
                                     floating = false,
                                 )
                                 restartInput(activeScenario)
+                                val normalImeBounds = awaitImeWindowBounds()
                                 val sourceKey = awaitVisibleNodeBounds(symbolCase.openKeyId)
                                 check(injectTap(sourceKey.center)) {
                                     "Unable to open symbols from ${symbolCase.source}"
@@ -1219,14 +1221,19 @@ class FastInputMatrixInstrumentedTest {
                                         floating = false,
                                         session = session,
                                         symbol = true,
+                                        expectedImeBounds = normalImeBounds,
                                     ).also {
                                         if (captureVisuals) saveScreenshot(session, token)
                                     }
                                 } finally {
-                                    findVisibleNodeById("return_jp_keyboard_button")?.let { returnKey ->
-                                        check(injectTap(returnKey.screenRect().center)) {
-                                            "Unable to return from symbols to ${symbolCase.source}"
-                                        }
+                                    val returnKey =
+                                        awaitVisibleNodeBounds("return_jp_keyboard_button")
+                                    check(injectTap(returnKey.center)) {
+                                        "Unable to return from symbols to ${symbolCase.source}"
+                                    }
+                                    awaitVisibleNodeBounds(symbolCase.source.rootViewId)
+                                    check(awaitImeWindowBounds() == normalImeBounds) {
+                                        "IME bounds changed after returning from symbols"
                                     }
                                 }
                             }
@@ -1986,6 +1993,10 @@ class FastInputMatrixInstrumentedTest {
             .putBoolean("candidate_tab_visibility_preference", false)
             .putBoolean("shortcut_toolbar_visibility_preference", false)
             .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false)
+            .putInt("candidate_view_height_dp_preference", 110)
+            .putInt("candidate_view_empty_height_dp_preference", 110)
+            .putInt("candidate_view_height_dp_landscape_preference", 110)
+            .putInt("candidate_view_empty_height_dp_landscape_preference", 110)
             .putBoolean("landscape_force_qwerty_preference", false)
             .putBoolean("landscape_force_qwerty_romaji_preference", false)
             .putBoolean("tenkey_kana_english_qwerty_preference", false)
@@ -2037,6 +2048,7 @@ class FastInputMatrixInstrumentedTest {
         floating: Boolean,
         session: PhysicalDeviceSession,
         symbol: Boolean = false,
+        expectedImeBounds: ScreenRect? = null,
     ): KeyboardSizeMeasurements {
         val expectedRootId = when {
             symbol -> "keyboard_symbol_view"
@@ -2050,8 +2062,6 @@ class FastInputMatrixInstrumentedTest {
             keyboard.representativeKey
         }
         val expectedHeightDp = when {
-            symbol && orientation == TestOrientation.PORTRAIT -> 320
-            symbol -> 220
             keyboard.family == KeyboardSizeFamily.TENKEY &&
                 orientation == TestOrientation.PORTRAIT ->
                 KEYBOARD_SIZE_TENKEY_PORTRAIT_HEIGHT_DP
@@ -2087,6 +2097,7 @@ class FastInputMatrixInstrumentedTest {
                     ?: throw SetupException("$expectedRootId is not visible")
                 val rootBounds = root.screenRect()
                 val representativeBounds = findRequiredKey(root, representative).screenRect()
+                val imeBounds = findImeWindowBounds()
                 val screenshot = uiAutomation.takeScreenshot()
                     ?: throw SetupException("Unable to capture display bounds")
                 val screenBounds = ScreenRect(0, 0, screenshot.width, screenshot.height)
@@ -2106,7 +2117,10 @@ class FastInputMatrixInstrumentedTest {
                 check(representativeBounds == representativeBounds.intersect(rootBounds)) {
                     "Representative key is outside keyboard: key=$representativeBounds root=$rootBounds"
                 }
-                check(kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
+                check(expectedImeBounds == null || imeBounds == expectedImeBounds) {
+                    "IME bounds changed: actual=$imeBounds expected=$expectedImeBounds"
+                }
+                check(symbol || kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
                     "Height mismatch for $keyboard: actual=${rootBounds.height} " +
                         "expected=$expectedHeightPx dp=$expectedHeightDp"
                 }
@@ -2630,6 +2644,25 @@ class FastInputMatrixInstrumentedTest {
             if (found != null) return found
         }
         return null
+    }
+
+    private fun findImeWindowBounds(): ScreenRect? {
+        return uiAutomation.windows
+            .firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            ?.root
+            ?.screenRect()
+    }
+
+    private fun awaitImeWindowBounds(): ScreenRect {
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var previous: ScreenRect? = null
+        while (SystemClock.uptimeMillis() < deadline) {
+            val current = findImeWindowBounds()
+            if (current != null && current == previous) return current
+            previous = current
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException("Timed out waiting for stable IME bounds")
     }
 
     private fun awaitVisibleNodeBounds(idName: String): ScreenRect {
