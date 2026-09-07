@@ -26,6 +26,7 @@ data class CandidateRequestToken internal constructor(
     val input: String,
     val mode: CandidateQueryMode,
     val backend: ConversionBackend,
+    val editorMutationRevision: Long = 0L,
 )
 
 /** Rejects an older result even when it was produced for the same input string in another tab. */
@@ -35,7 +36,7 @@ class CandidateRequestTracker {
     private var current: CandidateRequestToken? = null
 
     @Synchronized
-    fun restart(backend: ConversionBackend) {
+    fun restart(backend: ConversionBackend, editorMutationRevision: Long = 0L) {
         sessionId += 1
         revision = 0
         current = CandidateRequestToken(
@@ -44,6 +45,7 @@ class CandidateRequestTracker {
             input = "",
             mode = CandidateQueryMode.NO_TAB_DEFAULT,
             backend = backend,
+            editorMutationRevision = editorMutationRevision,
         )
     }
 
@@ -52,6 +54,7 @@ class CandidateRequestTracker {
         input: String,
         mode: CandidateQueryMode,
         backend: ConversionBackend,
+        editorMutationRevision: Long = 0L,
     ): CandidateRequestToken {
         revision += 1
         return CandidateRequestToken(
@@ -60,6 +63,7 @@ class CandidateRequestTracker {
             input = input,
             mode = mode,
             backend = backend,
+            editorMutationRevision = editorMutationRevision,
         ).also { current = it }
     }
 
