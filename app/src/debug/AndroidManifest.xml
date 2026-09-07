@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
     <application>
         <activity
+            android:name=".enter.EnterProbeActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+        <activity
             android:name=".autofill.DebugInlineAutofillAttributionActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Material.Light.Dialog.Alert" />

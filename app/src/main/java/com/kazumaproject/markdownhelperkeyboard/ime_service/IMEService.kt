@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.enter.EnterActionExecutor
+import com.kazumaproject.markdownhelperkeyboard.ime_service.enter.EnterActionResolver
 import android.annotation.SuppressLint
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -6403,6 +6405,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return handleJapaneseDeleteFloating(keyCode, e, insertString)
         }
 
+        // With no pending composition, Gboard leaves Alt+Enter to the editor. Do not
+        // turn this modified hardware event into an unmodified soft Enter/newline.
+        if (keyCode == KeyEvent.KEYCODE_ENTER && e.isAltPressed && insertString.isEmpty() &&
+            stringInTail.get().isEmpty() && !isHenkan.get()
+        ) {
+            return super.onKeyDown(keyCode, e)
+        }
         if (e.isCtrlPressed) {
             return handleJapaneseCtrlPressed(keyCode, e, mainView, insertString)
         }
@@ -17197,6 +17206,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         defaultInputFinalizeJob?.cancel()
         defaultInputFinalizeJob = null
+        // Partial Enter updates the reading while the remaining converted clauses stay active.
+        if (isBunsetsuCursorMoveSessionActive() && bunsetsuConversionSession?.rawInput == string) {
+            renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+            return
+        }
         if (string.isNotEmpty()) {
             clearZeroQueryAllState(refresh = false)
             hasConvertedKatakana = false
@@ -18156,6 +18170,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updatedSegments[loadedSession.focusedIndex] = updatedSegment
             bunsetsuConversionSession = loadedSession.copy(segments = updatedSegments)
             renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+        }
+        return true
+    }
+
+    /** Soft Enter commits through the focused clause, keeping later converted clauses active. */
+    private fun commitBunsetsuOnSoftEnter(): Boolean {
+        val session = bunsetsuConversionSession ?: return false
+        val committedSegments = session.segments.take(session.focusedIndex + 1)
+        val remaining = session.segments.drop(session.focusedIndex + 1)
+        if (remaining.isEmpty()) return commitBunsetsuConversionSession()
+        val mainView = mainLayoutBinding ?: return false
+        val committedText = committedSegments.joinToString("") { it.displayText }
+        val remainingReading = remaining.joinToString("") { it.reading }
+        val consumedReading = committedSegments.sumOf { it.reading.length }
+        val shiftedPatterns = session.splitPatterns.map { positions ->
+            positions.filter { it > consumedReading }.map { it - consumedReading }
+        }
+        val activeSplitPositions = shiftedPatterns.getOrNull(session.activeSplitPatternIndex).orEmpty()
+        val splitPatterns = shiftedPatterns.distinct()
+        recordBunsetsuLearning(session.rawInput, committedSegments, complete = false)
+        appendBunsetsuReconversionDraft(session.rawInput, committedText)
+        clearZenzLiveSlot("Enter committed focused clause")
+        bunsetsuConversionSession = session.copy(
+            rawInput = remainingReading + session.tailText,
+            conversionInput = remainingReading,
+            segments = remaining,
+            focusedIndex = 0,
+            splitPatterns = splitPatterns,
+            activeSplitPatternIndex = splitPatterns.indexOf(activeSplitPositions).coerceAtLeast(0),
+        )
+        bunsetsuPositionList = activeSplitPositions
+        bunsetsuSplitPatterns = splitPatterns
+        beginBatchEdit()
+        try {
+            commitText(committedText, 1)
+            renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+            _inputString.update { remainingReading + session.tailText }
+        } finally {
+            endBatchEdit()
         }
         return true
     }
@@ -22368,6 +22421,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun dispatchDirectEnterIfNeeded(): Boolean {
+        // Automatic direct text input (TYPE_NULL / English QWERTY) still honors the editor's
+        // Enter action. Explicit raw-input overrides keep their existing key-event behavior.
+        val explicitRawEnter = shortcutInputBehaviorOverride == ResolvedInputBehavior.DIRECT_COMMIT ||
+                (qwertyMode.value == TenKeyQWERTYMode.Custom && isCustomLayoutDirectMode) ||
+                (currentInputType == InputTypeForIME.TypeNull &&
+                        TypeNullInputBehaviorSetting.fromPreferenceValue(
+                            appPreference.type_null_input_behavior_preference
+                        ) == TypeNullInputBehaviorSetting.DIRECT_COMMIT)
+        if (currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT && !explicitRawEnter) {
+            setEnterKeyPress()
+            clearDirectCommitCompositionState("direct enter editor action")
+            return true
+        }
         val handled = keyInputBehaviorDispatcher.dispatchEnter(
             behavior = currentInputBehavior,
             inputConnection = currentInputConnection,
@@ -24305,73 +24371,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setEnterKeyPress() {
-        Timber.d("setEnterKeyPress: $currentInputType")
-        when (currentInputType) {
-            InputTypeForIME.TextMultiLine,
-            InputTypeForIME.TextImeMultiLine,
-            InputTypeForIME.TextShortMessage,
-            InputTypeForIME.TextLongMessage,
-                -> {
-                commitText("\n", 1)
-            }
-
-            InputTypeForIME.None,
-            InputTypeForIME.Text,
-            InputTypeForIME.TextAutoComplete,
-            InputTypeForIME.TextAutoCorrect,
-            InputTypeForIME.TextCapCharacters,
-            InputTypeForIME.TextCapSentences,
-            InputTypeForIME.TextCapWords,
-            InputTypeForIME.TextEmailSubject,
-            InputTypeForIME.TextFilter,
-            InputTypeForIME.TextNoSuggestion,
-            InputTypeForIME.TextPersonName,
-            InputTypeForIME.TextPhonetic,
-            InputTypeForIME.TextWebEditText,
-            InputTypeForIME.TextUri,
-            InputTypeForIME.TextPostalAddress,
-            InputTypeForIME.TextEmailAddress,
-            InputTypeForIME.TextWebEmailAddress,
-            InputTypeForIME.TextPassword,
-            InputTypeForIME.TextVisiblePassword,
-            InputTypeForIME.TextWebPassword,
-            InputTypeForIME.TextNotCursorUpdate,
-            InputTypeForIME.TextEditTextInWebView,
-            InputTypeForIME.TypeNull,
-            InputTypeForIME.TextSend
-                -> {
-                Timber.d("Enter key: called 3\n")
-                sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
-            }
-
-            InputTypeForIME.TextNextLine -> {
-                performEditorAction(EditorInfo.IME_ACTION_NEXT)
-            }
-
-            InputTypeForIME.TextDone -> {
-                performEditorAction(EditorInfo.IME_ACTION_DONE)
-            }
-
-            InputTypeForIME.Number,
-            InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
-            InputTypeForIME.NumberSigned,
-            InputTypeForIME.Phone,
-            InputTypeForIME.Date,
-            InputTypeForIME.Datetime,
-            InputTypeForIME.Time,
-                -> {
-                performEditorAction(EditorInfo.IME_ACTION_DONE)
-            }
-
-            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                Timber.d(
-                    "enter key search: ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
-                )
-                performEditorAction(EditorInfo.IME_ACTION_SEARCH)
-            }
-
-        }
+        EnterActionExecutor.execute(
+            action = EnterActionResolver.resolve(currentInputType, currentInputEditorInfo),
+            commitText = { text, position -> commitText(text, position) },
+            performAction = { performEditorAction(it) },
+            sendKey = { sendDownUpKeyEvents(it) },
+        )
     }
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
@@ -24857,7 +24862,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
-        if (commitBunsetsuConversionSession()) {
+        if (commitBunsetsuOnSoftEnter()) {
             return
         }
         if (isGojuonSurface()) {
@@ -24906,7 +24911,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
-        if (commitBunsetsuConversionSession()) {
+        if (commitBunsetsuOnSoftEnter()) {
             return
         }
         floatingKeyboardLayoutBinding.apply {

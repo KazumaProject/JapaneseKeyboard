@@ -1,0 +1,5258 @@
+[
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-0-composing-1788767597092.json",
+    "recordedAtEpochMillis": 1788767597092
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-1-composing-1788767601516.json",
+    "recordedAtEpochMillis": 1788767601516
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-2-composing-1788767605892.json",
+    "recordedAtEpochMillis": 1788767605892
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-3-composing-1788767610240.json",
+    "recordedAtEpochMillis": 1788767610240
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-4-composing-1788767614566.json",
+    "recordedAtEpochMillis": 1788767614566
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-5-composing-1788767618711.json",
+    "recordedAtEpochMillis": 1788767618711
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-6-composing-1788767622699.json",
+    "recordedAtEpochMillis": 1788767622699
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-0-flags-7-composing-1788767626702.json",
+    "recordedAtEpochMillis": 1788767626702
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-0-composing-1788767630985.json",
+    "recordedAtEpochMillis": 1788767630985
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-1-composing-1788767634801.json",
+    "recordedAtEpochMillis": 1788767634801
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-2-composing-1788767639212.json",
+    "recordedAtEpochMillis": 1788767639212
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-3-composing-1788767643509.json",
+    "recordedAtEpochMillis": 1788767643509
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-4-composing-1788767647788.json",
+    "recordedAtEpochMillis": 1788767647788
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-5-composing-1788767652031.json",
+    "recordedAtEpochMillis": 1788767652031
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-6-composing-1788767656269.json",
+    "recordedAtEpochMillis": 1788767656269
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-1-flags-7-composing-1788767660229.json",
+    "recordedAtEpochMillis": 1788767660229
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-0-composing-1788767664183.json",
+    "recordedAtEpochMillis": 1788767664183
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-1-composing-1788767668105.json",
+    "recordedAtEpochMillis": 1788767668105
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-2-composing-1788767671988.json",
+    "recordedAtEpochMillis": 1788767671988
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-3-composing-1788767675701.json",
+    "recordedAtEpochMillis": 1788767675701
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-4-composing-1788767679668.json",
+    "recordedAtEpochMillis": 1788767679668
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-5-composing-1788767683636.json",
+    "recordedAtEpochMillis": 1788767683636
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-6-composing-1788767687511.json",
+    "recordedAtEpochMillis": 1788767687511
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-2-flags-7-composing-1788767691631.json",
+    "recordedAtEpochMillis": 1788767691631
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-0-composing-1788767695549.json",
+    "recordedAtEpochMillis": 1788767695549
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-1-composing-1788767699447.json",
+    "recordedAtEpochMillis": 1788767699447
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-2-composing-1788767703436.json",
+    "recordedAtEpochMillis": 1788767703436
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-3-composing-1788767707358.json",
+    "recordedAtEpochMillis": 1788767707358
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-4-composing-1788767711780.json",
+    "recordedAtEpochMillis": 1788767711780
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-5-composing-1788767715083.json",
+    "recordedAtEpochMillis": 1788767715083
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-6-composing-1788767718716.json",
+    "recordedAtEpochMillis": 1788767718716
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-3-flags-7-composing-1788767722443.json",
+    "recordedAtEpochMillis": 1788767722443
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-0-composing-1788767726438.json",
+    "recordedAtEpochMillis": 1788767726438
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-1-composing-1788767730241.json",
+    "recordedAtEpochMillis": 1788767730241
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-2-composing-1788767734194.json",
+    "recordedAtEpochMillis": 1788767734194
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-3-composing-1788767738317.json",
+    "recordedAtEpochMillis": 1788767738317
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-4-composing-1788767742365.json",
+    "recordedAtEpochMillis": 1788767742365
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-5-composing-1788767746630.json",
+    "recordedAtEpochMillis": 1788767746630
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-6-composing-1788767750629.json",
+    "recordedAtEpochMillis": 1788767750629
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-4-flags-7-composing-1788767754506.json",
+    "recordedAtEpochMillis": 1788767754506
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-0-composing-1788767758544.json",
+    "recordedAtEpochMillis": 1788767758544
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-1-composing-1788767762426.json",
+    "recordedAtEpochMillis": 1788767762426
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-2-composing-1788767766351.json",
+    "recordedAtEpochMillis": 1788767766351
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-3-composing-1788767770380.json",
+    "recordedAtEpochMillis": 1788767770380
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-4-composing-1788767774523.json",
+    "recordedAtEpochMillis": 1788767774523
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-5-composing-1788767778326.json",
+    "recordedAtEpochMillis": 1788767778326
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-6-composing-1788767782444.json",
+    "recordedAtEpochMillis": 1788767782444
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-7-composing-1788767786578.json",
+    "recordedAtEpochMillis": 1788767786578
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-0-composing-1788767790393.json",
+    "recordedAtEpochMillis": 1788767790393
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-1-composing-1788767794510.json",
+    "recordedAtEpochMillis": 1788767794510
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-2-composing-1788767798446.json",
+    "recordedAtEpochMillis": 1788767798446
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-3-composing-1788767802324.json",
+    "recordedAtEpochMillis": 1788767802324
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-4-composing-1788767806602.json",
+    "recordedAtEpochMillis": 1788767806602
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-5-composing-1788767810903.json",
+    "recordedAtEpochMillis": 1788767810903
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-6-composing-1788767814808.json",
+    "recordedAtEpochMillis": 1788767814808
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-7-composing-1788767818980.json",
+    "recordedAtEpochMillis": 1788767818980
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-0-composing-1788767823284.json",
+    "recordedAtEpochMillis": 1788767823284
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-1-composing-1788767827387.json",
+    "recordedAtEpochMillis": 1788767827387
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-2-composing-1788767831535.json",
+    "recordedAtEpochMillis": 1788767831535
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "commitText:あ:1",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-3-composing-1788767835675.json",
+    "recordedAtEpochMillis": 1788767835675
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-4-composing-1788767839155.json",
+    "recordedAtEpochMillis": 1788767839155
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-5-composing-1788767843325.json",
+    "recordedAtEpochMillis": 1788767843325
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-6-composing-1788767847637.json",
+    "recordedAtEpochMillis": 1788767847637
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-7-composing-1788767851641.json",
+    "recordedAtEpochMillis": 1788767851641
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-0-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-0-composing-1788767855889.json",
+    "recordedAtEpochMillis": 1788767855889
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-1-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-1-composing-1788767859917.json",
+    "recordedAtEpochMillis": 1788767859917
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-2-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-2-composing-1788767863812.json",
+    "recordedAtEpochMillis": 1788767863812
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-3-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-3-composing-1788767867972.json",
+    "recordedAtEpochMillis": 1788767867972
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-4-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-4-composing-1788767871674.json",
+    "recordedAtEpochMillis": 1788767871674
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-5-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-5-composing-1788767875527.json",
+    "recordedAtEpochMillis": 1788767875527
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-6-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-6-composing-1788767879771.json",
+    "recordedAtEpochMillis": 1788767879771
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-7-composing",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abcあ",
+      "selectionStart": 4,
+      "selectionEnd": 4,
+      "composingStart": 3,
+      "composingEnd": 4,
+      "actions": [],
+      "calls": [
+        "setComposingText:あ:1"
+      ]
+    },
+    "after": [
+      {
+        "text": "abcあ",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1"
+        ]
+      },
+      {
+        "text": "abcあ\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "commitText:あ:1",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "a",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-7-composing-1788767883968.json",
+    "recordedAtEpochMillis": 1788767883968
+  }
+]

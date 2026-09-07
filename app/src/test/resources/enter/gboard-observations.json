@@ -1,0 +1,5010 @@
+[
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-0-committed-1788767006878.json",
+    "recordedAtEpochMillis": 1788767006878
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-1-committed-1788767009506.json",
+    "recordedAtEpochMillis": 1788767009506
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-2-committed-1788767012145.json",
+    "recordedAtEpochMillis": 1788767012145
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 0,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-3-committed-1788767014676.json",
+    "recordedAtEpochMillis": 1788767014676
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-4-committed-1788767017353.json",
+    "recordedAtEpochMillis": 1788767017353
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-5-committed-1788767019669.json",
+    "recordedAtEpochMillis": 1788767019669
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-6-committed-1788767022122.json",
+    "recordedAtEpochMillis": 1788767022122
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-0-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741824,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-0-flags-7-committed-1788767024618.json",
+    "recordedAtEpochMillis": 1788767024618
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-0-committed-1788767027189.json",
+    "recordedAtEpochMillis": 1788767027189
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-1-committed-1788767029668.json",
+    "recordedAtEpochMillis": 1788767029668
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-2-committed-1788767032220.json",
+    "recordedAtEpochMillis": 1788767032220
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-3-committed-1788767034843.json",
+    "recordedAtEpochMillis": 1788767034843
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-4-committed-1788767037298.json",
+    "recordedAtEpochMillis": 1788767037298
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-5-committed-1788767039807.json",
+    "recordedAtEpochMillis": 1788767039807
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-6-committed-1788767042394.json",
+    "recordedAtEpochMillis": 1788767042394
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-1-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741825,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-1-flags-7-committed-1788767044831.json",
+    "recordedAtEpochMillis": 1788767044831
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "performEditorAction:2"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2,
+          2
+        ],
+        "calls": [
+          "performEditorAction:2",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-0-committed-1788767047321.json",
+    "recordedAtEpochMillis": 1788767047321
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "performEditorAction:2"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2,
+          2
+        ],
+        "calls": [
+          "performEditorAction:2",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-1-committed-1788767049598.json",
+    "recordedAtEpochMillis": 1788767049598
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "performEditorAction:2"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2,
+          2
+        ],
+        "calls": [
+          "performEditorAction:2",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-2-committed-1788767051810.json",
+    "recordedAtEpochMillis": 1788767051810
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 2,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2
+        ],
+        "calls": [
+          "performEditorAction:2"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          2,
+          2
+        ],
+        "calls": [
+          "performEditorAction:2",
+          "performEditorAction:2"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-3-committed-1788767054193.json",
+    "recordedAtEpochMillis": 1788767054193
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-4-committed-1788767056712.json",
+    "recordedAtEpochMillis": 1788767056712
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-5-committed-1788767059233.json",
+    "recordedAtEpochMillis": 1788767059233
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-6-committed-1788767061652.json",
+    "recordedAtEpochMillis": 1788767061652
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-2-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741826,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-2-flags-7-committed-1788767064259.json",
+    "recordedAtEpochMillis": 1788767064259
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "performEditorAction:3"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3,
+          3
+        ],
+        "calls": [
+          "performEditorAction:3",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-0-committed-1788767066477.json",
+    "recordedAtEpochMillis": 1788767066477
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "performEditorAction:3"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3,
+          3
+        ],
+        "calls": [
+          "performEditorAction:3",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-1-committed-1788767068848.json",
+    "recordedAtEpochMillis": 1788767068848
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "performEditorAction:3"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3,
+          3
+        ],
+        "calls": [
+          "performEditorAction:3",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-2-committed-1788767071131.json",
+    "recordedAtEpochMillis": 1788767071131
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 3,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3
+        ],
+        "calls": [
+          "performEditorAction:3"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          3,
+          3
+        ],
+        "calls": [
+          "performEditorAction:3",
+          "performEditorAction:3"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-3-committed-1788767073396.json",
+    "recordedAtEpochMillis": 1788767073396
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-4-committed-1788767075900.json",
+    "recordedAtEpochMillis": 1788767075900
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-5-committed-1788767078498.json",
+    "recordedAtEpochMillis": 1788767078498
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-6-committed-1788767080930.json",
+    "recordedAtEpochMillis": 1788767080930
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-3-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741827,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-3-flags-7-committed-1788767083406.json",
+    "recordedAtEpochMillis": 1788767083406
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "performEditorAction:4"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4,
+          4
+        ],
+        "calls": [
+          "performEditorAction:4",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-0-committed-1788767085806.json",
+    "recordedAtEpochMillis": 1788767085806
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "performEditorAction:4"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4,
+          4
+        ],
+        "calls": [
+          "performEditorAction:4",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-1-committed-1788767088069.json",
+    "recordedAtEpochMillis": 1788767088069
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "performEditorAction:4"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4,
+          4
+        ],
+        "calls": [
+          "performEditorAction:4",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-2-committed-1788767090353.json",
+    "recordedAtEpochMillis": 1788767090353
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 4,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4
+        ],
+        "calls": [
+          "performEditorAction:4"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          4,
+          4
+        ],
+        "calls": [
+          "performEditorAction:4",
+          "performEditorAction:4"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-3-committed-1788767092718.json",
+    "recordedAtEpochMillis": 1788767092718
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-4-committed-1788767095178.json",
+    "recordedAtEpochMillis": 1788767095178
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-5-committed-1788767097709.json",
+    "recordedAtEpochMillis": 1788767097709
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-6-committed-1788767100139.json",
+    "recordedAtEpochMillis": 1788767100139
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-4-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741828,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "observationFile": "action-4-flags-7-committed-1788767102517.json",
+    "recordedAtEpochMillis": 1788767102517
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "performEditorAction:5"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5,
+          5
+        ],
+        "calls": [
+          "performEditorAction:5",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "次へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-0-committed-1788767443105.json",
+    "recordedAtEpochMillis": 1788767443105
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "performEditorAction:5"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5,
+          5
+        ],
+        "calls": [
+          "performEditorAction:5",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "次へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-1-committed-1788767445725.json",
+    "recordedAtEpochMillis": 1788767445725
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "performEditorAction:5"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5,
+          5
+        ],
+        "calls": [
+          "performEditorAction:5",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "次へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-2-committed-1788767448159.json",
+    "recordedAtEpochMillis": 1788767448159
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 5,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5
+        ],
+        "calls": [
+          "performEditorAction:5"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          5,
+          5
+        ],
+        "calls": [
+          "performEditorAction:5",
+          "performEditorAction:5"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "次へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-3-committed-1788767450495.json",
+    "recordedAtEpochMillis": 1788767450495
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-4-committed-1788767453104.json",
+    "recordedAtEpochMillis": 1788767453104
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-5-committed-1788767455671.json",
+    "recordedAtEpochMillis": 1788767455671
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-6-committed-1788767458293.json",
+    "recordedAtEpochMillis": 1788767458293
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-5-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741829,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-5-flags-7-committed-1788767460979.json",
+    "recordedAtEpochMillis": 1788767460979
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "performEditorAction:6"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6,
+          6
+        ],
+        "calls": [
+          "performEditorAction:6",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "完了",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-0-committed-1788767463378.json",
+    "recordedAtEpochMillis": 1788767463378
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "performEditorAction:6"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6,
+          6
+        ],
+        "calls": [
+          "performEditorAction:6",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "完了",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-1-committed-1788767465814.json",
+    "recordedAtEpochMillis": 1788767465814
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "performEditorAction:6"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6,
+          6
+        ],
+        "calls": [
+          "performEditorAction:6",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "完了",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-2-committed-1788767468243.json",
+    "recordedAtEpochMillis": 1788767468243
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 6,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6
+        ],
+        "calls": [
+          "performEditorAction:6"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          6,
+          6
+        ],
+        "calls": [
+          "performEditorAction:6",
+          "performEditorAction:6"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "完了",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-3-committed-1788767470633.json",
+    "recordedAtEpochMillis": 1788767470633
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-4-committed-1788767473204.json",
+    "recordedAtEpochMillis": 1788767473204
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-5-committed-1788767475903.json",
+    "recordedAtEpochMillis": 1788767475903
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-6-committed-1788767478503.json",
+    "recordedAtEpochMillis": 1788767478503
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-6-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741830,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-6-flags-7-committed-1788767481049.json",
+    "recordedAtEpochMillis": 1788767481049
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "performEditorAction:7"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7,
+          7
+        ],
+        "calls": [
+          "performEditorAction:7",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "前へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-0-committed-1788767483465.json",
+    "recordedAtEpochMillis": 1788767483465
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "performEditorAction:7"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7,
+          7
+        ],
+        "calls": [
+          "performEditorAction:7",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "前へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-1-committed-1788767485774.json",
+    "recordedAtEpochMillis": 1788767485774
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "performEditorAction:7"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7,
+          7
+        ],
+        "calls": [
+          "performEditorAction:7",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "前へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-2-committed-1788767488151.json",
+    "recordedAtEpochMillis": 1788767488151
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 7,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7
+        ],
+        "calls": [
+          "performEditorAction:7"
+        ]
+      },
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [
+          7,
+          7
+        ],
+        "calls": [
+          "performEditorAction:7",
+          "performEditorAction:7"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "前へ",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-3-committed-1788767490634.json",
+    "recordedAtEpochMillis": 1788767490634
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-4-committed-1788767493078.json",
+    "recordedAtEpochMillis": 1788767493078
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-5-committed-1788767495656.json",
+    "recordedAtEpochMillis": 1788767495656
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-6-committed-1788767498195.json",
+    "recordedAtEpochMillis": 1788767498195
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-7-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741831,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-7-flags-7-committed-1788767500705.json",
+    "recordedAtEpochMillis": 1788767500705
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-0-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-0-committed-1788767503331.json",
+    "recordedAtEpochMillis": 1788767503331
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-1-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-1-committed-1788767505792.json",
+    "recordedAtEpochMillis": 1788767505792
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-2-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-2-committed-1788767508228.json",
+    "recordedAtEpochMillis": 1788767508228
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-3-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 0,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-3-committed-1788767510849.json",
+    "recordedAtEpochMillis": 1788767510849
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-4-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 1,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-4-committed-1788767513404.json",
+    "recordedAtEpochMillis": 1788767513404
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-5-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-5-committed-1788767515834.json",
+    "recordedAtEpochMillis": 1788767515834
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-6-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 262145,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-6-committed-1788767518404.json",
+    "recordedAtEpochMillis": 1788767518404
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "action-8-flags-7-committed",
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 393217,
+      "imeOptions": 1073741824,
+      "actionId": 12345,
+      "actionLabel": "Probe action"
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "abc\n\n",
+        "selectionStart": 5,
+        "selectionEnd": 5,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "片手モードを終了",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[897,1692][992,1787]"
+      },
+      {
+        "text": "",
+        "description": "日本語",
+        "id": "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated",
+        "bounds": "[289,2138][440,2246]"
+      },
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "action-8-flags-7-committed-1788767521105.json",
+    "recordedAtEpochMillis": 1788767521105
+  }
+]

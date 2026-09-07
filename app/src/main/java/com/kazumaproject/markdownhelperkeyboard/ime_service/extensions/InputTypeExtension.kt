@@ -47,6 +47,10 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     val inputType = editorInfo.inputType
     val variation = inputType and InputType.TYPE_MASK_VARIATION
     val imeAction = editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION
+    val isMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
+    val isImeMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0
+    val hasNoEnterAction =
+        (editorInfo.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
 
     // 優先度1: 明示的なパスワード variation を最優先でチェック
     when (variation) {
@@ -69,6 +73,13 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
         InputType.TYPE_TEXT_VARIATION_PERSON_NAME -> return InputTypeForIME.TextPersonName
     }
 
+    // TextViewは複数行入力でIME_FLAG_NO_ENTER_ACTIONを付けることがある。
+    // この場合、imeActionがDONEでもEnterキーをエディタアクションに置き換えない。
+    // IME_MULTI_LINEも同時に設定されるアプリがあるため、MULTI_LINEを優先する。
+    if (isMultiLine && hasNoEnterAction) {
+        return InputTypeForIME.TextMultiLine
+    }
+
     // 優先度3: 強い目的を持つアクションを先に評価
     when (imeAction) {
         EditorInfo.IME_ACTION_SEARCH -> return InputTypeForIME.TextSearchView
@@ -77,9 +88,6 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     }
 
     // 優先度4: 複数行の判定（最重要）
-    val isMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
-    val isImeMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0
-
     if (isMultiLine && !isImeMultiLine) {
         // 「真の」複数行フィールド。
         // 開発者が「Enterでアクション実行」を意図していないため、改行を優先する。
@@ -94,6 +102,17 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     when (imeAction) {
         EditorInfo.IME_ACTION_NEXT -> return InputTypeForIME.TextNextLine
         EditorInfo.IME_ACTION_DONE -> return InputTypeForIME.TextDone
+    }
+
+    // 明示的なIMEアクションがないメッセージ入力は改行可能な入力として扱う。
+    // これらのvariationに対応するInputTypeForIMEは既にEnter処理側で定義されている。
+    if (imeAction == EditorInfo.IME_ACTION_NONE ||
+        imeAction == EditorInfo.IME_ACTION_UNSPECIFIED
+    ) {
+        when (variation) {
+            InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE -> return InputTypeForIME.TextShortMessage
+            InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE -> return InputTypeForIME.TextLongMessage
+        }
     }
 
     // 優先度6: フォールバック

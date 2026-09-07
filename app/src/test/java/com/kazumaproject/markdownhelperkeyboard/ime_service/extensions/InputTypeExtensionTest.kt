@@ -114,6 +114,50 @@ class InputTypeExtensionTest {
     }
 
     @Test
+    fun googleMapsReviewEditorUsesNewLineDespiteDoneAction() {
+        val googleMapsReviewInputType = 0x264001
+        val googleMapsReviewImeOptions =
+            EditorInfo.IME_FLAG_NO_ENTER_ACTION or EditorInfo.IME_ACTION_DONE
+
+        val inputType = editorInfo(
+            inputType = googleMapsReviewInputType,
+            imeOptions = googleMapsReviewImeOptions,
+            hintText = "この写真にひと言添えてみましょう（省略可）",
+            packageName = "com.google.android.apps.maps",
+        ).currentInputType()
+
+        assertEquals(InputTypeForIME.TextMultiLine, inputType)
+        assertEquals(0, inputType.getEnterKeyIndexSumire())
+        assertEquals("改行", inputType.getQWERTYReturnTextInJp())
+    }
+
+    @Test
+    fun shortAndLongMessageVariationsAreNewLineInputsWithoutExplicitAction() {
+        assertEquals(
+            InputTypeForIME.TextShortMessage,
+            editorInfo(
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE,
+                imeOptions = EditorInfo.IME_ACTION_NONE,
+            ).currentInputType()
+        )
+        assertEquals(
+            InputTypeForIME.TextLongMessage,
+            editorInfo(
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE,
+                imeOptions = EditorInfo.IME_ACTION_UNSPECIFIED,
+            ).currentInputType()
+        )
+    }
+
+    @Test
+    fun singleLineDoneActionRemainsDone() {
+        assertEquals(
+            InputTypeForIME.TextDone,
+            editorInfo(imeOptions = EditorInfo.IME_ACTION_DONE).currentInputType()
+        )
+    }
+
+    @Test
     fun searchHintClassificationRemainsUnlessPasswordLikeMetadataIsPresent() {
         assertEquals(
             InputTypeForIME.TextSearchView,
@@ -220,6 +264,7 @@ class InputTypeExtensionTest {
         hintText: CharSequence? = null,
         fieldName: String? = null,
         privateImeOptions: String? = null,
+        packageName: String? = null,
     ): EditorInfo {
         return EditorInfo().apply {
             this.inputType = inputType
@@ -227,6 +272,7 @@ class InputTypeExtensionTest {
             this.hintText = hintText
             this.fieldName = fieldName
             this.privateImeOptions = privateImeOptions
+            this.packageName = packageName
         }
     }
 

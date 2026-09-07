@@ -1,0 +1,804 @@
+[
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-alt",
+    "recordedAtEpochMillis": 1788768951025,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "alt",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:18:0",
+          "sendKeyEvent:1:66:18:0"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-alt-1788768951027.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-ctrl",
+    "recordedAtEpochMillis": 1788768948714,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "ctrl",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:12288:0",
+          "sendKeyEvent:1:66:12288:0"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-ctrl-1788768948718.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-long",
+    "recordedAtEpochMillis": 1788768941949,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "long",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-long-1788768941955.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-numpad",
+    "recordedAtEpochMillis": 1788768953245,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "numpad",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:160:0:0",
+          "sendKeyEvent:1:160:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-numpad-1788768953249.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-physical",
+    "recordedAtEpochMillis": 1788768944223,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "physical",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-physical-1788768944225.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-rapid",
+    "recordedAtEpochMillis": 1788768938859,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "rapid",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n\n\n",
+        "selectionStart": 6,
+        "selectionEnd": 6,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-rapid-1788768938864.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "operation-shift",
+    "recordedAtEpochMillis": 1788768946530,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "shift",
+    "before": {
+      "text": "abc",
+      "selectionStart": 3,
+      "selectionEnd": 3,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "abc\n",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:65:0",
+          "sendKeyEvent:1:66:65:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "operation-shift-1788768946535.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "position-after-newline",
+    "recordedAtEpochMillis": 1788768936339,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "a\nb",
+      "selectionStart": 2,
+      "selectionEnd": 2,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "a\n\nb",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "a\n\n\nb",
+        "selectionStart": 4,
+        "selectionEnd": 4,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "position-after-newline-1788768936344.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "position-before-newline",
+    "recordedAtEpochMillis": 1788768933418,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "a\nb",
+      "selectionStart": 1,
+      "selectionEnd": 1,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "a\n\nb",
+        "selectionStart": 2,
+        "selectionEnd": 2,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "a\n\n\nb",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "position-before-newline-1788768933424.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "position-empty",
+    "recordedAtEpochMillis": 1788768921934,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "",
+      "selectionStart": 0,
+      "selectionEnd": 0,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "\n",
+        "selectionStart": 1,
+        "selectionEnd": 1,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "\n\n",
+        "selectionStart": 2,
+        "selectionEnd": 2,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "position-empty-1788768921936.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "position-middle",
+    "recordedAtEpochMillis": 1788768927697,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 1,
+      "selectionEnd": 1,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "a\nbc",
+        "selectionStart": 2,
+        "selectionEnd": 2,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "a\n\nbc",
+        "selectionStart": 3,
+        "selectionEnd": 3,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "position-middle-1788768927699.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "position-selection",
+    "recordedAtEpochMillis": 1788768930596,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 0,
+      "selectionEnd": 2,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "\nc",
+        "selectionStart": 1,
+        "selectionEnd": 1,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "\n\nc",
+        "selectionStart": 2,
+        "selectionEnd": 2,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0",
+          "sendKeyEvent:1:66:0:0",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "position-selection-1788768930601.json"
+  },
+  {
+    "schemaVersion": 1,
+    "caseId": "position-start",
+    "recordedAtEpochMillis": 1788769248644,
+    "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    "imeVersion": "18.1.3.962075747-release-arm64-v8a",
+    "androidSdk": 37,
+    "device": "Pixel 6",
+    "editorInfo": {
+      "inputType": 131073,
+      "imeOptions": 1,
+      "actionId": 0,
+      "actionLabel": null
+    },
+    "operation": "tap-twice",
+    "before": {
+      "text": "abc",
+      "selectionStart": 0,
+      "selectionEnd": 0,
+      "composingStart": -1,
+      "composingEnd": -1,
+      "actions": [],
+      "calls": []
+    },
+    "after": [
+      {
+        "text": "\nabc",
+        "selectionStart": 1,
+        "selectionEnd": 1,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0:6:257",
+          "sendKeyEvent:1:66:0:0:6:257",
+          "finishComposingText"
+        ]
+      },
+      {
+        "text": "\n\nabc",
+        "selectionStart": 2,
+        "selectionEnd": 2,
+        "composingStart": -1,
+        "composingEnd": -1,
+        "actions": [],
+        "calls": [
+          "sendKeyEvent:0:66:0:0:6:257",
+          "sendKeyEvent:1:66:0:0:6:257",
+          "finishComposingText",
+          "sendKeyEvent:0:66:0:0:6:257",
+          "sendKeyEvent:1:66:0:0:6:257",
+          "finishComposingText"
+        ]
+      }
+    ],
+    "status": "reviewed",
+    "surface": "current-unverified",
+    "keyboard": "current-unverified",
+    "setup": "",
+    "stateMarker": "",
+    "keyboardBefore": [
+      {
+        "text": "",
+        "description": "Enter",
+        "id": "com.google.android.inputmethod.latin:id/key_pos_ime_action",
+        "bounds": "[689,2138][810,2269]"
+      }
+    ],
+    "observationFile": "position-start-1788769248649.json"
+  }
+]
