@@ -8,6 +8,7 @@
     <string name="action_delete">削除</string>
     <string name="action_do_nothing">何もしない</string>
     <string name="action_space">空白</string>
+    <string name="action_commit_and_insert_space">確定＋半角スペース</string>
     <string name="action_force_half_width_space">半角スペース</string>
     <string name="action_force_full_width_space">全角スペース</string>
     <string name="action_convert">変換</string>
