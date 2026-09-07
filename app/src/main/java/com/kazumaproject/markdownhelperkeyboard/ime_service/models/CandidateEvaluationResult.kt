@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.models
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.ZenzOutputPolicy
+
 sealed class CandidateEvaluationResult {
     /** エラーが発生した場合 */
     data object Error : CandidateEvaluationResult()
@@ -26,18 +28,18 @@ sealed class CandidateEvaluationResult {
             return when {
                 null == raw -> Error
                 raw.startsWith("PASS:") -> {
-                    val score = raw.removePrefix("PASS:").toFloatOrNull() ?: 0f
-                    Pass(score)
+                    val score = raw.removePrefix("PASS:").toFloatOrNull()
+                    if (score == null || !score.isFinite()) Error else Pass(score)
                 }
 
                 raw.startsWith("FIX:") -> {
                     val prefix = raw.removePrefix("FIX:")
-                    FixRequired(prefix)
+                    ZenzOutputPolicy.acceptedTextOrNull(prefix)?.let(::FixRequired) ?: Error
                 }
 
                 raw.startsWith("WHOLE:") -> {
                     val result = raw.removePrefix("WHOLE:")
-                    WholeResult(result)
+                    ZenzOutputPolicy.acceptedTextOrNull(result)?.let(::WholeResult) ?: Error
                 }
 
                 else -> Error
