@@ -16,6 +16,7 @@ class DataConverterExtensionsMoveToCustomKeyboardTest {
             KeyAction.ToggleHandakutenOnly to "ToggleHandakutenOnly",
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
             KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace",
+            KeyAction.DeleteAfterCursor to "DeleteAfterCursor",
             KeyAction.MoveCursorUp to "MOVE_CURSOR_UP",
             KeyAction.MoveCursorDown to "MOVE_CURSOR_DOWN",
             KeyAction.DoNothing to "DoNothing"
