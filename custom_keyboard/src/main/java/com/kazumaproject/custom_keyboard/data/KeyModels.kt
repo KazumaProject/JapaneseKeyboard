@@ -45,6 +45,7 @@ sealed class KeyAction {
     data object Confirm : KeyAction() // 確定
     data object DeleteUntilSymbol : KeyAction()
     data object DeleteAfterCursorUntilSymbol : KeyAction()
+    data object DeleteAfterCursor : KeyAction()
     data object UndoLastDelete : KeyAction()
 
     data object SwitchDirectMode : KeyAction()

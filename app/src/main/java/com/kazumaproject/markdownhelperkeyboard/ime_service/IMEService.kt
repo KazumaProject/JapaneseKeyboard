@@ -14,6 +14,7 @@ import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.hardware.input.InputManager
+import android.icu.text.BreakIterator as AndroidBreakIterator
 import android.inputmethodservice.InputMethodService
 import android.media.AudioManager
 import android.net.Uri
@@ -12295,6 +12296,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.DeleteAfterCursor -> {}
                 }
             }
 
@@ -12373,6 +12375,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.DeleteAfterCursor -> {}
                 }
             }
 
@@ -12523,6 +12527,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.DeleteAfterCursor -> {}
                 }
             }
 
@@ -12812,6 +12817,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.DeleteAfterCursor -> {}
                 }
             }
 
@@ -13296,6 +13303,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         deleteWordOrSymbolsAfterCursor(insertString)
                     }
 
+                    KeyAction.DeleteAfterCursor -> {
+                        handleDeleteAfterCursor()
+                    }
+
                     KeyAction.UndoLastDelete -> {
                         if (isDeleteDownFlickPreference == true) {
                             undoLastHistoryEntry()
@@ -13463,6 +13474,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyAction.UndoLastDelete -> {
                 stopDeleteLongPress()
             }
+
+            // DeleteAfterCursor is intentionally tap-only; it never owns a repeat job.
+            KeyAction.DeleteAfterCursor -> Unit
 
             KeyAction.MoveCursorLeft -> cancelLeftLongPress()
             KeyAction.MoveCursorRight -> cancelRightLongPress()
@@ -14136,6 +14150,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return if (pos == BreakIterator.DONE) text.length else pos
     }
 
+    /**
+     * Returns the end of the first Unicode grapheme cluster in [text]. Android ICU includes
+     * emoji ZWJ sequences, regional-indicator flags, variation selectors, and combining marks in
+     * one boundary, which is the boundary required by forward-delete editing.
+     */
+    private fun nextUnicodeGraphemeOffset(text: String, offset: Int): Int {
+        if (offset >= text.length) return text.length
+        val iterator = AndroidBreakIterator.getCharacterInstance()
+        iterator.setText(text)
+        val boundary = iterator.following(offset)
+        return if (boundary == AndroidBreakIterator.DONE) text.length else boundary
+    }
+
 ////////////////////////////////////////////////////////////////////////////////
 // ─────────────────────────────────────────────────────────────────────────────
 //    extendOrShrinkLeftOneChar / extendOrShrinkSelectionRight の修正版
@@ -14312,6 +14339,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyAction.Delete,
             KeyAction.DeleteUntilSymbol,
             KeyAction.DeleteAfterCursorUntilSymbol,
+            KeyAction.DeleteAfterCursor,
             KeyAction.UndoLastDelete,
             KeyAction.DoNothing -> true
 
@@ -21955,9 +21983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     DeleteDirection.AfterCursor -> {
-                        val ic = currentInputConnection ?: return false
-                        ic.commitText(entry.deletedText, 0)
-                        true
+                        commitText(entry.deletedText, 0)
                     }
                 }
             }
@@ -25270,6 +25296,166 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     /**
+     * Deletes the current selection, one committed character after the cursor, or one
+     * grapheme from the right side of the composing text.
+     *
+     * The editor owns committed-text deletion semantics, so committed text is deleted through
+     * KEYCODE_FORWARD_DEL.  The right side of our composing text is held separately in
+     * [stringInTail], and must therefore be edited before delegating to the editor.
+     */
+    private fun handleDeleteAfterCursor() {
+        clearZeroQueryAllState(refresh = false)
+        val inputConnection = currentInputConnection ?: return
+        val requestRevision = editorMutationRevision.current()
+        val extractedText = runCatching {
+            inputConnection.getExtractedText(ExtractedTextRequest(), 0)
+        }.getOrNull()
+        val hasSelection = extractedText?.let {
+            it.selectionStart >= 0 &&
+                it.selectionEnd >= 0 &&
+                it.selectionStart != it.selectionEnd
+        } ?: editorTextSelected
+
+        if (hasSelection) {
+            ioScope.launch {
+                val selectedText = runCatching {
+                    inputConnection.getSelectedText(0)?.toString().orEmpty()
+                }.getOrDefault("")
+                withContext(Dispatchers.Main.immediate) {
+                    if (currentInputConnection !== inputConnection ||
+                        !editorMutationRevision.isCurrent(requestRevision)
+                    ) {
+                        return@withContext
+                    }
+                    val currentSelection = runCatching {
+                        inputConnection.getExtractedText(ExtractedTextRequest(), 0)
+                    }.getOrNull()
+                    val selectionStillActive = currentSelection?.let {
+                        it.selectionStart >= 0 &&
+                            it.selectionEnd >= 0 &&
+                            it.selectionStart != it.selectionEnd
+                    } ?: editorTextSelected
+                    if (!selectionStillActive) return@withContext
+
+                    performForwardDelete(
+                        inputConnection = inputConnection,
+                        deletedText = selectedText,
+                        selectionWasActive = true,
+                    )
+                }
+            }
+            return
+        }
+
+        val beforeInput = inputString.value
+        val beforeTail = stringInTail.get()
+        if (beforeTail.isNotEmpty()) {
+            deleteAfterCursorInComposition(beforeInput, beforeTail)
+            return
+        }
+
+        // A composing string with no right-side tail has no character after its logical cursor.
+        if (beforeInput.isNotEmpty()) return
+
+        ioScope.launch {
+            val textAfterCursor = editorConnectionReadMutex.withLock {
+                withContext(Dispatchers.IO) {
+                    inputConnection.getTextAfterCursor(100, 0)?.toString().orEmpty()
+                }
+            }
+            val nextOffset = nextUnicodeGraphemeOffset(textAfterCursor, 0)
+            val deletedText = textAfterCursor.take(nextOffset)
+            withContext(Dispatchers.Main.immediate) {
+                if (currentInputConnection !== inputConnection ||
+                    !editorMutationRevision.isCurrent(requestRevision) ||
+                    inputString.value.isNotEmpty() ||
+                    stringInTail.get().isNotEmpty() ||
+                    deletedText.isEmpty()
+                ) {
+                    return@withContext
+                }
+                performForwardDelete(
+                    inputConnection = inputConnection,
+                    deletedText = deletedText,
+                    selectionWasActive = false,
+                )
+            }
+        }
+    }
+
+    private fun deleteAfterCursorInComposition(
+        beforeInput: String,
+        beforeTail: String,
+    ) {
+        val nextOffset = nextUnicodeGraphemeOffset(beforeTail, 0)
+        if (nextOffset <= 0 || nextOffset > beforeTail.length) return
+
+        val deletedText = beforeTail.substring(0, nextOffset)
+        val afterTail = beforeTail.substring(nextOffset)
+        invalidateZeroQueryForEditorMutation()
+        clearFunctionKeyConversionSource()
+        qwertyGlideInputCoordinator?.cancelPending()
+        currentQwertyGlideCompositionText = null
+        suppressNextQwertyGlideSuggestionRefresh = false
+        stringInTail.set(afterTail)
+        setComposingTextAfterEdit(
+            inputString = beforeInput,
+            spannableString = SpannableString(beforeInput + afterTail),
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            },
+        )
+        resetFlagsDeleteKey()
+        clearSuggestionStateAfterCommit()
+        if (beforeInput.isNotEmpty()) {
+            requestCandidateRefresh(CandidateShowFlag.Updating, beforeInput)
+        }
+        createCompositionHistoryEntry(
+            beforeInput = beforeInput,
+            beforeTail = beforeTail,
+            afterInput = beforeInput,
+            afterTail = afterTail,
+            previewText = deletedText,
+        )?.let(::pushEditHistoryEntry)
+    }
+
+    private fun performForwardDelete(
+        inputConnection: InputConnection,
+        deletedText: String,
+        selectionWasActive: Boolean,
+    ) {
+        if (currentInputConnection !== inputConnection) return
+        invalidateZeroQueryForEditorMutation()
+        clearFunctionKeyConversionSource()
+        qwertyGlideInputCoordinator?.cancelPending()
+        currentQwertyGlideCompositionText = null
+        suppressNextQwertyGlideSuggestionRefresh = false
+        if (selectionWasActive) {
+            clearSelectionActionSession(clearSuggestions = true)
+        }
+        sendDownUpKeyEvents(KeyEvent.KEYCODE_FORWARD_DEL)
+        resetEditorSelectionSnapshot()
+        clearSuggestionStateAfterCommit()
+        resetFlagsDeleteKey()
+        if (deletedText.isNotEmpty()) {
+            pushEditHistoryEntry(
+                EditHistoryEntry.DeleteCommittedText(
+                    deletedText = deletedText,
+                    direction = DeleteDirection.AfterCursor,
+                )
+            )
+        }
+    }
+
+    /**
      * Deletes the last grapheme cluster before the cursor or deletes the current selection.
      * This correctly handles complex emojis and user text selections.
      */
@@ -26594,6 +26780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyAction.Backspace,
             KeyAction.DeleteUntilSymbol,
             KeyAction.DeleteAfterCursorUntilSymbol,
+            KeyAction.DeleteAfterCursor,
             KeyAction.UndoLastDelete -> KeySoundType.DELETE
 
             KeyAction.Enter,
