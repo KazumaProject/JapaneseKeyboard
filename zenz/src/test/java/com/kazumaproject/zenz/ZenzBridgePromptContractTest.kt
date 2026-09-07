@@ -13,11 +13,11 @@ class ZenzBridgePromptContractTest {
         val builder = promptBuilder(source)
 
         val leftTagIndex = builder.indexOf("prompt += leftContextTag;")
-        val leftContextIndex = builder.indexOf("prompt += leftContext;")
+        val leftContextIndex = builder.indexOf("prompt += safeLeftContext;")
         val rightTagIndex = builder.indexOf("prompt += rightContextTag;")
-        val rightContextIndex = builder.indexOf("prompt += rightContext;")
+        val rightContextIndex = builder.indexOf("prompt += safeRightContext;")
         val inputTagIndex = builder.indexOf("prompt += inputTag;")
-        val inputIndex = builder.indexOf("prompt += input;")
+        val inputIndex = builder.indexOf("prompt += safeInput;")
         val outputTagIndex = builder.indexOf("prompt += outputTag;")
 
         assertTrue("left context tag must be appended", leftTagIndex >= 0)
@@ -41,12 +41,26 @@ class ZenzBridgePromptContractTest {
         val builder = promptBuilder(source)
 
         val tagIndex = Regex("""rightContextTag\[\]\s*=\s*u8"\\uEE07"""").find(source)?.range?.first ?: -1
-        val guardIndex = builder.indexOf("if (!rightContext.empty())")
+        val guardIndex = builder.indexOf("if (!safeRightContext.empty())")
         val appendIndex = builder.indexOf("prompt += rightContextTag;")
 
         assertTrue("right context tag must be U+EE07", tagIndex >= 0)
         assertTrue("right context append must be guarded", guardIndex >= 0)
         assertTrue("right context tag append must be inside the non-empty branch", guardIndex < appendIndex)
+    }
+
+    @Test
+    fun promptBuilderSanitizesStructuredFieldsAndReservesWholeProtocolRange() {
+        val source = bridgeSource().readText()
+        val builder = promptBuilder(source)
+
+        assertTrue("protocol marker range must start at U+EE00", source.contains("0xEE00"))
+        assertTrue("protocol marker range must end at U+EE0F", source.contains("0xEE0F"))
+        assertTrue("structured fields must be sanitized", source.contains("sanitize_prompt_field"))
+        assertTrue("profile must use sanitized value", builder.contains("safeProfile"))
+        assertTrue("left context must use sanitized value", builder.contains("safeLeftContext"))
+        assertTrue("right context must use sanitized value", builder.contains("safeRightContext"))
+        assertTrue("input must use sanitized value", builder.contains("safeInput"))
     }
 
     private fun bridgeSource(): File {

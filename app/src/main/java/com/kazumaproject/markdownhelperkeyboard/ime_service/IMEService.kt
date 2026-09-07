@@ -15093,7 +15093,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun acceptZenzLiveResult(resultFromZenz: List<ZenzCandidate>) {
         val meta = zenzLiveLatestResultMeta
         val state = _zenzLiveSlotState.value
-        val firstResult = resultFromZenz.firstOrNull()
+        val rawFirstResult = resultFromZenz.firstOrNull()
+        val firstResult = rawFirstResult?.takeIf {
+            ZenzOutputPolicy.acceptedTextOrNull(it.string) != null
+        }
+        if (rawFirstResult != null && firstResult == null) {
+            Timber.w("Rejected unsafe Zenz live output before candidate adoption")
+        }
         if (state?.bunsetsuTarget != null) {
             acceptBunsetsuZenzLiveResult(
                 firstResult = firstResult,
@@ -15853,6 +15859,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * Zenzエンジンを使用して変換候補を生成するサスペンド関数
      * collectLatest 内から呼び出されることを想定しています。
      */
+    private fun buildAcceptedZenzCandidate(
+        generatedText: String?,
+        type: Byte,
+        insertString: String,
+        score: Int = 2000,
+    ): ZenzCandidate? {
+        val acceptedText = ZenzOutputPolicy.acceptedTextOrNull(generatedText) ?: return null
+        return ZenzCandidate(
+            string = acceptedText,
+            type = type,
+            length = insertString.length.toUByte(),
+            score = score,
+            originalString = insertString,
+        )
+    }
+
     private suspend fun performZenzRequest(
         insertString: String,
         leftContextOverride: String? = null
@@ -15899,14 +15921,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // 生成後もチェック
             ensureActive()
 
-            // 結果を返却
-            listOf(
-                ZenzCandidate(
-                    string = stringFromZenz,
+            // Native returns an empty string for any generation that did not
+            // reach a clean EOG/protocol boundary. Never publish such a
+            // result as a live candidate.
+            listOfNotNull(
+                buildAcceptedZenzCandidate(
+                    generatedText = stringFromZenz,
                     type = (33).toByte(),
-                    length = (insertString.length).toUByte(),
-                    score = 2000,
-                    originalString = insertString
+                    insertString = insertString,
                 )
             )
         } catch (e: CancellationException) {
@@ -15961,13 +15983,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             val zenzaiResultType = CandidateEvaluationResult.parse(stringFromZenz)
 
-            var type = 33
-            var parsedResultText = ""
-
-            when (zenzaiResultType) {
+            return@withContext when (zenzaiResultType) {
                 CandidateEvaluationResult.Error -> {
-                    type = 39
-                    parsedResultText = firstCandidate
+                    listOfNotNull(
+                        buildAcceptedZenzCandidate(
+                            generatedText = firstCandidate,
+                            type = (39).toByte(),
+                            insertString = insertString,
+                        )
+                    )
                 }
 
                 is CandidateEvaluationResult.FixRequired -> {
@@ -15983,16 +16007,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("CandidateEvaluationResult.FixRequired :[$firstCandidateFromPrefix] [$prefix] [$insertString] [${suggesions.map { it.string }}]")
 
 
-                    val firstCandidateFromKanakanjiEngine = ZenzCandidate(
-                        string = firstCandidateFromPrefix ?: firstCandidate,
+                    val firstCandidateFromKanakanjiEngine = buildAcceptedZenzCandidate(
+                        generatedText = firstCandidateFromPrefix ?: firstCandidate,
                         type = (37).toByte(),
-                        length = insertString.length.toUByte(),
-                        score = 2000,
-                        originalString = insertString
+                        insertString = insertString,
                     )
 
-                    val secondCandidateFromZenz = ZenzCandidate(
-                        string = zenzRuntimeClient.generate(
+                    val secondCandidateFromZenz = buildAcceptedZenzCandidate(
+                        generatedText = zenzRuntimeClient.generate(
                             config = runtimeConfig,
                             profile = zenzProfilePreference ?: "",
                             topic = "",
@@ -16004,43 +16026,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             maxTokens = zenzMaximumLetterSizePreference ?: 32
                         ),
                         type = (40).toByte(),
-                        length = insertString.length.toUByte(),
-                        score = 2000,
-                        originalString = insertString
+                        insertString = insertString,
                     )
 
-                    val candidates = listOf(
+                    val candidates = listOfNotNull(
                         secondCandidateFromZenz,
                         firstCandidateFromKanakanjiEngine,
                     )
 
-                    val topCandidate = candidates
-                        .maxByOrNull { it.rank(prefix) }
-                        ?: secondCandidateFromZenz
+                    val topCandidate = candidates.maxByOrNull { it.rank(prefix) }
 
-                    return@withContext listOfNotNull(topCandidate)
+                    listOfNotNull(topCandidate)
                 }
 
                 is CandidateEvaluationResult.Pass -> {
-                    type = 36
-                    parsedResultText = firstCandidate
+                    listOfNotNull(
+                        buildAcceptedZenzCandidate(
+                            generatedText = firstCandidate,
+                            type = (36).toByte(),
+                            insertString = insertString,
+                        )
+                    )
                 }
 
                 is CandidateEvaluationResult.WholeResult -> {
-                    type = 38
-                    parsedResultText = zenzaiResultType.result
+                    listOfNotNull(
+                        buildAcceptedZenzCandidate(
+                            generatedText = zenzaiResultType.result,
+                            type = (38).toByte(),
+                            insertString = insertString,
+                        )
+                    )
                 }
             }
-
-            listOf(
-                ZenzCandidate(
-                    string = parsedResultText,
-                    type = type.toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 2000,
-                    originalString = insertString
-                )
-            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

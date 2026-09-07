@@ -92,6 +92,69 @@ class ZenzRuntimeInstrumentedTest {
         assertTrue("Final request was blocked by cancelled work", finalResult.isNotBlank())
     }
 
+    @Test(timeout = 180_000)
+    fun generatedCandidatesStopAtProtocolBoundaryAcrossReadings() {
+        val service = bindRuntime()
+        initialize(service, copyBundledModel())
+
+        val readings = arrayOf(
+            "マツ",
+            "まつ",
+            "セイドガタカイ",
+            "コンニチハ",
+            "アリガトウ",
+        )
+        readings.forEachIndexed { index, reading ->
+            val candidate = generate(
+                service = service,
+                requestId = 300L + index,
+                input = reading,
+            )
+            assertTrue("No complete candidate for reading=$reading", candidate.isNotBlank())
+            assertSafeCandidate(reading, candidate)
+            if (reading == "マツ") {
+                // This is a semantic regression guard for the bundled model:
+                // text after U+EE08 must never be appended to the candidate.
+                assertEquals("末", candidate)
+            }
+        }
+
+        // The protocol range is reserved by Zenz, so even a context value that
+        // contains a marker must not be able to change the output contract.
+        val candidateWithCleanContext = generateWithFields(
+            service = service,
+            requestId = 400L,
+            profile = "一般",
+            topic = "日常",
+            style = "普通",
+            preference = "標準",
+            leftContext = "左文脈",
+            rightContext = "右文脈",
+            input = "まつ",
+        )
+        val candidateWithMarkerInContext = generateWithFields(
+            service = service,
+            requestId = 401L,
+            profile = "一般\uEE00",
+            topic = "日常\uEE0F",
+            style = "普通\uEE08",
+            preference = "標準\uEE06",
+            leftContext = "左文脈\uEE02",
+            rightContext = "右文脈\uEE07",
+            input = "まつ",
+        )
+        assertEquals(
+            "Protocol markers in structured fields changed the prompt",
+            candidateWithCleanContext,
+            candidateWithMarkerInContext,
+        )
+        assertTrue(
+            "Context marker caused an incomplete candidate",
+            candidateWithMarkerInContext.isNotBlank(),
+        )
+        assertSafeCandidate("まつ with marked context", candidateWithMarkerInContext)
+    }
+
     private fun bindRuntime(): IZenzRuntime {
         val connected = CountDownLatch(1)
         val connection = object : ServiceConnection {
@@ -160,17 +223,35 @@ class ZenzRuntimeInstrumentedTest {
     }
 
     private fun generate(service: IZenzRuntime, requestId: Long, input: String): String {
+        return generateWithFields(
+            service = service,
+            requestId = requestId,
+            input = input,
+        )
+    }
+
+    private fun generateWithFields(
+        service: IZenzRuntime,
+        requestId: Long,
+        profile: String = "",
+        topic: String = "",
+        style: String = "",
+        preference: String = "",
+        leftContext: String = "",
+        rightContext: String = "",
+        input: String,
+    ): String {
         val completed = CountDownLatch(1)
         val result = AtomicReference<String?>(null)
         val error = AtomicReference<String?>(null)
         service.generate(
             requestId,
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
+            profile,
+            topic,
+            style,
+            preference,
+            leftContext,
+            rightContext,
             input,
             32,
             object : IZenzRuntimeCallback.Stub() {
@@ -196,6 +277,17 @@ class ZenzRuntimeInstrumentedTest {
         assertTrue("Zenz generate timed out", completed.await(30, TimeUnit.SECONDS))
         check(error.get() == null) { "Zenz generate failed: ${error.get()}" }
         return result.get().orEmpty()
+    }
+
+    private fun assertSafeCandidate(reading: String, candidate: String) {
+        assertTrue(
+            "Protocol marker leaked for reading=$reading",
+            candidate.none { it.code in 0xEE00..0xEE0F },
+        )
+        assertTrue(
+            "Control character leaked for reading=$reading",
+            candidate.none { it.isISOControl() || it == '\uFFFD' },
+        )
     }
 
     private fun score(
