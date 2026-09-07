@@ -413,6 +413,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.Executors
+import java.util.function.Consumer
 import java.util.regex.Pattern
 import javax.inject.Inject
 import androidx.appcompat.R as AppCompatR
@@ -816,6 +817,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ).apply { isDaemon = true }
     }.asCoroutineDispatcher()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var imeWindowManager: WindowManager? = null
+    private var crossWindowBlurEnabled: Boolean = false
+    private var crossWindowBlurListenerRegistered: Boolean = false
+    private val crossWindowBlurEnabledListener = Consumer<Boolean> { enabled ->
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            crossWindowBlurEnabled = enabled
+            updateImeWindowBlurForCurrentMode()
+        } else {
+            mainHandler.post {
+                crossWindowBlurEnabled = enabled
+                updateImeWindowBlurForCurrentMode()
+            }
+        }
+    }
     private val runtimeGestureSettingsSource = MutableRuntimeGestureSettingsSource(
         RuntimeGestureSettings()
     )
@@ -1228,6 +1243,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun invalidateZeroQueryForEditorMutation() {
+        editorMutationRevision.advance()
         clearZeroQueryAllState(refresh = true)
     }
 
@@ -1808,6 +1824,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Volatile
     private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
     private val candidateRequestTracker = CandidateRequestTracker()
+    private val editorMutationRevision = EditorMutationRevision()
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
@@ -2306,6 +2323,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
+        registerCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController = InlineAutofillController(
                 context = this,
@@ -2596,7 +2614,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyImePreferences(preferences)
         conversionBackend = preferences.conversionBackend
         kanaKanjiConversionSession = null
-        candidateRequestTracker.restart(preferences.conversionBackend)
+        editorMutationRevision.restart()
+        candidateRequestTracker.restart(
+            backend = preferences.conversionBackend,
+            editorMutationRevision = editorMutationRevision.current(),
+        )
         candidateRefreshCoordinator.restart()
         activateKanaKanjiEngineWhenReady(
             preferences = preferences,
@@ -2618,7 +2640,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 session.enablePerformanceProbe()
             }
         }
-        candidateRequestTracker.restart(backend)
+        candidateRequestTracker.restart(
+            backend = backend,
+            editorMutationRevision = editorMutationRevision.current(),
+        )
         candidateRefreshCoordinator.restart()
     }
 
@@ -4591,12 +4616,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyNormalKeyboardChrome(mainView: MainLayoutBinding) {
         applyKeyboardContainerBackgrounds(mainView)
-
-        if (liquidGlassThemePreference == true) {
-            mainView.root.setDrawableAlpha(liquidGlassBlurRadiousPreference ?: 220)
-            mainView.suggestionViewParent.setDrawableAlpha(0)
-            mainView.candidateTabLayout.setDrawableAlpha(0)
-        }
+        applyImeGlassSurfaceAlpha(mainView)
 
         mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
         mainView.root.clipToOutline = isKeyboardRounded == true
@@ -5078,6 +5098,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        unregisterCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.destroy()
             inlineAutofillController = null
@@ -5409,18 +5430,82 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun shouldApplyImeWindowBlur(): Boolean {
-        return liquidGlassThemePreference == true &&
-                isKeyboardFloatingMode != true &&
-                physicalKeyboardEnable.replayCache.firstOrNull() != true &&
-                hasHardwareKeyboardConnected != true
+    private fun registerCrossWindowBlurListener() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || crossWindowBlurListenerRegistered) {
+            return
+        }
+
+        val manager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
+        imeWindowManager = manager
+        crossWindowBlurEnabled = runCatching {
+            manager.isCrossWindowBlurEnabled
+        }.getOrDefault(false)
+
+        runCatching {
+            manager.addCrossWindowBlurEnabledListener(
+                ContextCompat.getMainExecutor(this),
+                crossWindowBlurEnabledListener,
+            )
+            crossWindowBlurListenerRegistered = true
+        }.onFailure { throwable ->
+            Timber.w(throwable, "Unable to observe cross-window blur state")
+            crossWindowBlurEnabled = false
+        }
+    }
+
+    private fun unregisterCrossWindowBlurListener() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || !crossWindowBlurListenerRegistered) {
+            return
+        }
+
+        runCatching {
+            imeWindowManager?.removeCrossWindowBlurEnabledListener(
+                crossWindowBlurEnabledListener
+            )
+        }.onFailure { throwable ->
+            Timber.w(throwable, "Unable to remove cross-window blur listener")
+        }
+        crossWindowBlurListenerRegistered = false
+        imeWindowManager = null
+    }
+
+    private fun currentImeGlassRenderDecision(): ImeGlassRenderDecision {
+        return ImeGlassRenderPolicy.resolve(
+            sdkInt = Build.VERSION.SDK_INT,
+            glassEnabled = liquidGlassThemePreference == true,
+            floatingMode = isKeyboardFloatingMode == true,
+            physicalKeyboardEnabled = physicalKeyboardEnable.replayCache.firstOrNull() == true,
+            hardwareKeyboardConnected = hasHardwareKeyboardConnected == true,
+            crossWindowBlurEnabled = crossWindowBlurEnabled,
+        )
+    }
+
+    private fun applyImeGlassSurfaceAlpha(
+        mainView: MainLayoutBinding,
+        decision: ImeGlassRenderDecision = currentImeGlassRenderDecision(),
+    ) {
+        if (liquidGlassThemePreference != true) return
+
+        val rootAlpha = when (decision.mode) {
+            ImeGlassRenderMode.SYSTEM_BLUR -> liquidGlassBlurRadiousPreference ?: 220
+            ImeGlassRenderMode.OPAQUE_BACKDROP,
+            ImeGlassRenderMode.NO_BLUR,
+                -> 255
+        }
+        mainView.root.setDrawableAlpha(rootAlpha)
+        mainView.suggestionViewParent.setDrawableAlpha(0)
+        mainView.candidateTabLayout.setDrawableAlpha(0)
     }
 
     private fun updateImeWindowBlurForCurrentMode(targetWindow: Window? = window.window) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        val decision = currentImeGlassRenderDecision()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            targetWindow?.setBackgroundBlurRadius(decision.windowBlurRadius)
+        }
 
-        val blurRadius = if (shouldApplyImeWindowBlur()) 50 else 0
-        targetWindow?.setBackgroundBlurRadius(blurRadius)
+        mainLayoutBinding?.let { mainView ->
+            applyImeGlassSurfaceAlpha(mainView, decision)
+        }
     }
 
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
@@ -16310,7 +16395,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 !suppressSuggestions &&
                 requestInput.isNotEmpty() &&
                 inputString.value == requestInput &&
-                (token == null || candidateRequestTracker.isCurrent(token))
+                (token == null || (
+                    candidateRequestTracker.isCurrent(token) &&
+                        editorMutationRevision.isCurrent(token.editorMutationRevision)
+                    ))
     }
 
     private fun clearSuggestionStateAfterCommit() {
@@ -17425,12 +17513,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun scheduleDefaultInputFinalize(string: String) {
         val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
+        val mutationRevision = editorMutationRevision.current()
         defaultInputFinalizeJob = scope.launch {
             measureDebugStage("IMEService.input.finalizeDelay") {
                 delay(timeToDelay)
             }
 
-            if (inputString.value != string || isLiveConversionEnable == true) {
+            if (
+                inputString.value != string ||
+                !editorMutationRevision.isCurrent(mutationRevision) ||
+                isLiveConversionEnable == true
+            ) {
                 return@launch
             }
 
@@ -18786,6 +18879,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 input = input,
                                 mode = mode,
                                 backend = conversionBackend,
+                                editorMutationRevision = editorMutationRevision.current(),
                             )
                             ioScope.launch {
                                 setCandidatesForMode(input, mainView, mode, token)
@@ -22404,6 +22498,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             composingPipeline = {}
         )
         if (handled) {
+            editorMutationRevision.advance()
             clearDirectCommitCompositionState("direct commit backspace")
         }
         return handled
@@ -23005,6 +23100,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             input = inputString,
             mode = mode,
             backend = conversionBackend,
+            editorMutationRevision = editorMutationRevision.current(),
         )
         setCandidatesForMode(inputString, mainView, mode, token)
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
@@ -26685,14 +26781,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
-        return currentInputConnection.deleteSurroundingText(p0, p1)
+        val deleted = currentInputConnection.deleteSurroundingText(p0, p1)
+        if (deleted) editorMutationRevision.advance()
+        return deleted
     }
 
     override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
-        return currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
+        val deleted = currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
+        if (deleted) editorMutationRevision.advance()
+        return deleted
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
@@ -26721,26 +26821,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val committed = currentInputConnection.commitText(p0, p1)
-        if (committed) composingTextArbiter.markCanonicalFinished()
+        if (committed) {
+            editorMutationRevision.advance()
+            composingTextArbiter.markCanonicalFinished()
+        }
         return committed
     }
 
     override fun commitCompletion(p0: CompletionInfo?): Boolean {
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        return currentInputConnection.commitCompletion(p0)
+        val committed = currentInputConnection.commitCompletion(p0)
+        if (committed) editorMutationRevision.advance()
+        return committed
     }
 
     override fun commitCorrection(p0: CorrectionInfo?): Boolean {
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        return currentInputConnection.commitCorrection(p0)
+        val committed = currentInputConnection.commitCorrection(p0)
+        if (committed) editorMutationRevision.advance()
+        return committed
     }
 
     override fun setSelection(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        return currentInputConnection.setSelection(p0, p1)
+        val changed = currentInputConnection.setSelection(p0, p1)
+        if (changed) editorMutationRevision.advance()
+        return changed
     }
 
     override fun performEditorAction(p0: Int): Boolean {
