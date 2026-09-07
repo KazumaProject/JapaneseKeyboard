@@ -18,6 +18,8 @@ import android.view.Gravity
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import androidx.core.text.inSpans
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -123,7 +125,11 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         inputTextTransform = transform
     }
 
+    private var skinCharacters: Map<FlickDirection, String>? = null
+
     fun updateText(text: String?) {
+        skinCharacters = null
+        applyResolvedColors()
         if (text.isNullOrEmpty()) {
             this.text = ""
             return
@@ -132,6 +138,8 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     }
 
     fun updateMultiCharText(characters: Map<FlickDirection, String>) {
+        skinCharacters = characters
+        applyResolvedColors()
         val up = inputTextTransform(characters[FlickDirection.UP] ?: "")
         val left = inputTextTransform(characters[FlickDirection.UP_LEFT_FAR] ?: "")
         val tap = inputTextTransform(characters[FlickDirection.TAP] ?: "")
@@ -231,7 +239,10 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         return spannable
     }
 
+    private var skinId = KeyboardSkinId.DEFAULT
+
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        skinId = style.skinId
         val scale = style.sizeScalePercent.coerceIn(50, 200) / 100f
         viewSize = (dpToPx(72) * scale).toInt().coerceAtLeast(1)
         popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
@@ -244,7 +255,38 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         invalidate()
     }
 
+    override fun onDraw(canvas: Canvas) {
+        val skin = KeyboardSkinRegistry.find(skinId)
+        val characters = skinCharacters
+        if (skin == null || characters == null) { super.onDraw(canvas); return }
+        val positions = mapOf(FlickDirection.TAP to (1 to 1), FlickDirection.UP to (1 to 0),
+            FlickDirection.DOWN to (1 to 2), FlickDirection.UP_LEFT_FAR to (0 to 1),
+            FlickDirection.UP_RIGHT_FAR to (2 to 1))
+        val cellWidth = width / 3f
+        val cellHeight = height / 3f
+        val labelPaint = Paint(paint).apply { textAlign = Paint.Align.CENTER }
+        characters.forEach { (direction, label) ->
+            val (column, row) = positions[direction] ?: return@forEach
+            val selected = direction == FlickDirection.TAP
+            skin.popupDrawable(resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER, selected).apply {
+                setBounds((column * cellWidth).toInt(), (row * cellHeight).toInt(),
+                    ((column + 1) * cellWidth).toInt(), ((row + 1) * cellHeight).toInt())
+                draw(canvas)
+            }
+            labelPaint.color = if (selected) skin.palette.selectionText else skin.palette.text
+            labelPaint.textSize = minOf(spToPx(popupTextSizeSp).toFloat(), cellHeight * .55f)
+            canvas.drawText(inputTextTransform(label), (column + .5f) * cellWidth,
+                (row + .5f) * cellHeight - (labelPaint.ascent() + labelPaint.descent()) / 2, labelPaint)
+        }
+    }
+
     private fun applyResolvedColors() {
+        KeyboardSkinRegistry.find(skinId)?.let { skin ->
+            background = if (skinCharacters == null) skin.popupDrawable(resources, flickDirection.skinDirection()) else null
+            setTextColor(skin.palette.text)
+            return
+        }
+        background = backgroundDrawable
         setTextColor(popupTextColor ?: lastTextColor)
         backgroundDrawable.setColor(popupBackgroundColor ?: lastBackgroundColor)
         backgroundDrawable.setStroke(dpToPx(1), lastStrokeColor)

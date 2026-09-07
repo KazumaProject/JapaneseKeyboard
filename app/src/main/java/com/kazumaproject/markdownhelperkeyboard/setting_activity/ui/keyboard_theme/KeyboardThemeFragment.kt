@@ -7,6 +7,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
@@ -15,6 +16,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
@@ -423,6 +425,28 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val appearancePreferences = (0 until screen.preferenceCount).map(screen::getPreference)
+            .filter { it.key != CATEGORY_KEY_CUSTOM_INPUT }
+        val skinPreference = ListPreference(context).apply {
+            key = KeyboardSkinId.PREFERENCE_KEY
+            title = getString(R.string.keyboard_skin_title)
+            entries = arrayOf(getString(R.string.keyboard_skin_default),
+                getString(R.string.keyboard_skin_cupertino_light), getString(R.string.keyboard_skin_cupertino_dark))
+            entryValues = KeyboardSkinId.entries.map { it.preferenceValue }.toTypedArray()
+            setDefaultValue(KeyboardSkinId.DEFAULT.preferenceValue)
+            summaryProvider = Preference.SummaryProvider<ListPreference> { preference ->
+                val name = preference.entry ?: getString(R.string.keyboard_skin_default)
+                "$name\n${getString(R.string.keyboard_skin_summary)}"
+            }
+            order = -1
+            setOnPreferenceChangeListener { _, newValue ->
+                val isDefault = KeyboardSkinId.fromPreference(newValue as String) == KeyboardSkinId.DEFAULT
+                appearancePreferences.forEach { it.isEnabled = isDefault }
+                true
+            }
+        }
+        screen.addPreference(skinPreference)
+        appearancePreferences.forEach { it.isEnabled = appPreference.keyboardSkin == KeyboardSkinId.DEFAULT }
         preferenceScreen = screen
 
         // Initialize state based on current preference

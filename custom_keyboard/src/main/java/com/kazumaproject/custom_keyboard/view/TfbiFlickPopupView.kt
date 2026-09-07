@@ -7,6 +7,8 @@ import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
@@ -93,7 +95,10 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         }
     }
 
+    private var skinId = KeyboardSkinId.DEFAULT
+
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        skinId = style.skinId
         popupBackgroundColor = style.backgroundColor
         popupTextColor = style.textColor
         textPaint.textSize = spToPx(style.textSizeSp.coerceIn(8f, 48f))
@@ -118,6 +123,21 @@ class TfbiFlickPopupView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        KeyboardSkinRegistry.find(skinId)?.let { skin ->
+            val characters = petalCharacters + (TfbiFlickDirection.TAP to tapCharacter)
+            characters.forEach { (direction, label) ->
+                rects[direction]?.let { rect ->
+                    val selected = direction == highlightedDirection
+                    skin.popupDrawable(resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER, selected).apply {
+                        setBounds(rect.left.toInt(), rect.top.toInt(), rect.right.toInt(), rect.bottom.toInt())
+                        draw(canvas)
+                    }
+                    textPaint.color = if (selected) skin.palette.selectionText else skin.palette.text
+                    drawTextCentered(canvas, inputTextTransform(label), rect)
+                }
+            }
+            return
+        }
 
         rects[TfbiFlickDirection.TAP]?.let { rect ->
             val paint =
