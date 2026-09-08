@@ -418,6 +418,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * メンバ変数に値を保存してからテーマを適用します。
      * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
      */
+    private val skinColorRestorer by lazy {
+        com.kazumaproject.core.ui.skin.KeyboardSkinColorRestorer(binding.root)
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -436,6 +440,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     ) {
         // メンバ変数に代入
         if (this.keyboardSkinId != skinId) { dismissKeyPreview(); dismissVariationPopup() }
+        skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
 
@@ -559,7 +564,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (view is AppCompatButton) view.setTextColor(specialColorStateList)
 
                 if (view is AppCompatImageButton) {
-                    ImageViewCompat.setImageTintList(view, specialColorStateList)
+                    if (keyboardSkinId == KeyboardSkinId.DEFAULT) {
+                        ImageViewCompat.setImageTintList(view, specialColorStateList)
+                    } else {
+                        // A skin filter preserves intrinsic vector tints (e.g. cursor arrows).
+                        view.setColorFilter(specialKeyTextColor)
+                    }
                 }
                 view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
             }

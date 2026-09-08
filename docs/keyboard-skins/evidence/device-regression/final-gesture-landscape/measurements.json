@@ -1,0 +1,2150 @@
+[
+  {
+    "name": "TENKEY-0-default-empty",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-composing",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-committed",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-gesture",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-delete",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-longpress",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-symbol",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-return",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-empty",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-composing",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-committed",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-gesture",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-delete",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-longpress",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-symbol",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-1-cupertino_light-return",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-empty",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-composing",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-committed",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-gesture",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-delete",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-longpress",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-symbol",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-2-cupertino_dark-return",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-empty",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-composing",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-committed",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-gesture",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-delete",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-longpress",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-symbol",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "TENKEY-3-default-return",
+    "keyboard_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_1": [
+      589,
+      385,
+      1028,
+      514
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-empty",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-composing",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-committed",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-gesture",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-delete",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-symbol",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-0-default-return",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-empty",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-composing",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-committed",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-gesture",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-delete",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-symbol",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-1-cupertino_light-return",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-empty",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-composing",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-committed",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-gesture",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      189,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      89,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-delete",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-symbol",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      220,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-2-cupertino_dark-return",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      225,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      220,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-empty",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-composing",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-committed",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-gesture",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      215,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      215,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-delete",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-symbol",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-symbol-category",
+    "keyboard_symbol_view": [
+      128,
+      346,
+      2400,
+      954
+    ],
+    "return_jp_keyboard_button": [
+      128,
+      786,
+      582,
+      954
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  },
+  {
+    "name": "QWERTY-3-default-return",
+    "qwerty_view": [
+      128,
+      377,
+      2400,
+      954
+    ],
+    "suggestionView_parent": [
+      128,
+      346,
+      2400,
+      377
+    ],
+    "key_a": [
+      188,
+      534,
+      418,
+      653
+    ],
+    "inputArea": [
+      128,
+      346,
+      2400,
+      1080
+    ],
+    "navigationInsets": [
+      0,
+      0,
+      0,
+      63
+    ]
+  }
+]

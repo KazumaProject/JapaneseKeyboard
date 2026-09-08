@@ -1,0 +1,143 @@
+[
+  {
+    "name": "TENKEY-0-default-empty",
+    "keyboard_view_floating": [
+      0,
+      1571,
+      1080,
+      2148
+    ],
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "key_1": [
+      222,
+      1579,
+      423,
+      1708
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-composing",
+    "keyboard_view_floating": [
+      0,
+      1571,
+      1080,
+      2148
+    ],
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "key_1": [
+      222,
+      1579,
+      423,
+      1708
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-committed",
+    "keyboard_view_floating": [
+      0,
+      1571,
+      1080,
+      2148
+    ],
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "key_1": [
+      222,
+      1579,
+      423,
+      1708
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-gesture",
+    "keyboard_view_floating": [
+      0,
+      1571,
+      1080,
+      2148
+    ],
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "key_1": [
+      222,
+      1579,
+      423,
+      1708
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-delete",
+    "keyboard_view_floating": [
+      0,
+      1571,
+      1080,
+      2148
+    ],
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "key_1": [
+      222,
+      1579,
+      423,
+      1708
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-symbol",
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "return_jp_keyboard_button": [
+      0,
+      1980,
+      216,
+      2148
+    ]
+  },
+  {
+    "name": "TENKEY-0-default-return",
+    "keyboard_view_floating": [
+      0,
+      1571,
+      1080,
+      2148
+    ],
+    "suggestionView_parent": [
+      0,
+      1419,
+      1080,
+      1571
+    ],
+    "key_1": [
+      222,
+      1579,
+      423,
+      1708
+    ]
+  }
+]

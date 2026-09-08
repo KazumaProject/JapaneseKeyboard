@@ -914,6 +914,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * メンバ変数に値を保存してからテーマを適用します。
      * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
      */
+    private val skinColorRestorer by lazy {
+        com.kazumaproject.core.ui.skin.KeyboardSkinColorRestorer(binding.root)
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -930,8 +934,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         borderWidth: Int,
         skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
-        // メンバ変数に代入
+        // Dismiss held labels before restoring colors, so their cleanup cannot restore skin colors.
         if (this.keyboardSkinId != skinId && ::popupWindowActive.isInitialized) { hideAllPopWindow() }
+        skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
 

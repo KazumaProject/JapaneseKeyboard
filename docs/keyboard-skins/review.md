@@ -1,63 +1,41 @@
-# 実装レビュー / Implementation review
+# PR #992 再レビュー
 
-2026-09-08。`dev` を起点とする差分と今回の修正を自己レビューしました。
-合意済みの範囲内で、未解決の修正指摘はありません。独立レビューを受けたとの主張はしていません。
+## デフォルト互換性
 
-Self-review covers the implementation against `dev`, the follow-up fixes, input
-compatibility, lifecycle cleanup and the evidence. No unresolved actionable findings
-remain within the agreed scope. No independent reviewer or agent review is claimed.
+基準は PR 前の `bbdc74147` です。デフォルトの高さ計算に対する無条件の
+Insets 加算を取り消し、補正はクパチーノ ライト／ダークだけに限定しました。
+デフォルトの候補欄・記号画面の高さ、padding、キー寸法、入力判定を維持します。
 
-## 修正・確認事項 / Findings fixed and checked
+以前の「既存の候補欄が壊れていた」という原因説明と、デフォルトにも
+補正を適用した状態を合格とする評価は取り消します。
+旧エミュレーターの候補欄測定値は、今回の合格根拠には使用しません。
 
-- Keep the skin preference separate from saved custom colors. Default returns the
-  original preference snapshot; unknown identifiers fall back without deleting data.
-  Effective overrides change appearance only. Candidate columns, key dimensions,
-  input thresholds, character order and selection mapping remain unchanged.
-- Pass the skin identifier through normal/floating and tenkey/gojuon/QWERTY/custom/
-  symbol call sites, including popup style normalization. Preserve Default rendering
-  and independently mutable key drawables; test fresh-view initialization and round trips.
-- Keep QWERTY long-press variations in their existing three-column grid, including
-  empty cells, dimensions and offsets. Its short visual release timer does not delay
-  commits. New input, CANCEL, hiding, skin changes and detach close retained visuals.
-- Restore original popup gravity, font padding, size, translation, elevation and
-  stateful label colors on return to Default. Weak-cache values do not retain views.
-- Draw fitting kana guides in the keyboard window overlay. Keep an overflow window
-  for smaller floating/embedded roots. The overlay is visual only; the keyboard owns
-  hit testing and commits. Cancel both pending pre-draw listeners and active animation
-  frames on replacement/detach. Respect disabled system animations.
-- Reserve navigation insets outside configured content height in both layout paths.
-  Refresh reused candidate appearance at input start as well as view creation, restore
-  each role's original text/tint values, and retain the saved theme context under skins.
-  [Actual-IME measurements](ime-layout.md) verify the cause and the fix.
-- Use direct display timestamps for motion. Reject missing, duplicate, empty or corrupt
-  data. Keep all measured trials and predeclare warm-ups. Start the diagnostic frame
-  clock after ActivityScenario launch and stop it before close to avoid its idle barrier.
-  Incomplete or software-renderer recordings are not used as successful evidence.
+## 今回修正した問題
 
-## 検証 / Validation
+- 記号キーボードの着せ替えがビュー作成時しか更新されない。
+  入力開始・表示切り替えにも更新し、フローティングにも適用しました。
+- 記号画面の選択中アイコンが選択背景と同色になる。
+  選択文字色を使い、ライト／ダーク両方でアイコンを表示します。
+- 記号画面からデフォルトへ戻しても、背景・タブ・余白・アイコン色が残る。
+  元の描画状態を復元し、以前の着せ替えの遅延処理を無効化しました。
+- テンキーと QWERTY の文字・アイコン色に着せ替えの状態が残る。
+  組み込みキーの元の ColorStateList と color filter を保持して復元します。
+  QWERTY のクパチーノ描画は、カーソル矢印が持つ元の vector tint を壊しません。
+- 候補欄の展開ボタンの背景色が残る。
+  同じ resource ID を再設定するだけでなく、テーマから背景を読み直します。
+- 候補アダプターが変更していない null tint を再設定し、クリップボードの
+  vector 自体の色を消してしまう。実際に変わった tint だけを復元します。
 
-- 615 related unit tests: app 350, core 30, custom keyboard 194, tenkey 6,
-  QWERTY 34, gojuon 1. No failures, errors or skips.
-- Six Python verifier tests reject invalid input and out-of-budget comparisons.
-- Actual-IME checks cover Default → Light → Dark → Default, with empty, composing
-  and committed states, in portrait gesture, portrait three-button and landscape
-  three-button navigation. Assert 60/110/60 dp, two candidate rows, appearance and
-  input results, plus bottom/side navigation separation.
-- Final production-view popup tests pass three cases covering commits, five held
-  directions, Default-compatible selection and detach/cancellation cleanup.
-- 22 static cases pass whole-outline ≤1 pt and opaque RGB ≤2; maximum outline error
-  is 0.943 pt. Final direct motion passes 48 trials / 84 milestones, maximum difference
-  below 15.001 ms against a 16.667 ms criterion. See [all evidence](evidence/fidelity/README.md).
-- Isolated LiteStandardDebug application and Android-test APKs build successfully.
-  The normal installed app is not overwritten.
+保存済み設定をスキン用の値で上書きする処理は追加していません。
+キー寸法・フリック判定・候補列数・文字順・長押し閾値の変更もありません。
 
-## 合意済みの範囲 / Agreed scope
+## 検証資料
 
-フォントデータは追加せず既存の字形を維持します。文字のサイズ・配置と動作は検証対象です。
-候補列数と QWERTY の3列選択を含む既存の入力仕様を保ちます。
+[Pixel 6 実機の検証結果](device-regression.md) に、比較条件、実行結果、
+APK の SHA-256、画面と座標の証拠を記録しています。
+`SkinRegressionDeviceTest` は、本番 IME で文字・候補・記号を実際に入力し、
+デフォルトへの復帰時は画像の一致も検査します。
 
-Existing platform glyphs are retained without font assets. The static and motion
-results describe the named reference conditions and measured tolerances, not universal
-pixel identity at every OS release, user size or backdrop. Final motion is verified on
-the host-GPU API 35 emulator; earlier physical Pixel 6 captures are not mislabeled as
-verification of the final curve after that device disconnected.
+従来の iOS との静止画・動作比較資料は当時の測定結果です。
+今回再実行していない測定を、最新版で再検証したとは扱いません。
+本レビューは自己レビューであり、独立した第三者レビューとの主張はしません。
