@@ -4,7 +4,8 @@
   "acceptance": {
     "outline_tolerance_pt": 1,
     "opaque_rgb_tolerance": 2,
-    "glyph_mask": "exact equality; bounding-box agreement is insufficient"
+    "glyph_mask": "diagnostic only; glyph identity excluded by requester on 2026-09-08",
+    "font_policy": "retain existing platform fonts; no font assets; text size and placement remain in scope"
   },
   "reference": "build/keyboard-skins/final-reference",
   "android": "build/keyboard-skins/popup-fidelity-v9",

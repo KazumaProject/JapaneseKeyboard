@@ -19,9 +19,13 @@ pixels around edges and glyph antialiasing are excluded only from the interior c
 Paired dark before/held captures resolve corners that overlap indistinguishable white
 backgrounds in the light captures. See the verifier for the exact masks and anchor positions.
 
-**Glyph masks do not match exactly.** Bounding-box errors range up to 1.333 pt and
-shape differences remain even where the bounds agree. Full typography is a failed criterion,
-not an unperformed test. Platform-font substitutions are not called identical iOS fonts.
+**既存フォントを維持し、フォントデータを追加しません（2026-09-08 の依頼者指定）。**
+字形の一致は対象外です。文字サイズ・ベースライン・位置は引き続き調整・検証対象です。
+
+**Existing platform fonts are retained without additional font assets**, per the requester
+on 2026-09-08. Glyph-outline identity is out of scope. Glyph masks remain diagnostic only;
+the recorded measurements are unchanged. Bounding-box differences range up to 1.333 pt.
+Text size, baseline and placement remain calibration and verification targets.
 
 The fitted dark fields approximate the reference material and lighting. Fitting and
 spatial held-out residuals do not certify an unseen device, backdrop or geometry. The
