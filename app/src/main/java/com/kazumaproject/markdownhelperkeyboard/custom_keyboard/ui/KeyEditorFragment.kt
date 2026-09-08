@@ -1155,18 +1155,20 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                             (binding.keyLabelEdittext.text.toString().isNotEmpty() && hasAnyOutput)
                 } else {
                     // Petal: label must be filled
-                    val hasToggleOutput = currentToggleFlickItems.any { it.output.isNotEmpty() }
+                    val hasToggleCenter = currentToggleFlickItems.any {
+                        it.direction == FlickDirection.TAP && it.output.isNotEmpty()
+                    }
                     val toggleOutputsAreValid = selectedTextInputBehavior != KeyTextInputBehavior.TOGGLE ||
-                        (hasToggleOutput &&
+                        (hasToggleCenter &&
                             currentToggleFlickItems.all {
                                 it.output.isEmpty() || it.output.length == 1
                             })
                     binding.textCharInputLayout.error = if (toggleOutputsAreValid) {
                         null
-                    } else if (!hasToggleOutput &&
+                    } else if (!hasToggleCenter &&
                         selectedTextInputBehavior == KeyTextInputBehavior.TOGGLE
                     ) {
-                        "トグル出力を1つ以上設定してください"
+                        "中央のトグル出力を設定してください"
                     } else {
                         "トグル出力は1文字で設定してください"
                     }
@@ -1787,7 +1789,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
             binding.inputStyleChipGroup.checkedChipId == R.id.chip_petal_flick &&
             selectedTextInputBehavior == KeyTextInputBehavior.TOGGLE &&
-            currentToggleFlickItems.none { it.output.isNotEmpty() }
+            currentToggleFlickItems.none {
+                it.direction == FlickDirection.TAP && it.output.isNotEmpty()
+            }
         ) {
             return
         }

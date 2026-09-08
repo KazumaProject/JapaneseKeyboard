@@ -13461,7 +13461,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 if (isDirect) customToggleEditInProgress = true
                 try {
-                    handleCustomKeyboardText(mutation.text, mainView, isFlick = false)
+                    // A new toggle sequence must append, bypassing the legacy kana tap cycle.
+                    handleCustomKeyboardText(mutation.text, mainView, isFlick = true)
                 } finally {
                     if (isDirect) customToggleEditInProgress = false
                 }
