@@ -1,0 +1,14 @@
+{
+  "target": {
+    "sha256": "59dde9c2bc3d57451a7f3db550e67df2b1f34fa85485ac5a1b4dcda093328e86",
+    "bytes": 71979220
+  },
+  "baseline": {
+    "sha256": "b93a04fe1ec2b4af2e20b2243dc6893e35528c2c7f270e7238446b0200e788e0",
+    "bytes": 71236845
+  },
+  "lab": {
+    "sha256": "520dfcfeae3f3c79a3ec305dd2c7b15cc3df2c6d0ea17cedca63e8695920d9bd",
+    "bytes": 5457089
+  }
+}

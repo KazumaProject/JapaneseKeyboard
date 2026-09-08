@@ -1,0 +1,112 @@
+{
+  "jvm": [
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcherTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.InputTypeExtensionTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.KeyInputBehaviorDispatcherTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.ime_service.editor.EditorEnterPolicyTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolverTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiterTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.RuntimeInputBehaviorPolicyTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "custom_keyboard",
+      "suite": "com.kazumaproject.custom_keyboard.DynamicSumireSpecialKeyTapOverrideDisplayTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "custom_keyboard",
+      "suite": "com.kazumaproject.custom_keyboard.SumireSpecialKeyDisplayActionMapTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "custom_keyboard",
+      "suite": "com.kazumaproject.custom_keyboard.SumireSpecialKeyRefreshTapTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "custom_keyboard",
+      "suite": "com.kazumaproject.custom_keyboard.FlickKeyboardViewSumireSpecialKeyActionDispatcherTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "custom_keyboard",
+      "suite": "com.kazumaproject.custom_keyboard.SumireSpecialKeyRuntimeActionDispatcherTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "custom_keyboard",
+      "suite": "com.kazumaproject.custom_keyboard.FlickKeyboardViewSumireSpecialKeyDirectionTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "python": {
+    "tests": 13,
+    "failures": 0
+  }
+}
