@@ -180,6 +180,13 @@
                     android:text="通常" />
 
                 <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_toggle_output"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="トグル" />
+
+                <com.google.android.material.chip.Chip
                     android:id="@+id/chip_long_press_output"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
