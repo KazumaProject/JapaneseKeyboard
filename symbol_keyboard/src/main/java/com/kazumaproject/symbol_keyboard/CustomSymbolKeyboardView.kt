@@ -259,6 +259,59 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     /**
      * 動的にテーマカラーを適用するメソッド
      */
+    // Capture the existing XML appearance before the first override, including tab geometry.
+    private class OriginalAppearance(val view: View) {
+        val background = view.background
+        val tint = view.backgroundTintList
+        val padding = intArrayOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom)
+        val margins = (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+            intArrayOf(it.leftMargin, it.topMargin, it.rightMargin, it.bottomMargin)
+        }
+        val clipChildren = (view as? ViewGroup)?.clipChildren
+        val clipPadding = (view as? ViewGroup)?.clipToPadding
+        val iconTint = (view as? TabLayout)?.tabIconTint
+        val textColors = (view as? TabLayout)?.tabTextColors
+        val ripple = (view as? TabLayout)?.tabRippleColor
+        val imageTint = (view as? android.widget.ImageView)?.imageTintList
+        fun restore() {
+            view.background = background
+            view.backgroundTintList = tint
+            view.setPadding(padding[0], padding[1], padding[2], padding[3])
+            margins?.let { m -> (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+                it.setMargins(m[0],m[1],m[2],m[3]); view.layoutParams = it
+            } }
+            (view as? ViewGroup)?.let { it.clipChildren = clipChildren!!; it.clipToPadding = clipPadding!! }
+            (view as? TabLayout)?.let { it.tabIconTint = iconTint; it.tabTextColors = textColors; it.tabRippleColor = ripple }
+            (view as? android.widget.ImageView)?.let { it.clearColorFilter(); it.imageTintList = imageTint }
+        }
+    }
+    private val originalAppearance = mutableMapOf<View, OriginalAppearance>()
+    private var themeRevision = 0
+    private fun rememberAppearance(view: View) {
+        originalAppearance.getOrPut(view) { OriginalAppearance(view) }
+    }
+
+    fun restoreDefaultKeyboardTheme() {
+        if (!isCustomThemeApplied) return
+        themeRevision++
+        skinTonePopup?.dismiss()
+        keyboardSkinId = KeyboardSkinId.DEFAULT
+        isCustomThemeApplied = false
+        liquidGlassEnable = false
+        originalAppearance.values.forEach { it.restore() }
+        originalAppearance.clear()
+        themeBackgroundColor = Color.WHITE
+        themeIconColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
+        themeSelectedIconColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.enter_key_bg)
+        themeKeyBackgroundColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_bg)
+        symbolAdapter.setThemeColors(null, null)
+        // Rebuild selection colors using the same path as a fresh Default view.
+        val mode = currentMode
+        buildModeTabs()
+        modeTab.getTabAt(mode.ordinal)?.select()
+        buildCategoryTabs()
+    }
+
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
 
     fun setKeyboardTheme(
@@ -269,6 +322,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         liquidGlassEnable: Boolean,
         skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT,
     ) {
+        themeRevision++
+        skinTonePopup?.dismiss()
+        listOf(this, categoryTab, modeTab, returnButton, deleteButton).forEach(::rememberAppearance)
+        listOf(categoryTab, modeTab).forEach { it.getChildAt(0)?.let(::rememberAppearance) }
         keyboardSkinId = skinId
         this.themeBackgroundColor = backgroundColor
         this.themeIconColor = iconColor
@@ -308,9 +365,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         disableClipping(categoryTab)
 
         // ★重要: タブの生成完了を待ってから背景を適用 (postを使用)
-        categoryTab.post {
-            applyThemeToTabs(categoryTab, backgroundColor)
-        }
+        postTabTheme(categoryTab)
 
         // 4. Mode Tab (Bottom Bar) の全体設定
         modeTab.backgroundTintList = bgTintList
@@ -320,9 +375,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         // ★重要: クリッピング無効化と遅延適用
         disableClipping(modeTab)
-        modeTab.post {
-            applyThemeToTabs(modeTab, backgroundColor)
-        }
+        postTabTheme(modeTab)
 
         // 5. 機能キー (Return/Delete) のニューモーフィズム設定
         val keyRadius = dpToPx(25).toFloat()
@@ -361,11 +414,19 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     /**
      * TabLayout内のすべてのタブViewに対して、ニューモーフィズム背景とマージンを適用する
      */
+    private fun postTabTheme(tabLayout: TabLayout) {
+        val revision = themeRevision
+        tabLayout.post {
+            if (isCustomThemeApplied && revision == themeRevision) applyThemeToTabs(tabLayout, themeBackgroundColor)
+        }
+    }
+
     private fun applyThemeToTabs(tabLayout: TabLayout, @ColorInt baseColor: Int) {
         val slidingTabStrip = tabLayout.getChildAt(0) as? ViewGroup ?: return
 
         for (i in 0 until slidingTabStrip.childCount) {
             val tabView = slidingTabStrip.getChildAt(i)
+            rememberAppearance(tabView)
 
             // マージンを設定 (影のスペースを確保するため 4dp 程度確保)
             val params = tabView.layoutParams as? ViewGroup.MarginLayoutParams
@@ -653,9 +714,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
         if (isCustomThemeApplied) {
             // postを使って描画後に適用
-            modeTab.post {
-                applyThemeToTabs(modeTab, themeBackgroundColor)
-            }
+            postTabTheme(modeTab)
         }
     }
 
@@ -765,9 +824,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
         if (isCustomThemeApplied) {
             // postを使って描画後に適用
-            categoryTab.post {
-                applyThemeToTabs(categoryTab, themeBackgroundColor)
-            }
+            postTabTheme(categoryTab)
         }
     }
 

@@ -1,0 +1,2372 @@
+[
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-0-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "TENKEY-3-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-0-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-portrait",
+    "phase": "QWERTY-3-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-0-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "TENKEY-3-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      642,
+      884,
+      682
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      773,
+      884,
+      813
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      773,
+      884,
+      813
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      773,
+      884,
+      813
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      642,
+      884,
+      682
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-0-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      642,
+      884,
+      682
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      642,
+      884,
+      682
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      773,
+      884,
+      813
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      773,
+      884,
+      813
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      773,
+      884,
+      813
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      642,
+      884,
+      682
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-landscape",
+    "phase": "QWERTY-3-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      843,
+      642,
+      884,
+      682
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-landscape"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-0-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "TENKEY-3-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-0-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-large",
+    "phase": "QWERTY-3-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-large"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      53,
+      638,
+      147,
+      677
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      53,
+      638,
+      147,
+      677
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-0-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      53,
+      638,
+      147,
+      677
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      53,
+      638,
+      147,
+      677
+    ],
+    "matchingPrePrCapture": "baseline-repeat-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "TENKEY-3-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-0-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "threebutton-floating",
+    "phase": "QWERTY-3-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-floating"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-0-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "TENKEY-3-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-0-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-portrait",
+    "phase": "QWERTY-3-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-portrait"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-0-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "TENKEY-3-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      374,
+      2115,
+      411
+    ],
+    "matchingPrePrCapture": "baseline-repeat-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      505,
+      2115,
+      542
+    ],
+    "matchingPrePrCapture": null,
+    "matchingPrePrRegions": {
+      "keyboardBody": "baseline-repeat-gesture-landscape",
+      "remainder": "baseline-gesture-landscape"
+    },
+    "keyboardBodyBounds": [
+      128,
+      377,
+      2400,
+      954
+    ]
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      505,
+      2115,
+      542
+    ],
+    "matchingPrePrCapture": null,
+    "matchingPrePrRegions": {
+      "keyboardBody": "baseline-repeat-gesture-landscape",
+      "remainder": "baseline-gesture-landscape"
+    },
+    "keyboardBodyBounds": [
+      128,
+      377,
+      2400,
+      954
+    ]
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      505,
+      2115,
+      542
+    ],
+    "matchingPrePrCapture": null,
+    "matchingPrePrRegions": {
+      "keyboardBody": "baseline-repeat-gesture-landscape",
+      "remainder": "baseline-gesture-landscape"
+    },
+    "keyboardBodyBounds": [
+      128,
+      377,
+      2400,
+      954
+    ]
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      374,
+      2115,
+      411
+    ],
+    "matchingPrePrCapture": "baseline-repeat-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-0-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      374,
+      2115,
+      411
+    ],
+    "matchingPrePrCapture": "baseline-repeat-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      374,
+      2115,
+      411
+    ],
+    "matchingPrePrCapture": "baseline-repeat-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      505,
+      2115,
+      542
+    ],
+    "matchingPrePrCapture": null,
+    "matchingPrePrRegions": {
+      "keyboardBody": "baseline-repeat-gesture-landscape",
+      "remainder": "baseline-gesture-landscape"
+    },
+    "keyboardBodyBounds": [
+      128,
+      377,
+      2400,
+      954
+    ]
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      505,
+      2115,
+      542
+    ],
+    "matchingPrePrCapture": null,
+    "matchingPrePrRegions": {
+      "keyboardBody": "baseline-repeat-gesture-landscape",
+      "remainder": "baseline-gesture-landscape"
+    },
+    "keyboardBodyBounds": [
+      128,
+      377,
+      2400,
+      954
+    ]
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      505,
+      2115,
+      542
+    ],
+    "matchingPrePrCapture": null,
+    "matchingPrePrRegions": {
+      "keyboardBody": "baseline-repeat-gesture-landscape",
+      "remainder": "baseline-gesture-landscape"
+    },
+    "keyboardBodyBounds": [
+      128,
+      377,
+      2400,
+      954
+    ]
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      374,
+      2115,
+      411
+    ],
+    "matchingPrePrCapture": "baseline-repeat-gesture-landscape"
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "gesture-landscape",
+    "phase": "QWERTY-3-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": [
+      2068,
+      374,
+      2115,
+      411
+    ],
+    "matchingPrePrCapture": "baseline-repeat-gesture-landscape"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "TENKEY-1-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-light",
+    "phase": "QWERTY-1-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-empty",
+    "referencePhase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-composing",
+    "referencePhase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-committed",
+    "referencePhase": "TENKEY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-gesture",
+    "referencePhase": "TENKEY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-delete",
+    "referencePhase": "TENKEY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-longpress",
+    "referencePhase": "TENKEY-0-default-longpress",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-symbol",
+    "referencePhase": "TENKEY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-symbol-category",
+    "referencePhase": "TENKEY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "TENKEY-1-default-return",
+    "referencePhase": "TENKEY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-empty",
+    "referencePhase": "QWERTY-0-default-empty",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-composing",
+    "referencePhase": "QWERTY-0-default-composing",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-committed",
+    "referencePhase": "QWERTY-0-default-committed",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-gesture",
+    "referencePhase": "QWERTY-0-default-gesture",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-delete",
+    "referencePhase": "QWERTY-0-default-delete",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-symbol",
+    "referencePhase": "QWERTY-0-default-symbol",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-symbol-category",
+    "referencePhase": "QWERTY-0-default-symbol-category",
+    "geometryEqual": true,
+    "differences": {}
+  },
+  {
+    "configuration": "cold-dark",
+    "phase": "QWERTY-1-default-return",
+    "referencePhase": "QWERTY-0-default-return",
+    "geometryEqual": true,
+    "differences": {},
+    "pixelsEqual": true,
+    "primaryPixelDifferenceBounds": null,
+    "matchingPrePrCapture": "baseline-threebutton-portrait"
+  }
+]

@@ -1,45 +1,38 @@
-# 候補欄とシステム領域 / Candidate strip and system insets
+# 候補欄・ナビゲーションとデフォルト互換性
 
-## 原因 / Root causes
+## 修正範囲の訂正
 
-録画用 `SkinFidelityHostActivity` はキー単体を表示する部品検証用で、候補欄を含んでいませんでした。また、edge-to-edge の Activity 下端に配置し、ナビゲーション Insets を処理していませんでした。したがって、この録画だけで本番 IME 全体のレイアウトを検証したことにはなりません。部品ホストにはシステム Insets を適用し、全体表示は実際の `IMEService` を使う別の検証に分けました。
+PR 前の `bbdc74147` をデフォルトの基準とします。以前の資料で述べた
+「既存の候補欄が壊れていた」という説明は取り消します。クパチーノの問題を
+理由に、デフォルトの高さ計算を変更するべきではありませんでした。
 
-The component recording host omitted candidates and positioned its keyboard at an edge-to-edge Activity's bottom without system insets. It now respects those insets. Whole-keyboard validation uses the actual InputMethodService, its candidate adapters and its IME window.
+`e0b7b7a20` では親の高さに下部 Insets を無条件で加算していました。
+今回、その加算をクパチーノ ライト／ダークだけに限定しました。
+デフォルトの親の高さ、padding、記号画面の高さ計算は PR 前と同じです。
+保存済みの候補高さ・列数・キー寸法は変更しません。
 
-本番 IME にも別の不具合がありました。親の高さは「キー＋候補領域」なのに、ナビゲーション領域をその高さの内側の padding として消費していました。Pixel 6 / Android 17 / 3ボタン式では、キーはナビゲーション領域の直上にありましたが、候補領域が 126 px 削られていました。
+クパチーノでは設定した内容の外側に下部 Insets を確保し、記号画面の
+内容から同じ Insets を二重に差し引かないようにします。
+録画用 `SkinFidelityHostActivity` の表示と本番 `IMEService` の表示は区別します。
 
-| Pixel 6, density 2.625 | Configured strip | Space above keys before fix |
-| --- | ---: | ---: |
-| Empty composition | 60 dp / 157 px | 31 px |
-| Composing | 110 dp / 288 px | 162 px |
+## 着せ替えからの復元
 
-Separately, the production IME reserved navigation padding **inside** its configured content height. The measured Pixel 6 keyboard ended at y=2274, exactly where its 126 px navigation area began; its candidate region lost those 126 px. The recording-host overlap and the production candidate clipping had different causes.
+- 記号キーボードの配色を入力開始時・記号表示切り替え時にも更新します。
+  フローティングの記号画面にもクパチーノを適用します。
+  選択中アイコンには選択文字色を使い、背景と同色になる問題も修正します。
+- デフォルトへの復帰時は、記号画面の背景、タブ、ボタン、文字色、余白を
+  元に戻します。古い着せ替えの遅延タブ描画は実行しません。
+- テンキー・QWERTY・五十音の文字色とアイコン色を復元します。候補欄の展開ボタンは、着せ替えで
+  書き換えた背景を再利用せず、保存済みテーマの Context から読み直します。
+- 候補アダプターの文字色とショートカットも元の状態に戻します。
 
-候補の文字色・ショートカット・展開ボタンにも更新漏れがありました。キーは入力開始ごとに着せ替えを反映しましたが、候補アダプター等の配色はビュー作成時にしか反映されず、ライトでも前の暗いテーマ用の文字色が残りました。
+## 検証の扱い
 
-Candidate text, shortcuts and the expansion button also retained stale colors: keys refreshed at input-session start, while these candidate surfaces applied appearance only during view creation.
+`SkinRegressionDeviceTest` は隔離 APK の本番 IME を Pixel 6 で操作します。
+PR 前と修正版を同じ設定で比較し、デフォルトへの復帰は画像の一致も検査します。
+端末の通常アプリは上書きせず、入力方法と設定はテスト終了時に復元します。
 
-## 修正 / Changes
-
-- 親の高さを「内容の高さ＋実際の下部 Insets」とし、キーの寸法・候補の設定値・列数は維持します。旧レイアウト更新経路も同じ扱いにします。
-- 入力開始時とビュー作成時に候補の配色を共通処理で適用します。
-- デフォルトへ戻すと、候補各部の元の `ColorStateList` と背景、ショートカットの tint を復元します。
-- 着せ替えを初回起動から使ってもデフォルトへ戻せるよう、ビューの基礎 Context は保存済みテーマから作り、その上に着せ替えの描画を適用します。
-
-The window reserves insets outside the configured content. Candidate appearance refreshes in both lifecycle paths. Clearing overrides restores each role's original stateful colors and backgrounds. The underlying saved theme context is retained, including dynamic/seed colors, even when launching directly into a skin.
-
-## 検証 / Verification
-
-`SkinImeLayoutInstrumentedTest` temporarily selects only the isolated fidelity IME and restores the previous IME and preferences in `finally`. Clipboard content is excluded. It tests Default → Light → Dark → Default, with an empty composition, an active composition and the state after selecting a candidate.
-
-Assertions cover navigation separation, reserved heights of 60/110/60 dp, unchanged two-row candidate columns, candidate/shortcut pixels adopting the selected skin color, and successful text input/selection. API 35 emulator runs cover portrait gesture navigation and landscape three-button navigation (1080×2400, density 2.625), plus portrait three-button navigation (1440×3120, density 3.5). These are layout/behavior checks, separate from the timestamped iOS/Android motion matrix.
-
-- [Light, empty](evidence/ime-layout/light-empty.png)
-- [Light, composing](evidence/ime-layout/light-composing.png)
-- [Dark, empty](evidence/ime-layout/dark-empty.png)
-- [Dark, composing](evidence/ime-layout/dark-composing.png)
-- [Landscape, composing](evidence/ime-layout/landscape-light-composing.png)
-- [Three-button measurements](evidence/ime-layout/three-button-measurements.json)
-- [Landscape measurements](evidence/ime-layout/landscape-measurements.json)
-
-- [Gesture-navigation measurements](evidence/ime-layout/gesture-measurements.json)
+従来の `evidence/ime-layout/` は旧版のエミュレーター検証資料です。
+デフォルトにも Insets を加算した当時の結果であり、今回の修正版や
+デフォルトの互換性を証明する資料としては使用しません。
+最新の実機結果は [device-regression.md](device-regression.md) に記録しています。
