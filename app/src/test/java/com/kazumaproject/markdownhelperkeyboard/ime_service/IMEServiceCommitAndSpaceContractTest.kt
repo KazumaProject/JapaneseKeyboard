@@ -14,9 +14,7 @@ class IMEServiceCommitAndSpaceContractTest {
         )
 
         assertTrue(function.contains("dispatchDirectSpaceIfNeeded()"))
-        assertTrue(function.contains("val committedText = \"\$insertString \$tail\""))
-        assertTrue(function.contains("commitText(committedText, 1)"))
-        assertTrue(function.contains("currentCursorPosition - tail.length + 1"))
+        assertTrue(function.contains("commitRawTextAndInsertSpace(inputString.value, stringInTail.get())"))
         assertTrue(function.contains("clearSuggestionStateAfterCommit()"))
         assertTrue(function.contains("resetFlagsEnterKeyNotHenkan()"))
     }
