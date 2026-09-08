@@ -75,8 +75,10 @@ class VariationsPopupView(context: Context) : View(context) {
     private val itemCornerRadius = 15f
 
     private var skinId = KeyboardSkinId.DEFAULT
+    private var skinBackground: android.graphics.drawable.Drawable? = null
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        skinBackground = null
         skinId = style.skinId
         popupBackgroundColor = style.backgroundColor
         popupTextColor = style.textColor
@@ -145,7 +147,7 @@ class VariationsPopupView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (chars.isEmpty()) return
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
-            val background = skin.popupDrawable(resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER)
+            val background = skinBackground ?: skin.variationDrawable(resources).also { skinBackground = it }
             background.setBounds(0, 0, width, height)
             background.draw(canvas)
             val paint = Paint(flatTextPaint).apply { textAlign = Paint.Align.CENTER }

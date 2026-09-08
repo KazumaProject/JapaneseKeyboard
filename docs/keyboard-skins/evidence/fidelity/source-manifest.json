@@ -1,0 +1,582 @@
+[
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-controlled-final.png",
+    "sha256": "36ac8b86c8b0e5cced70761967c58570686a48a19643e610284c89a18aaac3d2",
+    "bytes": 175104
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-down-before.png",
+    "sha256": "7ee88c491bdf18580c519a656fee379ffaa8a1c6d19530fa09b2cb5a860ac208",
+    "bytes": 190101
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-down.png",
+    "sha256": "62db2986f470c4c5faa317da458dd36af0f234e203154adf8f55a670a26218a8",
+    "bytes": 234121
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-left-before.png",
+    "sha256": "ddd39960ef116e23937609781eefc2d886f477bc5b8e187c186ea5445510760c",
+    "bytes": 188647
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-left.png",
+    "sha256": "6b4e04244e9cee9ca30734903a458f76e73aa93b46afccf034ba0164f54216b7",
+    "bytes": 229456
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-right-before.png",
+    "sha256": "fc6d57764c97ee83a5247979291a3c6256b7af406d57f88dd1e5ddced850b5da",
+    "bytes": 189447
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-right.png",
+    "sha256": "90cd202d7635fda12d8396566d54ea04cf6aa770f563fe80509c23df36f2dd15",
+    "bytes": 231396
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-up-before.png",
+    "sha256": "f20440e3d8dcd05e22c7f11fb3a5ce31c1900f07886695ffb54542d2506cf54b",
+    "bytes": 185048
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-flick-up.png",
+    "sha256": "7199d29d6fbfe03bfb53b6bc675a1c0a64390afd95c3339587a0c6f33e55cf6c",
+    "bytes": 230923
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-あ-before.png",
+    "sha256": "0baeac1b5b69e54484b182ea2f0e937eb59e44e5678f1f062707ae5ff8694db2",
+    "bytes": 161738
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-あ-hold.png",
+    "sha256": "878a0ca956619c611f1e3af6edcdef367ba8743f1ada0567179a6f23332fbb5a",
+    "bytes": 209734
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-か-before.png",
+    "sha256": "bc43f99190c765e009e2c5a76dd7535ae7019d1cfeb2f3816701662e16a25c95",
+    "bytes": 188424
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-か-hold.png",
+    "sha256": "aba1d8634a4d95077c610b71e71cada23c40a09e65c352980f7ea47a34579f36",
+    "bytes": 235896
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-さ-before.png",
+    "sha256": "7109fe6d16522cff3d585a3bb091d4354e9cbc30b589cecbfd404678af0e8e26",
+    "bytes": 183341
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-さ-hold.png",
+    "sha256": "151f0931d4dc914f8374bdabdba2ebe82be7baff808b7c1acc7335052814669f",
+    "bytes": 227888
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-わ-before.png",
+    "sha256": "ef03ea950cde1f9194f3ee2e022db584b6ea0cbcfc0d9ee28bd4f74a5a43a32f",
+    "bytes": 186701
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-kana-わ-hold.png",
+    "sha256": "a8c77ccbd0d8492aba35ef25d3a050f93140424b4fc7ba21a5b77ef8509b3bf3",
+    "bytes": 225583
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-a-before.png",
+    "sha256": "409182d05cdfd722f011d7253f38f2f91dc05c534c0eb28b2199473e0c93dfb5",
+    "bytes": 173989
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-a-hold.png",
+    "sha256": "3e34baddb61d7d6cefc2645a2a27fc54d656131bf7b4258480551be58da27b0c",
+    "bytes": 218700
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-a-preview-before.png",
+    "sha256": "3f9d599a8e29ec5fd762d2944cbfe95bafd7c246376ca4e61ff8499e5f35a71a",
+    "bytes": 168984
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-a-preview.png",
+    "sha256": "94c70a791059c7f2fddce219dce936a72f13e0832538f12af907041188154096",
+    "bytes": 205523
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-e-before.png",
+    "sha256": "44589290baf81b201b60e953c1ed6e9dcbf60252afa44e32f480257252e9e1a0",
+    "bytes": 175838
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-e-hold.png",
+    "sha256": "414ebe2f051c9fc359e55fbab184f1e681e52ba585f865680d7ecbdaa7254f95",
+    "bytes": 233920
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-e-preview-before.png",
+    "sha256": "0c07fe1cb84db8e5378ccc47c1fdebf142f288d1941760623c86aa1c209c94df",
+    "bytes": 162535
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-e-preview.png",
+    "sha256": "f448a551e582de372deca9c6cd7bad4ad67df3f8bd1efcc4f386f3e97e05f607",
+    "bytes": 204038
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-l-before.png",
+    "sha256": "4ec10dd9631be579041f435bc3ae7976f127a36a6f6900b65e5c218ac9f74355",
+    "bytes": 174899
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-l-hold.png",
+    "sha256": "b45d35089480751a483bd0107da18056dd9bae3f9fbfe4602225b5721a8bea20",
+    "bytes": 212831
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-l-preview-before.png",
+    "sha256": "589a968533f32c4de55e6337241b7e977cb20ed7363084cbada838b783250d41",
+    "bytes": 167209
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-l-preview.png",
+    "sha256": "de6d398066fac72c5aae2fbbe4a9c7c8ed2e13a1de8b4843f2230fd4ebd0206d",
+    "bytes": 203336
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-p-before.png",
+    "sha256": "62787c3704c9b9f6db6104e729f7df7104cf974929614f0c642909712814e4c8",
+    "bytes": 175307
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-p-hold.png",
+    "sha256": "01e850e90f2e7595188a02d0b4c7c7b5040c481eb6f5424516c38b140eb490ab",
+    "bytes": 213503
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-q-before.png",
+    "sha256": "37d7eb51eec54f2355ae9fac758dc5b26d5c4da510035a2f001c5f17f049cbeb",
+    "bytes": 169233
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Dark-qwerty-q-hold.png",
+    "sha256": "cf8d03279f2b61ea23b1c9bffb54225ab66c7ad1ae5691e608169a20a9190002",
+    "bytes": 210232
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-controlled-final.png",
+    "sha256": "4269736f3cc5486ce33d3c6c66f27638bba2a1505744ced2a7f709e00fe30784",
+    "bytes": 183452
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-down-before.png",
+    "sha256": "2654fde8f260c93facebf759930c928d3ed43ecf74a1dd24e246068261039f88",
+    "bytes": 202651
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-down.png",
+    "sha256": "4b848e57302a8d59963ad4b4c8b724179868bcb53b0bfc227a06bc0df9dc310e",
+    "bytes": 252916
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-left-before.png",
+    "sha256": "a4a923120de82770f1632a0626ac11bb12e297dd9ed675b890ab82668e5f8b0b",
+    "bytes": 201643
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-left.png",
+    "sha256": "c78c3e6b52d27a67da6c9f664b6fd53702addf40c9049d6f787582ca59b15a6a",
+    "bytes": 249437
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-right-before.png",
+    "sha256": "1bc9f206acbf47c49d7bc946d7b2b3f60b9af84416b14832c8a5585d367a4fa3",
+    "bytes": 202340
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-right.png",
+    "sha256": "214e599c2d3b4bccb500c0a0ca433ad4c4c492da8d8c9ba3c91be2b64e25800b",
+    "bytes": 250606
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-up-before.png",
+    "sha256": "eedb169572a56a0f9a1076af060302023e2c64f0d9b91fcf36fc525edbf7dc6b",
+    "bytes": 196719
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-flick-up.png",
+    "sha256": "760a55d8ac04ffd0db8ef31302ac62c357e622f4ef7c7d384202656f0042e288",
+    "bytes": 246910
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-あ-before.png",
+    "sha256": "c99764745d412f6c12aae1c5df7d31199ed37b966b6ab7bcc8d72a6dcca7f415",
+    "bytes": 170350
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-あ-hold.png",
+    "sha256": "8040ccbc22a70bb706868c1ba75ce0a0af4255459a57f6e816a6a1bde348cdb6",
+    "bytes": 202954
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-か-before.png",
+    "sha256": "17475ef9fe3abf1fbc3100e19b15e346bb4969bf0d267aae2a362dcb275567ed",
+    "bytes": 199234
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-か-hold.png",
+    "sha256": "0f451edaa33a950898ca19fa062e34764a44d76e6dd26385fe97c8a104792b79",
+    "bytes": 224807
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-さ-before.png",
+    "sha256": "a2895d34dd687f12d16ea954f714023ccf6072d1ab8b4c2fce451937322676b9",
+    "bytes": 194613
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-さ-hold.png",
+    "sha256": "3d454c3da60f8aa6404149d8f2de711ebcb482398f6912d42129532f3d382ab3",
+    "bytes": 224094
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-わ-before.png",
+    "sha256": "28adbd612eecb84b60bba16d7c3db1b092e592be4de37280e4b20378c016aa24",
+    "bytes": 199759
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-kana-わ-hold.png",
+    "sha256": "023097c206cf26d50fe2961c4d052598887b86543183d1f5358b357dbcd1c95c",
+    "bytes": 227414
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-a-before.png",
+    "sha256": "21ab03ce76c6d724beb670ef523a8a36b329ea3d5210dc60e6b558944fb59869",
+    "bytes": 182983
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-a-hold.png",
+    "sha256": "65e4afff807c361b520fcda850b44012435e1e136ab39551c75e256205f8ec9a",
+    "bytes": 210978
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-a-preview-before.png",
+    "sha256": "ffe88480dfc94ce6c8946b07e34683c02b4e194b442f97e668e6c6962a11fd31",
+    "bytes": 176444
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-a-preview.png",
+    "sha256": "bbba8ee16481f66f0dfc9c3110b424e2be33e2a583c36532063dad0d09b1e2dc",
+    "bytes": 204578
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-e-before.png",
+    "sha256": "acb912258b2e139a2a062640f262aa712d6123d2eeaecef2f5a33d876418fb6d",
+    "bytes": 185512
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-e-hold.png",
+    "sha256": "27625d625ee1af0c9da142b8de1a58b2e981f3aab6777489ec375a856640de16",
+    "bytes": 215481
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-e-preview-before.png",
+    "sha256": "73bd1bfde2027e801ec96b407c480c67dda450c388b3b3272f9c1fd4e73731f2",
+    "bytes": 169649
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-e-preview.png",
+    "sha256": "4f8233fe623c5276ae97675a1a18d014353b465f274ebe4b7a9586a9628d5f10",
+    "bytes": 201340
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-l-before.png",
+    "sha256": "c45249746c0e2cb6a0d11afceca9c973406379945660c691e1835162c1acef31",
+    "bytes": 183207
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-l-hold.png",
+    "sha256": "f9d699561b87dc21f390a5f5f9570c8ac85d1ccb8e30f69e8bb3c2b762885351",
+    "bytes": 210990
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-l-preview-before.png",
+    "sha256": "4f2bea39104aeb32f9fc2926bcd77e7ef2d520c75b209cce9f6a37fc1e55b1da",
+    "bytes": 174253
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-l-preview.png",
+    "sha256": "3ce495e17cb583f1e9763c677913d1f174c66def83785e2b8dfdb77ff6f0656a",
+    "bytes": 202989
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-p-before.png",
+    "sha256": "ed7787105fc6578ec3a9211afbca5ad0504a47a1fd8364c2b2776d5bcf5c518c",
+    "bytes": 184447
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-p-hold.png",
+    "sha256": "308fc7c8b6fd8bca429b1f3f4a692461a97c249fe2bee73d15ebb68708834293",
+    "bytes": 212330
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-q-before.png",
+    "sha256": "51efaae089c60c6d2a9aa8aba88ab40753ed8bd4894517ddd61d57a241dedf8b",
+    "bytes": 178468
+  },
+  {
+    "path": "build/keyboard-skins/final-reference/Light-qwerty-q-hold.png",
+    "sha256": "1881627b988ba105df825a7a2354f16ec0bdc67d887d2e78d60c40f2382b309d",
+    "bytes": 208997
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-bottom-surface.png",
+    "sha256": "8bff838141ab26cf72fe724b6572b22b0084ea333f2325b52fd2c468d786d4a2",
+    "bytes": 4761
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-bottom.png",
+    "sha256": "98150ed9d8931bc80aa32d672de1c2102acec655f7575e48595b32a8959778c3",
+    "bytes": 8008
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-center-surface.png",
+    "sha256": "5b4b54ab467042663a6e28a7002822753b4018ae06e858b73ef339175f7dd29f",
+    "bytes": 537
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-center.png",
+    "sha256": "611b7b98f1b364fff757e2f3564c679fcb5a191c4e3b51948b4e4937432fe63d",
+    "bytes": 2797
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-guide-surface.png",
+    "sha256": "33b15752b779918a5f9c22b5d368009b854cfd48bdd1cded33e21f21450765b7",
+    "bytes": 10951
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-guide.png",
+    "sha256": "8bb02611df1ef632ff9f95601781deb1b5737002b370b19844e2a279ff559ee3",
+    "bytes": 21284
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-left-surface.png",
+    "sha256": "eaabd74f0099147f64780779bb63b0ab30023c50c5c4dc2488ac0bab32488a1f",
+    "bytes": 4186
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-left.png",
+    "sha256": "7c77d7ecfbe1a0f011e8409a1ff79861cc0ff3193aa0f42009803eb3cd16c5f6",
+    "bytes": 6278
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-a-surface.png",
+    "sha256": "603595d8cbf87260d128b96fcbdb4463a988bb91f049f5731bfabfaf72d3168c",
+    "bytes": 4863
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-a.png",
+    "sha256": "67e2207d05c68507f6704e9b0f78b681eb0859d9e276568b93d08aab328a4ae8",
+    "bytes": 6797
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-e-surface.png",
+    "sha256": "69a98609f83cc9bb1f1365a7d5af5230e9456ba93d60e262595835694c8ad800",
+    "bytes": 4688
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-e.png",
+    "sha256": "f4c251526da239423978e680a57be22d5a58120987fb67b98b07c8ce1c3a8b93",
+    "bytes": 6702
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-l-surface.png",
+    "sha256": "da976f36afc9772dfc0db0265da1211463e6a6639dbc47b7f2f0cd7cb86b9208",
+    "bytes": 4711
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-l.png",
+    "sha256": "4efeaab26bd9fec66849674f65d4b9f3515112eb2fef21cb2966e89cdcb98922",
+    "bytes": 4788
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-p-surface.png",
+    "sha256": "8d87965b97e7182d3f548b839168f5a797b697358bee258c6f301de6ff2f3f94",
+    "bytes": 3993
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-p.png",
+    "sha256": "767653c3daffd177c92a826d52309b6745c668d6ed04494691672c61e5dc3a11",
+    "bytes": 5751
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-q-surface.png",
+    "sha256": "d2033e527141bab9008da9821b1227071c4d3375d69c409f115ce008aa6f0738",
+    "bytes": 4333
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-preview-q.png",
+    "sha256": "c7b52bd01e3ebb4dcf17cd9215261270d1384852db68df87d1cbd3f9ab95d8a6",
+    "bytes": 6064
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-right-surface.png",
+    "sha256": "4f751adc46a54c9deb260779adc90771ca2341895bfa9398f71021f45d70c22b",
+    "bytes": 4793
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-right.png",
+    "sha256": "cad0a7ffaa2a9ef24861cbde593cbafa41594b18160e0cc0f8de184572973c18",
+    "bytes": 8380
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-top-surface.png",
+    "sha256": "fd157682f001d458a67b79ca868c0214dd9c5ca0f852f2a8fcd8cecd5520ad3f",
+    "bytes": 4711
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_dark-top.png",
+    "sha256": "7b589db6279dd59c9be977bc83cad6c09bc5a1a24b5c2ac69aabe6cdfa2ecf7a",
+    "bytes": 9034
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-bottom-surface.png",
+    "sha256": "32d64f47117167a03fcaefabe431f7cc6ac41efe525b80e0c355239a6b3b812d",
+    "bytes": 2430
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-bottom.png",
+    "sha256": "93256a2a2510dcd4ebbb2d61cb023d2897cce8d8da16dc0d59bed184c581d724",
+    "bytes": 5608
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-center-surface.png",
+    "sha256": "1f51753ac93f322f89855b2608ec1cfceeaefbf7afa4012d1f894405dabff073",
+    "bytes": 536
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-center.png",
+    "sha256": "45345b3a6c96b70ccb5ae4430286bf529eef20be537b87fe75acf8c596764b02",
+    "bytes": 2811
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-guide-surface.png",
+    "sha256": "622a10204f695a741ebcd54ff41c96b4d31f151a49d08650379fb558efc11661",
+    "bytes": 4483
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-guide.png",
+    "sha256": "e25af42d7e2bfd3e8820543d392072a012bd2d754e43436fa52ef81e6771530b",
+    "bytes": 15072
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-left-surface.png",
+    "sha256": "b048b8a490fca67c8e510f62dd80caffd155926a78c8cfb6c95fd71c146b7811",
+    "bytes": 2346
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-left.png",
+    "sha256": "8456a122076edccdb960577a76f333e2eff183d858c9a30bb5246c9679e88303",
+    "bytes": 4487
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-a-surface.png",
+    "sha256": "bae24f895a6098aed37266082746c93db6cfa46e366935ddf17bcb123218da94",
+    "bytes": 2946
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-a.png",
+    "sha256": "02642666cbc1fbae5fd1c298c530a132e58b33928ca23d63ae531c720e4a24f4",
+    "bytes": 4861
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-e-surface.png",
+    "sha256": "bae24f895a6098aed37266082746c93db6cfa46e366935ddf17bcb123218da94",
+    "bytes": 2946
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-e.png",
+    "sha256": "1c7a800bbafb010d3470df2d5ea7f2ea0cf8523a5cd8d09d41483000d47c15d1",
+    "bytes": 4814
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-l-surface.png",
+    "sha256": "bae24f895a6098aed37266082746c93db6cfa46e366935ddf17bcb123218da94",
+    "bytes": 2946
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-l.png",
+    "sha256": "03b15dd0d8ce52c399cb04a27540297a75cd77419cd8e9901a8a3114ba6e864d",
+    "bytes": 2998
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-p-surface.png",
+    "sha256": "b43913d38dfe6359109a74721ac2f5b18c171b23a7725a9bf4d7868695874c52",
+    "bytes": 2455
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-p.png",
+    "sha256": "d0f0121df39aa47d0bcb42cc1f281b0ce6550927af5bb9aadd2a3334140c8743",
+    "bytes": 4220
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-q-surface.png",
+    "sha256": "b0b5ad564473e8f763619c933f2888977dad1c082854500f393dfb5bc6e86a3c",
+    "bytes": 2621
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-preview-q.png",
+    "sha256": "a149f8d568298fe6da7f4e260376ab1519359caf2178766d9659bcf1d7d10899",
+    "bytes": 4312
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-right-surface.png",
+    "sha256": "a2b04a4a578fcfbcf348901413a3a8a16d861a3fde96159a1d8710228a7c7cbb",
+    "bytes": 2537
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-right.png",
+    "sha256": "ded8f2b5e46c3e88254b927824e57c190d8cde7ac34c37ad1757bdbb3a4bdb05",
+    "bytes": 6064
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-top-surface.png",
+    "sha256": "241e604d531aa0ea1f5d7c3d31f5a0d64d23faf8dde0c27e1d67a78404b16ec8",
+    "bytes": 2398
+  },
+  {
+    "path": "build/keyboard-skins/popup-fidelity-v9/cupertino_light-top.png",
+    "sha256": "5d46976ad4285f8c67b543ffc9336e678773df41f162899d47a9aa24afdcd9db",
+    "bytes": 6394
+  },
+  {
+    "path": "build/keyboard-skins/qwerty-motion-contrast.mov",
+    "sha256": "aada245e5003a992ac1dd4c660e2cb8fdd768a9380b2afab5dc6559255fbc3ae",
+    "bytes": 15251781
+  },
+  {
+    "path": "build/keyboard-skins/android-motion-v8.mp4",
+    "sha256": "b41dc061b0d2e5d2678c4ff85ea10f496badbca491f506d359974a5d97179ac7",
+    "bytes": 24642432
+  },
+  {
+    "path": "build/keyboard-skins/fidelity-motion.mov",
+    "sha256": "edf2594d6324cbbb4451b3b7455d69f7b0d5730341a9c8c37fef366e7319dba3",
+    "bytes": 25934923
+  },
+  {
+    "path": "build/keyboard-skins/android-kana-v11.mp4",
+    "bytes": 19930675,
+    "sha256": "417835e05a1ec11fbc304c4a5e1467feedc0233506e883ce2d8c70b9d007fd35"
+  },
+  {
+    "path": "build/keyboard-skins/android-kana-v12.mp4",
+    "bytes": 20066014,
+    "sha256": "9ea11317c230b8840eb848b8e387ef671beb9e97b52b20cb09e1bec9c9597b76"
+  },
+  {
+    "path": "build/keyboard-skins/qwerty-motion-hevc.mov",
+    "bytes": 14046195,
+    "sha256": "d2ad25954e26f787912e4f056efa06821dc4a929466d921fdb4ac1c0c5ee86c8"
+  }
+]

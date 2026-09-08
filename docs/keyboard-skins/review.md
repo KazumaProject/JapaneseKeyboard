@@ -39,16 +39,45 @@ reviewer or agent review is claimed.
 
 ## テスト結果 / Test results
 
-The reviewed run passed 296 unit tests: app 31, core 30, custom keyboard 194,
+The final related run passed 299 unit tests: app 34, core 30, custom keyboard 194,
 tenkey 6, QWERTY 34, gojuon 1. Failures/errors/skips: 0. The isolated Android
-device renderer test passed 1 test. `assembleLiteStandardDebug` succeeded.
+device renderer test passed 1 test; full-popup exports passed 2 tests. `assembleLiteStandardDebug` succeeded.
 The successful iOS capture runs and the limited surface comparison are recorded
 in the reference-status document; they are not counted as Android unit tests.
 
-## Draft を維持する理由 / Why this remains draft
+## 追試で修正した問題 / Follow-up review findings
 
-The requested full iOS reproduction is not yet verified. Only the measured flat
-key sample and upper-left key corner pass the stated color/geometry thresholds.
-Popup shape/baseline/gradient profiles, actual-IME configuration screenshots and
-synchronized animation timing remain acceptance work. See
-[reference status](reference-status.md) for the exact limits and reproduction commands.
+- Removed the proposed single-row QWERTY variation change. The legacy three-column
+  selection path, empty-cell handling, dimensions and offsets are preserved and tested.
+- The ACTION_UP cleanup cancelled the visual release hold. Preserve released windows
+  on normal UP only, while clearing logical gesture state immediately. Actual-device
+  tests assert commit-before-dismissal and immediate cleanup on detach in both skins.
+- Switching to Default left popup label gravity, font padding, size, translation and
+  elevation modified. Save and restore those presentation values without retaining views
+  through WeakHashMap values; verify the round trip against the original values.
+- Recreating drawables and illumination fields on each display added work to the touch
+  path. Cache per-view drawables and immutable material bitmaps; each window receives
+  its own shader matrix. No mutable pressed state is shared between key instances.
+- Route QWERTY preview construction through the skin interface instead of hardcoding
+  the Cupertino renderer in the keyboard. Input anchors remain in the keyboard view.
+- Measure central/second-row previews as well as edge keys. Correct their text baseline
+  and dark material instead of extrapolating the top-row field to every row.
+
+Full reproduction is not inferred from the tests. See the explicit image, glyph and
+motion results in [fidelity evidence](evidence/fidelity/README.md). This remains a
+self-review; no independent reviewer is claimed.
+
+- Separate kana guide disappearance from the label-color restoration: a large ROI
+  initially counted the fading surrounding labels as a retained popup. A blue-center
+  mask and an independent guide-edge strip show immediate guide disappearance. Remove
+  the proposed kana 75 ms hold; retain the QWERTY hold verified on its cap-only ROI.
+- Animate only saved label colors, and cancel both fade directions before new input,
+  Default restoration or detach. Restore the original ColorStateList after completion.
+
+- Give QWERTY variation containers their own skin factory and cache the drawable across
+  selection redraws. Use the measured rounded container/material while leaving the
+  original three-column dimensions, offsets and hit mapping untouched. This grid is an
+  explicit adaptation and is not included in the 22 reference-aspect-ratio comparisons.
+- Repeat the iOS QWERTY capture with HEVC after stopping builds. This reproduces the
+  visible release behavior but does not remove the frame-gap/clock uncertainty; keep
+  both captures rather than selecting only the more favorable one.

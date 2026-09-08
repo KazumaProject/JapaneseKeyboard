@@ -1,0 +1,1477 @@
+{
+  "platform": "android",
+  "video": "build/keyboard-skins/android-motion-v8.mp4",
+  "clock": {
+    "offset_seconds": 730180.0885111111,
+    "residual_percentiles_ms": {
+      "min": -7.355555542744696,
+      "p1": -4.366666660644114,
+      "p5": -3.2999999821186066,
+      "median": 0.0,
+      "p95": 10.011111036874354,
+      "p99": 10.577777866274118,
+      "max": 16.855555586516857
+    },
+    "uncertainty_ms": 10.577777866274118
+  },
+  "gestures": [
+    {
+      "name": "qwerty-light",
+      "label": "q",
+      "trial": 0,
+      "x": 54,
+      "y": 1757,
+      "end_x": 54,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730247.237,
+      "up": 730247.414,
+      "events": [
+        {
+          "serial": 1,
+          "time": 730247237,
+          "phase": 0,
+          "x": 54,
+          "y": 1757
+        },
+        {
+          "serial": 2,
+          "time": 730247414,
+          "phase": 1,
+          "x": 54,
+          "y": 1757
+        }
+      ],
+      "down_serial": 1,
+      "up_serial": 2,
+      "box": [
+        -44,
+        1431.52,
+        152,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          21.511111175641418,
+          30.35555558744818
+        ],
+        "capture_gap_ms": 8.844444411806762,
+        "uncertainty_expanded_ms": [
+          10.933333309367299,
+          40.9333334537223
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          21.511111175641418,
+          30.35555558744818
+        ],
+        "capture_gap_ms": 8.844444411806762,
+        "uncertainty_expanded_ms": [
+          10.933333309367299,
+          40.9333334537223
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          54.066666634753346,
+          65.86666661314666
+        ],
+        "capture_gap_ms": 11.799999978393316,
+        "uncertainty_expanded_ms": [
+          43.48888876847923,
+          76.44444447942078
+        ]
+      },
+      "max_sample_gap_ms": 12.988888891413808,
+      "marker_relative_dismissal_ms": [
+        57.84444441087544,
+        69.64444438926876
+      ],
+      "up_marker_after_event_ms": -3.777777776122093,
+      "marker_relative_appearance_ms": [
+        0.0,
+        8.844444411806762
+      ],
+      "down_marker_after_event_ms": 21.511111175641418
+    },
+    {
+      "name": "qwerty-light",
+      "label": "q",
+      "trial": 1,
+      "x": 54,
+      "y": 1757,
+      "end_x": 54,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730247.785,
+      "up": 730247.954,
+      "events": [
+        {
+          "serial": 3,
+          "time": 730247785,
+          "phase": 0,
+          "x": 54,
+          "y": 1757
+        },
+        {
+          "serial": 4,
+          "time": 730247954,
+          "phase": 1,
+          "x": 54,
+          "y": 1757
+        }
+      ],
+      "down_serial": 3,
+      "up_serial": 4,
+      "box": [
+        -44,
+        1431.52,
+        152,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          16.533333342522383,
+          27.49999996740371
+        ],
+        "capture_gap_ms": 10.966666624881327,
+        "uncertainty_expanded_ms": [
+          5.955555476248264,
+          38.07777783367783
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          16.533333342522383,
+          27.49999996740371
+        ],
+        "capture_gap_ms": 10.966666624881327,
+        "uncertainty_expanded_ms": [
+          5.955555476248264,
+          38.07777783367783
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          58.17777768243104,
+          71.13333325833082
+        ],
+        "capture_gap_ms": 12.95555557589978,
+        "uncertainty_expanded_ms": [
+          47.599999816156924,
+          81.71111112460494
+        ]
+      },
+      "max_sample_gap_ms": 13.188888900913298,
+      "marker_relative_dismissal_ms": [
+        56.79999990388751,
+        69.75555547978729
+      ],
+      "up_marker_after_event_ms": 1.377777778543532,
+      "marker_relative_appearance_ms": [
+        0.0,
+        10.966666624881327
+      ],
+      "down_marker_after_event_ms": 16.533333342522383
+    },
+    {
+      "name": "qwerty-light",
+      "label": "q",
+      "trial": 2,
+      "x": 54,
+      "y": 1757,
+      "end_x": 54,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730248.329,
+      "up": 730248.499,
+      "events": [
+        {
+          "serial": 5,
+          "time": 730248329,
+          "phase": 0,
+          "x": 54,
+          "y": 1757
+        },
+        {
+          "serial": 6,
+          "time": 730248499,
+          "phase": 1,
+          "x": 54,
+          "y": 1757
+        }
+      ],
+      "down_serial": 5,
+      "up_serial": 6,
+      "box": [
+        -44,
+        1431.52,
+        152,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          16.922222217544913,
+          28.233333257958293
+        ],
+        "capture_gap_ms": 11.31111104041338,
+        "uncertainty_expanded_ms": [
+          6.344444351270795,
+          38.81111112423241
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          16.922222217544913,
+          28.233333257958293
+        ],
+        "capture_gap_ms": 11.31111104041338,
+        "uncertainty_expanded_ms": [
+          6.344444351270795,
+          38.81111112423241
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          55.41111109778285,
+          68.52222222369164
+        ],
+        "capture_gap_ms": 13.111111125908792,
+        "uncertainty_expanded_ms": [
+          44.83333323150873,
+          79.10000008996576
+        ]
+      },
+      "max_sample_gap_ms": 13.188888900913298,
+      "marker_relative_dismissal_ms": [
+        56.288888794369996,
+        69.39999992027879
+      ],
+      "up_marker_after_event_ms": -0.8777776965871453,
+      "marker_relative_appearance_ms": [
+        0.0,
+        11.31111104041338
+      ],
+      "down_marker_after_event_ms": 16.922222217544913
+    },
+    {
+      "name": "qwerty-light",
+      "label": "e",
+      "trial": 0,
+      "x": 270,
+      "y": 1757,
+      "end_x": 270,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730248.874,
+      "up": 730250.106,
+      "events": [
+        {
+          "serial": 7,
+          "time": 730248874,
+          "phase": 0,
+          "x": 270,
+          "y": 1757
+        },
+        {
+          "serial": 8,
+          "time": 730250106,
+          "phase": 1,
+          "x": 270,
+          "y": 1757
+        }
+      ],
+      "down_serial": 7,
+      "up_serial": 8,
+      "box": [
+        70,
+        1078.0,
+        470,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          14.477777760475874,
+          27.022222289815545
+        ],
+        "capture_gap_ms": 12.544444529339671,
+        "uncertainty_expanded_ms": [
+          3.8999998942017555,
+          37.60000015608966
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          326.5222222544253,
+          337.277777842246
+        ],
+        "capture_gap_ms": 10.755555587820709,
+        "uncertainty_expanded_ms": [
+          315.94444438815117,
+          347.8555557085201
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          59.06666663940996,
+          72.1666666213423
+        ],
+        "capture_gap_ms": 13.099999981932342,
+        "uncertainty_expanded_ms": [
+          48.48888877313584,
+          82.74444448761642
+        ]
+      },
+      "max_sample_gap_ms": 13.711111154407263,
+      "marker_relative_dismissal_ms": [
+        56.84444447979331,
+        69.94444446172565
+      ],
+      "up_marker_after_event_ms": 2.222222159616649,
+      "marker_relative_appearance_ms": [
+        0.0,
+        12.544444529339671
+      ],
+      "down_marker_after_event_ms": 14.477777760475874
+    },
+    {
+      "name": "qwerty-light",
+      "label": "e",
+      "trial": 1,
+      "x": 270,
+      "y": 1757,
+      "end_x": 270,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730250.472,
+      "up": 730251.7,
+      "events": [
+        {
+          "serial": 9,
+          "time": 730250472,
+          "phase": 0,
+          "x": 270,
+          "y": 1757
+        },
+        {
+          "serial": 10,
+          "time": 730251700,
+          "phase": 1,
+          "x": 270,
+          "y": 1757
+        }
+      ],
+      "down_serial": 9,
+      "up_serial": 10,
+      "box": [
+        70,
+        1078.0,
+        470,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          12.56666670087725,
+          25.366666726768017
+        ],
+        "capture_gap_ms": 12.800000025890768,
+        "uncertainty_expanded_ms": [
+          1.9888888346031308,
+          35.944444593042135
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          323.42222228180617,
+          334.32222227565944
+        ],
+        "capture_gap_ms": 10.899999993853271,
+        "uncertainty_expanded_ms": [
+          312.84444441553205,
+          344.90000014193356
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          63.26666672248393,
+          75.79999999143183
+        ],
+        "capture_gap_ms": 12.5333332689479,
+        "uncertainty_expanded_ms": [
+          52.688888856209815,
+          86.37777785770595
+        ]
+      },
+      "max_sample_gap_ms": 15.011111041530967,
+      "marker_relative_dismissal_ms": [
+        68.75555554870516,
+        81.28888881765306
+      ],
+      "up_marker_after_event_ms": -5.488888826221228,
+      "marker_relative_appearance_ms": [
+        0.0,
+        12.800000025890768
+      ],
+      "down_marker_after_event_ms": 12.56666670087725
+    },
+    {
+      "name": "qwerty-light",
+      "label": "e",
+      "trial": 2,
+      "x": 270,
+      "y": 1757,
+      "end_x": 270,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730252.071,
+      "up": 730253.3,
+      "events": [
+        {
+          "serial": 11,
+          "time": 730252071,
+          "phase": 0,
+          "x": 270,
+          "y": 1757
+        },
+        {
+          "serial": 12,
+          "time": 730253300,
+          "phase": 1,
+          "x": 270,
+          "y": 1757
+        }
+      ],
+      "down_serial": 11,
+      "up_serial": 12,
+      "box": [
+        70,
+        1078.0,
+        470,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          12.166666681878269,
+          24.844444473274052
+        ],
+        "capture_gap_ms": 12.677777791395783,
+        "uncertainty_expanded_ms": [
+          1.5888888156041503,
+          35.42222233954817
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          324.53333330340683,
+          333.62222218420357
+        ],
+        "capture_gap_ms": 9.08888888079673,
+        "uncertainty_expanded_ms": [
+          313.9555554371327,
+          344.2000000504777
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          62.399999937042594,
+          73.4333333093673
+        ],
+        "capture_gap_ms": 11.033333372324705,
+        "uncertainty_expanded_ms": [
+          51.822222070768476,
+          84.01111117564142
+        ]
+      },
+      "max_sample_gap_ms": 14.76666668895632,
+      "marker_relative_dismissal_ms": [
+        57.755555608309805,
+        68.78888898063451
+      ],
+      "up_marker_after_event_ms": 4.644444328732789,
+      "marker_relative_appearance_ms": [
+        0.0,
+        12.677777791395783
+      ],
+      "down_marker_after_event_ms": 12.166666681878269
+    },
+    {
+      "name": "qwerty-light",
+      "label": "p",
+      "trial": 0,
+      "x": 1026,
+      "y": 1757,
+      "end_x": 1026,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730253.669,
+      "up": 730253.837,
+      "events": [
+        {
+          "serial": 13,
+          "time": 730253669,
+          "phase": 0,
+          "x": 1026,
+          "y": 1757
+        },
+        {
+          "serial": 14,
+          "time": 730253837,
+          "phase": 1,
+          "x": 1026,
+          "y": 1757
+        }
+      ],
+      "down_serial": 13,
+      "up_serial": 14,
+      "box": [
+        928,
+        1431.52,
+        1124,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          11.32222218438983,
+          24.333333363756537
+        ],
+        "capture_gap_ms": 13.011111179366708,
+        "uncertainty_expanded_ms": [
+          0.7444443181157112,
+          34.911111230030656
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          11.32222218438983,
+          24.333333363756537
+        ],
+        "capture_gap_ms": 13.011111179366708,
+        "uncertainty_expanded_ms": [
+          0.7444443181157112,
+          34.911111230030656
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          66.91111100371927,
+          79.5999999390915
+        ],
+        "capture_gap_ms": 12.688888935372233,
+        "uncertainty_expanded_ms": [
+          56.33333313744515,
+          90.17777780536562
+        ]
+      },
+      "max_sample_gap_ms": 14.76666668895632,
+      "marker_relative_dismissal_ms": [
+        55.63333327881992,
+        68.32222221419215
+      ],
+      "up_marker_after_event_ms": 11.277777724899352,
+      "marker_relative_appearance_ms": [
+        -13.011111179366708,
+        0.0
+      ],
+      "down_marker_after_event_ms": 24.333333363756537
+    },
+    {
+      "name": "qwerty-light",
+      "label": "p",
+      "trial": 1,
+      "x": 1026,
+      "y": 1757,
+      "end_x": 1026,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730254.213,
+      "up": 730254.385,
+      "events": [
+        {
+          "serial": 15,
+          "time": 730254213,
+          "phase": 0,
+          "x": 1026,
+          "y": 1757
+        },
+        {
+          "serial": 16,
+          "time": 730254385,
+          "phase": 1,
+          "x": 1026,
+          "y": 1757
+        }
+      ],
+      "down_serial": 15,
+      "up_serial": 16,
+      "box": [
+        928,
+        1431.52,
+        1124,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          13.266666675917804,
+          25.577777763828635
+        ],
+        "capture_gap_ms": 12.311111087910831,
+        "uncertainty_expanded_ms": [
+          2.688888809643686,
+          36.155555630102754
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          13.266666675917804,
+          25.577777763828635
+        ],
+        "capture_gap_ms": 12.311111087910831,
+        "uncertainty_expanded_ms": [
+          2.688888809643686,
+          36.155555630102754
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          65.12222217861563,
+          76.06666663195938
+        ],
+        "capture_gap_ms": 10.944444453343749,
+        "uncertainty_expanded_ms": [
+          54.54444431234151,
+          86.6444444982335
+        ]
+      },
+      "max_sample_gap_ms": 14.57777782343328,
+      "marker_relative_dismissal_ms": [
+        56.64444447029382,
+        67.58888892363757
+      ],
+      "up_marker_after_event_ms": 8.47777770832181,
+      "marker_relative_appearance_ms": [
+        -12.311111087910831,
+        0.0
+      ],
+      "down_marker_after_event_ms": 25.577777763828635
+    },
+    {
+      "name": "qwerty-light",
+      "label": "p",
+      "trial": 2,
+      "x": 1026,
+      "y": 1757,
+      "end_x": 1026,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730254.757,
+      "up": 730254.929,
+      "events": [
+        {
+          "serial": 17,
+          "time": 730254757,
+          "phase": 0,
+          "x": 1026,
+          "y": 1757
+        },
+        {
+          "serial": 18,
+          "time": 730254929,
+          "phase": 1,
+          "x": 1026,
+          "y": 1757
+        }
+      ],
+      "down_serial": 17,
+      "up_serial": 18,
+      "box": [
+        928,
+        1431.52,
+        1124,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          15.622222214005888,
+          24.511111085303128
+        ],
+        "capture_gap_ms": 8.88888887129724,
+        "uncertainty_expanded_ms": [
+          5.044444347731769,
+          35.088888951577246
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          15.622222214005888,
+          24.511111085303128
+        ],
+        "capture_gap_ms": 8.88888887129724,
+        "uncertainty_expanded_ms": [
+          5.044444347731769,
+          35.088888951577246
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          64.95555548463017,
+          78.89999996405095
+        ],
+        "capture_gap_ms": 13.944444479420781,
+        "uncertainty_expanded_ms": [
+          54.37777761835605,
+          89.47777783032507
+        ]
+      },
+      "max_sample_gap_ms": 13.944444479420781,
+      "marker_relative_dismissal_ms": [
+        57.333333301357925,
+        71.2777777807787
+      ],
+      "up_marker_after_event_ms": 7.6222221832722425,
+      "marker_relative_appearance_ms": [
+        -8.88888887129724,
+        0.0
+      ],
+      "down_marker_after_event_ms": 24.511111085303128
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "q",
+      "trial": 0,
+      "x": 54,
+      "y": 1757,
+      "end_x": 54,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730256.616,
+      "up": 730256.791,
+      "events": [
+        {
+          "serial": 1,
+          "time": 730256616,
+          "phase": 0,
+          "x": 54,
+          "y": 1757
+        },
+        {
+          "serial": 2,
+          "time": 730256791,
+          "phase": 1,
+          "x": 54,
+          "y": 1757
+        }
+      ],
+      "down_serial": 1,
+      "up_serial": 2,
+      "box": [
+        -44,
+        1431.52,
+        152,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          18.78888881765306,
+          29.144444386474788
+        ],
+        "capture_gap_ms": 10.355555568821728,
+        "uncertainty_expanded_ms": [
+          8.211110951378942,
+          39.72222225274891
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          18.78888881765306,
+          29.144444386474788
+        ],
+        "capture_gap_ms": 10.355555568821728,
+        "uncertainty_expanded_ms": [
+          8.211110951378942,
+          39.72222225274891
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          65.87777775712311,
+          77.93333334848285
+        ],
+        "capture_gap_ms": 12.055555591359735,
+        "uncertainty_expanded_ms": [
+          55.299999890848994,
+          88.51111121475697
+        ]
+      },
+      "max_sample_gap_ms": 14.244444551877677,
+      "marker_relative_dismissal_ms": [
+        56.25555547885597,
+        68.3111110702157
+      ],
+      "up_marker_after_event_ms": 9.622222278267145,
+      "marker_relative_appearance_ms": [
+        -10.355555568821728,
+        0.0
+      ],
+      "down_marker_after_event_ms": 29.144444386474788
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "q",
+      "trial": 1,
+      "x": 54,
+      "y": 1757,
+      "end_x": 54,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730257.163,
+      "up": 730257.334,
+      "events": [
+        {
+          "serial": 3,
+          "time": 730257163,
+          "phase": 0,
+          "x": 54,
+          "y": 1757
+        },
+        {
+          "serial": 4,
+          "time": 730257334,
+          "phase": 1,
+          "x": 54,
+          "y": 1757
+        }
+      ],
+      "down_serial": 3,
+      "up_serial": 4,
+      "box": [
+        -44,
+        1431.52,
+        152,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          14.57777782343328,
+          27.97777787782252
+        ],
+        "capture_gap_ms": 13.400000054389238,
+        "uncertainty_expanded_ms": [
+          3.9999999571591616,
+          38.55555574409664
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          14.57777782343328,
+          27.97777787782252
+        ],
+        "capture_gap_ms": 13.400000054389238,
+        "uncertainty_expanded_ms": [
+          3.9999999571591616,
+          38.55555574409664
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          65.04444440361112,
+          79.07777768559754
+        ],
+        "capture_gap_ms": 14.033333281986415,
+        "uncertainty_expanded_ms": [
+          54.466666537337005,
+          89.65555555187166
+        ]
+      },
+      "max_sample_gap_ms": 14.96666669845581,
+      "marker_relative_dismissal_ms": [
+        54.53333328478038,
+        68.5666665667668
+      ],
+      "up_marker_after_event_ms": 10.51111111883074,
+      "marker_relative_appearance_ms": [
+        -13.400000054389238,
+        0.0
+      ],
+      "down_marker_after_event_ms": 27.97777787782252
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "q",
+      "trial": 2,
+      "x": 54,
+      "y": 1757,
+      "end_x": 54,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730257.709,
+      "up": 730257.879,
+      "events": [
+        {
+          "serial": 5,
+          "time": 730257709,
+          "phase": 0,
+          "x": 54,
+          "y": 1757
+        },
+        {
+          "serial": 6,
+          "time": 730257879,
+          "phase": 1,
+          "x": 54,
+          "y": 1757
+        }
+      ],
+      "down_serial": 5,
+      "up_serial": 6,
+      "box": [
+        -44,
+        1431.52,
+        152,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          10.833333246409893,
+          24.588888860307634
+        ],
+        "capture_gap_ms": 13.75555561389774,
+        "uncertainty_expanded_ms": [
+          0.2555553801357746,
+          35.16666672658175
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          10.833333246409893,
+          24.588888860307634
+        ],
+        "capture_gap_ms": 13.75555561389774,
+        "uncertainty_expanded_ms": [
+          0.2555553801357746,
+          35.16666672658175
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          66.3555555511266,
+          77.23333337344229
+        ],
+        "capture_gap_ms": 10.877777822315693,
+        "uncertainty_expanded_ms": [
+          55.77777768485248,
+          87.81111123971641
+        ]
+      },
+      "max_sample_gap_ms": 14.96666669845581,
+      "marker_relative_dismissal_ms": [
+        57.344444445334375,
+        68.22222226765007
+      ],
+      "up_marker_after_event_ms": 9.011111105792224,
+      "marker_relative_appearance_ms": [
+        -13.75555561389774,
+        0.0
+      ],
+      "down_marker_after_event_ms": 24.588888860307634
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "e",
+      "trial": 0,
+      "x": 270,
+      "y": 1757,
+      "end_x": 270,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730258.251,
+      "up": 730259.481,
+      "events": [
+        {
+          "serial": 7,
+          "time": 730258251,
+          "phase": 0,
+          "x": 270,
+          "y": 1757
+        },
+        {
+          "serial": 8,
+          "time": 730259481,
+          "phase": 1,
+          "x": 270,
+          "y": 1757
+        }
+      ],
+      "down_serial": 7,
+      "up_serial": 8,
+      "box": [
+        70,
+        1078.0,
+        470,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          16.722222208045423,
+          26.111111044883728
+        ],
+        "capture_gap_ms": 9.388888836838305,
+        "uncertainty_expanded_ms": [
+          6.144444341771305,
+          36.68888891115785
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          326.7555554630235,
+          337.36666664481163
+        ],
+        "capture_gap_ms": 10.611111181788146,
+        "uncertainty_expanded_ms": [
+          316.17777759674937,
+          347.94444451108575
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          62.66666657757014,
+          73.93333327490836
+        ],
+        "capture_gap_ms": 11.266666697338223,
+        "uncertainty_expanded_ms": [
+          52.08888871129602,
+          84.51111114118248
+        ]
+      },
+      "max_sample_gap_ms": 13.944444479420781,
+      "marker_relative_dismissal_ms": [
+        58.84444434195757,
+        70.11111103929579
+      ],
+      "up_marker_after_event_ms": 3.8222222356125712,
+      "marker_relative_appearance_ms": [
+        -9.388888836838305,
+        0.0
+      ],
+      "down_marker_after_event_ms": 26.111111044883728
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "e",
+      "trial": 1,
+      "x": 270,
+      "y": 1757,
+      "end_x": 270,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730259.85,
+      "up": 730261.08,
+      "events": [
+        {
+          "serial": 9,
+          "time": 730259850,
+          "phase": 0,
+          "x": 270,
+          "y": 1757
+        },
+        {
+          "serial": 10,
+          "time": 730261080,
+          "phase": 1,
+          "x": 270,
+          "y": 1757
+        }
+      ],
+      "down_serial": 9,
+      "up_serial": 10,
+      "box": [
+        70,
+        1078.0,
+        470,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          11.833333293907344,
+          25.777777773328125
+        ],
+        "capture_gap_ms": 13.944444479420781,
+        "uncertainty_expanded_ms": [
+          1.255555427633226,
+          36.355555639602244
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          323.9444444188848,
+          335.34444449469447
+        ],
+        "capture_gap_ms": 11.400000075809658,
+        "uncertainty_expanded_ms": [
+          313.3666665526107,
+          345.9222223609686
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          62.33333330601454,
+          70.90000004973263
+        ],
+        "capture_gap_ms": 8.566666743718088,
+        "uncertainty_expanded_ms": [
+          51.75555543974042,
+          81.47777791600674
+        ]
+      },
+      "max_sample_gap_ms": 14.93333326652646,
+      "marker_relative_dismissal_ms": [
+        57.277777697891,
+        65.84444444160908
+      ],
+      "up_marker_after_event_ms": 5.055555608123541,
+      "marker_relative_appearance_ms": [
+        -13.944444479420781,
+        0.0
+      ],
+      "down_marker_after_event_ms": 25.777777773328125
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "e",
+      "trial": 2,
+      "x": 270,
+      "y": 1757,
+      "end_x": 270,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730261.448,
+      "up": 730262.678,
+      "events": [
+        {
+          "serial": 11,
+          "time": 730261448,
+          "phase": 0,
+          "x": 270,
+          "y": 1757
+        },
+        {
+          "serial": 12,
+          "time": 730262678,
+          "phase": 1,
+          "x": 270,
+          "y": 1757
+        }
+      ],
+      "down_serial": 11,
+      "up_serial": 12,
+      "box": [
+        70,
+        1078.0,
+        470,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          15.022222185507417,
+          25.788888917304575
+        ],
+        "capture_gap_ms": 10.766666731797159,
+        "uncertainty_expanded_ms": [
+          4.444444319233298,
+          36.366666783578694
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          323.28888890333474,
+          336.2444444792345
+        ],
+        "capture_gap_ms": 12.95555557589978,
+        "uncertainty_expanded_ms": [
+          312.7111110370606,
+          346.82222234550864
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          62.444444512948394,
+          73.87777778785676
+        ],
+        "capture_gap_ms": 11.433333274908364,
+        "uncertainty_expanded_ms": [
+          51.866666646674275,
+          84.45555565413088
+        ]
+      },
+      "max_sample_gap_ms": 14.811111148446798,
+      "marker_relative_dismissal_ms": [
+        57.744444464333355,
+        69.17777773924172
+      ],
+      "up_marker_after_event_ms": 4.700000048615038,
+      "marker_relative_appearance_ms": [
+        -10.766666731797159,
+        0.0
+      ],
+      "down_marker_after_event_ms": 25.788888917304575
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "p",
+      "trial": 0,
+      "x": 1026,
+      "y": 1757,
+      "end_x": 1026,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730263.047,
+      "up": 730263.216,
+      "events": [
+        {
+          "serial": 13,
+          "time": 730263047,
+          "phase": 0,
+          "x": 1026,
+          "y": 1757
+        },
+        {
+          "serial": 14,
+          "time": 730263216,
+          "phase": 1,
+          "x": 1026,
+          "y": 1757
+        }
+      ],
+      "down_serial": 13,
+      "up_serial": 14,
+      "box": [
+        928,
+        1431.52,
+        1124,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          13.388888910412788,
+          24.555555544793606
+        ],
+        "capture_gap_ms": 11.166666634380817,
+        "uncertainty_expanded_ms": [
+          2.81111104413867,
+          35.133333411067724
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          13.388888910412788,
+          24.555555544793606
+        ],
+        "capture_gap_ms": 11.166666634380817,
+        "uncertainty_expanded_ms": [
+          2.81111104413867,
+          35.133333411067724
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          67.05555552616715,
+          78.37777771055698
+        ],
+        "capture_gap_ms": 11.32222218438983,
+        "uncertainty_expanded_ms": [
+          56.477777659893036,
+          88.9555555768311
+        ]
+      },
+      "max_sample_gap_ms": 13.777777785435319,
+      "marker_relative_dismissal_ms": [
+        57.144444435834885,
+        68.46666662022471
+      ],
+      "up_marker_after_event_ms": 9.91111109033227,
+      "marker_relative_appearance_ms": [
+        -11.166666634380817,
+        0.0
+      ],
+      "down_marker_after_event_ms": 24.555555544793606
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "p",
+      "trial": 1,
+      "x": 1026,
+      "y": 1757,
+      "end_x": 1026,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730263.59,
+      "up": 730263.757,
+      "events": [
+        {
+          "serial": 15,
+          "time": 730263590,
+          "phase": 0,
+          "x": 1026,
+          "y": 1757
+        },
+        {
+          "serial": 16,
+          "time": 730263757,
+          "phase": 1,
+          "x": 1026,
+          "y": 1757
+        }
+      ],
+      "down_serial": 15,
+      "up_serial": 16,
+      "box": [
+        928,
+        1431.52,
+        1124,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          16.333333333022892,
+          26.68888890184462
+        ],
+        "capture_gap_ms": 10.355555568821728,
+        "uncertainty_expanded_ms": [
+          5.755555466748774,
+          37.26666676811874
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          16.333333333022892,
+          26.68888890184462
+        ],
+        "capture_gap_ms": 10.355555568821728,
+        "uncertainty_expanded_ms": [
+          5.755555466748774,
+          37.26666676811874
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          60.05555554293096,
+          70.34444448072463
+        ],
+        "capture_gap_ms": 10.288888937793672,
+        "uncertainty_expanded_ms": [
+          49.47777767665684,
+          80.92222234699875
+        ]
+      },
+      "max_sample_gap_ms": 14.266666606999934,
+      "marker_relative_dismissal_ms": [
+        45.799999963492155,
+        56.08888890128583
+      ],
+      "up_marker_after_event_ms": 14.255555579438806,
+      "marker_relative_appearance_ms": [
+        -10.355555568821728,
+        0.0
+      ],
+      "down_marker_after_event_ms": 26.68888890184462
+    },
+    {
+      "name": "qwerty-dark",
+      "label": "p",
+      "trial": 2,
+      "x": 1026,
+      "y": 1757,
+      "end_x": 1026,
+      "end_y": 1757,
+      "width": 98,
+      "height": 158,
+      "down": 730264.124,
+      "up": 730264.294,
+      "events": [
+        {
+          "serial": 17,
+          "time": 730264124,
+          "phase": 0,
+          "x": 1026,
+          "y": 1757
+        },
+        {
+          "serial": 18,
+          "time": 730264294,
+          "phase": 1,
+          "x": 1026,
+          "y": 1757
+        }
+      ],
+      "down_serial": 17,
+      "up_serial": 18,
+      "box": [
+        928,
+        1431.52,
+        1124,
+        1674.0
+      ],
+      "appearance": {
+        "bracket_ms": [
+          14.255555579438806,
+          25.1111111138016
+        ],
+        "capture_gap_ms": 10.855555534362793,
+        "uncertainty_expanded_ms": [
+          3.677777713164687,
+          35.68888898007572
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          14.255555579438806,
+          25.1111111138016
+        ],
+        "capture_gap_ms": 10.855555534362793,
+        "uncertainty_expanded_ms": [
+          3.677777713164687,
+          35.68888898007572
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          66.58888887614012,
+          77.37777777947485
+        ],
+        "capture_gap_ms": 10.788888903334737,
+        "uncertainty_expanded_ms": [
+          56.011111009866,
+          87.95555564574897
+        ]
+      },
+      "max_sample_gap_ms": 13.888888875953853,
+      "marker_relative_dismissal_ms": [
+        55.46666670124978,
+        66.25555560458452
+      ],
+      "up_marker_after_event_ms": 11.12222217489034,
+      "marker_relative_appearance_ms": [
+        -10.855555534362793,
+        0.0
+      ],
+      "down_marker_after_event_ms": 25.1111111138016
+    }
+  ]
+}

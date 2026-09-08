@@ -2,11 +2,11 @@
 
 ## 状態 / Status
 
-**再現精度のゲートは未完了です。Draft PR としてレビューしてください。**
+**再現精度は未達です。字形の差が測定されているため、Draft PR としてレビューしてください。**
 Default、Cupertino Light、Cupertino Dark の切替、描画の分離、保存値の復元を実装しました。
 iOS 全体とのピクセル一致やアニメーションのフレーム一致を達成したという意味ではありません。
 
-**The fidelity gate is incomplete. Keep the PR in draft.** Skin selection and the
+**Full fidelity is unmet: glyph differences are measured. Keep the PR in draft.** Skin selection and the
 presentation integration are implemented; full iOS pixel/motion parity is not certified.
 
 ## 参照条件 / Reference conditions
@@ -76,30 +76,47 @@ MAE score and must not be presented as whole-keyboard acceptance.
   and directional pointers; QWERTY uses a cap/neck/stem preview and flat selected cells.
   Custom circular/TFBi guides retain their selections and content, using skin surfaces.
   Those layouts have no native iOS equivalent and are adaptations.
-- Default motion remains untouched. Cupertino cancels view-property animation and uses
-  immediate state presentation with no Material ripple or popup elevation animation.
-  This is a provisional motion implementation, **not a measured iOS timing match**.
+- Default motion remains untouched. Cupertino removes Material ripple/elevation animation,
+  updates visible flick windows in place, and holds released QWERTY windows for 75 ms
+  while committing immediately. Timing is measured separately in the follow-up evidence.
 - Skin selection disables competing controls in the theme screen without clearing
   them. Input-composition color controls remain independent.
 
-## 未完了の精度検証 / Remaining fidelity gate
+## 全ポップアップと動作の追試 / Full-popup and motion follow-up
 
-Before changing the PR to ready:
+The follow-up compares lossless iOS captures with native Android production drawables,
+including the whole cap, neck, stem, directional arrow, guide cross, and placed glyphs.
+Reference and Android images are aligned by their key anchors only: there is no image
+rescaling or best-fit registration. Results are in [fidelity evidence](evidence/fidelity/README.md).
+The isolated fixture pins density to 3 and font scale to 1; the actual-view motion host
+uses the Pixel 6's existing density/font-scale settings. Those are different tests.
 
-1. Compare full popup geometry, baseline, outline and gradient profiles for every
-   direction and edge key. Current profiles beyond the measured key corner are
-   approximations; no <=1 pt claim is made for them.
-2. Record Android and iOS transitions with a shared visual timing marker. Measure
-   appearance, movement, selection and dismissal against the <=1-frame criterion.
-   Existing capture timestamps do not satisfy this synchronization requirement.
-3. Compare typography explicitly. Android uses platform fonts; SF/PingFang assets
-   are not bundled. Font metrics/rasterization differences remain.
-4. Complete actual-IME screenshot/manual interaction coverage for tenkey, QWERTY,
-   gojuon, custom, symbol, floating, landscape, increased font scale and narrow widths.
-   Unit and standalone device-render tests do not substitute for this matrix.
-5. Exercise restoration of image/video backgrounds and touch effects in the actual
-   IME, including switching while a load is pending. Saved-value preservation is
-   tested; the complete visual lifecycle is not yet certified.
+- QWERTY long-press variations retain **three columns, character order, window dimensions,
+  offsets and hit mapping**. The iOS single row is intentionally not adopted. Candidate
+  settings and long-press input thresholds are unchanged.
+- Cupertino QWERTY release holds affect the window only. Input ownership and text commits
+  end on UP. Kana guides dismiss immediately, independently of surrounding-label fades.
+  New gestures, CANCEL, skin switches, hiding and detach clear retained presentations.
+- Motion uses a visible display clock and event serial, video presentation timestamps,
+  repeated gestures and explicit transition brackets. Candidate-text changes are excluded
+  from the iOS dismissal ROI. Capture gaps and clock uncertainty remain in the report;
+  missing frames are not classified as a pass.
+- Full glyph masks are measured separately from glyph bounding boxes. Similar bounding
+  boxes do **not** establish identical typography. Android platform fonts differ from
+  the reference. No Apple fonts or extracted glyph assets are shipped.
+- Apple's [published font license](https://developer.apple.com/fonts/) does not grant
+  embedding the distributed Apple font in an Android app. Shipping identical font data
+  would require separately authorized assets; a geometry fix does not resolve this.
+
+### 再現の限界 / Acceptance limits
+
+The finite portrait reference matrix is not proof of identical rendering at every
+keyboard width, system font setting, orientation, underlying app background or OS release.
+The dark material fields approximate the captured lighting; they do not implement iOS's
+compositor. Existing Android layout/selection behavior is deliberately preserved.
+Typography and any motion intervals wider than the acceptance window must remain explicit
+failures or inconclusive results. Do not mark full iOS parity as complete from build/test
+success, fitted RGB samples or a small outline error.
 
 ## 検証 / Validation
 

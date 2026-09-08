@@ -9,8 +9,9 @@ On Apple Silicon with Xcode 26.6, build and capture:
 ```sh
 # Only needed to add English (US) on a fresh simulator; changes that simulator's settings.
 tools/keyboard-skins/ios-reference/run-tests.sh DEVICE configure-us testConfigureEnglishUS
-python3 tools/keyboard-skins/ios-reference/capture-held.py DEVICE kana-run testReferenceMatrix
-python3 tools/keyboard-skins/ios-reference/capture-held.py DEVICE english-run testEnglishReference
+python3 tools/keyboard-skins/ios-reference/capture-held.py DEVICE canonical-run testControlledReference
+python3 tools/keyboard-skins/ios-reference/capture-held.py DEVICE center-run testCenterPreviews
+tools/keyboard-skins/ios-reference/run-tests.sh DEVICE motion-run testQwertyMotionContrast
 ```
 
 Replace DEVICE with the dedicated simulator's UDID and use unique run names.
@@ -29,5 +30,21 @@ local Xcode into the ignored runner artifact; they are not committed or distribu
 Outputs are ignored under `build/keyboard-skins/`. Preserve lossless PNGs for color
 measurements; video compression changes colors. Delayed hold captures are suitable
 for stable states, not synchronized latency measurements.
+
+`testControlledReference` launches a fresh app for each appearance, seeds one lowercase
+character and retains default UIKit keyboard traits. It exports paired before/held
+images. `testCenterPreviews` uses short holds for e/a/l so the variation chooser cannot
+replace the preview. The capture wrapper rejects missing expected image counts.
+
+The motion tests draw a binary CADisplayLink clock and input-event serial, and write
+touch timestamps through public UIKit APIs. Copy `Documents/touch-events-Light.json`
+and `touch-events-Dark.json` from the current reference app container after the contrast
+run. Retrieve its current location with `simctl get_app_container`; installing a fresh
+build can change the container path. Use cap-only ROIs on the fixed gray backdrop,
+above the candidate strip, when measuring QWERTY dismissal. The earlier white-background
+run can confound disappearance with changing candidate text and must not replace this run.
+
+The harness deliberately leaves font specimens in ignored local output. They diagnose
+platform metrics; neither extracted fonts nor specimen glyph images are production assets.
 
 See [reference conditions and acceptance gate](../../../docs/keyboard-skins/reference-status.md).
