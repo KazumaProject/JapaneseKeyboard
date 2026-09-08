@@ -27,7 +27,7 @@ class IMEServiceForwardDeleteContractTest {
         )
 
         assertTrue(function.contains("KeyEvent.KEYCODE_FORWARD_DEL"))
-        assertTrue(function.contains("DeleteDirection.AfterCursor"))
+        assertTrue(imeServiceSource().contains("EditHistoryEntry.DeleteCommittedText(deletedText, DeleteDirection.AfterCursor)"))
         assertTrue(function.contains("resetEditorSelectionSnapshot()"))
     }
 

@@ -808,6 +808,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val forwardDeleteCoordinator by lazy {
+        ForwardDeleteCoordinator(
+            scope = scope,
+            currentConnection = { currentInputConnection },
+            currentRevision = { editorMutationRevision.current() },
+            canDelete = { inputString.value.isEmpty() && stringInTail.get().isEmpty() },
+            delete = { selectionWasActive -> performForwardDelete(selectionWasActive) },
+            recordDeletion = { deletedText ->
+                pushEditHistoryEntry(
+                    EditHistoryEntry.DeleteCommittedText(deletedText, DeleteDirection.AfterCursor)
+                )
+            },
+        )
+    }
     private val kanaKanjiConversionDispatcher = Executors.newSingleThreadExecutor { runnable ->
         Thread(
             {
@@ -2588,6 +2602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.startInputSession()
         }
+        forwardDeleteCoordinator.reset(attribute?.initialSelStart ?: -1, attribute?.initialSelEnd ?: -1)
         resetEditorSelectionSnapshot()
         textMacroExecutionRequestId.incrementAndGet()
         flickPreviewEditorSessionId += 1L
@@ -5045,6 +5060,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        forwardDeleteCoordinator.cancel()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -5052,6 +5068,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        forwardDeleteCoordinator.cancel()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -6311,6 +6328,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+        forwardDeleteCoordinator.onSelectionChanged(newSelStart, newSelEnd)
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
@@ -25305,82 +25323,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun handleDeleteAfterCursor() {
         clearZeroQueryAllState(refresh = false)
-        val inputConnection = currentInputConnection ?: return
-        val requestRevision = editorMutationRevision.current()
-        val extractedText = runCatching {
-            inputConnection.getExtractedText(ExtractedTextRequest(), 0)
-        }.getOrNull()
-        val hasSelection = extractedText?.let {
-            it.selectionStart >= 0 &&
-                it.selectionEnd >= 0 &&
-                it.selectionStart != it.selectionEnd
-        } ?: editorTextSelected
-
-        if (hasSelection) {
-            ioScope.launch {
-                val selectedText = runCatching {
-                    inputConnection.getSelectedText(0)?.toString().orEmpty()
-                }.getOrDefault("")
-                withContext(Dispatchers.Main.immediate) {
-                    if (currentInputConnection !== inputConnection ||
-                        !editorMutationRevision.isCurrent(requestRevision)
-                    ) {
-                        return@withContext
-                    }
-                    val currentSelection = runCatching {
-                        inputConnection.getExtractedText(ExtractedTextRequest(), 0)
-                    }.getOrNull()
-                    val selectionStillActive = currentSelection?.let {
-                        it.selectionStart >= 0 &&
-                            it.selectionEnd >= 0 &&
-                            it.selectionStart != it.selectionEnd
-                    } ?: editorTextSelected
-                    if (!selectionStillActive) return@withContext
-
-                    performForwardDelete(
-                        inputConnection = inputConnection,
-                        deletedText = selectedText,
-                        selectionWasActive = true,
-                    )
-                }
-            }
+        if (currentInputConnection == null) return
+        if (forwardDeleteCoordinator.hasSelection) {
+            forwardDeleteCoordinator.enqueue()
             return
         }
-
         val beforeInput = inputString.value
         val beforeTail = stringInTail.get()
         if (beforeTail.isNotEmpty()) {
+            forwardDeleteCoordinator.cancel()
             deleteAfterCursorInComposition(beforeInput, beforeTail)
             return
         }
-
-        // A composing string with no right-side tail has no character after its logical cursor.
         if (beforeInput.isNotEmpty()) return
-
-        ioScope.launch {
-            val textAfterCursor = editorConnectionReadMutex.withLock {
-                withContext(Dispatchers.IO) {
-                    inputConnection.getTextAfterCursor(100, 0)?.toString().orEmpty()
-                }
-            }
-            val nextOffset = nextUnicodeGraphemeOffset(textAfterCursor, 0)
-            val deletedText = textAfterCursor.take(nextOffset)
-            withContext(Dispatchers.Main.immediate) {
-                if (currentInputConnection !== inputConnection ||
-                    !editorMutationRevision.isCurrent(requestRevision) ||
-                    inputString.value.isNotEmpty() ||
-                    stringInTail.get().isNotEmpty() ||
-                    deletedText.isEmpty()
-                ) {
-                    return@withContext
-                }
-                performForwardDelete(
-                    inputConnection = inputConnection,
-                    deletedText = deletedText,
-                    selectionWasActive = false,
-                )
-            }
-        }
+        forwardDeleteCoordinator.enqueue()
     }
 
     private fun deleteAfterCursorInComposition(
@@ -25427,12 +25383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )?.let(::pushEditHistoryEntry)
     }
 
-    private fun performForwardDelete(
-        inputConnection: InputConnection,
-        deletedText: String,
-        selectionWasActive: Boolean,
-    ) {
-        if (currentInputConnection !== inputConnection) return
+    private fun performForwardDelete(selectionWasActive: Boolean) {
         invalidateZeroQueryForEditorMutation()
         clearFunctionKeyConversionSource()
         qwertyGlideInputCoordinator?.cancelPending()
@@ -25445,14 +25396,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetEditorSelectionSnapshot()
         clearSuggestionStateAfterCommit()
         resetFlagsDeleteKey()
-        if (deletedText.isNotEmpty()) {
-            pushEditHistoryEntry(
-                EditHistoryEntry.DeleteCommittedText(
-                    deletedText = deletedText,
-                    direction = DeleteDirection.AfterCursor,
-                )
-            )
-        }
     }
 
     /**
