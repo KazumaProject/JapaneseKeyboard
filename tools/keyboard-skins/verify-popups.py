@@ -125,5 +125,5 @@ for v in json.loads((a.android/'preview-layout.json').read_text()):
   placed(a.android/f'{name}-surface.png',size,offset),mode=='Light')
 
 (a.output/'measurements.json').write_text(json.dumps({'scale':3,'registration':'anchor coordinates only; no scaling',
- 'acceptance':{'outline_tolerance_pt':1,'opaque_rgb_tolerance':2,'glyph_mask':'exact equality; bounding-box agreement is insufficient'},
+ 'acceptance':{'outline_tolerance_pt':1,'opaque_rgb_tolerance':2,'glyph_mask':'diagnostic only; glyph identity excluded by requester on 2026-09-08', 'font_policy':'retain existing platform fonts; no font assets; text size and placement remain in scope'},
  'reference':str(a.reference),'android':str(a.android),'results':report},ensure_ascii=False,indent=2))
