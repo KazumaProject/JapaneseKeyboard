@@ -1,0 +1,140 @@
+{
+  "base": "bbdc7414746adeffc815d5158631e415a1167007",
+  "conditions": 10,
+  "tests": 22,
+  "failed": 0,
+  "runs": [
+    {
+      "run": "investigation/results/lite-20260907-051216",
+      "tests": 7,
+      "trace_bytes": 8353957,
+      "results": {
+        "preferences-legacy-pending.result": "PASS pending=true recovered=true",
+        "video-release.result": "PASS bounded_release_ms=502 playback_still_held=true",
+        "preferences-legacy-drained.result": "PASS pending=false recovered=true",
+        "preferences-new-pending.result": "PASS pending=true recovered=true",
+        "database-new.result": "PASS responsive_while_writer_held=true",
+        "database-legacy.result": "PASS responsive_while_writer_held=true",
+        "preferences-new-drained.result": "PASS pending=false recovered=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=67555ad803dafe15549d5f307800a09dc0d39baedc90e27247e0839fb165ea06",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=998d49ba2b4562d2ca20fb4ef0179e7db867d4169d2d209adcaee12e220a1def"
+      ]
+    },
+    {
+      "run": "investigation/results/lite-20260907-051234",
+      "tests": 1,
+      "trace_bytes": 4976207,
+      "results": {
+        "cold.result": "PASS newHome=false loaderHeld=true launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=67555ad803dafe15549d5f307800a09dc0d39baedc90e27247e0839fb165ea06",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=998d49ba2b4562d2ca20fb4ef0179e7db867d4169d2d209adcaee12e220a1def"
+      ]
+    },
+    {
+      "run": "investigation/results/lite-20260907-051239",
+      "tests": 1,
+      "trace_bytes": 4745237,
+      "results": {
+        "cold.result": "PASS newHome=false loaderHeld=false launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=67555ad803dafe15549d5f307800a09dc0d39baedc90e27247e0839fb165ea06",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=998d49ba2b4562d2ca20fb4ef0179e7db867d4169d2d209adcaee12e220a1def"
+      ]
+    },
+    {
+      "run": "investigation/results/lite-20260907-051243",
+      "tests": 1,
+      "trace_bytes": 5144672,
+      "results": {
+        "cold.result": "PASS newHome=true loaderHeld=true launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=67555ad803dafe15549d5f307800a09dc0d39baedc90e27247e0839fb165ea06",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=998d49ba2b4562d2ca20fb4ef0179e7db867d4169d2d209adcaee12e220a1def"
+      ]
+    },
+    {
+      "run": "investigation/results/lite-20260907-051248",
+      "tests": 1,
+      "trace_bytes": 5034420,
+      "results": {
+        "cold.result": "PASS newHome=true loaderHeld=false launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=67555ad803dafe15549d5f307800a09dc0d39baedc90e27247e0839fb165ea06",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=998d49ba2b4562d2ca20fb4ef0179e7db867d4169d2d209adcaee12e220a1def"
+      ]
+    },
+    {
+      "run": "investigation/results/full-20260907-051252",
+      "tests": 7,
+      "trace_bytes": 8310303,
+      "results": {
+        "preferences-legacy-pending.result": "PASS pending=true recovered=true",
+        "video-release.result": "PASS bounded_release_ms=506 playback_still_held=true",
+        "preferences-legacy-drained.result": "PASS pending=false recovered=true",
+        "preferences-new-pending.result": "PASS pending=true recovered=true",
+        "database-new.result": "PASS responsive_while_writer_held=true",
+        "database-legacy.result": "PASS responsive_while_writer_held=true",
+        "preferences-new-drained.result": "PASS pending=false recovered=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=6005d1aecc3720fe9567cb7179063a60f1d60876723921f76df8aae5c7be97ed",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=359192aab5dd9e8913469f7e821a246732ff5e41ea31286e3735c118bb46e9d2"
+      ]
+    },
+    {
+      "run": "investigation/results/full-20260907-051311",
+      "tests": 1,
+      "trace_bytes": 5021835,
+      "results": {
+        "cold.result": "PASS newHome=false loaderHeld=true launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=6005d1aecc3720fe9567cb7179063a60f1d60876723921f76df8aae5c7be97ed",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=359192aab5dd9e8913469f7e821a246732ff5e41ea31286e3735c118bb46e9d2"
+      ]
+    },
+    {
+      "run": "investigation/results/full-20260907-051316",
+      "tests": 1,
+      "trace_bytes": 4791269,
+      "results": {
+        "cold.result": "PASS newHome=false loaderHeld=false launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=6005d1aecc3720fe9567cb7179063a60f1d60876723921f76df8aae5c7be97ed",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=359192aab5dd9e8913469f7e821a246732ff5e41ea31286e3735c118bb46e9d2"
+      ]
+    },
+    {
+      "run": "investigation/results/full-20260907-051320",
+      "tests": 1,
+      "trace_bytes": 5277270,
+      "results": {
+        "cold.result": "PASS newHome=true loaderHeld=true launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=6005d1aecc3720fe9567cb7179063a60f1d60876723921f76df8aae5c7be97ed",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=359192aab5dd9e8913469f7e821a246732ff5e41ea31286e3735c118bb46e9d2"
+      ]
+    },
+    {
+      "run": "investigation/results/full-20260907-051325",
+      "tests": 1,
+      "trace_bytes": 5089539,
+      "results": {
+        "cold.result": "PASS newHome=true loaderHeld=false launched_after_release=true"
+      },
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=6005d1aecc3720fe9567cb7179063a60f1d60876723921f76df8aae5c7be97ed",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=359192aab5dd9e8913469f7e821a246732ff5e41ea31286e3735c118bb46e9d2"
+      ]
+    }
+  ]
+}

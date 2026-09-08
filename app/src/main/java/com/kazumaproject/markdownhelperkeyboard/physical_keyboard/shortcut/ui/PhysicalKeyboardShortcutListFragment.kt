@@ -28,7 +28,6 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -43,7 +42,7 @@ class PhysicalKeyboardShortcutListFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
 
     private var systemBottomInset: Int = 0
-    private var navViewLayoutChangeListener: View.OnLayoutChangeListener? = null
+    private var navigationContainerLayoutChangeListener: View.OnLayoutChangeListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -167,14 +166,14 @@ class PhysicalKeyboardShortcutListFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        val navView = activity?.findViewById<BottomNavigationView>(R.id.nav_view)
-        val listener = navViewLayoutChangeListener
+        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container)
+        val listener = navigationContainerLayoutChangeListener
 
-        if (navView != null && listener != null) {
-            navView.removeOnLayoutChangeListener(listener)
+        if (navigationContainer != null && listener != null) {
+            navigationContainer.removeOnLayoutChangeListener(listener)
         }
 
-        navViewLayoutChangeListener = null
+        navigationContainerLayoutChangeListener = null
 
         super.onDestroyView()
     }
@@ -195,9 +194,9 @@ class PhysicalKeyboardShortcutListFragment : Fragment() {
             updateRecyclerViewBottomPadding()
         }
 
-        val navView = activity?.findViewById<BottomNavigationView>(R.id.nav_view)
+        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container)
 
-        navView?.doOnLayout {
+        navigationContainer?.doOnLayout {
             updateRecyclerViewBottomPadding()
         }
 
@@ -205,8 +204,8 @@ class PhysicalKeyboardShortcutListFragment : Fragment() {
             updateRecyclerViewBottomPadding()
         }
 
-        navView?.addOnLayoutChangeListener(listener)
-        navViewLayoutChangeListener = listener
+        navigationContainer?.addOnLayoutChangeListener(listener)
+        navigationContainerLayoutChangeListener = listener.takeIf { navigationContainer != null }
 
         recyclerView.post {
             updateRecyclerViewBottomPadding()
@@ -218,10 +217,14 @@ class PhysicalKeyboardShortcutListFragment : Fragment() {
             return
         }
 
-        val navView = activity?.findViewById<BottomNavigationView>(R.id.nav_view)
+        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container)
 
-        val navBottom = if (navView != null && navView.isVisible && navView.height > 0) {
-            navView.height
+        val navBottom = if (
+            navigationContainer != null &&
+            navigationContainer.isVisible &&
+            navigationContainer.height > 0
+        ) {
+            navigationContainer.height
         } else {
             0
         }

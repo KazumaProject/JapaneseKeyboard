@@ -1,0 +1,48 @@
+{
+  "filter": "maps",
+  "filterAndLoad": "passed",
+  "onscreenEnter": "passed",
+  "resultDialog": {
+    "id": "regression/maps-photo-comment",
+    "requested": {
+      "id": "regression/maps-photo-comment",
+      "inputType": 2506753,
+      "imeOptions": 1073741830,
+      "actionLabel": null,
+      "actionId": 0,
+      "host": "raw"
+    },
+    "actual": {
+      "inputType": 2506753,
+      "imeOptions": 1073741830,
+      "actionLabel": null,
+      "fieldName": null,
+      "privateImeOptions": null,
+      "actionId": 0,
+      "hintText": null
+    },
+    "events": [
+      {
+        "method": "finishComposingText",
+        "value": ""
+      },
+      {
+        "method": "finishComposingText",
+        "value": ""
+      },
+      {
+        "method": "sendKeyEvent",
+        "value": "0:66"
+      },
+      {
+        "method": "sendKeyEvent",
+        "value": "1:66"
+      }
+    ],
+    "text": "seed\n",
+    "focus": "editor",
+    "connections": 8,
+    "composingStart": -1,
+    "composingEnd": -1
+  }
+}
