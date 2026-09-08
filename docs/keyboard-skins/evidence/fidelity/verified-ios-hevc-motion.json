@@ -1,0 +1,1063 @@
+{
+  "platform": "ios",
+  "video": "build/keyboard-skins/qwerty-motion-hevc.mov",
+  "clock": {
+    "offset_seconds": 562897.8926666667,
+    "residual_percentiles_ms": {
+      "min": -163.33333333022892,
+      "p1": -19.766666612122208,
+      "p5": -6.333333323709667,
+      "median": 0.0,
+      "p95": 2.6666666963137686,
+      "p99": 18.333333428017795,
+      "max": 19.000000087544322
+    },
+    "uncertainty_ms": 19.766666612122208
+  },
+  "gestures": [
+    {
+      "name": "ios-Light-0",
+      "label": "q",
+      "down": 562908.9739198333,
+      "up": 562909.1229625833,
+      "down_serial": 7,
+      "up_serial": 8,
+      "box": [
+        30,
+        1788,
+        185,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          2.0801667124032974,
+          13.74683331232518
+        ],
+        "capture_gap_ms": 11.666666599921882,
+        "uncertainty_expanded_ms": [
+          -17.68649989971891,
+          33.51349992444739
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          2.0801667124032974,
+          13.74683331232518
+        ],
+        "capture_gap_ms": 11.666666599921882,
+        "uncertainty_expanded_ms": [
+          -17.68649989971891,
+          33.51349992444739
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          48.037416650913656,
+          63.037416664883494
+        ],
+        "capture_gap_ms": 15.000000013969839,
+        "uncertainty_expanded_ms": [
+          28.270750038791448,
+          82.8040832770057
+        ]
+      },
+      "max_sample_gap_ms": 49.99999993015081,
+      "marker_relative_dismissal_ms": [
+        31.666666618548334,
+        46.66666663251817
+      ],
+      "up_marker_after_event_ms": 16.370750032365322,
+      "marker_relative_appearance_ms": [
+        5.000000004656613,
+        16.666666604578495
+      ],
+      "down_marker_after_event_ms": -2.9198332922533154
+    },
+    {
+      "name": "ios-Light-1",
+      "label": "q",
+      "down": 562909.9304917083,
+      "up": 562910.0804917084,
+      "down_serial": 9,
+      "up_serial": 10,
+      "box": [
+        30,
+        1788,
+        185,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -31.158374971710145,
+          7.174958358518779
+        ],
+        "capture_gap_ms": 38.333333330228925,
+        "uncertainty_expanded_ms": [
+          -50.92504158383235,
+          26.941624970640987
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -31.158374971710145,
+          7.174958358518779
+        ],
+        "capture_gap_ms": 38.333333330228925,
+        "uncertainty_expanded_ms": [
+          -50.92504158383235,
+          26.941624970640987
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          53.84162499103695,
+          72.17495830263942
+        ],
+        "capture_gap_ms": 18.333333311602473,
+        "uncertainty_expanded_ms": [
+          34.074958378914744,
+          91.94162491476163
+        ]
+      },
+      "max_sample_gap_ms": 38.333333330228925,
+      "marker_relative_dismissal_ms": [
+        45.000000041909516,
+        63.33333335351199
+      ],
+      "up_marker_after_event_ms": 8.841624949127436,
+      "marker_relative_appearance_ms": [
+        -38.333333330228925,
+        0.0
+      ],
+      "down_marker_after_event_ms": 7.174958358518779
+    },
+    {
+      "name": "ios-Light-2",
+      "label": "q",
+      "down": 562910.8885637916,
+      "up": 562911.0385637917,
+      "down_serial": 11,
+      "up_serial": 12,
+      "box": [
+        30,
+        1788,
+        185,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -7.563791703432798,
+          15.76954172924161
+        ],
+        "capture_gap_ms": 23.333333432674408,
+        "uncertainty_expanded_ms": [
+          -27.330458315555006,
+          35.53620834136382
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -7.563791703432798,
+          15.76954172924161
+        ],
+        "capture_gap_ms": 23.333333432674408,
+        "uncertainty_expanded_ms": [
+          -27.330458315555006,
+          35.53620834136382
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          42.43620834313333,
+          65.76954165939242
+        ],
+        "capture_gap_ms": 23.333333316259086,
+        "uncertainty_expanded_ms": [
+          22.669541731011122,
+          85.53620827151462
+        ]
+      },
+      "max_sample_gap_ms": 163.33333333022892,
+      "marker_relative_dismissal_ms": [
+        48.33333333954215,
+        71.66666665580124
+      ],
+      "up_marker_after_event_ms": -5.89712499640882,
+      "marker_relative_appearance_ms": [
+        0.0,
+        23.333333432674408
+      ],
+      "down_marker_after_event_ms": -7.563791703432798
+    },
+    {
+      "name": "ios-Light-3",
+      "label": "e",
+      "down": 562911.85751125,
+      "up": 562913.05751125,
+      "down_serial": 13,
+      "up_serial": 14,
+      "box": [
+        250,
+        1788,
+        415,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -78.17791658453643,
+          15.155416680499911
+        ],
+        "capture_gap_ms": 93.33333326503634,
+        "uncertainty_expanded_ms": [
+          -97.94458319665864,
+          34.92208329262212
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          358.4887500619516,
+          488.4887500666082
+        ],
+        "capture_gap_ms": 130.0000000046566,
+        "uncertainty_expanded_ms": [
+          338.72208344982937,
+          508.2554166787304
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          40.155416587367654,
+          60.155416605994105
+        ],
+        "capture_gap_ms": 20.00000001862645,
+        "uncertainty_expanded_ms": [
+          20.388749975245446,
+          79.92208321811631
+        ]
+      },
+      "max_sample_gap_ms": 130.0000000046566,
+      "marker_relative_dismissal_ms": [
+        41.66666662786156,
+        61.66666664648801
+      ],
+      "up_marker_after_event_ms": -1.5112500404939055,
+      "marker_relative_appearance_ms": [
+        -93.33333326503634,
+        0.0
+      ],
+      "down_marker_after_event_ms": 15.155416680499911
+    },
+    {
+      "name": "ios-Light-4",
+      "label": "e",
+      "down": 562913.8774194584,
+      "up": 562915.0774194583,
+      "down_serial": 15,
+      "up_serial": 16,
+      "box": [
+        250,
+        1788,
+        415,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -78.08612508233637,
+          6.913874996826053
+        ],
+        "capture_gap_ms": 85.00000007916242,
+        "uncertainty_expanded_ms": [
+          -97.85279169445857,
+          26.68054160894826
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          355.247208266519,
+          398.58054160140455
+        ],
+        "capture_gap_ms": 43.33333333488554,
+        "uncertainty_expanded_ms": [
+          335.4805416543968,
+          418.34720821352676
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          36.91387502476573,
+          56.91387504339218
+        ],
+        "capture_gap_ms": 20.00000001862645,
+        "uncertainty_expanded_ms": [
+          17.147208412643522,
+          76.68054165551439
+        ]
+      },
+      "max_sample_gap_ms": 98.33333326969296,
+      "marker_relative_dismissal_ms": [
+        45.000000041909516,
+        65.00000006053597
+      ],
+      "up_marker_after_event_ms": -8.086125017143786,
+      "marker_relative_appearance_ms": [
+        -85.00000007916242,
+        0.0
+      ],
+      "down_marker_after_event_ms": 6.913874996826053
+    },
+    {
+      "name": "ios-Light-5",
+      "label": "e",
+      "down": 562915.8883080833,
+      "up": 562917.0877056667,
+      "down_serial": 17,
+      "up_serial": 18,
+      "box": [
+        250,
+        1788,
+        415,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -7.308083353564143,
+          14.358583372086287
+        ],
+        "capture_gap_ms": 21.66666672565043,
+        "uncertainty_expanded_ms": [
+          -27.07474996568635,
+          34.125249984208494
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          361.0252500511706,
+          409.35858339071274
+        ],
+        "capture_gap_ms": 48.33333333954215,
+        "uncertainty_expanded_ms": [
+          341.2585834390484,
+          429.12525000283495
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          43.29433327075094,
+          64.96099999640137
+        ],
+        "capture_gap_ms": 21.66666672565043,
+        "uncertainty_expanded_ms": [
+          23.527666658628732,
+          84.72766660852358
+        ]
+      },
+      "max_sample_gap_ms": 85.00000007916242,
+      "marker_relative_dismissal_ms": [
+        39.99999992083758,
+        61.66666664648801
+      ],
+      "up_marker_after_event_ms": 3.2943333499133587,
+      "marker_relative_appearance_ms": [
+        0.0,
+        21.66666672565043
+      ],
+      "down_marker_after_event_ms": -7.308083353564143
+    },
+    {
+      "name": "ios-Light-6",
+      "label": "p",
+      "down": 562917.8941283333,
+      "up": 562918.0441283333,
+      "down_serial": 19,
+      "up_serial": 20,
+      "box": [
+        1138,
+        1788,
+        1290,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -13.128333375789225,
+          8.538333349861205
+        ],
+        "capture_gap_ms": 21.66666672565043,
+        "uncertainty_expanded_ms": [
+          -32.89499998791143,
+          28.304999961983413
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -13.128333375789225,
+          8.538333349861205
+        ],
+        "capture_gap_ms": 21.66666672565043,
+        "uncertainty_expanded_ms": [
+          -32.89499998791143,
+          28.304999961983413
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          36.871666670776904,
+          58.53833328001201
+        ],
+        "capture_gap_ms": 21.666666609235108,
+        "uncertainty_expanded_ms": [
+          17.105000058654696,
+          78.30499989213422
+        ]
+      },
+      "max_sample_gap_ms": 33.33333332557231,
+      "marker_relative_dismissal_ms": [
+        45.000000041909516,
+        66.66666665114462
+      ],
+      "up_marker_after_event_ms": -8.128333371132612,
+      "marker_relative_appearance_ms": [
+        0.0,
+        21.66666672565043
+      ],
+      "down_marker_after_event_ms": -13.128333375789225
+    },
+    {
+      "name": "ios-Light-7",
+      "label": "p",
+      "down": 562918.8575926666,
+      "up": 562919.0075926667,
+      "down_serial": 21,
+      "up_serial": 22,
+      "box": [
+        1138,
+        1788,
+        1290,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -26.59266663249582,
+          10.073999990709126
+        ],
+        "capture_gap_ms": 36.66666662320495,
+        "uncertainty_expanded_ms": [
+          -46.35933324461803,
+          29.840666602831334
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -26.59266663249582,
+          10.073999990709126
+        ],
+        "capture_gap_ms": 36.66666662320495,
+        "uncertainty_expanded_ms": [
+          -46.35933324461803,
+          29.840666602831334
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          40.0740000186488,
+          61.74066662788391
+        ],
+        "capture_gap_ms": 21.666666609235108,
+        "uncertainty_expanded_ms": [
+          20.307333406526595,
+          81.50733324000612
+        ]
+      },
+      "max_sample_gap_ms": 81.66666666511446,
+      "marker_relative_dismissal_ms": [
+        43.33333333488554,
+        64.99999994412065
+      ],
+      "up_marker_after_event_ms": -3.2593333162367344,
+      "marker_relative_appearance_ms": [
+        -36.66666662320495,
+        0.0
+      ],
+      "down_marker_after_event_ms": 10.073999990709126
+    },
+    {
+      "name": "ios-Light-8",
+      "label": "p",
+      "down": 562919.825862875,
+      "up": 562919.975862875,
+      "down_serial": 23,
+      "up_serial": 24,
+      "box": [
+        1138,
+        1788,
+        1290,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -28.19620829541236,
+          8.470458327792585
+        ],
+        "capture_gap_ms": 36.66666662320495,
+        "uncertainty_expanded_ms": [
+          -47.96287490753457,
+          28.237124939914793
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -28.19620829541236,
+          8.470458327792585
+        ],
+        "capture_gap_ms": 36.66666662320495,
+        "uncertainty_expanded_ms": [
+          -47.96287490753457,
+          28.237124939914793
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          38.47045835573226,
+          60.13712496496737
+        ],
+        "capture_gap_ms": 21.666666609235108,
+        "uncertainty_expanded_ms": [
+          18.703791743610054,
+          79.90379157708958
+        ]
+      },
+      "max_sample_gap_ms": 80.0000000745058,
+      "marker_relative_dismissal_ms": [
+        45.000000041909516,
+        66.66666665114462
+      ],
+      "up_marker_after_event_ms": -6.529541686177254,
+      "marker_relative_appearance_ms": [
+        -36.66666662320495,
+        0.0
+      ],
+      "down_marker_after_event_ms": 8.470458327792585
+    },
+    {
+      "name": "ios-Dark-9",
+      "label": "q",
+      "down": 562926.9468506667,
+      "up": 562927.0968506667,
+      "down_serial": 7,
+      "up_serial": 8,
+      "box": [
+        30,
+        1788,
+        185,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -5.850666668266058,
+          7.482666638679802
+        ],
+        "capture_gap_ms": 13.33333330694586,
+        "uncertainty_expanded_ms": [
+          -25.617333280388266,
+          27.24933325080201
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -5.850666668266058,
+          7.482666638679802
+        ],
+        "capture_gap_ms": 13.33333330694586,
+        "uncertainty_expanded_ms": [
+          -25.617333280388266,
+          27.24933325080201
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          62.482666689902544,
+          72.48266658280045
+        ],
+        "capture_gap_ms": 9.999999892897904,
+        "uncertainty_expanded_ms": [
+          42.716000077780336,
+          92.24933319492266
+        ]
+      },
+      "max_sample_gap_ms": 56.6666666418314,
+      "marker_relative_dismissal_ms": [
+        21.66666672565043,
+        31.666666618548334
+      ],
+      "up_marker_after_event_ms": 40.815999964252114,
+      "marker_relative_appearance_ms": [
+        5.000000004656613,
+        18.333333311602473
+      ],
+      "down_marker_after_event_ms": -10.85066667292267
+    },
+    {
+      "name": "ios-Dark-10",
+      "label": "q",
+      "down": 562927.909448,
+      "up": 562928.059448,
+      "down_serial": 9,
+      "up_serial": 10,
+      "box": [
+        30,
+        1788,
+        185,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -11.781333363614976,
+          13.218666659668088
+        ],
+        "capture_gap_ms": 25.000000023283064,
+        "uncertainty_expanded_ms": [
+          -31.547999975737184,
+          32.985333271790296
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -11.781333363614976,
+          13.218666659668088
+        ],
+        "capture_gap_ms": 25.000000023283064,
+        "uncertainty_expanded_ms": [
+          -31.547999975737184,
+          32.985333271790296
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          41.55199998058379,
+          61.55199999921024
+        ],
+        "capture_gap_ms": 20.00000001862645,
+        "uncertainty_expanded_ms": [
+          21.78533336846158,
+          81.31866661133245
+        ]
+      },
+      "max_sample_gap_ms": 101.66666668374091,
+      "marker_relative_dismissal_ms": [
+        46.666666748933494,
+        66.66666676755995
+      ],
+      "up_marker_after_event_ms": -5.114666768349707,
+      "marker_relative_appearance_ms": [
+        0.0,
+        25.000000023283064
+      ],
+      "down_marker_after_event_ms": -11.781333363614976
+    },
+    {
+      "name": "ios-Dark-11",
+      "label": "q",
+      "down": 562928.8834465,
+      "up": 562929.0334465,
+      "down_serial": 11,
+      "up_serial": 12,
+      "box": [
+        30,
+        1788,
+        185,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -19.113166723400354,
+          4.220166592858732
+        ],
+        "capture_gap_ms": 23.333333316259086,
+        "uncertainty_expanded_ms": [
+          -38.87983333552256,
+          23.98683320498094
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -19.113166723400354,
+          4.220166592858732
+        ],
+        "capture_gap_ms": 23.333333316259086,
+        "uncertainty_expanded_ms": [
+          -38.87983333552256,
+          23.98683320498094
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          47.55350004415959,
+          72.55350006744266
+        ],
+        "capture_gap_ms": 25.000000023283064,
+        "uncertainty_expanded_ms": [
+          27.786833432037383,
+          92.32016667956486
+        ]
+      },
+      "max_sample_gap_ms": 101.66666668374091,
+      "marker_relative_dismissal_ms": [
+        48.33333333954215,
+        73.33333336282521
+      ],
+      "up_marker_after_event_ms": -0.7798332953825593,
+      "marker_relative_appearance_ms": [
+        -23.333333316259086,
+        0.0
+      ],
+      "down_marker_after_event_ms": 4.220166592858732
+    },
+    {
+      "name": "ios-Dark-12",
+      "label": "e",
+      "down": 562929.8518717083,
+      "up": 562931.0518717084,
+      "down_serial": 13,
+      "up_serial": 14,
+      "box": [
+        250,
+        1788,
+        415,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -20.871708285994828,
+          15.794958337210119
+        ],
+        "capture_gap_ms": 36.66666662320495,
+        "uncertainty_expanded_ms": [
+          -40.638374898117036,
+          35.56162494933233
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          364.1282917233184,
+          414.1282916534692
+        ],
+        "capture_gap_ms": 49.99999993015081,
+        "uncertainty_expanded_ms": [
+          344.3616251111962,
+          433.8949582655914
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          45.794958248734474,
+          67.4616249743849
+        ],
+        "capture_gap_ms": 21.66666672565043,
+        "uncertainty_expanded_ms": [
+          26.028291636612266,
+          87.22829158650711
+        ]
+      },
+      "max_sample_gap_ms": 99.99999997671694,
+      "marker_relative_dismissal_ms": [
+        36.66666662320495,
+        58.333333348855376
+      ],
+      "up_marker_after_event_ms": 9.128291625529528,
+      "marker_relative_appearance_ms": [
+        -36.66666662320495,
+        0.0
+      ],
+      "down_marker_after_event_ms": 15.794958337210119
+    },
+    {
+      "name": "ios-Dark-13",
+      "label": "e",
+      "down": 562931.867859375,
+      "up": 562933.067859375,
+      "down_serial": 15,
+      "up_serial": 16,
+      "box": [
+        250,
+        1788,
+        415,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -36.85937495902181,
+          1.473958371207118
+        ],
+        "capture_gap_ms": 38.333333330228925,
+        "uncertainty_expanded_ms": [
+          -56.626041571144015,
+          21.240624983329326
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          348.1406250502914,
+          396.47395838983357
+        ],
+        "capture_gap_ms": 48.33333333954215,
+        "uncertainty_expanded_ms": [
+          328.3739584381692,
+          416.2406250019558
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          48.14062500372529,
+          68.14062490593642
+        ],
+        "capture_gap_ms": 19.99999990221113,
+        "uncertainty_expanded_ms": [
+          28.373958391603082,
+          87.90729151805863
+        ]
+      },
+      "max_sample_gap_ms": 48.33333333954215,
+      "marker_relative_dismissal_ms": [
+        43.33333333488554,
+        63.33333323709667
+      ],
+      "up_marker_after_event_ms": 4.807291668839753,
+      "marker_relative_appearance_ms": [
+        -38.333333330228925,
+        0.0
+      ],
+      "down_marker_after_event_ms": 1.473958371207118
+    },
+    {
+      "name": "ios-Dark-14",
+      "label": "e",
+      "down": 562933.883617125,
+      "up": 562935.083617125,
+      "down_serial": 17,
+      "up_serial": 18,
+      "box": [
+        250,
+        1788,
+        415,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -35.95045837573707,
+          0.7162083638831973
+        ],
+        "capture_gap_ms": 36.66666673962027,
+        "uncertainty_expanded_ms": [
+          -55.71712498785928,
+          20.482874976005405
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          349.04954163357615,
+          395.71620838250965
+        ],
+        "capture_gap_ms": 46.666666748933494,
+        "uncertainty_expanded_ms": [
+          329.28287502145395,
+          415.48287499463186
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          47.38287487998605,
+          70.71620831266046
+        ],
+        "capture_gap_ms": 23.333333432674408,
+        "uncertainty_expanded_ms": [
+          27.61620826786384,
+          90.48287492478266
+        ]
+      },
+      "max_sample_gap_ms": 78.3333332510665,
+      "marker_relative_dismissal_ms": [
+        38.333333330228925,
+        61.66666676290333
+      ],
+      "up_marker_after_event_ms": 9.049541549757123,
+      "marker_relative_appearance_ms": [
+        -36.66666673962027,
+        0.0
+      ],
+      "down_marker_after_event_ms": 0.7162083638831973
+    },
+    {
+      "name": "ios-Dark-15",
+      "label": "p",
+      "down": 562935.8682285417,
+      "up": 562936.0182285417,
+      "down_serial": 19,
+      "up_serial": 20,
+      "box": [
+        1138,
+        1788,
+        1290,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -3.8952083559706807,
+          17.771458253264427
+        ],
+        "capture_gap_ms": 21.666666609235108,
+        "uncertainty_expanded_ms": [
+          -23.66187496809289,
+          37.538124865386635
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -3.8952083559706807,
+          17.771458253264427
+        ],
+        "capture_gap_ms": 21.666666609235108,
+        "uncertainty_expanded_ms": [
+          -23.66187496809289,
+          37.538124865386635
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          47.771458281204104,
+          66.10479159280658
+        ],
+        "capture_gap_ms": 18.333333311602473,
+        "uncertainty_expanded_ms": [
+          28.004791669081897,
+          85.87145820492879
+        ]
+      },
+      "max_sample_gap_ms": 116.66666669771075,
+      "marker_relative_dismissal_ms": [
+        46.66666663251817,
+        64.99999994412065
+      ],
+      "up_marker_after_event_ms": 1.1047916486859322,
+      "marker_relative_appearance_ms": [
+        0.0,
+        21.666666609235108
+      ],
+      "down_marker_after_event_ms": -3.8952083559706807
+    },
+    {
+      "name": "ios-Dark-16",
+      "label": "p",
+      "down": 562936.8468395,
+      "up": 562936.9968395,
+      "down_serial": 21,
+      "up_serial": 22,
+      "box": [
+        1138,
+        1788,
+        1290,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -15.839500003494322,
+          4.160500015132129
+        ],
+        "capture_gap_ms": 20.00000001862645,
+        "uncertainty_expanded_ms": [
+          -35.60616661561653,
+          23.927166627254337
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -15.839500003494322,
+          4.160500015132129
+        ],
+        "capture_gap_ms": 20.00000001862645,
+        "uncertainty_expanded_ms": [
+          -35.60616661561653,
+          23.927166627254337
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          52.49383323825896,
+          74.16049996390939
+        ],
+        "capture_gap_ms": 21.66666672565043,
+        "uncertainty_expanded_ms": [
+          32.72716662613675,
+          93.9271665760316
+        ]
+      },
+      "max_sample_gap_ms": 95.00000008847564,
+      "marker_relative_dismissal_ms": [
+        46.66666663251817,
+        68.3333333581686
+      ],
+      "up_marker_after_event_ms": 5.827166605740786,
+      "marker_relative_appearance_ms": [
+        0.0,
+        20.00000001862645
+      ],
+      "down_marker_after_event_ms": -15.839500003494322
+    },
+    {
+      "name": "ios-Dark-17",
+      "label": "p",
+      "down": 562937.81985375,
+      "up": 562937.96985375,
+      "down_serial": 23,
+      "up_serial": 24,
+      "box": [
+        1138,
+        1788,
+        1290,
+        1825
+      ],
+      "appearance": {
+        "bracket_ms": [
+          -22.18708337750286,
+          16.146249952726066
+        ],
+        "capture_gap_ms": 38.333333330228925,
+        "uncertainty_expanded_ms": [
+          -41.95374998962507,
+          35.912916564848274
+        ]
+      },
+      "settled": {
+        "bracket_ms": [
+          -22.18708337750286,
+          16.146249952726066
+        ],
+        "capture_gap_ms": 38.333333330228925,
+        "uncertainty_expanded_ms": [
+          -41.95374998962507,
+          35.912916564848274
+        ]
+      },
+      "dismissal": {
+        "bracket_ms": [
+          44.47958339005709,
+          66.1462499992922
+        ],
+        "capture_gap_ms": 21.666666609235108,
+        "uncertainty_expanded_ms": [
+          24.71291677793488,
+          85.9129166114144
+        ]
+      },
+      "max_sample_gap_ms": 38.333333330228925,
+      "marker_relative_dismissal_ms": [
+        45.000000041909516,
+        66.66666665114462
+      ],
+      "up_marker_after_event_ms": -0.5204166518524289,
+      "marker_relative_appearance_ms": [
+        -38.333333330228925,
+        0.0
+      ],
+      "down_marker_after_event_ms": 16.146249952726066
+    }
+  ]
+}

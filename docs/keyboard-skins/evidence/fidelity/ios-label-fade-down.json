@@ -1,0 +1,183 @@
+{
+  "video": "build/keyboard-skins/fidelity-motion.mov",
+  "gesture": 1,
+  "phase": "down",
+  "roi": [
+    320,
+    2000,
+    480,
+    2120
+  ],
+  "note": "Normalized compressed-video intensity for timing only; no absolute RGB claim",
+  "clock_uncertainty_ms": 18.00000004004687,
+  "fitted_onset_ms": 401.8902370981787,
+  "fitted_rate_per_second": 25.841469111299816,
+  "max_normalized_residual": 0.03280514536148249,
+  "mean_normalized_residual": 0.008100278172879127,
+  "samples": [
+    {
+      "since_event_ms": 354.6514166519046,
+      "normalized_intensity": 0.0
+    },
+    {
+      "since_event_ms": 397.9847499867901,
+      "normalized_intensity": 0.0
+    },
+    {
+      "since_event_ms": 404.6514166984707,
+      "normalized_intensity": 0.008849557522123894
+    },
+    {
+      "since_event_ms": 411.318083293736,
+      "normalized_intensity": 0.02654867256637168
+    },
+    {
+      "since_event_ms": 421.3180833030492,
+      "normalized_intensity": 0.09734513274336283
+    },
+    {
+      "since_event_ms": 427.9847500147298,
+      "normalized_intensity": 0.1592920353982301
+    },
+    {
+      "since_event_ms": 437.984750024043,
+      "normalized_intensity": 0.23893805309734514
+    },
+    {
+      "since_event_ms": 444.6514166193083,
+      "normalized_intensity": 0.2920353982300885
+    },
+    {
+      "since_event_ms": 454.6514166286215,
+      "normalized_intensity": 0.415929203539823
+    },
+    {
+      "since_event_ms": 461.3180833403021,
+      "normalized_intensity": 0.45132743362831856
+    },
+    {
+      "since_event_ms": 471.31808334961534,
+      "normalized_intensity": 0.5309734513274337
+    },
+    {
+      "since_event_ms": 481.31808335892856,
+      "normalized_intensity": 0.5752212389380531
+    },
+    {
+      "since_event_ms": 487.98474995419383,
+      "normalized_intensity": 0.6548672566371682
+    },
+    {
+      "since_event_ms": 492.98474995885044,
+      "normalized_intensity": 0.6814159292035398
+    },
+    {
+      "since_event_ms": 506.3180832657963,
+      "normalized_intensity": 0.7345132743362832
+    },
+    {
+      "since_event_ms": 514.6514166845009,
+      "normalized_intensity": 0.7787610619469026
+    },
+    {
+      "since_event_ms": 522.9847499867901,
+      "normalized_intensity": 0.8230088495575221
+    },
+    {
+      "since_event_ms": 527.9847499914467,
+      "normalized_intensity": 0.8407079646017699
+    },
+    {
+      "since_event_ms": 539.6514167077839,
+      "normalized_intensity": 0.8672566371681416
+    },
+    {
+      "since_event_ms": 547.9847500100732,
+      "normalized_intensity": 0.8849557522123894
+    },
+    {
+      "since_event_ms": 556.3180833123624,
+      "normalized_intensity": 0.911504424778761
+    },
+    {
+      "since_event_ms": 561.318083317019,
+      "normalized_intensity": 0.9203539823008849
+    },
+    {
+      "since_event_ms": 572.9847500333562,
+      "normalized_intensity": 0.9469026548672567
+    },
+    {
+      "since_event_ms": 581.3180833356455,
+      "normalized_intensity": 0.9469026548672567
+    },
+    {
+      "since_event_ms": 589.6514166379347,
+      "normalized_intensity": 0.9646017699115044
+    },
+    {
+      "since_event_ms": 594.6514166425914,
+      "normalized_intensity": 0.9823008849557522
+    },
+    {
+      "since_event_ms": 606.3180833589286,
+      "normalized_intensity": 0.9823008849557522
+    },
+    {
+      "since_event_ms": 616.3180833682418,
+      "normalized_intensity": 0.9823008849557522
+    },
+    {
+      "since_event_ms": 622.984749963507,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 629.6514166751876,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 639.6514166845009,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 647.9847499867901,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 656.3180832890794,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 662.98475000076,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 669.6514165960252,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 687.984750024043,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 704.6514166286215,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 721.3180833496153,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 737.9847499541938,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 754.6514166751876,
+      "normalized_intensity": 1.0
+    },
+    {
+      "since_event_ms": 771.3180832797661,
+      "normalized_intensity": 1.0
+    }
+  ]
+}

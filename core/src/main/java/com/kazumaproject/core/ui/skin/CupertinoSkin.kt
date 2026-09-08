@@ -35,10 +35,71 @@ internal class CupertinoSkin(override val id: KeyboardSkinId) : KeyboardSkin {
 
     override fun popupDrawable(resources: Resources, direction: PopupDirection, selected: Boolean): Drawable =
         CupertinoPopupDrawable(if (selected) palette.selection else palette.key,
-            resources.displayMetrics.density, direction)
+            resources.displayMetrics.density, direction, id == KeyboardSkinId.CUPERTINO_DARK, selected)
 
-    // No Material ripple, elevation animation, or delayed dismissal. The captured kana
-    // states change with selection; presentation must never delay input or retain a popup.
+    override fun configurePopupText(view: android.widget.TextView, flick: Boolean) {
+        view.textSize = if (flick) 29.5f else 25f
+        view.includeFontPadding = false
+        view.gravity = android.view.Gravity.CENTER
+        view.translationY = (if (flick) 1.3333f else .6667f) * view.resources.displayMetrics.density
+    }
+
+    override fun configurePreviewText(view: android.widget.TextView) {
+        view.textSize = 37f
+        view.includeFontPadding = false
+        view.gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+        // Explicit baseline, independently measured from the popup cap and glyph outline.
+        // The native fallback font has a deeper descender than the reference font.
+        // Keep descending previews optically aligned without moving the popup or hit area.
+        val hasDescender = view.text.any { it in "gjpqy" }
+        val baseline = (if (hasDescender) 45f else 49f) * view.resources.displayMetrics.density
+        view.setPadding(0, (baseline + view.paint.fontMetricsInt.ascent).toInt().coerceAtLeast(0), 0, 0)
+    }
+
+    override fun keyPreview(resources: Resources, keyWidth: Int, keyHeight: Int, keyLeft: Int,
+                            screenWidth: Int, lowerRow: Boolean): SkinKeyPreview {
+        val layout = CupertinoKeyPreviewGeometry.resolve(keyWidth, keyHeight, keyLeft, screenWidth)
+        val lowerPosition = if (lowerRow) ((keyLeft + keyWidth / 2f) / screenWidth - 140f / 1320f) /
+            ((1180f - 140f) / 1320f) else null
+        return SkinKeyPreview(layout.width, layout.height, layout.xOffset, layout.yOffset,
+            CupertinoKeyPreviewDrawable(id == KeyboardSkinId.CUPERTINO_DARK, keyWidth.toFloat(),
+                -layout.xOffset.toFloat(), lowerPosition))
+    }
+
+    override fun guideDrawable(resources: Resources, direction: PopupDirection, selected: Boolean): Drawable {
+        // Adjacent cells meet with square edges; only the outside of the cross is rounded.
+        val corners = when(direction) {
+            PopupDirection.LEFT -> 12
+            PopupDirection.TOP -> 9
+            PopupDirection.RIGHT -> 3
+            PopupDirection.BOTTOM -> 6
+            else -> 0
+        }
+        return CupertinoSurfaceDrawable(if(selected) palette.selection else palette.key,
+            10.25f * resources.displayMetrics.density, corners,
+            direction.takeIf { !selected && id == KeyboardSkinId.CUPERTINO_DARK && it != PopupDirection.CENTER })
+    }
+
+    override fun variationDrawable(resources: Resources): Drawable =
+        CupertinoSurfaceDrawable(palette.key, 10f * resources.displayMetrics.density,
+            variationIllumination = id == KeyboardSkinId.CUPERTINO_DARK)
+
+    // Captured QWERTY popups remain visible for approximately 70–90 ms after UP.
+    // This is a visual hold only: gesture ownership and text commits finish immediately.
+    override val popupReleaseDelayMillis: Long = 75L
+    override val longPressLabelColor: Int =
+        if (id == KeyboardSkinId.CUPERTINO_DARK) 0xff545454.toInt() else 0xff737373.toInt()
+    override val longPressLabelFadeMillis: Long = 300L
+    override val longPressLabelRestoreMillis: Long = 230L
+    override val longPressLabelInterpolator = labelInterpolator(longPressLabelFadeMillis)
+    override val longPressLabelRestoreInterpolator = labelInterpolator(longPressLabelRestoreMillis)
+
+    private fun labelInterpolator(durationMillis: Long) = android.animation.TimeInterpolator { fraction ->
+        val end = durationMillis * .026
+        val t = fraction * end
+        ((1 - (1 + t) * kotlin.math.exp(-t)) / (1 - (1 + end) * kotlin.math.exp(-end))).toFloat()
+    }
+
     override fun showPopup(view: View) {
         view.animate().cancel()
         view.alpha = 1f

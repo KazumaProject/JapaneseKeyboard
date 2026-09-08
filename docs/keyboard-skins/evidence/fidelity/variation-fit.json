@@ -1,0 +1,6 @@
+{
+  "max_rgb_error": 3.367100906279717,
+  "p99_rgb_error": 2.5683581995731624,
+  "held_out_samples": 41594,
+  "mask": "eroded dark silhouette >40; exclude chroma >4 and intensity >100 with dilation3"
+}

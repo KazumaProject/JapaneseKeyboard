@@ -1468,6 +1468,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
+                    skinLongPress.clear()
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(GestureType.Down, key, null)
 
@@ -1509,7 +1510,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    resetLongPressAction()
+                    resetLongPressAction(animateLabels = true)
                     if (isCursorMode) {
                         val viewToRelease: View? = when (pressedKey.key) {
                             Key.SideKeySpace -> binding.keySpace
@@ -1735,6 +1736,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        skinLongPress.clear()
         flickTextPreviewEmitter.cancel()
         resetLongPressAction()
         resetAllKeys()
@@ -2196,9 +2198,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /** Cancel ongoing long‐press visuals and job **/
-    private fun resetLongPressAction() {
+    private fun resetLongPressAction(animateLabels: Boolean = false) {
         if (isLongPressed) {
-            hideAllPopWindow()
+            // iOS removes the guide immediately; only surrounding labels keep fading.
+            if (animateLabels) skinLongPress.clear(animated = true)
+            hideAllPopWindow(restoreLabels = !animateLabels)
             Blur.removeBlurEffect(this)
         }
         longPressJob?.cancel()
@@ -2284,8 +2288,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /** Hide every popup bubble **/
-    private fun hideAllPopWindow() {
-        skinLongPress.clear()
+    private fun hideAllPopWindow(restoreLabels: Boolean = true) {
+        if (restoreLabels) skinLongPress.clear()
         popupWindowActive.hide()
         popupWindowLeft.hide()
         popupWindowTop.hide()

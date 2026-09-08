@@ -20,12 +20,19 @@ public class KeyWindowLayout extends FrameLayout {
     private com.kazumaproject.core.domain.skin.KeyboardSkinId skinId = com.kazumaproject.core.domain.skin.KeyboardSkinId.DEFAULT;
     private com.kazumaproject.core.ui.skin.PopupDirection skinDirection = com.kazumaproject.core.ui.skin.PopupDirection.CENTER;
     private boolean skinSelected;
+    private boolean skinGuide;
+    public boolean getSkinGuide() { return skinGuide; }
+    public void setSkinGuide(boolean value) { if (skinGuide != value) { skinGuide = value; skinDrawable = null; invalidate(); } }
+    private android.graphics.drawable.Drawable skinDrawable;
     public com.kazumaproject.core.domain.skin.KeyboardSkinId getSkinId() { return skinId; }
-    public void setSkinId(com.kazumaproject.core.domain.skin.KeyboardSkinId value) { skinId = value; invalidate(); }
+    public void setSkinId(com.kazumaproject.core.domain.skin.KeyboardSkinId value) { if (skinId != value) {
+        if (value == com.kazumaproject.core.domain.skin.KeyboardSkinId.DEFAULT)
+            com.kazumaproject.core.ui.skin.SkinPopupPlacement.restoreLegacy(this);
+        skinId = value; skinDrawable = null; invalidate(); } }
     public com.kazumaproject.core.ui.skin.PopupDirection getSkinDirection() { return skinDirection; }
-    public void setSkinDirection(com.kazumaproject.core.ui.skin.PopupDirection value) { skinDirection = value; invalidate(); }
+    public void setSkinDirection(com.kazumaproject.core.ui.skin.PopupDirection value) { if (skinDirection != value) { skinDirection = value; skinDrawable = null; invalidate(); } }
     public boolean getSkinSelected() { return skinSelected; }
-    public void setSkinSelected(boolean value) { skinSelected = value; invalidate(); }
+    public void setSkinSelected(boolean value) { if (skinSelected != value) { skinSelected = value; skinDrawable = null; invalidate(); } }
 
     public static float DEFAULT_STROKE_WIDTH = -1;
 
@@ -82,9 +89,11 @@ public class KeyWindowLayout extends FrameLayout {
     protected void dispatchDraw(Canvas canvas) {
         com.kazumaproject.core.ui.skin.KeyboardSkin skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(skinId);
         if (skin != null) {
-            android.graphics.drawable.Drawable drawable = skin.popupDrawable(getResources(), skinDirection, skinSelected);
-            drawable.setBounds(0, 0, getWidth(), getHeight());
-            drawable.draw(canvas);
+            if (skinDrawable == null) skinDrawable = skinGuide
+                ? skin.guideDrawable(getResources(), skinDirection, skinSelected)
+                : skin.popupDrawable(getResources(), skinDirection, skinSelected);
+            skinDrawable.setBounds(0, 0, getWidth(), getHeight());
+            skinDrawable.draw(canvas);
         } else if (mKeyWindows != null) mKeyWindows.draw(canvas);
         super.dispatchDraw(canvas);
     }
