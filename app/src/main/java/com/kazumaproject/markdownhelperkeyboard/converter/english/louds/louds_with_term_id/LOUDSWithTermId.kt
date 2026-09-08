@@ -115,6 +115,7 @@ class LOUDSWithTermId {
         rank1Array: IntArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
+        if (s.isEmpty()) return -1
         return search(2, s.toCharArray(), 0, rank1Array, LBSInBoolArrayPreprocess)
     }
 
@@ -122,6 +123,7 @@ class LOUDSWithTermId {
         s: String,
         succinctBitVector: SuccinctBitVector,
     ): Int {
+        if (s.isEmpty()) return -1
         return search(
             2,
             s.toCharArray(),
@@ -135,6 +137,7 @@ class LOUDSWithTermId {
         rank1Array: ShortArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
+        if (s.isEmpty()) return -1
         return searchShortArray(
             2,
             s.toCharArray(),
@@ -148,8 +151,9 @@ class LOUDSWithTermId {
         nodeIndex: Int,
         rank1Array: IntArray
     ): Int {
+        if (!isTerminalNodeIndex(nodeIndex)) return -1
         val firstNodeId: Int = isLeaf.rank1Common(nodeIndex, rank1Array) - 1
-        if (firstNodeId < 0) return -1
+        if (firstNodeId !in termIdsSaved.indices) return -1
         return termIdsSaved[firstNodeId]
     }
 
@@ -157,8 +161,9 @@ class LOUDSWithTermId {
         nodeIndex: Int,
         succinctBitVector: SuccinctBitVector
     ): Int {
+        if (!isTerminalNodeIndex(nodeIndex)) return -1
         val firstNodeId: Int = succinctBitVector.rank1(nodeIndex) - 1
-        if (firstNodeId < 0) return -1
+        if (firstNodeId !in termIdsSaved.indices) return -1
         return termIdsSaved[firstNodeId]
     }
 
@@ -166,8 +171,9 @@ class LOUDSWithTermId {
         nodeIndex: Int,
         rank1Array: ShortArray
     ): Short {
+        if (!isTerminalNodeIndex(nodeIndex)) return -1
         val firstNodeId: Int = isLeaf.rank1CommonShort(nodeIndex, rank1Array) - 1
-        if (firstNodeId < 0) return -1
+        if (firstNodeId !in termIdsSaved.indices) return -1
         val firstTermId: Int = termIdsSaved[firstNodeId]
         return firstTermId.toShort()
     }
@@ -176,11 +182,15 @@ class LOUDSWithTermId {
         nodeIndex: Int,
         succinctBitVector: SuccinctBitVector
     ): Short {
+        if (!isTerminalNodeIndex(nodeIndex)) return -1
         val firstNodeId: Int = succinctBitVector.rank1(nodeIndex) - 1
-        if (firstNodeId < 0) return -1
+        if (firstNodeId !in termIdsSaved.indices) return -1
         val firstTermId: Int = termIdsSaved[firstNodeId]
         return firstTermId.toShort()
     }
+
+    private fun isTerminalNodeIndex(nodeIndex: Int): Boolean =
+        nodeIndex in 0 until LBS.size() && isLeaf[nodeIndex]
 
 
     private fun firstChildShortArray(
@@ -491,7 +501,7 @@ class LOUDSWithTermId {
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
-                    return if (isLeaf[currentIndex]) currentIndex else currentIndex
+                    return if (isLeaf[currentIndex]) currentIndex else -1
                 }
                 val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
                 return search(
@@ -524,7 +534,7 @@ class LOUDSWithTermId {
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
-                    return if (isLeaf[currentIndex]) currentIndex else currentIndex
+                    return if (isLeaf[currentIndex]) currentIndex else -1
                 }
                 val nextIndex = succinctBitVector.select0(charIndex) + 1
                 return search(
@@ -572,7 +582,7 @@ class LOUDSWithTermId {
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
-                    return if (isLeaf[currentIndex]) currentIndex else currentIndex
+                    return if (isLeaf[currentIndex]) currentIndex else -1
                 }
                 val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess)
                 return searchShortArray(

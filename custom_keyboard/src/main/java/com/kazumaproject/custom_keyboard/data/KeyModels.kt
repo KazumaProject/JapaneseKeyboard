@@ -108,6 +108,16 @@ enum class SpecialKeyColorStyle(val dbValue: String) {
     }
 }
 
+enum class KeyTextInputBehavior(val dbValue: String) {
+    NORMAL("NORMAL"),
+    TOGGLE("TOGGLE");
+
+    companion object {
+        fun fromDbValue(value: String?): KeyTextInputBehavior =
+            entries.firstOrNull { it.dbValue == value } ?: NORMAL
+    }
+}
+
 data class KeyIconRef(
     val type: KeyIconType,
     val value: String? = null
@@ -136,7 +146,8 @@ data class KeyData(
     val keyId: String? = null,
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
     val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL,
-    val doubleTapBinding: DoubleTapBinding? = null
+    val doubleTapBinding: DoubleTapBinding? = null,
+    val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL
 )
 
 data class GridPlacement(
@@ -176,6 +187,17 @@ data class SpacerItem(
     override val id: String,
     override val placement: GridPlacement
 ) : KeyboardLayoutItem
+
+private const val DELETED_KEY_SLOT_ID_PREFIX = "deleted_key_slot_"
+
+fun deletedKeySlot(id: String, placement: GridPlacement): SpacerItem =
+    SpacerItem(
+        id = "$DELETED_KEY_SLOT_ID_PREFIX$id",
+        placement = placement
+    )
+
+fun SpacerItem.isDeletedKeySlot(): Boolean =
+    id.startsWith(DELETED_KEY_SLOT_ID_PREFIX)
 
 data class FlexibleBounds(
     val rowUnitCount: Int,
@@ -282,7 +304,7 @@ fun KeyboardLayout.copyWithKeys(
 
 fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
     if (isFlexiblePlacementLayout) return true
-    if (items.any { it is SpacerItem }) return true
+    if (items.any { it is SpacerItem && !it.isDeletedKeySlot() }) return true
 
     return items.filterIsInstance<KeyItem>().any { item ->
         item.placement.rowUnits != item.keyData.row * 2 ||
