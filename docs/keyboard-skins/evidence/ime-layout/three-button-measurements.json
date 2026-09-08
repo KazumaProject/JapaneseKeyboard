@@ -1,0 +1,98 @@
+[
+  {
+    "name": "0-default-empty",
+    "editorText": "",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "0-default-composing",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 385,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "0-default-committed",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "1-cupertino_light-empty",
+    "editorText": "",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "1-cupertino_light-composing",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 385,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "1-cupertino_light-committed",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "2-cupertino_dark-empty",
+    "editorText": "",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "2-cupertino_dark-composing",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 385,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "2-cupertino_dark-committed",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "3-default-empty",
+    "editorText": "",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "3-default-composing",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 385,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  },
+  {
+    "name": "3-default-committed",
+    "editorText": "あ",
+    "columns": "2",
+    "reservedCandidateHeightPx": 210,
+    "navigationInsetPx": 168,
+    "keyboardBottomPx": 2952
+  }
+]

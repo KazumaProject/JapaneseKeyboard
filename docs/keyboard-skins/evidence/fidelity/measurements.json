@@ -8,7 +8,7 @@
     "font_policy": "retain existing platform fonts; no font assets; text size and placement remain in scope"
   },
   "reference": "build/keyboard-skins/final-reference",
-  "android": "build/keyboard-skins/popup-fidelity-v9",
+  "android": "build/keyboard-skins/popup-fidelity-v10",
   "results": [
     {
       "name": "cupertino_light-left",

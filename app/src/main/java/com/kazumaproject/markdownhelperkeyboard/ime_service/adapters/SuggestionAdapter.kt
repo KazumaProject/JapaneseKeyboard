@@ -82,7 +82,7 @@ internal class CandidateItemColorState {
         return true
     }
 
-    fun setColors(backgroundColor: Int, pressedBackgroundColor: Int): Boolean {
+    fun setColors(backgroundColor: Int?, pressedBackgroundColor: Int?): Boolean {
         if (
             this.backgroundColor == backgroundColor &&
             this.pressedBackgroundColor == pressedBackgroundColor
@@ -539,7 +539,7 @@ class SuggestionAdapter internal constructor(
         setIntegratedShortcutEntryExpanded(!integratedShortcutEntryExpanded)
     }
 
-    fun setShortcutIconColor(color: Int) {
+    fun setShortcutIconColor(color: Int?) {
         if (shortcutIconColor == color) return
         shortcutIconColor = color
         if (showIntegratedShortcutItems || showIntegratedShortcutEntry) {
@@ -1171,6 +1171,25 @@ class SuggestionAdapter internal constructor(
         return displayItems.size
     }
 
+    // Preserve XML ColorStateLists so returning from a skin restores each role, including
+    // badge and secondary text colors, rather than substituting one hard-coded color.
+    private val originalTextColors = java.util.WeakHashMap<android.widget.TextView, android.content.res.ColorStateList>()
+    private val originalImageTints = java.util.WeakHashMap<ImageView, android.content.res.ColorStateList?>()
+
+    private fun visitAppearanceViews(view: View, capture: Boolean) {
+        if (view is android.widget.TextView) {
+            if (capture) originalTextColors[view] = view.textColors
+            else originalTextColors[view]?.let(view::setTextColor)
+        }
+        if (view is ImageView) {
+            if (capture) originalImageTints[view] = view.imageTintList
+            else if (originalImageTints.containsKey(view)) view.imageTintList = originalImageTints[view]
+        }
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) visitAppearanceViews(view.getChildAt(index), capture)
+        }
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         return when (viewType) {
@@ -1253,11 +1272,12 @@ class SuggestionAdapter internal constructor(
             }
 
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
-        }
+        }.also { visitAppearanceViews(it.itemView, capture = true) }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = displayItems.getOrNull(position) ?: return
+        if (candidateTextColor == null) visitAppearanceViews(holder.itemView, capture = false)
         when (getItemViewType(position)) {
             VIEW_TYPE_EMPTY -> onBindQuickActionsViewHolder(
                 holder as QuickActionsViewHolder,
@@ -1805,7 +1825,7 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
-    fun setCandidateTextColor(color: Int) {
+    fun setCandidateTextColor(color: Int?) {
         if (candidateTextColor == color) return
         candidateTextColor = color
         // 全アイテムを更新して色を反映させる
@@ -1822,7 +1842,7 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
-    fun setCandidateItemColors(backgroundColor: Int, pressedColor: Int) {
+    fun setCandidateItemColors(backgroundColor: Int?, pressedColor: Int?) {
         if (!candidateItemColorState.setColors(backgroundColor, pressedColor)) return
         notifyItemRangeChanged(0, itemCount)
     }

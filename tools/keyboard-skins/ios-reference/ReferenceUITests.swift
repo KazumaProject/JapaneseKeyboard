@@ -229,6 +229,52 @@ final class ReferenceUITests: XCTestCase {
         }
     }
 
+    /// Warm all tested surfaces before the measured matrix; never discard a measured trial.
+    func testFrameMotionMatrix() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(bundleIdentifier: "com.kazumaproject.keyboard-skins.reference")
+        for kind in ["kana", "qwerty"] {
+            for appearance in ["Light", "Dark"] {
+                app.launchArguments = ["--controlled", "--motion-contrast", "--fidelity-clock", "--frame-matrix"]
+                    + (appearance == "Dark" ? ["--dark"] : []) + (kind == "kana" ? ["--kana-motion"] : [])
+                app.launch(); app.textFields["reference.input"].tap()
+                app.buttons["Next keyboard"].firstMatch.press(forDuration: 1.2)
+                if kind == "kana" { app.cells["日本語かな"].tap() }
+                else { app.cells.matching(NSPredicate(format: "label CONTAINS 'English' AND (label CONTAINS 'US' OR label CONTAINS 'United States')")).firstMatch.tap() }
+                let labels = kind == "kana" ? ["hold", "left", "up", "right", "down"] : ["q", "e", "p"]
+                func gesture(_ label: String) {
+                    if kind == "kana" {
+                        let key = app.keys["な"]
+                        XCTAssertTrue(key.isHittable)
+                        if label == "hold" { key.press(forDuration: 1.2) }
+                        else {
+                            let offsets = ["left": CGVector(dx: -60, dy: 0), "up": CGVector(dx: 0, dy: -60),
+                                           "right": CGVector(dx: 60, dy: 0), "down": CGVector(dx: 0, dy: 60)]
+                            let point = key.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                            point.press(forDuration: 0.1, thenDragTo: point.withOffset(offsets[label]!),
+                                withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0.5)
+                        }
+                    } else {
+                        let key = app.keys.matching(NSPredicate(format: "label ==[c] %@", label)).firstMatch
+                        XCTAssertTrue(key.isHittable)
+                        key.press(forDuration: label == "e" ? 1.2 : 0.14)
+                    }
+                    Thread.sleep(forTimeInterval: 0.6)
+                }
+                for label in labels { gesture(label) }
+                Thread.sleep(forTimeInterval: 1)
+                for label in labels {
+                    for trial in 0..<3 {
+                        print("FRAME_TRIAL \(kind) \(appearance) \(label) \(trial)")
+                        gesture(label)
+                    }
+                }
+                attach(app, "frame-matrix-\(kind)-\(appearance)")
+                app.terminate()
+            }
+        }
+    }
+
     func testFontSpecimens() {
         let app = XCUIApplication(bundleIdentifier: "com.kazumaproject.keyboard-skins.reference")
         app.launchArguments = ["--font-specimens"]

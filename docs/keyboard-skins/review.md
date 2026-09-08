@@ -1,88 +1,63 @@
 # 実装レビュー / Implementation review
 
-Self-review against `dev` covered saved preferences, every IME theme call site,
-style normalization, drawable state isolation and popup lifecycle. No independent
-reviewer or agent review is claimed.
+2026-09-08。`dev` を起点とする差分と今回の修正を自己レビューしました。
+合意済みの範囲内で、未解決の修正指摘はありません。独立レビューを受けたとの主張はしていません。
 
-## 修正した問題 / Findings fixed
+Self-review covers the implementation against `dev`, the follow-up fixes, input
+compatibility, lifecycle cleanup and the evidence. No unresolved actionable findings
+remain within the agreed scope. No independent reviewer or agent review is claimed.
 
-- First launch directly into a skin attempted to dismiss uninitialized tenkey
-  popup windows. Guard initialization and test first application to fresh views.
-- Normal tenkey/gojuon/QWERTY configuration used unqualified theme calls. Thread
-  `skinId` through these as well as floating/custom call sites.
-- Popup style normalization discarded the skin identifier. Preserve it through
-  every existing copy/normalization path.
-- Symbol background inherited a lightened key color. Resolve background and tab
-  selection from the skin palette.
-- Circular custom guides did not receive popup presentation settings. Add a
-  presentation-only path while retaining direction ranges and selection labels.
-- Cross popup redraw initially replaced backgrounds during drawing. Move that
-  work to state/cell updates to avoid continuous invalidation.
-- Keep skin fields initialized before view initializer blocks and dismiss old
-  tenkey/gojuon/QWERTY popup presentations when changing skins.
-- Restore original `ColorStateList` values after kana long-press label dimming;
-  do not dim key surfaces by changing parent alpha.
+## 修正・確認事項 / Findings fixed and checked
 
-## 検証した保護条件 / Verified invariants
+- Keep the skin preference separate from saved custom colors. Default returns the
+  original preference snapshot; unknown identifiers fall back without deleting data.
+  Effective overrides change appearance only. Candidate columns, key dimensions,
+  input thresholds, character order and selection mapping remain unchanged.
+- Pass the skin identifier through normal/floating and tenkey/gojuon/QWERTY/custom/
+  symbol call sites, including popup style normalization. Preserve Default rendering
+  and independently mutable key drawables; test fresh-view initialization and round trips.
+- Keep QWERTY long-press variations in their existing three-column grid, including
+  empty cells, dimensions and offsets. Its short visual release timer does not delay
+  commits. New input, CANCEL, hiding, skin changes and detach close retained visuals.
+- Restore original popup gravity, font padding, size, translation, elevation and
+  stateful label colors on return to Default. Weak-cache values do not retain views.
+- Draw fitting kana guides in the keyboard window overlay. Keep an overflow window
+  for smaller floating/embedded roots. The overlay is visual only; the keyboard owns
+  hit testing and commits. Cancel both pending pre-draw listeners and active animation
+  frames on replacement/detach. Respect disabled system animations.
+- Reserve navigation insets outside configured content height in both layout paths.
+  Refresh reused candidate appearance at input start as well as view creation, restore
+  each role's original text/tint values, and retain the saved theme context under skins.
+  [Actual-IME measurements](ime-layout.md) verify the cause and the fix.
+- Use direct display timestamps for motion. Reject missing, duplicate, empty or corrupt
+  data. Keep all measured trials and predeclare warm-ups. Start the diagnostic frame
+  clock after ActivityScenario launch and stop it before close to avoid its idle barrier.
+  Incomplete or software-renderer recordings are not used as successful evidence.
 
-- Missing/unknown skin values fall back to Default without deleting saved data.
-- Effective snapshot changes only an explicit set of appearance fields; all
-  candidate/layout/input fields are equal to the saved snapshot.
-- Default returns the existing snapshot instance; custom colors survive a full
-  skin round trip.
-- Fresh tenkey/gojuon/QWERTY views accept Cupertino before any legacy theme call.
-- Their key bounds are identical across skins; returning to Default restores
-  identical native Canvas pixels for the tested custom-color configuration.
-- Separate key drawable instances do not share pressed-state changes.
-- Existing custom input/controller and QWERTY tests pass.
-- Standalone core device-render fixture passes without replacing the user's IME.
+## 検証 / Validation
 
-## テスト結果 / Test results
+- 615 related unit tests: app 350, core 30, custom keyboard 194, tenkey 6,
+  QWERTY 34, gojuon 1. No failures, errors or skips.
+- Six Python verifier tests reject invalid input and out-of-budget comparisons.
+- Actual-IME checks cover Default → Light → Dark → Default, with empty, composing
+  and committed states, in portrait gesture, portrait three-button and landscape
+  three-button navigation. Assert 60/110/60 dp, two candidate rows, appearance and
+  input results, plus bottom/side navigation separation.
+- Final production-view popup tests pass three cases covering commits, five held
+  directions, Default-compatible selection and detach/cancellation cleanup.
+- 22 static cases pass whole-outline ≤1 pt and opaque RGB ≤2; maximum outline error
+  is 0.943 pt. Final direct motion passes 48 trials / 84 milestones, maximum difference
+  below 15.001 ms against a 16.667 ms criterion. See [all evidence](evidence/fidelity/README.md).
+- Isolated LiteStandardDebug application and Android-test APKs build successfully.
+  The normal installed app is not overwritten.
 
-The final related run passed 299 unit tests: app 34, core 30, custom keyboard 194,
-tenkey 6, QWERTY 34, gojuon 1. Failures/errors/skips: 0. The isolated Android
-device renderer test passed 1 test; full-popup exports passed 2 tests. `assembleLiteStandardDebug` succeeded.
-The successful iOS capture runs and the limited surface comparison are recorded
-in the reference-status document; they are not counted as Android unit tests.
+## 合意済みの範囲 / Agreed scope
 
-## 追試で修正した問題 / Follow-up review findings
+フォントデータは追加せず既存の字形を維持します。文字のサイズ・配置と動作は検証対象です。
+候補列数と QWERTY の3列選択を含む既存の入力仕様を保ちます。
 
-- Removed the proposed single-row QWERTY variation change. The legacy three-column
-  selection path, empty-cell handling, dimensions and offsets are preserved and tested.
-- The ACTION_UP cleanup cancelled the visual release hold. Preserve released windows
-  on normal UP only, while clearing logical gesture state immediately. Actual-device
-  tests assert commit-before-dismissal and immediate cleanup on detach in both skins.
-- Switching to Default left popup label gravity, font padding, size, translation and
-  elevation modified. Save and restore those presentation values without retaining views
-  through WeakHashMap values; verify the round trip against the original values.
-- Recreating drawables and illumination fields on each display added work to the touch
-  path. Cache per-view drawables and immutable material bitmaps; each window receives
-  its own shader matrix. No mutable pressed state is shared between key instances.
-- Route QWERTY preview construction through the skin interface instead of hardcoding
-  the Cupertino renderer in the keyboard. Input anchors remain in the keyboard view.
-- Measure central/second-row previews as well as edge keys. Correct their text baseline
-  and dark material instead of extrapolating the top-row field to every row.
-
-Full reproduction is not inferred from the tests. See the explicit image, glyph and
-motion results in [fidelity evidence](evidence/fidelity/README.md). This remains a
-self-review; no independent reviewer is claimed.
-
-- Separate kana guide disappearance from the label-color restoration: a large ROI
-  initially counted the fading surrounding labels as a retained popup. A blue-center
-  mask and an independent guide-edge strip show immediate guide disappearance. Remove
-  the proposed kana 75 ms hold; retain the QWERTY hold verified on its cap-only ROI.
-- Animate only saved label colors, and cancel both fade directions before new input,
-  Default restoration or detach. Restore the original ColorStateList after completion.
-
-- Give QWERTY variation containers their own skin factory and cache the drawable across
-  selection redraws. Use the measured rounded container/material while leaving the
-  original three-column dimensions, offsets and hit mapping untouched. This grid is an
-  explicit adaptation and is not included in the 22 reference-aspect-ratio comparisons.
-- Repeat the iOS QWERTY capture with HEVC after stopping builds. This reproduces the
-  visible release behavior but does not remove the frame-gap/clock uncertainty; keep
-  both captures rather than selecting only the more favorable one.
-
-- 2026-09-08 scope clarification: retain existing platform fonts and add no font assets.
-  Glyph identity is diagnostic rather than an acceptance gate. Keep all measured values;
-  text size/placement and motion requirements are unchanged. No runtime code changes
-  are needed for this clarification because the implementation already uses platform fonts.
+Existing platform glyphs are retained without font assets. The static and motion
+results describe the named reference conditions and measured tolerances, not universal
+pixel identity at every OS release, user size or backdrop. Final motion is verified on
+the host-GPU API 35 emulator; earlier physical Pixel 6 captures are not mislabeled as
+verification of the final curve after that device disconnected.

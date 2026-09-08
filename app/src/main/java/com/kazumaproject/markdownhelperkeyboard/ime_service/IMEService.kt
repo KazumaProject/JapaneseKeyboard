@@ -2627,6 +2627,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences = preferences,
             inputSessionId = flickPreviewEditorSessionId,
         )
+        applyCandidateAppearance()
         resetKeyboard()
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
@@ -5958,6 +5959,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
+    private fun applyCandidateAppearance() {
+        val custom = keyboardThemeMode == "custom"
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setCandidateTextColor(if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
+            adapter.setCandidateItemColors(
+                if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
+                if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
+                    this, com.kazumaproject.core.R.color.qwety_key_bg_color
+                ) else null,
+            )
+        }
+        listOfNotNull(mainLayoutBinding?.suggestionVisibility, floatingKeyboardBinding?.suggestionVisibility)
+            .forEach { button ->
+                button.setBackgroundResource(
+                    if (DynamicColors.isDynamicColorAvailable()) com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
+                    else com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
+                )
+                if (custom) {
+                    button.setDrawableSolidColor(customThemeSpecialKeyColor ?: Color.GRAY)
+                    button.setColorFilter(customThemeKeyTextColor ?: Color.BLACK)
+                } else {
+                    button.clearColorFilter()
+                }
+            }
+        val shortcutColor = if (custom) customThemeShortcutIconColor ?: Color.BLACK else null
+        shortcutAdapter?.setIconColor(shortcutColor)
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setShortcutIconColor(shortcutColor) }
+        listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
+        applyCandidateEmptyPopupThemeToAdapters()
+    }
+
     private fun applyCandidateEmptyPopupThemeToAdapters() {
         val adapters = listOfNotNull(suggestionAdapter, suggestionAdapterFull)
         if (keyboardThemeMode != "custom") {
@@ -5997,7 +6030,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
-        val ctx = when (keyboardThemeMode) {
+        // Keep the saved theme context underneath presentation overrides. A cold launch
+        // into Cupertino must still restore the user's dynamic/seed colors on return.
+        val ctx = when (appPreference.theme_mode) {
             "default" -> {
                 if (isDynamicColorsEnable) {
                     val seedColor = appPreference.seedColor
@@ -6184,20 +6219,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     keyBackgroundColor = symbolKeyBg,
                                     liquidGlassEnable = liquidGlassThemePreference ?: false
                                 )
-                                listOfNotNull(suggestionAdapter, suggestionAdapterFull)
-                                    .forEach { adapter ->
-                                        adapter.setCandidateTextColor(
-                                            customThemeCandidateTextColor ?: Color.BLACK
-                                        )
-                                        adapter.setCandidateItemColors(
-                                            customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
-                                            customThemeCandidateItemPressedBgColor
-                                                ?: ContextCompat.getColor(
-                                                    this@IMEService,
-                                                    com.kazumaproject.core.R.color.qwety_key_bg_color
-                                                )
-                                        )
-                                    }
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
                                     customThemeBgColor ?: Color.WHITE
@@ -6247,8 +6268,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     // The physical-keyboard candidate popup is rendered in a separate
                     // PopupWindow, so it does not inherit the candidate-strip TextView color.
                     // Keep its formula renderer in sync with the active keyboard theme.
-                    listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
-                    applyCandidateEmptyPopupThemeToAdapters()
+                    applyCandidateAppearance()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = keyboardSkinId != KeyboardSkinId.DEFAULT || isKeyboardRounded == true
                     applyKeyboardBackgroundIfNeeded(mainView)
@@ -16869,8 +16889,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             var changed = false
-            if (forceLayout || params.height != finalKeyboardHeight) {
-                params.height = finalKeyboardHeight
+            // Insets are reserved outside the configured keyboard and candidate heights.
+            val windowHeight = finalKeyboardHeight + systemBottomInset
+            if (forceLayout || params.height != windowHeight) {
+                params.height = windowHeight
                 changed = true
             }
             if (forceLayout || params.width != finalKeyboardWidth) {
@@ -17077,7 +17099,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
+            params.height = finalKeyboardHeight + systemBottomInset
             params.width = finalKeyboardWidth
             params.bottomMargin = finalBottomMargin
             mainView.root.layoutParams = params

@@ -323,6 +323,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val skinLongPress = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+    private var skinGuide: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
 
     init {
@@ -1468,6 +1469,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
+                    skinGuide?.dismiss()
                     skinLongPress.clear()
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(GestureType.Down, key, null)
@@ -1736,6 +1738,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        skinGuide?.dismiss()
         skinLongPress.clear()
         flickTextPreviewEmitter.cancel()
         resetLongPressAction()
@@ -2256,7 +2259,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextTapNumber(it.id)
                     }
                 }
-                skinLongPress.show(this, keyboardSkinId)
+                if (showSkinGuide(it)) return@let
+                skinLongPress.show(this, keyboardSkinId, bubbleViewActive)
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                 if (popTextBottom.text.isNotEmpty()) {
@@ -2275,8 +2279,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popTextLeft.setTextFlickLeftNumber(it.id)
                     popTextBottom.setTextFlickBottomNumber(it.id)
                     popTextRight.setTextFlickRightNumber(it.id)
-                    skinLongPress.show(this, keyboardSkinId)
-                popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
+                    if (keyboardSkinId != KeyboardSkinId.DEFAULT) popTextActive.setTextTapNumber(it.id)
+                    if (showSkinGuide(it)) return@let
+                    skinLongPress.show(this, keyboardSkinId, bubbleViewActive)
+                    popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
                     popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                     popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
                     popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
@@ -2287,8 +2293,23 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    private fun showSkinGuide(anchor: View): Boolean {
+        val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(keyboardSkinId) ?: return false
+        val presenter = skinGuide ?: com.kazumaproject.core.ui.skin.SkinGuidePopup(context).also { skinGuide = it }
+        val guide = presenter.show(anchor, skin, mapOf(
+            com.kazumaproject.core.ui.skin.PopupDirection.CENTER to popTextActive.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.LEFT to popTextLeft.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.TOP to popTextTop.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.RIGHT to popTextRight.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM to popTextBottom.text
+        ))
+        skinLongPress.show(this, keyboardSkinId, guide)
+        return true
+    }
+
     /** Hide every popup bubble **/
     private fun hideAllPopWindow(restoreLabels: Boolean = true) {
+        skinGuide?.dismiss()
         if (restoreLabels) skinLongPress.clear()
         popupWindowActive.hide()
         popupWindowLeft.hide()
@@ -2300,6 +2321,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Called during a “tap” gesture in an ongoing move event **/
     private fun setTapInActionMove() {
+        if (skinGuide?.isShowing == true) {
+            skinGuide?.select(com.kazumaproject.core.ui.skin.PopupDirection.CENTER)
+            return
+        }
         if (!isLongPressed) popupWindowActive.hide()
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
@@ -2342,6 +2367,17 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Called during a “flick” gesture in an ongoing move event **/
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
+        if (skinGuide?.isShowing == true) {
+            val direction = when (gestureType) {
+                GestureType.FlickLeft -> com.kazumaproject.core.ui.skin.PopupDirection.LEFT
+                GestureType.FlickTop -> com.kazumaproject.core.ui.skin.PopupDirection.TOP
+                GestureType.FlickRight -> com.kazumaproject.core.ui.skin.PopupDirection.RIGHT
+                GestureType.FlickBottom -> com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM
+                else -> com.kazumaproject.core.ui.skin.PopupDirection.CENTER
+            }
+            skinGuide?.select(direction)
+            return
+        }
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
