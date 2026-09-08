@@ -30,7 +30,9 @@ target = dict(BlueprintName='ReferenceUITests',
 )))
 PY
 xcrun simctl install "$reference_device" "$reference_products/KeyboardReference.app"
-xcrun simctl io "$reference_device" recordVideo --codec=h264 "$reference_root/build/keyboard-skins/$reference_run.mov" &
+xcrun simctl terminate "$reference_device" com.kazumaproject.keyboard-skins.reference.uitests.xctrunner 2>/dev/null || true
+xcrun simctl install "$reference_device" "$reference_products/ReferenceUITests-Runner.app"
+xcrun simctl io "$reference_device" recordVideo --codec="${IOS_REFERENCE_CODEC:-h264}" "$reference_root/build/keyboard-skins/$reference_run.mov" &
 reference_video_pid=$!
 trap 'kill -INT "$reference_video_pid" 2>/dev/null || true; wait "$reference_video_pid" 2>/dev/null || true' EXIT
 xcodebuild test-without-building -xctestrun "$reference_products/Reference.xctestrun" \

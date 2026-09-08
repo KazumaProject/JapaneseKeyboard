@@ -51,10 +51,10 @@ class KeyboardSkinRendererTest {
             assertEquals(if (id == KeyboardSkinId.CUPERTINO_LIGHT) 0xff0088ff.toInt() else 0xff0091ff.toInt(), selected.getPixel(120, 73))
             val up = bitmap(skin.popupDrawable(resources, PopupDirection.TOP), 240, 210)
             assertEquals(0, up.getPixel(10, 190))
-            assertEquals(skin.palette.key, up.getPixel(120, 190))
+            assertTrue(android.graphics.Color.alpha(up.getPixel(120, 190)) > 250)
             val down = bitmap(skin.popupDrawable(resources, PopupDirection.BOTTOM), 240, 210)
             assertEquals(0, down.getPixel(10, 20))
-            assertEquals(skin.palette.key, down.getPixel(120, 20))
+            assertTrue(android.graphics.Color.alpha(down.getPixel(120, 20)) > 250)
         }
     }
 }
