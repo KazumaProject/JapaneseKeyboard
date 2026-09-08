@@ -60,11 +60,13 @@ import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.view.inputmethod.InlineSuggestionsResponse
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.inline.InlineContentView
@@ -310,7 +312,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIM
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.session.ConversionLearningSession
 import com.kazumaproject.markdownhelperkeyboard.learning.session.LearningFragment
+import com.kazumaproject.markdownhelperkeyboard.ng_word.NgWordMatcher
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcher
@@ -417,7 +421,6 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.Executors
 import java.util.function.Consumer
-import java.util.regex.Pattern
 import javax.inject.Inject
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
@@ -1880,8 +1883,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
-    private val _ngPattern = MutableStateFlow("".toRegex())
-    private val ngPattern: StateFlow<Regex> = _ngPattern
     private var isPrivateMode = false
     private var incognitoModeDetectionPreference: Boolean = true
     private var showLearnedCandidatesInIncognitoPreference: Boolean = true
@@ -10074,7 +10075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (action) {
                     CandidateLongPressAction.ForgetLearnedEntry ->
                         getString(R.string.candidate_action_forget_learning)
-                    CandidateLongPressAction.HideWord -> "この単語を非表示"
+                    CandidateLongPressAction.HideWord -> getString(R.string.candidate_action_hide_word)
                     CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
                     is CandidateLongPressAction.CustomPrompt -> action.template.title
                     CandidateLongPressAction.Close -> getString(R.string.candidate_action_close)
@@ -10110,18 +10111,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateLongPressAction.HideWord -> {
-                        ioScope.launch {
-                            val exist = ngWordRepository.exists(
-                                yomi = insertString, tango = candidate.string
+                        keyboardSelectionPopupWindow?.dismiss()
+                        if (!showNgWordRegistrationPopup(insertString, candidate)) {
+                            registerNgWord(
+                                yomi = insertString,
+                                tango = candidate.string,
+                                matchMode = NgWordMatchMode.PARTIAL,
                             )
-                            if (!exist) {
-                                ngWordRepository.addNgWord(
-                                    yomi = insertString, tango = candidate.string
-                                )
-                                withContext(Dispatchers.Main) {
-                                    requestCandidateRefresh(CandidateShowFlag.Updating)
-                                }
-                            }
                         }
                     }
 
@@ -10138,7 +10134,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     CandidateLongPressAction.Close, null -> Unit
                 }
-                keyboardSelectionPopupWindow?.dismiss()
+                if (selectedAction != CandidateLongPressAction.HideWord) {
+                    keyboardSelectionPopupWindow?.dismiss()
+                }
             }
 
             keyboardSelectionPopupWindow?.let { popupWindow ->
@@ -10150,6 +10148,104 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     y = 0,
                     source = "registerNGWord"
                 )
+            }
+        }
+    }
+
+    private fun showNgWordRegistrationPopup(
+        insertString: String,
+        candidate: Candidate,
+    ): Boolean {
+        val mainView = mainLayoutBinding ?: return false
+        val context = mainView.root.context
+        val popupView = LayoutInflater.from(context).inflate(
+            R.layout.popup_ng_word_registration,
+            mainView.root,
+            false,
+        )
+        val yomiEditText = popupView.findViewById<EditText>(R.id.edit_text_ng_word_yomi_registration)
+        val tangoEditText = popupView.findViewById<EditText>(R.id.edit_text_ng_word_tango_registration)
+        val matchModeSpinner = popupView.findViewById<Spinner>(R.id.spinner_ng_word_match_mode_registration)
+        val matchModes = NgWordMatchMode.values().toList()
+
+        yomiEditText.setText(insertString)
+        tangoEditText.setText(candidate.string)
+        matchModeSpinner.adapter = ArrayAdapter.createFromResource(
+            context,
+            R.array.ng_word_match_mode_entries,
+            android.R.layout.simple_spinner_item,
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        matchModeSpinner.setSelection(matchModes.indexOf(NgWordMatchMode.PARTIAL))
+
+        keyboardSelectionPopupWindow?.dismiss()
+        val popupWindow = PopupWindow(
+            popupView,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            true,
+        ).apply {
+            setBackgroundDrawable(popupView.background)
+            isOutsideTouchable = true
+            inputMethodMode = PopupWindow.INPUT_METHOD_NEEDED
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        }
+        keyboardSelectionPopupWindow = popupWindow
+        popupWindow.setOnDismissListener {
+            if (keyboardSelectionPopupWindow === popupWindow) {
+                keyboardSelectionPopupWindow = null
+            }
+        }
+
+        popupView.findViewById<View>(R.id.button_ng_word_registration_cancel)
+            .setOnClickListener { popupWindow.dismiss() }
+        popupView.findViewById<View>(R.id.button_ng_word_registration_save)
+            .setOnClickListener {
+                val yomi = yomiEditText.text.toString().trim()
+                val tango = tangoEditText.text.toString().trim()
+                if (yomi.isEmpty() || tango.isEmpty()) {
+                    showToastMessage(getString(R.string.ng_word_empty_input_message))
+                    return@setOnClickListener
+                }
+                val matchMode = matchModes.getOrNull(matchModeSpinner.selectedItemPosition)
+                    ?: NgWordMatchMode.PARTIAL
+                popupWindow.dismiss()
+                registerNgWord(yomi, tango, matchMode)
+            }
+
+        val shown = showPopupWindowSafely(
+            popupWindow = popupWindow,
+            anchorView = mainView.suggestionRecyclerView,
+            gravity = Gravity.CENTER,
+            x = 0,
+            y = 0,
+            source = "showNgWordRegistrationPopup",
+        )
+        if (!shown) {
+            popupWindow.dismiss()
+        }
+        return shown
+    }
+
+    private fun registerNgWord(
+        yomi: String,
+        tango: String,
+        matchMode: NgWordMatchMode,
+    ) {
+        ioScope.launch {
+            val exists = ngWordRepository.exists(yomi = yomi, tango = tango)
+            if (exists) {
+                showToastMessage(getString(R.string.ng_word_already_registered_message))
+                return@launch
+            }
+            ngWordRepository.addNgWord(
+                yomi = yomi,
+                tango = tango,
+                matchMode = matchMode,
+            )
+            withContext(Dispatchers.Main) {
+                requestCandidateRefresh(CandidateShowFlag.Updating)
             }
         }
     }
@@ -16258,7 +16354,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
                 _ngWordsList.value = ngWords.distinct()
-                _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }.toRegex()
+                if (isInputViewActive && inputString.value.isNotEmpty()) {
+                    withContext(Dispatchers.Main.immediate) {
+                        requestCandidateRefresh(CandidateShowFlag.Updating)
+                    }
+                }
             }
         }
 
@@ -24078,8 +24178,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 emptyList()
             }
 
-        val ngWords =
-            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val ngWords: List<NgWord> =
+            if (isNgWordEnable == true) ngWordsList.value else emptyList()
 
         val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
         val enableTypoCorrectionJapaneseFlick =
@@ -24115,13 +24215,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val filteredCandidates = result.filter { candidate ->
-            if (ngWords.isEmpty()) {
-                true
-            } else {
-                ngPattern.value.let {
-                    !it.containsMatchIn(candidate.string)
-                }
-            }
+            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
@@ -24208,8 +24302,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        val ngWords = measureDebugStage("IMEService.getSuggestionList.ngWordSnapshot") {
-            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val ngWords: List<NgWord> = measureDebugStage("IMEService.getSuggestionList.ngWordSnapshot") {
+            if (isNgWordEnable == true) ngWordsList.value else emptyList()
         }
 
         val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
@@ -24254,13 +24348,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val filteredCandidates = measureDebugStage("IMEService.getSuggestionList.ngWordFilterDistinct") {
             result.filter { candidate ->
-                if (ngWords.isEmpty()) {
-                    true
-                } else {
-                    ngPattern.value.let {
-                        !it.containsMatchIn(candidate.string)
-                    }
-                }
+                !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
             }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
         }
 
@@ -24362,8 +24450,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 emptyList()
             }
 
-        val ngWords =
-            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val ngWords: List<NgWord> =
+            if (isNgWordEnable == true) ngWordsList.value else emptyList()
         val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
@@ -24384,13 +24472,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val filteredCandidates = result.filter { candidate ->
-            if (ngWords.isEmpty()) {
-                true
-            } else {
-                ngPattern.value.let {
-                    !it.containsMatchIn(candidate.string)
-                }
-            }
+            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
