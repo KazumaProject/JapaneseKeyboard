@@ -81,3 +81,8 @@ self-review; no independent reviewer is claimed.
 - Repeat the iOS QWERTY capture with HEVC after stopping builds. This reproduces the
   visible release behavior but does not remove the frame-gap/clock uncertainty; keep
   both captures rather than selecting only the more favorable one.
+
+- 2026-09-08 scope clarification: retain existing platform fonts and add no font assets.
+  Glyph identity is diagnostic rather than an acceptance gate. Keep all measured values;
+  text size/placement and motion requirements are unchanged. No runtime code changes
+  are needed for this clarification because the implementation already uses platform fonts.

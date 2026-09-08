@@ -2,11 +2,11 @@
 
 ## 状態 / Status
 
-**再現精度は未達です。字形の差が測定されているため、Draft PR としてレビューしてください。**
+**既存フォントを維持します（2026-09-08 の依頼者指定）。字形の一致は受け入れ条件から除外し、文字サイズ・位置とアニメーションは引き続き検証対象です。**
 Default、Cupertino Light、Cupertino Dark の切替、描画の分離、保存値の復元を実装しました。
 iOS 全体とのピクセル一致やアニメーションのフレーム一致を達成したという意味ではありません。
 
-**Full fidelity is unmet: glyph differences are measured. Keep the PR in draft.** Skin selection and the
+**Retain existing fonts per the requester on 2026-09-08. Glyph identity is out of scope; text size, placement and animation remain in scope.** Skin selection and the
 presentation integration are implemented; full iOS pixel/motion parity is not certified.
 
 ## 参照条件 / Reference conditions
@@ -101,12 +101,10 @@ uses the Pixel 6's existing density/font-scale settings. Those are different tes
   repeated gestures and explicit transition brackets. Candidate-text changes are excluded
   from the iOS dismissal ROI. Capture gaps and clock uncertainty remain in the report;
   missing frames are not classified as a pass.
-- Full glyph masks are measured separately from glyph bounding boxes. Similar bounding
-  boxes do **not** establish identical typography. Android platform fonts differ from
-  the reference. No Apple fonts or extracted glyph assets are shipped.
-- Apple's [published font license](https://developer.apple.com/fonts/) does not grant
-  embedding the distributed Apple font in an Android app. Shipping identical font data
-  would require separately authorized assets; a geometry fix does not resolve this.
+- Existing platform fonts are retained, with no bundled font data or glyph-outline changes.
+  Per the requester on 2026-09-08, glyph-mask identity is diagnostic only and is not an
+  acceptance gate. Text size, baseline and placement remain calibration targets. Previously
+  recorded masks and bounds are preserved without rewriting measured values.
 
 ### 再現の限界 / Acceptance limits
 
@@ -114,8 +112,8 @@ The finite portrait reference matrix is not proof of identical rendering at ever
 keyboard width, system font setting, orientation, underlying app background or OS release.
 The dark material fields approximate the captured lighting; they do not implement iOS's
 compositor. Existing Android layout/selection behavior is deliberately preserved.
-Typography and any motion intervals wider than the acceptance window must remain explicit
-failures or inconclusive results. Do not mark full iOS parity as complete from build/test
+Motion intervals wider than the acceptance window remain inconclusive results and keep
+the PR in draft. Glyph differences alone are not a failure under the updated scope. Do not mark full iOS parity as complete from build/test
 success, fitted RGB samples or a small outline error.
 
 ## 検証 / Validation
