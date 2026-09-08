@@ -84,18 +84,31 @@ internal class CupertinoSkin(override val id: KeyboardSkinId) : KeyboardSkin {
         CupertinoSurfaceDrawable(palette.key, 10f * resources.displayMetrics.density,
             variationIllumination = id == KeyboardSkinId.CUPERTINO_DARK)
 
-    // Captured QWERTY popups remain visible for approximately 70–90 ms after UP.
+    // Direct display timestamps target approximately 75 ms after event dispatch.
+    // The timer excludes Android window/compositor presentation latency.
     // This is a visual hold only: gesture ownership and text commits finish immediately.
-    override val popupReleaseDelayMillis: Long = 75L
+    override val popupReleaseDelayMillis: Long = 34L
     override val longPressLabelColor: Int =
         if (id == KeyboardSkinId.CUPERTINO_DARK) 0xff545454.toInt() else 0xff737373.toInt()
     override val longPressLabelFadeMillis: Long = 300L
     override val longPressLabelRestoreMillis: Long = 230L
-    override val longPressLabelInterpolator = labelInterpolator(longPressLabelFadeMillis)
-    override val longPressLabelRestoreInterpolator = labelInterpolator(longPressLabelRestoreMillis)
+    override val longPressLabelInterpolator = labelInterpolator(longPressLabelFadeMillis,
+        if (id == KeyboardSkinId.CUPERTINO_LIGHT) 25.0 else 24.0)
+    override val longPressLabelRestoreInterpolator = android.animation.TimeInterpolator { fraction ->
+        // The captured release has a small fast onset followed by a slower return.
+        // Keep this continuous and normalized; no initial seek or delayed input commit.
+        fun response(milliseconds: Double): Double {
+            val t = milliseconds * if (id == KeyboardSkinId.CUPERTINO_LIGHT) 0.026 else 0.024
+            val onsetMillis = if (id == KeyboardSkinId.CUPERTINO_LIGHT) 2.0 else 12.0
+            return 0.12 * (1 - kotlin.math.exp(-milliseconds / onsetMillis)) +
+                0.88 * (1 - (1 + t) * kotlin.math.exp(-t))
+        }
+        (response(fraction * longPressLabelRestoreMillis.toDouble()) /
+            response(longPressLabelRestoreMillis.toDouble())).toFloat()
+    }
 
-    private fun labelInterpolator(durationMillis: Long) = android.animation.TimeInterpolator { fraction ->
-        val end = durationMillis * .026
+    private fun labelInterpolator(durationMillis: Long, ratePerSecond: Double) = android.animation.TimeInterpolator { fraction ->
+        val end = durationMillis * ratePerSecond / 1000.0
         val t = fraction * end
         ((1 - (1 + t) * kotlin.math.exp(-t)) / (1 - (1 + end) * kotlin.math.exp(-end))).toFloat()
     }

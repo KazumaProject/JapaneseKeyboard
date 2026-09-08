@@ -99,23 +99,18 @@ class KeyboardPopupFidelityTest {
             for(id in listOf(KeyboardSkinId.CUPERTINO_LIGHT,KeyboardSkinId.CUPERTINO_DARK)) {
                 val skin=requireNotNull(KeyboardSkinRegistry.find(id))
                 val cross=Bitmap.createBitmap(774,504,Bitmap.Config.ARGB_8888)
-                val canvas=Canvas(cross)
                 val surfaceCross=Bitmap.createBitmap(774,504,Bitmap.Config.ARGB_8888)
-                val surfaceCanvas=Canvas(surfaceCross)
-                for((direction,label) in mapOf(PopupDirection.LEFT to "き",PopupDirection.TOP to "く",PopupDirection.CENTER to "か",PopupDirection.RIGHT to "け",PopupDirection.BOTTOM to "こ")) {
-                    val geometry=SkinPopupGeometry.resolve(258,168,direction,false)
-                    val text=TextView(context).apply {this.text=label;textSize=28f;includeFontPadding=false;gravity=Gravity.CENTER
-                        setTextColor(if(direction==PopupDirection.CENTER)skin.palette.selectionText else skin.palette.text)
-                        skin.configurePopupText(this,false)
-                    }
-                    val cell=FrameLayout(context).apply {
-                        background=skin.guideDrawable(resources,direction,direction==PopupDirection.CENTER)
-                        addView(text,FrameLayout.LayoutParams(-1,-1))
-                    }
-                    cell.measure(View.MeasureSpec.makeMeasureSpec(258,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(168,View.MeasureSpec.EXACTLY));cell.layout(0,0,258,168)
-                    canvas.save();canvas.translate((258+geometry.bounds.left).toFloat(),(168+geometry.bounds.top).toFloat());cell.draw(canvas);canvas.restore()
-                    surfaceCanvas.save();surfaceCanvas.translate((258+geometry.bounds.left).toFloat(),(168+geometry.bounds.top).toFloat());cell.background.draw(surfaceCanvas);surfaceCanvas.restore()
+                val guide=com.kazumaproject.core.ui.skin.SkinGuidePopup(context).configure(258,168,skin,
+                    mapOf(PopupDirection.LEFT to "き",PopupDirection.TOP to "く",PopupDirection.CENTER to "か",
+                        PopupDirection.RIGHT to "け",PopupDirection.BOTTOM to "こ")) as FrameLayout
+                guide.measure(View.MeasureSpec.makeMeasureSpec(774,View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(504,View.MeasureSpec.EXACTLY))
+                guide.layout(0,0,774,504)
+                guide.draw(Canvas(cross))
+                for(index in 0 until guide.childCount) {
+                    ((guide.getChildAt(index) as FrameLayout).getChildAt(0) as TextView).alpha=0f
                 }
+                guide.draw(Canvas(surfaceCross))
                 File(output,"${id.preferenceValue}-guide.png").outputStream().use {cross.compress(Bitmap.CompressFormat.PNG,100,it)}
                 File(output,"${id.preferenceValue}-guide-surface.png").outputStream().use {surfaceCross.compress(Bitmap.CompressFormat.PNG,100,it)}
                 for((label,keyLeft) in listOf("q" to 20,"p" to 1189,"e" to 279,"a" to 84,"l" to 1124)) {

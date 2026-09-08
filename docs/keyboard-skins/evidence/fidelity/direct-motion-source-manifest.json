@@ -1,0 +1,127 @@
+{
+  "capture_date": "2026-09-08",
+  "android": "API 35, read-only Pixel_6_Pro AVD, host GPU Apple M2, 1080x2400 density420 font_scale1.3, 60Hz",
+  "ios": "iPhone17ProMax Simulator iOS26.4.1(23E254a),1320x2868 scale3",
+  "inputs": [
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3.frames.gz",
+      "bytes": 38794152,
+      "sha256": "4852d547d7ffb892f2e039807d1a2d81b94d4781d52d5903f4e6fbcbc5c7e5df"
+    },
+    {
+      "path": "build/keyboard-skins/android-emulator-gpu-matrix-v21.mp4",
+      "bytes": 12566089,
+      "sha256": "5df439cba4b243ba965796e7b3e2aa9af19fca1cc5bb45844127165a06a3525c"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/frames-kana-Dark.json",
+      "bytes": 290628,
+      "sha256": "357271760c7ab41432a5384911d7ac98f909f5aaad2634faf911dc7c64b81dff"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/frames-kana-Light.json",
+      "bytes": 288489,
+      "sha256": "ebdba6c65829478589f38d7ef237c1bc415df9915f8b979048f8d45c6ac421e4"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/frames-qwerty-Dark.json",
+      "bytes": 144747,
+      "sha256": "586a86cd303782fc36bc2ef4193b376e822dcece479906878fd7a4f2d2b54493"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/frames-qwerty-Light.json",
+      "bytes": 144966,
+      "sha256": "c3ad8ecbab031ba350788f2f6e8c930a0149d072d409ded2e9fd406162cc9a9b"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/touch-events-kana-Dark.json",
+      "bytes": 24402,
+      "sha256": "8608acabe842613625fa5e2bd98555bb95e0abfdf105cef968662a789fb45351"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/touch-events-kana-Light.json",
+      "bytes": 23580,
+      "sha256": "9b87cca1208ea2c963e54a883fdb640c524bf5de7f245513ba4eee3a67a68191"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/touch-events-qwerty-Dark.json",
+      "bytes": 3155,
+      "sha256": "e1cf08861b24b83af147af10ab6a850bb3010d7cd86681d47d4c452718870900"
+    },
+    {
+      "path": "build/keyboard-skins/frame-matrix-v3-events/touch-events-qwerty-Light.json",
+      "bytes": 3162,
+      "sha256": "c2e6b1c7a08d0afb19fde1043af4ebc60aa736a64b08da80b95bf830b7eceaef"
+    },
+    {
+      "path": "build/keyboard-skins/android-emulator-gpu-matrix-v21/kana-dark-events.json",
+      "bytes": 27343,
+      "sha256": "df3af1ac5bde05ca8617ec8a7c03e781fc3d6486c5658c8d02a9cc603642bba8"
+    },
+    {
+      "path": "build/keyboard-skins/android-emulator-gpu-matrix-v21/kana-light-events.json",
+      "bytes": 27336,
+      "sha256": "601a5d8e92a7830558775c8ea625c0f251ab07f284e0017dbff7e89aa782c5cc"
+    },
+    {
+      "path": "build/keyboard-skins/android-emulator-gpu-matrix-v21/qwerty-dark-events.json",
+      "bytes": 4241,
+      "sha256": "c5b624aa26f18eea0136117a7b94c785a6448d9ca078a74cba868b1f9704954e"
+    },
+    {
+      "path": "build/keyboard-skins/android-emulator-gpu-matrix-v21/qwerty-light-events.json",
+      "bytes": 4240,
+      "sha256": "3f9ccb1198d400f96e931f830fa2abaf7e84728030efea72a2d429337e368c92"
+    },
+    {
+      "path": "build/keyboard-skins/android-emulator-gpu-matrix-v21/motion/gestures.json",
+      "bytes": 13834,
+      "sha256": "215774356b0bfac7c9b3386077e9de42cd3f3eab010e3e716e9eac2395efce86"
+    },
+    {
+      "path": "core/src/main/java/com/kazumaproject/core/ui/skin/CupertinoSkin.kt",
+      "bytes": 6910,
+      "sha256": "eeb565fb7aeeabaeee45c8bacc1b341275937bdb6cfe002b5393ad0f55f3d37b"
+    },
+    {
+      "path": "core/src/main/java/com/kazumaproject/core/ui/skin/SkinLongPressPresentation.kt",
+      "bytes": 4802,
+      "sha256": "cbed36050ac024fdc358348a1a56894deb8d1f0f1d8101f540ac4de94c2b1828"
+    },
+    {
+      "path": "core/src/main/java/com/kazumaproject/core/ui/skin/SkinGuidePopup.kt",
+      "bytes": 5083,
+      "sha256": "08f8eb7c59cfd92b751a1f488b63c0a102019f9ea233a4c5aab6b06399673027"
+    },
+    {
+      "path": "tools/keyboard-skins/verify-direct-motion.py",
+      "bytes": 14555,
+      "sha256": "1cb2d57937a1b1b4d667e59e4e3ec53bd853f83afd4d688d3a0068e33bf48462"
+    },
+    {
+      "path": "tools/keyboard-skins/compare-direct-motion.py",
+      "bytes": 3271,
+      "sha256": "a94d14d2c84251eafa00ae5381ee6b6a4bf3bd76e87e51629cffc93b8ec39978"
+    },
+    {
+      "path": "tenkey/src/main/java/com/kazumaproject/tenkey/TenKey.kt",
+      "bytes": 123311,
+      "sha256": "85ce70937abf175c0e3f86544d9822da243bf09075e2308cda5d631ecd8121e4"
+    },
+    {
+      "path": "app/src/debug/java/com/kazumaproject/markdownhelperkeyboard/SkinFidelityHostActivity.kt",
+      "bytes": 5228,
+      "sha256": "8e482bd510e5113c238b148e42c703f79c059694ba45b3a520a4c082bd7d8339"
+    },
+    {
+      "path": "app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/SkinPopupMotionInstrumentedTest.kt",
+      "bytes": 16687,
+      "sha256": "a1345828cc62ac0324f863ec27e03d40aace1b4da4ad8f2b4b043a37eff5d768"
+    },
+    {
+      "path": "tools/keyboard-skins/ios-reference/capture-frames.m",
+      "bytes": 5830,
+      "sha256": "69595f9d0797dce63584582943b2f12c43b65349cb8b2979570388489fb847bc"
+    }
+  ]
+}

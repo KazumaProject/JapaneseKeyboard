@@ -118,18 +118,21 @@ final class ReferenceDelegate: UIResponder, UIApplicationDelegate {
 final class FidelityTraceApplication: UIApplication {
     static var eventSerial: UInt32 = 0
     static var events: [[String: Any]] = []
+    static var frames: [[String: Any]] = []
     private static let exportQueue = DispatchQueue(label: "reference.event-export")
     override func sendEvent(_ event: UIEvent) {
         if ProcessInfo.processInfo.arguments.contains("--fidelity-clock"), let touches = event.allTouches {
             for touch in touches {
                 Self.eventSerial &+= 1
                 let p = touch.location(in: touch.window)
-                Self.events.append(["serial": Self.eventSerial, "time": touch.timestamp,
+                Self.events.append(["serial": Self.eventSerial, "time": touch.timestamp, "dispatchTime": CACurrentMediaTime(),
                     "phase": touch.phase.rawValue, "x": p.x, "y": p.y])
             }
             let snapshot = Self.events
-            let suffix = ProcessInfo.processInfo.arguments.contains("--motion-contrast")
-                ? (ProcessInfo.processInfo.arguments.contains("--dark") ? "-Dark" : "-Light") : ""
+            let kind = ProcessInfo.processInfo.arguments.contains("--kana-motion") ? "-kana" : "-qwerty"
+            let prefix = ProcessInfo.processInfo.arguments.contains("--frame-matrix") ? kind : ""
+            let suffix = prefix + (ProcessInfo.processInfo.arguments.contains("--motion-contrast")
+                ? (ProcessInfo.processInfo.arguments.contains("--dark") ? "-Dark" : "-Light") : "")
             Self.exportQueue.async {
                 if let data = try? JSONSerialization.data(withJSONObject: snapshot) {
                     try? data.write(to: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -138,6 +141,19 @@ final class FidelityTraceApplication: UIApplication {
             }
         }
         super.sendEvent(event)
+        if ProcessInfo.processInfo.arguments.contains("--frame-matrix"), event.allTouches?.contains(where: { $0.phase == .ended }) == true {
+            let kind = ProcessInfo.processInfo.arguments.contains("--kana-motion") ? "kana" : "qwerty"
+            let mode = ProcessInfo.processInfo.arguments.contains("--dark") ? "Dark" : "Light"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                let snapshot = Self.frames
+                Self.exportQueue.async {
+                    if let data = try? JSONSerialization.data(withJSONObject: snapshot) {
+                        try? data.write(to: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                            .appendingPathComponent("frames-\(kind)-\(mode).json"), options: .atomic)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -157,6 +173,10 @@ final class FidelityClockView: UIView {
     @objc private func step(_ link: CADisplayLink) {
         frameSerial &+= 1
         tick = UInt32(truncatingIfNeeded: UInt64(link.timestamp * 1000))
+        if ProcessInfo.processInfo.arguments.contains("--frame-matrix") {
+            FidelityTraceApplication.frames.append(["serial": frameSerial, "timestamp": link.timestamp,
+                "targetTimestamp": link.targetTimestamp, "callbackTime": CACurrentMediaTime()])
+        }
         setNeedsDisplay()
     }
     override func draw(_ rect: CGRect) {
