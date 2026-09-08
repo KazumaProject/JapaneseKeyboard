@@ -1,0 +1,6 @@
+// Isolate probe data and installed APKs from the user's normal app.
+allprojects {
+    plugins.withId('com.android.application') {
+        android.buildTypes.debug.applicationIdSuffix = '.freezeprobe'
+    }
+}
