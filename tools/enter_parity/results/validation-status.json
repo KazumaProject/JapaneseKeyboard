@@ -1,0 +1,74 @@
+{
+  "state": "validation-complete",
+  "baselineCommit": "bbdc7414746adeffc815d5158631e415a1167007",
+  "gboardObserved": 6209,
+  "normal": {
+    "match": 6209,
+    "mismatch": 0,
+    "not-run": 0,
+    "blocked": 0,
+    "editor-info-mismatch": 0,
+    "ime-mismatch": 0
+  },
+  "floating": {
+    "match": 6209,
+    "mismatch": 0,
+    "not-run": 0,
+    "blocked": 0,
+    "editor-info-mismatch": 0,
+    "ime-mismatch": 0
+  },
+  "normalizedTransportMatch": {
+    "normal": 6209,
+    "floating": 6209
+  },
+  "layoutChecks": 80,
+  "composition": [
+    {
+      "surface": "normal",
+      "bunsetsuSeparation": "off",
+      "stages": 7,
+      "status": "match"
+    },
+    {
+      "surface": "normal",
+      "bunsetsuSeparation": "on",
+      "stages": 8,
+      "status": "match"
+    },
+    {
+      "surface": "floating",
+      "bunsetsuSeparation": "off",
+      "stages": 7,
+      "status": "match"
+    },
+    {
+      "surface": "floating",
+      "bunsetsuSeparation": "on",
+      "stages": 8,
+      "status": "match"
+    }
+  ],
+  "explicitTypeNullDirect": "preserved",
+  "manualUI": "passed",
+  "harnessGuards": [
+    {
+      "scenario": "foreground",
+      "result": "expected-stop",
+      "capturedRows": 1,
+      "error": "Lab left the foreground",
+      "externalSelectionPreserved": null
+    },
+    {
+      "scenario": "ime",
+      "result": "expected-stop",
+      "capturedRows": 1,
+      "error": "Selected IME changed",
+      "externalSelectionPreserved": true
+    }
+  ],
+  "jvmTests": 96,
+  "pythonTests": 13,
+  "rawFixtureRows": 6161,
+  "deviceSettingsRestored": true
+}

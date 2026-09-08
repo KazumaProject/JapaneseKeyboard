@@ -1,0 +1,20 @@
+{
+  "captureDate": "2026-09-07",
+  "model": "Pixel 6",
+  "android": "17",
+  "locale": "ja-JP",
+  "fingerprint": "google/oriole/oriole:17/CP2A.260705.006/15641320:user/release-keys",
+  "ime": "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+  "versionName": "18.1.3.962075747-release-arm64-v8a",
+  "versionCode": 175963030,
+  "layout": "Japanese QWERTY; left-aligned one-handed display",
+  "observedCases": 6209,
+  "rawFixtureRows": 6161,
+  "method": "Actual on-screen Enter, injected touchscreen DOWN/UP",
+  "uncompressedSha256": "72dabe93268911e6ca2572651fbd1a0563a909bf58f80e6f6c782bbaeca5a5ec",
+  "captureNotes": [
+    "Merged resumed captures by unique case ID.",
+    "FORCE_ASCII warm-up case retried after initial inaccessible key.",
+    "All WebView cases were re-recorded with the initial cursor at position 4."
+  ]
+}

@@ -74,6 +74,7 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -256,6 +257,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateR
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsHentaigana
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import com.kazumaproject.markdownhelperkeyboard.ime_service.editor.EditorEnterAction
+import com.kazumaproject.markdownhelperkeyboard.ime_service.editor.EditorEnterPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getEnterKeyIndexSumire
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
@@ -4777,7 +4780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                 updateQwertyOnActiveSurface {
-                    resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
+                    resetQWERTYKeyboard(editorEnterLabel(japanese = false))
                 }
                 renderCurrentKeyboardStateOnActiveSurface()
             } else {
@@ -5043,7 +5046,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (returnsToGojuon) TenKeyQWERTYMode.Gojuon
                         else TenKeyQWERTYMode.Default
                     setCurrentQwertyRomajiModeForSession(false)
-                    qwertyView.resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
+                    qwertyView.resetQWERTYKeyboard(editorEnterLabel(japanese = false))
                     setKeyboardSizeSwitchKeyboard(mainView)
                 }
             }
@@ -8164,7 +8167,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         )
         updateQwertyOnActiveSurface {
-            resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
+            resetQWERTYKeyboard(editorEnterLabel(japanese = false))
         }
         renderCurrentKeyboardStateOnActiveSurface()
         if (insertString.isEmpty()) {
@@ -8696,6 +8699,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 flickView,
                 KeyboardDefaultLayouts.createNumberLayout(currentDeleteKeyFlickSettings())
             )
+            flickView.updateDynamicKey("enter_key", editorEnterKeyStateIndex())
             setNumberCustomLayoutTo(flickView, numberCustomLayout)
             return
         }
@@ -8704,6 +8708,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickView,
             KeyboardDefaultLayouts.createNumberLayout(currentDeleteKeyFlickSettings())
         )
+        flickView.updateDynamicKey("enter_key", editorEnterKeyStateIndex())
     }
 
     private fun numberUsageCustomKeyboardLayoutOrNull(): CustomKeyboardLayout? {
@@ -11654,7 +11659,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         setCurrentInputModeForSession(InputMode.ModeEnglish)
                         setCurrentQwertyRomajiModeForSession(false)
-                        val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
+                        val qwertyEnterKeyText = editorEnterLabel(japanese = false)
                         qwertyView.resetQWERTYKeyboard(qwertyEnterKeyText)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
@@ -11675,7 +11680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
                         setCurrentInputModeForSession(InputMode.ModeJapanese)
                         setCurrentQwertyRomajiModeForSession(true)
-                        val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
+                        val qwertyEnterKeyText = editorEnterLabel(japanese = true)
                         qwertyView.setRomajiKeyboard(
                             qwertyEnterKeyText
                         )
@@ -11703,7 +11708,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setKeyboardSizeSwitchKeyboard(this)
                             previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
                             qwertyView.resetQWERTYKeyboard(
-                                currentInputType.getQWERTYReturnTextInEn()
+                                editorEnterLabel(japanese = false)
                             )
                             qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
@@ -11732,7 +11737,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         clearQwertySwitchNumberKeyReturnSource()
                         customLayoutDefault.isVisible = true
                         if (qwertyMode.value != TenKeyQWERTYMode.Number) {
-                            currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
+                            currentEnterKeyIndex = editorEnterKeyStateIndex()
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                             setSumireLayoutTo(customLayoutDefault)
                         } else {
@@ -12287,7 +12292,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetSumireKeyboardDakutenMode() {
         currentDakutenKeyIndex = 0
-        currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
+        currentEnterKeyIndex = editorEnterKeyStateIndex()
         currentSpaceKeyIndex = 0
         Timber.d("resetSumireKeyboardDakutenMode called: $currentEnterKeyIndex")
         renderDynamicKeysOnActiveSurface()
@@ -14692,7 +14697,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
         setCurrentQwertyRomajiModeForSession(false)
         updateQwertyOnActiveSurface {
-            resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
+            resetQWERTYKeyboard(editorEnterLabel(japanese = false))
         }
         renderCurrentKeyboardStateOnActiveSurface()
         resizeKeyboardAfterRestartQwertyProxy()
@@ -16046,11 +16051,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 updateQwertyOnActiveSurface {
                                     setSpaceKeyText("空白")
                                     val qwertyEnterKeyText =
-                                        currentInputType.getQWERTYReturnTextInJp()
+                                        editorEnterLabel(japanese = true)
                                     setReturnKeyText(qwertyEnterKeyText)
                                 }
                             } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && currentInputModeForSession == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && currentInputModeForSession == InputMode.ModeEnglish) {
-                                val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
+                                val qwertyEnterKeyText = editorEnterLabel(japanese = false)
                                 updateQwertyOnActiveSurface { setReturnKeyText(qwertyEnterKeyText) }
                             }
                             setKeyboardHeightDefault(mainView)
@@ -19480,6 +19485,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             resetRuntimeInputBehaviorForCurrentInput()
+            if (inputString.value.isEmpty() && stringInTail.get().isEmpty() && !isHenkan.get()) {
+                mainLayoutBinding?.let { setDrawableToEnterKeyCorrespondingToImeOptions(it) }
+                floatingKeyboardBinding?.let { setDrawableToEnterKeyCorrespondingToImeOptionsFloating(it) }
+            }
         }
     }
 
@@ -23151,7 +23160,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return dispatchDirectTextIfNeeded(" ")
     }
 
-    private fun dispatchDirectEnterIfNeeded(): Boolean {
+    private fun dispatchDirectEnterIfNeeded(editorFacing: Boolean = false): Boolean {
+        // TYPE_NULL defaults to direct *text* input. Its default Enter still honors
+        // EditorInfo; explicitly selected direct modes keep their raw Enter behavior.
+        if (editorFacing && usesEditorEnterPresentation() &&
+            currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT && defaultTypeNullUsesEditorEnter()
+        ) {
+            setEnterKeyPress()
+            clearDirectCommitCompositionState("default TYPE_NULL editor enter")
+            return true
+        }
         val handled = keyInputBehaviorDispatcher.dispatchEnter(
             behavior = currentInputBehavior,
             inputConnection = currentInputConnection,
@@ -25080,72 +25098,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setEnterKeyPress() {
-        Timber.d("setEnterKeyPress: $currentInputType")
-        when (currentInputType) {
-            InputTypeForIME.TextMultiLine,
-            InputTypeForIME.TextImeMultiLine,
-            InputTypeForIME.TextShortMessage,
-            InputTypeForIME.TextLongMessage,
-                -> {
-                commitText("\n", 1)
-            }
+        EditorEnterPolicy.dispatch(
+            action = EditorEnterPolicy.resolve(currentInputEditorInfo),
+            sendKey = {
+                if (currentInputConnection != null) {
+                    sendDownUpKeyEvents(it)
+                    editorMutationRevision.advance()
+                }
+            },
+            performAction = { performEditorAction(it) },
+            commitNewline = { commitText("\n", 1) },
+        )
+    }
 
-            InputTypeForIME.None,
-            InputTypeForIME.Text,
-            InputTypeForIME.TextAutoComplete,
-            InputTypeForIME.TextAutoCorrect,
-            InputTypeForIME.TextCapCharacters,
-            InputTypeForIME.TextCapSentences,
-            InputTypeForIME.TextCapWords,
-            InputTypeForIME.TextEmailSubject,
-            InputTypeForIME.TextFilter,
-            InputTypeForIME.TextNoSuggestion,
-            InputTypeForIME.TextPersonName,
-            InputTypeForIME.TextPhonetic,
-            InputTypeForIME.TextWebEditText,
-            InputTypeForIME.TextUri,
-            InputTypeForIME.TextPostalAddress,
-            InputTypeForIME.TextEmailAddress,
-            InputTypeForIME.TextWebEmailAddress,
-            InputTypeForIME.TextPassword,
-            InputTypeForIME.TextVisiblePassword,
-            InputTypeForIME.TextWebPassword,
-            InputTypeForIME.TextNotCursorUpdate,
-            InputTypeForIME.TextEditTextInWebView,
-            InputTypeForIME.TypeNull,
-            InputTypeForIME.TextSend
-                -> {
-                Timber.d("Enter key: called 3\n")
-                sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
-            }
+    private fun usesEditorEnterPresentation(): Boolean =
+        inputString.value.isEmpty() && stringInTail.get().isEmpty() && !isHenkan.get()
 
-            InputTypeForIME.TextNextLine -> {
-                performEditorAction(EditorInfo.IME_ACTION_NEXT)
-            }
+    private fun defaultTypeNullUsesEditorEnter(): Boolean =
+        EditorEnterPolicy.usesEditorActionForDefaultTypeNull(
+            inputType = currentInputEditorInfo?.inputType,
+            setting = TypeNullInputBehaviorSetting.fromPreferenceValue(appPreference.type_null_input_behavior_preference),
+            hasExplicitDirectOverride = shortcutInputBehaviorOverride != null ||
+                (qwertyMode.value == TenKeyQWERTYMode.Custom && isCustomLayoutDirectMode) ||
+                isQwertyEnglishDirectInputForced(),
+        )
 
-            InputTypeForIME.TextDone -> {
-                performEditorAction(EditorInfo.IME_ACTION_DONE)
-            }
+    private fun editorEnterAction(): EditorEnterAction =
+        if (currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT && !defaultTypeNullUsesEditorEnter()) EditorEnterAction.Enter
+        else EditorEnterPolicy.resolve(currentInputEditorInfo)
 
-            InputTypeForIME.Number,
-            InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
-            InputTypeForIME.NumberSigned,
-            InputTypeForIME.Phone,
-            InputTypeForIME.Date,
-            InputTypeForIME.Datetime,
-            InputTypeForIME.Time,
-                -> {
-                performEditorAction(EditorInfo.IME_ACTION_DONE)
-            }
+    private fun editorEnterKeyStateIndex(): Int =
+        if (usesEditorEnterPresentation()) EditorEnterPolicy.keyStateIndex(editorEnterAction())
+        else currentInputType.getEnterKeyIndexSumire()
 
-            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                Timber.d(
-                    "enter key search: ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
-                )
-                performEditorAction(EditorInfo.IME_ACTION_SEARCH)
-            }
+    private fun editorEnterLabel(japanese: Boolean): String {
+        if (!usesEditorEnterPresentation()) {
+            return if (japanese) currentInputType.getQWERTYReturnTextInJp()
+            else currentInputType.getQWERTYReturnTextInEn()
+        }
+        return EditorEnterPolicy.label(editorEnterAction(), japanese)
+    }
 
+    // Presentation only: input classification still controls privacy, layout and conversion.
+    // Preserve composition labels until the existing confirmation pipeline has finished.
+    private fun editorEnterPresentationType(): InputTypeForIME {
+        if (!usesEditorEnterPresentation()) {
+            return currentInputType
+        }
+        return when (val action = editorEnterAction()) {
+            EditorEnterAction.Enter, EditorEnterAction.Newline -> InputTypeForIME.TextMultiLine
+            is EditorEnterAction.Action -> when (action.id) {
+                EditorInfo.IME_ACTION_SEARCH -> InputTypeForIME.TextSearchView
+                EditorInfo.IME_ACTION_NEXT, EditorInfo.IME_ACTION_PREVIOUS -> InputTypeForIME.TextNextLine
+                EditorInfo.IME_ACTION_DONE -> InputTypeForIME.TextDone
+                EditorInfo.IME_ACTION_SEND -> InputTypeForIME.TextSend
+                else -> InputTypeForIME.TextUri
+            }
         }
     }
 
@@ -25783,7 +25791,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {
         clearZeroQueryAllState(refresh = false)
-        if (dispatchDirectEnterIfNeeded()) {
+        if (dispatchDirectEnterIfNeeded(editorFacing = true)) {
             refreshCandidateStripContent(
                 candidatesShown = false,
                 resetCandidateTabSelection = candidateTabVisibility == true
@@ -25841,7 +25849,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleEmptyInputEnterKeyFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
         clearZeroQueryAllState(refresh = false)
-        if (dispatchDirectEnterIfNeeded()) {
+        if (dispatchDirectEnterIfNeeded(editorFacing = true)) {
             setDrawableToEnterKeyCorrespondingToImeOptionsFloating(floatingKeyboardLayoutBinding)
             return
         }
@@ -25860,8 +25868,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setDrawableToEnterKeyCorrespondingToImeOptionsFloating(floatingKeyboardLayoutBinding)
     }
 
-    private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
-        val currentDrawable = when (currentInputType) {
+    private fun editorEnterDrawable(): Drawable? {
+        if (usesEditorEnterPresentation() && editorEnterAction() == EditorEnterAction.Action(EditorInfo.IME_ACTION_PREVIOUS)) {
+            return AppCompatResources.getDrawable(this, com.kazumaproject.core.R.drawable.baseline_arrow_left_24)
+        }
+        return when (editorEnterPresentationType()) {
             InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                 cachedSearchDrawable
             }
@@ -25886,6 +25897,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 cachedArrowRightDrawable
             }
         }
+    }
+
+    private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
+        val currentDrawable = editorEnterDrawable()
         if (isGojuonSurface()) {
             mainView.gojuonView.setSideKeyEnterDrawable(currentDrawable)
         } else {
@@ -25894,31 +25909,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setDrawableToEnterKeyCorrespondingToImeOptionsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
-        val currentDrawable = when (currentInputType) {
-            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                cachedSearchDrawable
-            }
-
-            InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage -> {
-                cachedReturnDrawable
-            }
-
-            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                cachedTabDrawable
-            }
-
-            InputTypeForIME.TextDone -> {
-                cachedCheckDrawable
-            }
-
-            InputTypeForIME.TextSend -> {
-                cachedArrowRightDrawable
-            }
-
-            else -> {
-                cachedArrowRightDrawable
-            }
-        }
+        val currentDrawable = editorEnterDrawable()
         setFloatingKanaEnterDrawable(floatingKeyboardLayoutBinding, currentDrawable)
     }
 
