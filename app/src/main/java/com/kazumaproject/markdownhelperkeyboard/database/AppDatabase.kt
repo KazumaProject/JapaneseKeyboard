@@ -35,6 +35,7 @@ import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleEntity
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchModeConverter
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
@@ -83,13 +84,14 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         CustomZeroQueryEntry::class,
         TextMacro::class,
     ],
-    version = 45,
+    version = 47,
     exportSchema = false
 )
 @TypeConverters(
     ItemTypeConverter::class,
     MapTypeConverter::class,
-    TfbiFlickDirectionConverter::class
+    TfbiFlickDirectionConverter::class,
+    NgWordMatchModeConverter::class,
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -1189,6 +1191,22 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_text_macro_reading` ON `text_macro` (`reading`)"
+                )
+            }
+        }
+
+        val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `key_definitions` ADD COLUMN `textInputBehavior` TEXT NOT NULL DEFAULT 'NORMAL'"
+                )
+            }
+        }
+
+        val MIGRATION_46_47 = object : Migration(46, 47) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `ng_word` ADD COLUMN `matchMode` TEXT NOT NULL DEFAULT 'PARTIAL'"
                 )
             }
         }

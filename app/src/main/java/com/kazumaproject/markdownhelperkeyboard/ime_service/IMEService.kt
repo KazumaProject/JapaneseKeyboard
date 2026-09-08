@@ -60,11 +60,13 @@ import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.view.inputmethod.InlineSuggestionsResponse
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.inline.InlineContentView
@@ -139,6 +141,9 @@ import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
+import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateComposition
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateCompositionSession
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateCommit
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
@@ -307,7 +312,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIM
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.session.ConversionLearningSession
 import com.kazumaproject.markdownhelperkeyboard.learning.session.LearningFragment
+import com.kazumaproject.markdownhelperkeyboard.ng_word.NgWordMatcher
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcher
@@ -414,7 +421,6 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.Executors
 import java.util.function.Consumer
-import java.util.regex.Pattern
 import javax.inject.Inject
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
@@ -484,6 +490,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val selectionStart: Int,
         val selectionEnd: Int,
         val selectedText: String,
+    )
+
+    private data class CustomToggleEditorSelection(
+        val connection: InputConnection,
+        val selectionStart: Int,
+        val selectionEnd: Int,
     )
 
     private data class ZenzRerankEntry(
@@ -1397,10 +1409,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun updateFloatingCandidatesOnMain(
         candidates: List<CandidateItem>,
         insertString: String,
+        token: CandidateRequestToken?,
         highlightedAbsoluteIndex: Int? = null
     ) {
         withContext(Dispatchers.Main.immediate) {
-            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            if (!shouldApplyCandidateResult(insertString, token)) return@withContext
             updateSuggestionsForFloatingCandidate(
                 suggestions = candidates,
                 highlightedAbsoluteIndex = highlightedAbsoluteIndex
@@ -1529,6 +1542,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
+    private var physicalCandidateCompositionSession: PhysicalCandidateCompositionSession? = null
+    private var physicalCandidateCompositionGeneration: Long = 0L
+    private var pendingPhysicalCandidatePreviewGeneration: Long? = null
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
@@ -1867,8 +1883,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
-    private val _ngPattern = MutableStateFlow("".toRegex())
-    private val ngPattern: StateFlow<Regex> = _ngPattern
     private var isPrivateMode = false
     private var incognitoModeDetectionPreference: Boolean = true
     private var showLearnedCandidatesInIncognitoPreference: Boolean = true
@@ -2391,6 +2405,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestion.sourceId?.let(::executeTextMacro)
                 return@suggestionClick
             }
+
+            if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty()) {
+                commitPhysicalCandidate(suggestion, commitAll = false)
+                return@suggestionClick
+            }
+
             val tail = FloatingCandidateTailResolver.resolveTail(
                 originalInput = inputString.value,
                 selectedCandidateLength = suggestion.length.toInt()
@@ -2584,6 +2604,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.startInputSession()
         }
@@ -5044,16 +5065,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
+        clearPhysicalCandidateCompositionSession("finish input")
         super.onFinishInput()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
+        clearPhysicalCandidateCompositionSession("finish input view")
         flickInputPreviewCoordinator.cancel(restore = false)
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
@@ -5123,6 +5148,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         pendingGemmaPickedImagePath = null
         clearZeroQueryAllState(refresh = false)
+        clearPhysicalCandidateCompositionSession("destroy")
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         collapseShortcutEntryExpansion()
@@ -6310,6 +6336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+        invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
@@ -6785,7 +6812,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             PhysicalKeyboardShortcutAction.CANCEL -> {
                 if (isBunsetsuCursorMoveSessionActive()) {
-                    restoreRawInputFromBunsetsuSession()
+                    clearPhysicalCandidateCompositionSession("bunsetsu shortcut cancelled")
+                    exitBunsetsuCursorMoveSessionToRawInput()
                 } else if (isHenkan.get()) {
                     cancelFloatingCandidateConversion(insertString)
                 }
@@ -6932,12 +6960,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return super.onKeyDown(keyCode, event)
         }
         if (isBunsetsuCursorMoveSessionActive()) {
-            restoreRawInputFromBunsetsuSession()
+            clearPhysicalCandidateCompositionSession("bunsetsu conversion cancelled")
+            exitBunsetsuCursorMoveSessionToRawInput()
             listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
             currentHighlightIndex = RecyclerView.NO_POSITION
             return true
         }
 
+        if (isPhysicalFloatingCandidatePathActive() && physicalCandidateCompositionSession != null) {
+            cancelFloatingCandidateConversion(insertString)
+            return true
+        }
         deleteStringCommon(insertString)
         resetFlagsDeleteKey()
         event?.let { e ->
@@ -6947,7 +6980,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun cancelFloatingCandidateConversion(insertString: String) {
-        preservePreEditOnNextSelectionUpdate = insertString
+        val restoredInput = physicalCandidateCompositionSession?.sourceText ?: insertString
+        clearPhysicalCandidateCompositionSession("conversion cancelled")
+        preservePreEditOnNextSelectionUpdate = restoredInput
+        _inputString.update { restoredInput }
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         stringInTail.set("")
@@ -6958,9 +6994,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         setSuggestionAdaptersOnMain(emptyList())
         updateSuggestionsForFloatingCandidate(emptyList())
-        val spannableString = SpannableString(insertString)
+        val spannableString = SpannableString(restoredInput)
         setComposingTextAfterEdit(
-            inputString = insertString,
+            inputString = restoredInput,
             spannableString = spannableString,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputCompositionAfterBackgroundColor
@@ -7005,10 +7041,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 mainView = mainView
                             )
                             if (!activated) {
+                                beginPhysicalCandidateCompositionSession(normalizedInsertString)
                                 floatingCandidateNextItem(normalizedInsertString)
                             }
                         }
                     } else {
+                        beginPhysicalCandidateCompositionSession(normalizedInsertString)
                         floatingCandidateNextItem(normalizedInsertString)
                     }
                 } else {
@@ -7144,6 +7182,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyCode: Int, event: KeyEvent?, insertString: String
     ): Boolean {
         event?.let { e ->
+            // A real Shift+arrow sends a separate Shift event before the arrow. It must
+            // not implicitly commit text or tear down the bunsetsu session.
+            if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode, e)
             scope.launch {
                 _physicalKeyboardEnable.emit(true)
             }
@@ -7166,6 +7207,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             if (hasPhysicalTextShortcutModifier(e)) {
                 return super.onKeyDown(keyCode, e)
+            }
+
+            if (isHenkan.get() && isPhysicalFloatingCandidatePathActive()) {
+                val suggestion = listAdapter.getHighlightedItem()
+                // The editor must not report the intermediate, composition-free selection
+                // between committing the old text and composing the first new character.
+                beginBatchEdit()
+                try {
+                    if (suggestion == null) {
+                        // Enter followed immediately by typing can arrive before the next
+                        // candidate list. Commit the remaining reading, never drop the key.
+                        val session = ensurePhysicalCandidateCompositionSession(inputString.value)
+                            ?: return true
+                        applyPhysicalCandidateCommit(PhysicalCandidateCommit(session.sourceText, ""), true)
+                    } else if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
+                        suggestion.sourceId?.let(::executeTextMacro)
+                    } else if (!commitPhysicalCandidate(suggestion, commitAll = true)) {
+                        return true
+                    }
+                    romajiConverter?.clear()
+                    val newInput = if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
+                        PhysicalKanaMapper.resolve(keyCode, e.isShiftPressed)?.let {
+                            KanaDakutenComposer.append("", it)
+                        }
+                    } else {
+                        handlePhysicalRomajiOrUnicodeKey(keyCode, e)?.first
+                    }
+                    newInput?.let { text ->
+                        if (!dispatchDirectTextIfNeeded(text)) {
+                            _inputString.update { text }
+                            applyRawComposingFallback(text)
+                        }
+                    }
+                } finally {
+                    endBatchEdit()
+                }
+                return true
             }
 
             if (isHenkan.get()) {
@@ -7415,6 +7493,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidateNextItem(insertString: String) {
+        if (isPhysicalFloatingCandidatePathActive()) {
+            navigatePhysicalCandidate(insertString, 1)
+            return
+        }
         Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex ${stringInTail.get()}")
         if (listAdapter.currentList.isEmpty()) return
 
@@ -7454,6 +7536,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidatePreviousItem(insertString: String) {
+        if (isPhysicalFloatingCandidatePathActive()) {
+            navigatePhysicalCandidate(insertString, -1)
+            return
+        }
         if (listAdapter.currentList.isEmpty()) return
         val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
         if (suggestionCount == 0) return
@@ -7478,11 +7564,215 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun navigatePhysicalCandidate(insertString: String, delta: Int) {
+        val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return
+        if (fullSuggestionsList.isEmpty()) {
+            pendingPhysicalCandidatePreviewGeneration = session.generation
+            requestCandidateRefresh(CandidateShowFlag.Updating, insertString)
+            return
+        }
+        val current = if (currentHighlightIndex == RecyclerView.NO_POSITION) -1 else
+            currentPage * PAGE_SIZE + currentHighlightIndex
+        val next = if (current == -1) {
+            if (delta > 0) 0 else fullSuggestionsList.lastIndex
+        } else Math.floorMod(current + delta, fullSuggestionsList.size)
+        currentPage = next / PAGE_SIZE
+        currentHighlightIndex = next % PAGE_SIZE
+        pendingPhysicalCandidatePreviewGeneration = session.generation
+        displayCurrentPage()
+    }
+
+    private fun isPhysicalFloatingCandidatePathActive(): Boolean {
+        return physicalKeyboardEnable.replayCache.firstOrNull() == true &&
+                !isBunsetsuCursorMoveSessionActive()
+    }
+
+    private fun clearPhysicalCandidateCompositionSession(reason: String) {
+        physicalCandidateCompositionSession?.let {
+            Timber.d(
+                "clearPhysicalCandidateCompositionSession: generation=%d reason=%s",
+                it.generation,
+                reason
+            )
+        }
+        // A candidate preview's suffix may overlap queryText. Once the session is gone,
+        // the legacy fields must describe disjoint reading ranges again.
+        physicalCandidateCompositionSession?.let { stringInTail.set(it.trailingText) }
+        physicalCandidateCompositionSession = null
+        pendingPhysicalCandidatePreviewGeneration = null
+    }
+
+    private fun beginPhysicalCandidateCompositionSession(input: String) {
+        ensurePhysicalCandidateCompositionSession(input)
+    }
+
+    private fun ensurePhysicalCandidateCompositionSession(
+        insertString: String
+    ): PhysicalCandidateCompositionSession? {
+        if (!isPhysicalFloatingCandidatePathActive() || insertString.isEmpty()) return null
+        val current = physicalCandidateCompositionSession
+        if (current != null) {
+            // A preview may change stringInTail, but it never changes the session's reading.
+            // Reject callbacks belonging to a previous input instead of reviving their text.
+            return current.takeIf { it.queryText == insertString && inputString.value == insertString }
+        }
+        if (inputString.value != insertString) return null
+        return PhysicalCandidateCompositionSession(
+            queryText = insertString,
+            trailingText = stringInTail.get(),
+            generation = ++physicalCandidateCompositionGeneration,
+        ).also { physicalCandidateCompositionSession = it }
+    }
+
+    private fun resolvePhysicalCandidateComposition(
+        suggestion: CandidateItem,
+        insertString: String,
+        reason: String,
+    ): FloatingCandidateComposition? {
+        val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return null
+        val composition = session.resolve(
+            suggestion.formulaFallbackText ?: suggestion.word,
+            suggestion.length.toInt(),
+        ) ?: run {
+            Timber.e("Invalid physical candidate range: reason=%s generation=%d", reason, session.generation)
+            return null
+        }
+        // Keep the legacy field for existing rendering, but never use it as the session source.
+        stringInTail.set(composition.tail)
+        return composition
+    }
+
+    private fun commitPhysicalCandidate(suggestion: CandidateItem, commitAll: Boolean): Boolean {
+        val composition = resolvePhysicalCandidateComposition(
+            suggestion, inputString.value, if (commitAll) "typing" else "commit"
+        ) ?: return false
+        val session = physicalCandidateCompositionSession ?: return false
+        val result = session.commit(composition, commitAll)
+        applyPhysicalCandidateCommit(result, commitAll)
+        return true
+    }
+
+    private fun applyPhysicalCandidateCommit(result: PhysicalCandidateCommit, commitAll: Boolean) {
+        commitPhysicalCandidateComposition(result)
+        updateSuggestionsForFloatingCandidate(emptyList())
+        listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        if (result.remainingReading.isNotEmpty()) {
+            isHenkan.set(true)
+            beginPhysicalCandidateCompositionSession(result.remainingReading)
+            pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+            // Request explicitly: StateFlow may conflate the preceding edit, or the reading
+            // may be unchanged. The list commit callback will preview the matching result.
+            requestCandidateRefresh(CandidateShowFlag.Updating, result.remainingReading)
+        } else {
+            isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
+            if (!commitAll) {
+                if (result.committedText.isNotBlank()) rememberZeroQueryKeyAfterCommit(result.committedText)
+                consumePendingZeroQueryAfterCommit()
+            }
+        }
+    }
+
+    private fun setPhysicalCandidateComposingText(
+        composition: FloatingCandidateComposition,
+    ) {
+        val spannableString = SpannableString(composition.text)
+        val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+        val selectedStart = composition.selectedTextStart.coerceIn(0, spannableString.length)
+        val selectedEnd = composition.selectedTextEndExclusive.coerceIn(
+            selectedStart,
+            spannableString.length
+        )
+        if (selectedStart < selectedEnd) {
+            spannableString.setSpan(
+                BackgroundColorSpan(
+                    if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor ?: getColor(
+                            com.kazumaproject.core.R.color.blue
+                        )
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    }
+                ),
+                selectedStart,
+                selectedEnd,
+                spanFlag
+            )
+            if (customComposingTextPreference == true) {
+                inputCompositionTextColor?.let { color ->
+                    spannableString.setSpan(
+                        ForegroundColorSpan(color),
+                        selectedStart,
+                        selectedEnd,
+                        spanFlag
+                    )
+                }
+            }
+        }
+        if (spannableString.isNotEmpty()) {
+            spannableString.setSpan(
+                UnderlineSpan(),
+                0,
+                spannableString.length,
+                spanFlag
+            )
+        }
+        setComposingText(spannableString, 1)
+    }
+
+    private fun commitPhysicalCandidateComposition(result: PhysicalCandidateCommit) {
+        val committedText = result.committedText
+        val tail = result.remainingReading
+        beginBatchEdit()
+        try {
+            // commitText replaces the current composing region and finishes it itself.
+            // An additional finishComposingText can flush selection notifications before
+            // the tail is restored (notably in Sora's nested composing batch).
+            commitText(committedText, 1)
+            stringInTail.set("")
+            _inputString.update { tail }
+            if (tail.isNotEmpty()) {
+                val spannableString = SpannableString(tail)
+                setComposingTextAfterEdit(
+                    inputString = tail,
+                    spannableString = spannableString,
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+            }
+        } finally {
+            endBatchEdit()
+        }
+        clearPhysicalCandidateCompositionSession("candidate committed")
+    }
+
     private fun displayComposingTextInHardwareKeyboardConnected(
         insertString: String
     ) {
         val selectedSuggestion = listAdapter.currentList.getOrNull(currentHighlightIndex) ?: return
         if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) return
+        if (isPhysicalFloatingCandidatePathActive()) {
+            val composition = resolvePhysicalCandidateComposition(
+                suggestion = selectedSuggestion,
+                insertString = insertString,
+                reason = "preview"
+            ) ?: return
+            setPhysicalCandidateComposingText(composition)
+            return
+        }
+
+        // Bunsetsu cursor-move conversion has its own source/range bookkeeping. Keep its
+        // existing composing behavior when this shared navigation method is reached.
         val tail = FloatingCandidateTailResolver.resolveTail(
             originalInput = insertString,
             selectedCandidateLength = selectedSuggestion.length.toInt()
@@ -7518,6 +7808,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 selectedSuggestion.sourceId?.let(::executeTextMacro)
                 return
             }
+
+            if (isPhysicalFloatingCandidatePathActive()) {
+                commitPhysicalCandidate(selectedSuggestion, commitAll = false)
+                return
+            }
+
             val subString = stringInTail.get()
             val commitWord = selectedSuggestion.formulaFallbackText ?: selectedSuggestion.word
             if (subString.isNotEmpty()) {
@@ -8992,7 +9288,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val pagerLabel = "▶ (${currentPage + 1}/$totalPages)"
             itemsToShow.add(CandidateItem(word = pagerLabel, length = (1).toUByte()))
         }
+        val physicalSession = physicalCandidateCompositionSession
+        val requestedPage = currentPage
         listAdapter.submitList(itemsToShow) {
+            if (physicalSession != null && (
+                    physicalCandidateCompositionSession?.generation != physicalSession.generation ||
+                        inputString.value != physicalSession.queryText || currentPage != requestedPage
+                    )) return@submitList
+            if (physicalSession != null &&
+                pendingPhysicalCandidatePreviewGeneration == physicalSession.generation &&
+                isPhysicalFloatingCandidatePathActive()
+            ) {
+                if (currentHighlightIndex == RecyclerView.NO_POSITION) currentHighlightIndex = 0
+                pendingPhysicalCandidatePreviewGeneration = null
+                displayComposingTextInHardwareKeyboardConnected(physicalSession.queryText)
+            }
             listAdapter.updateHighlightPosition(currentHighlightIndex)
             Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()} [$itemsToShow]")
         }
@@ -9765,7 +10075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (action) {
                     CandidateLongPressAction.ForgetLearnedEntry ->
                         getString(R.string.candidate_action_forget_learning)
-                    CandidateLongPressAction.HideWord -> "この単語を非表示"
+                    CandidateLongPressAction.HideWord -> getString(R.string.candidate_action_hide_word)
                     CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
                     is CandidateLongPressAction.CustomPrompt -> action.template.title
                     CandidateLongPressAction.Close -> getString(R.string.candidate_action_close)
@@ -9801,18 +10111,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateLongPressAction.HideWord -> {
-                        ioScope.launch {
-                            val exist = ngWordRepository.exists(
-                                yomi = insertString, tango = candidate.string
+                        keyboardSelectionPopupWindow?.dismiss()
+                        if (!showNgWordRegistrationPopup(insertString, candidate)) {
+                            registerNgWord(
+                                yomi = insertString,
+                                tango = candidate.string,
+                                matchMode = NgWordMatchMode.PARTIAL,
                             )
-                            if (!exist) {
-                                ngWordRepository.addNgWord(
-                                    yomi = insertString, tango = candidate.string
-                                )
-                                withContext(Dispatchers.Main) {
-                                    requestCandidateRefresh(CandidateShowFlag.Updating)
-                                }
-                            }
                         }
                     }
 
@@ -9829,7 +10134,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     CandidateLongPressAction.Close, null -> Unit
                 }
-                keyboardSelectionPopupWindow?.dismiss()
+                if (selectedAction != CandidateLongPressAction.HideWord) {
+                    keyboardSelectionPopupWindow?.dismiss()
+                }
             }
 
             keyboardSelectionPopupWindow?.let { popupWindow ->
@@ -9841,6 +10148,104 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     y = 0,
                     source = "registerNGWord"
                 )
+            }
+        }
+    }
+
+    private fun showNgWordRegistrationPopup(
+        insertString: String,
+        candidate: Candidate,
+    ): Boolean {
+        val mainView = mainLayoutBinding ?: return false
+        val context = mainView.root.context
+        val popupView = LayoutInflater.from(context).inflate(
+            R.layout.popup_ng_word_registration,
+            mainView.root,
+            false,
+        )
+        val yomiEditText = popupView.findViewById<EditText>(R.id.edit_text_ng_word_yomi_registration)
+        val tangoEditText = popupView.findViewById<EditText>(R.id.edit_text_ng_word_tango_registration)
+        val matchModeSpinner = popupView.findViewById<Spinner>(R.id.spinner_ng_word_match_mode_registration)
+        val matchModes = NgWordMatchMode.values().toList()
+
+        yomiEditText.setText(insertString)
+        tangoEditText.setText(candidate.string)
+        matchModeSpinner.adapter = ArrayAdapter.createFromResource(
+            context,
+            R.array.ng_word_match_mode_entries,
+            android.R.layout.simple_spinner_item,
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        matchModeSpinner.setSelection(matchModes.indexOf(NgWordMatchMode.PARTIAL))
+
+        keyboardSelectionPopupWindow?.dismiss()
+        val popupWindow = PopupWindow(
+            popupView,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            true,
+        ).apply {
+            setBackgroundDrawable(popupView.background)
+            isOutsideTouchable = true
+            inputMethodMode = PopupWindow.INPUT_METHOD_NEEDED
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        }
+        keyboardSelectionPopupWindow = popupWindow
+        popupWindow.setOnDismissListener {
+            if (keyboardSelectionPopupWindow === popupWindow) {
+                keyboardSelectionPopupWindow = null
+            }
+        }
+
+        popupView.findViewById<View>(R.id.button_ng_word_registration_cancel)
+            .setOnClickListener { popupWindow.dismiss() }
+        popupView.findViewById<View>(R.id.button_ng_word_registration_save)
+            .setOnClickListener {
+                val yomi = yomiEditText.text.toString().trim()
+                val tango = tangoEditText.text.toString().trim()
+                if (yomi.isEmpty() || tango.isEmpty()) {
+                    showToastMessage(getString(R.string.ng_word_empty_input_message))
+                    return@setOnClickListener
+                }
+                val matchMode = matchModes.getOrNull(matchModeSpinner.selectedItemPosition)
+                    ?: NgWordMatchMode.PARTIAL
+                popupWindow.dismiss()
+                registerNgWord(yomi, tango, matchMode)
+            }
+
+        val shown = showPopupWindowSafely(
+            popupWindow = popupWindow,
+            anchorView = mainView.suggestionRecyclerView,
+            gravity = Gravity.CENTER,
+            x = 0,
+            y = 0,
+            source = "showNgWordRegistrationPopup",
+        )
+        if (!shown) {
+            popupWindow.dismiss()
+        }
+        return shown
+    }
+
+    private fun registerNgWord(
+        yomi: String,
+        tango: String,
+        matchMode: NgWordMatchMode,
+    ) {
+        ioScope.launch {
+            val exists = ngWordRepository.exists(yomi = yomi, tango = tango)
+            if (exists) {
+                showToastMessage(getString(R.string.ng_word_already_registered_message))
+                return@launch
+            }
+            ngWordRepository.addNgWord(
+                yomi = yomi,
+                tango = tango,
+                matchMode = matchMode,
+            )
+            withContext(Dispatchers.Main) {
+                requestCandidateRefresh(CandidateShowFlag.Updating)
             }
         }
     }
@@ -11518,6 +11923,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutRomajiMode = false
     private var isCustomLayoutDirectMode = false
     private var customKeyboardShiftState = CustomKeyboardShiftState.OFF
+    private val customToggleInputState = CustomToggleInputState()
+    private var customToggleWasDirect: Boolean = false
     private val isCustomLayoutShiftPressed: Boolean
         get() = customKeyboardShiftState == CustomKeyboardShiftState.ONE_SHOT
     private val isCustomLayoutCapLock: Boolean
@@ -12071,6 +12478,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
+                resetCustomToggleState()
                 if (action != KeyAction.DoNothing) {
                     vibrate()
                     clearDeleteBufferWithView()
@@ -12385,6 +12793,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onFlickActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
+                resetCustomToggleState()
                 Timber.d("onFlickActionLongPress: $action")
                 if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
@@ -12816,8 +13225,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            override fun onToggleText(keyIdentity: String, values: List<String>) {
+                if (isKeyboardLayoutEditModeActive()) return
+                handleKeyReleaseFeedback()
+                clearDeleteBufferWithView()
+                val isDirect = isCustomToggleDirectInput()
+                if (customToggleWasDirect != isDirect) {
+                    resetCustomToggleState()
+                }
+                val canonicalValues = values.filter { it.length == 1 }
+                val outputValues = canonicalValues.map(::applyCustomLayoutShiftAndCapLock)
+                handleCustomToggleText(
+                    keyIdentity = keyIdentity,
+                    values = canonicalValues,
+                    outputValues = outputValues,
+                    mainView = mainView
+                )
+                consumeCustomKeyboardOneShotShift()
+            }
+
             override fun onAction(action: KeyAction, isFlick: Boolean) {
                 if (isKeyboardLayoutEditModeActive()) return
+                resetCustomToggleState()
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
                 Timber.d("onAction: $action $isFlick")
@@ -12886,7 +13315,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             }
                                         }
                                     } else {
-                                        handleOnKeyForSumire(
+                                        handleCustomKeyboardText(
                                             shiftedText,
                                             mainView,
                                             isFlick
@@ -13359,6 +13788,235 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyCustomLayoutShiftAndCapLock(text: String): String {
         return customKeyboardShiftState.transformAsciiLetters(text)
+    }
+
+    private fun isCustomToggleDirectInput(): Boolean {
+        return currentInputBehavior != ResolvedInputBehavior.COMPOSING_TEXT ||
+            isCustomLayoutDirectMode
+    }
+
+    private fun resetCustomToggleState() {
+        customToggleInputState.reset()
+        customToggleWasDirect = false
+        customToggleExpectedEditorSelection = null
+    }
+
+    private var customToggleExpectedEditorSelection: CustomToggleEditorSelection? = null
+    private var customToggleEditInProgress = false
+
+    private fun captureCustomToggleEditorSelection(
+        connection: InputConnection
+    ): CustomToggleEditorSelection? {
+        val extracted = runCatching {
+            connection.getExtractedText(ExtractedTextRequest(), 0)
+        }.getOrNull() ?: return null
+        if (
+            extracted.text == null ||
+            extracted.startOffset < 0 ||
+            extracted.selectionStart < 0 ||
+            extracted.selectionEnd < 0
+        ) {
+            return null
+        }
+        return CustomToggleEditorSelection(
+            connection = connection,
+            selectionStart = extracted.startOffset + extracted.selectionStart,
+            selectionEnd = extracted.startOffset + extracted.selectionEnd,
+        )
+    }
+
+    private fun invalidateCustomToggleStateForSelection(
+        newSelStart: Int,
+        newSelEnd: Int,
+    ) {
+        if (customToggleEditInProgress) return
+        val expected = customToggleExpectedEditorSelection ?: return
+        if (newSelStart < 0 || newSelEnd < 0) return
+        if (
+            currentInputConnection !== expected.connection ||
+            newSelStart != expected.selectionStart ||
+            newSelEnd != expected.selectionEnd
+        ) {
+            resetCustomToggleState()
+        }
+    }
+
+    private fun replaceCustomToggleDirectText(
+        previous: String,
+        next: String,
+    ): Boolean {
+        val connection = currentInputConnection ?: return false
+        val expected = customToggleExpectedEditorSelection ?: return false
+        if (expected.connection !== connection) return false
+
+        val selection = captureCustomToggleEditorSelection(connection) ?: return false
+        if (
+            selection.selectionStart != expected.selectionStart ||
+            selection.selectionEnd != expected.selectionEnd
+        ) {
+            return false
+        }
+
+        val textBeforeCursor = runCatching {
+            connection.getTextBeforeCursor(previous.length, 0)?.toString()
+        }.getOrNull() ?: return false
+        if (textBeforeCursor != previous) return false
+
+        var batchStarted = false
+        var committed = false
+        customToggleEditInProgress = true
+        try {
+            batchStarted = runCatching { connection.beginBatchEdit() }.getOrDefault(false)
+            if (batchStarted) {
+                val deleted = runCatching {
+                    connection.deleteSurroundingText(previous.length, 0)
+                }.getOrDefault(false)
+                committed = deleted && runCatching {
+                    connection.commitText(next, 1)
+                }.getOrDefault(false)
+            }
+        } finally {
+            if (batchStarted) {
+                runCatching { connection.endBatchEdit() }
+            }
+            customToggleEditInProgress = false
+        }
+
+        if (!committed) return false
+        // Both values are one UTF-16 code unit, so replacing the preceding value leaves the
+        // collapsed cursor at the same absolute position. Keep the validated position even if
+        // the editor does not expose a second extracted-text snapshot after the batch edit.
+        customToggleExpectedEditorSelection = expected
+        return true
+    }
+
+    private fun customToggleAppendWasCommitted(
+        before: CustomToggleEditorSelection,
+        after: CustomToggleEditorSelection,
+        text: String,
+    ): Boolean {
+        if (before.connection !== after.connection) return false
+        if (before.selectionStart != before.selectionEnd) return false
+        val expectedCursor = before.selectionStart + text.length
+        if (after.selectionStart != expectedCursor || after.selectionEnd != expectedCursor) {
+            return false
+        }
+        val textBeforeCursor = runCatching {
+            after.connection.getTextBeforeCursor(text.length, 0)?.toString()
+        }.getOrNull()
+        return textBeforeCursor == text
+    }
+
+    private fun handleCustomToggleText(
+        keyIdentity: String,
+        values: List<String>,
+        outputValues: List<String>,
+        mainView: MainLayoutBinding
+    ) {
+        if (values.size != outputValues.size) {
+            resetCustomToggleState()
+            return
+        }
+        val validPairs = values.zip(outputValues)
+            .filter { (value, output) -> value.length == 1 && output.length == 1 }
+        if (validPairs.isEmpty()) {
+            resetCustomToggleState()
+            return
+        }
+        val canonicalValues = validPairs.map { it.first }
+        val emittedValues = validPairs.map { it.second }
+        when (
+            val mutation = customToggleInputState.next(
+                keyIdentity = keyIdentity,
+                values = canonicalValues,
+                outputValues = emittedValues,
+            )
+        ) {
+            null -> return
+            is CustomToggleInputState.Mutation.Append -> {
+                val isDirect = isCustomToggleDirectInput()
+                val before = if (isDirect) {
+                    currentInputConnection?.let(::captureCustomToggleEditorSelection)
+                } else {
+                    null
+                }
+                if (isDirect) customToggleEditInProgress = true
+                try {
+                    // A new toggle sequence must append, bypassing the legacy kana tap cycle.
+                    handleCustomKeyboardText(mutation.text, mainView, isFlick = true)
+                } finally {
+                    if (isDirect) customToggleEditInProgress = false
+                }
+                if (isDirect) {
+                    val after = currentInputConnection?.let(::captureCustomToggleEditorSelection)
+                    if (
+                        before == null ||
+                        after == null ||
+                        !customToggleAppendWasCommitted(before, after, mutation.text)
+                    ) {
+                        resetCustomToggleState()
+                        return
+                    }
+                    customToggleWasDirect = true
+                    customToggleExpectedEditorSelection = after
+                } else {
+                    customToggleWasDirect = false
+                    customToggleExpectedEditorSelection = null
+                }
+            }
+            is CustomToggleInputState.Mutation.Replace -> {
+                val previous = mutation.previous
+                val next = mutation.next
+                if (customToggleWasDirect) {
+                    if (!replaceCustomToggleDirectText(previous, next)) {
+                        resetCustomToggleState()
+                        handleCustomToggleText(
+                            keyIdentity = keyIdentity,
+                            values = canonicalValues,
+                            outputValues = emittedValues,
+                            mainView = mainView,
+                        )
+                    }
+                } else {
+                    val current = inputString.value
+                    if (!current.endsWith(previous)) {
+                        resetCustomToggleState()
+                        handleCustomToggleText(
+                            keyIdentity = keyIdentity,
+                            values = canonicalValues,
+                            outputValues = emittedValues,
+                            mainView = mainView,
+                        )
+                        return
+                    }
+                    _inputString.update { current.dropLast(previous.length) + next }
+                }
+            }
+        }
+    }
+
+    private fun handleCustomKeyboardText(
+        text: String,
+        mainView: MainLayoutBinding,
+        isFlick: Boolean
+    ) {
+        if (dispatchDirectTextIfNeeded(text)) return
+        if (isCustomLayoutDirectMode) {
+            finishComposingText()
+            setComposingText("", 0)
+            commitText(text, 1)
+            return
+        }
+        if (applyPendingFlickTextMutation(text, isFlick)) return
+        if (text.length == 1) {
+            if (isFlickOnlyMode == true || isFlick) {
+                handleFlick(text.first(), inputString.value, StringBuilder(), mainView)
+            } else {
+                handleTap(text.first(), inputString.value, StringBuilder(), mainView)
+            }
+        } else {
+            _inputString.update { it + text }
+        }
     }
 
     private fun handleOnKeyForSumire(
@@ -15697,7 +16355,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
                 _ngWordsList.value = ngWords.distinct()
-                _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }.toRegex()
+                if (isInputViewActive && inputString.value.isNotEmpty()) {
+                    withContext(Dispatchers.Main.immediate) {
+                        requestCandidateRefresh(CandidateShowFlag.Updating)
+                    }
+                }
             }
         }
 
@@ -15752,6 +16414,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     isHenkan.set(false)
                     henkanPressedWithBunsetsuDetect = false
                 } else {
+                    clearPhysicalCandidateCompositionSession("physical keyboard disabled")
                     requestCursorUpdates(0)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
@@ -16313,7 +16976,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates.map {
                         it.toFloatingCandidateItem()
                     },
-                    insertString = insertString
+                    insertString = insertString,
+                    token = token,
                 )
             }
         } else {
@@ -17302,6 +17966,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        physicalCandidateCompositionSession?.let { session ->
+            if (session.queryText != string) {
+                clearPhysicalCandidateCompositionSession("reading edited")
+            }
+        }
         defaultInputFinalizeJob?.cancel()
         defaultInputFinalizeJob = null
         if (string.isNotEmpty()) {
@@ -22371,6 +23040,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
+        clearPhysicalCandidateCompositionSession("reset all flags")
         clearZeroQueryAllState(refresh = false)
         customKeyboardRenderJob?.cancel()
         customKeyboardRenderJob = null
@@ -22431,6 +23101,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearDirectCommitCompositionState(reason: String) {
+        clearPhysicalCandidateCompositionSession(reason)
         clearZeroQueryAllState(refresh = false)
         clearFunctionKeyConversionSource()
         qwertyGlideInputCoordinator?.cancelPending()
@@ -22523,6 +23194,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsSuggestionClick() {
+        clearPhysicalCandidateCompositionSession("suggestion clicked")
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22553,6 +23225,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsEnterKey() {
+        clearPhysicalCandidateCompositionSession("enter key")
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22569,6 +23242,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
+        clearPhysicalCandidateCompositionSession("enter key without conversion")
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
@@ -22587,6 +23261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsKeySpace() {
+        clearPhysicalCandidateCompositionSession("space key")
         onDeleteLongPressUp.set(false)
         _dakutenPressed.value = false
         isContinuousTapInputEnabled.set(false)
@@ -22595,6 +23270,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsDeleteKey() {
+        clearPhysicalCandidateCompositionSession("delete key")
         conversionLearningSession.cancel()
         suggestionClickNum = 0
         _dakutenPressed.value = false
@@ -23343,7 +24019,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates.map {
                         it.toFloatingCandidateItem()
                     },
-                    insertString = insertString
+                    insertString = insertString,
+                    token = token,
                 )
             }
         } else {
@@ -23420,7 +24097,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates.map {
                         it.toFloatingCandidateItem()
                     },
-                    insertString = insertString
+                    insertString = insertString,
+                    token = token,
                 )
             }
         } else {
@@ -23501,8 +24179,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 emptyList()
             }
 
-        val ngWords =
-            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val ngWords: List<NgWord> =
+            if (isNgWordEnable == true) ngWordsList.value else emptyList()
 
         val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
         val enableTypoCorrectionJapaneseFlick =
@@ -23538,13 +24216,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val filteredCandidates = result.filter { candidate ->
-            if (ngWords.isEmpty()) {
-                true
-            } else {
-                ngPattern.value.let {
-                    !it.containsMatchIn(candidate.string)
-                }
-            }
+            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
@@ -23631,8 +24303,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        val ngWords = measureDebugStage("IMEService.getSuggestionList.ngWordSnapshot") {
-            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val ngWords: List<NgWord> = measureDebugStage("IMEService.getSuggestionList.ngWordSnapshot") {
+            if (isNgWordEnable == true) ngWordsList.value else emptyList()
         }
 
         val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
@@ -23677,13 +24349,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val filteredCandidates = measureDebugStage("IMEService.getSuggestionList.ngWordFilterDistinct") {
             result.filter { candidate ->
-                if (ngWords.isEmpty()) {
-                    true
-                } else {
-                    ngPattern.value.let {
-                        !it.containsMatchIn(candidate.string)
-                    }
-                }
+                !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
             }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
         }
 
@@ -23785,8 +24451,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 emptyList()
             }
 
-        val ngWords =
-            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val ngWords: List<NgWord> =
+            if (isNgWordEnable == true) ngWordsList.value else emptyList()
         val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
@@ -23807,13 +24473,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val filteredCandidates = result.filter { candidate ->
-            if (ngWords.isEmpty()) {
-                true
-            } else {
-                ngPattern.value.let {
-                    !it.containsMatchIn(candidate.string)
-                }
-            }
+            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
@@ -26629,6 +27289,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val maxPage = (fullSuggestionsList.size - 1) / PAGE_SIZE
         currentPage = if (currentPage >= maxPage) 0 else currentPage + 1
         currentHighlightIndex = 0
+        if (isPhysicalFloatingCandidatePathActive()) {
+            pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+        }
         displayCurrentPage()
     }
 
@@ -26637,6 +27300,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentPage > 0) {
             currentPage--
             currentHighlightIndex = 0
+            if (isPhysicalFloatingCandidatePathActive()) {
+                pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+            }
             displayCurrentPage()
         }
     }
@@ -26813,7 +27479,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
-        return composingTextArbiter.finishCanonical()
+        val finished = composingTextArbiter.finishCanonical()
+        clearPhysicalCandidateCompositionSession("finish composing text")
+        return finished
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
@@ -26825,6 +27493,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (committed) {
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
+            clearPhysicalCandidateCompositionSession("commit text")
         }
         return committed
     }

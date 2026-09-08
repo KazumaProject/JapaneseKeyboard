@@ -9,6 +9,7 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior
 import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
@@ -370,7 +371,10 @@ object KeyboardBackupNormalizer {
                     .fromDbValue(keyDto.specialKeyColorStyle)
                     .dbValue,
                 doubleTapAction = normalizedDoubleTapAction,
-                doubleTapPolicy = normalizedDoubleTapPolicy
+                doubleTapPolicy = normalizedDoubleTapPolicy,
+                textInputBehavior = KeyTextInputBehavior
+                    .fromDbValue(keyDto.textInputBehavior)
+                    .dbValue
             )
 
             ImportableKeyWithFlicks(

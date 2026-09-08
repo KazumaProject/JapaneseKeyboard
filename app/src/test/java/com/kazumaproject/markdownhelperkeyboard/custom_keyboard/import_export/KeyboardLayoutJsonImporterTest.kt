@@ -4,6 +4,7 @@ import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
@@ -255,10 +256,35 @@ class KeyboardLayoutJsonImporterTest {
         assertTrue("root must be object", root.isJsonObject)
 
         val obj = root.asJsonObject
-        assertEquals(3, obj["schemaVersion"].asInt)
+        assertEquals(4, obj["schemaVersion"].asInt)
         assertNotNull(obj["layouts"])
         assertTrue("layouts must be array", obj["layouts"].isJsonArray)
         assertEquals(0, obj["layouts"].asJsonArray.size())
+    }
+
+    @Test
+    fun parse_versionedToggleBehavior_restoresToggle() {
+        val json = versionedBackupWithLayoutName("\"name\": \"Toggle\"")
+            .replace("\"action\": null", "\"action\": null, \"textInputBehavior\": \"TOGGLE\"")
+
+        val imported = parseSuccessLayouts(json).single()
+
+        assertEquals(
+            KeyTextInputBehavior.TOGGLE.dbValue,
+            imported.keysWithFlicks.single().key.textInputBehavior
+        )
+    }
+
+    @Test
+    fun parse_backupWithoutToggleBehavior_defaultsToNormal() {
+        val imported = parseSuccessLayouts(
+            versionedBackupWithLayoutName("\"name\": \"Normal\"")
+        ).single()
+
+        assertEquals(
+            KeyTextInputBehavior.NORMAL.dbValue,
+            imported.keysWithFlicks.single().key.textInputBehavior
+        )
     }
 
     @Test
