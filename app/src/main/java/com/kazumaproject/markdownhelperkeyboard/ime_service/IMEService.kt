@@ -106,7 +106,6 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
-import com.kazumaproject.core.data.floating_candidate.CandidateInputRange
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -141,7 +140,8 @@ import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateComposition
-import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateCompositionResolver
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateCompositionSession
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateCommit
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
@@ -459,19 +459,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val focusedIndex: Int = 0,
         val splitPatterns: List<List<Int>> = emptyList(),
         val activeSplitPatternIndex: Int = 0
-    )
-
-    /**
-     * The immutable source and the currently queried prefix for physical-keyboard conversion.
-     *
-     * CandidateItem.length is a range in the source reading, not a length of the displayed
-     * candidate. Keeping both values prevents a shorter preview from becoming the next source
-     * for InputConnection.setComposingText().
-     */
-    private data class PhysicalCandidateCompositionSession(
-        val sourceText: String,
-        val queryText: String,
-        val generation: Long,
     )
 
     private sealed class BunsetsuDisplayedSelection {
@@ -1419,10 +1406,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun updateFloatingCandidatesOnMain(
         candidates: List<CandidateItem>,
         insertString: String,
+        token: CandidateRequestToken?,
         highlightedAbsoluteIndex: Int? = null
     ) {
         withContext(Dispatchers.Main.immediate) {
-            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            if (!shouldApplyCandidateResult(insertString, token)) return@withContext
             updateSuggestionsForFloatingCandidate(
                 suggestions = candidates,
                 highlightedAbsoluteIndex = highlightedAbsoluteIndex
@@ -1553,6 +1541,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var stringInTail = AtomicReference("")
     private var physicalCandidateCompositionSession: PhysicalCandidateCompositionSession? = null
     private var physicalCandidateCompositionGeneration: Long = 0L
+    private var pendingPhysicalCandidatePreviewGeneration: Long? = null
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
@@ -2416,29 +2405,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return@suggestionClick
             }
 
-            if (isPhysicalFloatingCandidatePathActive()) {
-                val composition = resolvePhysicalCandidateComposition(
-                    suggestion = suggestion,
-                    insertString = inputString.value,
-                    reason = "click"
-                ) ?: return@suggestionClick
-                val committedText = commitPhysicalCandidateComposition(composition)
-
-                updateSuggestionsForFloatingCandidate(emptyList())
-                listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
-                currentHighlightIndex = RecyclerView.NO_POSITION
-                if (composition.tail.isNotEmpty()) {
-                    beginPhysicalCandidateCompositionSession(composition.tail)
-                    scope.launch {
-                        delay(64)
-                        floatingCandidateNextItem(insertString = composition.tail)
-                    }
-                } else {
-                    if (committedText.isNotBlank()) {
-                        rememberZeroQueryKeyAfterCommit(committedText)
-                    }
-                    consumePendingZeroQueryAfterCommit()
-                }
+            if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty()) {
+                commitPhysicalCandidate(suggestion, commitAll = false)
                 return@suggestionClick
             }
 
@@ -6843,7 +6811,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             PhysicalKeyboardShortcutAction.CANCEL -> {
                 if (isBunsetsuCursorMoveSessionActive()) {
-                    restoreRawInputFromBunsetsuSession()
+                    clearPhysicalCandidateCompositionSession("bunsetsu shortcut cancelled")
+                    exitBunsetsuCursorMoveSessionToRawInput()
                 } else if (isHenkan.get()) {
                     cancelFloatingCandidateConversion(insertString)
                 }
@@ -6990,12 +6959,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return super.onKeyDown(keyCode, event)
         }
         if (isBunsetsuCursorMoveSessionActive()) {
-            restoreRawInputFromBunsetsuSession()
+            clearPhysicalCandidateCompositionSession("bunsetsu conversion cancelled")
+            exitBunsetsuCursorMoveSessionToRawInput()
             listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
             currentHighlightIndex = RecyclerView.NO_POSITION
             return true
         }
 
+        if (isPhysicalFloatingCandidatePathActive() && physicalCandidateCompositionSession != null) {
+            cancelFloatingCandidateConversion(insertString)
+            return true
+        }
         deleteStringCommon(insertString)
         resetFlagsDeleteKey()
         event?.let { e ->
@@ -7005,8 +6979,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun cancelFloatingCandidateConversion(insertString: String) {
+        val restoredInput = physicalCandidateCompositionSession?.sourceText ?: insertString
         clearPhysicalCandidateCompositionSession("conversion cancelled")
-        preservePreEditOnNextSelectionUpdate = insertString
+        preservePreEditOnNextSelectionUpdate = restoredInput
+        _inputString.update { restoredInput }
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         stringInTail.set("")
@@ -7017,9 +6993,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         setSuggestionAdaptersOnMain(emptyList())
         updateSuggestionsForFloatingCandidate(emptyList())
-        val spannableString = SpannableString(insertString)
+        val spannableString = SpannableString(restoredInput)
         setComposingTextAfterEdit(
-            inputString = insertString,
+            inputString = restoredInput,
             spannableString = spannableString,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputCompositionAfterBackgroundColor
@@ -7055,7 +7031,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     isHenkan.set(true)
                     Timber.d("KEYCODE_SPACE is pressed: $normalizedInsertString $stringInTail")
-                    beginPhysicalCandidateCompositionSession(normalizedInsertString)
                     _inputString.update { normalizedInsertString }
 
                     if (shouldUseBunsetsuCursorMoveSession()) {
@@ -7065,10 +7040,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 mainView = mainView
                             )
                             if (!activated) {
+                                beginPhysicalCandidateCompositionSession(normalizedInsertString)
                                 floatingCandidateNextItem(normalizedInsertString)
                             }
                         }
                     } else {
+                        beginPhysicalCandidateCompositionSession(normalizedInsertString)
                         floatingCandidateNextItem(normalizedInsertString)
                     }
                 } else {
@@ -7204,6 +7181,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyCode: Int, event: KeyEvent?, insertString: String
     ): Boolean {
         event?.let { e ->
+            // A real Shift+arrow sends a separate Shift event before the arrow. It must
+            // not implicitly commit text or tear down the bunsetsu session.
+            if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode, e)
             scope.launch {
                 _physicalKeyboardEnable.emit(true)
             }
@@ -7226,6 +7206,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             if (hasPhysicalTextShortcutModifier(e)) {
                 return super.onKeyDown(keyCode, e)
+            }
+
+            if (isHenkan.get() && isPhysicalFloatingCandidatePathActive()) {
+                val suggestion = listAdapter.getHighlightedItem()
+                // The editor must not report the intermediate, composition-free selection
+                // between committing the old text and composing the first new character.
+                beginBatchEdit()
+                try {
+                    if (suggestion == null) {
+                        // Enter followed immediately by typing can arrive before the next
+                        // candidate list. Commit the remaining reading, never drop the key.
+                        val session = ensurePhysicalCandidateCompositionSession(inputString.value)
+                            ?: return true
+                        applyPhysicalCandidateCommit(PhysicalCandidateCommit(session.sourceText, ""), true)
+                    } else if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
+                        suggestion.sourceId?.let(::executeTextMacro)
+                    } else if (!commitPhysicalCandidate(suggestion, commitAll = true)) {
+                        return true
+                    }
+                    romajiConverter?.clear()
+                    val newInput = if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
+                        PhysicalKanaMapper.resolve(keyCode, e.isShiftPressed)?.let {
+                            KanaDakutenComposer.append("", it)
+                        }
+                    } else {
+                        handlePhysicalRomajiOrUnicodeKey(keyCode, e)?.first
+                    }
+                    newInput?.let { text ->
+                        if (!dispatchDirectTextIfNeeded(text)) {
+                            _inputString.update { text }
+                            applyRawComposingFallback(text)
+                        }
+                    }
+                } finally {
+                    endBatchEdit()
+                }
+                return true
             }
 
             if (isHenkan.get()) {
@@ -7475,6 +7492,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidateNextItem(insertString: String) {
+        if (isPhysicalFloatingCandidatePathActive()) {
+            navigatePhysicalCandidate(insertString, 1)
+            return
+        }
         Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex ${stringInTail.get()}")
         if (listAdapter.currentList.isEmpty()) return
 
@@ -7514,6 +7535,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidatePreviousItem(insertString: String) {
+        if (isPhysicalFloatingCandidatePathActive()) {
+            navigatePhysicalCandidate(insertString, -1)
+            return
+        }
         if (listAdapter.currentList.isEmpty()) return
         val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
         if (suggestionCount == 0) return
@@ -7538,6 +7563,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun navigatePhysicalCandidate(insertString: String, delta: Int) {
+        val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return
+        if (fullSuggestionsList.isEmpty()) {
+            pendingPhysicalCandidatePreviewGeneration = session.generation
+            requestCandidateRefresh(CandidateShowFlag.Updating, insertString)
+            return
+        }
+        val current = if (currentHighlightIndex == RecyclerView.NO_POSITION) -1 else
+            currentPage * PAGE_SIZE + currentHighlightIndex
+        val next = if (current == -1) {
+            if (delta > 0) 0 else fullSuggestionsList.lastIndex
+        } else Math.floorMod(current + delta, fullSuggestionsList.size)
+        currentPage = next / PAGE_SIZE
+        currentHighlightIndex = next % PAGE_SIZE
+        pendingPhysicalCandidatePreviewGeneration = session.generation
+        displayCurrentPage()
+    }
+
     private fun isPhysicalFloatingCandidatePathActive(): Boolean {
         return physicalKeyboardEnable.replayCache.firstOrNull() == true &&
                 !isBunsetsuCursorMoveSessionActive()
@@ -7551,76 +7594,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 reason
             )
         }
+        // A candidate preview's suffix may overlap queryText. Once the session is gone,
+        // the legacy fields must describe disjoint reading ranges again.
+        physicalCandidateCompositionSession?.let { stringInTail.set(it.trailingText) }
         physicalCandidateCompositionSession = null
+        pendingPhysicalCandidatePreviewGeneration = null
     }
 
     private fun beginPhysicalCandidateCompositionSession(input: String) {
-        if (!isPhysicalFloatingCandidatePathActive() || input.isEmpty()) return
-
-        val current = physicalCandidateCompositionSession
-        val session = when {
-            current == null -> {
-                PhysicalCandidateCompositionSession(
-                    sourceText = input,
-                    queryText = input,
-                    generation = ++physicalCandidateCompositionGeneration,
-                )
-            }
-
-            current.sourceText == input -> current.copy(queryText = input)
-
-            current.sourceText.startsWith(input) && current.queryText.startsWith(input) ->
-                current.copy(queryText = input)
-
-            else -> {
-                PhysicalCandidateCompositionSession(
-                    sourceText = input,
-                    queryText = input,
-                    generation = ++physicalCandidateCompositionGeneration,
-                )
-            }
-        }
-        physicalCandidateCompositionSession = session
-        Timber.d(
-            "beginPhysicalCandidateCompositionSession: generation=%d sourceLength=%d queryLength=%d",
-            session.generation,
-            session.sourceText.length,
-            session.queryText.length
-        )
+        ensurePhysicalCandidateCompositionSession(input)
     }
 
     private fun ensurePhysicalCandidateCompositionSession(
         insertString: String
     ): PhysicalCandidateCompositionSession? {
         if (!isPhysicalFloatingCandidatePathActive() || insertString.isEmpty()) return null
-
         val current = physicalCandidateCompositionSession
-        val currentTail = stringInTail.get()
-        val sourceText = when {
-            current != null &&
-                    current.sourceText.startsWith(insertString) &&
-                    current.queryText.startsWith(insertString) -> current.sourceText
-
-            currentTail.isNotEmpty() && !insertString.endsWith(currentTail) ->
-                insertString + currentTail
-
-            else -> insertString
+        if (current != null) {
+            // A preview may change stringInTail, but it never changes the session's reading.
+            // Reject callbacks belonging to a previous input instead of reviving their text.
+            return current.takeIf { it.queryText == insertString && inputString.value == insertString }
         }
-        val session = if (
-            current != null &&
-            current.sourceText == sourceText &&
-            sourceText.startsWith(insertString)
-        ) {
-            current.copy(queryText = insertString)
-        } else {
-            PhysicalCandidateCompositionSession(
-                sourceText = sourceText,
-                queryText = insertString,
-                generation = ++physicalCandidateCompositionGeneration,
-            )
-        }
-        physicalCandidateCompositionSession = session
-        return session
+        if (inputString.value != insertString) return null
+        return PhysicalCandidateCompositionSession(
+            queryText = insertString,
+            trailingText = stringInTail.get(),
+            generation = ++physicalCandidateCompositionGeneration,
+        ).also { physicalCandidateCompositionSession = it }
     }
 
     private fun resolvePhysicalCandidateComposition(
@@ -7629,49 +7629,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         reason: String,
     ): FloatingCandidateComposition? {
         val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return null
-        val candidateLength = suggestion.length.toInt()
-        if (
-            candidateLength < 0 ||
-            candidateLength > session.queryText.length ||
-            !session.sourceText.startsWith(session.queryText)
-        ) {
-            Timber.e(
-                "Invalid physical candidate range: reason=%s generation=%d candidateLength=%d " +
-                        "sourceLength=%d queryLength=%d",
-                reason,
-                session.generation,
-                candidateLength,
-                session.sourceText.length,
-                session.queryText.length
-            )
-            return null
-        }
-
-        val composition = FloatingCandidateCompositionResolver.resolve(
-            originalInput = session.sourceText,
-            replacementText = suggestion.formulaFallbackText ?: suggestion.word,
-            inputRange = CandidateInputRange(start = 0, endExclusive = candidateLength),
+        val composition = session.resolve(
+            suggestion.formulaFallbackText ?: suggestion.word,
+            suggestion.length.toInt(),
         ) ?: run {
-            Timber.e(
-                "Could not resolve physical candidate composition: reason=%s generation=%d",
-                reason,
-                session.generation
-            )
+            Timber.e("Invalid physical candidate range: reason=%s generation=%d", reason, session.generation)
             return null
         }
+        // Keep the legacy field for existing rendering, but never use it as the session source.
         stringInTail.set(composition.tail)
-        Timber.d(
-            "resolvePhysicalCandidateComposition: reason=%s generation=%d candidateLength=%d " +
-                    "sourceLength=%d queryLength=%d replacementLength=%d tailLength=%d",
-            reason,
-            session.generation,
-            candidateLength,
-            session.sourceText.length,
-            session.queryText.length,
-            (suggestion.formulaFallbackText ?: suggestion.word).length,
-            composition.tail.length
-        )
         return composition
+    }
+
+    private fun commitPhysicalCandidate(suggestion: CandidateItem, commitAll: Boolean): Boolean {
+        val composition = resolvePhysicalCandidateComposition(
+            suggestion, inputString.value, if (commitAll) "typing" else "commit"
+        ) ?: return false
+        val session = physicalCandidateCompositionSession ?: return false
+        val result = session.commit(composition, commitAll)
+        applyPhysicalCandidateCommit(result, commitAll)
+        return true
+    }
+
+    private fun applyPhysicalCandidateCommit(result: PhysicalCandidateCommit, commitAll: Boolean) {
+        commitPhysicalCandidateComposition(result)
+        updateSuggestionsForFloatingCandidate(emptyList())
+        listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        if (result.remainingReading.isNotEmpty()) {
+            isHenkan.set(true)
+            beginPhysicalCandidateCompositionSession(result.remainingReading)
+            pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+            // Request explicitly: StateFlow may conflate the preceding edit, or the reading
+            // may be unchanged. The list commit callback will preview the matching result.
+            requestCandidateRefresh(CandidateShowFlag.Updating, result.remainingReading)
+        } else {
+            isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
+            if (!commitAll) {
+                if (result.committedText.isNotBlank()) rememberZeroQueryKeyAfterCommit(result.committedText)
+                consumePendingZeroQueryAfterCommit()
+            }
+        }
     }
 
     private fun setPhysicalCandidateComposingText(
@@ -7721,20 +7720,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setComposingText(spannableString, 1)
     }
 
-    private fun commitPhysicalCandidateComposition(
-        composition: FloatingCandidateComposition,
-    ): String {
-        val committedText = composition.text.substring(0, composition.selectedTextEndExclusive)
-        val tail = composition.tail
+    private fun commitPhysicalCandidateComposition(result: PhysicalCandidateCommit) {
+        val committedText = result.committedText
+        val tail = result.remainingReading
         beginBatchEdit()
         try {
-            // setComposingText() replaces the entire active composing region. End that region
-            // before committing only the selected prefix, then explicitly recompose the tail.
-            setComposingText("", 0)
-            finishComposingText()
-            if (committedText.isNotEmpty()) {
-                commitText(committedText, 1)
-            }
+            // commitText replaces the current composing region and finishes it itself.
+            // An additional finishComposingText can flush selection notifications before
+            // the tail is restored (notably in Sora's nested composing batch).
+            commitText(committedText, 1)
             stringInTail.set("")
             _inputString.update { tail }
             if (tail.isNotEmpty()) {
@@ -7759,7 +7753,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             endBatchEdit()
         }
         clearPhysicalCandidateCompositionSession("candidate committed")
-        return committedText
     }
 
     private fun displayComposingTextInHardwareKeyboardConnected(
@@ -7816,27 +7809,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             if (isPhysicalFloatingCandidatePathActive()) {
-                val composition = resolvePhysicalCandidateComposition(
-                    suggestion = selectedSuggestion,
-                    insertString = inputString.value,
-                    reason = "enter"
-                ) ?: return
-                val committedText = commitPhysicalCandidateComposition(composition)
-                updateSuggestionsForFloatingCandidate(emptyList())
-                listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
-                currentHighlightIndex = RecyclerView.NO_POSITION
-                if (composition.tail.isNotEmpty()) {
-                    beginPhysicalCandidateCompositionSession(composition.tail)
-                    scope.launch {
-                        delay(64)
-                        floatingCandidateNextItem(insertString = composition.tail)
-                    }
-                } else {
-                    if (committedText.isNotBlank()) {
-                        rememberZeroQueryKeyAfterCommit(committedText)
-                    }
-                    consumePendingZeroQueryAfterCommit()
-                }
+                commitPhysicalCandidate(selectedSuggestion, commitAll = false)
                 return
             }
 
@@ -9314,7 +9287,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val pagerLabel = "▶ (${currentPage + 1}/$totalPages)"
             itemsToShow.add(CandidateItem(word = pagerLabel, length = (1).toUByte()))
         }
+        val physicalSession = physicalCandidateCompositionSession
+        val requestedPage = currentPage
         listAdapter.submitList(itemsToShow) {
+            if (physicalSession != null && (
+                    physicalCandidateCompositionSession?.generation != physicalSession.generation ||
+                        inputString.value != physicalSession.queryText || currentPage != requestedPage
+                    )) return@submitList
+            if (physicalSession != null &&
+                pendingPhysicalCandidatePreviewGeneration == physicalSession.generation &&
+                isPhysicalFloatingCandidatePathActive()
+            ) {
+                if (currentHighlightIndex == RecyclerView.NO_POSITION) currentHighlightIndex = 0
+                pendingPhysicalCandidatePreviewGeneration = null
+                displayComposingTextInHardwareKeyboardConnected(physicalSession.queryText)
+            }
             listAdapter.updateHighlightPosition(currentHighlightIndex)
             Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()} [$itemsToShow]")
         }
@@ -16888,7 +16875,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates.map {
                         it.toFloatingCandidateItem()
                     },
-                    insertString = insertString
+                    insertString = insertString,
+                    token = token,
                 )
             }
         } else {
@@ -17877,6 +17865,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        physicalCandidateCompositionSession?.let { session ->
+            if (session.queryText != string) {
+                clearPhysicalCandidateCompositionSession("reading edited")
+            }
+        }
         defaultInputFinalizeJob?.cancel()
         defaultInputFinalizeJob = null
         if (string.isNotEmpty()) {
@@ -23925,7 +23918,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates.map {
                         it.toFloatingCandidateItem()
                     },
-                    insertString = insertString
+                    insertString = insertString,
+                    token = token,
                 )
             }
         } else {
@@ -24002,7 +23996,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidates = displayedCandidates.map {
                         it.toFloatingCandidateItem()
                     },
-                    insertString = insertString
+                    insertString = insertString,
+                    token = token,
                 )
             }
         } else {
@@ -27211,6 +27206,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val maxPage = (fullSuggestionsList.size - 1) / PAGE_SIZE
         currentPage = if (currentPage >= maxPage) 0 else currentPage + 1
         currentHighlightIndex = 0
+        if (isPhysicalFloatingCandidatePathActive()) {
+            pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+        }
         displayCurrentPage()
     }
 
@@ -27219,6 +27217,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentPage > 0) {
             currentPage--
             currentHighlightIndex = 0
+            if (isPhysicalFloatingCandidatePathActive()) {
+                pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+            }
             displayCurrentPage()
         }
     }
