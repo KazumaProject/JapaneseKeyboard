@@ -1,0 +1,34 @@
+{
+  "scope": "Full declared matrix in normal TENKEY mode with field-driven number layout",
+  "observedCases": 6209,
+  "matches": 6209,
+  "transportMatches": 6209,
+  "segments": [
+    {
+      "start": 0,
+      "endExclusive": 4007,
+      "utc": "2026-09-07T12:37:26.663411+00:00"
+    },
+    {
+      "start": 4007,
+      "endExclusive": 6209,
+      "utc": "2026-09-07T13:16:20.378279+00:00"
+    }
+  ],
+  "interruptedAttempt": {
+    "invalidRows": 55,
+    "reason": "Selected IME changed externally; all affected rows excluded and cases re-run after exclusive device access was confirmed"
+  },
+  "reviewNote": "The idle-only TYPE_NULL guard was finalized before the resumed segment; all TYPE_NULL cases belong to that segment. The final production APK is also used for the complete floating matrix.",
+  "environment": {
+    "model": "Pixel 6",
+    "android": "17",
+    "fingerprint": "google/oriole/oriole:17/CP2A.260705.006/15641320:user/release-keys",
+    "locale": "ja-JP",
+    "ime": "com.kazumaproject.markdownhelperkeyboard.lite.enterparity/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService",
+    "version": [
+      "versionCode=805 minSdk=24 targetSdk=36",
+      "versionName=1.7.112-lite"
+    ]
+  }
+}
