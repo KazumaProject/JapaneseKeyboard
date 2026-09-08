@@ -1,0 +1,120 @@
+{
+  "base_revision": "bbdc7414746adeffc815d5158631e415a1167007",
+  "note": "Product changes under review; APK hashes identify the binaries. The contention tests confirm remaining waits, not elimination of reported freezes.",
+  "unit_tests": {
+    "tests": 1439,
+    "failures": 0,
+    "skipped": 4
+  },
+  "lint": "passed",
+  "device_runs": [
+    {
+      "results": "investigation/results/lite-20260907-065536",
+      "tests": 7,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=601df6a3d702e1e3d0dd518da96beaa5e91ef32089202ba6811d5ef2c53c8822",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=b9811075417bfea489590ebab60324e9e993d7657b7efbbb9c7f9669947c9b99"
+      ],
+      "perfetto_bytes": 8345519
+    },
+    {
+      "results": "investigation/results/lite-20260907-065557",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=601df6a3d702e1e3d0dd518da96beaa5e91ef32089202ba6811d5ef2c53c8822",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=b9811075417bfea489590ebab60324e9e993d7657b7efbbb9c7f9669947c9b99"
+      ],
+      "perfetto_bytes": 3292884
+    },
+    {
+      "results": "investigation/results/lite-20260907-065604",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=601df6a3d702e1e3d0dd518da96beaa5e91ef32089202ba6811d5ef2c53c8822",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=b9811075417bfea489590ebab60324e9e993d7657b7efbbb9c7f9669947c9b99"
+      ],
+      "perfetto_bytes": 3281946
+    },
+    {
+      "results": "investigation/results/lite-20260907-065609",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=601df6a3d702e1e3d0dd518da96beaa5e91ef32089202ba6811d5ef2c53c8822",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=b9811075417bfea489590ebab60324e9e993d7657b7efbbb9c7f9669947c9b99"
+      ],
+      "perfetto_bytes": 4187502
+    },
+    {
+      "results": "investigation/results/lite-20260907-065616",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=601df6a3d702e1e3d0dd518da96beaa5e91ef32089202ba6811d5ef2c53c8822",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=b9811075417bfea489590ebab60324e9e993d7657b7efbbb9c7f9669947c9b99"
+      ],
+      "perfetto_bytes": 4186580
+    },
+    {
+      "results": "investigation/results/full-20260907-065623",
+      "tests": 7,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=b62addc61422fda75bc2f974344ab78c2fb451734ecb1ccbee8999e34916721e",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=51379c3c7b59def8184f867da36d0b2bc266d7ad1010dbf939bc9ab6e7cd31cf"
+      ],
+      "perfetto_bytes": 8252293
+    },
+    {
+      "results": "investigation/results/full-20260907-065643",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=b62addc61422fda75bc2f974344ab78c2fb451734ecb1ccbee8999e34916721e",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=51379c3c7b59def8184f867da36d0b2bc266d7ad1010dbf939bc9ab6e7cd31cf"
+      ],
+      "perfetto_bytes": 3474002
+    },
+    {
+      "results": "investigation/results/full-20260907-065650",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=b62addc61422fda75bc2f974344ab78c2fb451734ecb1ccbee8999e34916721e",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=51379c3c7b59def8184f867da36d0b2bc266d7ad1010dbf939bc9ab6e7cd31cf"
+      ],
+      "perfetto_bytes": 2983775
+    },
+    {
+      "results": "investigation/results/full-20260907-065656",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=b62addc61422fda75bc2f974344ab78c2fb451734ecb1ccbee8999e34916721e",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=51379c3c7b59def8184f867da36d0b2bc266d7ad1010dbf939bc9ab6e7cd31cf"
+      ],
+      "perfetto_bytes": 4383242
+    },
+    {
+      "results": "investigation/results/full-20260907-065704",
+      "tests": 1,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=b62addc61422fda75bc2f974344ab78c2fb451734ecb1ccbee8999e34916721e",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=51379c3c7b59def8184f867da36d0b2bc266d7ad1010dbf939bc9ab6e7cd31cf"
+      ],
+      "perfetto_bytes": 3707477
+    },
+    {
+      "results": "investigation/results/lite-20260907-065744",
+      "tests": 10,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/liteStandard/debug/app-lite-standard-debug.apk sha256=601df6a3d702e1e3d0dd518da96beaa5e91ef32089202ba6811d5ef2c53c8822",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk sha256=63c8a9f13b285832ebd714a70f089861338bc8baad144d77400d6d32b840f781"
+      ],
+      "perfetto_bytes": 8291534
+    },
+    {
+      "results": "investigation/results/full-20260907-065818",
+      "tests": 10,
+      "apks": [
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/fullStandard/debug/app-full-standard-debug.apk sha256=b62addc61422fda75bc2f974344ab78c2fb451734ecb1ccbee8999e34916721e",
+        "/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-settings-freeze-investigation/app/build/intermediates/apk/androidTest/fullStandard/debug/app-full-standard-debug-androidTest.apk sha256=1c957b465014daaf3973304f9e67d6c3f039168a7d36e026423fcc7eb9836358"
+      ],
+      "perfetto_bytes": 8304640
+    }
+  ]
+}

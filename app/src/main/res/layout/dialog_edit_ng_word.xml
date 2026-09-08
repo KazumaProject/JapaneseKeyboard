@@ -27,4 +27,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
     </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/ng_word_match_mode_title"
+        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+    <Spinner
+        android:id="@+id/spinner_ng_word_match_mode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 </LinearLayout>
