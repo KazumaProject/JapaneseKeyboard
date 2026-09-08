@@ -25,10 +25,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentNgWordBinding
+import com.kazumaproject.markdownhelperkeyboard.ng_word.NgWordBackup
 import com.kazumaproject.markdownhelperkeyboard.ng_word.adapter.NgWordAdapter
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
@@ -153,7 +152,7 @@ class NgWordFragment : Fragment() {
             ).show()
             return
         }
-        val json = Gson().toJson(list)
+        val json = NgWordBackup.toJson(list)
         requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
             FileOutputStream(it.fileDescriptor).use { fos ->
                 fos.write(json.toByteArray(Charsets.UTF_8))
@@ -167,17 +166,7 @@ class NgWordFragment : Fragment() {
         try {
             val json = requireContext().contentResolver.openInputStream(uri)
                 ?.bufferedReader(Charsets.UTF_8)?.readText() ?: return
-            val type = object : TypeToken<List<NgWordBackupEntry>>() {}.type
-            val entries: List<NgWordBackupEntry> = Gson().fromJson(json, type)
-            val list = entries.mapNotNull { entry ->
-                val yomi = entry.yomi?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val tango = entry.tango?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                NgWord(
-                    yomi = yomi,
-                    tango = tango,
-                    matchMode = NgWordMatchMode.fromStorage(entry.matchMode),
-                )
-            }
+            val list = NgWordBackup.fromJson(json)
             viewModel.insertAll(list)
             Toast.makeText(
                 context,
@@ -286,12 +275,6 @@ class NgWordFragment : Fragment() {
 
     private fun matchModeAt(position: Int): NgWordMatchMode =
         matchModes.getOrNull(position) ?: NgWordMatchMode.PARTIAL
-
-    private data class NgWordBackupEntry(
-        val yomi: String? = null,
-        val tango: String? = null,
-        val matchMode: String? = null,
-    )
 
     private fun hideKeyboardAndClearFocus() {
         (context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
