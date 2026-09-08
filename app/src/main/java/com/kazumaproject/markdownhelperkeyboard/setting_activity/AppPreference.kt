@@ -918,7 +918,9 @@ object AppPreference {
     fun migrateGojuonKeyboardTypeIfNeeded(context: Context = appContext) {
         isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
         if (!isTabletDevice) {
-            preferences.edit { it.remove(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY) }
+            if (preferences.contains(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY)) {
+                preferences.edit { it.remove(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY) }
+            }
             return
         }
         if (preferences.getBoolean(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, false)) return
@@ -1214,6 +1216,30 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putInt(TENKEY_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.first, value)
         }
+
+    // Publish a complete restart snapshot together, including the timeout timestamp.
+    // Keep apply() semantics: readers and listeners see the new state immediately.
+    internal fun saveTenkeyRestartInputMode(
+        mode: String,
+        presentation: String,
+        numberReturnTarget: String,
+        savedAtEpochMillis: Long,
+    ) = preferences.edit {
+        it.putString(TENKEY_LAST_INPUT_MODE_PREFERENCE.first, mode)
+        it.putString(TENKEY_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.first, presentation)
+        it.putString(TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.first, numberReturnTarget)
+        it.putLong(TENKEY_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first, savedAtEpochMillis)
+    }
+
+    internal fun saveSumireRestartInputMode(
+        mode: String,
+        presentation: String,
+        savedAtEpochMillis: Long,
+    ) = preferences.edit {
+        it.putString(SUMIRE_LAST_INPUT_MODE_PREFERENCE.first, mode)
+        it.putString(SUMIRE_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.first, presentation)
+        it.putLong(SUMIRE_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first, savedAtEpochMillis)
+    }
 
     var tenkey_last_input_mode_preference: String
         get() = preferences.getString(

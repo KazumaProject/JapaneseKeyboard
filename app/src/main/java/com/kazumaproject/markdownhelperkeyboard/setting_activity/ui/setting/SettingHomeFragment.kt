@@ -30,12 +30,10 @@ import androidx.appcompat.R as AppCompatR
 import com.kazumaproject.core.R as CoreR
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingHomeBinding
-import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
-import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -50,12 +48,11 @@ class SettingHomeFragment : Fragment() {
     lateinit var appPreference: AppPreference
 
     @Inject
-    lateinit var userDictionaryRepository: UserDictionaryRepository
-
-    @Inject
-    lateinit var romajiMapRepository: RomajiMapRepository
+    lateinit var settingDataInitializer: SettingDataInitializer
 
     private lateinit var settingCardEditorController: SettingCardEditorController
+    private var frequentCandidates: List<SettingDestination>? = null
+    private var frequentCandidatesJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -69,8 +66,8 @@ class SettingHomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         settingCardEditorController = SettingCardEditorController(requireContext(), appPreference)
-        initializeRomajiDataIfNeeded()
-        renderFrequentCards()
+        lifecycleScope.launch { settingDataInitializer.initializeIfNeeded() }
+        loadAndRenderFrequentCards()
         renderCategoryRows()
         renderManagementRows()
 
@@ -94,7 +91,7 @@ class SettingHomeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         if (_binding != null) {
-            renderFrequentCards()
+            loadAndRenderFrequentCards()
         }
         viewLifecycleOwner.lifecycleScope.launch {
             binding.settingHomeProgressBar.isVisible = true
@@ -113,11 +110,30 @@ class SettingHomeFragment : Fragment() {
         _binding = null
     }
 
-    private fun renderFrequentCards() {
+    private fun loadAndRenderFrequentCards() {
+        frequentCandidates?.let { candidates ->
+            renderFrequentCards(candidates)
+            return
+        }
+        if (frequentCandidatesJob?.isActive == true) return
+
+        val context = requireContext()
+        frequentCandidatesJob = viewLifecycleOwner.lifecycleScope.launch {
+            val candidates = withContext(Dispatchers.Default) {
+                SettingDestinations.frequentCandidates(context)
+            }
+            frequentCandidates = candidates
+            if (_binding != null) {
+                renderFrequentCards(candidates)
+            }
+        }
+    }
+
+    private fun renderFrequentCards(candidates: List<SettingDestination>) {
         val columnCount = if (resources.configuration.screenWidthDp >= 600) 3 else 2
         binding.settingHomeFrequentGrid.columnCount = columnCount
         binding.settingHomeFrequentGrid.removeAllViews()
-        homeFrequentDestinations().forEach { destination ->
+        homeFrequentDestinations(candidates).forEach { destination ->
             binding.settingHomeFrequentGrid.addView(
                 createFrequentCard(destination),
                 GridLayout.LayoutParams().apply {
@@ -359,27 +375,28 @@ class SettingHomeFragment : Fragment() {
 
     private fun handleFrequentCardClick(destination: SettingDestination) {
         val handled = settingCardEditorController.handleClick(destination) {
-            renderFrequentCards()
+            frequentCandidates?.let(::renderFrequentCards)
         }
         if (!handled) {
             navigateTo(destination)
         }
     }
 
-    private fun homeFrequentDestinations(): List<SettingDestination> {
-        val context = requireContext()
-        val candidates = SettingDestinations.frequentCandidates(context).associateBy { it.key }
+    private fun homeFrequentDestinations(
+        candidates: List<SettingDestination>,
+    ): List<SettingDestination> {
+        val candidatesByKey = candidates.associateBy { it.key }
         val savedKeys = appPreference.setting_home_frequent_keys
-            .filter { it in candidates }
+            .filter { it in candidatesByKey }
             .distinct()
         val selected = if (appPreference.has_setting_home_frequent_keys) {
             savedKeys
         } else {
-            SettingDestinations.defaultFrequent(context).map { it.key }
+            SettingDestinations.defaultFrequent(candidates).map { it.key }
         }
         val touchEffectType = appPreference.keyboard_touch_effect_type_preference
         return selected
-            .mapNotNull { candidates[it] }
+            .mapNotNull { candidatesByKey[it] }
             .filter { destination ->
                 KeyboardTouchEffectSettingVisibility.isVisibleForEffect(
                     destination = destination,
@@ -487,40 +504,6 @@ class SettingHomeFragment : Fragment() {
         } else {
             getString(R.string.setting_status_disabled)
         }
-
-    private fun initializeRomajiDataIfNeeded() {
-        val romajiMapUpdated = appPreference.romaji_map_data_version
-        lifecycleScope.launch(Dispatchers.IO) {
-            if (romajiMapUpdated == 0) {
-                romajiMapRepository.updateDefaultMap()
-
-                userDictionaryRepository.apply {
-                    if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
-                        insert(
-                            UserWord(
-                                reading = "びゃんびゃんめん",
-                                word = "\uD883\uDEDE\uD883\uDEDE麺",
-                                posIndex = 0,
-                                posScore = 4000
-                            )
-                        )
-                    }
-                    if (searchByReadingExactMatchSuspend("びゃん").isEmpty()) {
-                        insert(
-                            UserWord(
-                                reading = "びゃん",
-                                word = "\uD883\uDEDE",
-                                posIndex = 0,
-                                posScore = 3000
-                            )
-                        )
-                    }
-                }
-
-                appPreference.romaji_map_data_version = 1
-            }
-        }
-    }
 
     private fun isKeyboardBoardEnabled(): Boolean? {
         val imm = ContextCompat.getSystemService(requireContext(), InputMethodManager::class.java)
