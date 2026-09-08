@@ -53,9 +53,23 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
                 repository = repository,
                 enabled = false,
             )
+            val enabledBehavior = captureBehavior(
+                context = context,
+                preferences = preferences,
+                engine = engine,
+                repository = repository,
+                enabled = true,
+            )
+            val disabledBehavior = captureBehavior(
+                context = context,
+                preferences = preferences,
+                engine = engine,
+                repository = repository,
+                enabled = false,
+            )
             val report = buildString {
                 appendLine("device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} API ${android.os.Build.VERSION.SDK_INT}")
-                appendLine("input=かー")
+                appendLine("performanceCorpus=${PERFORMANCE_CORPUS.joinToString("|")}")
                 appendLine("warmups=$WARMUPS")
                 appendLine("iterations=$ITERATIONS")
                 appendLine(enabled.toReport("enabled"))
@@ -69,6 +83,14 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
                 appendLine("enabledNBest4Candidates=${enabled.nBestCandidates.joinToString("|") { it.string }}")
                 appendLine("enabledCandidates=${enabled.candidates.take(16).joinToString("|") { it.string }}")
                 appendLine("disabledCandidates=${disabled.candidates.take(16).joinToString("|") { it.string }}")
+                appendLine("[behavior-enabled]")
+                enabledBehavior.forEach { (input, candidates) ->
+                    appendLine("$input=${candidates.toReportLine()}")
+                }
+                appendLine("[behavior-disabled]")
+                disabledBehavior.forEach { (input, candidates) ->
+                    appendLine("$input=${candidates.toReportLine()}")
+                }
             }
             File(context.filesDir, "conversion-perf").apply { mkdirs() }
                 .resolve("english-reading.txt")
@@ -95,7 +117,14 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
     ): Measurement {
         setEnabled(preferences, enabled)
         val applyMs = measureNanoTime { engine.applyDictionaryOverrideState(context) } / 1_000_000.0
-        repeat(WARMUPS) { convert(engine, repository, nBest = 4) }
+        repeat(WARMUPS * PERFORMANCE_CORPUS.size) { index ->
+            convert(
+                engine = engine,
+                repository = repository,
+                input = PERFORMANCE_CORPUS[index % PERFORMANCE_CORPUS.size],
+                nBest = 4,
+            )
+        }
         forceGc()
 
         val heapBefore = usedHeapBytes()
@@ -105,7 +134,12 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
         val samples = DoubleArray(ITERATIONS)
         repeat(ITERATIONS) { index ->
             samples[index] = measureNanoTime {
-                convert(engine, repository, nBest = 4)
+                convert(
+                    engine = engine,
+                    repository = repository,
+                    input = PERFORMANCE_CORPUS[index % PERFORMANCE_CORPUS.size],
+                    nBest = 4,
+                )
             } / 1_000_000.0
         }
         val allocatedAfter = runtimeStat("art.gc.bytes-allocated")
@@ -116,8 +150,8 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
         val heapAfterGc = usedHeapBytes()
         val nativeAfterGc = Debug.getNativeHeapAllocatedSize()
 
-        val validationCandidates = convert(engine, repository, nBest = 64)
-        val nBestCandidates = convert(engine, repository, nBest = 4)
+        val validationCandidates = convert(engine, repository, input = "かー", nBest = 64)
+        val nBestCandidates = convert(engine, repository, input = "かー", nBest = 4)
         if (enabled) {
             check(ENGLISH_CASES.all { word -> validationCandidates.any { it.string == word } }) {
                 "Enabled dictionary did not produce all case candidates: $validationCandidates"
@@ -156,9 +190,10 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
     private suspend fun convert(
         engine: KanaKanjiEngine,
         repository: com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository,
+        input: String,
         nBest: Int,
     ): List<Candidate> = engine.getCandidatesWithBunsetsuSeparation(
-        input = "かー",
+        input = input,
         n = nBest,
         mozcUtPersonName = false,
         mozcUTPlaces = false,
@@ -174,6 +209,24 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
         omissionSearchOffsetScore = 1900,
         beamWidth = 20,
     ).candidates
+
+    private suspend fun captureBehavior(
+        context: Context,
+        preferences: android.content.SharedPreferences,
+        engine: KanaKanjiEngine,
+        repository: com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository,
+        enabled: Boolean,
+    ): Map<String, List<Candidate>> {
+        setEnabled(preferences, enabled)
+        engine.applyDictionaryOverrideState(context)
+        return BEHAVIOR_CORPUS.associateWith { input ->
+            convert(engine, repository, input = input, nBest = 64)
+        }
+    }
+
+    private fun List<Candidate>.toReportLine(): String = joinToString("|") { candidate ->
+        "${candidate.string}{score=${candidate.score},type=${candidate.type},length=${candidate.length}}"
+    }
 
     private fun setEnabled(
         preferences: android.content.SharedPreferences,
@@ -245,5 +298,16 @@ class EnglishReadingDictionaryPerformanceInstrumentedTest {
         const val WARMUPS = 10
         const val ITERATIONS = 50
         val ENGLISH_CASES = setOf("car", "Car", "CAR")
+        val PERFORMANCE_CORPUS = listOf(
+            "かー",
+            "ぎゃらりー",
+            "あーとぎゃらりー",
+            "すな",
+            "すない",
+            "てい",
+            "りり",
+            "きょう",
+        )
+        val BEHAVIOR_CORPUS = PERFORMANCE_CORPUS
     }
 }
