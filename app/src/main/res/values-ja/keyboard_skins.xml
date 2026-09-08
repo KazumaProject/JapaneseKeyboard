@@ -5,4 +5,11 @@
     <string name="keyboard_skin_cupertino_light">クパチーノ ライト</string>
     <string name="keyboard_skin_cupertino_dark">クパチーノ ダーク</string>
     <string name="keyboard_skin_summary">着せ替えの色・キー・ポップアップを使用します。既存の色や背景の設定は保存され、デフォルトに戻すと復元されます。</string>
+    <string name="keyboard_skin_choose">テーマを選択</string>
+    <string name="keyboard_skin_selection_description">プレビューをタップするとテーマが切り替わります。</string>
+    <string name="keyboard_skin_selected">選択中</string>
+    <string name="keyboard_skin_default_description">保存済みの色や背景の設定を使います。</string>
+    <string name="keyboard_skin_light_description">明るいキーと、やわらかなグレーの背景。</string>
+    <string name="keyboard_skin_dark_description">暗いキーと、読みやすい明るい文字。</string>
+    <string name="keyboard_skin_preview_note">プレビューは配色とキーの形のイメージです。</string>
 </resources>
