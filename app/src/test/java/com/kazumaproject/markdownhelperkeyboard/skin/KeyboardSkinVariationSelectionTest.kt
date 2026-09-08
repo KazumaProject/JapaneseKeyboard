@@ -37,6 +37,92 @@ class KeyboardSkinVariationSelectionTest {
         }
     }
 
+    @Test fun labelAnimationCompletesAndNewSkinCancelsPreviousFrames() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val label = android.widget.TextView(context)
+        val original = android.content.res.ColorStateList.valueOf(android.graphics.Color.MAGENTA)
+        label.setTextColor(original)
+        val presentation = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+        val looper = org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+        presentation.show(label, KeyboardSkinId.CUPERTINO_LIGHT)
+        looper.idleFor(java.time.Duration.ofMillis(100))
+        org.junit.Assert.assertNotEquals(original.defaultColor, label.currentTextColor)
+        presentation.clear(animated = true)
+        looper.idleFor(java.time.Duration.ofMillis(40))
+        presentation.show(label, KeyboardSkinId.CUPERTINO_DARK)
+        looper.idleFor(java.time.Duration.ofMillis(400))
+        assertEquals(0xff545454.toInt(), label.currentTextColor)
+        presentation.clear(animated = true)
+        looper.idleFor(java.time.Duration.ofSeconds(1))
+        org.junit.Assert.assertSame(original, label.textColors)
+    }
+
+    @Test @Config(sdk = [32]) fun disabledSystemAnimationsApplyAndRestoreImmediately() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        android.provider.Settings.Global.putFloat(context.contentResolver,
+            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+        val label = android.widget.TextView(context)
+        val original = label.textColors
+        val presentation = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+        presentation.show(label, KeyboardSkinId.CUPERTINO_DARK)
+        assertEquals(0xff545454.toInt(), label.currentTextColor)
+        presentation.clear(animated = true)
+        org.junit.Assert.assertSame(original, label.textColors)
+    }
+
+    @Test fun cancellingBeforeGuideDrawPreventsDeferredLabelAnimation() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val label = android.widget.TextView(context)
+        val original = label.textColors
+        val guide = View(context)
+        val presentation = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+        val looper = org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+        presentation.show(label, KeyboardSkinId.CUPERTINO_DARK, guide)
+        looper.idleFor(java.time.Duration.ofMillis(100))
+        org.junit.Assert.assertSame(original, label.textColors)
+        presentation.clear()
+        guide.viewTreeObserver.dispatchOnPreDraw()
+        looper.idleFor(java.time.Duration.ofSeconds(1))
+        org.junit.Assert.assertSame(original, label.textColors)
+    }
+
+    @Test fun guideOverlayCanBeRemovedAndReusedWithoutRetainingAWindow() {
+        val controller = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java)
+        val activity = controller.get()
+        activity.setTheme(com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        controller.setup()
+        val anchor = View(activity)
+        activity.setContentView(anchor)
+        activity.window.decorView.layout(0, 0, 1080, 2400)
+        anchor.layout(300, 900, 558, 1068)
+        val popup = com.kazumaproject.core.ui.skin.SkinGuidePopup(activity)
+        val skin = requireNotNull(com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_LIGHT))
+        val labels = mapOf(com.kazumaproject.core.ui.skin.PopupDirection.CENTER to "な")
+        val looper = org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+        popup.show(anchor, skin, labels)
+        val overflow = popup.javaClass.getDeclaredField("overflowWindow").apply { isAccessible = true }
+        org.junit.Assert.assertNull(overflow.get(popup))
+        popup.dismiss()
+        org.junit.Assert.assertFalse(popup.isShowing)
+        looper.idleFor(java.time.Duration.ofMillis(100))
+        popup.show(anchor, skin, labels)
+        looper.idleFor(java.time.Duration.ofMillis(150))
+        org.junit.Assert.assertTrue(popup.isShowing)
+        popup.dismiss()
+        org.junit.Assert.assertFalse(popup.isShowing)
+        anchor.layout(0, 0, 258, 168)
+        popup.show(anchor, skin, mapOf(
+            com.kazumaproject.core.ui.skin.PopupDirection.CENTER to "な",
+            com.kazumaproject.core.ui.skin.PopupDirection.TOP to "ぬ",
+        ))
+        val outside = overflow.get(popup) as android.widget.PopupWindow
+        org.junit.Assert.assertTrue(outside.isShowing)
+        org.junit.Assert.assertFalse(outside.isTouchable)
+        popup.dismiss()
+        org.junit.Assert.assertFalse(outside.isShowing)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun skinRoundTripPreservesThreeColumnSelectionAndCharacterOrder() {
         val context=ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
             com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)

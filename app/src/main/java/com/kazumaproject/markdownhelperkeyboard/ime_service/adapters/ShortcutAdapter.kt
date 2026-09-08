@@ -16,7 +16,7 @@ internal class ShortcutIconColorState {
     var iconColor: Int? = null
         private set
 
-    fun setIconColor(color: Int): Boolean {
+    fun setIconColor(color: Int?): Boolean {
         if (iconColor == color) return false
         iconColor = color
         return true
@@ -90,7 +90,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     }
 
     // ★追加: 外部から色を設定するメソッド
-    fun setIconColor(color: Int) {
+    fun setIconColor(color: Int?) {
         if (!iconColorState.setIconColor(color)) return
         notifyItemRangeChanged(0, itemCount)
     }

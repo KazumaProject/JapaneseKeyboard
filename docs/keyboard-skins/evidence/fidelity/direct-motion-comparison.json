@@ -1,0 +1,619 @@
+{
+  "criterion": "Difference between first observed transition frames, at most one 60 Hz frame. Source frame intervals remain in the input reports.",
+  "tolerance_ms": 16.666666666666668,
+  "trials": [
+    {
+      "trial": [
+        "kana",
+        "light",
+        "hold",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 15.000336789853463,
+        "dim_0.1_ms": 5.099041732137266,
+        "restore_0.1_ms": -0.11512149558257079,
+        "dim_0.5_ms": 4.080041628185427,
+        "restore_0.5_ms": 6.766378460270062,
+        "dim_0.9_ms": 3.7341250395002135,
+        "restore_0.9_ms": -11.882329837590078
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "hold",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 6.439795327878528,
+        "dim_0.1_ms": 6.547583325755113,
+        "restore_0.1_ms": -6.078329676256544,
+        "dim_0.5_ms": 6.678125060261664,
+        "restore_0.5_ms": 3.455087032762094,
+        "dim_0.9_ms": 3.4143333482461458,
+        "restore_0.9_ms": 0.46579535910495906
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "hold",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 10.72289806779736,
+        "dim_0.1_ms": 12.00174997893555,
+        "restore_0.1_ms": 6.692397994811472,
+        "dim_0.5_ms": 12.162375077878096,
+        "restore_0.5_ms": 4.234856321090774,
+        "dim_0.9_ms": 11.857833342219237,
+        "restore_0.9_ms": 2.6453563277755165
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "left",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 12.35366800938209
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "left",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 11.915335051980946
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "left",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 9.968834275241534
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "up",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 8.800291758689127
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "up",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 2.597416283606435
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "up",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 4.184540887763433
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "right",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 8.823374061648792
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "right",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 8.250706616763637
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "right",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 6.721873004153167
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "down",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 12.077790325747628
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "down",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 8.08308070691055
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "light",
+        "down",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 6.185122414535726
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "hold",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -5.351237042759749,
+        "dim_0.1_ms": 12.372583331398346,
+        "restore_0.1_ms": 8.255304569502186,
+        "dim_0.5_ms": 3.831083233762911,
+        "restore_0.5_ms": 6.668304586582963,
+        "dim_0.9_ms": 3.0407499939428817,
+        "restore_0.9_ms": 4.184721242381784
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "hold",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -3.2211541342803685,
+        "dim_0.1_ms": 6.588291670141189,
+        "restore_0.1_ms": 13.970845865515003,
+        "dim_0.5_ms": 5.425041643320583,
+        "restore_0.5_ms": -14.023779113813362,
+        "dim_0.9_ms": 5.11587498613153,
+        "restore_0.9_ms": 1.6052208284236258
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "hold",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -4.383926067021093,
+        "dim_0.1_ms": 11.514291670664534,
+        "restore_0.1_ms": -4.305509367441118,
+        "dim_0.5_ms": 11.51937489885313,
+        "restore_0.5_ms": 2.509823934360611,
+        "dim_0.9_ms": 11.174000004302798,
+        "restore_0.9_ms": 0.5815322929265676
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "left",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -3.3861756874102866
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "left",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -2.270134345963015
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "left",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -1.6819689471958554
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "up",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -2.1383033927122597
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "up",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -1.3113859258737648
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "up",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -0.9595109881956887
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "right",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -2.8838873636232165
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "right",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -4.855054250128887
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "right",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -3.5732627088691515
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "down",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 7.616778268584312
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "down",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -5.951638604528853
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "kana",
+        "dark",
+        "down",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -11.268847679730243
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "q",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -4.584120326398988
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "q",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -8.260662848442735
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "q",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -8.750266797051154
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "e",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 1.964523321021261
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "e",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 0.7581269278489344
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "e",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 0.8977092579698365
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "p",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -6.070082496080431
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "p",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -4.544916364011442
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "light",
+        "p",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -6.337771716516727
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "q",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -5.995565316879947
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "q",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -5.652003421801055
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "q",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -8.026024725495517
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "e",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": 3.4738085478238645
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "e",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": 1.8986206209774537
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "e",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": 3.6853264541605313
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "p",
+        0
+      ],
+      "differences": {
+        "dismissal_ms": -4.856777790791966
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "p",
+        1
+      ],
+      "differences": {
+        "dismissal_ms": -6.777902819976589
+      },
+      "passed": true
+    },
+    {
+      "trial": [
+        "qwerty",
+        "dark",
+        "p",
+        2
+      ],
+      "differences": {
+        "dismissal_ms": -6.105715559897362
+      },
+      "passed": true
+    }
+  ],
+  "passed": true
+}

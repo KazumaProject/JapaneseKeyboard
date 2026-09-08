@@ -4,10 +4,10 @@
 
 **既存フォントを維持します（2026-09-08 の依頼者指定）。字形の一致は受け入れ条件から除外し、文字サイズ・位置とアニメーションは引き続き検証対象です。**
 Default、Cupertino Light、Cupertino Dark の切替、描画の分離、保存値の復元を実装しました。
-iOS 全体とのピクセル一致やアニメーションのフレーム一致を達成したという意味ではありません。
+静止画22ケースと動作48試行は、明示した比較基準をすべて通過しました。候補欄とナビゲーション領域の不具合も修正・検証済みです。全端末・全設定でのピクセル一致を意味するものではありません。
 
 **Retain existing fonts per the requester on 2026-09-08. Glyph identity is out of scope; text size, placement and animation remain in scope.** Skin selection and the
-presentation integration are implemented; full iOS pixel/motion parity is not certified.
+presentation integration are implemented. All 22 static cases and 48 motion trials meet the documented tolerances; candidate/inset fixes pass actual-IME tests. This is not universal pixel identity.
 
 ## 参照条件 / Reference conditions
 
@@ -18,8 +18,8 @@ presentation integration are implemented; full iOS pixel/motion parity is not ce
   `F12E79DA-7D73-42BB-BE94-69FE135B72A9`.
 - Xcode 26.6 (17F113); build SDK iOS 26.5. The **runtime**, not the SDK, defines the reference.
 - Standard UIKit `UITextField`, default keyboard traits; Japanese Kana and English (US).
-  Appearance is explicitly Light or Dark; no custom iOS keyboard or private API.
-- Capture date: 2026-09-07. Successful XCUITest runs: `configure-us`,
+  Appearance is explicitly Light or Dark; the reference app uses public UIKit. A separate macOS-only CoreSimulator diagnostic captures direct display timestamps.
+- Static capture date: 2026-09-07; final direct motion capture: 2026-09-08. Successful XCUITest runs: `configure-us`,
   `kana-gestures`, `reference-matrix` (kana evidence only), `english-reference`.
 - English images from the first `reference-matrix` run are excluded: an onboarding
   sheet covered the keyboard. `english-reference` dismisses it and checks hittability.
@@ -77,7 +77,7 @@ MAE score and must not be presented as whole-keyboard acceptance.
   Custom circular/TFBi guides retain their selections and content, using skin surfaces.
   Those layouts have no native iOS equivalent and are adaptations.
 - Default motion remains untouched. Cupertino removes Material ripple/elevation animation,
-  updates visible flick windows in place, and holds released QWERTY windows for 75 ms
+  updates visible flick windows in place, and holds released QWERTY windows for 34 ms
   while committing immediately. Timing is measured separately in the follow-up evidence.
 - Skin selection disables competing controls in the theme screen without clearing
   them. Input-composition color controls remain independent.
@@ -89,7 +89,7 @@ including the whole cap, neck, stem, directional arrow, guide cross, and placed 
 Reference and Android images are aligned by their key anchors only: there is no image
 rescaling or best-fit registration. Results are in [fidelity evidence](evidence/fidelity/README.md).
 The isolated fixture pins density to 3 and font scale to 1; the actual-view motion host
-uses the Pixel 6's existing density/font-scale settings. Those are different tests.
+uses density 420 / font scale 1.3; final timing is measured on the hardware-rendered API 35 emulator. Those are different tests.
 
 - QWERTY long-press variations retain **three columns, character order, window dimensions,
   offsets and hit mapping**. The iOS single row is intentionally not adopted. Candidate
@@ -97,10 +97,11 @@ uses the Pixel 6's existing density/font-scale settings. Those are different tes
 - Cupertino QWERTY release holds affect the window only. Input ownership and text commits
   end on UP. Kana guides dismiss immediately, independently of surrounding-label fades.
   New gestures, CANCEL, skin switches, hiding and detach clear retained presentations.
-- Motion uses a visible display clock and event serial, video presentation timestamps,
-  repeated gestures and explicit transition brackets. Candidate-text changes are excluded
-  from the iOS dismissal ROI. Capture gaps and clock uncertainty remain in the report;
-  missing frames are not classified as a pass.
+- Final motion uses direct CoreSimulator callback timestamps and Android screenrecord's
+  embedded Winscope display timestamps, converted per input event. All 48 trials / 84
+  milestones pass the one-60-Hz-frame criterion; maximum difference is 15.001 ms rounded
+  upward. Source brackets remain available in the reports. This replaces the earlier
+  uncertain PTS-to-marker regression.
 - Existing platform fonts are retained, with no bundled font data or glyph-outline changes.
   Per the requester on 2026-09-08, glyph-mask identity is diagnostic only and is not an
   acceptance gate. Text size, baseline and placement remain calibration targets. Previously
@@ -112,9 +113,7 @@ The finite portrait reference matrix is not proof of identical rendering at ever
 keyboard width, system font setting, orientation, underlying app background or OS release.
 The dark material fields approximate the captured lighting; they do not implement iOS's
 compositor. Existing Android layout/selection behavior is deliberately preserved.
-Motion intervals wider than the acceptance window remain inconclusive results and keep
-the PR in draft. Glyph differences alone are not a failure under the updated scope. Do not mark full iOS parity as complete from build/test
-success, fitted RGB samples or a small outline error.
+The final finite matrix passes its declared tolerances. Glyph differences are outside the agreed scope. Full reproduction at every OS release, backdrop or user dimension is not inferred from these results.
 
 ## 検証 / Validation
 
@@ -134,3 +133,10 @@ python3 tools/keyboard-skins/compare-surfaces.py
 Use `-Pkotlin.compiler.execution.strategy=in-process` if the local Kotlin daemon
 cannot connect. The device fixture installs only the core instrumentation package;
 it does not install/select the user's IME or change keyboard settings.
+
+## 候補欄とシステム領域 / Candidate strip and navigation
+
+候補欄の設定高さからナビゲーション padding が差し引かれる計算を修正し、
+着せ替え変更時の配色更新とデフォルト色の復元を追加しました。
+実際の IME で3種類の表示状態・着せ替え往復・縦横画面・ナビゲーション方式を検証しています。
+See [root causes, fixes and actual-IME evidence](ime-layout.md).

@@ -48,3 +48,41 @@ The harness deliberately leaves font specimens in ignored local output. They dia
 platform metrics; neither extracted fonts nor specimen glyph images are production assets.
 
 See [reference conditions and acceptance gate](../../../docs/keyboard-skins/reference-status.md).
+
+## Direct display-time capture
+
+`testFrameMotionMatrix` declares one warm-up followed by three measured trials for
+kana hold/four flick directions and QWERTY q/e/p, in both appearances (48 trials).
+`IOS_REFERENCE_SKIP_VIDEO=1` disables the older screen video during raw capture.
+The reference app logs touch-dispatch time with `CACurrentMediaTime()`.
+
+`capture-frames.m` is a **macOS-only diagnostic**, using the installed Xcode's
+private CoreSimulator screen callbacks to sample display surfaces on the same host
+monotonic clock. It is not linked into either reference iOS app or Android product.
+Build it locally with Foundation, IOSurface and zlib; run
+`capture-frames SIMULATOR_UDID OUTPUT.frames.gz`, then interrupt with SIGINT after
+the matrix. Keep the callback timestamps, sample costs and input event JSON files.
+
+For Android, use `screenrecord` on the isolated production-view host. The direct
+verifier extracts the original Winscope v2 display timestamps embedded in the MP4,
+validates their count/order, and converts the logged input-dispatch clock for each
+event. It does not estimate an offset by fitting video PTS to a drawn marker.
+
+```sh
+python tools/keyboard-skins/verify-direct-motion.py --platform ios \
+  --capture IOS.frames.gz --events IOS_EVENTS_DIR --output ios-direct.json
+python tools/keyboard-skins/verify-direct-motion.py --platform android \
+  --capture ANDROID.mp4 --events ANDROID_FILES_DIR --output android-direct.json
+python tools/keyboard-skins/compare-direct-motion.py --ios ios-direct.json \
+  --android android-direct.json --output comparison.json
+python tools/keyboard-skins/test-direct-motion.py
+```
+
+Run recordings without concurrent builds. Preserve every declared measured trial,
+including failures; warm-ups are excluded by their predeclared trial number only.
+Use lossless stills, not these videos, for absolute color and outline measurements.
+
+The Android host starts its continuous clock only after ActivityScenario launch and
+stops it before closing the Activity. Otherwise ActivityScenario's idle barrier can
+wait indefinitely on the diagnostic clock itself. This clock lifecycle does not
+change the production keyboard or the predeclared gesture schedule.
