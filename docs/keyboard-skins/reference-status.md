@@ -1,3 +1,8 @@
+> 更新: デフォルトの高さ計算に対する無条件の補正を取り消しました。
+> 以下の旧レイアウト測定値を最新版の合格根拠には使用しません。
+> 現在の修正範囲は [ime-layout.md](ime-layout.md)、実機結果は
+> [device-regression.md](device-regression.md) を参照してください。
+
 # 着せ替え / Keyboard skins
 
 ## 状態 / Status

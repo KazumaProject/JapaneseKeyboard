@@ -173,7 +173,9 @@ class SkinImeLayoutInstrumentedTest {
                         check(keyboardBounds.left >= navigationInsets.left && keyboardBounds.right <= screenshot.width - navigationInsets.right) { "Keyboard overlaps side navigation: $keyboardBounds / $navigationInsets" }
                         check(keyboardBounds.bottom <= navigationBounds.top) { "Keyboard overlaps navigation: $keyboardBounds / $navigationBounds" }
                         check(candidateBounds.bottom <= keyboardBounds.top) { "Candidates overlap keys" }
-                        val expectedCandidateHeight = ((if (composing) 110 else 60) * context.resources.displayMetrics.density).toInt()
+                        // Default keeps the pre-PR budget, including its existing inset accounting.
+                        val expectedCandidateHeight = ((if (composing) 110 else 60) * context.resources.displayMetrics.density).toInt() -
+                            if (skin == KeyboardSkinId.DEFAULT) navigationInset else 0
                         check(kotlin.math.abs(keyboardBounds.top - inputBounds.top - expectedCandidateHeight) <= 1) {
                             "Candidate reserved space clipped: input=$inputBounds, keyboard=$keyboardBounds, expected height $expectedCandidateHeight"
                         }

@@ -1183,7 +1183,10 @@ class SuggestionAdapter internal constructor(
         }
         if (view is ImageView) {
             if (capture) originalImageTints[view] = view.imageTintList
-            else if (originalImageTints.containsKey(view)) view.imageTintList = originalImageTints[view]
+            else if (originalImageTints.containsKey(view) && view.imageTintList != originalImageTints[view]) {
+                // Setting null on an already-untinted ImageView clears a vector's own XML tint.
+                view.imageTintList = originalImageTints[view]
+            }
         }
         if (view is ViewGroup) {
             for (index in 0 until view.childCount) visitAppearanceViews(view.getChildAt(index), capture)

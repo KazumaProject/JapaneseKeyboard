@@ -395,6 +395,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
      * メンバ変数に値を保存してからテーマを適用します。
      * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
      */
+    private val skinColorRestorer by lazy {
+        com.kazumaproject.core.ui.skin.KeyboardSkinColorRestorer(binding.root)
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -413,6 +417,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
     ) {
         // メンバ変数に代入
         if (this.keyboardSkinId != skinId) { hideAllPopWindow() }
+        skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
 

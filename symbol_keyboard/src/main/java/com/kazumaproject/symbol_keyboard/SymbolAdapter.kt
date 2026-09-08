@@ -73,7 +73,7 @@ class SymbolAdapter :
      * @param textColor 通常時の文字色
      * @param highlightColor タップ時の波紋(Ripple)の色
      */
-    fun setThemeColors(@ColorInt textColor: Int, @ColorInt highlightColor: Int) {
+    fun setThemeColors(@ColorInt textColor: Int?, @ColorInt highlightColor: Int?) {
         this.themeTextColor = textColor
         this.themeHighlightColor = highlightColor
         // 既存の表示を更新するために再描画を通知
@@ -83,6 +83,7 @@ class SymbolAdapter :
     inner class SymbolViewHolder(itemView: View) :
         RecyclerView.ViewHolder(itemView) {
         val symbolTextView: MaterialTextView = itemView.findViewById(R.id.symbol_text)
+        val originalTextColors = symbolTextView.textColors
         val skinToneIndicator: View = itemView.findViewById(R.id.skin_tone_indicator)
 
         init {
@@ -121,9 +122,7 @@ class SymbolAdapter :
             holder.symbolTextView.textSize = symbolTextSize
 
             // ★追加: テキストカラーの適用
-            themeTextColor?.let { color ->
-                holder.symbolTextView.setTextColor(color)
-            }
+            holder.symbolTextView.setTextColor(themeTextColor?.let(android.content.res.ColorStateList::valueOf) ?: holder.originalTextColors)
             holder.skinToneIndicator.visibility =
                 if (showSkinToneIndicators && EmojiSkinToneSupport.hasSkinToneVariants(symbol)) {
                     View.VISIBLE

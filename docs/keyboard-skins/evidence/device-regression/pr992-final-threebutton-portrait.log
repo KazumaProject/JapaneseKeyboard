@@ -1,0 +1,47 @@
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinRegressionDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.SkinRegressionDeviceTest:
+INSTRUMENTATION_STATUS: test=physicalSkinMatrix
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait TENKEY-0-default
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait TENKEY-1-cupertino_light
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait TENKEY-2-cupertino_dark
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait TENKEY-3-default
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait QWERTY-0-default
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait QWERTY-1-cupertino_light
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait QWERTY-2-cupertino_dark
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=PASS final-threebutton-portrait QWERTY-3-default
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinRegressionDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=physicalSkinMatrix
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 131.857
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

@@ -2628,6 +2628,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputSessionId = flickPreviewEditorSessionId,
         )
         applyCandidateAppearance()
+        applySymbolKeyboardAppearance()
         resetKeyboard()
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
@@ -5959,6 +5960,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun applySymbolKeyboardAppearance() {
+        mainLayoutBinding?.keyboardSymbolView?.let { view ->
+            if (keyboardThemeMode == "custom") {
+                val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
+                val keyColor = customThemeKeyColor ?: Color.WHITE
+                view.setKeyboardTheme(
+                    skinId = keyboardSkinId,
+                    backgroundColor = palette?.background ?: manipulateColor(keyColor, 1.2f),
+                    iconColor = customThemeKeyTextColor ?: Color.BLACK,
+                    selectedIconColor = palette?.selectionText
+                        ?: manipulateColor(customThemeKeyTextColor ?: Color.BLACK, 0.6f),
+                    keyBackgroundColor = keyColor,
+                    liquidGlassEnable = liquidGlassThemePreference ?: false,
+                )
+            } else {
+                view.restoreDefaultKeyboardTheme()
+            }
+        }
+        floatingKeyboardBinding?.floatingSymbolKeyboard?.let { view ->
+            val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
+            if (palette != null) {
+                view.setKeyboardTheme(palette.background, palette.text, palette.selectionText,
+                    palette.key, false, keyboardSkinId)
+            } else {
+                // Floating symbols did not receive custom themes before skins were added.
+                view.restoreDefaultKeyboardTheme()
+            }
+        }
+    }
+
     /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
     private fun applyCandidateAppearance() {
         val custom = keyboardThemeMode == "custom"
@@ -5973,10 +6004,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         listOfNotNull(mainLayoutBinding?.suggestionVisibility, floatingKeyboardBinding?.suggestionVisibility)
             .forEach { button ->
-                button.setBackgroundResource(
+                // setBackgroundResource may keep the same resource instance after a skin
+                // mutated its fill. Load a fresh drawable to restore the themed XML colors.
+                button.background = ContextCompat.getDrawable(
+                    button.context,
                     if (DynamicColors.isDynamicColorAvailable()) com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
                     else com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
-                )
+                )?.mutate()
                 if (custom) {
                     button.setDrawableSolidColor(customThemeSpecialKeyColor ?: Color.GRAY)
                     button.setColorFilter(customThemeKeyTextColor ?: Color.BLACK)
@@ -6207,18 +6241,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
-                                val symbolKeyBg =
-                                    customThemeKeyColor ?: Color.WHITE
-                                keyboardSymbolView.setKeyboardTheme(
-                                    skinId = keyboardSkinId,
-                                    backgroundColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.background
-                                        ?: manipulateColor(symbolKeyBg, 1.2f),
-                                    iconColor = customThemeKeyTextColor ?: Color.BLACK,
-                                    selectedIconColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.selection
-                                        ?: manipulateColor(customThemeKeyTextColor ?: Color.BLACK, 0.6f),
-                                    keyBackgroundColor = symbolKeyBg,
-                                    liquidGlassEnable = liquidGlassThemePreference ?: false
-                                )
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
                                     customThemeBgColor ?: Color.WHITE
@@ -6269,6 +6291,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     // PopupWindow, so it does not inherit the candidate-strip TextView color.
                     // Keep its formula renderer in sync with the active keyboard theme.
                     applyCandidateAppearance()
+                    applySymbolKeyboardAppearance()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = keyboardSkinId != KeyboardSkinId.DEFAULT || isKeyboardRounded == true
                     applyKeyboardBackgroundIfNeeded(mainView)
@@ -15512,6 +15535,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
                 clearZeroQueryAllState(refresh = false)
+                applySymbolKeyboardAppearance()
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -16758,7 +16782,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isSymbol) {
             (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
                 val bottomSpace = maxOf(
-                    systemBottomInset,
+                    if (keyboardSkinId == KeyboardSkinId.DEFAULT) systemBottomInset else 0,
                     if (isPortrait) applicationContext.dpToPx(50) else 0,
                 )
                 param.height = (finalKeyboardHeight - bottomSpace).coerceAtLeast(0)
@@ -16889,8 +16913,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             var changed = false
-            // Insets are reserved outside the configured keyboard and candidate heights.
-            val windowHeight = finalKeyboardHeight + systemBottomInset
+            // Preserve the pre-skin Default layout; only Cupertino reserves extra inset space.
+            val windowHeight = resolveSkinWindowHeight(finalKeyboardHeight, systemBottomInset, keyboardSkinId)
             if (forceLayout || params.height != windowHeight) {
                 params.height = windowHeight
                 changed = true
@@ -17099,7 +17123,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight + systemBottomInset
+            params.height = resolveSkinWindowHeight(finalKeyboardHeight, systemBottomInset, keyboardSkinId)
             params.width = finalKeyboardWidth
             params.bottomMargin = finalBottomMargin
             mainView.root.layoutParams = params
