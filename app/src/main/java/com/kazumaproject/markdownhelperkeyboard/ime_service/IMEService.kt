@@ -26971,25 +26971,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleCommitAndInsertSpace() {
         if (dispatchDirectSpaceIfNeeded()) return
 
-        val inputConnection = currentInputConnection ?: return
-        val insertString = inputString.value
-        val tail = stringInTail.get()
-        val extractedText = getExtractedText(ExtractedTextRequest(), 0)
-        val currentCursorPosition = extractedText?.selectionEnd
-            ?: inputConnection.getTextBeforeCursor(Int.MAX_VALUE, 0)?.length
-            ?: 0
-        val committedText = "$insertString $tail"
+        if (currentInputConnection == null) return
+        if (!commitRawTextAndInsertSpace(inputString.value, stringInTail.get())) return
 
-        beginBatchEdit()
-        val committed = try {
-            commitText(committedText, 1)
-        } finally {
-            endBatchEdit()
-        }
-        if (!committed) return
-
-        val newCursorPosition = (currentCursorPosition - tail.length + 1).coerceAtLeast(0)
-        setSelection(newCursorPosition, newCursorPosition)
         qwertyGlideInputCoordinator?.cancelPending()
         currentQwertyGlideCompositionText = null
         suppressNextQwertyGlideSuggestionRefresh = false
