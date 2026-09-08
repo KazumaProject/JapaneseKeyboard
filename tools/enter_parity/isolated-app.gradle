@@ -1,0 +1,8 @@
+// Install the real debug keyboard beside the user's keyboard, with separate data.
+allprojects { p ->
+    p.plugins.withId('com.android.application') {
+        if (p.name == 'app') {
+            p.android.buildTypes.getByName('debug').applicationIdSuffix = p.hasProperty('enterParityBaseline') ? '.enterbaseline' : '.enterparity'
+        }
+    }
+}

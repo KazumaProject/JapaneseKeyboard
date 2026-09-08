@@ -16,8 +16,6 @@ import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -64,11 +62,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     private var isSyncingLetterSizeControls = false
     private var isSyncingColumnControls = false
     private var isSyncingDefaultHeightControls = false
-    private var previousBottomNavigationVisibility: Int? = null
-    private var previousNavHostBottomToTop = ConstraintLayout.LayoutParams.UNSET
-    private var previousNavHostBottomToBottom = ConstraintLayout.LayoutParams.UNSET
-    private var previousNavHostBottomMargin = 0
-    private var hasPreviousNavHostBottomConstraint = false
+    private var previousNavigationContainerVisibility: Int? = null
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -96,7 +90,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        hideBottomNavigationForPreview()
+        hideNavigationContainerForPreview()
         appPreference.migrateCandidateHeightPerColumnPreferencesIfNeeded()
         appPreference.syncActiveCandidateVisibleHeightToImePreference(isLandscape = false)
 
@@ -130,86 +124,25 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        restoreNavigationContainerVisibility()
         super.onDestroyView()
-        restoreBottomNavigationVisibility()
         binding.candidateHeightSettingRecyclerview.adapter = null
         suggestionAdapter.release()
         _binding = null
     }
 
-    private fun hideBottomNavigationForPreview() {
-        val bottomNavigation = activity?.findViewById<View>(R.id.nav_view) ?: return
-        if (previousBottomNavigationVisibility == null) {
-            previousBottomNavigationVisibility = bottomNavigation.visibility
+    private fun hideNavigationContainerForPreview() {
+        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container) ?: return
+        if (previousNavigationContainerVisibility == null) {
+            previousNavigationContainerVisibility = navigationContainer.visibility
         }
-        bottomNavigation.visibility = View.GONE
-        extendNavHostToParentBottom()
+        navigationContainer.visibility = View.GONE
     }
 
-    private fun restoreBottomNavigationVisibility() {
-        val visibility = previousBottomNavigationVisibility ?: return
-        restoreNavHostBottomConstraint()
-        activity?.findViewById<View>(R.id.nav_view)?.visibility = visibility
-        previousBottomNavigationVisibility = null
-    }
-
-    private fun extendNavHostToParentBottom() {
-        val container = activity?.findViewById<ConstraintLayout>(R.id.container) ?: return
-        val navHost = activity?.findViewById<View>(R.id.nav_host_fragment_activity_main) ?: return
-        val layoutParams = navHost.layoutParams as? ConstraintLayout.LayoutParams ?: return
-        if (!hasPreviousNavHostBottomConstraint) {
-            previousNavHostBottomToTop = layoutParams.bottomToTop
-            previousNavHostBottomToBottom = layoutParams.bottomToBottom
-            previousNavHostBottomMargin = layoutParams.bottomMargin
-            hasPreviousNavHostBottomConstraint = true
-        }
-        ConstraintSet().apply {
-            clone(container)
-            clear(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM)
-            connect(
-                R.id.nav_host_fragment_activity_main,
-                ConstraintSet.BOTTOM,
-                ConstraintSet.PARENT_ID,
-                ConstraintSet.BOTTOM
-            )
-            setMargin(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM, 0)
-            applyTo(container)
-        }
-    }
-
-    private fun restoreNavHostBottomConstraint() {
-        if (!hasPreviousNavHostBottomConstraint) return
-        val container = activity?.findViewById<ConstraintLayout>(R.id.container) ?: return
-        ConstraintSet().apply {
-            clone(container)
-            clear(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM)
-            when {
-                previousNavHostBottomToTop != ConstraintLayout.LayoutParams.UNSET -> {
-                    connect(
-                        R.id.nav_host_fragment_activity_main,
-                        ConstraintSet.BOTTOM,
-                        previousNavHostBottomToTop,
-                        ConstraintSet.TOP
-                    )
-                }
-
-                previousNavHostBottomToBottom != ConstraintLayout.LayoutParams.UNSET -> {
-                    connect(
-                        R.id.nav_host_fragment_activity_main,
-                        ConstraintSet.BOTTOM,
-                        previousNavHostBottomToBottom,
-                        ConstraintSet.BOTTOM
-                    )
-                }
-            }
-            setMargin(
-                R.id.nav_host_fragment_activity_main,
-                ConstraintSet.BOTTOM,
-                previousNavHostBottomMargin
-            )
-            applyTo(container)
-        }
-        hasPreviousNavHostBottomConstraint = false
+    private fun restoreNavigationContainerVisibility() {
+        val visibility = previousNavigationContainerVisibility ?: return
+        activity?.findViewById<View>(R.id.nav_view_container)?.visibility = visibility
+        previousNavigationContainerVisibility = null
     }
 
     private fun setupMenu() {
