@@ -4,10 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import androidx.navigation.fragment.findNavController
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
-import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
@@ -425,33 +425,34 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             true
         }
 
-        val appearancePreferences = (0 until screen.preferenceCount).map(screen::getPreference)
-            .filter { it.key != CATEGORY_KEY_CUSTOM_INPUT }
-        val skinPreference = ListPreference(context).apply {
+        val skinPreference = Preference(context).apply {
             key = KeyboardSkinId.PREFERENCE_KEY
-            title = getString(R.string.keyboard_skin_title)
-            entries = arrayOf(getString(R.string.keyboard_skin_default),
-                getString(R.string.keyboard_skin_cupertino_light), getString(R.string.keyboard_skin_cupertino_dark))
-            entryValues = KeyboardSkinId.entries.map { it.preferenceValue }.toTypedArray()
-            setDefaultValue(KeyboardSkinId.DEFAULT.preferenceValue)
-            summaryProvider = Preference.SummaryProvider<ListPreference> { preference ->
-                val name = preference.entry ?: getString(R.string.keyboard_skin_default)
-                "$name\n${getString(R.string.keyboard_skin_summary)}"
-            }
+            title = getString(R.string.keyboard_skin_choose)
             order = -1
-            setOnPreferenceChangeListener { _, newValue ->
-                val isDefault = KeyboardSkinId.fromPreference(newValue as String) == KeyboardSkinId.DEFAULT
-                appearancePreferences.forEach { it.isEnabled = isDefault }
+            setOnPreferenceClickListener {
+                findNavController().navigate(R.id.keyboardSkinSelectionFragment)
                 true
             }
         }
         screen.addPreference(skinPreference)
-        appearancePreferences.forEach { it.isEnabled = appPreference.keyboardSkin == KeyboardSkinId.DEFAULT }
         preferenceScreen = screen
 
         // Initialize state based on current preference
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val selected = appPreference.keyboardSkin
+        findPreference<Preference>(KeyboardSkinId.PREFERENCE_KEY)?.summary =
+            getString(KeyboardThemeCatalog.find(selected).titleRes)
+        for (index in 0 until preferenceScreen.preferenceCount) {
+            val preference = preferenceScreen.getPreference(index)
+            if (preference.key != KeyboardSkinId.PREFERENCE_KEY && preference.key != CATEGORY_KEY_CUSTOM_INPUT) {
+                preference.isEnabled = selected == KeyboardSkinId.DEFAULT
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

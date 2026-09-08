@@ -1,0 +1,25 @@
+{
+  "sourceParentCommit": "fbfaab268e2782482c713c16cfb1855d94baba93",
+  "device": "Pixel 6",
+  "android": 17,
+  "sdk": 37,
+  "deviceTest": "PASS; 18.369 seconds",
+  "unitTest": "KeyboardThemeCatalogTest: 1 passed, 0 failed",
+  "apkSha256": {
+    "theme-selector": "db5fd662ac6468abeb5a113f4eec51f77f6f1b04c9000793aec45875023dd0a2",
+    "theme-selector-test": "d1dc89dad0373edbef950a658ffc650d97f2176c0ac2994f2aaf9e3266cf8519"
+  },
+  "sourceSha256": {
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/setting_activity/ui/keyboard_theme/KeyboardThemeFragment.kt": "2051be52596d43c3f9b936e265cea653564bc559a515b30d056696191ad30a9a",
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/setting_activity/ui/setting/SettingHomeFragment.kt": "e9092e68caca020370442a568fa5e24183161a942729de55d71646b74e8d8b18",
+    "app/src/main/res/navigation/mobile_navigation.xml": "f1e80227f7e1c52536f553951d536bddb98217be6b614d42180d340bfcdb223a",
+    "app/src/main/res/values-ja/keyboard_skins.xml": "ec71f677b784ffba71ce468b362a4d13020eb01ee40d1e655c9a9cf32bea433f",
+    "app/src/main/res/values/keyboard_skins.xml": "08807141ee9664226e9054993731ea8fc9944e4d1ce6c1b61e82dbcfa3b1d1e6",
+    "app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/KeyboardThemeSelectionDeviceTest.kt": "aa9dd3579e68e40b2982a8c2e26c21aa64a7e1c8d3208ac7a66177931c6c38b8",
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/setting_activity/ui/keyboard_theme/KeyboardSkinSelectionFragment.kt": "04e048f75e21d42ec20cb855cf2b6d4a3f3b18ecf9712174de77307d9bf02909",
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/setting_activity/ui/keyboard_theme/KeyboardThemeCatalog.kt": "52e3916c90aab7abdc290abe0ee4d69c075c81f33b642acffb11691fee63a255",
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/setting_activity/ui/keyboard_theme/KeyboardThemePreviewView.kt": "bde1a959d02231d15ead5ad6ddbcb7741fb40b38accdce41bcd2feb4abfca6e1",
+    "app/src/main/res/layout/fragment_keyboard_skin_selection.xml": "96dee6e611f1acc231c8e0a4e9f92ddf361407ee2907dc60f3aab4d12d8d7460",
+    "app/src/test/java/com/kazumaproject/markdownhelperkeyboard/skin/KeyboardThemeCatalogTest.kt": "f89cbf78a90a07cfca96fdd7e6716e1f2bcb426381cf25313ca79a3e3fe244cf"
+  }
+}
