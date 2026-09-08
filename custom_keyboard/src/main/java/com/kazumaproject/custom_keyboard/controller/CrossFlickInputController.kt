@@ -59,6 +59,14 @@ class CrossFlickInputController(
         fun onFlick(action: KeyAction, isFlick: Boolean, direction: FlickDirection) {
             onFlick(action, isFlick)
         }
+        fun onFlick(
+            action: KeyAction,
+            isFlick: Boolean,
+            direction: FlickDirection,
+            isLongPress: Boolean,
+        ) {
+            onFlick(action, isFlick, direction)
+        }
         fun onFlickCommitted(
             fallbackAction: KeyAction?,
             isFlick: Boolean,
@@ -368,7 +376,12 @@ class CrossFlickInputController(
                 val isFlick = currentDirection != FlickDirection.TAP
                 val output = resolveText(currentDirection, preferLongPress = isLongPressMode)
                 if (!output.isNullOrEmpty()) {
-                    listener?.onFlick(KeyAction.Text(output), isFlick, currentDirection)
+                    listener?.onFlick(
+                        KeyAction.Text(output),
+                        isFlick,
+                        currentDirection,
+                        isLongPressMode,
+                    )
                 }
             }
         }
