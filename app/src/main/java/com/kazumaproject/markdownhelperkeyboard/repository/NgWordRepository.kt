@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,8 +26,18 @@ class NgWordRepository @Inject constructor(
      * 新規追加。
      * @return 挿入に成功したら true（既存と同一 yomi＋tango があれば false）
      */
-    suspend fun addNgWord(yomi: String, tango: String): Boolean {
-        val rowId = dao.insert(NgWord(yomi = yomi, tango = tango))
+    suspend fun addNgWord(
+        yomi: String,
+        tango: String,
+        matchMode: NgWordMatchMode = NgWordMatchMode.PARTIAL,
+    ): Boolean {
+        val rowId = dao.insert(
+            NgWord(
+                yomi = yomi,
+                tango = tango,
+                matchMode = matchMode,
+            )
+        )
         return rowId != -1L
     }
 
