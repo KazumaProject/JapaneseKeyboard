@@ -1819,6 +1819,90 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun customToggleWaitPreferenceOnPhysicalDevice() {
+        runPhysicalDeviceSession("custom-toggle-timeout") { session ->
+            val dao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val fixtureIds = mutableListOf<Long>()
+            var host: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                for (direct in listOf(false, true)) {
+                    val stableId = "toggle-timeout-qa-$direct-${System.currentTimeMillis()}"
+                    val layoutId = runBlocking {
+                        dao.insertFullKeyboardLayout(
+                            layout = CustomKeyboardLayout(
+                                name = "Toggle timeout QA", columnCount = 1, rowCount = 1,
+                                stableId = stableId, sortOrder = dao.getMaxSortOrder() + 1,
+                                isDirectMode = direct,
+                            ),
+                            keys = listOf(KeyDefinition(
+                                ownerLayoutId = 0, label = "TOGGLE-QA", row = 0, column = 0,
+                                keyType = KeyType.PETAL_FLICK, keyIdentifier = stableId,
+                                textInputBehavior = com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior.TOGGLE.dbValue,
+                            )),
+                            flicksMap = mapOf(stableId to
+                                com.kazumaproject.custom_keyboard.data.PETAL_TOGGLE_DIRECTIONS
+                                    .take(2).zip(listOf("あ", "お")).map { (direction, text) ->
+                                        com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping(
+                                            ownerKeyId = 0, flickDirection = direction,
+                                            actionType = "INPUT_TEXT", actionValue = text,
+                                        )
+                                    }),
+                            circularFlicksMap = emptyMap(), twoStepFlicksMap = emptyMap(),
+                            longPressFlicksMap = emptyMap(), twoStepLongPressFlicksMap = emptyMap(),
+                        )
+                    }
+                    fixtureIds += layoutId
+                    check(session.preferences.edit()
+                        .putString("keyboard_order_preference", """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]""")
+                        .putBoolean("save_last_used_keyboard", false)
+                        .putBoolean("remember_last_custom_keyboard_preference", true)
+                        .putString("last_used_custom_keyboard_stable_id", stableId)
+                        .putBoolean("keyboard_floating_preference", false)
+                        .putBoolean("live_conversion_preference", false)
+                        .putBoolean("custom_keyboard_suggestion_preference", false)
+                        .putInt("candidate_view_height_dp_preference", 110)
+                        .putInt("candidate_view_empty_height_dp_preference", 110)
+                        .commit())
+                    val scenario = host ?: launchHost(session.context).also { host = it }
+                    // Re-entering the editor mirrors returning from the settings screen.
+                    for ((timeout, interval) in listOf(1000 to 500L, 200 to 500L, 1000 to 500L, 200 to 50L)) {
+                        check(session.preferences.edit()
+                            .putInt("time_same_pronounce_typing_preference", timeout).commit())
+                        restartInput(scenario)
+                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                        val root = findVisibleNodeById("custom_layout_default")
+                            ?: throw SetupException("Custom keyboard missing")
+                        val key = findDescendant(root) {
+                            it.isVisibleToUser && (it.text?.toString() == "TOGGLE-QA" ||
+                                it.contentDescription?.toString() == "TOGGLE-QA")
+                        } ?: throw SetupException("Toggle key missing")
+                        assertTrue(injectTapPairAtDownInterval(key.screenRect().center, interval))
+                        val expected = if (interval < timeout) "お" else "ああ"
+                        assertEquals("direct=$direct timeout=$timeout interval=$interval",
+                            expected, awaitEditorText(scenario) { it == expected })
+                        instrumentation.waitForIdleSync()
+                        SystemClock.sleep(250)
+                        assertEquals("Text changed after settling", expected, readText(scenario))
+                        scenario.onActivity {
+                            val composingStart = android.view.inputmethod.BaseInputConnection
+                                .getComposingSpanStart(it.editText.text)
+                            assertEquals("Unexpected composition mode for direct=$direct",
+                                !direct, composingStart >= 0)
+                        }
+                        saveScreenshot(session, "direct-$direct-timeout-$timeout-interval-$interval")
+                        sendProgress("CUSTOM_TOGGLE_OK direct=$direct timeout=$timeout interval=$interval text=$expected\n")
+                    }
+                }
+            } finally {
+                host?.close()
+                runBlocking { fixtureIds.forEach { dao.deleteLayout(it) } }
+            }
+        }
+    }
+
+    @Test
     fun customKeyboardAcceptsInputOnPhysicalDevice() {
         runPhysicalDeviceSession("custom-input") { session ->
             var scenario: ActivityScenario<FastInputHostActivity>? = null
