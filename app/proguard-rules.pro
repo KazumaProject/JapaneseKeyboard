@@ -30,6 +30,8 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord { *; }
+# Gson reads these fields reflectively when importing both old and new NG word backups.
+-keep class com.kazumaproject.markdownhelperkeyboard.ng_word.NgWordBackup$NgWordBackupEntry { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry { *; }

@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="ng_word_match_mode_entries">
+        <item>@string/ng_word_match_mode_partial</item>
+        <item>@string/ng_word_match_mode_exact</item>
+    </string-array>
+
     <string-array name="utility_angle_mode_entries">
         <item>@string/utility_angle_degrees</item>
         <item>@string/utility_angle_radians</item>
