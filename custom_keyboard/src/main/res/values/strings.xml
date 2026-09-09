@@ -35,7 +35,8 @@
     <string name="switch_qwerty">Switch to QWERTY Keyboard</string>
     <string name="switch_number">Switch to Number Keyboard</string>
     <string name="action_delete_until_symbol">Delete until symbols</string>
-    <string name="action_delete_after_cursor">Delete after cursor</string>
+    <string name="action_delete_after_cursor">Delete after cursor to word/separator boundary</string>
+    <string name="action_delete_after_cursor_one">Delete one character after cursor (Delete)</string>
     <string name="voice_input">Voice Input</string>
     <string name="action_switch_romaji_english">Romaji / English Switch</string>
 </resources>
