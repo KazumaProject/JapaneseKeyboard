@@ -30,6 +30,8 @@ android {
     }
 
     testOptions {
+        // Keep the device test window free of Android's deprecated-target warning dialog.
+        targetSdk = 36
         unitTests.includeAndroidResources = true
     }
 }
