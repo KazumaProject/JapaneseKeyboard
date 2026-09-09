@@ -22660,7 +22660,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (text.isEmpty()) return false
         val textBeforeCursor = inputConnection.getTextBeforeCursor(text.length, 0)?.toString() ?: ""
         if (!textBeforeCursor.endsWith(text)) return false
-        return inputConnection.deleteSurroundingText(text.length, 0)
+        return deleteSurroundingText(text.length, 0)
     }
 
     private fun deleteCommittedTextAfterCursor(text: String): Boolean {
@@ -22668,10 +22668,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (text.isEmpty()) return false
         val textAfterCursor = inputConnection.getTextAfterCursor(text.length, 0)?.toString() ?: ""
         if (!textAfterCursor.startsWith(text)) return false
-        return inputConnection.deleteSurroundingText(0, text.length)
+        return deleteSurroundingText(0, text.length)
     }
 
     private fun performUndo(entry: EditHistoryEntry): Boolean {
+        // History edits must invalidate pending reads even when the caret stays unchanged.
+        forwardDeleteCoordinator.cancel()
         return when (entry) {
             is EditHistoryEntry.DeleteCommittedText -> {
                 when (entry.direction) {
@@ -22715,6 +22717,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun performRedo(entry: EditHistoryEntry): Boolean {
+        // History edits must invalidate pending reads even when the caret stays unchanged.
+        forwardDeleteCoordinator.cancel()
         return when (entry) {
             is EditHistoryEntry.DeleteCommittedText -> {
                 when (entry.direction) {
