@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 class SkinPopupCompatibilityInstrumentedTest {
     @Test fun offsetWindowKeepsFlickAndOverflowGuideAtTheirScreenAnchors() {
         val ins = InstrumentationRegistry.getInstrumentation()
-        ActivityScenario.launch<SkinFidelityHostActivity>(Intent(ins.targetContext, SkinFidelityHostActivity::class.java)).use { scenario ->
+        ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)).use { scenario ->
             lateinit var anchor: View
             val laidOut = java.util.concurrent.CountDownLatch(1)
             scenario.onActivity { host ->
