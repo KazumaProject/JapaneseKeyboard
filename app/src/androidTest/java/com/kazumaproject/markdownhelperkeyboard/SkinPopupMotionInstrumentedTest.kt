@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard
 
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
@@ -11,11 +10,8 @@ import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.json.JSONArray
-import org.json.JSONObject
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class SkinPopupMotionInstrumentedTest {
@@ -26,7 +22,7 @@ class SkinPopupMotionInstrumentedTest {
             lateinit var retained: com.kazumaproject.core.ui.skin.SkinGuidePopup
             lateinit var label: TextView
             lateinit var original: android.content.res.ColorStateList
-            ActivityScenario.launch<SkinFidelityHostActivity>(Intent(ins.targetContext, SkinFidelityHostActivity::class.java)
+            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)
                 .putExtra("keyboard", "kana").putExtra("dark", dark)).use { scenario ->
                 SystemClock.sleep(500)
                 var x = 0f; var y = 0f
@@ -74,7 +70,7 @@ class SkinPopupMotionInstrumentedTest {
         val ins=InstrumentationRegistry.getInstrumentation()
         for(dark in listOf(false,true)) {
             val commits=java.util.concurrent.CopyOnWriteArrayList<Char>()
-            ActivityScenario.launch<SkinFidelityHostActivity>(Intent(ins.targetContext,SkinFidelityHostActivity::class.java)
+            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext,SkinTestHostActivity::class.java)
                 .putExtra("keyboard","kana").putExtra("dark",dark)).use { scenario ->
                 SystemClock.sleep(500)
                 var x=0f;var y=0f;var w=0;var h=0
@@ -128,7 +124,7 @@ class SkinPopupMotionInstrumentedTest {
         val ins = InstrumentationRegistry.getInstrumentation()
         for (dark in listOf(false, true)) {
             val commits = java.util.concurrent.CopyOnWriteArrayList<Char>()
-            ActivityScenario.launch<SkinFidelityHostActivity>(Intent(ins.targetContext, SkinFidelityHostActivity::class.java)
+            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)
                 .putExtra("keyboard", "kana").putExtra("dark", dark)).use { scenario ->
                 SystemClock.sleep(500)
                 lateinit var key: TextView
@@ -219,93 +215,12 @@ class SkinPopupMotionInstrumentedTest {
         }
     }
 
-    @Test fun recordProductionPopupMotion() {
-        val ins=InstrumentationRegistry.getInstrumentation()
-        val context=ins.targetContext
-        val out=File(context.getExternalFilesDir(null),"motion").apply {mkdirs()}
-        val metadata=JSONArray()
-        val arguments=InstrumentationRegistry.getArguments()
-        val types=arguments.getString("keyboard")?.let {listOf(it)} ?: listOf("kana","qwerty")
-        val captureStills=arguments.getString("captureStills")!="false"
-        fun onHost(action: (SkinFidelityHostActivity) -> Unit) {
-            // The frame clock intentionally never becomes idle. Read the resumed activity
-            // on the UI thread without ActivityScenario.onActivity's idle barrier.
-            ins.runOnMainSync {
-                val host = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
-                    .filterIsInstance<SkinFidelityHostActivity>().single()
-                action(host)
-            }
-        }
-        val frameMatrix=arguments.getString("frameMatrix")=="true"
-        for(type in types) for(dark in listOf(false,true)) {
-            val name="$type-${if(dark)"dark" else "light"}"
-            ActivityScenario.launch<SkinFidelityHostActivity>(Intent(context,SkinFidelityHostActivity::class.java)
-                .putExtra("keyboard",type).putExtra("dark",dark).putExtra("frameMatrix",frameMatrix).putExtra("recordFrames",true)).use { scenario ->
-                onHost { it.startFrameRecording() }
-                try {
-                SystemClock.sleep(600)
-                val labels=arguments.getString("labels")?.split(",") ?: if(type=="kana")listOf("な", "な:left", "な:top", "な:right", "な:bottom")else listOf("q","e","p")
-                val measured=labels.flatMap { label -> (0..2).map { trial -> label to trial } }
-                val schedule=if(frameMatrix) labels.map { it to -1 } + measured else measured
-                for((label,trial) in schedule) {
-                    var x=0f;var y=0f;var w=0;var h=0
-                    onHost { host ->
-                        fun find(view:View):TextView? {
-                            if(view is TextView && view.isShown && view.width>0 && view.height>0 && view.text.toString().trim().equals(label.substringBefore(":"),true))return view
-                            if(view is ViewGroup) for(i in 0 until view.childCount){find(view.getChildAt(i))?.let{return it}}
-                            return null
-                        }
-                        val key=requireNotNull(find(host.keyboard)){"Missing $label"}
-                        val loc=IntArray(2);key.getLocationOnScreen(loc)
-                        w=key.width;h=key.height;x=loc[0]+w/2f;y=loc[1]+h/2f
-                    }
-                    check(w>0 && h>0 && x>0 && y>0){"Invalid key geometry for $label: $x,$y $w,$h"}
-                    val anchorX=x;val anchorY=y
-                    val down=SystemClock.uptimeMillis()
-                    fun touch(action:Int){
-                        val e=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,x,y,0)
-                        e.source=InputDevice.SOURCE_TOUCHSCREEN
-                        check(ins.uiAutomation.injectInputEvent(e, action != MotionEvent.ACTION_MOVE));e.recycle()
-                    }
-                    touch(MotionEvent.ACTION_DOWN)
-                    val preview = type=="qwerty" && label!="e"
-                    if (label.contains(":")) {
-                        SystemClock.sleep(if(frameMatrix)50 else 100)
-                        val direction=label.substringAfter(":")
-                        val step=5f*context.resources.displayMetrics.density
-                        repeat(12) {
-                            when(direction) { "left" -> x-=step; "right" -> x+=step; "top" -> y-=step; "bottom" -> y+=step }
-                            touch(MotionEvent.ACTION_MOVE);SystemClock.sleep(8)
-                        }
-                    }
-                    SystemClock.sleep(if(frameMatrix && label.contains(":"))60 else if(preview)120 else 1000)
-                    if(trial==0 && captureStills)ins.uiAutomation.takeScreenshot().let { image ->
-                        File(out,"$name-$label-held.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
-                        image.recycle()
-                    }
-                    SystemClock.sleep(if(frameMatrix && label.contains(":"))20 else if(preview)20 else 200)
-                    if(frameMatrix && label.contains(":")) onHost { host ->
-                        val field=host.keyboard.javaClass.getDeclaredField("isLongPressed").apply {isAccessible=true}
-                        check(!field.getBoolean(host.keyboard)){"Flick trial crossed the long-press threshold"}
-                    }
-                    touch(MotionEvent.ACTION_UP)
-                    metadata.put(JSONObject().put("name",name).put("label",label).put("trial",trial)
-                        .put("x",anchorX).put("y",anchorY).put("end_x",x).put("end_y",y).put("width",w).put("height",h).put("down",down).put("up",SystemClock.uptimeMillis()))
-                    SystemClock.sleep(if(frameMatrix)600 else 350)
-                }
-                onHost {check(it.events.length()>0){"No touch events reached the keyboard host"};it.exportEvents(name)}
-                } finally { onHost { it.stopFrameRecording() } }
-            }
-        }
-        File(out,"gestures.json").writeText(metadata.toString(2))
-    }
     @Test fun shortTapCommitsBeforeVisualHoldAndDetachClosesRetainedPopup() {
         val ins=InstrumentationRegistry.getInstrumentation()
         for(dark in listOf(false,true)) {
             val releases=java.util.concurrent.CopyOnWriteArrayList<Char?>()
             lateinit var retained:android.widget.PopupWindow
-            ActivityScenario.launch<SkinFidelityHostActivity>(Intent(ins.targetContext,SkinFidelityHostActivity::class.java)
+            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext,SkinTestHostActivity::class.java)
                 .putExtra("keyboard","qwerty").putExtra("dark",dark)).use { scenario ->
                 SystemClock.sleep(500)
                 var x=0f;var y=0f
