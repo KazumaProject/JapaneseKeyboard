@@ -160,6 +160,57 @@ class ForwardDeleteCoordinatorTest {
         assertEquals(listOf("ab", "c"), editor.history)
     }
 
+    @Test fun redoAfterSnapshotCancelsUnsentDeleteAndDoesNotDuplicateHistory() = runTest {
+        val editor = Editor(this)
+        editor.coordinator.enqueue()
+        editor.coordinator.enqueue()
+        runCurrent()
+        editor.reads.reply()
+        // Redo deletes at the same caret while the pre-delete reply awaits Main.
+        editor.coordinator.cancel()
+        editor.text = "bcd"
+        editor.revision++
+        editor.coordinator.onSelectionChanged(0, 0)
+        editor.drain(this)
+        assertEquals("bcd", editor.text)
+        assertEquals(0, editor.events)
+        assertEquals(emptyList<String>(), editor.history)
+        editor.coordinator.enqueue()
+        editor.drain(this)
+        assertEquals("cd", editor.text)
+        assertEquals(listOf("b"), editor.history)
+    }
+
+    @Test fun historyEditDuringAcknowledgementDropsOldHistoryAndRemainingTaps() = runTest {
+        for (replacement in listOf("abcd", "cd")) {
+            val editor = Editor(this)
+            editor.coordinator.enqueue()
+            editor.coordinator.enqueue()
+            runCurrent()
+            editor.reads.reply()
+            runCurrent() // First key applied; its acknowledgement is still pending.
+            editor.coordinator.cancel()
+            editor.text = replacement // Undo or Redo at the same caret.
+            editor.revision++
+            editor.drain(this)
+            assertEquals(replacement, editor.text)
+            assertEquals(1, editor.events)
+            assertEquals(emptyList<String>(), editor.history)
+        }
+    }
+
+    @Test fun revisionChangeAfterSnapshotRejectsStaleReplyAtSameCaret() = runTest {
+        val editor = Editor(this)
+        editor.coordinator.enqueue()
+        runCurrent()
+        editor.reads.reply()
+        editor.text = "bcd"
+        editor.revision++
+        editor.drain(this)
+        assertEquals(0, editor.events)
+        assertEquals(emptyList<String>(), editor.history)
+    }
+
     @Test fun externalEditInvalidatesQueuedTaps() = runTest {
         val editor = Editor(this)
         editor.coordinator.enqueue()

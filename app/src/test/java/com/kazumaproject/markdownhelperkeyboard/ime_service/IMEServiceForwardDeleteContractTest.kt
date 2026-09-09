@@ -66,6 +66,20 @@ class IMEServiceForwardDeleteContractTest {
         )
     }
 
+    @Test
+    fun historyOperationsCancelPendingForwardDeletesBeforeApplyingEntries() {
+        val source = imeServiceSource()
+        listOf("performUndo" to "performRedo", "performRedo" to "undoLastHistoryEntry").forEach { (start, end) ->
+            val body = source.functionBody("private fun $start(", "private fun $end(")
+            val cancel = body.indexOf("forwardDeleteCoordinator.cancel()")
+            assertTrue(cancel >= 0 && cancel < body.indexOf("return when (entry)"))
+        }
+        val helpers = source.functionBody("private fun deleteCommittedTextBeforeCursor(", "private fun performUndo(")
+        assertTrue(helpers.contains("return deleteSurroundingText(text.length, 0)"))
+        assertTrue(helpers.contains("return deleteSurroundingText(0, text.length)"))
+        assertFalse(helpers.contains("inputConnection.deleteSurroundingText"))
+    }
+
     private fun imeServiceSource(): String =
         listOf(
             File("app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"),
