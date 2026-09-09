@@ -5990,8 +5990,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private data class CandidateTabDefaultColors(
+        val text: android.content.res.ColorStateList?,
+        val indicator: Int,
+    )
+
+    private val candidateTabDefaultColors = java.util.WeakHashMap<TabLayout, CandidateTabDefaultColors>()
+
+    private fun applyCandidateTabAppearance(tab: TabLayout) {
+        val original = candidateTabDefaultColors.getOrPut(tab) {
+            // Capture the inflated theme before applying any skin. The XML has no tab overrides.
+            val attributes = tab.context.obtainStyledAttributes(
+                null, intArrayOf(com.google.android.material.R.attr.tabIndicatorColor),
+                com.google.android.material.R.attr.tabStyle,
+                com.google.android.material.R.style.Widget_Design_TabLayout,
+            )
+            try {
+                CandidateTabDefaultColors(tab.tabTextColors, attributes.getColor(0, Color.TRANSPARENT))
+            } finally {
+                attributes.recycle()
+            }
+        }
+        val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
+        if (palette != null) {
+            tab.setTabTextColors(palette.text, palette.selection)
+            tab.setSelectedTabIndicatorColor(palette.selection)
+        } else if (keyboardThemeMode == "custom") {
+            tab.setTabTextColors(customThemeKeyTextColor ?: Color.BLACK,
+                customThemeSpecialKeyTextColor ?: Color.BLACK)
+            tab.setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+        } else {
+            tab.setTabTextColors(original.text)
+            tab.setSelectedTabIndicatorColor(original.indicator)
+        }
+    }
+
     /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
     private fun applyCandidateAppearance() {
+        mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
         val custom = keyboardThemeMode == "custom"
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setCandidateTextColor(if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
@@ -18931,17 +18967,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.candidateTabLayout.apply {
-            when (keyboardThemeMode) {
-                "custom" -> {
-                    setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
-                    setTabTextColors(
-                        customThemeKeyTextColor ?: Color.BLACK,
-                        customThemeSpecialKeyTextColor ?: Color.BLACK
-                    )
-                }
-
-                else -> {}
-            }
+            applyCandidateTabAppearance(this)
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let { t ->

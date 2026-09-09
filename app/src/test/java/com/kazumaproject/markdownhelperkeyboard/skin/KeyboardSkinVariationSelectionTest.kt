@@ -110,6 +110,9 @@ class KeyboardSkinVariationSelectionTest {
         org.junit.Assert.assertTrue(popup.isShowing)
         popup.dismiss()
         org.junit.Assert.assertFalse(popup.isShowing)
+        // A screen-edge guide now fits inside the safe viewport. Force an actually
+        // smaller host window to exercise the floating-window fallback.
+        activity.window.decorView.layout(0, 0, 100, 100)
         anchor.layout(0, 0, 258, 168)
         popup.show(anchor, skin, mapOf(
             com.kazumaproject.core.ui.skin.PopupDirection.CENTER to "な",
@@ -166,6 +169,9 @@ class KeyboardSkinVariationSelectionTest {
         bubble.skinId=KeyboardSkinId.DEFAULT
         assertEquals(listOf(11,12,13,14),listOf(bubble.paddingLeft,bubble.paddingTop,bubble.paddingRight,bubble.paddingBottom))
         assertEquals(9f,bubble.elevation);assertEquals(7f,popup.elevation);assertEquals(42,popup.animationStyle)
+        org.junit.Assert.assertSame(bubble,popup.contentView)
+        org.junit.Assert.assertTrue(popup.isTouchable)
+        org.junit.Assert.assertTrue(popup.isClippingEnabled)
         assertEquals(size,label.textSize);assertEquals(2f,label.translationY)
         assertEquals(gravity,label.gravity);assertEquals(true,label.includeFontPadding)
         controller.pause().stop().destroy()

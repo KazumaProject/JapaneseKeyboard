@@ -1474,6 +1474,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
+                    if (keyboardSkinId != KeyboardSkinId.DEFAULT) hideAllPopWindow()
                     skinGuide?.dismiss()
                     skinLongPress.clear()
                     val key = pressedKeyByMotionEvent(event, 0)
@@ -2300,6 +2301,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private fun showSkinGuide(anchor: View): Boolean {
         val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(keyboardSkinId) ?: return false
+        hideAllPopWindow()
         val presenter = skinGuide ?: com.kazumaproject.core.ui.skin.SkinGuidePopup(context).also { skinGuide = it }
         val guide = presenter.show(anchor, skin, mapOf(
             com.kazumaproject.core.ui.skin.PopupDirection.CENTER to popTextActive.text,
@@ -2387,7 +2389,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         button?.let {
             if (it is AppCompatButton) {
                 it.isPressed = true
-                if (!isLongPressed) it.text = ""
+                if (!isLongPressed && keyboardSkinId == KeyboardSkinId.DEFAULT) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
                         when (currentInputMode.value) {

@@ -32,9 +32,11 @@ int main(int argc,const char **argv){@autoreleasepool{
  // stride 3, with a fixed binary header for direct host-monotonic callback timestamps.
  static const int boxes[][4]={{30,1788,185,1825},{250,1788,415,1825},{1138,1788,1290,1825},
   {531,2154,789,2322},{272,2154,530,2322},{789,2154,1048,2322},
-  {531,1956,789,2124},{531,2353,789,2521},{320,2000,480,2120}};
+  {531,1956,789,2124},{531,2353,789,2521},{320,2000,480,2120},
+  {272,1940,1048,2540},{220,1510,610,2300}};
+ const int regionCount=sizeof(boxes)/sizeof(boxes[0]);
  NSMutableArray *regions=[NSMutableArray array];size_t sampleBytes=0;
- for(int i=0;i<9;i++){int w=(boxes[i][2]-boxes[i][0]+2)/3,h=(boxes[i][3]-boxes[i][1]+2)/3;
+ for(int i=0;i<regionCount;i++){int w=(boxes[i][2]-boxes[i][0]+2)/3,h=(boxes[i][3]-boxes[i][1]+2)/3;
   [regions addObject:@{@"box":@[@(boxes[i][0]),@(boxes[i][1]),@(boxes[i][2]),@(boxes[i][3])],@"width":@(w),@"height":@(h)}];sampleBytes+=w*h*3;}
  NSData *meta=[NSJSONSerialization dataWithJSONObject:@{@"version":@1,@"regions":regions,@"stride":@3,@"sampleBytes":@(sampleBytes),@"header":@"little-endian <ddIIII: callbackTime, sampleEndTime, counter, frameSerial, tickMs, eventSerial"} options:0 error:nil];
  uint32_t length=(uint32_t)meta.length;
@@ -65,7 +67,7 @@ int main(int argc,const char **argv){@autoreleasepool{
     if(pixel[0]+pixel[1]+pixel[2]>384)values[1+row]|=1u<<bit;
    }
    uint8_t *dest=bytes+32;
-   for(int region=0;region<9;region++)for(int y=boxes[region][1];y<boxes[region][3];y+=3)for(int x=boxes[region][0];x<boxes[region][2];x+=3){
+   for(int region=0;region<regionCount;region++)for(int y=boxes[region][1];y<boxes[region][3];y+=3)for(int x=boxes[region][0];x<boxes[region][2];x+=3){
     uint8_t *pixel=base+y*stride+x*4;*dest++=pixel[2];*dest++=pixel[1];*dest++=pixel[0];
    }
    IOSurfaceUnlock(surface,kIOSurfaceLockReadOnly,NULL);

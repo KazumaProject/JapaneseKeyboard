@@ -1,0 +1,38 @@
+{
+  "apkSha256": "16013b4d0d747edd15ef19fd0b78bbbde757335c69d7d7d4ca425f07323a68da",
+  "unitTests": {
+    "tests": 258,
+    "failures": 0,
+    "errors": 0
+  },
+  "productionViewDeviceTests": 3,
+  "drawableExportDeviceTests": 2,
+  "androidContinuousGestures": {
+    "total": 288,
+    "warmup": 72,
+    "measured": 216
+  },
+  "fullIosGate": "Not certified; cancellation reference and full playback review incomplete",
+  "productionSources": [
+    {
+      "path": "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt",
+      "sha256": "d2b12a0710cfb101547a6e6835aba227c688ed5facd80f42429a9bb63dbbcdaa"
+    },
+    {
+      "path": "tenkey/src/main/java/com/kazumaproject/tenkey/TenKey.kt",
+      "sha256": "c9dc85756020565ea96ae9e70d34944d81b17ae37edc9f3aa00092cf19608fa9"
+    },
+    {
+      "path": "core/src/main/java/com/kazumaproject/core/ui/skin/SkinPopupPlacement.kt",
+      "sha256": "7e830d1fb2119ca7cb2883fc0d56aba99f4c83a1be3d920613906593ba8c843b"
+    },
+    {
+      "path": "core/src/main/java/com/kazumaproject/core/ui/skin/SkinGuidePopup.kt",
+      "sha256": "e7d59648e0c295e931bed3e293a482d181e834f6d9b04ce434c6a2940ad81dc8"
+    },
+    {
+      "path": "core/src/main/java/com/kazumaproject/core/ui/skin/SkinPopupViewport.kt",
+      "sha256": "9161457d1411681d30317fe3c61518a6475c6ea2873fa9d197af0f6eaf86e0ff"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "label": "native-onset-portrait",
+    "passed": true
+  },
+  {
+    "label": "native-onset-landscape",
+    "passed": true
+  }
+]

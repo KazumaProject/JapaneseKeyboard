@@ -1,0 +1,86 @@
+[
+  {
+    "configuration": "baseline-host-first-landscape-1-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-1-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-1-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-1-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-2-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-2-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-2-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-2-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-3-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-3-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-3-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  },
+  {
+    "configuration": "baseline-host-first-landscape-3-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differenceBounds": null
+  }
+]

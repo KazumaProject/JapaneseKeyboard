@@ -45,8 +45,18 @@ class SkinGuidePopup(context: Context) {
         val rootPosition = IntArray(2)
         anchor.getLocationOnScreen(anchorPosition)
         root.getLocationOnScreen(rootPosition)
-        val left = anchorPosition[0] - rootPosition[0] - width
-        val top = anchorPosition[1] - rootPosition[1] - height
+        val visible = android.graphics.Rect()
+        cells.values.filter { it.visibility == View.VISIBLE }.forEach { cell ->
+            val params = cell.layoutParams as FrameLayout.LayoutParams
+            visible.union(params.leftMargin, params.topMargin,
+                params.leftMargin + width, params.topMargin + height)
+        }
+        visible.offset(anchorPosition[0] - width, anchorPosition[1] - height)
+        val fitted = SkinPopupViewport.fit(visible, SkinPopupViewport.bounds(anchor))
+        val screenLeft = anchorPosition[0] - width + fitted.left - visible.left
+        val screenTop = anchorPosition[1] - height + fitted.top - visible.top
+        val left = screenLeft - rootPosition[0]
+        val top = screenTop - rootPosition[1]
         content.measure(
             View.MeasureSpec.makeMeasureSpec(3 * width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(3 * height, View.MeasureSpec.EXACTLY),
@@ -65,6 +75,7 @@ class SkinGuidePopup(context: Context) {
             val popup = overflowWindow ?: PopupWindow(content, 0, 0, false).apply {
                 isTouchable = false
                 isClippingEnabled = false
+                setIsLaidOutInScreen(true)
                 setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                 elevation = 0f
                 animationStyle = 0
@@ -72,7 +83,7 @@ class SkinGuidePopup(context: Context) {
             }.also { overflowWindow = it }
             popup.width = 3 * width
             popup.height = 3 * height
-            popup.showAsDropDown(anchor, -width, -2 * height)
+            popup.showAtLocation(anchor, Gravity.NO_GRAVITY, screenLeft, screenTop)
         }
         return content
     }
