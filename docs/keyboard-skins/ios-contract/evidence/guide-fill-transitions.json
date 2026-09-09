@@ -1,0 +1,341 @@
+{
+  "scope": "Selected-cell fill only; excludes recognition latency, glyph fade and normal balloon motion. Video RGB used only as a within-recording fill signal.",
+  "results": [
+    {
+      "name": "ios-portrait-Light-0",
+      "frames": 193,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 23.462250013835728,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-portrait-Light-1",
+      "frames": 181,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 23.939916747622192,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-portrait-Light-2",
+      "frames": 180,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 28.862583334557712,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-portrait-Dark-0",
+      "frames": 178,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 22.21712504979223,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-portrait-Dark-1",
+      "frames": 180,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 21.094208350405097,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-portrait-Dark-2",
+      "frames": 181,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 22.187666734680533,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-landscape-Light-0",
+      "frames": 185,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 30.467625008895993,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-landscape-Light-1",
+      "frames": 187,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 28.312083333730698,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-landscape-Light-2",
+      "frames": 188,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 26.869791676290333,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-landscape-Dark-0",
+      "frames": 186,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 27.698083431459963,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-landscape-Dark-1",
+      "frames": 186,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 28.008416760712862,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "ios-landscape-Dark-2",
+      "frames": 187,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 26.611708337441087,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-portrait-cupertino_light-0",
+      "frames": 16,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 488.9190000249073,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-portrait-cupertino_light-1",
+      "frames": 15,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 476.1449999641627,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-portrait-cupertino_light-2",
+      "frames": 16,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 499.4139999616891,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-portrait-cupertino_dark-0",
+      "frames": 15,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 498.83699999190867,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-portrait-cupertino_dark-1",
+      "frames": 16,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 498.58799995854497,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-portrait-cupertino_dark-2",
+      "frames": 16,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 467.1770000131801,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-landscape-cupertino_light-0",
+      "frames": 13,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 510.64100000075996,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-landscape-cupertino_light-1",
+      "frames": 14,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 512.1939999517053,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-landscape-cupertino_light-2",
+      "frames": 15,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 486.39400000683963,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-landscape-cupertino_dark-0",
+      "frames": 14,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 498.97299997974187,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-landscape-cupertino_dark-1",
+      "frames": 14,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 487.31300001963973,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "android-landscape-cupertino_dark-2",
+      "frames": 16,
+      "partialRuns": [],
+      "maxPartialDurationMs": 0,
+      "maxSampleIntervalMs": 500.07100007496774,
+      "seenCells": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  ]
+}

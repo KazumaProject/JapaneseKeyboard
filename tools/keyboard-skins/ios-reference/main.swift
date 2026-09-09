@@ -131,7 +131,9 @@ final class FidelityTraceApplication: UIApplication {
             let snapshot = Self.events
             let kind = ProcessInfo.processInfo.arguments.contains("--kana-motion") ? "-kana" : "-qwerty"
             let prefix = ProcessInfo.processInfo.arguments.contains("--frame-matrix") ? kind : ""
-            let suffix = prefix + (ProcessInfo.processInfo.arguments.contains("--motion-contrast")
+            let captureName = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--capture-name=") })?
+                .replacingOccurrences(of: "--capture-name=", with: "")
+            let suffix = (captureName.map { "-" + $0 } ?? prefix) + (ProcessInfo.processInfo.arguments.contains("--motion-contrast")
                 ? (ProcessInfo.processInfo.arguments.contains("--dark") ? "-Dark" : "-Light") : "")
             Self.exportQueue.async {
                 if let data = try? JSONSerialization.data(withJSONObject: snapshot) {

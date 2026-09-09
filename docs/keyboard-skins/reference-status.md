@@ -9,10 +9,10 @@
 
 **既存フォントを維持します（2026-09-08 の依頼者指定）。字形の一致は受け入れ条件から除外し、文字サイズ・位置とアニメーションは引き続き検証対象です。**
 Default、Cupertino Light、Cupertino Dark の切替、描画の分離、保存値の復元を実装しました。
-静止画22ケースと動作48試行は、明示した比較基準をすべて通過しました。候補欄とナビゲーション領域の不具合も修正・検証済みです。全端末・全設定でのピクセル一致を意味するものではありません。
+過去の静止画22ケース・単発操作48試行は、その測定範囲での結果です。連続フリック、長押し後の方向変更、端のキーまで検証済みとした評価は取り消します。現在の比較基準と未完了項目は [連続操作の受け入れ基準](ios-contract/acceptance.md) を参照してください。
 
 **Retain existing fonts per the requester on 2026-09-08. Glyph identity is out of scope; text size, placement and animation remain in scope.** Skin selection and the
-presentation integration are implemented. All 22 static cases and 48 motion trials meet the documented tolerances; candidate/inset fixes pass actual-IME tests. This is not universal pixel identity.
+presentation integration are implemented. The historical 22 static cases and 48 single-action trials establish only their recorded scope. They did not establish continuous flick, held direction changes, or edge-key acceptance. See the current continuous-operation contract; do not infer merge readiness from these historical totals.
 
 ## 参照条件 / Reference conditions
 

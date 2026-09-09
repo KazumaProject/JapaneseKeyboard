@@ -18,19 +18,21 @@ obj('APP_PRODUCT', 'PBXFileReference', explicitFileType='wrapper.application', p
 obj('TEST_PRODUCT', 'PBXFileReference', explicitFileType='wrapper.cfbundle', path='ReferenceUITests.xctest', sourceTree='BUILT_PRODUCTS_DIR')
 obj('MAIN_BUILD', 'PBXBuildFile', fileRef='MAIN_SOURCE')
 obj('TEST_BUILD', 'PBXBuildFile', fileRef='TEST_SOURCE')
+obj('TOUCH_SOURCE', 'PBXFileReference', lastKnownFileType='sourcecode.c.objc', path='ContinuousTouch.m', sourceTree='<group>')
+obj('TOUCH_BUILD', 'PBXBuildFile', fileRef='TOUCH_SOURCE')
 obj('GROUP', 'PBXGroup', children=['MAIN_SOURCE', 'TEST_SOURCE', 'PRODUCTS'], sourceTree='<group>')
 obj('PRODUCTS', 'PBXGroup', children=['APP_PRODUCT', 'TEST_PRODUCT'], name='Products', sourceTree='<group>')
 for prefix, source in [('APP', 'MAIN_BUILD'), ('TEST', 'TEST_BUILD')]:
-    obj(prefix+'_SOURCES', 'PBXSourcesBuildPhase', buildActionMask=2147483647, files=[source], runOnlyForDeploymentPostprocessing=0)
+    obj(prefix+'_SOURCES', 'PBXSourcesBuildPhase', buildActionMask=2147483647, files=([source, 'TOUCH_BUILD'] if prefix == 'TEST' else [source]), runOnlyForDeploymentPostprocessing=0)
     obj(prefix+'_FRAMEWORKS', 'PBXFrameworksBuildPhase', buildActionMask=2147483647, files=[], runOnlyForDeploymentPostprocessing=0)
-    settings = dict(SWIFT_VERSION='5.0', SDKROOT='iphonesimulator', IPHONEOS_DEPLOYMENT_TARGET='26.0',
+    settings = dict(SWIFT_VERSION='5.0', CLANG_ENABLE_OBJC_ARC='YES', SDKROOT='iphonesimulator', IPHONEOS_DEPLOYMENT_TARGET='26.0',
                     TARGETED_DEVICE_FAMILY='1', CODE_SIGNING_ALLOWED='NO', PRODUCT_NAME='$(TARGET_NAME)',
                     SWIFT_OPTIMIZATION_LEVEL='-Onone', ENABLE_TESTABILITY='YES')
     if prefix == 'APP':
         settings.update(PRODUCT_BUNDLE_IDENTIFIER='com.kazumaproject.keyboard-skins.reference', INFOPLIST_FILE='Info.plist')
     else:
         settings.update(PRODUCT_BUNDLE_IDENTIFIER='com.kazumaproject.keyboard-skins.reference.uitests',
-                        GENERATE_INFOPLIST_FILE='YES', TEST_TARGET_NAME='KeyboardReference')
+                        GENERATE_INFOPLIST_FILE='YES', TEST_TARGET_NAME='KeyboardReference', SWIFT_OBJC_BRIDGING_HEADER='ContinuousTouch.h')
     obj(prefix+'_DEBUG', 'XCBuildConfiguration', buildSettings=settings, name='Debug')
     obj(prefix+'_CONFIG', 'XCConfigurationList', buildConfigurations=[prefix+'_DEBUG'], defaultConfigurationIsVisible=0, defaultConfigurationName='Debug')
 obj('PROJ_DEBUG', 'XCBuildConfiguration', buildSettings={}, name='Debug')
