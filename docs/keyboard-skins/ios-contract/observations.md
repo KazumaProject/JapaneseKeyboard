@@ -1,5 +1,6 @@
 # Continuous Kana reference observations
 
+> 2026-09-09 追記：候補上部の余白を修正し、高さ設定の追加検証と iOS 中断検証を実施。[最新記録](spacing-followup.md)。以下は前回時点の記録を含みます。
 Reference is the actual UIKit Japanese Kana keyboard on iOS 26.4.1 (23E254a),
 not a reconstruction. Discovery run `continuous-discovery-v2` succeeded; v1 had
 an invalid diagnostic callback signature and is not accepted evidence.

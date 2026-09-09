@@ -1,0 +1,38 @@
+{
+  "succeeded": true,
+  "beginCount": 16,
+  "endCount": 16,
+  "checks": [
+    {
+      "orientation": "portrait",
+      "contacts": 8,
+      "durations": [
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8495916665997356,
+        1.849999958416447,
+        1.8499999583000317,
+        1.849999958416447
+      ],
+      "serialsMonotonic": true
+    },
+    {
+      "orientation": "landscape",
+      "contacts": 8,
+      "durations": [
+        1.848896750016138,
+        1.8493535000598058,
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8499999583000317,
+        1.8499999583000317
+      ],
+      "serialsMonotonic": true
+    }
+  ],
+  "scope": "Public UITextField.resignFirstResponder during a held contact; not a claim that every system interruption or direct injected CANCEL was covered."
+}

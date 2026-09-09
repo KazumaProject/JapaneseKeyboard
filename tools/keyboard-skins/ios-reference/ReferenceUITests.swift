@@ -265,6 +265,47 @@ final class ReferenceUITests: XCTestCase {
         }
     }
 
+    func testKeyboardDismissalDuringContact() throws {
+        continueAfterFailure = false
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication(bundleIdentifier: "com.kazumaproject.keyboard-skins.reference")
+        for landscape in [false, true] {
+            XCUIDevice.shared.orientation = .portrait
+            app.launchArguments = ["--fidelity-clock", "--motion-contrast", "--white-content", "--dismiss-during-contact",
+                "--capture-name=dismissal-\(landscape ? "landscape" : "portrait")"]
+            app.launch()
+            let field = app.textFields["reference.input"]
+            field.tap()
+            if app.buttons["Continue"].waitForExistence(timeout: 1) { app.buttons["Continue"].tap() }
+            app.buttons["Next keyboard"].firstMatch.press(forDuration: 1.2)
+            app.cells["日本語かな"].tap()
+            if landscape { XCUIDevice.shared.orientation = .landscapeLeft }
+            for appearance in ["Light", "Dark"] { for trial in -1..<3 {
+                app.segmentedControls["reference.appearance"].buttons[appearance].tap()
+                field.tap()
+                let frame = app.keys["な"].frame
+                XCTAssertGreaterThan(frame.width, 0)
+                let before = field.value as? String
+                app.buttons["reference.armDismissal"].tap()
+                let p = CGPoint(x: frame.midX, y: frame.midY)
+                let physical = landscape ? CGPoint(x: app.frame.height-p.y, y: p.x) : p
+                let tag = "dismissal-\(landscape)-\(appearance)-\(trial)"
+                print("DISMISSAL_BEGIN \(tag) \(Date().timeIntervalSince1970)")
+                let completed = expectation(description: tag)
+                ContinuousTouch.sendPoints([NSValue(cgPoint: physical), NSValue(cgPoint: physical)],
+                    offsets: [0, 1.6], orientation: landscape ? .landscapeRight : .portrait) { error in
+                    XCTAssertNil(error); completed.fulfill()
+                }
+                wait(for: [completed], timeout: 15)
+                XCTAssertEqual(field.value as? String, before)
+                XCTAssertEqual(app.staticTexts["reference.dismissalStatus"].label, "dismissed:")
+                XCTAssertFalse(app.keys["な"].exists)
+                attach(app, tag)
+                print("DISMISSAL_END \(tag) \(Date().timeIntervalSince1970)")
+            } }
+        }
+    }
+
     private func continuousKana(landscape: Bool, labels: [String], trials: Range<Int>, capture: Bool = false, path: String = "forward", onsetCenter: Double = 0.5) throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait

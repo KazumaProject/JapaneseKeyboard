@@ -1,0 +1,1922 @@
+[
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "portrait-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-1-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 53,
+    "expectedChangePx": 53,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-2-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-false",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 52,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 79,
+    "expectedChangePx": 79,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "empty",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-0-default-composing",
+    "imeTopChangePx": 19,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": false
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-1-cupertino_light-composing",
+    "imeTopChangePx": 19,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": false
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-2-cupertino_dark-composing",
+    "imeTopChangePx": 19,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": false
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-empty",
+    "imeTopChangePx": 0,
+    "expectedChangePx": 0,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": true,
+    "passed": true
+  },
+  {
+    "configuration": "landscape-3-true",
+    "changedSetting": "composing",
+    "phase": "TENKEY-3-default-composing",
+    "imeTopChangePx": 19,
+    "expectedChangePx": 52,
+    "keyboardUnchanged": true,
+    "unaffectedGeometryUnchanged": null,
+    "passed": false
+  }
+]

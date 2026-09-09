@@ -74,6 +74,7 @@ class SkinRegressionDeviceTest {
         val failures = mutableListOf<String>()
         var navigationInsets = android.graphics.Insets.NONE
         val defaultPixels = mutableMapOf<String, Pair<Rect, IntArray>>()
+        val defaultCandidateGeometry = mutableMapOf<String, String>()
         val skins = (args.getString("skins") ?: "default,cupertino_light,cupertino_dark,default").split(',')
         val floating = args.getString("floating") == "true"
         val symbolRootId = if (floating) "floating_symbol_keyboard" else "keyboard_symbol_view"
@@ -82,6 +83,7 @@ class SkinRegressionDeviceTest {
         val columns = args.getString("columns") ?: "2"
         val tabs = args.getString("tabs") == "true"
         val candidateHeight = args.getString("candidateHeight")?.toInt() ?: if(large)150 else 110
+        val candidateEmptyHeight = args.getString("candidateEmptyHeight")?.toInt() ?: if(large)90 else 60
         val keyboards = (args.getString("keyboards") ?: "TENKEY,QWERTY").split(',')
         fun capture(name: String, rootId: String) {
             SystemClock.sleep(500)
@@ -134,6 +136,15 @@ class SkinRegressionDeviceTest {
                     check(selectedPixels>20 && unselectedPixels>20) { "Tab colors stale: $selectedPixels / $unselectedPixels" }
                 }
             }
+            if (!floating && (name.endsWith("empty") || name.endsWith("composing"))) {
+                val key = name.substringBefore('-') + "-" + name.substringAfterLast('-')
+                val geometry = listOf("inputArea", rootId, "suggestionView_parent", "suggestion_recycler_view", "candidate_tab_layout")
+                    .joinToString { "$it=${row.optJSONArray(it)}" }
+                if (name.contains("-default-")) defaultCandidateGeometry.putIfAbsent(key, geometry)
+                else defaultCandidateGeometry[key]?.let { baseline ->
+                    check(geometry == baseline) { "Theme changed candidate spacing: $key\nDefault: $baseline\nSkin: $geometry" }
+                }
+            }
             File(out, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG,100,it) }
             if (name.contains("-default-") && !name.endsWith("FAILURE")) {
                 val phase = name.substringAfter("-default-")
@@ -165,9 +176,9 @@ class SkinRegressionDeviceTest {
                 .putBoolean("candidate_tab_visibility_preference",tabs)
                 .putFloat("candidate_letter_size_preference",args.getString("candidateFont")?.toFloat() ?: 14f)
                 .putInt("candidate_view_height_dp_preference",candidateHeight)
-                .putInt("candidate_view_empty_height_dp_preference",if(large)90 else 60)
+                .putInt("candidate_view_empty_height_dp_preference",candidateEmptyHeight)
                 .putInt("candidate_view_height_dp_landscape_preference",candidateHeight)
-                .putInt("candidate_view_empty_height_dp_landscape_preference",if(large)90 else 60)
+                .putInt("candidate_view_empty_height_dp_landscape_preference",candidateEmptyHeight)
                 .putBoolean("shortcut_toolbar_visibility_preference",true)
                 .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",true)
                 .putBoolean("clipboard_preview_enable_preference",false).putBoolean("clipboard_history_preference",false)

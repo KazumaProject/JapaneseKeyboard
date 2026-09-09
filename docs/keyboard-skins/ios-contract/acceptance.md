@@ -1,5 +1,6 @@
 # iOS comparison gate — defined before product changes
 
+> 2026-09-09 追記：候補上部の余白を修正し、高さ設定の追加検証と iOS 中断検証を実施。[最新記録](spacing-followup.md)。以下は前回時点の記録を含みます。
 Reference: dedicated KeyboardSkinReference simulator, iOS 26.4.1 (23E254a),
 standard Japanese Kana keyboard, Light and Dark. Android: physical Pixel 6 IME.
 No product popup change is permitted until the observed-state contract is populated.
@@ -50,5 +51,7 @@ unmodified UIKit system keyboard. API provenance:
 https://github.com/appium/appium-xcuitest-driver/blob/master/docs/guides/input-events.md
 
 Status: implementation and the bounded device checks are recorded in results.md.
-The full gate is not certified: direct iOS cancellation and normal/slow UI playback
-remain blocked by the locked Mac. No criterion has been loosened to mark this complete.
+The Mac UI restriction has been resolved. A public UIKit keyboard-dismissal interruption
+has now been recorded; see spacing-followup.md. The full gate is still not certified:
+that bounded interruption check does not cover every cancellation family or complete
+the normal/slow playback requirement. No acceptance criterion has been loosened.

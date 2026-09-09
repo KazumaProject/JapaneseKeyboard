@@ -4,11 +4,23 @@ import CoreText
 // Uses the system keyboard; no custom inputView, appearance proxy, or private API.
 final class ReferenceController: UIViewController {
     private let input = UITextField()
+    private var interruptArmed = false
+    private let interruptStatus = UILabel()
+    @objc private func armInterruption() { interruptArmed = true }
+    @objc private func observedContact() {
+        guard interruptArmed else { return }
+        interruptArmed = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [self] in
+            input.resignFirstResponder()
+            interruptStatus.text = "dismissed:" + (input.text ?? "")
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         if ProcessInfo.processInfo.arguments.contains("--font-specimens") { exportFontSpecimens() }
-        view.backgroundColor = ProcessInfo.processInfo.arguments.contains("--motion-contrast") ? UIColor(white: 0.5, alpha: 1) : .systemBackground
+        view.backgroundColor = ProcessInfo.processInfo.arguments.contains("--white-content") ? .white
+            : (ProcessInfo.processInfo.arguments.contains("--motion-contrast") ? UIColor(white: 0.5, alpha: 1) : .systemBackground)
         overrideUserInterfaceStyle = ProcessInfo.processInfo.arguments.contains("--dark") ? .dark : .light
 
         let appearance = UISegmentedControl(items: ["Light", "Dark"])
@@ -31,6 +43,18 @@ final class ReferenceController: UIViewController {
         instructions.text = "iOS keyboard reference\nSelect English (US) or Japanese Kana using the globe key."
         instructions.numberOfLines = 0
         let stack = UIStackView(arrangedSubviews: [instructions, appearance, input])
+        if ProcessInfo.processInfo.arguments.contains("--dismiss-during-contact") {
+            let button = UIButton(type: .system)
+            button.setTitle("Arm keyboard dismissal", for: .normal)
+            button.accessibilityIdentifier = "reference.armDismissal"
+            button.addTarget(self, action: #selector(armInterruption), for: .touchUpInside)
+            interruptStatus.accessibilityIdentifier = "reference.dismissalStatus"
+            interruptStatus.text = "ready"
+            stack.addArrangedSubview(button)
+            stack.addArrangedSubview(interruptStatus)
+            NotificationCenter.default.addObserver(self, selector: #selector(observedContact),
+                name: Notification.Name("reference.contactBegan"), object: nil)
+        }
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -141,6 +165,9 @@ final class FidelityTraceApplication: UIApplication {
                         .appendingPathComponent("touch-events\(suffix).json"), options: .atomic)
                 }
             }
+        }
+        if event.allTouches?.contains(where: { $0.phase == .began }) == true {
+            NotificationCenter.default.post(name: Notification.Name("reference.contactBegan"), object: nil)
         }
         super.sendEvent(event)
         if ProcessInfo.processInfo.arguments.contains("--frame-matrix"), event.allTouches?.contains(where: { $0.phase == .ended }) == true {
