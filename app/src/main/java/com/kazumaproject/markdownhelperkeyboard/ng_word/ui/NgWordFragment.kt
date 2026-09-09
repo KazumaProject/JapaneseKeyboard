@@ -13,7 +13,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.MenuHost
@@ -23,17 +25,19 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentNgWordBinding
+import com.kazumaproject.markdownhelperkeyboard.ng_word.NgWordBackup
 import com.kazumaproject.markdownhelperkeyboard.ng_word.adapter.NgWordAdapter
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.FileOutputStream
 
 @AndroidEntryPoint
 class NgWordFragment : Fragment() {
+
+    private val matchModes = NgWordMatchMode.values().toList()
 
     private val viewModel: NgWordViewModel by viewModels()
     private var _binding: FragmentNgWordBinding? = null
@@ -70,6 +74,7 @@ class NgWordFragment : Fragment() {
         setupMenu()
         setupRecyclerView()
         setupFab()
+        setupMatchModeSpinner(binding.spinnerNgWordMatchMode, NgWordMatchMode.PARTIAL)
         observeViewModel()
     }
 
@@ -147,7 +152,7 @@ class NgWordFragment : Fragment() {
             ).show()
             return
         }
-        val json = Gson().toJson(list)
+        val json = NgWordBackup.toJson(list)
         requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
             FileOutputStream(it.fileDescriptor).use { fos ->
                 fos.write(json.toByteArray(Charsets.UTF_8))
@@ -161,9 +166,8 @@ class NgWordFragment : Fragment() {
         try {
             val json = requireContext().contentResolver.openInputStream(uri)
                 ?.bufferedReader(Charsets.UTF_8)?.readText() ?: return
-            val type = object : TypeToken<List<NgWord>>() {}.type
-            val list: List<NgWord> = Gson().fromJson(json, type)
-            viewModel.insertAll(list.map { NgWord(yomi = it.yomi, tango = it.tango) })
+            val list = NgWordBackup.fromJson(json)
+            viewModel.insertAll(list)
             Toast.makeText(
                 context,
                 "${list.size}${getString(R.string.import_text_string)}",
@@ -180,6 +184,9 @@ class NgWordFragment : Fragment() {
             val cv = binding.cardViewAddNgWord
             cv.isGone = !cv.isGone
             if (!cv.isGone) {
+                binding.spinnerNgWordMatchMode.setSelection(
+                    matchModes.indexOf(NgWordMatchMode.PARTIAL)
+                )
                 binding.editTextYomi.requestFocus()
                 (context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
                     ?.showSoftInput(binding.editTextYomi, 0)
@@ -201,9 +208,11 @@ class NgWordFragment : Fragment() {
             ).show()
             return
         }
-        viewModel.insert(yomi, tango)
+        val matchMode = matchModeAt(binding.spinnerNgWordMatchMode.selectedItemPosition)
+        viewModel.insert(yomi, tango, matchMode)
         hideKeyboardAndClearFocus()
         binding.cardViewAddNgWord.isGone = true
+        binding.spinnerNgWordMatchMode.setSelection(matchModes.indexOf(NgWordMatchMode.PARTIAL))
     }
 
     private fun setupRecyclerView() {
@@ -224,6 +233,8 @@ class NgWordFragment : Fragment() {
         val v = layoutInflater.inflate(R.layout.dialog_edit_ng_word, null)
         val etYomi = v.findViewById<EditText>(R.id.edit_text_yomi_dialog)
         val etTango = v.findViewById<EditText>(R.id.edit_text_tango_dialog)
+        val spinnerMatchMode = v.findViewById<Spinner>(R.id.spinner_ng_word_match_mode)
+        setupMatchModeSpinner(spinnerMatchMode, item.matchMode)
         etYomi.setText(item.yomi)
         etTango.setText(item.tango)
 
@@ -234,7 +245,13 @@ class NgWordFragment : Fragment() {
                 val newY = etYomi.text.toString().trim()
                 val newT = etTango.text.toString().trim()
                 if (newY.isNotEmpty() && newT.isNotEmpty()) {
-                    viewModel.update(item.copy(yomi = newY, tango = newT))
+                    viewModel.update(
+                        item.copy(
+                            yomi = newY,
+                            tango = newT,
+                            matchMode = matchModeAt(spinnerMatchMode.selectedItemPosition),
+                        )
+                    )
                 }
             }
             .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
@@ -243,6 +260,21 @@ class NgWordFragment : Fragment() {
             .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
+
+    private fun setupMatchModeSpinner(spinner: Spinner, selectedMode: NgWordMatchMode) {
+        val adapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.ng_word_match_mode_entries,
+            android.R.layout.simple_spinner_item,
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinner.adapter = adapter
+        spinner.setSelection(matchModes.indexOf(selectedMode).coerceAtLeast(0))
+    }
+
+    private fun matchModeAt(position: Int): NgWordMatchMode =
+        matchModes.getOrNull(position) ?: NgWordMatchMode.PARTIAL
 
     private fun hideKeyboardAndClearFocus() {
         (context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)

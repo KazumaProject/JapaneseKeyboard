@@ -108,6 +108,16 @@ enum class SpecialKeyColorStyle(val dbValue: String) {
     }
 }
 
+enum class KeyTextInputBehavior(val dbValue: String) {
+    NORMAL("NORMAL"),
+    TOGGLE("TOGGLE");
+
+    companion object {
+        fun fromDbValue(value: String?): KeyTextInputBehavior =
+            entries.firstOrNull { it.dbValue == value } ?: NORMAL
+    }
+}
+
 data class KeyIconRef(
     val type: KeyIconType,
     val value: String? = null
@@ -136,7 +146,8 @@ data class KeyData(
     val keyId: String? = null,
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
     val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL,
-    val doubleTapBinding: DoubleTapBinding? = null
+    val doubleTapBinding: DoubleTapBinding? = null,
+    val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL
 )
 
 data class GridPlacement(

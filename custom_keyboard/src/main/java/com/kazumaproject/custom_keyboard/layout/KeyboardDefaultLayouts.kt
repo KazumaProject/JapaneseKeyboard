@@ -454,6 +454,9 @@ object KeyboardDefaultLayouts {
         ),
         FlickAction.Action(KeyAction.Enter, "次"),
         FlickAction.Action(KeyAction.Enter, "確定"),
+        FlickAction.Action(KeyAction.Enter, "前へ"),
+        FlickAction.Action(KeyAction.Enter, "実行"),
+        FlickAction.Action(KeyAction.Enter, "送信"),
     )
 
     private val dakutenToggleStates = listOf(
@@ -510,10 +513,13 @@ object KeyboardDefaultLayouts {
             drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
         ),
         FlickAction.Action(
-            KeyAction.Enter, "Go",
+            KeyAction.Enter, "検索",
         ),
         FlickAction.Action(KeyAction.Enter, "Next"),
         FlickAction.Action(KeyAction.Enter, "確定"),
+        FlickAction.Action(KeyAction.Enter, "前へ"),
+        FlickAction.Action(KeyAction.Enter, "実行"),
+        FlickAction.Action(KeyAction.Enter, "送信"),
     )
 
     /**

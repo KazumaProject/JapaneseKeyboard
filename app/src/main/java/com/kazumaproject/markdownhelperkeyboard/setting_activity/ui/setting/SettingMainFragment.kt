@@ -20,10 +20,7 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.material.tabs.TabLayoutMediator
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingMainBinding
-import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
-import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,10 +40,7 @@ class SettingMainFragment : Fragment() {
     lateinit var appPreference: AppPreference
 
     @Inject
-    lateinit var userDictionaryRepository: UserDictionaryRepository
-
-    @Inject
-    lateinit var romajiMapRepository: RomajiMapRepository
+    lateinit var settingDataInitializer: SettingDataInitializer
 
 
     override fun onCreateView(
@@ -61,34 +55,7 @@ class SettingMainFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val romajiMapUpdated = appPreference.romaji_map_data_version
-        lifecycleScope.launch(Dispatchers.IO) {
-            if (romajiMapUpdated == 0) {
-                romajiMapRepository.updateDefaultMap()
-
-                userDictionaryRepository.apply {
-                    if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
-                        insert(
-                            UserWord(
-                                reading = "びゃんびゃんめん",
-                                word = "\uD883\uDEDE\uD883\uDEDE麺",
-                                posIndex = 0,
-                                posScore = 4000
-                            )
-                        )
-                    }
-                    if (searchByReadingExactMatchSuspend("びゃん").isEmpty()) {
-                        insert(
-                            UserWord(
-                                reading = "びゃん", word = "\uD883\uDEDE", posIndex = 0, posScore = 3000
-                            )
-                        )
-                    }
-                }
-
-                appPreference.romaji_map_data_version = 1
-            }
-        }
+        lifecycleScope.launch { settingDataInitializer.initializeIfNeeded() }
 
         val adapter = SettingPagerAdapter(this)
         binding.settingViewPager.adapter = adapter
