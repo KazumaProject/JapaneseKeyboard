@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.text.InputFilter
 import android.text.Selection
 import android.text.SpannableStringBuilder
 import android.view.View
@@ -14,7 +15,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [24, 35])
 class CommitAndInsertSpaceTest {
     private class Editor(
         text: String,
@@ -90,7 +91,7 @@ class CommitAndInsertSpaceTest {
         editor.select(10)
         assertTrue(editor.commitRawTextAndInsertSpace("あい", "😀z"))
         editor.assertResult("prefixあい 😀zZZ", 9)
-        assertEquals(1, editor.selectionWrites)
+        assertEquals(0, editor.selectionWrites)
     }
 
     @Test fun emptyLeftCompositionKeepsTailAndPlacesCursorAfterSpace() {
@@ -101,13 +102,51 @@ class CommitAndInsertSpaceTest {
         editor.assertResult(" abcZZ", 1)
     }
 
-    @Test fun unavailableExtractionDoesNotGuessAnAbsoluteCursor() {
+    @Test fun unavailableExtractionKeepsCursorBeforeTail() {
         val editor = Editor("abcZZ", extractionAvailable = false)
         editor.setComposingRegion(0, 3)
         editor.select(3)
         assertTrue(editor.commitRawTextAndInsertSpace("a", "bc"))
-        editor.assertResult("a bcZZ", 4)
+        editor.assertResult("a bcZZ", 2)
         assertEquals(0, editor.selectionWrites)
+    }
+
+    @Test fun unavailableExtractionPreservesSupplementaryTailAfterConversion() {
+        val editor = Editor("prefix愛😀zZZ", extractionAvailable = false)
+        editor.setComposingRegion(6, 10)
+        editor.select(10)
+        assertTrue(editor.commitRawTextAndInsertSpace("あい", "😀z"))
+        editor.assertResult("prefixあい 😀zZZ", 9)
+        assertEquals(-1, BaseInputConnection.getComposingSpanStart(editor.editable))
+    }
+
+    @Test fun unavailableExtractionWithEmptyLeftKeepsCursorBeforeTail() {
+        val editor = Editor("prefixabcZZ", extractionAvailable = false)
+        editor.setComposingRegion(6, 9)
+        editor.select(9)
+        assertTrue(editor.commitRawTextAndInsertSpace("", "abc"))
+        editor.assertResult("prefix abcZZ", 7)
+    }
+
+    @Test fun subsequentSpacesAndTypingStayBeforePreservedTail() {
+        val editor = Editor("abcZZ", extractionAvailable = false)
+        editor.setComposingRegion(0, 3)
+        editor.select(3)
+        assertTrue(editor.commitRawTextAndInsertSpace("a", "bc"))
+        assertTrue(editor.commitRawTextAndInsertSpace("", ""))
+        assertTrue(editor.commitText("x", 1))
+        editor.assertResult("a  xbcZZ", 4)
+    }
+
+    @Test fun editorFiltersCanChangeBothCommittedLengths() {
+        val editor = Editor("prefixabcZZ")
+        editor.setComposingRegion(6, 9)
+        editor.select(9)
+        editor.editable.filters = arrayOf(InputFilter { source, start, end, _, _, _ ->
+            source.subSequence(start, end).toString().replace("a", "AA").replace("bc", "B")
+        })
+        assertTrue(editor.commitRawTextAndInsertSpace("a", "bc"))
+        editor.assertResult("prefixAA BZZ", 9)
     }
 
     @Test fun rejectedCommitDoesNotMoveCursorAndClosesBatch() {

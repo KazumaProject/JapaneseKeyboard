@@ -26964,9 +26964,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     /**
      * Commits the raw composing text and inserts one half-width space at the
-     * logical cursor position. The input connection keeps the composing text
-     * cursor at the end of the rendered left+tail text, so the selection is
-     * moved back across the tail after the replacement is committed.
+     * logical cursor position. The helper replaces the rendered composition
+     * with its tail, then inserts the left text and space before that tail.
      */
     private fun handleCommitAndInsertSpace() {
         if (dispatchDirectSpaceIfNeeded()) return
