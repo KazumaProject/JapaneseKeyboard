@@ -14084,6 +14084,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyIdentity = keyIdentity,
                 values = canonicalValues,
                 outputValues = emittedValues,
+                nowMillis = SystemClock.elapsedRealtime(),
+                timeoutMillis = delayTime?.toLong() ?: DEFAULT_DELAY_MS,
             )
         ) {
             null -> return
