@@ -1,0 +1,26 @@
+{
+  "utc": "2026-09-07T14:17:30.077087+00:00",
+  "model": "Pixel 6",
+  "android": "17",
+  "fingerprint": "google/oriole/oriole:17/CP2A.260705.006/15641320:user/release-keys",
+  "locale": "ja-JP",
+  "ime": "com.kazumaproject.markdownhelperkeyboard.lite.enterparity/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService",
+  "layoutNote": "TENKEY normal; eight standard actions; all default settings",
+  "start": 0,
+  "end": 256,
+  "settle": 350,
+  "filter": "/m0/n0/c0",
+  "runner": "MatrixRunner",
+  "originalAnimationScales": {
+    "window_animation_scale": "0",
+    "transition_animation_scale": "0",
+    "animator_duration_scale": "0"
+  },
+  "animationsDisabled": true,
+  "version": [
+    "versionCode=805 minSdk=24 targetSdk=36",
+    "versionName=1.7.112-lite"
+  ],
+  "completed": true,
+  "capturedRows": 8
+}

@@ -22,3 +22,8 @@ include ':gojuon_keyboard'
 include ':qwerty_keyboard'
 include ':custom_keyboard'
 include ':zenz'
+
+// Opt-in device laboratory; never packaged with the keyboard.
+if (providers.gradleProperty('enterParityLab').isPresent()) {
+    include ':enter-parity-lab'
+}

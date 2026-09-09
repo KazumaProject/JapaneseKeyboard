@@ -1,0 +1,674 @@
+[
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "normal",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "TENKEY",
+    "mode": "floating",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "return",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "return",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "go",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "search",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "send",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "next",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "done",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "normal",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "previous",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "return",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "return",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "go",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "search",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "send",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "next",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "done",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "QWERTY",
+    "mode": "floating",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "previous",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "実行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "検索",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "送信",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "次へ",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "完了",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "normal",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "前へ",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "実行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "検索",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "送信",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "次へ",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "完了",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "ROMAJI",
+    "mode": "floating",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "前へ",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "実行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "検索",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "送信",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "次",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "確定",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "normal",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "前へ",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "改行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "実行",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "検索",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "送信",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "次",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "確定",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "SUMIRE",
+    "mode": "floating",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "前へ",
+    "presentation": "label-match"
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "normal",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a0/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a1/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a2/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a3/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a4/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a5/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a6/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  },
+  {
+    "layout": "GOJUON",
+    "mode": "floating",
+    "id": "text-0/a7/m0/n0/c0",
+    "status": "match",
+    "label": "enter_key",
+    "presentation": "screenshot-reviewed",
+    "reviewNote": "Actual captured key icons inspected for all eight actions on this surface."
+  }
+]
