@@ -7,6 +7,7 @@ import androidx.core.graphics.toColorInt
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
@@ -2957,6 +2958,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(APP_THEME_SEED_COLOR.first, value)
+        }
+
+    var keyboardSkin: KeyboardSkinId
+        get() = KeyboardSkinId.fromPreference(
+            preferences.getString(KeyboardSkinId.PREFERENCE_KEY, null)
+        )
+        set(value) = preferences.edit {
+            it.putString(KeyboardSkinId.PREFERENCE_KEY, value.preferenceValue)
         }
 
     var theme_mode: String

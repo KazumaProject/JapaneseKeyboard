@@ -30,6 +30,8 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -243,6 +245,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         val highlightColor: Int
     )
 
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
+
     init {
         setPadding(0, 0, 0, 0)
         clipToPadding = false
@@ -320,6 +324,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach {
             it.applyPopupViewStyleSet(popupViewStyleSet.directional, popupViewStyleSet.cross)
         }
+        flickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.directional) }
         centerGuideFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         standardFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.standard) }
         tfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
@@ -333,7 +338,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = style.backgroundColor,
-            textColor = style.textColor
+            textColor = style.textColor,
+            skinId = style.skinId
         )
     }
 
@@ -478,9 +484,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
         val renderConfigurationChanged =
+            this.keyboardSkinId != skinId ||
             this.themeMode != themeMode ||
                 this.isNightMode !=
                 (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ||
@@ -495,6 +503,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 this.customBorderColor != customBorderColor ||
                 this.liquidGlassKeyAlphaEnable != liquidGlassKeyAlphaEnable ||
                 this.borderWidth != borderWidth
+        this.keyboardSkinId = skinId
         this.themeMode = themeMode
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
         this.isDynamicColorEnabled = isDynamicColorEnabled
@@ -532,14 +541,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                 usesSpecialSurface = true,
                 baseColor = customSpecialKeyColor,
                 textColor = customSpecialKeyTextColor,
-                highlightColor = manipulateColor(customSpecialKeyColor, 1.2f)
+                highlightColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.pressed ?: manipulateColor(customSpecialKeyColor, 1.2f)
             )
         } else {
             KeyVisualPalette(
                 usesSpecialSurface = false,
                 baseColor = customKeyColor,
                 textColor = customKeyTextColor,
-                highlightColor = customSpecialKeyColor
+                highlightColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.pressed ?: customSpecialKeyColor
             )
         }
     }
@@ -1382,6 +1391,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
         val highlightColor = manipulateColor(baseColor, 1.2f)
         val shadowColor = manipulateColor(baseColor, 0.8f)
 
@@ -1508,6 +1518,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
 
                         setPopupColors(dynamicColorTheme)
+                        applyPopupViewStyle(popupViewStyleSet.directional)
 
                         this.listener = object : CustomAngleFlickController.FlickListener {
                             override fun onPress(action: FlickAction?) {
@@ -1797,7 +1808,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             segmentedDrawable = SegmentedBackgroundDrawable(
                                 label = label,
                                 baseColor = Color.TRANSPARENT,
-                                highlightColor = manipulateColor(customKeyColor, 1.2f),
+                                highlightColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.pressed ?: manipulateColor(customKeyColor, 1.2f),
                                 textColor = customKeyTextColor,
                                 cornerRadius = baseCorner,
                                 primaryTextSizePx = primaryTextSizePx,
@@ -1819,7 +1830,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             segmentedDrawable = SegmentedBackgroundDrawable(
                                 label = label,
                                 baseColor = Color.TRANSPARENT,
-                                highlightColor = manipulateColor(customKeyColor, 1.2f),
+                                highlightColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.pressed ?: manipulateColor(customKeyColor, 1.2f),
                                 textColor = customKeyTextColor,
                                 cornerRadius = dpToPx(8).toFloat(),
                                 primaryTextSizePx = primaryTextSizePx,

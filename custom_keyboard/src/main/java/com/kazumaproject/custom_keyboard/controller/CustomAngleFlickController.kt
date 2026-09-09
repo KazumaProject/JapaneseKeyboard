@@ -118,6 +118,10 @@ class CustomAngleFlickController(
         popupView.setShapeType(shape)
     }
 
+    fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle) {
+        popupView.applyPopupViewStyle(style)
+    }
+
     fun setPopupColors(theme: FlickPopupColorTheme) {
         popupView.setColors(theme)
     }
