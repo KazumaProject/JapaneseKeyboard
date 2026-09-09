@@ -1681,6 +1681,144 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun forwardDeleteCustomKeyOnPhysicalDevice() {
+        runPhysicalDeviceSession("forward-delete") { session ->
+            val dao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val stableId = "forward-delete-qa-${System.currentTimeMillis()}"
+            val actions = listOf(
+                "FD" to "DeleteAfterCursor",
+                "LEFT" to "MoveCursorLeft", "a" to "Text:a", "b" to "Text:b",
+                "UNDO" to "DoNothing",
+            )
+            val layoutId = runBlocking {
+                dao.insertFullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        name = "Forward Delete QA", columnCount = actions.size, rowCount = 1,
+                        stableId = stableId, sortOrder = dao.getMaxSortOrder() + 1,
+                    ),
+                    keys = actions.mapIndexed { index, (label, action) ->
+                        KeyDefinition(
+                            ownerLayoutId = 0, label = label, row = 0, column = index,
+                            keyType = if (label == "UNDO") KeyType.CROSS_FLICK else KeyType.NORMAL,
+                            keyIdentifier = "$stableId-$index",
+                            action = action,
+                        )
+                    },
+                    flicksMap = mapOf(
+                        "$stableId-4" to listOf(
+                            com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping(
+                                ownerKeyId = 0,
+                                flickDirection = com.kazumaproject.custom_keyboard.data.FlickDirection.TAP,
+                                actionType = "UndoLastDelete",
+                                actionValue = null,
+                            ),
+                        ),
+                    ),
+                    circularFlicksMap = emptyMap(),
+                    twoStepFlicksMap = emptyMap(), longPressFlicksMap = emptyMap(),
+                    twoStepLongPressFlicksMap = emptyMap(),
+                )
+            }
+            var host: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                check(session.preferences.edit()
+                    .putString("keyboard_order_preference", """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]""")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("remember_last_custom_keyboard_preference", true)
+                    .putString("last_used_custom_keyboard_stable_id", stableId)
+                    .putBoolean("keyboard_floating_preference", false)
+                    .putBoolean("live_conversion_preference", false)
+                    .putBoolean("custom_keyboard_suggestion_preference", false)
+                    .putInt("candidate_view_height_dp_preference", 110)
+                    .putInt("candidate_view_empty_height_dp_preference", 110)
+                    .putBoolean("undo_enable_preference", true)
+                    .putBoolean("delete_key_flick_down_preference", true)
+                    .putBoolean("candidate_tab_visibility_preference", false)
+                    .putBoolean("shortcut_toolbar_visibility_preference", false)
+                    .commit())
+                val scenario = launchHost(session.context)
+                host = scenario
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+
+                fun key(label: String): PointF {
+                    val root = findVisibleNodeById("custom_layout_default")
+                        ?: throw SetupException("Custom keyboard missing")
+                    return (findDescendant(root) {
+                        it.isVisibleToUser && (it.text?.toString() == label || it.contentDescription?.toString() == label)
+                    } ?: throw SetupException("Custom key $label missing")).screenRect().center
+                }
+                fun tapKey(label: String) { assertTrue(injectTap(key(label))) }
+                fun expect(text: String) {
+                    assertEquals(text, awaitEditorText(scenario) { it == text })
+                    // Allow the post-delete acknowledgement and history UI to settle.
+                    instrumentation.waitForIdleSync()
+                    SystemClock.sleep(150)
+                }
+                fun seed(text: String, start: Int = 0, end: Int = start) {
+                    restartInput(scenario)
+                    scenario.onActivity {
+                        it.editText.setText(text)
+                        it.editText.setSelection(start, end)
+                    }
+                    instrumentation.waitForIdleSync()
+                    SystemClock.sleep(250)
+                }
+
+                seed("abcd")
+                assertTrue(injectTapPairAtDownInterval(key("FD"), 40L))
+                expect("cd")
+                saveScreenshot(session, "after-rapid-forward-delete")
+                scenario.onActivity {
+                    val extracted = it.editText.onCreateInputConnection(android.view.inputmethod.EditorInfo())
+                        ?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                    sendProgress("FORWARD_DELETE_SNAPSHOT available=${extracted != null} partial=${extracted?.partialStartOffset} offset=${extracted?.startOffset} length=${extracted?.text?.length} start=${extracted?.selectionStart} end=${extracted?.selectionEnd}\n")
+                }
+                assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                expect("bcd")
+                assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                expect("abcd")
+                assertTrue(injectTap(awaitVisibleNodeBounds("redo_icon_parent").center))
+                expect("bcd")
+
+                seed("abcd", 1, 3)
+                tapKey("FD")
+                expect("ad")
+                assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                expect("abcd")
+
+                listOf("😀", "👨‍👩‍👧‍👦", "🇯🇵", "a\u0301").forEach { grapheme ->
+                    seed(grapheme + "z")
+                    tapKey("FD")
+                    expect("z")
+                    assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                    expect(grapheme + "z")
+                }
+                seed("abcd", 4)
+                tapKey("FD")
+                expect("abcd")
+
+                // Verify a logical composing tail is edited and restored independently.
+                seed("")
+                tapKey("a")
+                tapKey("b")
+                expect("ab")
+                tapKey("LEFT")
+                tapKey("FD")
+                expect("a")
+                tapKey("UNDO")
+                expect("ab")
+                sendProgress("FORWARD_DELETE_OK rapid_taps undo redo selection emoji combining end_of_text composing_tail\n")
+            } finally {
+                host?.close()
+                runBlocking { dao.deleteLayout(layoutId) }
+            }
+        }
+    }
+
+    @Test
     fun customKeyboardAcceptsInputOnPhysicalDevice() {
         runPhysicalDeviceSession("custom-input") { session ->
             var scenario: ActivityScenario<FastInputHostActivity>? = null

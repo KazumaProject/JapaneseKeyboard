@@ -67,6 +67,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
         "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
         "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
+        "DeleteAfterCursor" -> KeyAction.DeleteAfterCursor
         "UndoLastDelete" -> KeyAction.UndoLastDelete
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
@@ -124,6 +125,7 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
         "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
         "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
+        "DeleteAfterCursor" -> KeyAction.DeleteAfterCursor
         "UndoLastDelete" -> KeyAction.UndoLastDelete
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
@@ -186,6 +188,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.SwitchToNumberLayout -> "SwitchToNumber" to null
             KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol" to null
             KeyAction.DeleteAfterCursorUntilSymbol -> "DeleteAfterCursorUntilSymbol" to null
+            KeyAction.DeleteAfterCursor -> "DeleteAfterCursor" to null
             KeyAction.UndoLastDelete -> "UndoLastDelete" to null
             KeyAction.ToggleKatakana -> "SwitchKatakana" to null
             KeyAction.VoiceInput -> "VoiceInput" to null
