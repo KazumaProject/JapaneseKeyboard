@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <application>
-        <activity android:name=".SkinFidelityHostActivity" android:exported="false" android:theme="@style/Theme.MarkdownKeyboard" />
+        <activity android:name=".SkinTestHostActivity" android:exported="false" android:theme="@style/Theme.MarkdownKeyboard" />
         <activity
             android:name=".autofill.DebugInlineAutofillAttributionActivity"
             android:exported="false"
