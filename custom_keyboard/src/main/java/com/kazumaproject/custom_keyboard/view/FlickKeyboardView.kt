@@ -192,6 +192,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val canonicalGuideLabels =
         IdentityHashMap<AutoSizeButton, AutoSizeButton.FlickGuideLabels>()
     private var currentLayout: KeyboardLayout? = null
+    private var keyHitTestMode = KeyHitTestMode.KEY_BOUNDS
     private var controllerRebindPending = false
     private var keyboardRenderRevision: Int = 0
     private var renderedKeyboardRenderRevision: Int = -1
@@ -574,8 +575,15 @@ class FlickKeyboardView @JvmOverloads constructor(
         return ContextCompat.getDrawable(context, drawableResId)
     }
 
+    /** Nearest-key input is opt-in; omitting the mode restores legacy bounds-only behavior. */
+    @JvmOverloads
     @SuppressLint("ClickableViewAccessibility")
-    fun setKeyboard(layout: KeyboardLayout) {
+    fun setKeyboard(layout: KeyboardLayout, hitTestMode: KeyHitTestMode = KeyHitTestMode.KEY_BOUNDS) {
+        if (keyHitTestMode != hitTestMode) {
+            cancelTrackedTouchState()
+            doubleTapActionDispatcher.cancel()
+        }
+        keyHitTestMode = hitTestMode
         setKeyboard(layout, forceRebuild = false)
     }
 
@@ -2837,7 +2845,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     private data class MotionTarget(
         val view: View,
         val displayOriginX: Float,
-        val displayOriginY: Float
+        val displayOriginY: Float,
+        val localOffsetX: Float = 0f,
+        val localOffsetY: Float = 0f
     )
 
     private val motionTargets = mutableMapOf<Int, MotionTarget>()
@@ -2882,6 +2892,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
+        if (keyHitTestMode == KeyHitTestMode.NEAREST_KEY) {
+            return findNearestKeyTarget(displayX, displayY)
+        }
         val location = IntArray(2)
         for (i in 0 until childCount) {
             val child = getChildAt(i)
@@ -2903,6 +2916,55 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         return null
+    }
+
+    /**
+     * Sumire treats the entire keyboard surface as key input, independently of visual margins.
+     * Read current screen bounds at DOWN (also POINTER_DOWN), never cached layout geometry.
+     * Custom layouts keep the legacy bounds-only path, including their intentional empty cells.
+     */
+    private fun findNearestKeyTarget(displayX: Float, displayY: Float): MotionTarget? {
+        if (!displayX.isFinite() || !displayY.isFinite() || visibility != View.VISIBLE || !isEnabled) {
+            return null
+        }
+        val location = IntArray(2)
+        getLocationOnScreen(location)
+        if (displayX < location[0] || displayX >= location[0] + width ||
+            displayY < location[1] || displayY >= location[1] + height
+        ) return null
+
+        var nearest: MotionTarget? = null
+        var nearestDistance = Float.POSITIVE_INFINITY
+        for (info in keyInfos) {
+            val key = info.view
+            if (key.visibility != View.VISIBLE || !key.isEnabled || key.width <= 0 || key.height <= 0) {
+                continue
+            }
+            key.getLocationOnScreen(location)
+            val left = location[0].toFloat()
+            val top = location[1].toFloat()
+            if (displayX >= left && displayX < left + key.width &&
+                displayY >= top && displayY < top + key.height
+            ) return MotionTarget(key, left, top)
+
+            val dx = displayX - (left + key.width / 2f)
+            val dy = displayY - (top + key.height / 2f)
+            val distance = dx * dx + dy * dy
+            // Strict comparison deliberately preserves layout order for equal distances.
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                val localX = displayX - left
+                val localY = displayY - top
+                nearest = MotionTarget(
+                    view = key,
+                    displayOriginX = left,
+                    displayOriginY = top,
+                    localOffsetX = localX.coerceIn(0f, key.width - 1f) - localX,
+                    localOffsetY = localY.coerceIn(0f, key.height - 1f) - localY
+                )
+            }
+        }
+        return nearest
     }
 
     private fun MotionEvent.displayX(pointerIndex: Int): Float {
@@ -2939,9 +3001,11 @@ class FlickKeyboardView @JvmOverloads constructor(
             displayY,
             source.metaState
         )
+        // A fixed local translation admits a margin-origin touch without changing raw screen
+        // coordinates or movement deltas. Re-clamping MOVE would distort/cancel flick gestures.
         childEvent.offsetLocation(
-            -target.displayOriginX,
-            -target.displayOriginY
+            -target.displayOriginX + target.localOffsetX,
+            -target.displayOriginY + target.localOffsetY
         )
         target.view.dispatchTouchEvent(childEvent)
         childEvent.recycle()
@@ -3302,7 +3366,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun clearSpaceKeyPressedState() {
         dynamicKeyMap.values
             .filter { keyInfo ->
-                keyInfo.keyData.action == KeyAction.Space
+                keyInfo.keyData.action == KeyAction.Space ||
+                    keyInfo.keyData.action == KeyAction.CommitAndInsertSpace
             }
             .forEach { keyInfo ->
                 keyInfo.view.isPressed = false

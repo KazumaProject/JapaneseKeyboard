@@ -13,6 +13,7 @@ class KeyActionMapperSpecialActionTest {
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
             KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace",
             KeyAction.DeleteAfterCursor to "DeleteAfterCursor",
+            KeyAction.CommitAndInsertSpace to "CommitAndInsertSpace",
             KeyAction.MoveCursorUp to "MoveCursorUp",
             KeyAction.MoveCursorDown to "MoveCursorDown",
             KeyAction.DoNothing to "DoNothing"
@@ -44,6 +45,10 @@ class KeyActionMapperSpecialActionTest {
         assertEquals(
             com.kazumaproject.core.R.drawable.backspace_24px_after_cursor,
             KeyActionMapper.iconResIdForAction(KeyAction.DeleteAfterCursor)
+        )
+        assertEquals(
+            com.kazumaproject.core.R.drawable.baseline_space_bar_24,
+            KeyActionMapper.iconResIdForAction(KeyAction.CommitAndInsertSpace)
         )
         assertEquals(
             com.kazumaproject.core.R.drawable.keyboard_24px,
