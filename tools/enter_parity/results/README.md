@@ -16,4 +16,4 @@
 - `unit-tests.json`: JVM suite results and Python integrity-test count.
 - `sha256.json`: hashes of the saved evidence files.
 
-Key events are normalized to action/keyCode; event flags, modifier state, timestamps and device identity are outside this comparison. Compose records keyboard-action callbacks rather than raw InputConnection transport. See [the result report](../../../docs/enter-editor-parity-results.md) for provenance, scope and limitations.
+Key events are normalized to action/keyCode; event flags, modifier state, timestamps and device identity are outside this comparison. Compose records keyboard-action callbacks rather than raw InputConnection transport.
