@@ -1,0 +1,338 @@
+[
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-0",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-0",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-1",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-1",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-2",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-2",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-3",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-3",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-4",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-4",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-up",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-1200-up",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-0",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-0",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-1",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-1",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-2",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-2",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-3",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-3",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-4",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-4",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-up",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "portrait",
+    "phase": "TENKEY-0-default-continuous-60-up",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-0",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-0",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-1",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-1",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-2",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-2",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-3",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-3",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-4",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-4",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-up",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-1200-up",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-0",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-0",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-1",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-1",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-2",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-2",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-3",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-3",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-4",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-4",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-up",
+    "afterThemeRoundtrip": false,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "orientation": "landscape",
+    "phase": "TENKEY-0-default-continuous-60-up",
+    "afterThemeRoundtrip": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  }
+]

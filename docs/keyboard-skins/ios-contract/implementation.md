@@ -1,5 +1,6 @@
 # Continuous popup correction
 
+> 2026-09-09 追記：候補上部の余白を修正し、高さ設定の追加検証と iOS 中断検証を実施。[最新記録](spacing-followup.md)。以下は前回時点の記録を含みます。
 Worktree: `MarkdownHelperKeyboard-keyboard-skins`, branch `codex/keyboard-skins`.
 The pre-PR Default reference is `bbdc7414746adeffc815d5158631e415a1167007`.
 
@@ -61,8 +62,7 @@ The pre-PR Default reference is `bbdc7414746adeffc815d5158631e415a1167007`.
 APK: `16013b4d0d747edd15ef19fd0b78bbbde757335c69d7d7d4ca425f07323a68da`.
 This is the isolated `com.kazumaproject.skinfidelity.lite` build.
 
-The full frozen iOS gate remains open: direct cancellation comparison and normal/
-slow playback review through Simulator UI are blocked by the locked Mac. Frame
-inspection and selected-cell measurements are explicitly bounded evidence, not
-certification of all timing clauses. No merge-readiness claim or PR update follows
-while that remaining comparison is blocked. See [results](results.md).
+The full frozen iOS gate remains open. Simulator UI access has resumed, and public
+UIKit keyboard dismissal during a held contact is recorded in [the follow-up](spacing-followup.md).
+This does not certify every interruption case or all playback/timing clauses.
+No merge-readiness claim or PR update follows from these bounded checks alone.

@@ -1,0 +1,194 @@
+[
+  {
+    "configuration": "spacing-portrait-1-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-1-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-1-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-1-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-2-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-2-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-2-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-2-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-3-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-3-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-3-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-portrait-3-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-1-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-1-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-1-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-1-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-2-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-2-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-2-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-2-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-3-false",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-3-false",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-3-true",
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  },
+  {
+    "configuration": "spacing-landscape-3-true",
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "differences": {},
+    "pixelDifferenceBounds": null
+  }
+]
