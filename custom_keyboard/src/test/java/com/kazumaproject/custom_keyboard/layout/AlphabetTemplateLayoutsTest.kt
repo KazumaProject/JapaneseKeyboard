@@ -2,6 +2,8 @@ package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.DoubleTapPolicy
+import com.kazumaproject.custom_keyboard.data.FlickAction
+import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
@@ -124,6 +126,28 @@ class AlphabetTemplateLayoutsTest {
         assertAllCharacterKeysAreNormalText(layout)
         assertNotNull(layout.keys.firstOrNull { it.keyId == "qwerty_key_q" })
         assertNotNull(layout.keys.firstOrNull { it.keyId == "qwerty_key_p" })
+    }
+
+    @Test
+    fun flickEnglishCursorTemplate_usesCommitAndInsertSpaceForTemplateSpaces() {
+        val layout = KeyboardDefaultLayouts.createFlickEnglishTemplateLayout(
+            isDefaultKey = true,
+            isUpperCase = false
+        )
+
+        val spaceKeys = layout.keys.filter { it.isSpecialKey && it.action == KeyAction.CommitAndInsertSpace }
+        assertEquals(2, spaceKeys.size)
+        assertTrue(layout.keys.none { it.isSpecialKey && it.action == KeyAction.Space })
+
+        val spaceFlicks = layout.flickKeyMaps.getValue("空白").single()
+        assertEquals(
+            KeyAction.CommitAndInsertSpace,
+            (spaceFlicks[FlickDirection.TAP] as FlickAction.Action).action
+        )
+        assertEquals(
+            KeyAction.CommitAndInsertSpace,
+            (spaceFlicks[FlickDirection.UP_LEFT] as FlickAction.Action).action
+        )
     }
 
     @Test

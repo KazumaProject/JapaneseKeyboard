@@ -41,6 +41,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "DELETE" -> KeyAction.Delete
         "BACKSPACE" -> KeyAction.Backspace
         "SPACE" -> KeyAction.Space
+        "CommitAndInsertSpace" -> KeyAction.CommitAndInsertSpace
         "NEW_LINE" -> KeyAction.NewLine
         "ForceNewLine" -> KeyAction.ForceNewLine
         "ENTER" -> KeyAction.Enter
@@ -98,6 +99,7 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "DELETE" -> KeyAction.Delete
         "BACKSPACE" -> KeyAction.Backspace
         "SPACE" -> KeyAction.Space
+        "CommitAndInsertSpace" -> KeyAction.CommitAndInsertSpace
         "NEW_LINE" -> KeyAction.NewLine
         "ENTER" -> KeyAction.Enter
         "CONVERT" -> KeyAction.Convert
@@ -159,6 +161,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.Delete -> "DELETE" to null
             KeyAction.Backspace -> "BACKSPACE" to null
             KeyAction.Space -> "SPACE" to null
+            KeyAction.CommitAndInsertSpace -> "CommitAndInsertSpace" to null
             KeyAction.NewLine -> "NEW_LINE" to null
             KeyAction.Enter -> "ENTER" to null
             KeyAction.Convert -> "CONVERT" to null

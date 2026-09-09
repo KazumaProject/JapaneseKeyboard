@@ -43,6 +43,7 @@ sealed class KeyAction {
     data object Enter : KeyAction()   // 確定（文脈によってNewLineと使い分ける）
     data object Convert : KeyAction() // 変換
     data object Confirm : KeyAction() // 確定
+    data object CommitAndInsertSpace : KeyAction()
     data object DeleteUntilSymbol : KeyAction()
     data object DeleteAfterCursorUntilSymbol : KeyAction()
     data object UndoLastDelete : KeyAction()

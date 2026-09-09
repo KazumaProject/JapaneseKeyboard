@@ -3366,7 +3366,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun clearSpaceKeyPressedState() {
         dynamicKeyMap.values
             .filter { keyInfo ->
-                keyInfo.keyData.action == KeyAction.Space
+                keyInfo.keyData.action == KeyAction.Space ||
+                    keyInfo.keyData.action == KeyAction.CommitAndInsertSpace
             }
             .forEach { keyInfo ->
                 keyInfo.view.isPressed = false
