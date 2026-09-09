@@ -1,0 +1,66 @@
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupCompatibilityInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.SkinPopupCompatibilityInstrumentedTest:
+INSTRUMENTATION_STATUS: test=offsetWindowKeepsFlickAndOverflowGuideAtTheirScreenAnchors
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupCompatibilityInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=offsetWindowKeepsFlickAndOverflowGuideAtTheirScreenAnchors
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest:
+INSTRUMENTATION_STATUS: test=kanaCommitDismissesGuideAndDetachRestoresLabelColors
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=kanaCommitDismissesGuideAndDetachRestoresLabelColors
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=continuousDirectionsKeepOneStationarySurfaceAndCancelCleanly
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=continuousDirectionsKeepOneStationarySurfaceAndCancelCleanly
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=heldGuideSelectionPreservesFlickCommitsAndUsesOneWindow
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.SkinPopupMotionInstrumentedTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=4
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=heldGuideSelectionPreservesFlickCommitsAndUsesOneWindow
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 33.877
+
+OK (4 tests)
+
+
+INSTRUMENTATION_CODE: -1

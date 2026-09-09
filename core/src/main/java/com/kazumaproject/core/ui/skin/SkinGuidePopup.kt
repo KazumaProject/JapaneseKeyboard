@@ -75,7 +75,6 @@ class SkinGuidePopup(context: Context) {
             val popup = overflowWindow ?: PopupWindow(content, 0, 0, false).apply {
                 isTouchable = false
                 isClippingEnabled = false
-                setIsLaidOutInScreen(true)
                 setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                 elevation = 0f
                 animationStyle = 0
@@ -83,7 +82,8 @@ class SkinGuidePopup(context: Context) {
             }.also { overflowWindow = it }
             popup.width = 3 * width
             popup.height = 3 * height
-            popup.showAtLocation(anchor, Gravity.NO_GRAVITY, screenLeft, screenTop)
+            val position = SkinPopupWindowCompat.position(popup, anchor, screenLeft, screenTop)
+            popup.showAtLocation(anchor, Gravity.NO_GRAVITY, position.x, position.y)
         }
         return content
     }

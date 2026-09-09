@@ -17,7 +17,7 @@ object SkinPopupPlacement {
                                    val labels: List<LabelState>,
                                    val window: java.lang.ref.WeakReference<PopupWindow>,
                                    val windowElevation: Float, val animationStyle: Int,
-                                   val clipping: Boolean, val touchable: Boolean, val laidOutInScreen: Boolean,
+                                   val clipping: Boolean, val touchable: Boolean, val laidOutInScreen: Boolean?,
                                    val contentLayout: ViewGroup.LayoutParams?)
     /** A direction change is one child layout transaction inside a stationary window. */
     private class FlickFrame(context: android.content.Context) : FrameLayout(context)
@@ -33,7 +33,7 @@ object SkinPopupPlacement {
                 window.animationStyle=saved.animationStyle
                 window.isClippingEnabled=saved.clipping
                 window.isTouchable=saved.touchable
-                window.setIsLaidOutInScreen(saved.laidOutInScreen)
+                SkinPopupWindowCompat.restoreScreenLayout(window, saved.laidOutInScreen)
                 (window.contentView as? FlickFrame)?.let { frame ->
                     window.dismiss()
                     frame.removeView(bubble)
@@ -66,7 +66,7 @@ object SkinPopupPlacement {
                     LabelState(it, text.gravity, text.includeFontPadding, text.translationY, text.textSize)
                 }
             }, java.lang.ref.WeakReference(window), window.elevation, window.animationStyle,
-                window.isClippingEnabled, window.isTouchable, window.isLaidOutInScreen, bubble.layoutParams)
+                window.isClippingEnabled, window.isTouchable, SkinPopupWindowCompat.savedScreenLayout(window), bubble.layoutParams)
         }
         val layout = SkinPopupGeometry.resolve(w, h, direction, flick)
         bubble.skinDirection = direction
@@ -110,9 +110,10 @@ object SkinPopupPlacement {
             window.height = union.height()
             window.isTouchable = false
             window.isClippingEnabled = false
-            window.setIsLaidOutInScreen(true)
-            val x = position[0] + union.left
-            val y = position[1] + union.top
+            val windowPosition = SkinPopupWindowCompat.position(
+                window, anchor, position[0] + union.left, position[1] + union.top)
+            val x = windowPosition.x
+            val y = windowPosition.y
             // Drop-down placement also fits the transparent frame to the visible screen;
             // that silently displaces the actual balloon on bottom/edge keys.
             if (!window.isShowing) window.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY, x, y)
@@ -125,7 +126,7 @@ object SkinPopupPlacement {
                 window.contentView = bubble
             }
             legacyStates[bubble]?.let { saved ->
-                window.setIsLaidOutInScreen(saved.laidOutInScreen)
+                SkinPopupWindowCompat.restoreScreenLayout(window, saved.laidOutInScreen)
                 window.isClippingEnabled = saved.clipping
                 window.isTouchable = saved.touchable
             }
