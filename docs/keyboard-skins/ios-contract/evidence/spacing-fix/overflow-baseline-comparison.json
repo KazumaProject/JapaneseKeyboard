@@ -1,0 +1,14 @@
+[
+  {
+    "phase": "TENKEY-0-default-empty",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  },
+  {
+    "phase": "TENKEY-0-default-composing",
+    "geometryEqual": true,
+    "pixelsEqual": true,
+    "pixelDifferenceBounds": null
+  }
+]

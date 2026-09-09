@@ -1,0 +1,58 @@
+[
+  {
+    "label": "spacing-portrait-1-false",
+    "passed": true
+  },
+  {
+    "label": "spacing-portrait-1-true",
+    "passed": true
+  },
+  {
+    "label": "spacing-portrait-2-false",
+    "passed": true
+  },
+  {
+    "label": "spacing-portrait-2-true",
+    "passed": true
+  },
+  {
+    "label": "spacing-portrait-3-false",
+    "passed": true
+  },
+  {
+    "label": "spacing-portrait-3-true",
+    "passed": true
+  },
+  {
+    "label": "spacing-landscape-1-false",
+    "passed": true
+  },
+  {
+    "label": "spacing-landscape-1-true",
+    "passed": true
+  },
+  {
+    "label": "spacing-landscape-2-false",
+    "passed": true
+  },
+  {
+    "label": "spacing-landscape-2-true",
+    "passed": true
+  },
+  {
+    "label": "spacing-landscape-3-false",
+    "passed": true
+  },
+  {
+    "label": "spacing-landscape-3-true",
+    "passed": true
+  },
+  {
+    "label": "spacing-interaction-portrait",
+    "passed": true
+  },
+  {
+    "label": "spacing-interaction-landscape",
+    "passed": true
+  }
+]

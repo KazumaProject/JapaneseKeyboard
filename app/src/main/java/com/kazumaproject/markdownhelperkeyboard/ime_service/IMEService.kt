@@ -16945,8 +16945,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             var changed = false
-            // Preserve the pre-skin Default layout; only Cupertino reserves extra inset space.
-            val windowHeight = resolveSkinWindowHeight(finalKeyboardHeight, systemBottomInset, keyboardSkinId)
+            // All themes share the same content budget and bottom padding.
+            val windowHeight = finalKeyboardHeight
             if (forceLayout || params.height != windowHeight) {
                 params.height = windowHeight
                 changed = true
@@ -17155,7 +17155,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = resolveSkinWindowHeight(finalKeyboardHeight, systemBottomInset, keyboardSkinId)
+            params.height = finalKeyboardHeight
             params.width = finalKeyboardWidth
             params.bottomMargin = finalBottomMargin
             mainView.root.layoutParams = params
