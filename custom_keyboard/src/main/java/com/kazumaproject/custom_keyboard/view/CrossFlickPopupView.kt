@@ -13,6 +13,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
@@ -170,7 +172,10 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         updateCellColors()
     }
 
+    private var skinId = KeyboardSkinId.DEFAULT
+
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        skinId = style.skinId
         popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
         popupBackgroundColor = style.backgroundColor
         popupTextColor = style.textColor
@@ -223,6 +228,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             cell.layoutParams = params
             gridLayout.addView(cell)
             cells[direction] = cell
+            updateCellColors()
             return
         }
 
@@ -280,6 +286,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
                 gridLayout.addView(placeholder)
             }
         }
+        updateCellColors()
     }
 
     fun highlightDirection(direction: FlickDirection?) {
@@ -294,6 +301,15 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
     private fun updateCellColors() {
         val theme = colorTheme
         cells.forEach { (dir, cell) ->
+            KeyboardSkinRegistry.find(skinId)?.let { skin ->
+                val selected = dir == highlightedDirection
+                cell.background = skin.popupDrawable(resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER, selected)
+                val color = if (selected) skin.palette.selectionText else skin.palette.text
+                cell.textView.setTextColor(color)
+                cell.imageView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+                return@forEach
+            }
+            cell.background = cell.backgroundShape
             if (theme != null) {
                 cell.applyColors(
                     theme,

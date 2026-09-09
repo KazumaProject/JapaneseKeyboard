@@ -1,5 +1,7 @@
 package com.kazumaproject.tenkey.extensions
 
+import com.kazumaproject.core.ui.skin.SkinPopupPlacement
+import com.kazumaproject.core.ui.skin.PopupDirection
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
@@ -32,6 +34,8 @@ fun PopupWindow.setPopUpWindowFlickRight(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.RIGHT, true)) return
+
     val baseWidth = anchorView.width + (anchorView.width) / 2 + 24
     val baseHeight = anchorView.height
     this.width = baseWidth.scaledPopupSize(sizeScalePercent)
@@ -82,6 +86,8 @@ fun PopupWindow.setPopUpWindowFlickLeft(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.LEFT, true)) return
+
     val baseWidth = anchorView.width + (anchorView.width) / 2 + 24
     val baseHeight = anchorView.height
     this.width = baseWidth.scaledPopupSize(sizeScalePercent)
@@ -135,6 +141,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.BOTTOM, true)) return
+
     val baseWidth = anchorView.width
     val baseHeight = anchorView.height + (anchorView.height / 2) + 24
     this.width = baseWidth.scaledPopupSize(sizeScalePercent)
@@ -207,6 +215,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.TOP, true)) return
+
     val baseWidth = anchorView.width
     val baseHeight = anchorView.height + (anchorView.height / 2) + 24
     this.width = baseWidth.scaledPopupSize(sizeScalePercent)
@@ -263,6 +273,8 @@ fun PopupWindow.setPopUpWindowCenter(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.CENTER, false)) return
+
     this.width = anchorView.width.scaledPopupSize(sizeScalePercent)
     this.height = anchorView.height.scaledPopupSize(sizeScalePercent)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -310,6 +322,8 @@ fun PopupWindow.setPopUpWindowRight(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.RIGHT, false)) return
+
     this.width = anchorView.width.scaledPopupSize(sizeScalePercent)
     this.height = anchorView.height.scaledPopupSize(sizeScalePercent)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -357,6 +371,8 @@ fun PopupWindow.setPopUpWindowLeft(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.LEFT, false)) return
+
     this.width = anchorView.width.scaledPopupSize(sizeScalePercent)
     this.height = anchorView.height.scaledPopupSize(sizeScalePercent)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -407,6 +423,8 @@ fun PopupWindow.setPopUpWindowBottom(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.BOTTOM, false)) return
+
     this.width = anchorView.width.scaledPopupSize(sizeScalePercent)
     this.height = anchorView.height.scaledPopupSize(sizeScalePercent)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -476,6 +494,8 @@ fun PopupWindow.setPopUpWindowTop(
     anchorView: View,
     sizeScalePercent: Int = 100
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.TOP, false)) return
+
     this.width = anchorView.width.scaledPopupSize(sizeScalePercent)
     this.height = anchorView.height.scaledPopupSize(sizeScalePercent)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
