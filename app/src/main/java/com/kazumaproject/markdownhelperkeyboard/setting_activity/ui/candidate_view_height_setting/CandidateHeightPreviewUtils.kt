@@ -29,6 +29,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import com.kazumaproject.custom_keyboard.view.KeyHitTestMode
 import com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.resolveInitialCustomKeyboardSelection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -294,7 +295,7 @@ private fun renderNonCustomKeyboardPreviewType(
                     layoutType = layoutType,
                     inputMode = inputMode.name
                 )
-                views.flick.setKeyboard(layout)
+                views.flick.setKeyboard(layout, KeyHitTestMode.NEAREST_KEY)
             }
         }
 
