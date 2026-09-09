@@ -56,7 +56,8 @@ class SkinFidelityHostActivity : Activity() {
             root.addView(frameClock, FrameLayout.LayoutParams(640,60).apply {leftMargin=20;topMargin=400})
         }
         root.setOnApplyWindowInsetsListener { view, insets ->
-            val bars = insets.getInsets(WindowInsets.Type.systemBars())
+            val bars = androidx.core.view.WindowInsetsCompat.toWindowInsetsCompat(insets, view)
+                .getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             view.setPadding(bars.left, 0, bars.right, bars.bottom)
             insets
         }

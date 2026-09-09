@@ -171,8 +171,8 @@ class SkinPopupMotionInstrumentedTest {
                             val guide=value("skinGuide") as? com.kazumaproject.core.ui.skin.SkinGuidePopup
                             fun assertSafe(surface: android.view.View) {
                                 val size=android.graphics.Point(); surface.display.getRealSize(size)
-                                val bars=host.window.decorView.rootWindowInsets.getInsetsIgnoringVisibility(
-                                    android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout())
+                                val bars=androidx.core.view.ViewCompat.getRootWindowInsets(host.window.decorView)!!.getInsetsIgnoringVisibility(
+                                    androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
                                 val p=IntArray(2); surface.getLocationOnScreen(p)
                                 org.junit.Assert.assertTrue("Popup overlaps system bars: ${p.toList()} ${surface.width}x${surface.height}",
                                     p[0]>=bars.left && p[1]>=bars.top && p[0]+surface.width<=size.x-bars.right && p[1]+surface.height<=size.y-bars.bottom)
