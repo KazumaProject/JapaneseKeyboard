@@ -12706,6 +12706,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12784,6 +12785,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12935,6 +12937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -13224,6 +13227,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -13482,6 +13487,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         handleDeleteKeyTap(insertString, suggestions)
                         stopDeleteLongPress()
+                    }
+
+                    KeyAction.CommitAndInsertSpace -> {
+                        handleCommitAndInsertSpace()
                     }
 
                     KeyAction.ForceNewLine -> {
@@ -13766,6 +13775,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
         })
@@ -26946,6 +26957,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
+    }
+
+    /**
+     * Commits the raw composing text and inserts one half-width space at the
+     * logical cursor position. The helper replaces the rendered composition
+     * with its tail, then inserts the left text and space before that tail.
+     */
+    private fun handleCommitAndInsertSpace() {
+        if (dispatchDirectSpaceIfNeeded()) return
+
+        if (currentInputConnection == null) return
+        if (!commitRawTextAndInsertSpace(inputString.value, stringInTail.get())) return
+
+        qwertyGlideInputCoordinator?.cancelPending()
+        currentQwertyGlideCompositionText = null
+        suppressNextQwertyGlideSuggestionRefresh = false
+        clearSelectionActionSession(clearSuggestions = false)
+        clearSuggestionStateAfterCommit()
+        resetFlagsEnterKeyNotHenkan()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun setSpaceKeyActionEnglishAndNumberEmpty(isFlick: Boolean) {
