@@ -229,7 +229,112 @@ final class ReferenceUITests: XCTestCase {
         }
     }
 
-    /// Warm all tested surfaces before the measured matrix; never discard a measured trial.
+    func testContinuousKanaDiscovery() throws {
+        try continuousKana(landscape: false, labels: ["な"], trials: 0..<1, capture: true)
+    }
+
+    func testContinuousKanaLandscapeDiscovery() throws {
+        try continuousKana(landscape: true, labels: ["な"], trials: 0..<1, capture: true)
+    }
+
+    // One warm-up and three measured trials, declared before capture. Keep every result.
+    func testContinuousKanaPortraitMatrix() throws {
+        try continuousKana(landscape: false, labels: ["な", "た", "は", "あ", "わ"], trials: -1..<3)
+    }
+
+    func testContinuousKanaLandscapeMatrix() throws {
+        try continuousKana(landscape: true, labels: ["な", "た", "は", "あ", "わ"], trials: -1..<3)
+    }
+
+    func testContinuousKanaLandscapeTiming() throws {
+        try continuousKana(landscape: true, labels: ["な"], trials: -1..<3)
+    }
+
+    func testContinuousKanaBoundaryAndReverse() throws {
+        for landscape in [false, true] {
+            for path in ["reverse", "boundary", "onset"] {
+                try continuousKana(landscape: landscape, labels: ["な"], trials: -1..<3, path: path)
+            }
+        }
+    }
+
+    func testContinuousKanaNativeOnset() throws {
+        for landscape in [false, true] {
+            try continuousKana(landscape: landscape, labels: ["な"], trials: -1..<3,
+                path: "onset", onsetCenter: 0.4)
+        }
+    }
+
+    private func continuousKana(landscape: Bool, labels: [String], trials: Range<Int>, capture: Bool = false, path: String = "forward", onsetCenter: Double = 0.5) throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication(bundleIdentifier: "com.kazumaproject.keyboard-skins.reference")
+        app.launchArguments = ["--fidelity-clock", "--motion-contrast",
+            "--capture-name=\(landscape ? "landscape" : "portrait")-\(path)\(onsetCenter == 0.5 ? "" : "-400")"]
+        app.launch()
+        app.textFields["reference.input"].tap()
+        if app.buttons["Continue"].waitForExistence(timeout: 1) { app.buttons["Continue"].tap() }
+        app.buttons["Next keyboard"].firstMatch.press(forDuration: 1.2)
+        app.cells["日本語かな"].tap()
+        if landscape {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            Thread.sleep(forTimeInterval: 1)
+            XCTAssertGreaterThan(app.frame.width, app.frame.height, "Reference must actually rotate")
+        } else {
+            XCTAssertGreaterThan(app.frame.height, app.frame.width)
+        }
+        for appearance in ["Light", "Dark"] {
+            app.segmentedControls["reference.appearance"].buttons[appearance].tap()
+            Thread.sleep(forTimeInterval: 0.5)
+            for label in labels { for trial in trials { for hold in [0.06, 1.2] {
+                let key = app.keys[label]
+                XCTAssertTrue(key.isHittable)
+                let frame = key.frame
+                let center = CGPoint(x: frame.midX, y: frame.midY)
+                var vectors: [CGVector] = [.zero, .zero, CGVector(dx: 0, dy: -0.9),
+                    CGVector(dx: 0.9, dy: 0), CGVector(dx: -0.9, dy: 0),
+                    CGVector(dx: 0, dy: 0.9), .zero]
+                var offsets = [0.0, hold, hold+0.15, hold+0.65, hold+1.15, hold+1.65, hold+2.15]
+                if path == "reverse" {
+                    vectors = [.zero, .zero, CGVector(dx: 0, dy: 0.9), CGVector(dx: -0.9, dy: 0),
+                        CGVector(dx: 0.9, dy: 0), CGVector(dx: 0, dy: -0.9), .zero]
+                } else if path == "boundary" {
+                    vectors = [.zero, .zero, CGVector(dx: 0, dy: -0.35), CGVector(dx: 0, dy: -0.1),
+                        CGVector(dx: 0, dy: -0.35), CGVector(dx: 0, dy: -0.1), .zero]
+                } else if path == "onset" {
+                    vectors = [.zero, .zero, CGVector(dx: 0, dy: -0.35), .zero,
+                        CGVector(dx: 0.9, dy: 0), CGVector(dx: -0.9, dy: 0), .zero]
+                    let onset = onsetCenter + (hold < 1 ? -0.05 : 0.05)
+                    offsets = [0, onset, onset+0.08, onset+0.16, onset+0.45, onset+0.95, onset+1.45]
+                }
+                let points = vectors.map { vector -> NSValue in
+                    let p = CGPoint(x: center.x+vector.dx*frame.width, y: center.y+vector.dy*frame.height)
+                    // XCTest's low-level injector consumes physical-screen coordinates.
+                    // Validate this transform against the app's observed UITouch positions.
+                    return NSValue(cgPoint: landscape ? CGPoint(x: app.frame.height-p.y, y: p.x) : p)
+                }
+                let tag = "\(landscape ? "landscape" : "portrait")-\(appearance)-\(label)-\(hold)-trial\(trial)\(path == "forward" ? "" : "-" + path)"
+                let before = app.textFields["reference.input"].value as? String
+                print("CONTINUOUS_BEGIN \(tag) \(Date().timeIntervalSince1970) \(frame) \(offsets)")
+                let completed = expectation(description: tag)
+                ContinuousTouch.sendPoints(points, offsets: offsets.map(NSNumber.init(value:)),
+                    orientation: landscape ? .landscapeRight : .portrait) { error in
+                    XCTAssertNil(error)
+                    completed.fulfill()
+                }
+                wait(for: [completed], timeout: 15)
+                print("CONTINUOUS_END \(tag) \(Date().timeIntervalSince1970)")
+                let after = app.textFields["reference.input"].value as? String
+                XCTAssertNotEqual(before, after, "Gesture must reach keyboard")
+                XCTAssertTrue(after?.hasSuffix(label) == true, "Return to center must commit the original key")
+                print("CONTINUOUS_OUTPUT \(tag) \(after ?? "")")
+                if capture { attach(app, tag) }
+                Thread.sleep(forTimeInterval: 0.6)
+            } } }
+        }
+    }
+
     func testFrameMotionMatrix() throws {
         continueAfterFailure = false
         let app = XCUIApplication(bundleIdentifier: "com.kazumaproject.keyboard-skins.reference")
@@ -283,7 +388,7 @@ final class ReferenceUITests: XCTestCase {
     }
 
     private func attach(_ app: XCUIApplication, _ name: String) {
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)

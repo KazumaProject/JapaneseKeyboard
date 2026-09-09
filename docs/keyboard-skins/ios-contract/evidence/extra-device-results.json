@@ -1,0 +1,26 @@
+[
+  {
+    "label": "extra-portrait-reverse",
+    "passed": true
+  },
+  {
+    "label": "extra-portrait-boundary",
+    "passed": true
+  },
+  {
+    "label": "extra-portrait-onset",
+    "passed": true
+  },
+  {
+    "label": "extra-landscape-reverse",
+    "passed": true
+  },
+  {
+    "label": "extra-landscape-boundary",
+    "passed": true
+  },
+  {
+    "label": "extra-landscape-onset",
+    "passed": true
+  }
+]

@@ -79,12 +79,15 @@ class SkinRegressionDeviceTest {
         val symbolRootId = if (floating) "floating_symbol_keyboard" else "keyboard_symbol_view"
         val landscape = args.getString("rotation") == "landscape"
         val large = args.getString("layoutSize") == "large"
+        val columns = args.getString("columns") ?: "2"
+        val tabs = args.getString("tabs") == "true"
+        val candidateHeight = args.getString("candidateHeight")?.toInt() ?: if(large)150 else 110
         val keyboards = (args.getString("keyboards") ?: "TENKEY,QWERTY").split(',')
         fun capture(name: String, rootId: String) {
             SystemClock.sleep(500)
             val all = nodes()
             val row = JSONObject().put("name", name)
-            for (id in listOf(rootId, "suggestionView_parent", "keyboard_symbol_view", "return_jp_keyboard_button", "key_1", "key_a")) {
+            for (id in listOf(rootId, "suggestionView_parent", "suggestion_recycler_view", "candidate_tab_layout", "keyboard_symbol_view", "return_jp_keyboard_button", "key_1", "key_a")) {
                 all.firstOrNull { it.isVisibleToUser && it.viewIdResourceName == "${ctx.packageName}:id/$id" }?.let {
                     val r = bounds(it); row.put(id, JSONArray(listOf(r.left,r.top,r.right,r.bottom)))
                 }
@@ -99,9 +102,12 @@ class SkinRegressionDeviceTest {
                 val r = bounds(visibleRoot)
                 check(r.bottom <= bmp.height - navigationInsets.bottom && r.left >= navigationInsets.left && r.right <= bmp.width - navigationInsets.right) { "Keyboard overlaps navigation: $r / $navigationInsets" }
             }
-            if (name.contains("cupertino") && name.endsWith("composing") && name.startsWith("TENKEY") && !floating) {
+            if (name.endsWith("composing") && name.startsWith("TENKEY") && !floating) {
                 val input = all.first { it.isVisibleToUser && it.viewIdResourceName == "android:id/inputArea" }.let(::bounds)
                 val candidates = all.filter { it.isVisibleToUser && it.viewIdResourceName == "${ctx.packageName}:id/suggestion_item_text_view" }.map(::bounds)
+                row.put("candidateRows", candidates.map { it.centerY() }.distinct().size)
+                row.put("candidateBounds", JSONArray(candidates.map { JSONArray(listOf(it.left,it.top,it.right,it.bottom)) }))
+                check(candidates.map { it.centerY() }.distinct().size == columns.toInt()) { "Expected $columns candidate rows: $candidates" }
                 check(candidates.isNotEmpty() && candidates.all { it.top >= input.top && it.bottom <= bounds(requireNotNull(visibleRoot)).top }) { "Cupertino candidates clipped: $candidates / $input" }
             }
             if (name.contains("cupertino") && name.endsWith("symbol-category")) {
@@ -112,6 +118,21 @@ class SkinRegressionDeviceTest {
                     if (android.graphics.Color.red(pixel)>245 && android.graphics.Color.green(pixel)>245 && android.graphics.Color.blue(pixel)>245) whitePixels++
                 }
                 check(whitePixels > 20) { "Selected symbol icon is invisible: $whitePixels foreground pixels" }
+            }
+            if (name.endsWith("composing") && !floating) {
+                val tab = all.firstOrNull { it.isVisibleToUser && it.viewIdResourceName == "${ctx.packageName}:id/candidate_tab_layout" }
+                check((tab != null) == tabs) { "Candidate tab visibility differs from preference" }
+                if (tab != null && name.contains("cupertino")) {
+                    val area = bounds(tab)
+                    val selected = if (name.contains("cupertino_dark")) 0xff0091ff.toInt() else 0xff0088ff.toInt()
+                    val unselected = if (name.contains("cupertino_dark")) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+                    var selectedPixels=0; var unselectedPixels=0
+                    for (y in area.top until area.bottom) for (x in area.left until area.right) {
+                        when (bmp.getPixel(x,y)) { selected -> selectedPixels++; unselected -> unselectedPixels++ }
+                    }
+                    row.put("selectedTabPixels",selectedPixels).put("unselectedTabPixels",unselectedPixels)
+                    check(selectedPixels>20 && unselectedPixels>20) { "Tab colors stale: $selectedPixels / $unselectedPixels" }
+                }
             }
             File(out, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG,100,it) }
             if (name.contains("-default-") && !name.endsWith("FAILURE")) {
@@ -140,10 +161,12 @@ class SkinRegressionDeviceTest {
                 .putString("keyboard_skin_preference",skins.first())
                 .putBoolean("save_last_used_keyboard",false)
                 .putBoolean("keyboard_floating_preference",floating)
-                .putString("candidate_column_preference","2").putString("candidate_column_landscape_preference","2")
-                .putInt("candidate_view_height_dp_preference",if(large)150 else 110)
+                .putString("candidate_column_preference",columns).putString("candidate_column_landscape_preference",columns)
+                .putBoolean("candidate_tab_visibility_preference",tabs)
+                .putFloat("candidate_letter_size_preference",args.getString("candidateFont")?.toFloat() ?: 14f)
+                .putInt("candidate_view_height_dp_preference",candidateHeight)
                 .putInt("candidate_view_empty_height_dp_preference",if(large)90 else 60)
-                .putInt("candidate_view_height_dp_landscape_preference",if(large)150 else 110)
+                .putInt("candidate_view_height_dp_landscape_preference",candidateHeight)
                 .putInt("candidate_view_empty_height_dp_landscape_preference",if(large)90 else 60)
                 .putBoolean("shortcut_toolbar_visibility_preference",true)
                 .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",true)
@@ -157,10 +180,20 @@ class SkinRegressionDeviceTest {
                 .putBoolean("tenkey_restore_input_mode_on_restart_preference",false)
                 .putBoolean("flick_input_only_preference",true)
                 .commit())
-            shell("ime enable $target"); shell("ime set $target")
+            val startHostBeforeIme = args.getString("startHostBeforeIme") == "true"
+            if (!startHostBeforeIme) { shell("ime enable $target"); shell("ime set $target") }
             for (keyboard in keyboards) {
                 prefs.edit().putString("keyboard_order_preference","[\"$keyboard\"]").commit()
                 ActivityScenario.launch<FastInputHostActivity>(Intent(ctx, FastInputHostActivity::class.java)).use { scenario ->
+                    if (startHostBeforeIme) {
+                        scenario.onActivity {
+                            check((it.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) == landscape)
+                        }
+                        // The launcher may enforce portrait even when user_rotation is 90.
+                        // Establish the editor's actual orientation before binding the IME.
+                        SystemClock.sleep(500)
+                        shell("ime enable $target"); shell("ime set $target")
+                    }
                     for ((index,skin) in skins.withIndex()) {
                         val name = "$keyboard-$index-$skin"
                         try {
@@ -171,9 +204,124 @@ class SkinRegressionDeviceTest {
                             awaitNode(keyId); SystemClock.sleep(1000)
                             scenario.onActivity { navigationInsets = it.window.decorView.rootWindowInsets.getInsets(android.view.WindowInsets.Type.navigationBars()) }
                             capture("$name-empty",rootId)
+                            if (args.getString("timedContinuous") == "true" && keyboard == "TENKEY") {
+                                val traces=JSONArray()
+                                val keys=(args.getString("continuousKeys") ?: "key_5,key_4,key_6,key_1,key_11").split(',')
+                                for (keyName in keys) for (trial in -1..2) for (hold in listOf(60L,1200L)) {
+                                    scenario.onActivity { it.restartEditorInput(true) }; awaitNode(keyName); SystemClock.sleep(500)
+                                    val keyNode=awaitNode(keyName)
+                                    val expected=keyNode.text.toString().trim()
+                                    val anchor=bounds(keyNode)
+                                    val x=anchor.exactCenterX(); val y=anchor.exactCenterY()
+                                    val path=args.getString("continuousPath") ?: "forward"
+                                    val points=when(path) {
+                                        "reverse" -> listOf(0f to 0f,0f to 0f,0f to .9f,-.9f to 0f,.9f to 0f,0f to -.9f,0f to 0f)
+                                        "boundary" -> listOf(0f to 0f,0f to 0f,0f to -.35f,0f to -.1f,0f to -.35f,0f to -.1f,0f to 0f)
+                                        "onset" -> listOf(0f to 0f,0f to 0f,0f to -.35f,0f to 0f,.9f to 0f,-.9f to 0f,0f to 0f)
+                                        else -> listOf(0f to 0f,0f to 0f,0f to -.9f,.9f to 0f,-.9f to 0f,0f to .9f,0f to 0f)
+                                    }
+                                    val offsets=if(path=="onset") {
+                                        val center=args.getString("continuousOnsetCenterMs")?.toLong() ?: 500L
+                                        val onset=center + if(hold<100)-50L else 50L
+                                        listOf(0L,onset,onset+80,onset+160,onset+450,onset+950,onset+1450)
+                                    } else listOf(0L,hold,hold+150,hold+650,hold+1150,hold+1650,hold+2150)
+                                    val down=SystemClock.uptimeMillis()
+                                    val events=JSONArray()
+                                    val trace=JSONObject().put("name","$name-$keyName-$hold-$trial")
+                                        .put("trial",trial).put("hold",hold).put("key",keyName).put("path",path)
+                                        .put("offsets",JSONArray(offsets))
+                                        .put("anchor",JSONArray(listOf(anchor.left,anchor.top,anchor.right,anchor.bottom)))
+                                        .put("events",events)
+                                    fun send(action:Int,px:Float,py:Float) {
+                                        val time=SystemClock.uptimeMillis()
+                                        val start=SystemClock.elapsedRealtimeNanos()
+                                        val event=MotionEvent.obtain(down,time,action,px,py,0)
+                                        event.source=InputDevice.SOURCE_TOUCHSCREEN
+                                        val accepted=ui.injectInputEvent(event,true); event.recycle()
+                                        events.put(JSONObject().put("action",action).put("timeMs",time).put("x",px).put("y",py)
+                                            .put("elapsedStartNanos",start).put("elapsedEndNanos",SystemClock.elapsedRealtimeNanos()))
+                                        check(accepted)
+                                    }
+                                    var released=false
+                                    try {
+                                        send(MotionEvent.ACTION_DOWN,x,y)
+                                        for (segment in 1 until points.size) {
+                                            while(SystemClock.uptimeMillis()-down < offsets[segment]) {
+                                                val elapsed=SystemClock.uptimeMillis()-down
+                                                val f=((elapsed-offsets[segment-1]).toFloat()/(offsets[segment]-offsets[segment-1])).coerceIn(0f,1f)
+                                                val previous=points[segment-1]; val next=points[segment]
+                                                if(segment>1) send(MotionEvent.ACTION_MOVE,
+                                                    x+(previous.first+(next.first-previous.first)*f)*anchor.width(),
+                                                    y+(previous.second+(next.second-previous.second)*f)*anchor.height())
+                                                SystemClock.sleep(16)
+                                            }
+                                            val point=points[segment]
+                                            send(MotionEvent.ACTION_MOVE,x+point.first*anchor.width(),y+point.second*anchor.height())
+                                        }
+                                        SystemClock.sleep(250)
+                                        send(MotionEvent.ACTION_UP,x,y); released=true
+                                        SystemClock.sleep(500)
+                                        trace.put("expected",expected).put("actual",text(scenario))
+                                        check(text(scenario)==expected) { "Continuous gesture committed ${text(scenario)} instead of $expected" }
+                                    } finally {
+                                        if(!released) send(MotionEvent.ACTION_CANCEL,x,y)
+                                        traces.put(trace)
+                                        File(out,"$name-continuous-traces.json").writeText(traces.toString(2))
+                                    }
+                                }
+                                ins.sendStatus(0, android.os.Bundle().apply { putString("stream", "PASS $label $name timed continuous\n") })
+                                continue
+                            }
+                            if (args.getString("continuous") == "true" && keyboard == "TENKEY") {
+                                val anchor = bounds(awaitNode("key_5"))
+                                for (hold in listOf(60L, 1200L)) {
+                                    val down = SystemClock.uptimeMillis()
+                                    val x = anchor.exactCenterX(); val y = anchor.exactCenterY()
+                                    fun send(action: Int, px: Float, py: Float) {
+                                        val e = MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,px,py,0)
+                                        e.source = InputDevice.SOURCE_TOUCHSCREEN
+                                        check(ui.injectInputEvent(e,true)); e.recycle()
+                                    }
+                                    send(MotionEvent.ACTION_DOWN,x,y)
+                                    SystemClock.sleep(hold)
+                                    val path = listOf(0f to -0.9f, 0.9f to 0f, -0.9f to 0f, 0f to 0.9f, 0f to 0f)
+                                    var previous = 0f to 0f
+                                    try {
+                                        for ((step,point) in path.withIndex()) {
+                                            for (frame in 1..9) {
+                                                val f = frame/9f
+                                                send(MotionEvent.ACTION_MOVE,
+                                                    x+(previous.first+(point.first-previous.first)*f)*anchor.width(),
+                                                    y+(previous.second+(point.second-previous.second)*f)*anchor.height())
+                                                SystemClock.sleep(16)
+                                            }
+                                            capture("$name-continuous-$hold-$step",rootId)
+                                            previous=point
+                                        }
+                                    } finally { send(MotionEvent.ACTION_UP,x,y) }
+                                    capture("$name-continuous-$hold-up",rootId)
+                                    scenario.onActivity { it.restartEditorInput(true) }; awaitNode(keyId); SystemClock.sleep(500)
+                                }
+                            }
                             tap(keyId)
                             check(text(scenario).isNotEmpty()) { "Tap did not enter text" }
                             capture("$name-composing",rootId)
+                            if (args.getString("exerciseTabs") == "true" && keyboard == "TENKEY") {
+                                if(tabs) for ((tabIndex,labelText) in listOf("変換","英数カナ","予測").withIndex()) {
+                                    val area=bounds(awaitNode("candidate_tab_layout"))
+                                    val tab=nodes().first { it.isVisibleToUser && it.text?.toString()==labelText && area.contains(bounds(it)) }
+                                    gesture(bounds(tab)); awaitNode("suggestion_item_text_view")
+                                    capture("$name-tab-$tabIndex",rootId)
+                                }
+                                tap("suggestion_visibility"); awaitNode("candidates_row_view")
+                                capture("$name-expanded","candidates_row_view")
+                                tap("suggestion_visibility"); awaitNode(keyId)
+                                capture("$name-collapsed",rootId)
+                            }
+                            if (args.getString("candidateOnly") == "true") {
+                                ins.sendStatus(0, android.os.Bundle().apply { putString("stream", "PASS $label $name candidate rows=$columns tabs=$tabs\n") })
+                                continue
+                            }
                             if(keyboard=="TENKEY") {
                                 tap("suggestion_item_text_view")
                                 check(text(scenario).isNotEmpty()) { "Candidate did not commit" }

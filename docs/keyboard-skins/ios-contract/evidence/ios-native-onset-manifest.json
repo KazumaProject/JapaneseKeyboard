@@ -1,0 +1,19 @@
+{
+  "runnerSucceeded": true,
+  "beginCount": 32,
+  "endCount": 32,
+  "sources": [
+    {
+      "orientation": "portrait",
+      "gestures": 16,
+      "complete": true,
+      "sha256": "64672160dea69824b76ed313f77d912c7580211b35323f77a77bfbd798b18506"
+    },
+    {
+      "orientation": "landscape",
+      "gestures": 16,
+      "complete": true,
+      "sha256": "19f30f5401b9b79d670dc18ea5d86658e6db8f22438cbf64cade938bcc07188a"
+    }
+  ]
+}

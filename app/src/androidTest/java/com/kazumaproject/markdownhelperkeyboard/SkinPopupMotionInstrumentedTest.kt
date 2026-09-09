@@ -124,6 +124,101 @@ class SkinPopupMotionInstrumentedTest {
         }
     }
 
+    @Test fun continuousDirectionsKeepOneStationarySurfaceAndCancelCleanly() {
+        val ins = InstrumentationRegistry.getInstrumentation()
+        for (dark in listOf(false, true)) {
+            val commits = java.util.concurrent.CopyOnWriteArrayList<Char>()
+            ActivityScenario.launch<SkinFidelityHostActivity>(Intent(ins.targetContext, SkinFidelityHostActivity::class.java)
+                .putExtra("keyboard", "kana").putExtra("dark", dark)).use { scenario ->
+                SystemClock.sleep(500)
+                lateinit var key: TextView
+                var x=0f; var y=0f; var w=0; var h=0
+                scenario.onActivity { host ->
+                    val keyboard = host.keyboard as com.kazumaproject.tenkey.TenKey
+                    keyboard.setOnFlickListener(object : com.kazumaproject.core.domain.listener.FlickListener {
+                        override fun onFlick(gestureType: com.kazumaproject.core.domain.state.GestureType,
+                            key: com.kazumaproject.core.domain.key.Key, char: Char?) { char?.let(commits::add) }
+                    })
+                }
+                for (keyId in listOf(com.kazumaproject.tenkey.R.id.key_1,
+                    com.kazumaproject.tenkey.R.id.key_5,com.kazumaproject.tenkey.R.id.key_11)) {
+                var expected=""
+                scenario.onActivity { host ->
+                    key=host.keyboard.findViewById(keyId)
+                    expected=key.text.toString().trim()
+                    val point=IntArray(2); key.getLocationOnScreen(point)
+                    w=key.width; h=key.height; x=point[0]+w/2f; y=point[1]+h/2f
+                }
+                for (hold in listOf(60L,650L)) for (cancel in listOf(false,true)) {
+                    val count=commits.size
+                    val down=SystemClock.uptimeMillis()
+                    fun touch(action:Int,px:Float,py:Float) {
+                        val event=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,px,py,0)
+                        event.source=InputDevice.SOURCE_TOUCHSCREEN
+                        check(ins.uiAutomation.injectInputEvent(event,true)); event.recycle()
+                    }
+                    touch(MotionEvent.ACTION_DOWN,x,y); SystemClock.sleep(hold)
+                    var released=false
+                    try {
+                    var position: List<Int>?=null
+                    for ((dx,dy) in listOf(0f to -0.9f,0.9f to 0f,-0.9f to 0f,0f to 0.9f)) {
+                        touch(MotionEvent.ACTION_MOVE,x+dx*w,y+dy*h)
+                        SystemClock.sleep(35)
+                        scenario.onActivity { host ->
+                            val keyboard=host.keyboard
+                            fun value(name:String):Any? = keyboard.javaClass.getDeclaredField(name).apply { isAccessible=true }.get(keyboard)
+                            val popup=value("popupWindowActive") as android.widget.PopupWindow
+                            val guide=value("skinGuide") as? com.kazumaproject.core.ui.skin.SkinGuidePopup
+                            fun assertSafe(surface: android.view.View) {
+                                val size=android.graphics.Point(); surface.display.getRealSize(size)
+                                val bars=host.window.decorView.rootWindowInsets.getInsetsIgnoringVisibility(
+                                    android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout())
+                                val p=IntArray(2); surface.getLocationOnScreen(p)
+                                org.junit.Assert.assertTrue("Popup overlaps system bars: ${p.toList()} ${surface.width}x${surface.height}",
+                                    p[0]>=bars.left && p[1]>=bars.top && p[0]+surface.width<=size.x-bars.right && p[1]+surface.height<=size.y-bars.bottom)
+                            }
+                            org.junit.Assert.assertEquals("Original key label disappears", expected, key.text.toString().trim())
+                            if (hold < 100) {
+                                org.junit.Assert.assertTrue(popup.isShowing)
+                                org.junit.Assert.assertFalse(guide?.isShowing == true)
+                                assertSafe((popup.contentView as android.view.ViewGroup).getChildAt(0))
+                                val location=IntArray(2); popup.contentView.getLocationOnScreen(location)
+                                org.junit.Assert.assertEquals("Frame shifted horizontally at edge", (x-w*1.5f).toInt(), location[0])
+                                org.junit.Assert.assertEquals("Frame shifted vertically at edge", (y-h*1.5f-kotlin.math.round(h*10f/56f).toInt()).toInt(), location[1])
+                                val current=location.toList()+listOf(popup.contentView.width,popup.contentView.height)
+                                if (position==null) position=current else org.junit.Assert.assertEquals("Window moves between directions",position,current)
+                            } else {
+                                org.junit.Assert.assertTrue(guide?.isShowing == true)
+                                val guideContent=guide!!.javaClass.getDeclaredField("content").apply { isAccessible=true }.get(guide) as android.view.ViewGroup
+                                for (i in 0 until guideContent.childCount) {
+                                    val cell=guideContent.getChildAt(i)
+                                    if(cell.visibility==android.view.View.VISIBLE) assertSafe(cell)
+                                }
+                                for (name in listOf("popupWindowActive","popupWindowTop","popupWindowLeft","popupWindowRight","popupWindowBottom","popupWindowCenter")) {
+                                    org.junit.Assert.assertFalse("Guide overlaps $name",(value(name) as android.widget.PopupWindow).isShowing)
+                                }
+                            }
+                        }
+                    }
+                    touch(MotionEvent.ACTION_MOVE,x,y)
+                    touch(if(cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP,x,y)
+                    released=true
+                    scenario.onActivity { host ->
+                        val keyboard=host.keyboard
+                        fun value(name:String):Any? = keyboard.javaClass.getDeclaredField(name).apply { isAccessible=true }.get(keyboard)
+                        org.junit.Assert.assertFalse((value("popupWindowActive") as android.widget.PopupWindow).isShowing)
+                        org.junit.Assert.assertFalse((value("skinGuide") as? com.kazumaproject.core.ui.skin.SkinGuidePopup)?.isShowing == true)
+                        org.junit.Assert.assertFalse(key.isPressed)
+                    }
+                    org.junit.Assert.assertEquals(count+if(cancel)0 else 1,commits.size)
+                    if(!cancel) org.junit.Assert.assertEquals(expected.single(),commits.last())
+                    } finally { if(!released) touch(MotionEvent.ACTION_CANCEL,x,y) }
+                }
+                }
+            }
+        }
+    }
+
     @Test fun recordProductionPopupMotion() {
         val ins=InstrumentationRegistry.getInstrumentation()
         val context=ins.targetContext
