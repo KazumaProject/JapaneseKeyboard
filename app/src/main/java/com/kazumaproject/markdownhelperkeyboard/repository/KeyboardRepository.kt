@@ -1078,6 +1078,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
             KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
             KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.CommitAndInsertSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.ForceHalfWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
@@ -1092,6 +1093,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
             KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.DeleteAfterCursor -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
             else -> null
         }
