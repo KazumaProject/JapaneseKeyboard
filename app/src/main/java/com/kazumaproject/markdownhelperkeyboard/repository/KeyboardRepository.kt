@@ -1093,6 +1093,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
             KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.DeleteAfterCursor -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
             else -> null
         }

@@ -46,6 +46,7 @@ sealed class KeyAction {
     data object CommitAndInsertSpace : KeyAction()
     data object DeleteUntilSymbol : KeyAction()
     data object DeleteAfterCursorUntilSymbol : KeyAction()
+    data object DeleteAfterCursor : KeyAction()
     data object UndoLastDelete : KeyAction()
 
     data object SwitchDirectMode : KeyAction()
