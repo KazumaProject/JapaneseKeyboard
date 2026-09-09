@@ -427,7 +427,9 @@ class SettingHomeFragment : Fragment() {
 
             "setting_route_keyboard_theme" -> getString(
                 R.string.setting_home_current_value,
-                themeModeLabel(appPreference.theme_mode),
+                if (appPreference.keyboardSkin == com.kazumaproject.core.domain.skin.KeyboardSkinId.DEFAULT)
+                    themeModeLabel(appPreference.theme_mode)
+                else getString(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeCatalog.find(appPreference.keyboardSkin).titleRes),
             )
 
             "setting_route_input_method" -> getString(

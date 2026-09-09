@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -249,7 +251,31 @@ data class ImePreferencesSnapshot(
     val enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean,
     val enableGemmaTranslationPreference: Boolean,
     val utilityCandidateConfig: UtilityCandidateConfig,
+    val keyboardSkin: KeyboardSkinId = KeyboardSkinId.DEFAULT,
 ) {
+    /** Presentation overrides only: saved values and all input/layout fields remain intact. */
+    fun withKeyboardSkinAppearance(): ImePreferencesSnapshot {
+        val palette = KeyboardSkinRegistry.find(keyboardSkin)?.palette ?: return this
+        return copy(
+            keyboardThemeMode = "custom",
+            customThemeBgColor = palette.background,
+            customThemeKeyColor = palette.key,
+            customThemeSpecialKeyColor = palette.key,
+            customThemeKeyTextColor = palette.text,
+            customThemeSpecialKeyTextColor = palette.text,
+            customThemeCandidateTextColor = palette.text,
+            customThemeCandidateItemBgColor = palette.background,
+            customThemeCandidateItemPressedBgColor = palette.pressed,
+            customThemeCandidateEmptyPopupBgColor = palette.key,
+            customThemeCandidateEmptyPopupTextColor = palette.text,
+            customThemeShortcutIconColor = palette.text,
+            liquidGlassThemePreference = false,
+            liquidGlassKeyBlurRadiousPreference = 255,
+            keyboardTouchEffectTypePreference = "none",
+            customKeyBorderEnablePreference = false,
+        )
+    }
+
     companion object {
         fun from(
             appPreference: AppPreference,
@@ -585,6 +611,7 @@ data class ImePreferencesSnapshot(
                 qwertySpecialKeyTextSize = appPreference.qwerty_special_key_text_size ?: 12.0f,
                 qwertySpecialKeyIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f,
                 keyboardThemeMode = appPreference.theme_mode,
+                keyboardSkin = appPreference.keyboardSkin,
                 customThemeBgColor = appPreference.custom_theme_bg_color,
                 customThemeKeyColor = appPreference.custom_theme_key_color,
                 customThemeSpecialKeyColor = appPreference.custom_theme_special_key_color,

@@ -44,6 +44,8 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.data.qwerty.CapsLockState
@@ -132,6 +134,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val suppressedPointerIds = mutableSetOf<Int>()
 
     private var keyPreviewPopup: PopupWindow? = null
+    private val deferredPopupDismissals = mutableMapOf<PopupWindow, Runnable>()
     private val hitRect = Rect()
 
     private var qwertyKeyListener: QWERTYKeyListener? = null
@@ -289,6 +292,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var customBorderColor: Int = Color.BLACK
     private var borderWidth: Int = 1
 
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
+
     init {
         isClickable = true
         isFocusable = true
@@ -413,6 +418,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * メンバ変数に値を保存してからテーマを適用します。
      * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
      */
+    private val skinColorRestorer by lazy {
+        com.kazumaproject.core.ui.skin.KeyboardSkinColorRestorer(binding.root)
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -426,9 +435,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
         // メンバ変数に代入
+        if (this.keyboardSkinId != skinId) { dismissKeyPreview(); dismissVariationPopup() }
+        skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
+        this.keyboardSkinId = skinId
         this.themeMode = themeMode
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
@@ -551,7 +564,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (view is AppCompatButton) view.setTextColor(specialColorStateList)
 
                 if (view is AppCompatImageButton) {
-                    ImageViewCompat.setImageTintList(view, specialColorStateList)
+                    if (keyboardSkinId == KeyboardSkinId.DEFAULT) {
+                        ImageViewCompat.setImageTintList(view, specialColorStateList)
+                    } else {
+                        // A skin filter preserves intrinsic vector tints (e.g. cursor arrows).
+                        view.setColorFilter(specialKeyTextColor)
+                    }
                 }
                 view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
@@ -564,6 +582,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * @param radius キーの角丸の半径 (px)
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = true) }
         // 1. 色の計算
         // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
         val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
@@ -1583,7 +1602,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         y = event.getY(event.actionIndex)
                     )
                 }
-                clearAllPressed(clearSuppressedPointers = false)
+                clearAllPressed(clearSuppressedPointers = false, preserveReleasedPopups = true)
                 lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
             }
 
@@ -2163,7 +2182,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             lockedPointerId = null
         }
         dismissKeyPreview()
-        dismissVariationPopup()
+        dismissVariationPopup(defer = commitSelection)
 
         if (commitSelection) {
             selectedChar?.let { char ->
@@ -2181,7 +2200,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun releaseTrackedView(pointerId: Int, view: View) {
         view.isPressed = false
-        dismissKeyPreview()
+        dismissKeyPreview(defer = true)
         cancelLongPressForPointer(pointerId)
 
         val wasShift = view.id == binding.keyShift.id
@@ -2429,7 +2448,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun clearAllPressed(clearSuppressedPointers: Boolean = true) {
+    private fun clearAllPressed(clearSuppressedPointers: Boolean = true, preserveReleasedPopups: Boolean = false) {
         for (i in 0 until pointerButtonMap.size) {
             val pid = pointerButtonMap.keyAt(i)
             pointerButtonMap.valueAt(i)?.isPressed = false
@@ -2438,11 +2457,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         pointerButtonMap.clear()
         pointerStartCoords.clear()
         flickLockedPointers.clear()
-        dismissKeyPreview()
+        dismissKeyPreview(defer = preserveReleasedPopups)
         if (clearSuppressedPointers) {
             suppressedPointerIds.clear()
         }
-        dismissVariationPopup()
+        dismissVariationPopup(defer = preserveReleasedPopups)
         lockedPointerId = null
     }
 
@@ -2469,6 +2488,36 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (isTablet) return
         if (!showPopupView) return
         dismissKeyPreview()
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+            val label = (view as? android.widget.TextView)?.text?.toString().orEmpty()
+            if (label.isEmpty()) return
+            val location = IntArray(2).also(view::getLocationOnScreen)
+            val geometry = skin.keyPreview(resources, view.width, view.height, location[0],
+                resources.displayMetrics.widthPixels, view.top > binding.keyQ.top) ?: return@let
+            val w = geometry.width
+            val h = geometry.height
+            val xOffset = geometry.xOffset
+            val content = android.widget.TextView(context).apply {
+                text = if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) label.uppercase() else label
+                setTextColor(skin.palette.text)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 32f)
+                gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+                includeFontPadding = false
+                skin.configurePreviewText(this)
+                val shift = ((-xOffset + view.width/2f) - w/2f) * .2f
+                setPadding((shift*2).toInt().coerceAtLeast(0),paddingTop,(-shift*2).toInt().coerceAtLeast(0),0)
+                background = geometry.background
+            }
+            val popup = PopupWindow(content, w, h, false).apply {
+                isTouchable = false
+                elevation = 0f
+                animationStyle = 0
+            }
+            skin.showPopup(content)
+            popup.showAsDropDown(view, xOffset, geometry.yOffset)
+            keyPreviewPopup = popup
+            return
+        }
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
@@ -2548,9 +2597,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         keyPreviewPopup = popup
     }
 
-    private fun dismissKeyPreview() {
-        keyPreviewPopup?.dismiss()
+    private fun clearDeferredPopups() {
+        deferredPopupDismissals.forEach { (popup, callback) -> removeCallbacks(callback); popup.dismiss() }
+        deferredPopupDismissals.clear()
+    }
+
+    private fun dismissPopup(popup: PopupWindow?, defer: Boolean) {
+        if (!defer) clearDeferredPopups()
+        if (popup == null) return
+        val hold = if (defer) KeyboardSkinRegistry.find(keyboardSkinId)?.popupReleaseDelayMillis ?: 0L else 0L
+        if (hold == 0L || !isAttachedToWindow) popup.dismiss()
+        else {
+            val callback = Runnable { deferredPopupDismissals.remove(popup); popup.dismiss() }
+            deferredPopupDismissals[popup] = callback
+            postDelayed(callback, hold)
+        }
+    }
+
+    private fun dismissKeyPreview(defer: Boolean = false) {
+        val popup = keyPreviewPopup
         keyPreviewPopup = null
+        dismissPopup(popup, defer)
     }
 
     private fun findButtonUnder(x: Int, y: Int): View? {
@@ -2752,8 +2819,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun showVariationPopup(anchorView: View, variations: List<Char>) {
         dismissVariationPopup()
         val context = this.context
+        val skin = KeyboardSkinRegistry.find(keyboardSkinId)
         variationPopupView = VariationsPopupView(context).apply {
-            applyPopupViewStyle(variationPopupStyle)
+            applyPopupViewStyle(if (skin != null) variationPopupStyle.copy(skinId = keyboardSkinId) else variationPopupStyle)
             setChars(variations)
         }
         when (themeMode) {
@@ -2785,13 +2853,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             (anchorView.width / 2) - (popupWidth / 2)
         }
         val yOffset = -anchorView.height - popupHeight
+        if (skin != null) {
+            popup.elevation = 0f
+            popup.animationStyle = 0
+            skin.showPopup(requireNotNull(variationPopupView))
+        }
         popup.showAsDropDown(anchorView, xOffset, yOffset)
         this.variationPopup = popup
     }
 
-    private fun dismissVariationPopup() {
-        variationPopup?.dismiss()
+    private fun dismissVariationPopup(defer: Boolean = false) {
+        val popup = variationPopup
         variationPopup = null
+        dismissPopup(popup, defer)
         variationPopupView = null
         longPressedPointerId = null
     }
@@ -2801,13 +2875,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             sizeScalePercent = styleSet.keyPreview.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = styleSet.keyPreview.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = styleSet.keyPreview.backgroundColor,
-            textColor = styleSet.keyPreview.textColor
+            textColor = styleSet.keyPreview.textColor,
+            skinId = styleSet.keyPreview.skinId
         )
         variationPopupStyle = PopupViewStyle(
             sizeScalePercent = styleSet.variation.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = styleSet.variation.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = styleSet.variation.backgroundColor,
-            textColor = styleSet.variation.textColor
+            textColor = styleSet.variation.textColor,
+            skinId = styleSet.variation.skinId
         )
         variationPopupView?.applyPopupViewStyle(variationPopupStyle)
     }

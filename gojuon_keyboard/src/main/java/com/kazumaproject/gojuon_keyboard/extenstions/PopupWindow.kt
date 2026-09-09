@@ -1,5 +1,7 @@
 package com.kazumaproject.gojuon_keyboard.extenstions
 
+import com.kazumaproject.core.ui.skin.SkinPopupPlacement
+import com.kazumaproject.core.ui.skin.PopupDirection
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
@@ -16,6 +18,8 @@ fun PopupWindow.setPopUpWindowFlickRight(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.RIGHT, true)) return
+
     this.width = anchorView.width + (anchorView.width) / 2
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -38,6 +42,8 @@ fun PopupWindow.setPopUpWindowFlickLeft(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.LEFT, true)) return
+
     this.width = anchorView.width + (anchorView.width) / 2
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -55,6 +61,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.TOP, true)) return
+
     this.width = anchorView.width
     this.height = anchorView.height + (anchorView.height / 2)
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -72,6 +80,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.BOTTOM, true)) return
+
     this.width = anchorView.width
     this.height = anchorView.height + (anchorView.height / 2)
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -91,6 +101,8 @@ fun PopupWindow.setPopUpWindowFlickTap(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.CENTER, false)) return
+
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -108,6 +120,8 @@ fun PopupWindow.setPopUpWindowCenter(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.CENTER, false)) return
+
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -154,6 +168,8 @@ fun PopupWindow.setPopUpWindowRight(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.RIGHT, false)) return
+
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -200,6 +216,8 @@ fun PopupWindow.setPopUpWindowLeft(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.LEFT, false)) return
+
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -249,6 +267,8 @@ fun PopupWindow.setPopUpWindowBottom(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.BOTTOM, false)) return
+
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -317,6 +337,8 @@ fun PopupWindow.setPopUpWindowTop(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
+    if (SkinPopupPlacement.show(this, keyWindowLayout, anchorView, PopupDirection.TOP, false)) return
+
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))

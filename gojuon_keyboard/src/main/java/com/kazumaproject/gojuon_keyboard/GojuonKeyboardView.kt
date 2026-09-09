@@ -26,6 +26,8 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.gojuon.GojuonCapsLockState
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
@@ -324,6 +326,9 @@ class GojuonKeyboardView @JvmOverloads constructor(
     private var customBorderColor: Int = Color.BLACK
     private var borderWidth: Int = 1
 
+    private val skinLongPress = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
+
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
@@ -390,6 +395,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
      * メンバ変数に値を保存してからテーマを適用します。
      * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
      */
+    private val skinColorRestorer by lazy {
+        com.kazumaproject.core.ui.skin.KeyboardSkinColorRestorer(binding.root)
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -403,9 +412,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
         // メンバ変数に代入
+        if (this.keyboardSkinId != skinId) { hideAllPopWindow() }
+        skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
+        this.keyboardSkinId = skinId
         this.themeMode = themeMode
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
@@ -530,6 +543,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
      * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
         val highlightColor = manipulateColor(baseColor, 1.2f)
         val shadowColor = manipulateColor(baseColor, 0.8f)
 
@@ -767,16 +781,22 @@ class GojuonKeyboardView @JvmOverloads constructor(
         popupWindowCenter = mPopWindowCenter
 
         bubbleViewActive = mPopWindowActive.contentView.findViewById(R.id.bubble_layout_active)
+        bubbleViewActive.skinId = keyboardSkinId
         popTextActive = mPopWindowActive.contentView.findViewById(R.id.popup_text_active)
         bubbleViewLeft = mPopWindowLeft.contentView.findViewById(R.id.bubble_layout)
+        bubbleViewLeft.skinId = keyboardSkinId
         popTextLeft = mPopWindowLeft.contentView.findViewById(R.id.popup_text)
         bubbleViewTop = mPopWindowTop.contentView.findViewById(R.id.bubble_layout)
+        bubbleViewTop.skinId = keyboardSkinId
         popTextTop = mPopWindowTop.contentView.findViewById(R.id.popup_text)
         bubbleViewRight = mPopWindowRight.contentView.findViewById(R.id.bubble_layout)
+        bubbleViewRight.skinId = keyboardSkinId
         popTextRight = mPopWindowRight.contentView.findViewById(R.id.popup_text)
         bubbleViewBottom = mPopWindowBottom.contentView.findViewById(R.id.bubble_layout)
+        bubbleViewBottom.skinId = keyboardSkinId
         popTextBottom = mPopWindowBottom.contentView.findViewById(R.id.popup_text)
         bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
+        bubbleViewCenter.skinId = keyboardSkinId
         popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
     }
 
@@ -3146,12 +3166,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 popupWindowActive.setPopUpWindowFlickTap(
                     context, bubbleViewActive, it
                 )
-                Blur.applyBlurEffect(this, 8f)
+                if (keyboardSkinId == KeyboardSkinId.DEFAULT) Blur.applyBlurEffect(this, 8f)
             }
         }
     }
 
     private fun hideAllPopWindow() {
+        skinLongPress.clear()
         popupWindowActive.hide()
         popupWindowLeft.hide()
         popupWindowTop.hide()

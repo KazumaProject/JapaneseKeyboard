@@ -445,6 +445,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"
         android:label="@string/keyboardthemefragment" />
     <fragment
+        android:id="@+id/keyboardSkinSelectionFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardSkinSelectionFragment"
+        android:label="@string/keyboard_skin_choose" />
+    <fragment
         android:id="@+id/tenKeyCandidateLetterSizeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"
         android:label="@string/tenkeycandidatelettersizefragment" />
