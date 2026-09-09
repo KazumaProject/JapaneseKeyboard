@@ -65,4 +65,6 @@ This is the isolated `com.kazumaproject.skinfidelity.lite` build.
 The full frozen iOS gate remains open. Simulator UI access has resumed, and public
 UIKit keyboard dismissal during a held contact is recorded in [the follow-up](spacing-followup.md).
 This does not certify every interruption case or all playback/timing clauses.
-No merge-readiness claim or PR update follows from these bounded checks alone.
+These bounded checks do not certify full iOS timing parity. The user subsequently
+confirmed long-press behavior and requested a PR update. See [the final review](../review.md)
+for the current decision based on the production diff and device regression evidence.
