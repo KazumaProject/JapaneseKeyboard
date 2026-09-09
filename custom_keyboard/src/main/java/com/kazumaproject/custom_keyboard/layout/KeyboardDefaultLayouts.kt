@@ -4295,7 +4295,7 @@ object KeyboardDefaultLayouts {
                 0,
                 false,
                 isSpecialKey = true,
-                action = KeyAction.Space,
+                action = KeyAction.CommitAndInsertSpace,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
             ), KeyData(
                 "",
@@ -4397,7 +4397,7 @@ object KeyboardDefaultLayouts {
                 2,
                 4,
                 false,
-                KeyAction.Space,
+                KeyAction.CommitAndInsertSpace,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
             ), KeyData(
@@ -4424,9 +4424,9 @@ object KeyboardDefaultLayouts {
 
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.Space,
+                KeyAction.CommitAndInsertSpace,
             ), FlickDirection.UP_LEFT to FlickAction.Action(
-                KeyAction.Space,
+                KeyAction.CommitAndInsertSpace,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
             )
