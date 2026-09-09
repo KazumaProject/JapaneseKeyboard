@@ -47,6 +47,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
             ),
             DisplayAction(
+                KeyAction.CommitAndInsertSpace,
+                context.getString(R.string.action_commit_and_insert_space),
+                com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            ),
+            DisplayAction(
                 KeyAction.ForceHalfWidthSpace,
                 context.getString(R.string.action_force_half_width_space),
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
@@ -192,6 +197,7 @@ object KeyActionMapper {
             KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.Space,
+            KeyAction.CommitAndInsertSpace,
             KeyAction.ForceHalfWidthSpace,
             KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
@@ -230,6 +236,7 @@ object KeyActionMapper {
             is KeyAction.Delete -> "Delete"
             is KeyAction.Backspace -> "Backspace"
             is KeyAction.Space -> "Space"
+            is KeyAction.CommitAndInsertSpace -> "CommitAndInsertSpace"
             is KeyAction.NewLine -> "NewLine"
             is KeyAction.ForceNewLine -> "ForceNewLine"
             is KeyAction.Enter -> "Enter"
@@ -292,6 +299,7 @@ object KeyActionMapper {
             "Delete" -> KeyAction.Delete
             "Backspace" -> KeyAction.Backspace
             "Space" -> KeyAction.Space
+            "CommitAndInsertSpace" -> KeyAction.CommitAndInsertSpace
             "NewLine" -> KeyAction.NewLine
             "Enter" -> KeyAction.Enter
             "Convert" -> KeyAction.Convert
