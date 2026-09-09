@@ -169,6 +169,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts.DeleteKeyFlickSettings
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import com.kazumaproject.custom_keyboard.view.KeyHitTestMode
 import com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -8706,7 +8707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             layoutType = layoutType,
             inputMode = customKeyboardMode.name
         )
-        flickView.setKeyboard(createSumireKeyboardLayout())
+        flickView.setKeyboard(createSumireKeyboardLayout(), KeyHitTestMode.NEAREST_KEY)
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
@@ -12725,6 +12726,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
                     KeyAction.DeleteAfterCursor -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12803,8 +12805,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
-
                     KeyAction.DeleteAfterCursor -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -12957,6 +12959,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ForceHalfWidthSpace -> {}
                     KeyAction.ForceFullWidthSpace -> {}
                     KeyAction.DeleteAfterCursor -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -13248,6 +13251,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.DeleteAfterCursor -> {}
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
 
@@ -13506,6 +13510,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         handleDeleteKeyTap(insertString, suggestions)
                         stopDeleteLongPress()
+                    }
+
+                    KeyAction.CommitAndInsertSpace -> {
+                        handleCommitAndInsertSpace()
                     }
 
                     KeyAction.ForceNewLine -> {
@@ -13794,6 +13802,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView,
                             floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
+                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
         })
@@ -27078,6 +27088,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
+    }
+
+    /**
+     * Commits the raw composing text and inserts one half-width space at the
+     * logical cursor position. The helper replaces the rendered composition
+     * with its tail, then inserts the left text and space before that tail.
+     */
+    private fun handleCommitAndInsertSpace() {
+        if (dispatchDirectSpaceIfNeeded()) return
+
+        if (currentInputConnection == null) return
+        if (!commitRawTextAndInsertSpace(inputString.value, stringInTail.get())) return
+
+        qwertyGlideInputCoordinator?.cancelPending()
+        currentQwertyGlideCompositionText = null
+        suppressNextQwertyGlideSuggestionRefresh = false
+        clearSelectionActionSession(clearSuggestions = false)
+        clearSuggestionStateAfterCommit()
+        resetFlagsEnterKeyNotHenkan()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun setSpaceKeyActionEnglishAndNumberEmpty(isFlick: Boolean) {
