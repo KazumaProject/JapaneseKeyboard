@@ -10,11 +10,14 @@ internal class CustomToggleInputState {
     private var values: List<String> = emptyList()
     private var index = -1
     private var lastEmittedText: String? = null
+    private var lastInputTimeMillis: Long? = null
 
     fun next(
         keyIdentity: String,
         values: List<String>,
         outputValues: List<String> = values,
+        nowMillis: Long,
+        timeoutMillis: Long,
     ): Mutation? {
         if (values.isEmpty() || values.size != outputValues.size) {
             reset()
@@ -24,7 +27,11 @@ internal class CustomToggleInputState {
             reset()
             return Mutation.Append(outputValues.first())
         }
+        val elapsedMillis = lastInputTimeMillis?.let { nowMillis - it }
+        val expired = elapsedMillis == null || elapsedMillis < 0 || elapsedMillis >= timeoutMillis
+        lastInputTimeMillis = nowMillis
         if (
+            expired ||
             this.keyIdentity != keyIdentity ||
             this.values != values ||
             index !in values.indices ||
@@ -48,5 +55,6 @@ internal class CustomToggleInputState {
         values = emptyList()
         index = -1
         lastEmittedText = null
+        lastInputTimeMillis = null
     }
 }
