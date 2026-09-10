@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import androidx.navigation.fragment.findNavController
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
@@ -15,6 +16,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
@@ -423,11 +425,34 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val skinPreference = Preference(context).apply {
+            key = KeyboardSkinId.PREFERENCE_KEY
+            title = getString(R.string.keyboard_skin_choose)
+            order = -1
+            setOnPreferenceClickListener {
+                findNavController().navigate(R.id.keyboardSkinSelectionFragment)
+                true
+            }
+        }
+        screen.addPreference(skinPreference)
         preferenceScreen = screen
 
         // Initialize state based on current preference
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val selected = appPreference.keyboardSkin
+        findPreference<Preference>(KeyboardSkinId.PREFERENCE_KEY)?.summary =
+            getString(KeyboardThemeCatalog.find(selected).titleRes)
+        for (index in 0 until preferenceScreen.preferenceCount) {
+            val preference = preferenceScreen.getPreference(index)
+            if (preference.key != KeyboardSkinId.PREFERENCE_KEY && preference.key != CATEGORY_KEY_CUSTOM_INPUT) {
+                preference.isEnabled = selected == KeyboardSkinId.DEFAULT
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

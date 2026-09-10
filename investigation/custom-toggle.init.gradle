@@ -1,0 +1,6 @@
+// Keep device-test layouts and preferences separate from the user's installed keyboard.
+gradle.afterProject { project ->
+    if (project.path == ':app') {
+        project.android.defaultConfig.applicationId = 'com.kazumaproject.customtoggletest'
+    }
+}

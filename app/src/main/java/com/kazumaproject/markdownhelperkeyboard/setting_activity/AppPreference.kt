@@ -7,6 +7,7 @@ import androidx.core.graphics.toColorInt
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
@@ -51,6 +52,7 @@ object AppPreference {
     const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
     const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
     const val UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY = "utility_expression_candidate_enabled"
+    const val UTILITY_FORMULA_CANDIDATE_ENABLED_KEY = "utility_formula_candidate_enabled"
     const val UTILITY_ANGLE_MODE_KEY = "utility_angle_mode"
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
@@ -106,6 +108,7 @@ object AppPreference {
     const val KEY_SOUND_KEY = "key_sound_preference"
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
+    const val INLINE_SUGGESTION_ENABLED_KEY = "inline_suggestion_enabled_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -137,6 +140,8 @@ object AppPreference {
     private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
     private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
         Pair(KEY_SOUND_VOLUME_PERCENT_KEY, 0)
+    private val INLINE_SUGGESTION_ENABLED_PREFERENCE =
+        Pair(INLINE_SUGGESTION_ENABLED_KEY, true)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val INCOGNITO_MODE_DETECTION_PREFERENCE =
         Pair("incognito_mode_detection_preference", true)
@@ -583,6 +588,16 @@ object AppPreference {
         Pair("candidate_default_height_landscape_column_2_dp_preference", 90)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP =
         Pair("candidate_default_height_landscape_column_3_dp_preference", 120)
+    private val CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP =
+        Pair(
+            "candidate_default_empty_height_dp_preference",
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP.second
+        )
+    private val CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP_LANDSCAPE =
+        Pair(
+            "candidate_default_empty_height_dp_landscape_preference",
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE.second
+        )
     private val CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED =
         Pair("candidate_height_per_column_migrated_preference", false)
 
@@ -904,7 +919,9 @@ object AppPreference {
     fun migrateGojuonKeyboardTypeIfNeeded(context: Context = appContext) {
         isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
         if (!isTabletDevice) {
-            preferences.edit { it.remove(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY) }
+            if (preferences.contains(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY)) {
+                preferences.edit { it.remove(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY) }
+            }
             return
         }
         if (preferences.getBoolean(GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, false)) return
@@ -1118,6 +1135,20 @@ object AppPreference {
         }
     }
 
+    private fun candidateEmptyHeightPreferenceFor(isLandscape: Boolean): Pair<String, Int> =
+        if (isLandscape) {
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE
+        } else {
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP
+        }
+
+    private fun candidateDefaultEmptyHeightPreferenceFor(isLandscape: Boolean): Pair<String, Int> =
+        if (isLandscape) {
+            CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP_LANDSCAPE
+        } else {
+            CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP
+        }
+
     var clipboard_history_enable: Boolean?
         get() = preferences.getBoolean(
             CLIPBOARD_HISTORY_ENABLE.first, CLIPBOARD_HISTORY_ENABLE.second
@@ -1186,6 +1217,30 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putInt(TENKEY_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.first, value)
         }
+
+    // Publish a complete restart snapshot together, including the timeout timestamp.
+    // Keep apply() semantics: readers and listeners see the new state immediately.
+    internal fun saveTenkeyRestartInputMode(
+        mode: String,
+        presentation: String,
+        numberReturnTarget: String,
+        savedAtEpochMillis: Long,
+    ) = preferences.edit {
+        it.putString(TENKEY_LAST_INPUT_MODE_PREFERENCE.first, mode)
+        it.putString(TENKEY_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.first, presentation)
+        it.putString(TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.first, numberReturnTarget)
+        it.putLong(TENKEY_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first, savedAtEpochMillis)
+    }
+
+    internal fun saveSumireRestartInputMode(
+        mode: String,
+        presentation: String,
+        savedAtEpochMillis: Long,
+    ) = preferences.edit {
+        it.putString(SUMIRE_LAST_INPUT_MODE_PREFERENCE.first, mode)
+        it.putString(SUMIRE_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.first, presentation)
+        it.putLong(SUMIRE_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first, savedAtEpochMillis)
+    }
 
     var tenkey_last_input_mode_preference: String
         get() = preferences.getString(
@@ -1446,6 +1501,15 @@ object AppPreference {
 
     fun isFullscreenModeAllowed(defaultValue: Boolean): Boolean =
         preferences.getBoolean(ALLOW_FULLSCREEN_MODE_KEY, defaultValue)
+
+    var inline_suggestion_enabled_preference: Boolean
+        get() = preferences.getBoolean(
+            INLINE_SUGGESTION_ENABLED_PREFERENCE.first,
+            INLINE_SUGGESTION_ENABLED_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(INLINE_SUGGESTION_ENABLED_PREFERENCE.first, value)
+        }
 
     var landscape_force_qwerty_romaji_preference: Boolean
         get() = preferences.getBoolean(
@@ -1794,6 +1858,10 @@ object AppPreference {
                     UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
                     true,
                 ),
+                formulaCandidateEnabled = preferences.getBoolean(
+                    UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
+                    true,
+                ),
                 angleMode = preferences.getString(UTILITY_ANGLE_MODE_KEY, "degrees")
                     .toAngleMode(),
                 calculationPrecision = calculationPrecision,
@@ -1812,6 +1880,10 @@ object AppPreference {
             editor.putBoolean(
                 UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY,
                 value.includeExpressionCandidate,
+            )
+            editor.putBoolean(
+                UTILITY_FORMULA_CANDIDATE_ENABLED_KEY,
+                value.formulaCandidateEnabled,
             )
             editor.putString(
                 UTILITY_ANGLE_MODE_KEY,
@@ -1840,6 +1912,7 @@ object AppPreference {
             editor.remove(UTILITY_CALCULATION_ENABLED_KEY)
             editor.remove(UTILITY_UNIT_CONVERSION_ENABLED_KEY)
             editor.remove(UTILITY_EXPRESSION_CANDIDATE_ENABLED_KEY)
+            editor.remove(UTILITY_FORMULA_CANDIDATE_ENABLED_KEY)
             editor.remove(UTILITY_ANGLE_MODE_KEY)
             editor.remove(UTILITY_CALCULATION_PRECISION_KEY)
             editor.remove(UTILITY_REGIONAL_PROFILE_KEY)
@@ -2693,9 +2766,30 @@ object AppPreference {
         }
     }
 
-    fun resetCandidateVisibleHeightsToUserDefaults(isLandscape: Boolean) {
+    fun getCandidateDefaultEmptyHeightDp(isLandscape: Boolean): Int {
+        val preference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
+        return readIntPreference(preference.first, preference.second)
+            .coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
+    }
+
+    fun setCandidateDefaultEmptyHeightDp(isLandscape: Boolean, heightDp: Int) {
+        val preference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
+        preferences.edit { editor ->
+            editor.putInt(
+                preference.first,
+                heightDp.coerceIn(
+                    MIN_CANDIDATE_VISIBLE_HEIGHT_DP,
+                    MAX_CANDIDATE_VISIBLE_HEIGHT_DP
+                )
+            )
+        }
+    }
+
+    fun resetCandidateHeightSettingsToUserDefaults(isLandscape: Boolean) {
         migrateCandidateHeightPerColumnPreferencesIfNeeded()
         val activeColumn = getCandidateColumn(isLandscape)
+        val emptyHeight = getCandidateDefaultEmptyHeightDp(isLandscape)
+        val emptyPreference = candidateEmptyHeightPreferenceFor(isLandscape)
         preferences.edit { editor ->
             listOf("1", "2", "3").forEach { column ->
                 val heightDp = getCandidateDefaultVisibleHeightDp(isLandscape, column)
@@ -2711,20 +2805,27 @@ object AppPreference {
                     )
                 }
             }
+            editor.putInt(emptyPreference.first, emptyHeight)
         }
     }
 
-    fun resetCandidateDefaultVisibleHeightsToFactoryDefaults(isLandscape: Boolean) {
+    fun resetCandidateHeightDefaultsToFactoryDefaults(isLandscape: Boolean) {
+        val emptyPreference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
         preferences.edit { editor ->
             listOf("1", "2", "3").forEach { column ->
                 val preference = candidateDefaultHeightPreferenceFor(isLandscape, column)
                 editor.putInt(preference.first, preference.second)
             }
+            editor.putInt(emptyPreference.first, emptyPreference.second)
         }
     }
 
-    fun copyCandidateVisibleHeightsToUserDefaults(isLandscape: Boolean) {
+    fun copyCandidateHeightSettingsToUserDefaults(isLandscape: Boolean) {
         migrateCandidateHeightPerColumnPreferencesIfNeeded()
+        val emptyPreference = candidateEmptyHeightPreferenceFor(isLandscape)
+        val emptyHeight = readIntPreference(emptyPreference.first, emptyPreference.second)
+            .coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
+        val defaultEmptyPreference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
         preferences.edit { editor ->
             listOf("1", "2", "3").forEach { column ->
                 val heightDp = getCandidateVisibleHeightDp(isLandscape, column)
@@ -2733,6 +2834,7 @@ object AppPreference {
                     heightDp
                 )
             }
+            editor.putInt(defaultEmptyPreference.first, emptyHeight)
         }
     }
 
@@ -2856,6 +2958,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(APP_THEME_SEED_COLOR.first, value)
+        }
+
+    var keyboardSkin: KeyboardSkinId
+        get() = KeyboardSkinId.fromPreference(
+            preferences.getString(KeyboardSkinId.PREFERENCE_KEY, null)
+        )
+        set(value) = preferences.edit {
+            it.putString(KeyboardSkinId.PREFERENCE_KEY, value.preferenceValue)
         }
 
     var theme_mode: String

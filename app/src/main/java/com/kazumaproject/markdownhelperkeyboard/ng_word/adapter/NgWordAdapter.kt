@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
 
 class NgWordAdapter(
     private val onClick: (NgWord) -> Unit
@@ -29,9 +30,16 @@ class NgWordAdapter(
     class VH(itemView: View, val onClick: (NgWord) -> Unit) : RecyclerView.ViewHolder(itemView) {
         private val tvYomi: TextView = itemView.findViewById(R.id.text_view_yomi)
         private val tvTango: TextView = itemView.findViewById(R.id.text_view_tango)
+        private val tvMatchMode: TextView = itemView.findViewById(R.id.text_view_match_mode)
         fun bind(item: NgWord) {
             tvYomi.text = item.yomi
             tvTango.text = item.tango
+            tvMatchMode.setText(
+                when (item.matchMode) {
+                    NgWordMatchMode.PARTIAL -> R.string.ng_word_match_mode_partial
+                    NgWordMatchMode.EXACT -> R.string.ng_word_match_mode_exact
+                }
+            )
             itemView.setOnClickListener { onClick(item) }
         }
     }

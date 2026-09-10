@@ -8,6 +8,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_do_nothing">Do nothing</string>
     <string name="action_space">Space</string>
+    <string name="action_commit_and_insert_space">Commit + half-width space</string>
     <string name="action_force_half_width_space">Half-width space</string>
     <string name="action_force_full_width_space">Full-width space</string>
     <string name="action_convert">Convert</string>
@@ -34,7 +35,8 @@
     <string name="switch_qwerty">Switch to QWERTY Keyboard</string>
     <string name="switch_number">Switch to Number Keyboard</string>
     <string name="action_delete_until_symbol">Delete until symbols</string>
-    <string name="action_delete_after_cursor">Delete after cursor</string>
+    <string name="action_delete_after_cursor">Delete after cursor to word/separator boundary</string>
+    <string name="action_delete_after_cursor_one">Delete one character after cursor (Delete)</string>
     <string name="voice_input">Voice Input</string>
     <string name="action_switch_romaji_english">Romaji / English Switch</string>
 </resources>
