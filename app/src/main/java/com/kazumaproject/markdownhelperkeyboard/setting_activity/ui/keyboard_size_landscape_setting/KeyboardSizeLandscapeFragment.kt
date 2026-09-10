@@ -70,11 +70,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         updateControlsVisibility()
     }
 
-    override fun onResume() {
-        super.onResume()
-        (requireActivity() as AppCompatActivity).supportActionBar?.title = ""
-    }
-
     private fun setupViewPager() {
         val adapter = KeyboardViewPagerAdapter()
         binding.keyboardViewPager.adapter = adapter
@@ -572,7 +567,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(false)
         _binding = null
     }
 }

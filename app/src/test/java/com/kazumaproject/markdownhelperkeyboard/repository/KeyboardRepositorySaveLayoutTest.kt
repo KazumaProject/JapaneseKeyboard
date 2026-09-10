@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyIconRef
@@ -9,6 +10,9 @@ import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.deletedKeySlot
+import com.kazumaproject.custom_keyboard.data.isDeletedKeySlot
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
@@ -21,6 +25,8 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlic
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -310,6 +316,76 @@ class KeyboardRepositorySaveLayoutTest {
         assertEquals(5L, saved.layoutId)
         assertEquals(100L, saved.createdAt)
         assertEquals(1, saved.sortOrder)
+    }
+
+    @Test
+    fun saveLayout_deletedKeySlotPersistsAsSpacerDefinition(): Unit = runBlocking {
+        whenever(dao.getMaxSortOrder()).thenReturn(0)
+        whenever(dao.findLayoutByStableId(any())).thenReturn(null)
+        whenever(
+            dao.insertFullKeyboardLayout(any(), any(), any(), any(), any(), any(), any(), any())
+        ).thenReturn(42L)
+        val slot = deletedKeySlot("persisted", GridPlacement(2, 4, 2, 2))
+        val layout = KeyboardLayout(
+            keys = emptyList(),
+            flickKeyMaps = emptyMap(),
+            columnCount = 3,
+            rowCount = 2,
+            items = listOf(slot)
+        )
+
+        repository.saveLayout(layout, name = "with-empty-slot", id = null)
+
+        val spacersCaptor = argumentCaptor<List<SpacerDefinition>>()
+        verify(dao).insertFullKeyboardLayout(
+            any(), any(), any(), any(), any(), any(), any(), spacersCaptor.capture()
+        )
+        val savedSlot = spacersCaptor.firstValue.single()
+        assertEquals(slot.id, savedSlot.itemIdentifier)
+        assertEquals(slot.placement.rowUnits, savedSlot.rowUnits)
+        assertEquals(slot.placement.columnUnits, savedSlot.columnUnits)
+        assertEquals(slot.placement.rowSpanUnits, savedSlot.rowSpanUnits)
+        assertEquals(slot.placement.columnSpanUnits, savedSlot.columnSpanUnits)
+    }
+
+    @Test
+    fun getFullLayout_deletedKeySlotRestoresAfterReload(): Unit = runBlocking {
+        val slot = deletedKeySlot("reloaded", GridPlacement(2, 4, 2, 2))
+        whenever(dao.getFullLayoutById(7L)).thenReturn(
+            flowOf(
+                FullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        layoutId = 7L,
+                        name = "with-empty-slot",
+                        columnCount = 3,
+                        rowCount = 2,
+                        isRomaji = false,
+                        isDirectMode = false,
+                        createdAt = 1L,
+                        sortOrder = 0,
+                        stableId = "stable-empty-slot"
+                    ),
+                    keysWithFlicks = emptyList(),
+                    spacers = listOf(
+                        SpacerDefinition(
+                            ownerLayoutId = 7L,
+                            itemIdentifier = slot.id,
+                            rowUnits = slot.placement.rowUnits,
+                            columnUnits = slot.placement.columnUnits,
+                            rowSpanUnits = slot.placement.rowSpanUnits,
+                            columnSpanUnits = slot.placement.columnSpanUnits
+                        )
+                    )
+                )
+            )
+        )
+
+        val restoredSlot = repository.getFullLayout(7L).first().items
+            .filterIsInstance<SpacerItem>()
+            .single()
+
+        assertTrue(restoredSlot.isDeletedKeySlot())
+        assertEquals(slot, restoredSlot)
     }
 
     // ---------------------------------------------------------

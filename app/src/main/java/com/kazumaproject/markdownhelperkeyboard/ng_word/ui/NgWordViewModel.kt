@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchMode
 import com.kazumaproject.markdownhelperkeyboard.repository.NgWordRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -28,16 +29,20 @@ class NgWordViewModel @Inject constructor(
         }
     }
 
-    fun insert(yomi: String, tango: String) {
+    fun insert(
+        yomi: String,
+        tango: String,
+        matchMode: NgWordMatchMode = NgWordMatchMode.PARTIAL,
+    ) {
         viewModelScope.launch {
-            repo.addNgWord(yomi, tango)
+            repo.addNgWord(yomi, tango, matchMode)
             loadAll()
         }
     }
 
     fun insertAll(list: List<NgWord>) {
         viewModelScope.launch {
-            list.forEach { repo.addNgWord(it.yomi, it.tango) }
+            list.forEach { repo.addNgWord(it.yomi, it.tango, it.matchMode) }
             loadAll()
         }
     }
@@ -45,7 +50,7 @@ class NgWordViewModel @Inject constructor(
     fun update(item: NgWord) {
         viewModelScope.launch {
             repo.removeNgWord(item)
-            repo.addNgWord(item.yomi, item.tango)
+            repo.addNgWord(item.yomi, item.tango, item.matchMode)
             loadAll()
         }
     }

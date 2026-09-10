@@ -23,4 +23,23 @@ object UtilityInputNormalizer {
             }
         }
     }
+
+    /**
+     * Normalizes full-width ASCII input for formula parsing without applying NFKC to mathematical
+     * compatibility characters such as ℕ, ℝ, and superscript glyphs.  Those characters carry
+     * mathematical meaning and must reach the formula parser unchanged.
+     */
+    fun normalizeForFormula(input: String): String {
+        return buildString(input.length) {
+            input.forEach { char ->
+                when {
+                    char in '\uFF01'..'\uFF5E' -> append((char.code - 0xFEE0).toChar())
+                    char == '\u3000' || char == '\u00a0' ||
+                        char in '\u2000'..'\u200a' || char == '\u202f' || char == '\u205f' ->
+                        append(' ')
+                    else -> append(char)
+                }
+            }
+        }
+    }
 }

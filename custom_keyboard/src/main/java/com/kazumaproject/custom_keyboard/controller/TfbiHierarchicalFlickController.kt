@@ -152,7 +152,8 @@ class TfbiHierarchicalFlickController(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = style.backgroundColor,
-            textColor = style.textColor
+            textColor = style.textColor,
+            skinId = style.skinId
         )
         popupView?.applyPopupViewStyle(popupStyle)
         guidePopupHost.applyPopupViewStyle(popupStyle)

@@ -25,6 +25,25 @@ import org.robolectric.annotation.Config
 class SuggestionAdapterUserTemplateTypeTest {
 
     @Test
+    fun reusedCandidateHolderRestoresOriginalColorsAfterSkinRoundTrip() {
+        val adapter = SuggestionAdapter()
+        adapter.suggestions = listOf(candidate("あ", 1.toByte()))
+        awaitItemCount(adapter, 1)
+        val holder = createHolder(adapter)
+        val originals = listOf(holder.text.textColors, holder.yomiText.textColors, holder.typeText.textColors)
+        for (color in listOf(android.graphics.Color.BLACK, android.graphics.Color.WHITE, null)) {
+            adapter.setCandidateTextColor(color)
+            adapter.setCandidateItemColors(color, color)
+            adapter.onBindViewHolder(holder, 0)
+            listOf(holder.text, holder.yomiText, holder.typeText).forEachIndexed { index, label ->
+                if (color == null) org.junit.Assert.assertSame(originals[index], label.textColors)
+                else assertEquals(color.toInt(), label.currentTextColor)
+            }
+        }
+        adapter.release()
+    }
+
+    @Test
     fun userTemplatesDoNotShowFullWidthLabel() {
         val adapter = SuggestionAdapter()
         adapter.suggestions = listOf(

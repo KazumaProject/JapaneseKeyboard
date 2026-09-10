@@ -5,6 +5,7 @@ import java.math.RoundingMode
 
 class UtilityCandidateProvider(
     private val calculationParser: CalculationParser = CalculationParser(),
+    private val formulaParser: FormulaParser = FormulaParser(),
     private val unitRegistry: UnitRegistry = UnitRegistry.Default,
     private val unitExpressionParser: UnitExpressionParser = UnitExpressionParser(unitRegistry),
 ) {
@@ -22,6 +23,17 @@ class UtilityCandidateProvider(
         if (calculation != null) {
             if (!config.calculationEnabled) return UtilityCandidateResult.Empty
             return provideCalculation(calculation, config)
+        }
+        if (config.formulaCandidateEnabled && !looksLikeUnitExpression(normalized, config)) {
+            val formulaInput = UtilityInputNormalizer.normalizeForFormula(input)
+            formulaParser.parse(formulaInput)
+                ?.takeIf {
+                    it.unicodeText != formulaInput.trim() ||
+                        it.normalizedTex != formulaInput.trim()
+                }
+                ?.let { formula ->
+                return provideFormula(formula)
+            }
         }
         if (containsBoundaryEquals(normalized)) return UtilityCandidateResult.Empty
         if (!config.unitConversionEnabled) return UtilityCandidateResult.Empty
@@ -46,6 +58,49 @@ class UtilityCandidateProvider(
         return trimmed.startsWith('=') || trimmed.endsWith('=') || '=' in trimmed
     }
 
+    /** Keep quantities and conversion syntax on the existing unit-conversion path. */
+    private fun looksLikeUnitExpression(
+        input: String,
+        config: UtilityCandidateConfig,
+    ): Boolean {
+        val explicit = splitExplicitConversion(input)
+        if (explicit != null) {
+            val parsed = unitExpressionParser.parse(explicit.source, config.regionalUnitProfile)
+            if (parsed != null && unitRegistry.findExact(
+                    explicit.target,
+                    parsed.category,
+                    config.regionalUnitProfile,
+                ) != null
+            ) {
+                return true
+            }
+        }
+
+        var offset = 0
+        while (offset < input.length) {
+            if (!input[offset].isDigit() && input[offset] != '.') {
+                offset++
+                continue
+            }
+            while (input.getOrNull(offset)?.isDigit() == true ||
+                input.getOrNull(offset)?.let { it == '.' || it == ',' } == true
+            ) {
+                offset++
+            }
+            while (input.getOrNull(offset)?.isWhitespace() == true) offset++
+            if (unitRegistry.matchAt(input, offset, profile = config.regionalUnitProfile) != null) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun shouldUseFormattedCalculationExpression(expression: String): Boolean =
+        expression.any { it == '^' || it == '_' || it == '√' || it == '|' || it == '‖' } ||
+            expression.contains('\\') ||
+            Regex("(?i)\\b(?:sqrt|root|nroot|sum|sigma|prod|product|int|integral|lim|abs|norm|floor|ceil|hat|bar|vec)\\b")
+                .containsMatchIn(expression)
+
     private fun provideCalculation(
         trigger: CalculationTrigger,
         config: UtilityCandidateConfig,
@@ -56,20 +111,83 @@ class UtilityCandidateProvider(
         val candidates = buildList {
             add(UtilityCandidate(result, UtilityCandidateKind.CALCULATION))
             if (config.includeExpressionCandidate) {
-                val displayExpression = trigger.expression
-                    .replace("*", "×")
-                    .replace("/", "÷")
+                val parsedFormula = if (config.formulaCandidateEnabled) {
+                    formulaParser.parse(trigger.expression)
+                } else {
+                    null
+                }
+                val useFormattedExpression = parsedFormula != null &&
+                    shouldUseFormattedCalculationExpression(trigger.expression)
+                val displayExpression = parsedFormula
+                    ?.takeIf { useFormattedExpression }
+                    ?.unicodeText
+                    ?: trigger.expression
+                        .replace("*", "×")
+                        .replace("/", "÷")
                 val expressionCandidate = if (trigger.prefix) {
                     "$result=$displayExpression"
                 } else {
                     "$displayExpression=$result"
                 }
                 if (expressionCandidate != result) {
-                    add(UtilityCandidate(expressionCandidate, UtilityCandidateKind.CALCULATION))
+                    val formulaPresentation = parsedFormula
+                        ?.takeIf { useFormattedExpression }
+                        ?.let { formula ->
+                        val expressionUnicode = if (trigger.prefix) {
+                            "$result=${formula.unicodeText}"
+                        } else {
+                            "${formula.unicodeText}=$result"
+                        }
+                        val expressionTex = if (trigger.prefix) {
+                            "$result=${formula.normalizedTex}"
+                        } else {
+                            "${formula.normalizedTex}=$result"
+                        }
+                        FormulaCandidatePresentation(
+                            ast = formulaRow(
+                                listOf(
+                                    FormulaNode.Number(result),
+                                    FormulaNode.Symbol("="),
+                                    formula.ast,
+                                ).let { parts ->
+                                    if (trigger.prefix) parts else listOf(formula.ast, FormulaNode.Symbol("="), FormulaNode.Number(result))
+                                }
+                            ),
+                            unicodeText = expressionUnicode,
+                            normalizedTex = expressionTex,
+                            type = FormulaCandidateType.UNICODE,
+                        )
+                    }
+                    add(
+                        UtilityCandidate(
+                            text = expressionCandidate,
+                            kind = UtilityCandidateKind.CALCULATION,
+                            formulaPresentation = formulaPresentation,
+                        )
+                    )
                 }
             }
         }
         return UtilityCandidateResult(candidates, UtilityTrigger.EXPLICIT_CALCULATION)
+    }
+
+    private fun provideFormula(formula: ParsedFormula): UtilityCandidateResult {
+        val candidates = listOf(
+            UtilityCandidate(
+                text = formula.unicodeText,
+                kind = UtilityCandidateKind.FORMULA_UNICODE,
+                formulaPresentation = formula.presentation(FormulaCandidateType.UNICODE),
+            ),
+            UtilityCandidate(
+                text = formula.normalizedTex,
+                kind = UtilityCandidateKind.FORMULA_TEX,
+                formulaPresentation = formula.presentation(FormulaCandidateType.TEX),
+            ),
+        )
+        return UtilityCandidateResult(
+            candidates = candidates,
+            trigger = UtilityTrigger.FORMULA,
+        )
     }
 
     private fun provideUnitConversion(

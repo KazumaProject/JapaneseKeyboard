@@ -385,6 +385,13 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(preferencesXmlRes, rootKey)
 
+        findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                it.isEnabled = false
+                it.summary = getString(R.string.inline_suggestion_unsupported_summary)
+            }
+        }
+
         val packageInfo = requireContext().packageManager.getPackageInfo(
             requireContext().packageName, 0
         )

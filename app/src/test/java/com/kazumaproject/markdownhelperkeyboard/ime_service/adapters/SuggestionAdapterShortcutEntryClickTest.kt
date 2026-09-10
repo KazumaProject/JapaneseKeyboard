@@ -3,12 +3,14 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 import android.content.Context
 import android.os.Looper
 import android.view.Gravity
+import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.ClipboardPreviewState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -207,6 +209,46 @@ class SuggestionAdapterShortcutEntryClickTest {
 
         assertTrue(closeClicked)
         assertFalse(normalCandidateClicked)
+        adapter.release()
+    }
+
+    @Test
+    fun inlineViewRebindingDetachesPreviousParentBeforeReuse() {
+        val adapter = SuggestionAdapter()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val firstInlineView = View(context)
+        val secondInlineView = View(context)
+        val toggle = InlineSuggestionToggle(
+            contentDescription = "通常候補を表示",
+            badge = "⇄",
+        )
+        val content = CandidateStripContent.Candidates(
+            candidates = listOf(candidate("通常候補")),
+            inlineSuggestionToggle = toggle,
+        )
+        adapter.submitContent(
+            content,
+            InlineSuggestionStripState(
+                views = listOf(firstInlineView, secondInlineView),
+                showInlineSuggestions = true,
+                toggle = toggle,
+            ),
+        )
+        drainMainUntilItemCount(adapter, expectedItemCount = 3)
+
+        val holder = adapter.onCreateViewHolder(
+            FrameLayout(context),
+            SuggestionAdapter.VIEW_TYPE_INLINE_SUGGESTION,
+        ) as SuggestionAdapter.InlineSuggestionViewHolder
+        adapter.onBindViewHolder(holder, 1)
+        assertTrue(firstInlineView.parent === holder.container)
+
+        adapter.onBindViewHolder(holder, 2)
+        assertTrue(firstInlineView.parent == null)
+        assertTrue(secondInlineView.parent === holder.container)
+
+        adapter.onViewRecycled(holder)
+        assertTrue(secondInlineView.parent == null)
         adapter.release()
     }
 

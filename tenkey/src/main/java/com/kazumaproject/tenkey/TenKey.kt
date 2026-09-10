@@ -25,6 +25,8 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
@@ -320,6 +322,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    private val skinLongPress = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+    private var skinGuide: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null
+    private var keyboardSkinId = KeyboardSkinId.DEFAULT
+
     init {
         // Inflate the keyboard layout with ViewBinding (root is <merge>, so attachToParent = true)
         val inflater = LayoutInflater.from(context)
@@ -399,6 +405,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewActive = activeBinding.bubbleLayoutActive
+                bubbleViewActive.skinId = keyboardSkinId
                 popTextActive = activeBinding.popupTextActive
                 val leftBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
                 popupWindowLeft = PopupWindow(
@@ -408,6 +415,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewLeft = leftBinding.bubbleLayout
+                bubbleViewLeft.skinId = keyboardSkinId
                 popTextLeft = leftBinding.popupText
             } else {
                 val activeBinding =
@@ -419,6 +427,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewActive = activeBinding.bubbleLayoutActive
+                bubbleViewActive.skinId = keyboardSkinId
                 popTextActive = activeBinding.popupTextActive
                 val leftBinding =
                     PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
@@ -429,6 +438,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewLeft = leftBinding.bubbleLayout
+                bubbleViewLeft.skinId = keyboardSkinId
                 popTextLeft = leftBinding.popupText
             }
         } else {
@@ -440,6 +450,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 false
             )
             bubbleViewActive = activeBinding.bubbleLayoutActive
+            bubbleViewActive.skinId = keyboardSkinId
             popTextActive = activeBinding.popupTextActive
 
             val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
@@ -450,6 +461,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 false
             )
             bubbleViewLeft = leftBinding.bubbleLayout
+            bubbleViewLeft.skinId = keyboardSkinId
             popTextLeft = leftBinding.popupText
         }
 
@@ -464,6 +476,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewTop = topBinding.bubbleLayout
+                bubbleViewTop.skinId = keyboardSkinId
                 popTextTop = topBinding.popupText
             } else {
                 val topBinding =
@@ -475,6 +488,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewTop = topBinding.bubbleLayout
+                bubbleViewTop.skinId = keyboardSkinId
                 popTextTop = topBinding.popupText
             }
         } else {
@@ -483,6 +497,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
             )
             bubbleViewTop = topBinding.bubbleLayout
+            bubbleViewTop.skinId = keyboardSkinId
             popTextTop = topBinding.popupText
         }
 
@@ -497,6 +512,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewRight = rightBinding.bubbleLayout
+                bubbleViewRight.skinId = keyboardSkinId
                 popTextRight = rightBinding.popupText
             } else {
                 val rightBinding =
@@ -508,6 +524,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewRight = rightBinding.bubbleLayout
+                bubbleViewRight.skinId = keyboardSkinId
                 popTextRight = rightBinding.popupText
             }
         } else {
@@ -519,6 +536,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 false
             )
             bubbleViewRight = rightBinding.bubbleLayout
+            bubbleViewRight.skinId = keyboardSkinId
             popTextRight = rightBinding.popupText
         }
 
@@ -534,6 +552,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewBottom = bottomBinding.bubbleLayout
+                bubbleViewBottom.skinId = keyboardSkinId
                 popTextBottom = bottomBinding.popupText
             } else {
                 val bottomBinding =
@@ -545,6 +564,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewBottom = bottomBinding.bubbleLayout
+                bubbleViewBottom.skinId = keyboardSkinId
                 popTextBottom = bottomBinding.popupText
             }
         } else {
@@ -556,6 +576,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 false
             )
             bubbleViewBottom = bottomBinding.bubbleLayout
+            bubbleViewBottom.skinId = keyboardSkinId
             popTextBottom = bottomBinding.popupText
         }
 
@@ -571,6 +592,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewCenter = centerBinding.bubbleLayout
+                bubbleViewCenter.skinId = keyboardSkinId
                 popTextCenter = centerBinding.popupText
             } else {
                 val centerBinding =
@@ -582,6 +604,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewCenter = centerBinding.bubbleLayout
+                bubbleViewCenter.skinId = keyboardSkinId
                 popTextCenter = centerBinding.popupText
             }
         } else {
@@ -593,6 +616,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 false
             )
             bubbleViewCenter = centerBinding.bubbleLayout
+            bubbleViewCenter.skinId = keyboardSkinId
             popTextCenter = centerBinding.popupText
         }
         applyPopupTextSize()
@@ -604,7 +628,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = style.backgroundColor,
-            textColor = style.textColor
+            textColor = style.textColor,
+            skinId = style.skinId
         )
         applyPopupTextSize()
         applyPopupColors()
@@ -889,6 +914,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * メンバ変数に値を保存してからテーマを適用します。
      * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
      */
+    private val skinColorRestorer by lazy {
+        com.kazumaproject.core.ui.skin.KeyboardSkinColorRestorer(binding.root)
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -902,9 +931,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         customBorderEnable: Boolean,
         customBorderColor: Int,
         liquidGlassKeyAlphaEnable: Int,
-        borderWidth: Int
+        borderWidth: Int,
+        skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
-        // メンバ変数に代入
+        // Dismiss held labels before restoring colors, so their cleanup cannot restore skin colors.
+        if (this.keyboardSkinId != skinId && ::popupWindowActive.isInitialized) { hideAllPopWindow() }
+        skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
+        this.keyboardSkinId = skinId
         this.themeMode = themeMode
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
@@ -946,6 +979,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewActive = activeBinding.bubbleLayoutActive
+                bubbleViewActive.skinId = keyboardSkinId
                 popTextActive = activeBinding.popupTextActive
                 val activeColor = manipulateColor(customSpecialKeyColor, 1.2f)
                 bubbleViewActive.setBubbleColor(activeColor)
@@ -959,6 +993,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewLeft = leftBinding.bubbleLayout
+                bubbleViewLeft.skinId = keyboardSkinId
                 popTextLeft = leftBinding.popupText
                 bubbleViewLeft.setBubbleColor(customSpecialKeyColor)
                 popTextLeft.setTextColor(customSpecialKeyTextColor)
@@ -972,6 +1007,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewTop = topBinding.bubbleLayout
+                bubbleViewTop.skinId = keyboardSkinId
                 popTextTop = topBinding.popupText
                 bubbleViewTop.setBubbleColor(customSpecialKeyColor)
                 popTextTop.setTextColor(customSpecialKeyTextColor)
@@ -985,6 +1021,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     false
                 )
                 bubbleViewRight = rightBinding.bubbleLayout
+                bubbleViewRight.skinId = keyboardSkinId
                 popTextRight = rightBinding.popupText
                 bubbleViewRight.setBubbleColor(customSpecialKeyColor)
                 popTextRight.setTextColor(customSpecialKeyTextColor)
@@ -995,6 +1032,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )
                 bubbleViewBottom = bottomBinding.bubbleLayout
+                bubbleViewBottom.skinId = keyboardSkinId
                 popTextBottom = bottomBinding.popupText
                 bubbleViewBottom.setBubbleColor(customSpecialKeyColor)
                 popTextBottom.setTextColor(customSpecialKeyTextColor)
@@ -1005,6 +1043,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )
                 bubbleViewCenter = centerBinding.bubbleLayout
+                bubbleViewCenter.skinId = keyboardSkinId
                 popTextCenter = centerBinding.popupText
                 bubbleViewCenter.setBubbleColor(customSpecialKeyColor)
                 popTextCenter.setTextColor(customSpecialKeyTextColor)
@@ -1134,6 +1173,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * @param radius キーの角丸の半径 (px)
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
         // 1. 色の計算
         // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
         val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
@@ -1434,6 +1474,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
+                    if (keyboardSkinId != KeyboardSkinId.DEFAULT) hideAllPopWindow()
+                    skinGuide?.dismiss()
+                    skinLongPress.clear()
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(GestureType.Down, key, null)
 
@@ -1475,7 +1518,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    resetLongPressAction()
+                    resetLongPressAction(animateLabels = true)
                     if (isCursorMode) {
                         val viewToRelease: View? = when (pressedKey.key) {
                             Key.SideKeySpace -> binding.keySpace
@@ -1701,6 +1744,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        skinGuide?.dismiss()
+        skinLongPress.clear()
         flickTextPreviewEmitter.cancel()
         resetLongPressAction()
         resetAllKeys()
@@ -2162,9 +2207,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /** Cancel ongoing long‐press visuals and job **/
-    private fun resetLongPressAction() {
+    private fun resetLongPressAction(animateLabels: Boolean = false) {
         if (isLongPressed) {
-            hideAllPopWindow()
+            // iOS removes the guide immediately; only surrounding labels keep fading.
+            if (animateLabels) skinLongPress.clear(animated = true)
+            hideAllPopWindow(restoreLabels = !animateLabels)
             Blur.removeBlurEffect(this)
         }
         longPressJob?.cancel()
@@ -2218,6 +2265,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextTapNumber(it.id)
                     }
                 }
+                if (showSkinGuide(it)) return@let
+                skinLongPress.show(this, keyboardSkinId, bubbleViewActive)
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                 if (popTextBottom.text.isNotEmpty()) {
@@ -2227,7 +2276,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
                 }
                 popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
-                Blur.applyBlurEffect(this, 8f)
+                if (keyboardSkinId == KeyboardSkinId.DEFAULT) Blur.applyBlurEffect(this, 8f)
             }
 
             if (it is AppCompatImageButton) {
@@ -2236,19 +2285,39 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popTextLeft.setTextFlickLeftNumber(it.id)
                     popTextBottom.setTextFlickBottomNumber(it.id)
                     popTextRight.setTextFlickRightNumber(it.id)
+                    if (keyboardSkinId != KeyboardSkinId.DEFAULT) popTextActive.setTextTapNumber(it.id)
+                    if (showSkinGuide(it)) return@let
+                    skinLongPress.show(this, keyboardSkinId, bubbleViewActive)
                     popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
                     popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                     popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
                     popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
-                    Blur.applyBlurEffect(this, 8f)
+                    if (keyboardSkinId == KeyboardSkinId.DEFAULT) Blur.applyBlurEffect(this, 8f)
                 }
             }
         }
     }
 
+    private fun showSkinGuide(anchor: View): Boolean {
+        val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(keyboardSkinId) ?: return false
+        hideAllPopWindow()
+        val presenter = skinGuide ?: com.kazumaproject.core.ui.skin.SkinGuidePopup(context).also { skinGuide = it }
+        val guide = presenter.show(anchor, skin, mapOf(
+            com.kazumaproject.core.ui.skin.PopupDirection.CENTER to popTextActive.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.LEFT to popTextLeft.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.TOP to popTextTop.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.RIGHT to popTextRight.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM to popTextBottom.text
+        ))
+        skinLongPress.show(this, keyboardSkinId, guide)
+        return true
+    }
+
     /** Hide every popup bubble **/
-    private fun hideAllPopWindow() {
+    private fun hideAllPopWindow(restoreLabels: Boolean = true) {
+        skinGuide?.dismiss()
+        if (restoreLabels) skinLongPress.clear()
         popupWindowActive.hide()
         popupWindowLeft.hide()
         popupWindowTop.hide()
@@ -2259,6 +2328,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Called during a “tap” gesture in an ongoing move event **/
     private fun setTapInActionMove() {
+        if (skinGuide?.isShowing == true) {
+            skinGuide?.select(com.kazumaproject.core.ui.skin.PopupDirection.CENTER)
+            return
+        }
         if (!isLongPressed) popupWindowActive.hide()
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
@@ -2301,11 +2374,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Called during a “flick” gesture in an ongoing move event **/
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
+        if (skinGuide?.isShowing == true) {
+            val direction = when (gestureType) {
+                GestureType.FlickLeft -> com.kazumaproject.core.ui.skin.PopupDirection.LEFT
+                GestureType.FlickTop -> com.kazumaproject.core.ui.skin.PopupDirection.TOP
+                GestureType.FlickRight -> com.kazumaproject.core.ui.skin.PopupDirection.RIGHT
+                GestureType.FlickBottom -> com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM
+                else -> com.kazumaproject.core.ui.skin.PopupDirection.CENTER
+            }
+            skinGuide?.select(direction)
+            return
+        }
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
                 it.isPressed = true
-                if (!isLongPressed) it.text = ""
+                if (!isLongPressed && keyboardSkinId == KeyboardSkinId.DEFAULT) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
                         when (currentInputMode.value) {

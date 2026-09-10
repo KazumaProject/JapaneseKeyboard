@@ -2,11 +2,13 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.view.View
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.ClipboardPreviewState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertEquals
@@ -401,6 +403,121 @@ class SuggestionAdapterDisplayItemTest {
         )
         assertFalse(adapter.isStartAnchoredContentExpected())
         adapter.release()
+    }
+
+    @Test
+    fun inlineSuggestionToggleUsesSelectionActionPresentationBeforeNormalCandidates() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.Candidates(
+                candidates = listOf(candidate("通常候補")),
+                inlineSuggestionToggle = InlineSuggestionToggle(
+                    contentDescription = "インライン自動入力候補を表示",
+                    badge = "⇄",
+                ),
+            )
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionToggleItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.CandidateItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        assertEquals(
+            listOf(candidate("通常候補")),
+            adapter.buildClickCandidatesForTesting()
+        )
+        assertEquals(
+            SuggestionAdapter.StartAnchorSignature(
+                role = SuggestionAdapter.StartAnchorRole.InlineSuggestionToggle
+            ),
+            adapter.buildStartAnchorSignatureForTesting()
+        )
+        assertTrue(adapter.isStartAnchoredContentExpected())
+        adapter.release()
+    }
+
+    @Test
+    fun inlineSuggestionsAreDisplayedAsToggleThenInlineViewsAndCanReturnToNormalCandidates() {
+        val adapter = SuggestionAdapter()
+        val application = org.robolectric.RuntimeEnvironment.getApplication()
+        val firstInlineView = View(application)
+        val secondInlineView = View(application)
+        val toggle = InlineSuggestionToggle(
+            contentDescription = "通常候補を表示",
+            badge = "⇄",
+        )
+        val content = CandidateStripContent.Candidates(
+            candidates = listOf(candidate("通常候補")),
+            inlineSuggestionToggle = toggle,
+        )
+
+        adapter.submitContent(
+            content,
+            InlineSuggestionStripState(
+                views = listOf(firstInlineView, secondInlineView),
+                showInlineSuggestions = true,
+                toggle = toggle,
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionToggleItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting(),
+        )
+        assertTrue(adapter.isInlineSuggestionStripShown())
+
+        adapter.submitContent(
+            content,
+            InlineSuggestionStripState(
+                views = listOf(firstInlineView, secondInlineView),
+                showInlineSuggestions = false,
+                toggle = toggle,
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionToggleItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.CandidateItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting(),
+        )
+        assertFalse(adapter.isInlineSuggestionStripShown())
+
+        adapter.submitContent(
+            content,
+            InlineSuggestionStripState(
+                views = listOf(firstInlineView, secondInlineView),
+                showInlineSuggestions = true,
+                toggle = toggle,
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionToggleItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.InlineSuggestionItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting(),
+        )
+        adapter.release()
+    }
+
+    @Test
+    fun inlineSuggestionSpacingHasOnlyFourDpEdgesAndGaps() {
+        val decoration = InlineSuggestionItemDecoration(edgeSpacing = 4, itemSpacing = 4)
+
+        assertEquals(android.graphics.Rect(4, 0, 0, 0), decoration.offsetsForPosition(0, 3))
+        assertEquals(android.graphics.Rect(4, 0, 0, 0), decoration.offsetsForPosition(1, 3))
+        assertEquals(android.graphics.Rect(4, 0, 4, 0), decoration.offsetsForPosition(2, 3))
     }
 
     @Test

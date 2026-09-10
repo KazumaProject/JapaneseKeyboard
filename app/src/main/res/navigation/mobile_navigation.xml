@@ -303,6 +303,9 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardListFragment"
         android:label="@string/custom_layout_fragment_title">
         <action
+            android:id="@+id/action_select_keyboard_layouts"
+            app:destination="@id/keyboardSelectionFragment" />
+        <action
             android:id="@+id/action_keyboardListFragment_to_keyboardEditorFragment"
             app:destination="@id/keyboardEditorFragment" />
     </fragment>
@@ -417,7 +420,7 @@
     <fragment
         android:id="@+id/enableKeyboardFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.enable_keyboard_setting.EnableKeyboardFragment"
-        android:label="fragment_enable_keyboard"
+        android:label="@string/welcome_title"
         tools:layout="@layout/fragment_enable_keyboard" />
     <fragment
         android:id="@+id/shortcutSettingFragment"
@@ -441,6 +444,10 @@
         android:id="@+id/keyboardThemeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"
         android:label="@string/keyboardthemefragment" />
+    <fragment
+        android:id="@+id/keyboardSkinSelectionFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardSkinSelectionFragment"
+        android:label="@string/keyboard_skin_choose" />
     <fragment
         android:id="@+id/tenKeyCandidateLetterSizeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"
@@ -514,7 +521,7 @@
     <fragment
         android:id="@+id/systemUserDictionaryBuilderFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui.SystemUserDictionaryBuilderFragment"
-        android:label=""
+        android:label="@string/system_user_dictionary_builder_title"
         tools:layout="@layout/fragment_system_user_dictionary_builder" />
     <fragment
         android:id="@+id/externalDictionarySettingsFragment"

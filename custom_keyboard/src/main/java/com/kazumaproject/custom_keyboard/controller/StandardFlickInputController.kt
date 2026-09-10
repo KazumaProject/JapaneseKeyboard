@@ -90,7 +90,8 @@ class StandardFlickInputController(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = style.backgroundColor,
-            textColor = style.textColor
+            textColor = style.textColor,
+            skinId = style.skinId
         )
         popupView.applyPopupViewStyle(popupStyle)
     }
@@ -189,6 +190,7 @@ class StandardFlickInputController(
             return
         }
 
+        popupView.setFlickDirection(direction)
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
         popupView.applyPopupViewStyle(popupStyle)
 
@@ -198,6 +200,38 @@ class StandardFlickInputController(
             val text = characterMap[direction]
             popupView.updateText(text)
         }
+
+        com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(popupStyle.skinId)?.let { skin ->
+            val w = keyAnchor.width
+            val h = keyAnchor.height
+            val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
+            val center = direction == FlickDirection.TAP
+            val left = direction == FlickDirection.UP_LEFT || direction == FlickDirection.UP_LEFT_FAR
+            val right = direction == FlickDirection.UP_RIGHT || direction == FlickDirection.UP_RIGHT_FAR
+            val horizontal = left || right
+            val popupWidth = if (center) w * 3 else if (horizontal) w * 3 / 2 else w
+            val popupHeight = if (center) h * 3 else if (horizontal) h else h * 3 / 2
+            popupView.width = popupWidth
+            popupView.height = popupHeight
+            popupView.setPadding(if (right) w / 2 else 0, if (direction == FlickDirection.DOWN) h / 2 else 0,
+                if (left) w / 2 else 0, if (direction == FlickDirection.UP) h / 2 else 0)
+            val x = location[0] + when { center || left -> -w; right -> w / 2; else -> 0 }
+            val y = location[1] + when { center || direction == FlickDirection.UP -> -h
+                direction == FlickDirection.DOWN -> h / 2; else -> 0 }
+            popupWindow.elevation = 0f
+            skin.showPopup(popupView)
+            if (popupWindow.isShowing) popupWindow.update(x, y, popupWidth, popupHeight)
+            else {
+                popupWindow.width = popupWidth
+                popupWindow.height = popupHeight
+                popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            }
+            return
+        }
+        popupView.setPadding(0, 0, 0, 0)
+        popupWindow.elevation = 8f
+        popupWindow.width = WindowManager.LayoutParams.WRAP_CONTENT
+        popupWindow.height = WindowManager.LayoutParams.WRAP_CONTENT
 
         val baseOffsetY = 10
         val flickUpAdditionalOffset = 80

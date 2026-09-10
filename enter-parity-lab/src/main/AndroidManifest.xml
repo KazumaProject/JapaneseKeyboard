@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Enter parity laboratory">
+        <activity android:name=".LabActivity" android:exported="true" android:windowSoftInputMode="adjustResize|stateAlwaysVisible">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+    <instrumentation android:name=".MatrixRunner" android:targetPackage="com.kazumaproject.enterparity" android:functionalTest="true" />
+    <instrumentation android:name=".CompositionRegressionRunner" android:targetPackage="com.kazumaproject.enterparity" android:functionalTest="true" />
+</manifest>

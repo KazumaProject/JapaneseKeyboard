@@ -19,24 +19,9 @@ class TextMacroSettingsEntryPointTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun newHomeAndLegacySettingsExposeDedicatedMacroEntryPoint() {
+    fun newHomeAndLegacySettingsExposeOneMacroManagementEntryPoint() {
         val categories = SettingDestinations.categories(context)
-        val category = categories
-            .first { it.key == "setting_route_text_macro" }
-
-        assertEquals(SettingCategory.TEXT_MACRO, category.category)
-        assertEquals(
-            R.id.textMacroFragment,
-            SettingDestinations.destinationId(category.destination),
-        )
-        assertEquals(
-            context.getString(R.string.setting_category_text_macro_title),
-            category.title,
-        )
-        assertEquals(
-            categories.indexOfFirst { it.key == "setting_route_dictionary" } + 1,
-            categories.indexOf(category),
-        )
+        assertTrue(categories.none { it.key == "setting_route_text_macro" })
 
         val tabs = SettingTabRegistry.createTabs()
         val tab = tabs
@@ -53,6 +38,41 @@ class TextMacroSettingsEntryPointTest {
         assertEquals(
             management.indexOfFirst { it.key == "setting_management_user_template" } + 1,
             management.indexOfFirst { it.key == "setting_management_text_macro" },
+        )
+        val macroManagementEntries = management.filter {
+            SettingDestinations.destinationId(it.destination) == R.id.textMacroFragment
+        }
+        assertEquals(1, macroManagementEntries.size)
+
+        val newHomeMacroEntries = SettingSearchIndex.searchable(
+            context,
+            SettingSearchScope.NEW_HOME,
+        ).filter {
+            SettingDestinations.destinationId(it.destination) == R.id.textMacroFragment
+        }
+        assertEquals(1, newHomeMacroEntries.size)
+        assertEquals("setting_management_text_macro", newHomeMacroEntries.single().key)
+
+        val legacyMacroEntries = SettingSearchIndex.searchable(
+            context,
+            SettingSearchScope.LEGACY_TABS,
+        ).filter {
+            SettingDestinations.destinationId(it.destination) == R.id.textMacroFragment
+        }
+        assertEquals(1, legacyMacroEntries.size)
+        assertEquals("legacy_text_macro", legacyMacroEntries.single().key)
+
+        val macroCandidateSetting = SettingSearchIndex.searchable(
+            context,
+            SettingSearchScope.NEW_HOME,
+        ).single { it.key == "text_macro_candidate_preference" }
+        assertEquals(
+            R.id.dictionaryPreferenceFragment,
+            SettingDestinations.destinationId(macroCandidateSetting.destination),
+        )
+        assertEquals(
+            context.getString(R.string.text_macro_candidate_title),
+            macroCandidateSetting.title,
         )
 
         val legacySearchResult = SettingSearchIndex.legacySearchable(context)

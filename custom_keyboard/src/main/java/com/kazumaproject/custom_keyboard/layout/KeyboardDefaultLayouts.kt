@@ -18,6 +18,20 @@ import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
+    fun createToggleKanaTemplateLayout(): KeyboardLayout {
+        val layout = createFlickKanaTemplateLayout(isDefaultKey = true)
+        return layout.copyWithKeys(layout.keys.map { key ->
+            val actions = layout.flickKeyMaps[key.label]?.firstOrNull().orEmpty()
+            if (!key.isSpecialKey && key.keyType == KeyType.PETAL_FLICK &&
+                actions.values.any { it is FlickAction.Input }
+            ) {
+                key.copy(textInputBehavior = com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior.TOGGLE)
+            } else {
+                key
+            }
+        })
+    }
+
     data class DeleteKeyFlickSettings(
         val left: Boolean = true,
         val up: Boolean = false,
@@ -454,6 +468,9 @@ object KeyboardDefaultLayouts {
         ),
         FlickAction.Action(KeyAction.Enter, "次"),
         FlickAction.Action(KeyAction.Enter, "確定"),
+        FlickAction.Action(KeyAction.Enter, "前へ"),
+        FlickAction.Action(KeyAction.Enter, "実行"),
+        FlickAction.Action(KeyAction.Enter, "送信"),
     )
 
     private val dakutenToggleStates = listOf(
@@ -510,10 +527,13 @@ object KeyboardDefaultLayouts {
             drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
         ),
         FlickAction.Action(
-            KeyAction.Enter, "Go",
+            KeyAction.Enter, "検索",
         ),
         FlickAction.Action(KeyAction.Enter, "Next"),
         FlickAction.Action(KeyAction.Enter, "確定"),
+        FlickAction.Action(KeyAction.Enter, "前へ"),
+        FlickAction.Action(KeyAction.Enter, "実行"),
+        FlickAction.Action(KeyAction.Enter, "送信"),
     )
 
     /**
@@ -4289,7 +4309,7 @@ object KeyboardDefaultLayouts {
                 0,
                 false,
                 isSpecialKey = true,
-                action = KeyAction.Space,
+                action = KeyAction.CommitAndInsertSpace,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
             ), KeyData(
                 "",
@@ -4391,7 +4411,7 @@ object KeyboardDefaultLayouts {
                 2,
                 4,
                 false,
-                KeyAction.Space,
+                KeyAction.CommitAndInsertSpace,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
             ), KeyData(
@@ -4418,9 +4438,9 @@ object KeyboardDefaultLayouts {
 
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.Space,
+                KeyAction.CommitAndInsertSpace,
             ), FlickDirection.UP_LEFT to FlickAction.Action(
-                KeyAction.Space,
+                KeyAction.CommitAndInsertSpace,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
             )

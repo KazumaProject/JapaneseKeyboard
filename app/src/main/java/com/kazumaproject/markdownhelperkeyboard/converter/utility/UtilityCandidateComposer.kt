@@ -1,6 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.utility
 
+import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_UNICODE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UTILITY_LITERAL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -19,15 +22,65 @@ object UtilityCandidateComposer {
                     UtilityCandidateKind.CALCULATION -> CANDIDATE_TYPE_CALCULATION
                     UtilityCandidateKind.UNIT_CONVERSION -> CANDIDATE_TYPE_UNIT_CONVERSION
                     UtilityCandidateKind.LITERAL -> CANDIDATE_TYPE_UTILITY_LITERAL
+                    UtilityCandidateKind.FORMULA_UNICODE -> CANDIDATE_TYPE_FORMULA_UNICODE
+                    UtilityCandidateKind.FORMULA_TEX -> CANDIDATE_TYPE_FORMULA_TEX
                 },
                 length = input.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
                 score = 0,
                 yomi = input,
+                commitText = candidate.text,
+                presentation = candidate.formulaPresentation,
             )
         }
+        val formulaCandidates = utilityCandidates.filter { candidate ->
+            candidate.isFormulaCandidate()
+        }
+        val nonFormulaUtilityCandidates = utilityCandidates.filterNot { candidate ->
+            candidate.isFormulaCandidate()
+        }
         val ordered = when (result.trigger) {
+            UtilityTrigger.FORMULA -> {
+                val source = input.trim()
+                val sourceIsCanonicalTex = formulaCandidates.any {
+                    it.presentation?.normalizedTex == source
+                }
+                val originalInput = if (sourceIsCanonicalTex) {
+                    null
+                } else {
+                    existingCandidates.firstOrNull {
+                        it.string == input || it.commitText == input ||
+                            it.string == source || it.commitText == source
+                    } ?: utilityLiteral(input, input)
+                }
+                val remainingCandidates = existingCandidates.filterNot { existing ->
+                    existing === originalInput ||
+                        (sourceIsCanonicalTex &&
+                            (existing.string == input || existing.commitText == input ||
+                                existing.string == source || existing.commitText == source))
+                }
+                val unitCandidates = nonFormulaUtilityCandidates.filter {
+                    it.type == CANDIDATE_TYPE_UNIT_CONVERSION
+                } + remainingCandidates.filter {
+                    it.type == CANDIDATE_TYPE_UNIT_CONVERSION
+                }
+                val otherUtilityCandidates = nonFormulaUtilityCandidates.filterNot {
+                    it.type == CANDIDATE_TYPE_UNIT_CONVERSION
+                }
+                val normalCandidates = remainingCandidates.filterNot {
+                    it.type == CANDIDATE_TYPE_UNIT_CONVERSION
+                }
+                val candidatesBeforeFormula = otherUtilityCandidates +
+                    unitCandidates + normalCandidates + listOfNotNull(originalInput)
+                val fullWidthCandidates = candidatesBeforeFormula.filter {
+                    it.isFullWidthCandidate()
+                }
+                candidatesBeforeFormula.filterNot { it.isFullWidthCandidate() } +
+                    formulaCandidates + fullWidthCandidates
+            }
+
             UtilityTrigger.EXPLICIT_CALCULATION,
-            UtilityTrigger.EXPLICIT_UNIT_CONVERSION -> utilityCandidates + existingCandidates
+            UtilityTrigger.EXPLICIT_UNIT_CONVERSION ->
+                utilityCandidates + existingCandidates
 
             UtilityTrigger.AUTOMATIC_UNIT_CONVERSION -> {
                 val inputLiteral = existingCandidates.firstOrNull { it.string == input }
@@ -39,10 +92,10 @@ object UtilityCandidateComposer {
                             ?: utilityLiteral(text, input)
                     }
                 if (preferredSource == null) {
-                    listOf(inputLiteral) + utilityCandidates +
+                    listOf(inputLiteral) + nonFormulaUtilityCandidates +
                         existingCandidates.filterNot { it === inputLiteral }
                 } else {
-                    listOf(preferredSource) + utilityCandidates + inputLiteral +
+                    listOf(preferredSource) + nonFormulaUtilityCandidates + inputLiteral +
                         existingCandidates.filterNot {
                             it === preferredSource || it === inputLiteral
                         }
@@ -51,7 +104,42 @@ object UtilityCandidateComposer {
 
             UtilityTrigger.NONE -> existingCandidates
         }
-        return ordered.distinctBy(Candidate::string)
+        return if (result.trigger == UtilityTrigger.FORMULA) {
+            distinctFormulaCandidates(ordered)
+        } else {
+            ordered.distinctBy(Candidate::string)
+        }
+    }
+
+    private fun Candidate.isFormulaCandidate(): Boolean =
+        type == CANDIDATE_TYPE_FORMULA_UNICODE || type == CANDIDATE_TYPE_FORMULA_TEX
+
+    /**
+     * Keep the engine's candidates carrying the visible [全] label after formula candidates.
+     * Type 21 is shared by symbol candidates, so only move it when its value is actually a
+     * full-width numeric/symbol string; this leaves superscript and other type-21 candidates in
+     * the ordinary group.
+     */
+    private fun Candidate.isFullWidthCandidate(): Boolean =
+        type == 22.toByte() ||
+            type == 30.toByte() ||
+            (type == 21.toByte() && string.isAllFullWidthNumericSymbol())
+
+    private fun distinctFormulaCandidates(candidates: List<Candidate>): List<Candidate> {
+        val emittedTexts = mutableSetOf<String>()
+        val emittedFormulaTypes = mutableSetOf<Pair<String, Byte>>()
+        return candidates.filter { candidate ->
+            if (candidate.isFormulaCandidate()) {
+                if (!emittedFormulaTypes.add(candidate.string to candidate.type)) {
+                    false
+                } else {
+                    emittedTexts.add(candidate.string)
+                    true
+                }
+            } else {
+                emittedTexts.add(candidate.string)
+            }
+        }
     }
 
     private fun utilityLiteral(text: String, input: String) = Candidate(
@@ -66,6 +154,8 @@ object UtilityCandidateComposer {
         CANDIDATE_TYPE_CALCULATION,
         CANDIDATE_TYPE_UNIT_CONVERSION,
         CANDIDATE_TYPE_UTILITY_LITERAL -> true
+        CANDIDATE_TYPE_FORMULA_UNICODE,
+        CANDIDATE_TYPE_FORMULA_TEX -> true
         else -> false
     }
 

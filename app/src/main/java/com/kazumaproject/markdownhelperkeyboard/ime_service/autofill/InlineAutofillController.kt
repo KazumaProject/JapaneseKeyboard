@@ -57,15 +57,6 @@ internal class InlineAutofillController(
         return true
     }
 
-    /** Reparents the already inflated views when the active normal or floating host changes. */
-    fun onHostChanged() {
-        val (token, views) = synchronized(stateLock) {
-            if (destroyed || inflatedViews.isEmpty()) return
-            (activeToken ?: return) to inflatedViews
-        }
-        publishIfCurrent(token, views)
-    }
-
     fun clear() {
         val token = synchronized(stateLock) {
             inflatedViews = emptyList()

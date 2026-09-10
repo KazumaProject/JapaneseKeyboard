@@ -59,6 +59,14 @@ class CrossFlickInputController(
         fun onFlick(action: KeyAction, isFlick: Boolean, direction: FlickDirection) {
             onFlick(action, isFlick)
         }
+        fun onFlick(
+            action: KeyAction,
+            isFlick: Boolean,
+            direction: FlickDirection,
+            isLongPress: Boolean,
+        ) {
+            onFlick(action, isFlick, direction)
+        }
         fun onFlickCommitted(
             fallbackAction: KeyAction?,
             isFlick: Boolean,
@@ -153,13 +161,15 @@ class CrossFlickInputController(
             sizeScalePercent = directional.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = directional.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = directional.backgroundColor,
-            textColor = directional.textColor
+            textColor = directional.textColor,
+            skinId = directional.skinId
         )
         crossPopupStyle = PopupViewStyle(
             sizeScalePercent = cross.sizeScalePercent.coerceIn(50, 200),
             textSizeSp = cross.textSizeSp.coerceIn(8f, 48f),
             backgroundColor = cross.backgroundColor,
-            textColor = cross.textColor
+            textColor = cross.textColor,
+            skinId = cross.skinId
         )
         actionPopupViews.values.forEach { it.applyPopupViewStyle(crossPopupStyle) }
         gridPopupView.applyPopupViewStyle(crossPopupStyle)
@@ -368,7 +378,12 @@ class CrossFlickInputController(
                 val isFlick = currentDirection != FlickDirection.TAP
                 val output = resolveText(currentDirection, preferLongPress = isLongPressMode)
                 if (!output.isNullOrEmpty()) {
-                    listener?.onFlick(KeyAction.Text(output), isFlick, currentDirection)
+                    listener?.onFlick(
+                        KeyAction.Text(output),
+                        isFlick,
+                        currentDirection,
+                        isLongPressMode,
+                    )
                 }
             }
         }
