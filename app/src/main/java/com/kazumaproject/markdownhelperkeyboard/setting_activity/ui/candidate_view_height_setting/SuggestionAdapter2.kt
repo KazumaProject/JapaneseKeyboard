@@ -675,6 +675,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     visibility = View.GONE
                 }
             }
+            applyEmptyHelperIconColor(incognitoIcon)
 
             undoIcon?.apply {
                 isVisible = state.undoEnabled
@@ -792,6 +793,10 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     ) {
         applyEmptyHelperButtonBackground(parent, isDynamicColorEnable)
         applyEmptyHelperTextColor(text)
+        applyEmptyHelperIconColor(icon)
+    }
+
+    private fun applyEmptyHelperIconColor(icon: ImageView?) {
         candidateEmptyDrawableTextColor?.let { color ->
             icon?.setColorFilter(color, PorterDuff.Mode.SRC_IN)
         } ?: icon?.clearColorFilter()
