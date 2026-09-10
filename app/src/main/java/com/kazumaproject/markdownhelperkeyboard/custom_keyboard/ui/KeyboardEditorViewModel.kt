@@ -119,6 +119,10 @@ class KeyboardEditorViewModel @Inject constructor(
             KeyboardDefaultLayouts.createFlickKanaTemplateLayout(true)
         ),
         LayoutTemplate(
+            R.string.template_toggle_kana,
+            KeyboardDefaultLayouts.createToggleKanaTemplateLayout()
+        ),
+        LayoutTemplate(
             R.string.template_flick_english_cursor,
             KeyboardDefaultLayouts.createFlickEnglishTemplateLayout(
                 isDefaultKey = true,
