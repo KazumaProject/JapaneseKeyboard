@@ -18358,6 +18358,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleDefaultInputFinalize(string: String) {
+        // フリック専用入力はすでに編集後の背景で表示されており、トグル待機は不要。
+        if (isFlickOnlyMode == true) return
+
         val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
         val mutationRevision = editorMutationRevision.current()
         defaultInputFinalizeJob = scope.launch {
@@ -23523,9 +23526,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         @ColorInt textColor: Int? = null,
     ): SpannableString {
         val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+        // フリック専用入力にはトグル待機がないため、最初から編集後の背景を使う。
+        val resolvedBackgroundColor = if (isFlickOnlyMode == true) {
+            if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            }
+        } else {
+            backgroundColor
+        }
         return spannableString.apply {
             setSpan(
-                BackgroundColorSpan(backgroundColor),
+                BackgroundColorSpan(resolvedBackgroundColor),
                 0,
                 inputLength,
                 spanFlag,
