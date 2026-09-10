@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import com.kazumaproject.core.domain.key.KeyTextSizeDefaults
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 
@@ -257,7 +258,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
 
         private const val MIN_TEXT_SIZE_SP = 8f
         private const val MAX_TEXT_SIZE_SP = 32f
-        private const val DEFAULT_TEXT_SIZE_SP = 16f
-        private const val DEFAULT_SPECIAL_TEXT_SIZE_SP = 12f
+        private const val DEFAULT_TEXT_SIZE_SP = KeyTextSizeDefaults.SumireKeySp
+        private const val DEFAULT_SPECIAL_TEXT_SIZE_SP = KeyTextSizeDefaults.SumireSpecialKeySp
     }
 }

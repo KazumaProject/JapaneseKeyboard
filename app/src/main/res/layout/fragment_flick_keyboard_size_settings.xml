@@ -124,7 +124,7 @@
                 android:id="@+id/textTextSizeValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="14.0sp"
+                android:text="20.0sp"
                 android:textSize="16sp" />
         </LinearLayout>
 
@@ -152,7 +152,7 @@
                 android:id="@+id/textSpecialTextSizeValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="16.0sp"
+                android:text="12.0sp"
                 android:textSize="16sp" />
         </LinearLayout>
 

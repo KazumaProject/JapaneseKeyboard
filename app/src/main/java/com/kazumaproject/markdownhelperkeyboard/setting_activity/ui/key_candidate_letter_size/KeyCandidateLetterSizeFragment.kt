@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.key_candidate_letter_size
 
 import android.annotation.SuppressLint
-import android.content.res.Configuration
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -15,12 +14,13 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.domain.key.KeyTextSizeDefaults
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyCandidateLetterSizeBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyTextSizePreviewSizing
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -38,7 +38,7 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     private val maxKeyTextSize = 40f
     private val minCandidateTextSize = 10f
     private val maxCandidateTextSize = 40f
-    private val defaultKeyTextSize = 17.0f
+    private val defaultKeyTextSize = KeyTextSizeDefaults.TenKeyJapaneseSp
     private val defaultCandidateTextSize = 14.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,12 +86,9 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         val heightPref = appPreference.keyboard_height ?: 280
         val widthPref = appPreference.keyboard_width ?: 280
         val density = resources.displayMetrics.density
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
         val positionPref = appPreference.keyboard_position ?: true
-        val clampedHeight = heightPref.coerceIn(180, 420)
-
-        val heightPx = (clampedHeight * density).toInt()
+        val heightPx = KeyTextSizePreviewSizing.heightPx(heightPref, density)
 
         val widthPx = when {
             widthPref == 100 -> {
@@ -102,16 +99,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
                 (screenWidth * (widthPref / 100f)).toInt()
             }
         }
-        val keyboardHeight = if (isPortrait) {
-            heightPx + requireContext().dpToPx(
-                appPreference.candidate_view_empty_height_dp ?: 110
-            )
-        } else {
-            heightPx + requireContext().dpToPx(
-                appPreference.candidate_view_empty_height_dp ?: 110
-            )
-        }
-
         (binding.suggestionLetterSizeRecyclerview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
             params.width = widthPx
             if (positionPref) {
@@ -129,7 +116,7 @@ class KeyCandidateLetterSizeFragment : Fragment() {
 
         (binding.tenkeyLetterSizePreview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
             params.width = widthPx
-            params.height = keyboardHeight
+            params.height = heightPx
             params.bottomMargin = 56
             params.bottomToBottom =
                 androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
