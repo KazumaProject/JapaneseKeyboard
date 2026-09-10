@@ -1447,6 +1447,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate?
     ): Boolean = withContext(Dispatchers.Main.immediate) {
         if (!shouldApplyCandidateResult(insertString)) return@withContext false
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+            // A tap may extend the deadline while a completed candidate is queued for Main.
+            delayBeforeApplyingLiveConversion()
+            if (!shouldApplyCandidateResult(insertString)) return@withContext false
+        }
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
@@ -8929,6 +8934,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setCustomLayoutOnAvailableSurfaces(layout: KeyboardLayout) {
+        resetCustomToggleState()
         getNormalKeyboardSurface()
             ?.customLayout
             ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
@@ -11730,6 +11736,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun showResolvedKeyboard(type: KeyboardType) {
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) resetCustomToggleState()
         hideAllKeyboards()
         Timber.d("showKeyboard called: resolved=$type")
         mainLayoutBinding?.apply {
@@ -12049,6 +12056,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutDirectMode = false
     private var customKeyboardShiftState = CustomKeyboardShiftState.OFF
     private val customToggleInputState = CustomToggleInputState()
+    private var customToggleFinalizeJob: Job? = null
     private var customToggleWasDirect: Boolean = false
     private val isCustomLayoutShiftPressed: Boolean
         get() = customKeyboardShiftState == CustomKeyboardShiftState.ONE_SHOT
@@ -12613,7 +12621,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
-                resetCustomToggleState()
+                finishCustomToggleForAction()
                 if (action != KeyAction.DoNothing) {
                     vibrate()
                     clearDeleteBufferWithView()
@@ -12932,7 +12940,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onFlickActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
-                resetCustomToggleState()
+                finishCustomToggleForAction()
                 Timber.d("onFlickActionLongPress: $action")
                 if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
@@ -13390,7 +13398,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
                 if (isKeyboardLayoutEditModeActive()) return
-                resetCustomToggleState()
+                finishCustomToggleForAction()
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
                 Timber.d("onAction: $action $isFlick")
@@ -13950,6 +13958,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetCustomToggleState() {
+        customToggleFinalizeJob?.cancel()
+        customToggleFinalizeJob = null
         customToggleInputState.reset()
         customToggleWasDirect = false
         customToggleExpectedEditorSelection = null
@@ -13957,6 +13967,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var customToggleExpectedEditorSelection: CustomToggleEditorSelection? = null
     private var customToggleEditInProgress = false
+
+    private fun finishCustomToggleForAction() {
+        val shouldUpdateColor = qwertyMode.value == TenKeyQWERTYMode.Custom &&
+            customToggleRemainingMillis() > 0 && !isCustomToggleDirectInput() &&
+            inputString.value.isNotEmpty() && !isHenkan.get()
+        resetCustomToggleState()
+        if (shouldUpdateColor) applyRawComposingFallback(inputString.value)
+    }
+
+    private fun customToggleRemainingMillis(): Long =
+        customToggleInputState.remainingMillis(SystemClock.elapsedRealtime())
+
+    private fun renderCustomKeyboardComposingText(string: String) {
+        if (customToggleRemainingMillis() > 0 && !isCustomToggleDirectInput()) {
+            setComposingTextPreEdit(
+                inputString = string,
+                spannableString = createSpannableWithTail(string),
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputCompositionBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+                },
+                textColor = if (customComposingTextPreference == true) inputCompositionTextColor else null,
+            )
+        } else {
+            applyRawComposingFallback(string)
+        }
+    }
+
+    private fun scheduleCustomToggleFinalize() {
+        customToggleFinalizeJob?.cancel()
+        customToggleFinalizeJob = null
+        if (qwertyMode.value != TenKeyQWERTYMode.Custom || currentInputConnection == null) return
+        val remaining = customToggleRemainingMillis()
+        if (remaining <= 0 || isCustomToggleDirectInput()) return
+        val string = inputString.value
+        if (string.isEmpty()) return
+        // Render here as well: cycling equal output values does not emit a StateFlow update.
+        renderCustomKeyboardComposingText(string)
+        val revision = editorMutationRevision.current()
+        customToggleFinalizeJob = scope.launch {
+            delay(customToggleRemainingMillis())
+            if (qwertyMode.value != TenKeyQWERTYMode.Custom ||
+                inputString.value != string || !editorMutationRevision.isCurrent(revision) ||
+                isCustomToggleDirectInput() || isHenkan.get()
+            ) return@launch
+            applyRawComposingFallback(string)
+        }
+    }
 
     private fun captureCustomToggleEditorSelection(
         connection: InputConnection
@@ -14096,12 +14156,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     null
                 }
-                if (isDirect) customToggleEditInProgress = true
+                customToggleEditInProgress = true
                 try {
                     // A new toggle sequence must append, bypassing the legacy kana tap cycle.
                     handleCustomKeyboardText(mutation.text, mainView, isFlick = true)
                 } finally {
-                    if (isDirect) customToggleEditInProgress = false
+                    customToggleEditInProgress = false
                 }
                 if (isDirect) {
                     val after = currentInputConnection?.let(::captureCustomToggleEditorSelection)
@@ -14132,6 +14192,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             outputValues = emittedValues,
                             mainView = mainView,
                         )
+                        return
                     }
                 } else {
                     val current = inputString.value
@@ -14149,6 +14210,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+        scheduleCustomToggleFinalize()
     }
 
     private fun handleCustomKeyboardText(
@@ -14165,11 +14227,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (applyPendingFlickTextMutation(text, isFlick)) return
         if (text.length == 1) {
-            if (isFlickOnlyMode == true || isFlick) {
-                handleFlick(text.first(), inputString.value, StringBuilder(), mainView)
-            } else {
-                handleTap(text.first(), inputString.value, StringBuilder(), mainView)
-            }
+            // Only onToggleText cycles custom keys; ordinary taps always append.
+            handleFlick(text.first(), inputString.value, StringBuilder(), mainView)
         } else {
             _inputString.update { it + text }
         }
@@ -18337,6 +18396,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * TenKeyQWERTY以外のモードの入力処理を担当します。
      */
     private fun handleDefaultInput(string: String) {
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+            renderCustomKeyboardComposingText(string)
+            requestCandidateRefresh(CandidateShowFlag.Updating, string)
+            return
+        }
         val spannable = createSpannableWithTail(string)
         if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
@@ -18358,6 +18422,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleDefaultInputFinalize(string: String) {
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) return
         // フリック専用入力はすでに編集後の背景で表示されており、トグル待機は不要。
         if (isFlickOnlyMode == true) return
 
@@ -18453,6 +18518,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun liveConversionApplyDelayMillis(): Long {
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+            return customToggleRemainingMillis()
+        }
         val originalDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
 
         if (isFlickOnlyMode == true) {
@@ -18492,6 +18560,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun delayBeforeApplyingLiveConversion() {
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+            // Equal toggle outputs do not restart the candidate request. Recheck the deadline
+            // after waking so another tap cannot leave that request using an older timeout.
+            while (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+                val remaining = customToggleRemainingMillis()
+                if (remaining <= 0L) break
+                delay(remaining)
+            }
+            return
+        }
         val applyDelay = liveConversionApplyDelayMillis()
         measureDebugStage("IMEService.liveConversionApplyDelay") {
             if (applyDelay > 0L) {
@@ -18503,6 +18581,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
+        // Once a candidate owns the composing display, an old toggle timer must not restore kana.
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) resetCustomToggleState()
         beginBatchEdit()
         val commitString = getCandidateCommitString(candidate)
         lastCandidate = commitString
@@ -23527,7 +23607,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): SpannableString {
         val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
         // フリック専用入力にはトグル待機がないため、最初から編集後の背景を使う。
-        val resolvedBackgroundColor = if (isFlickOnlyMode == true) {
+        val useAfterEditColor = if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+            customToggleRemainingMillis() == 0L
+        } else {
+            isFlickOnlyMode == true
+        }
+        val resolvedBackgroundColor = if (useAfterEditColor) {
             if (customComposingTextPreference == true) {
                 inputCompositionAfterBackgroundColor
                     ?: getColor(com.kazumaproject.core.R.color.blue)
@@ -27740,7 +27825,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
         cancelCandidateTranslationIfComposingChanges(p0)
-        return composingTextArbiter.setCanonical(p0, p1)
+        val applied = composingTextArbiter.setCanonical(p0, p1)
+        if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
+            !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
+        ) {
+            customToggleExpectedEditorSelection =
+                captureCustomToggleEditorSelection(currentInputConnection)
+        }
+        return applied
     }
 
     override fun setComposingRegion(p0: Int, p1: Int): Boolean {
@@ -27750,6 +27842,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun finishComposingText(): Boolean {
+        if (!customToggleEditInProgress) resetCustomToggleState()
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
@@ -27760,6 +27853,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
+        if (!customToggleEditInProgress) resetCustomToggleState()
         if (currentInputConnection == null) return false
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()

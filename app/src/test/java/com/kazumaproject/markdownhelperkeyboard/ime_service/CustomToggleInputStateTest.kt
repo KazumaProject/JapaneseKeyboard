@@ -6,6 +6,19 @@ import org.junit.Test
 class CustomToggleInputStateTest {
     private val state = CustomToggleInputState()
 
+    @Test fun remainingTime_tracksTheSameDeadlineAsCycling() {
+        next("key", listOf("あ", "い"), now = 100, timeout = 200)
+        assertEquals(1L, state.remainingMillis(299))
+        assertEquals(0L, state.remainingMillis(300))
+        next("key", listOf("あ", "い"), now = 300, timeout = 200)
+        assertEquals(200L, state.remainingMillis(300))
+        assertEquals(0L, state.remainingMillis(299))
+        state.reset()
+        assertEquals(0L, state.remainingMillis(300))
+        next("single", listOf("あ"), now = 300)
+        assertEquals(0L, state.remainingMillis(300))
+    }
+
     private fun next(
         key: String,
         values: List<String>,

@@ -18,6 +18,20 @@ import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
+    fun createToggleKanaTemplateLayout(): KeyboardLayout {
+        val layout = createFlickKanaTemplateLayout(isDefaultKey = true)
+        return layout.copyWithKeys(layout.keys.map { key ->
+            val actions = layout.flickKeyMaps[key.label]?.firstOrNull().orEmpty()
+            if (!key.isSpecialKey && key.keyType == KeyType.PETAL_FLICK &&
+                actions.values.any { it is FlickAction.Input }
+            ) {
+                key.copy(textInputBehavior = com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior.TOGGLE)
+            } else {
+                key
+            }
+        })
+    }
+
     data class DeleteKeyFlickSettings(
         val left: Boolean = true,
         val up: Boolean = false,

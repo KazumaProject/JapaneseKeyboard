@@ -718,6 +718,7 @@
     <string name="read_from_template">テンプレートから読み込む</string>
     <string name="show_row_column_delete_buttons">行・列の削除ボタンを表示</string>
     <string name="template_flick_kana_cursor">かな入力 (カーソル)</string>
+    <string name="template_toggle_kana">かな入力（トグル）</string>
     <string name="template_flick_english_cursor">英語入力 (カーソル)</string>
     <string name="template_qwerty">QWERTY</string>
     <string name="template_empty_5x4_flexible">空のフレキシブルレイアウト</string>
