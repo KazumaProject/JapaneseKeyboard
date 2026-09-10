@@ -65,6 +65,68 @@ class FastInputMatrixInstrumentedTest {
         get() = instrumentation.uiAutomation
 
     @Test
+    fun flickOnlyBackgroundDoesNotChangeAfterToggleTimeoutOnPhysicalDevice() {
+        runPhysicalDeviceSession("flick-background-timeout") { session ->
+            val scenario = launchHost(session.context)
+            try {
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                for (keyboard in listOf(TestKeyboard.TENKEY, TestKeyboard.SUMIRE)) {
+                    for (custom in listOf(false, true)) {
+                        for (flickOnly in listOf(false, true)) {
+                            applyCasePreferences(session.preferences, previewTestCase(keyboard))
+                            check(session.preferences.edit()
+                                .putBoolean("flick_input_only_preference", flickOnly)
+                                .putBoolean("flick_editor_preview_preference", true)
+                                .putBoolean("theme_custom_input_color_enable", custom)
+                                .putInt("theme_custom_pre_edit_bg_color", 0x44112233)
+                                .putInt("time_same_pronounce_typing_preference", 1000)
+                                .commit())
+                            restartInput(scenario)
+                            SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                            val geometry = awaitStableGeometry(keyboard, false)
+                            val before = if (custom) 0x44112233 else session.context.getColor(
+                                com.kazumaproject.core.R.color.char_in_edit_color)
+                            // Existing custom after-edit color: RGB channels multiplied by 1.2.
+                            val after = if (custom) 0x4414283D else session.context.getColor(
+                                com.kazumaproject.core.R.color.blue)
+                            val token = "$keyboard-custom-$custom-flick-$flickOnly"
+                            val down = SystemClock.uptimeMillis()
+                            assertTrue(injectSinglePointerEvent(down, MotionEvent.ACTION_DOWN, geometry.prime.center))
+                            awaitEditorText(scenario) { it.isNotEmpty() }
+                            val preview = readEditorDecoration(scenario)
+                            assertTrue("$token DOWN: $preview", preview.matches(
+                                keyboard.primeText, if (flickOnly) after else before, keyboard.primeText.length))
+                            assertTrue(injectSinglePointerEvent(down, MotionEvent.ACTION_UP, geometry.prime.center))
+                            val released = SystemClock.uptimeMillis()
+                            SystemClock.sleep(100)
+                            val immediate = readEditorDecoration(scenario)
+                            assertTrue("$token early sample missed timeout", SystemClock.uptimeMillis() - released < 1000)
+                            assertTrue("$token immediate: $immediate", immediate.matches(
+                                keyboard.primeText, if (flickOnly) after else before, keyboard.primeText.length))
+                            saveScreenshot(session, "$token-immediate")
+                            while (SystemClock.uptimeMillis() - released < 1600) {
+                                if (flickOnly) {
+                                    val sample = readEditorDecoration(scenario)
+                                    assertTrue("$token changed after ${SystemClock.uptimeMillis() - released}ms: $sample",
+                                        sample.matches(keyboard.primeText, after, keyboard.primeText.length))
+                                }
+                                SystemClock.sleep(50)
+                            }
+                            val settled = readEditorDecoration(scenario)
+                            assertTrue("$token settled: $settled", settled.matches(
+                                keyboard.primeText, after, keyboard.primeText.length))
+                            saveScreenshot(session, "$token-settled")
+                            sendProgress("BACKGROUND_VERIFIED $token immediate=$immediate settled=$settled\n")
+                        }
+                    }
+                }
+            } finally {
+                scenario.close()
+            }
+        }
+    }
+
+    @Test
     fun flickEditorPreviewFunctionalAndPerformanceOnPhysicalDevice() {
         runPhysicalDeviceSession("flick-editor-preview") { session ->
             var scenario: ActivityScenario<FastInputHostActivity>? = null
@@ -72,7 +134,7 @@ class FastInputMatrixInstrumentedTest {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
                 val defaultPreviewBackgroundColor = session.context.getColor(
-                    com.kazumaproject.core.R.color.char_in_edit_color
+                    com.kazumaproject.core.R.color.blue
                 )
 
                 val sumireStyles = listOf(
@@ -189,7 +251,7 @@ class FastInputMatrixInstrumentedTest {
                     assertEditorPreviewDecoration(
                         scenario = scenario,
                         expectedText = movedPreview,
-                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundColor = PREVIEW_TEST_AFTER_BACKGROUND_COLOR,
                         caseName = "$keyboard MOVE",
                     )
                     assertTrue(
@@ -286,7 +348,7 @@ class FastInputMatrixInstrumentedTest {
                     assertEditorPreviewDecoration(
                         scenario = scenario,
                         expectedText = "ああな",
-                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundColor = PREVIEW_TEST_AFTER_BACKGROUND_COLOR,
                         expectedBackgroundEnd = 2,
                         caseName = "$keyboard tail DOWN",
                     )
@@ -306,7 +368,7 @@ class FastInputMatrixInstrumentedTest {
                     assertEditorPreviewDecoration(
                         scenario = scenario,
                         expectedText = movedWithTail,
-                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundColor = PREVIEW_TEST_AFTER_BACKGROUND_COLOR,
                         expectedBackgroundEnd = 2,
                         caseName = "$keyboard tail MOVE",
                     )
@@ -4359,6 +4421,8 @@ class FastInputMatrixInstrumentedTest {
         private const val PREVIEW_HOLD_ASSERT_MS = 120L
         private const val PREVIEW_TEXT_POLL_MS = 4L
         private const val PREVIEW_TEST_BACKGROUND_COLOR = 0x66336699
+        // The configured composing color is brightened by 1.2 for after-edit rendering.
+        private const val PREVIEW_TEST_AFTER_BACKGROUND_COLOR = 0x663D7AB7
         private const val PREVIEW_PERFORMANCE_WARMUP_GESTURES = 30
         private const val PREVIEW_PERFORMANCE_GESTURES = 500
         private const val PREVIEW_GC_SETTLE_MS = 250L
