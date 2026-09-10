@@ -1532,6 +1532,7 @@ class SuggestionAdapter internal constructor(
                     visibility = View.GONE
                 }
             }
+            applyEmptyHelperIconColor(incognitoIcon)
 
             undoIcon?.apply {
                 isVisible = state.undoEnabled
@@ -1713,6 +1714,10 @@ class SuggestionAdapter internal constructor(
     ) {
         applyEmptyHelperButtonBackground(parent, isDynamicColorEnable)
         applyEmptyHelperTextColor(text)
+        applyEmptyHelperIconColor(icon)
+    }
+
+    private fun applyEmptyHelperIconColor(icon: ImageView?) {
         candidateEmptyDrawableTextColor?.let { color ->
             icon?.setColorFilter(color, PorterDuff.Mode.SRC_IN)
         } ?: icon?.clearColorFilter()
