@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="4dp"
+        android:text="@string/keyboard_skin_selection_description"
+        android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="8dp"
+        android:id="@+id/keyboard_theme_preview_note"
+        android:text="@string/keyboard_skin_preview_note"
+        android:textAppearance="?attr/textAppearanceBodySmall" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/keyboard_theme_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingHorizontal="8dp"
+        android:paddingBottom="16dp"
+        android:clipToPadding="false" />
+</LinearLayout>

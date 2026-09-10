@@ -5,28 +5,33 @@ object CandidateStripContentResolver {
     fun resolve(state: CandidateStripInputState): CandidateStripContent {
         if (shouldShowExpandedShortcutEntry(state)) {
             return CandidateStripContent.ExpandedShortcutEntry(
-                shortcutItems = state.shortcutItems
+                shortcutItems = state.shortcutItems,
+                inlineSuggestionToggle = state.inlineSuggestionToggle,
             )
         }
         if (state.candidates.isNotEmpty()) {
             if (state.selectionActionsShown) {
                 return CandidateStripContent.SelectionActions(
                     actions = state.candidates,
-                    showShortcutEntry = shouldShowShortcutEntryWithSelectionActions(state)
+                    showShortcutEntry = shouldShowShortcutEntryWithSelectionActions(state),
+                    inlineSuggestionToggle = state.inlineSuggestionToggle,
                 )
             }
             return CandidateStripContent.Candidates(
-                candidates = state.candidates
+                candidates = state.candidates,
+                inlineSuggestionToggle = state.inlineSuggestionToggle,
             )
         }
         if (shouldShowZeroQuerySuggestions(state)) {
             return CandidateStripContent.ZeroQuerySuggestions(
-                candidates = state.zeroQueryCandidates
+                candidates = state.zeroQueryCandidates,
+                inlineSuggestionToggle = state.inlineSuggestionToggle,
             )
         }
         if (state.customLayoutPickerShown) {
             return CandidateStripContent.CustomLayoutPicker(
-                layouts = state.customLayouts
+                layouts = state.customLayouts,
+                inlineSuggestionToggle = state.inlineSuggestionToggle,
             )
         }
         val clipboardPreview = resolveClipboardPreviewOrNull(state)
@@ -45,7 +50,8 @@ object CandidateStripContentResolver {
             quickActions.hasAnyAction ||
             showShortcutEntry ||
             showIntegratedShortcuts ||
-            showZeroQueryToggle
+            showZeroQueryToggle ||
+            state.inlineSuggestionToggle != null
         ) {
             return CandidateStripContent.EmptyState(
                 showShortcutEntry = showShortcutEntry,
@@ -53,7 +59,8 @@ object CandidateStripContentResolver {
                 clipboardPreview = clipboardPreview,
                 shortcutItems = state.shortcutItems,
                 showIntegratedShortcuts = showIntegratedShortcuts,
-                showZeroQueryToggle = showZeroQueryToggle
+                showZeroQueryToggle = showZeroQueryToggle,
+                inlineSuggestionToggle = state.inlineSuggestionToggle,
             )
         }
         return CandidateStripContent.Empty

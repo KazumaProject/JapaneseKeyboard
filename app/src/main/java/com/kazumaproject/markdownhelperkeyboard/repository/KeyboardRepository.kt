@@ -13,6 +13,7 @@ import com.kazumaproject.custom_keyboard.data.KeyIconRef
 import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
+import com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
@@ -944,7 +945,8 @@ class KeyboardRepository @Inject constructor(
                     keyId = dbKey.keyIdentifier,
                     action = null,
                     specialKeyColorStyle = specialKeyColorStyle,
-                    doubleTapBinding = doubleTapBinding
+                    doubleTapBinding = doubleTapBinding,
+                    textInputBehavior = KeyTextInputBehavior.fromDbValue(dbKey.textInputBehavior)
                 )
             } else {
                 KeyData(
@@ -961,7 +963,8 @@ class KeyboardRepository @Inject constructor(
                     keyId = dbKey.keyIdentifier,
                     action = restoredAction,
                     specialKeyColorStyle = specialKeyColorStyle,
-                    doubleTapBinding = doubleTapBinding
+                    doubleTapBinding = doubleTapBinding,
+                    textInputBehavior = KeyTextInputBehavior.fromDbValue(dbKey.textInputBehavior)
                 )
             }
             val placement = GridPlacement(
@@ -1075,6 +1078,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
             KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
             KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.CommitAndInsertSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.ForceHalfWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
@@ -1089,6 +1093,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
             KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.DeleteAfterCursor -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
             else -> null
         }
@@ -1180,7 +1185,8 @@ class KeyboardRepository @Inject constructor(
                     doubleTapAction = KeyActionMapper.fromKeyAction(
                         doubleTapBinding?.action
                     ),
-                    doubleTapPolicy = doubleTapBinding?.policy?.serializedName
+                    doubleTapPolicy = doubleTapBinding?.policy?.serializedName,
+                    textInputBehavior = keyData.textInputBehavior.dbValue
                 )
             )
 

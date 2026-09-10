@@ -8,6 +8,7 @@
     <string name="action_delete">削除</string>
     <string name="action_do_nothing">何もしない</string>
     <string name="action_space">空白</string>
+    <string name="action_commit_and_insert_space">確定＋半角スペース</string>
     <string name="action_force_half_width_space">半角スペース</string>
     <string name="action_force_full_width_space">全角スペース</string>
     <string name="action_convert">変換</string>
@@ -34,7 +35,8 @@
     <string name="switch_qwerty">QWERTY 切り替え</string>
     <string name="switch_number">数字キーボード 切り替え</string>
     <string name="action_delete_until_symbol">記号まで文字列を削除</string>
-    <string name="action_delete_after_cursor">カーソルの右側の文字列を削除</string>
+    <string name="action_delete_after_cursor">カーソル右側を単語・区切り位置まで削除</string>
+    <string name="action_delete_after_cursor_one">カーソル右側の1文字を削除（Delete）</string>
     <string name="voice_input">音声入力</string>
     <string name="action_switch_romaji_english">ローマ字、英語切り替え</string>
 </resources>

@@ -27,6 +27,7 @@ import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -64,6 +65,68 @@ class FastInputMatrixInstrumentedTest {
         get() = instrumentation.uiAutomation
 
     @Test
+    fun flickOnlyBackgroundDoesNotChangeAfterToggleTimeoutOnPhysicalDevice() {
+        runPhysicalDeviceSession("flick-background-timeout") { session ->
+            val scenario = launchHost(session.context)
+            try {
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                for (keyboard in listOf(TestKeyboard.TENKEY, TestKeyboard.SUMIRE)) {
+                    for (custom in listOf(false, true)) {
+                        for (flickOnly in listOf(false, true)) {
+                            applyCasePreferences(session.preferences, previewTestCase(keyboard))
+                            check(session.preferences.edit()
+                                .putBoolean("flick_input_only_preference", flickOnly)
+                                .putBoolean("flick_editor_preview_preference", true)
+                                .putBoolean("theme_custom_input_color_enable", custom)
+                                .putInt("theme_custom_pre_edit_bg_color", 0x44112233)
+                                .putInt("time_same_pronounce_typing_preference", 1000)
+                                .commit())
+                            restartInput(scenario)
+                            SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                            val geometry = awaitStableGeometry(keyboard, false)
+                            val before = if (custom) 0x44112233 else session.context.getColor(
+                                com.kazumaproject.core.R.color.char_in_edit_color)
+                            // Existing custom after-edit color: RGB channels multiplied by 1.2.
+                            val after = if (custom) 0x4414283D else session.context.getColor(
+                                com.kazumaproject.core.R.color.blue)
+                            val token = "$keyboard-custom-$custom-flick-$flickOnly"
+                            val down = SystemClock.uptimeMillis()
+                            assertTrue(injectSinglePointerEvent(down, MotionEvent.ACTION_DOWN, geometry.prime.center))
+                            awaitEditorText(scenario) { it.isNotEmpty() }
+                            val preview = readEditorDecoration(scenario)
+                            assertTrue("$token DOWN: $preview", preview.matches(
+                                keyboard.primeText, if (flickOnly) after else before, keyboard.primeText.length))
+                            assertTrue(injectSinglePointerEvent(down, MotionEvent.ACTION_UP, geometry.prime.center))
+                            val released = SystemClock.uptimeMillis()
+                            SystemClock.sleep(100)
+                            val immediate = readEditorDecoration(scenario)
+                            assertTrue("$token early sample missed timeout", SystemClock.uptimeMillis() - released < 1000)
+                            assertTrue("$token immediate: $immediate", immediate.matches(
+                                keyboard.primeText, if (flickOnly) after else before, keyboard.primeText.length))
+                            saveScreenshot(session, "$token-immediate")
+                            while (SystemClock.uptimeMillis() - released < 1600) {
+                                if (flickOnly) {
+                                    val sample = readEditorDecoration(scenario)
+                                    assertTrue("$token changed after ${SystemClock.uptimeMillis() - released}ms: $sample",
+                                        sample.matches(keyboard.primeText, after, keyboard.primeText.length))
+                                }
+                                SystemClock.sleep(50)
+                            }
+                            val settled = readEditorDecoration(scenario)
+                            assertTrue("$token settled: $settled", settled.matches(
+                                keyboard.primeText, after, keyboard.primeText.length))
+                            saveScreenshot(session, "$token-settled")
+                            sendProgress("BACKGROUND_VERIFIED $token immediate=$immediate settled=$settled\n")
+                        }
+                    }
+                }
+            } finally {
+                scenario.close()
+            }
+        }
+    }
+
+    @Test
     fun flickEditorPreviewFunctionalAndPerformanceOnPhysicalDevice() {
         runPhysicalDeviceSession("flick-editor-preview") { session ->
             var scenario: ActivityScenario<FastInputHostActivity>? = null
@@ -71,7 +134,7 @@ class FastInputMatrixInstrumentedTest {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
                 val defaultPreviewBackgroundColor = session.context.getColor(
-                    com.kazumaproject.core.R.color.char_in_edit_color
+                    com.kazumaproject.core.R.color.blue
                 )
 
                 val sumireStyles = listOf(
@@ -188,7 +251,7 @@ class FastInputMatrixInstrumentedTest {
                     assertEditorPreviewDecoration(
                         scenario = scenario,
                         expectedText = movedPreview,
-                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundColor = PREVIEW_TEST_AFTER_BACKGROUND_COLOR,
                         caseName = "$keyboard MOVE",
                     )
                     assertTrue(
@@ -285,7 +348,7 @@ class FastInputMatrixInstrumentedTest {
                     assertEditorPreviewDecoration(
                         scenario = scenario,
                         expectedText = "ああな",
-                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundColor = PREVIEW_TEST_AFTER_BACKGROUND_COLOR,
                         expectedBackgroundEnd = 2,
                         caseName = "$keyboard tail DOWN",
                     )
@@ -305,7 +368,7 @@ class FastInputMatrixInstrumentedTest {
                     assertEditorPreviewDecoration(
                         scenario = scenario,
                         expectedText = movedWithTail,
-                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundColor = PREVIEW_TEST_AFTER_BACKGROUND_COLOR,
                         expectedBackgroundEnd = 2,
                         caseName = "$keyboard tail MOVE",
                     )
@@ -747,6 +810,87 @@ class FastInputMatrixInstrumentedTest {
                         afterCandidates,
                     afterCandidates.isEmpty()
                 )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun liquidGlassRepeatedDeleteDoesNotRestoreEarlierInputOnPhysicalDevice() {
+        runPhysicalDeviceSession("liquid-glass-repeated-delete") { session ->
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+
+                listOf(TestKeyboard.TENKEY, TestKeyboard.QWERTY).forEach { keyboard ->
+                    val testCase = TestCase(
+                        keyboard = keyboard,
+                        columns = 1,
+                        candidateTabVisible = false,
+                        toolbarVisible = false,
+                        toolbarIntegrated = false,
+                        orientation = TestOrientation.PORTRAIT,
+                    )
+                    applyCasePreferences(session.preferences, testCase)
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("liquid_glass_preference", true)
+                            .putInt("liquid_glass_blur_preference", 220)
+                            .putString("keyboard_touch_effect_type_preference", "none")
+                            .commit()
+                    )
+
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    assertDeviceReady(session.context, session.targetIme, scenario)
+                    prepareEmptyEditor(scenario)
+
+                    val geometry = awaitStableGeometry(keyboard, requireCandidateContent = false)
+                    assertTrue(
+                        "Input injection failed for liquid glass ${keyboard.name}",
+                        injectSequence(
+                            first = geometry.first.center,
+                            second = geometry.second.center,
+                            repetitions = 3,
+                        ),
+                    )
+                    var previousText = awaitTextSettled(scenario)
+                    assertTrue(
+                        "Input did not reach the editor for liquid glass ${keyboard.name}",
+                        previousText.isNotEmpty(),
+                    )
+
+                    val deleteBounds = findVisibleNodeById("key_delete")?.screenRect()
+                        ?: throw SetupException("Delete key is not visible")
+                    repeat(previousText.length) { index ->
+                        assertTrue(
+                            "Delete injection failed for liquid glass ${keyboard.name} #$index",
+                            injectTapWithoutTrailingGap(
+                                point = deleteBounds.center,
+                                holdMs = 0L,
+                            ),
+                        )
+                        val beforeDelete = previousText
+                        val nextText = awaitEditorText(scenario) {
+                            it.length < beforeDelete.length
+                        }
+                        assertTrue(
+                            "Editor text did not shrink for liquid glass ${keyboard.name} " +
+                                "#${index + 1}: [$nextText] after [$beforeDelete]",
+                            nextText.length < beforeDelete.length,
+                        )
+                        previousText = nextText
+                    }
+
+                    assertEquals(
+                        "Repeated delete did not clear liquid glass input for ${keyboard.name}",
+                        "",
+                        awaitTextSettled(scenario),
+                    )
+                }
             } finally {
                 scenario?.close()
             }
@@ -1208,6 +1352,7 @@ class FastInputMatrixInstrumentedTest {
                                     floating = false,
                                 )
                                 restartInput(activeScenario)
+                                val normalImeBounds = awaitImeWindowBounds()
                                 val sourceKey = awaitVisibleNodeBounds(symbolCase.openKeyId)
                                 check(injectTap(sourceKey.center)) {
                                     "Unable to open symbols from ${symbolCase.source}"
@@ -1219,14 +1364,19 @@ class FastInputMatrixInstrumentedTest {
                                         floating = false,
                                         session = session,
                                         symbol = true,
+                                        expectedImeBounds = normalImeBounds,
                                     ).also {
                                         if (captureVisuals) saveScreenshot(session, token)
                                     }
                                 } finally {
-                                    findVisibleNodeById("return_jp_keyboard_button")?.let { returnKey ->
-                                        check(injectTap(returnKey.screenRect().center)) {
-                                            "Unable to return from symbols to ${symbolCase.source}"
-                                        }
+                                    val returnKey =
+                                        awaitVisibleNodeBounds("return_jp_keyboard_button")
+                                    check(injectTap(returnKey.center)) {
+                                        "Unable to return from symbols to ${symbolCase.source}"
+                                    }
+                                    awaitVisibleNodeBounds(symbolCase.source.rootViewId)
+                                    check(awaitImeWindowBounds() == normalImeBounds) {
+                                        "IME bounds changed after returning from symbols"
                                     }
                                 }
                             }
@@ -1588,6 +1738,228 @@ class FastInputMatrixInstrumentedTest {
                 )
             } finally {
                 scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun forwardDeleteCustomKeyOnPhysicalDevice() {
+        runPhysicalDeviceSession("forward-delete") { session ->
+            val dao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val stableId = "forward-delete-qa-${System.currentTimeMillis()}"
+            val actions = listOf(
+                "FD" to "DeleteAfterCursor",
+                "LEFT" to "MoveCursorLeft", "a" to "Text:a", "b" to "Text:b",
+                "UNDO" to "DoNothing",
+            )
+            val layoutId = runBlocking {
+                dao.insertFullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        name = "Forward Delete QA", columnCount = actions.size, rowCount = 1,
+                        stableId = stableId, sortOrder = dao.getMaxSortOrder() + 1,
+                    ),
+                    keys = actions.mapIndexed { index, (label, action) ->
+                        KeyDefinition(
+                            ownerLayoutId = 0, label = label, row = 0, column = index,
+                            keyType = if (label == "UNDO") KeyType.CROSS_FLICK else KeyType.NORMAL,
+                            keyIdentifier = "$stableId-$index",
+                            action = action,
+                        )
+                    },
+                    flicksMap = mapOf(
+                        "$stableId-4" to listOf(
+                            com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping(
+                                ownerKeyId = 0,
+                                flickDirection = com.kazumaproject.custom_keyboard.data.FlickDirection.TAP,
+                                actionType = "UndoLastDelete",
+                                actionValue = null,
+                            ),
+                        ),
+                    ),
+                    circularFlicksMap = emptyMap(),
+                    twoStepFlicksMap = emptyMap(), longPressFlicksMap = emptyMap(),
+                    twoStepLongPressFlicksMap = emptyMap(),
+                )
+            }
+            var host: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                check(session.preferences.edit()
+                    .putString("keyboard_order_preference", """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]""")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("remember_last_custom_keyboard_preference", true)
+                    .putString("last_used_custom_keyboard_stable_id", stableId)
+                    .putBoolean("keyboard_floating_preference", false)
+                    .putBoolean("live_conversion_preference", false)
+                    .putBoolean("custom_keyboard_suggestion_preference", false)
+                    .putInt("candidate_view_height_dp_preference", 110)
+                    .putInt("candidate_view_empty_height_dp_preference", 110)
+                    .putBoolean("undo_enable_preference", true)
+                    .putBoolean("delete_key_flick_down_preference", true)
+                    .putBoolean("candidate_tab_visibility_preference", false)
+                    .putBoolean("shortcut_toolbar_visibility_preference", false)
+                    .commit())
+                val scenario = launchHost(session.context)
+                host = scenario
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+
+                fun key(label: String): PointF {
+                    val root = findVisibleNodeById("custom_layout_default")
+                        ?: throw SetupException("Custom keyboard missing")
+                    return (findDescendant(root) {
+                        it.isVisibleToUser && (it.text?.toString() == label || it.contentDescription?.toString() == label)
+                    } ?: throw SetupException("Custom key $label missing")).screenRect().center
+                }
+                fun tapKey(label: String) { assertTrue(injectTap(key(label))) }
+                fun expect(text: String) {
+                    assertEquals(text, awaitEditorText(scenario) { it == text })
+                    // Allow the post-delete acknowledgement and history UI to settle.
+                    instrumentation.waitForIdleSync()
+                    SystemClock.sleep(150)
+                }
+                fun seed(text: String, start: Int = 0, end: Int = start) {
+                    restartInput(scenario)
+                    scenario.onActivity {
+                        it.editText.setText(text)
+                        it.editText.setSelection(start, end)
+                    }
+                    instrumentation.waitForIdleSync()
+                    SystemClock.sleep(250)
+                }
+
+                seed("abcd")
+                assertTrue(injectTapPairAtDownInterval(key("FD"), 40L))
+                expect("cd")
+                saveScreenshot(session, "after-rapid-forward-delete")
+                scenario.onActivity {
+                    val extracted = it.editText.onCreateInputConnection(android.view.inputmethod.EditorInfo())
+                        ?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                    sendProgress("FORWARD_DELETE_SNAPSHOT available=${extracted != null} partial=${extracted?.partialStartOffset} offset=${extracted?.startOffset} length=${extracted?.text?.length} start=${extracted?.selectionStart} end=${extracted?.selectionEnd}\n")
+                }
+                assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                expect("bcd")
+                assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                expect("abcd")
+                assertTrue(injectTap(awaitVisibleNodeBounds("redo_icon_parent").center))
+                expect("bcd")
+
+                seed("abcd", 1, 3)
+                tapKey("FD")
+                expect("ad")
+                assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                expect("abcd")
+
+                listOf("😀", "👨‍👩‍👧‍👦", "🇯🇵", "a\u0301").forEach { grapheme ->
+                    seed(grapheme + "z")
+                    tapKey("FD")
+                    expect("z")
+                    assertTrue(injectTap(awaitVisibleNodeBounds("undo_icon_parent").center))
+                    expect(grapheme + "z")
+                }
+                seed("abcd", 4)
+                tapKey("FD")
+                expect("abcd")
+
+                // Verify a logical composing tail is edited and restored independently.
+                seed("")
+                tapKey("a")
+                tapKey("b")
+                expect("ab")
+                tapKey("LEFT")
+                tapKey("FD")
+                expect("a")
+                tapKey("UNDO")
+                expect("ab")
+                sendProgress("FORWARD_DELETE_OK rapid_taps undo redo selection emoji combining end_of_text composing_tail\n")
+            } finally {
+                host?.close()
+                runBlocking { dao.deleteLayout(layoutId) }
+            }
+        }
+    }
+
+    @Test
+    fun customToggleWaitPreferenceOnPhysicalDevice() {
+        runPhysicalDeviceSession("custom-toggle-timeout") { session ->
+            val dao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val fixtureIds = mutableListOf<Long>()
+            var host: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                for (direct in listOf(false, true)) {
+                    val stableId = "toggle-timeout-qa-$direct-${System.currentTimeMillis()}"
+                    val layoutId = runBlocking {
+                        dao.insertFullKeyboardLayout(
+                            layout = CustomKeyboardLayout(
+                                name = "Toggle timeout QA", columnCount = 1, rowCount = 1,
+                                stableId = stableId, sortOrder = dao.getMaxSortOrder() + 1,
+                                isDirectMode = direct,
+                            ),
+                            keys = listOf(KeyDefinition(
+                                ownerLayoutId = 0, label = "TOGGLE-QA", row = 0, column = 0,
+                                keyType = KeyType.PETAL_FLICK, keyIdentifier = stableId,
+                                textInputBehavior = com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior.TOGGLE.dbValue,
+                            )),
+                            flicksMap = mapOf(stableId to
+                                com.kazumaproject.custom_keyboard.data.PETAL_TOGGLE_DIRECTIONS
+                                    .take(2).zip(listOf("あ", "お")).map { (direction, text) ->
+                                        com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping(
+                                            ownerKeyId = 0, flickDirection = direction,
+                                            actionType = "INPUT_TEXT", actionValue = text,
+                                        )
+                                    }),
+                            circularFlicksMap = emptyMap(), twoStepFlicksMap = emptyMap(),
+                            longPressFlicksMap = emptyMap(), twoStepLongPressFlicksMap = emptyMap(),
+                        )
+                    }
+                    fixtureIds += layoutId
+                    check(session.preferences.edit()
+                        .putString("keyboard_order_preference", """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]""")
+                        .putBoolean("save_last_used_keyboard", false)
+                        .putBoolean("remember_last_custom_keyboard_preference", true)
+                        .putString("last_used_custom_keyboard_stable_id", stableId)
+                        .putBoolean("keyboard_floating_preference", false)
+                        .putBoolean("live_conversion_preference", false)
+                        .putBoolean("custom_keyboard_suggestion_preference", false)
+                        .putInt("candidate_view_height_dp_preference", 110)
+                        .putInt("candidate_view_empty_height_dp_preference", 110)
+                        .commit())
+                    val scenario = host ?: launchHost(session.context).also { host = it }
+                    // Re-entering the editor mirrors returning from the settings screen.
+                    for ((timeout, interval) in listOf(1000 to 500L, 200 to 500L, 1000 to 500L, 200 to 50L)) {
+                        check(session.preferences.edit()
+                            .putInt("time_same_pronounce_typing_preference", timeout).commit())
+                        restartInput(scenario)
+                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                        val root = findVisibleNodeById("custom_layout_default")
+                            ?: throw SetupException("Custom keyboard missing")
+                        val key = findDescendant(root) {
+                            it.isVisibleToUser && (it.text?.toString() == "TOGGLE-QA" ||
+                                it.contentDescription?.toString() == "TOGGLE-QA")
+                        } ?: throw SetupException("Toggle key missing")
+                        assertTrue(injectTapPairAtDownInterval(key.screenRect().center, interval))
+                        val expected = if (interval < timeout) "お" else "ああ"
+                        assertEquals("direct=$direct timeout=$timeout interval=$interval",
+                            expected, awaitEditorText(scenario) { it == expected })
+                        instrumentation.waitForIdleSync()
+                        SystemClock.sleep(250)
+                        assertEquals("Text changed after settling", expected, readText(scenario))
+                        scenario.onActivity {
+                            val composingStart = android.view.inputmethod.BaseInputConnection
+                                .getComposingSpanStart(it.editText.text)
+                            assertEquals("Unexpected composition mode for direct=$direct",
+                                !direct, composingStart >= 0)
+                        }
+                        saveScreenshot(session, "direct-$direct-timeout-$timeout-interval-$interval")
+                        sendProgress("CUSTOM_TOGGLE_OK direct=$direct timeout=$timeout interval=$interval text=$expected\n")
+                    }
+                }
+            } finally {
+                host?.close()
+                runBlocking { fixtureIds.forEach { dao.deleteLayout(it) } }
             }
         }
     }
@@ -1986,6 +2358,10 @@ class FastInputMatrixInstrumentedTest {
             .putBoolean("candidate_tab_visibility_preference", false)
             .putBoolean("shortcut_toolbar_visibility_preference", false)
             .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false)
+            .putInt("candidate_view_height_dp_preference", 110)
+            .putInt("candidate_view_empty_height_dp_preference", 110)
+            .putInt("candidate_view_height_dp_landscape_preference", 110)
+            .putInt("candidate_view_empty_height_dp_landscape_preference", 110)
             .putBoolean("landscape_force_qwerty_preference", false)
             .putBoolean("landscape_force_qwerty_romaji_preference", false)
             .putBoolean("tenkey_kana_english_qwerty_preference", false)
@@ -2037,6 +2413,7 @@ class FastInputMatrixInstrumentedTest {
         floating: Boolean,
         session: PhysicalDeviceSession,
         symbol: Boolean = false,
+        expectedImeBounds: ScreenRect? = null,
     ): KeyboardSizeMeasurements {
         val expectedRootId = when {
             symbol -> "keyboard_symbol_view"
@@ -2050,8 +2427,6 @@ class FastInputMatrixInstrumentedTest {
             keyboard.representativeKey
         }
         val expectedHeightDp = when {
-            symbol && orientation == TestOrientation.PORTRAIT -> 320
-            symbol -> 220
             keyboard.family == KeyboardSizeFamily.TENKEY &&
                 orientation == TestOrientation.PORTRAIT ->
                 KEYBOARD_SIZE_TENKEY_PORTRAIT_HEIGHT_DP
@@ -2087,6 +2462,7 @@ class FastInputMatrixInstrumentedTest {
                     ?: throw SetupException("$expectedRootId is not visible")
                 val rootBounds = root.screenRect()
                 val representativeBounds = findRequiredKey(root, representative).screenRect()
+                val imeBounds = findImeWindowBounds()
                 val screenshot = uiAutomation.takeScreenshot()
                     ?: throw SetupException("Unable to capture display bounds")
                 val screenBounds = ScreenRect(0, 0, screenshot.width, screenshot.height)
@@ -2106,7 +2482,10 @@ class FastInputMatrixInstrumentedTest {
                 check(representativeBounds == representativeBounds.intersect(rootBounds)) {
                     "Representative key is outside keyboard: key=$representativeBounds root=$rootBounds"
                 }
-                check(kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
+                check(expectedImeBounds == null || imeBounds == expectedImeBounds) {
+                    "IME bounds changed: actual=$imeBounds expected=$expectedImeBounds"
+                }
+                check(symbol || kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
                     "Height mismatch for $keyboard: actual=${rootBounds.height} " +
                         "expected=$expectedHeightPx dp=$expectedHeightDp"
                 }
@@ -2630,6 +3009,25 @@ class FastInputMatrixInstrumentedTest {
             if (found != null) return found
         }
         return null
+    }
+
+    private fun findImeWindowBounds(): ScreenRect? {
+        return uiAutomation.windows
+            .firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            ?.root
+            ?.screenRect()
+    }
+
+    private fun awaitImeWindowBounds(): ScreenRect {
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var previous: ScreenRect? = null
+        while (SystemClock.uptimeMillis() < deadline) {
+            val current = findImeWindowBounds()
+            if (current != null && current == previous) return current
+            previous = current
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException("Timed out waiting for stable IME bounds")
     }
 
     private fun awaitVisibleNodeBounds(idName: String): ScreenRect {
@@ -4023,6 +4421,8 @@ class FastInputMatrixInstrumentedTest {
         private const val PREVIEW_HOLD_ASSERT_MS = 120L
         private const val PREVIEW_TEXT_POLL_MS = 4L
         private const val PREVIEW_TEST_BACKGROUND_COLOR = 0x66336699
+        // The configured composing color is brightened by 1.2 for after-edit rendering.
+        private const val PREVIEW_TEST_AFTER_BACKGROUND_COLOR = 0x663D7AB7
         private const val PREVIEW_PERFORMANCE_WARMUP_GESTURES = 30
         private const val PREVIEW_PERFORMANCE_GESTURES = 500
         private const val PREVIEW_GC_SETTLE_MS = 250L
