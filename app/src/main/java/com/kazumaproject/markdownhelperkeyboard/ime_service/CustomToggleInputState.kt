@@ -11,6 +11,13 @@ internal class CustomToggleInputState {
     private var index = -1
     private var lastEmittedText: String? = null
     private var lastInputTimeMillis: Long? = null
+    private var timeoutMillis: Long = 0
+
+    fun remainingMillis(nowMillis: Long): Long {
+        val elapsed = lastInputTimeMillis?.let { nowMillis - it } ?: return 0
+        if (elapsed < 0) return 0
+        return (timeoutMillis - elapsed).coerceAtLeast(0)
+    }
 
     fun next(
         keyIdentity: String,
@@ -30,6 +37,7 @@ internal class CustomToggleInputState {
         val elapsedMillis = lastInputTimeMillis?.let { nowMillis - it }
         val expired = elapsedMillis == null || elapsedMillis < 0 || elapsedMillis >= timeoutMillis
         lastInputTimeMillis = nowMillis
+        this.timeoutMillis = timeoutMillis
         if (
             expired ||
             this.keyIdentity != keyIdentity ||
@@ -56,5 +64,6 @@ internal class CustomToggleInputState {
         index = -1
         lastEmittedText = null
         lastInputTimeMillis = null
+        timeoutMillis = 0
     }
 }
