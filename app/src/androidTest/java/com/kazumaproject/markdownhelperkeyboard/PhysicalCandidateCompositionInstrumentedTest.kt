@@ -27,6 +27,71 @@ class PhysicalCandidateCompositionInstrumentedTest {
     private lateinit var host: ActivityScenario<FastInputHostActivity>
     private var keyboardId = 0
 
+    @Test fun bunsetsuFirstConversionAndCandidateChangePreserveOtherSegments() = withKeyboard(bunsetsu = true) {
+        assertBunsetsuConversionAndNavigation()
+    }
+
+    @Test fun bunsetsuConversionAlsoWorksWithCandidateOrderingEnabled() =
+        withKeyboard(bunsetsu = true, candidateOrdering = true) {
+            assertBunsetsuConversionAndNavigation()
+        }
+
+    @Test fun bunsetsuRapidNavigationAndCancellationDoNotRestoreStaleConversion() = withKeyboard(bunsetsu = true) {
+        type("ashitahatoukyouniikimasu")
+        awaitText("あしたはとうきょうにいきます")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("明日は東京に行きます")
+        repeat(5) {
+            key(KeyEvent.KEYCODE_DPAD_RIGHT, settleMillis = 0)
+            key(KeyEvent.KEYCODE_DPAD_LEFT, settleMillis = 0)
+        }
+        await { focusedRange().first == 0 }
+        assertEquals("明日は東京に行きます", text())
+        key(KeyEvent.KEYCODE_DPAD_RIGHT, settleMillis = 0)
+        key(KeyEvent.KEYCODE_SPACE, settleMillis = 0)
+        key(KeyEvent.KEYCODE_ESCAPE, settleMillis = 0)
+        awaitText("あしたはとうきょうにいきます")
+        SystemClock.sleep(1000)
+        assertEquals("あしたはとうきょうにいきます", text())
+        key(KeyEvent.KEYCODE_DEL)
+        awaitText("あしたはとうきょうにいきま")
+    }
+
+    private fun assertBunsetsuConversionAndNavigation() {
+        type("ashitahatoukyouniikimasu")
+        awaitText("あしたはとうきょうにいきます")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("明日は東京に行きます")
+        await { focusedRange() == (0 until 3) }
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await { focusedRange() == (3 until 6) }
+        assertEquals("明日は東京に行きます", text())
+        key(KeyEvent.KEYCODE_SPACE)
+        await { text() != "明日は東京に行きます" }
+        val changed = text()
+        assertTrue("Only the second segment may change: $changed", changed.startsWith("明日は") && changed.endsWith("行きます"))
+        val secondRange = focusedRange()
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await { focusedRange().first == secondRange.last + 1 }
+        assertEquals(changed, text())
+        key(KeyEvent.KEYCODE_DPAD_LEFT)
+        await { focusedRange() == secondRange }
+        assertEquals(changed, text())
+        key(KeyEvent.KEYCODE_ENTER)
+        awaitText(changed)
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
+    private fun focusedRange(): IntRange {
+        var range = IntRange.EMPTY
+        host.onActivity { activity ->
+            val value = activity.editText.text
+            val span = value.getSpans(0, value.length, BackgroundColorSpan::class.java).singleOrNull()
+            if (span != null) range = value.getSpanStart(span) until value.getSpanEnd(span)
+        }
+        return range
+    }
+
     @Test fun cursorTailSurvivesPreviewCancelAndCommit() = withKeyboard {
         type("ashitaha")
         awaitText("あしたは")
@@ -124,9 +189,20 @@ class PhysicalCandidateCompositionInstrumentedTest {
     @Test fun typingImmediatelyAfterPartialEnterDoesNotDropKeyOrReading() = withKeyboard {
         selectPartialCandidate()
         val preview = text()
+        val selectedEnd = focusedRange().last + 1
+        val prefix = preview.take(selectedEnd)
+        val tail = preview.drop(selectedEnd)
+        // Partial Enter may convert the entire remaining reading before A arrives.
+        // Check both exact fixture outputs without allowing a lost prefix, tail, or new key.
+        val convertedTail = when (tail) {
+            "はれるといいですねはれた" -> "晴れると良いですね晴れた"
+            "はれた" -> "晴れた"
+            else -> error("Unexpected partial-candidate fixture: prefix=[$prefix], tail=[$tail]")
+        }
+        val expected = setOf(preview + "あ", prefix + convertedTail + "あ")
         key(KeyEvent.KEYCODE_ENTER, settleMillis = 0)
         key(KeyEvent.KEYCODE_A)
-        awaitText(preview + "あ")
+        await { text() in expected }
     }
 
     private fun selectPartialCandidate() {
@@ -202,13 +278,15 @@ class PhysicalCandidateCompositionInstrumentedTest {
 
         @JvmStatic @BeforeClass fun selectIme() {
             val context = InstrumentationRegistry.getInstrumentation().targetContext
-            targetIme = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+            val component = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+            targetIme = shell("ime list -a -s").lines().first { sameIme(it, component) }
             originalIme = shell("settings get secure default_input_method")
             originalShowWithHardware = shell("settings get secure show_ime_with_hard_keyboard")
             wasEnabled = shell("ime list -s").lines().any { sameIme(it, targetIme) }
             shell("settings put secure show_ime_with_hard_keyboard 1")
             shell("ime enable $targetIme")
             shell("ime set $targetIme")
+            assertTrue("Test IME was not selected", sameIme(shell("settings get secure default_input_method"), targetIme))
         }
 
         @JvmStatic @AfterClass fun restoreIme() {
@@ -222,7 +300,7 @@ class PhysicalCandidateCompositionInstrumentedTest {
         }
     }
 
-    private fun withKeyboard(kana: Boolean = false, bunsetsu: Boolean = false, block: () -> Unit) {
+    private fun withKeyboard(kana: Boolean = false, bunsetsu: Boolean = false, candidateOrdering: Boolean = false, block: () -> Unit) {
         keyboardId = InputDevice.getDeviceIds().toList().mapNotNull(InputDevice::getDevice)
             .firstOrNull { !it.isVirtual && it.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC }
             ?.id ?: error("A physical or emulator hardware keyboard is required")
@@ -234,6 +312,8 @@ class PhysicalCandidateCompositionInstrumentedTest {
         val values = mapOf<String, Any>(
             "conversion_bunsetsu_separation_preference" to true,
             "conversion_bunsetsu_cursor_move_preference" to bunsetsu,
+            "candidate_order_override_enable_preference" to candidateOrdering,
+            "learn_dictionary_preference" to false,
             "physical_keyboard_input_mode_preference" to if (kana) "kana" else "romaji",
             "live_conversion_preference" to false,
             "sumire_keymap_guide_japanese" to false,
