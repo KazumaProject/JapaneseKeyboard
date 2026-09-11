@@ -358,6 +358,8 @@ data class ImePreferencesSnapshot(
                     ConversionBackend.LEGACY
                 },
                 predictionConfig = PredictionConfig(
+                    japaneseNumberCandidatesEnabled =
+                        appPreference.japanese_number_candidates_enable_preference,
                     japanesePredictionEnabled =
                         appPreference.japanese_prediction_enable_preference,
                     englishPredictionEnabled =

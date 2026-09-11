@@ -1607,7 +1607,7 @@ class KanaKanjiEngine {
 
         val numbersDeferred = generateNumberCandidates(
             input = input,
-            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            predictionConfig = predictionConfig,
         )
 
         val mozcUTPersonNames =
@@ -2141,7 +2141,7 @@ class KanaKanjiEngine {
 
         val numbersDeferred = generateNumberCandidates(
             input = input,
-            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            predictionConfig = predictionConfig,
         )
 
         val mozcUTPersonNames =
@@ -2665,7 +2665,7 @@ class KanaKanjiEngine {
 
         val numbersDeferred = generateNumberCandidates(
             input = input,
-            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            predictionConfig = predictionConfig,
         )
 
         val mozcUTPersonNames =
@@ -3187,7 +3187,7 @@ class KanaKanjiEngine {
 
         val numbersDeferred = generateNumberCandidates(
             input = input,
-            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            predictionConfig = predictionConfig,
         )
 
         val mozcUTPersonNames =
@@ -3687,7 +3687,7 @@ class KanaKanjiEngine {
 
         val numbersDeferred = generateNumberCandidates(
             input = input,
-            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            predictionConfig = predictionConfig,
         )
 
         val mozcUTPersonNames =
@@ -4209,7 +4209,7 @@ class KanaKanjiEngine {
 
         val numbersDeferred = generateNumberCandidates(
             input = input,
-            showSymbolCandidates = predictionConfig.showSymbolCandidates,
+            predictionConfig = predictionConfig,
         )
 
         val mozcUTPersonNames =
@@ -4268,8 +4268,16 @@ class KanaKanjiEngine {
         val explicitDigitInput = input.takeIf { value ->
             value.isNotEmpty() && value.all { it in '0'..'9' || it in '０'..'９' }
         }
-        val directJapaneseNumber = input.toNumber()
-        val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input)
+        val directJapaneseNumber = if (predictionConfig.japaneseNumberCandidatesEnabled) {
+            input.toNumber()
+        } else {
+            null
+        }
+        val numberUnitCandidates = if (predictionConfig.japaneseNumberCandidatesEnabled) {
+            createCandidatesForJapaneseNumberWithUnit(input)
+        } else {
+            emptyList()
+        }
         val preferredNumberCandidate = when {
             numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
             directJapaneseNumber != null -> directJapaneseNumber.second
@@ -5442,8 +5450,9 @@ class KanaKanjiEngine {
 
     private fun generateNumberCandidates(
         input: String,
-        showSymbolCandidates: Boolean = true,
+        predictionConfig: PredictionConfig,
     ): List<Candidate> {
+        if (!predictionConfig.japaneseNumberCandidatesEnabled) return emptyList()
         val numPair = input.toNumber()
         val expoPair = input.toNumberExponent()
 
@@ -5521,13 +5530,14 @@ class KanaKanjiEngine {
 
             candidates += createJapaneseNumberValueBasedCandidates(
                 input = input,
-                showSymbolCandidates = showSymbolCandidates,
+                showSymbolCandidates = predictionConfig.showSymbolCandidates,
             )
 
             candidates
 
         } else {
-            emptyList()
+            // Counter readings are full-input conversions, including when prediction is off.
+            createCandidatesForJapaneseNumberWithUnit(input)
         }
     }
 

@@ -123,6 +123,22 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     @Test
+    fun disabledNumberGenerationKeepsLiteralReadingsAndDirectDigits() {
+        val config = PredictionConfig(japaneseNumberCandidatesEnabled = false)
+        for ((input, forbidden) in mapOf(
+            "よじ" to setOf("4時", "４時"),
+            "いち" to setOf("1", "１", "一", "①"),
+            "よんせん" to setOf("4000", "４０００", "4,000", "四千"),
+        )) {
+            val candidates = engine.getCandidatesEnglishKana(input, config)
+            assertEquals(input, candidates.first().string)
+            assertTrue(input, candidates.none { it.string in forbidden })
+        }
+        assertTrue(engine.getCandidatesEnglishKana("1234", config).any { it.string == "1,234" })
+        assertTrue(engine.getCandidatesEnglishKana("１２３４", config).any { it.string == "1234" })
+    }
+
+    @Test
     fun timeCandidatesDoNotUseFullWidthCandidateType() {
         val candidates = engine.getCandidatesEnglishKana("1234")
 

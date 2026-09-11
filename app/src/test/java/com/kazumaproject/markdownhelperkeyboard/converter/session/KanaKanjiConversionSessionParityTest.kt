@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -65,6 +66,182 @@ class KanaKanjiConversionSessionParityTest {
                     legacyResult.candidateSegmentsByString,
                     incrementalResult.candidateSegmentsByString,
                 )
+            }
+        }
+    }
+
+    @Test
+    fun numberWithCounterCandidatesAreAvailableAcrossModesAndBackends() = runBlocking {
+        val cases = mapOf(
+            "よじ" to "4時",
+            "にじゅうよじ" to "24時",
+            "くじ" to "9時",
+            "さんにん" to "3人",
+            "ごえん" to "5円",
+            "にじゅっぷん" to "20分",
+            "いっぷん" to "1分",
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for ((input, expected) in cases) {
+                        val label = "$input/$mode/$backend/bunsetsu=$bunsetsu"
+                        val result = session.query(request(input, mode, bunsetsu))
+                        val fullWidth = expected.map {
+                            if (it in '0'..'9') it + 0xFEE0 else it
+                        }.joinToString("")
+                        for (value in listOf(expected, fullWidth)) {
+                            assertTrue("$label missing $value", result.candidates.any {
+                                it.string == value && it.length.toInt() == input.length
+                            })
+                        }
+                        // Dictionary candidates may share the surface; the generated candidate
+                        // must retain its type and POS IDs for full-input commits.
+                        val generated = result.candidates.first {
+                            it.string == expected && it.score == 8000
+                        }
+                        assertEquals(label, 2044.toShort(), generated.leftId)
+                        assertEquals(label, (if (expected.endsWith("時")) 2015 else 2011).toShort(), generated.rightId)
+                        assertEquals(label, if (expected.endsWith("時") || expected.endsWith("分")) {
+                            CANDIDATE_TYPE_TIME
+                        } else 18.toByte(), generated.type)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun numberCandidatesKeepReadingGuardsAndIgnorePredictionAndSymbolToggles() = runBlocking {
+        val forbidden = mapOf(
+            "しじ" to setOf("4時", "４時"),
+            "しえん" to setOf("4円", "４円"),
+            "よせん" to setOf("4000", "４０００"),
+            "よしよし" to setOf("4444", "４４４４"),
+        )
+        val disabled = PredictionConfig(
+            japanesePredictionEnabled = false,
+            englishPredictionEnabled = false,
+            showSymbolCandidates = false,
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for ((input, values) in forbidden) {
+                        val result = session.query(request(input, mode, bunsetsu))
+                        assertTrue("$input/$mode/$backend/$bunsetsu", result.candidates.none {
+                            it.string in values
+                        })
+                    }
+                    for ((input, expected) in mapOf("よじ" to "4時", "よんせん" to "4000")) {
+                        val result = session.query(request(input, mode, bunsetsu).copy(
+                            predictionConfig = disabled,
+                        ))
+                        assertTrue("$input/$mode/$backend/$bunsetsu", result.candidates.any {
+                            it.string == expected
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun numberCandidateToggleCanBeChangedOnAnExistingSession() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    val query = request("よじ", mode, bunsetsu)
+                    val enabled = session.query(query)
+                    val disabled = session.query(query.copy(predictionConfig = PredictionConfig(
+                        japaneseNumberCandidatesEnabled = false,
+                    )))
+                    val restored = session.query(query)
+                    val label = "$mode/$backend/$bunsetsu"
+                    assertTrue(label, enabled.candidates.any { it.string == "4時" && it.score == 8000 })
+                    assertFalse(label, disabled.candidates.any {
+                        it.string in setOf("4時", "４時") && it.score in 8000..8001
+                    })
+                    assertEquals(label, enabled.candidates.fingerprint(), restored.candidates.fingerprint())
+                    // Directly typed digits are outside the reading-generation toggle.
+                    val digits = session.query(request("1234", mode, bunsetsu).copy(
+                        predictionConfig = PredictionConfig(japaneseNumberCandidatesEnabled = false),
+                    ))
+                    assertTrue(label, digits.candidates.any { it.string == "1234" })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun ordinaryWordsAndSentencesKeepExactlyTheSameCandidatesAndSegments() = runBlocking {
+        val corpus = listOf(
+            "しじ", "しえん", "しにん", "よせん", "しせん", "くせん", "くちょう",
+            "よしよし", "ごご", "さんご", "いちいち", "さんさん", "ろくろく",
+            "へんじ", "かんじ", "だいじ", "にんじん", "えんじん", "たぶん",
+            "ひとり", "ふたり", "よんほん", "よんかい", "しがつ", "よっか",
+            "よじまで", "よじです", "ごごよじ", "あしたはよじ", "さんにんで",
+            "にじゅっぷんまつ", "きょうはいいてんき", "こんにちは", "ありがとう",
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for (input in corpus) {
+                        val query = request(input, mode, bunsetsu)
+                        val baseline = session.query(query.copy(predictionConfig = PredictionConfig(
+                            japaneseNumberCandidatesEnabled = false,
+                        )))
+                        val enabled = session.query(query)
+                        val label = "$input/$mode/$backend/$bunsetsu"
+                        assertEquals(label, baseline.candidates.fingerprint(), enabled.candidates.fingerprint())
+                        assertEquals(label, baseline.candidateSegmentsByString, enabled.candidateSegmentsByString)
+                        assertEquals(label, baseline.bunsetsuResult, enabled.bunsetsuResult)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun ambiguousCounterReadingsOnlyAddExpectedVariantsWithoutReorderingDictionaryCandidates() = runBlocking {
+        val cases = mapOf(
+            "にじ" to "2時", "さんじ" to "3時", "くじ" to "9時", "ごえん" to "5円",
+            "よじ" to "4時", "さんにん" to "3人", "にじゅっぷん" to "20分",
+            "よにん" to "4人", "よえん" to "4円", "くえん" to "9円",
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for ((input, expected) in cases) {
+                        val query = request(input, mode, bunsetsu)
+                        val baseline = session.query(query.copy(predictionConfig = PredictionConfig(
+                            japaneseNumberCandidatesEnabled = false,
+                        )))
+                        val enabled = session.query(query)
+                        val remaining = enabled.candidates.toMutableList()
+                        val label = "$input/$mode/$backend/$bunsetsu"
+                        val fullWidth = expected.map {
+                            if (it in '0'..'9') it + 0xFEE0 else it
+                        }.joinToString("")
+                        for ((value, score) in listOf(expected to 8000, fullWidth to 8001)) {
+                            val index = remaining.indexOfFirst { it.string == value && it.score == score }
+                            assertTrue("$label missing generated $value", index >= 0)
+                            remaining.removeAt(index)
+                        }
+                        if (mode == CandidateQueryMode.EISUKANA) {
+                            val index = remaining.indexOfFirst { it.string == expected && it.score == 3000 }
+                            assertTrue(label, index >= 0)
+                            remaining.removeAt(index)
+                        }
+                        assertEquals(label, baseline.candidates.fingerprint(), remaining.fingerprint())
+                        assertEquals(label, baseline.candidateSegmentsByString, enabled.candidateSegmentsByString)
+                    }
+                }
             }
         }
     }
