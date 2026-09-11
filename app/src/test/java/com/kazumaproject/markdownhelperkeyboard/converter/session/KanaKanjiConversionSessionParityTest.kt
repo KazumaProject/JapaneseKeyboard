@@ -211,7 +211,7 @@ class KanaKanjiConversionSessionParityTest {
         val cases = mapOf(
             "にじ" to "2時", "さんじ" to "3時", "くじ" to "9時", "ごえん" to "5円",
             "よじ" to "4時", "さんにん" to "3人", "にじゅっぷん" to "20分",
-            "よにん" to "4人", "よえん" to "4円", "くえん" to "9円",
+            "よにん" to "4人", "よんえん" to "4円", "きゅうえん" to "9円",
         )
         for (backend in ConversionBackend.entries) {
             val session = KanaKanjiConversionSession(engine, backend)

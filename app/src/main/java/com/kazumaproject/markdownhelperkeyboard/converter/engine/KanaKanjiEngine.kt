@@ -4539,11 +4539,10 @@ class KanaKanjiEngine {
         for ((readingSuffix, unit) in unitMappings) {
             if (!input.endsWith(readingSuffix) || input.length <= readingSuffix.length) continue
 
-            val numberReading = normalizeJapaneseNumberReadingForCounter(
+            val number = JapaneseNumberCounterReading.parse(
                 input.removeSuffix(readingSuffix),
                 readingSuffix,
             ) ?: continue
-            val number = numberReading.toNumber() ?: continue
             val isTimeLike = unit == "時" || unit == "分"
             val rightId = if (unit == "時") POS_ID_COUNTER_TIME else POS_ID_COUNTER_GENERIC
 
@@ -4568,32 +4567,6 @@ class KanaKanjiEngine {
 
         return emptyList()
     }
-
-    private fun normalizeJapaneseNumberReadingForCounter(
-        numberReading: String,
-        counterReading: String,
-    ): String? {
-        fun isStandaloneOrAfterPlace(alias: String): Boolean {
-            if (numberReading == alias) return true
-            val prefix = numberReading.dropLast(alias.length)
-            return listOf("じゅう", "ひゃく", "せん", "まん", "おく", "ちょう")
-                .any(prefix::endsWith)
-        }
-
-        // 「し」は単独の四としては有効だが、現在扱っている助数詞の
-        // 直前では通常語との衝突が大きい（しじ、しえん、しにん等）。
-        if (numberReading.endsWith("し") && isStandaloneOrAfterPlace("し")) return null
-        if (counterReading != "じ") return numberReading
-
-        return when {
-            numberReading.endsWith("よ") && isStandaloneOrAfterPlace("よ") ->
-                numberReading.dropLast(1) + "よん"
-            numberReading.endsWith("く") && isStandaloneOrAfterPlace("く") ->
-                numberReading.dropLast(1) + "きゅう"
-            else -> numberReading
-        }
-    }
-
 
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray.getNodeIds().map { nodeId ->
         emojiTangoTrie.getLetterShortArray(nodeId, emojiSuccinctBitVectorTangoLBS)
