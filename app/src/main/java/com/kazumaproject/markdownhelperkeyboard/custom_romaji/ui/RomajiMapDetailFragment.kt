@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuProvider
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -97,11 +98,26 @@ class RomajiMapDetailFragment : Fragment() {
     }
 
     private fun observeMapDetails() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             repository.getMapById(args.mapId).collectLatest { mapEntity ->
                 currentMap = mapEntity
                 if (mapEntity != null) {
                     (activity as? AppCompatActivity)?.supportActionBar?.title = mapEntity.name
+                    binding.conversionSettings.isVisible = mapEntity.isDeletable
+                    binding.autoSokuonSwitch.setOnCheckedChangeListener(null)
+                    binding.autoNSwitch.setOnCheckedChangeListener(null)
+                    binding.autoSokuonSwitch.isChecked = mapEntity.autoSokuon
+                    binding.autoNSwitch.isChecked = mapEntity.autoN
+                    binding.autoSokuonSwitch.setOnCheckedChangeListener { _, enabled ->
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            repository.setAutoSokuon(mapEntity.id, enabled)
+                        }
+                    }
+                    binding.autoNSwitch.setOnCheckedChangeListener { _, enabled ->
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            repository.setAutoN(mapEntity.id, enabled)
+                        }
+                    }
                     val sortedList = mapEntity.mapData.toList().sortedBy { it.first }
                     detailAdapter.submitList(sortedList)
                 }

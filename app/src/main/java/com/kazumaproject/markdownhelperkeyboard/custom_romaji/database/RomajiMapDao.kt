@@ -26,6 +26,12 @@ interface RomajiMapDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(maps: List<RomajiMapEntity>)
 
+    @Query("UPDATE romaji_maps SET autoSokuon = :enabled WHERE id = :id AND isDeletable = 1")
+    suspend fun setAutoSokuon(id: Long, enabled: Boolean)
+
+    @Query("UPDATE romaji_maps SET autoN = :enabled WHERE id = :id AND isDeletable = 1")
+    suspend fun setAutoN(id: Long, enabled: Boolean)
+
     @Update
     suspend fun update(map: RomajiMapEntity)
 
