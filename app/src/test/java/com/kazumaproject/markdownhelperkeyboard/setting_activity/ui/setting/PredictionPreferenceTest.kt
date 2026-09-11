@@ -43,6 +43,7 @@ class PredictionPreferenceTest {
 
     @Test
     fun predictionSettingsArePersistedInTheImeSnapshot() {
+        AppPreference.japanese_number_candidates_enable_preference = false
         AppPreference.japanese_prediction_enable_preference = false
         AppPreference.english_prediction_enable_preference = false
         AppPreference.system_dictionary_prediction_enable_preference = false
@@ -64,6 +65,7 @@ class PredictionPreferenceTest {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
         val prediction = snapshot.predictionConfig
 
+        assertFalse(prediction.japaneseNumberCandidatesEnabled)
         assertFalse(prediction.japanesePredictionEnabled)
         assertFalse(prediction.englishPredictionEnabled)
         assertFalse(prediction.systemDictionaryEnabled)
@@ -168,6 +170,7 @@ class PredictionPreferenceTest {
         assertTrue(lookahead?.showSeekBarValue == true)
 
         listOf(
+            "japanese_number_candidates_enable_preference",
             "symbol_candidate_enable_preference",
             "emoji_candidate_enable_preference",
             "emoticon_candidate_enable_preference",
@@ -177,8 +180,40 @@ class PredictionPreferenceTest {
         }
     }
 
+    @Test
+    fun numberCandidateSwitchIsSharedByNewAndLegacySettingsAndBothBackends() {
+        val key = "japanese_number_candidates_enable_preference"
+        for (scope in listOf(SettingSearchScope.NEW_HOME, SettingSearchScope.LEGACY_TABS)) {
+            val setting = SettingSearchIndex.searchable(context, scope).first { it.key == key }
+            assertEquals(SettingCategory.CONVERSION_ENGINE, setting.category)
+            if (scope == SettingSearchScope.NEW_HOME) {
+                val target = setting.destination as SettingDestinationType.SwitchPreference
+                assertTrue(target.defaultValue)
+                assertEquals(R.id.conversionEnginePreferenceFragment, target.destinationId)
+            } else {
+                assertEquals(SettingTabRegistry.TAB_CONVERSION_ENGINE, setting.legacyTarget?.tabKey)
+                assertEquals(key, setting.legacyTarget?.preferenceKey)
+            }
+        }
+        val screen = PreferenceManager(context).inflateFromResource(
+            context, R.xml.pref_conversion_engine, null,
+        )
+        val switch = requireNotNull(screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key))
+        assertTrue(switch.isChecked)
+        for (incremental in listOf(false, true)) {
+            AppPreference.incremental_conversion_session_preference = incremental
+            for (enabled in listOf(false, true)) {
+                switch.isChecked = enabled
+                AppPreference.init(context)
+                assertEquals(enabled, AppPreference.japanese_number_candidates_enable_preference)
+                assertEquals(enabled, ImePreferencesSnapshot.from(AppPreference).predictionConfig.japaneseNumberCandidatesEnabled)
+            }
+        }
+    }
+
     private companion object {
         val CONVERSION_KEYS = listOf(
+            "japanese_number_candidates_enable_preference",
             "japanese_prediction_enable_preference",
             "english_prediction_enable_preference",
             "system_dictionary_prediction_enable_preference",

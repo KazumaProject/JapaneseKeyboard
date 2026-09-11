@@ -12,6 +12,13 @@
             android:title="@string/incremental_conversion_session_title"
             app:iconSpaceReserved="false" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="japanese_number_candidates_enable_preference"
+            android:summary="@string/japanese_number_candidates_enable_summary"
+            android:title="@string/japanese_number_candidates_enable_title"
+            app:iconSpaceReserved="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/prediction_language_category_title">

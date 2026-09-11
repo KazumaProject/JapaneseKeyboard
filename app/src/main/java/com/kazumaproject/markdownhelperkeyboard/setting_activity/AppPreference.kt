@@ -166,6 +166,8 @@ object AppPreference {
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
     private val INCREMENTAL_CONVERSION_SESSION_PREFERENCE =
         Pair("incremental_conversion_session_preference", false)
+    private val JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE =
+        Pair("japanese_number_candidates_enable_preference", true)
     private val JAPANESE_PREDICTION_ENABLE_PREFERENCE =
         Pair("japanese_prediction_enable_preference", true)
     private val ENGLISH_PREDICTION_ENABLE_PREFERENCE =
@@ -1837,6 +1839,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var japanese_number_candidates_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE.first,
+            JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE.first, value)
         }
 
     var utility_candidate_config: UtilityCandidateConfig
