@@ -18722,8 +18722,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 learnRepository = learnedRepositoryForSuggestion(),
             )
         }
+        val romajiCandidates = if (conversionCandidatesRomajiEnablePreference == true) {
+            getRomajiCandidates(input)
+        } else {
+            emptyList()
+        }
         val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
-        val candidates = result.candidates.filter {
+        val candidates = (result.candidates + romajiCandidates).filter {
             it.length.toInt() == input.length &&
                 !NgWordMatcher.matchesAny(input, it.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
