@@ -15,7 +15,8 @@ internal class CandidateSurfaceHost(
     private data class Origin(val view: View, val parent: ViewGroup, val index: Int, val params: ViewGroup.LayoutParams)
     private var origins = emptyList<Origin>()
     private var backgrounds = emptyList<Pair<View, android.graphics.drawable.Drawable?>>()
-    private val tabStyleTag = Any()
+    private var colors = CandidatePanelColors.resolve(tabs.context)
+    fun setColors(value: CandidatePanelColors) { colors = value; refreshAppearance() }
     private var tabViews = emptyList<View?>()
     private var tabPadding = emptyList<Pair<View, android.graphics.Rect>>()
     private var scrollbars = false to false
@@ -44,10 +45,8 @@ internal class CandidateSurfaceHost(
             if ((view.background as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
         val tabLayout = tabs as? com.google.android.material.tabs.TabLayout ?: return
-        val surface = tabs.context.getColor(com.kazumaproject.core.R.color.keyboard_bg)
-        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(surface) < .45
-        val ink = if (dark) android.graphics.Color.rgb(242,243,250) else android.graphics.Color.rgb(35,39,53)
-        val accent = if (dark) android.graphics.Color.rgb(190,199,255) else android.graphics.Color.rgb(65,78,166)
+        val ink = colors.text
+        val accent = colors.selection
         if ((tabLayout.tabSelectedIndicator as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) tabLayout.setSelectedTabIndicator(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         val tabStrip = tabLayout.getChildAt(0) as? ViewGroup
         if (tabStrip != null) for (index in 0 until tabStrip.childCount) {
@@ -58,9 +57,9 @@ internal class CandidateSurfaceHost(
         }
         for (index in 0 until tabLayout.tabCount) {
             val tab = tabLayout.getTabAt(index) ?: continue
-            if (tab.customView?.tag === tabStyleTag) continue
+            if (tab.customView?.tag == colors) continue
             tab.customView = android.widget.TextView(tabs.context).apply {
-                tag = tabStyleTag
+                tag = colors
                 text = tab.text
                 textSize = 13f
                 maxLines = 1
@@ -70,7 +69,7 @@ internal class CandidateSurfaceHost(
                 gravity = android.view.Gravity.CENTER
                 setPadding(0, 0, 0, 0)
                 layoutParams = ViewGroup.LayoutParams(-1, -1)
-                setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()), intArrayOf(if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE, ink)))
+                setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()), intArrayOf(colors.selectionText, ink)))
                 background = android.graphics.drawable.StateListDrawable().apply {
                     addState(intArrayOf(android.R.attr.state_selected), android.graphics.drawable.GradientDrawable().apply { setColor(accent); cornerRadius = 10 * resources.displayMetrics.density })
                     addState(intArrayOf(), android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))

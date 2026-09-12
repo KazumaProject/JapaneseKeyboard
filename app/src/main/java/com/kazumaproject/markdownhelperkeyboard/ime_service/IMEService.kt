@@ -2620,10 +2620,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lastSuggestionLayoutKey = null
         updateKeyboardLayout(binding)
         refreshCandidateStripContent()
+        if (target == null) {
+            applyKeyboardContainerBackgrounds(binding)
+            applyCandidateAppearance()
+        }
+    }
+
+    private fun resolveCandidatePanelColors(): com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors {
+        val context = mainLayoutBinding?.root?.context ?: this
+        val custom = if (keyboardThemeMode == "custom") com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors(
+            customThemeBgColor ?: Color.WHITE,
+            customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
+            customThemeCandidateTextColor ?: Color.BLACK,
+            customThemeCandidateItemPressedBgColor ?: context.getColor(com.kazumaproject.core.R.color.qwety_key_bg_color),
+            customThemeSpecialKeyColor ?: Color.GRAY,
+            customThemeSpecialKeyTextColor ?: Color.BLACK,
+            customThemeShortcutIconColor ?: Color.BLACK,
+        ) else null
+        return com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(
+            context, KeyboardSkinRegistry.find(keyboardSkinId)?.palette, custom)
     }
 
     private fun configureFloatingCandidates(binding: MainLayoutBinding) {
-        candidateSurfaceHost?.refreshAppearance()
+        val colors = resolveCandidatePanelColors()
+        candidateSurfaceHost?.setColors(colors)
+        suggestionAdapter?.setFloatingPanelColors(colors)
+        suggestionAdapter?.setCandidateTextColor(colors.text)
+        suggestionAdapter?.setShortcutIconColor(colors.icon)
+        shortcutAdapter?.setIconColor(colors.icon)
+        if (keyboardThemeMode != "custom" || KeyboardSkinRegistry.find(keyboardSkinId) != null) {
+            suggestionAdapter?.setCandidateEmptyPopupColors(colors.background, colors.text)
+        }
         suggestionAdapter?.setFloatingPanelWidth((binding.suggestionRecyclerView.width.takeIf { it > 0 } ?: applicationContext.dpToPx(248)))
         binding.suggestionVisibility.visibility = View.GONE
         val vertical = composingGuideSettings.verticalCandidates &&
@@ -2680,6 +2707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
                 },
                 onSurfaceChanged = ::moveCandidateSurface,
+                colors = ::resolveCandidatePanelColors,
             )
         }
         composingGuide?.start(host)
@@ -6225,6 +6253,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setShortcutIconColor(shortcutColor) }
         listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
         applyCandidateEmptyPopupThemeToAdapters()
+        if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+        composingGuide?.refresh()
     }
 
     private fun applyCandidateEmptyPopupThemeToAdapters() {

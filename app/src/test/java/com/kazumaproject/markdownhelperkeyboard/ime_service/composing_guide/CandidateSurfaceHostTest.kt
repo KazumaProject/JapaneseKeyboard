@@ -44,6 +44,11 @@ class CandidateSurfaceHostTest {
         val label = tabs.getTabAt(2)?.customView as android.widget.TextView
         assertEquals("英数カナ", label.text.toString())
         assertEquals(1, label.maxLines)
+        val colors = CandidatePanelColors(1, 2, 3, 4, 5, 6)
+        host.setColors(colors)
+        val recolored = tabs.getTabAt(2)?.customView as android.widget.TextView
+        assertEquals(colors.text, recolored.currentTextColor)
+        assertEquals(colors.selectionText, recolored.textColors.getColorForState(intArrayOf(android.R.attr.state_selected), 0))
         tabs.removeAllTabs()
         listOf("予測", "変換", "英数カナ").forEach { tabs.addTab(tabs.newTab().setText(it)) }
         host.refreshAppearance()

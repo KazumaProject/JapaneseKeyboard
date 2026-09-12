@@ -23,6 +23,7 @@ internal class ComposingGuideController(
     private val eligible: () -> Boolean,
     private val onStateChanged: () -> Unit,
     private val onSurfaceChanged: (LinearLayout?) -> Unit,
+    private val colors: () -> CandidatePanelColors,
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = ComposingGuideSettings(preferences)
@@ -115,6 +116,7 @@ internal class ComposingGuideController(
             },
             onHandleEvent = ::handleEvent,
         ).also { guideView = it }
+        view.setColors(colors())
         if (view.editing != editing) view.setEditing(editing)
         view.setEditAvailable(editing || area.height() >= dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP))
         view.setShowComposing(settings.showComposing)
