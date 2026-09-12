@@ -14,6 +14,85 @@ internal class CandidateSurfaceHost(
 ) {
     private data class Origin(val view: View, val parent: ViewGroup, val index: Int, val params: ViewGroup.LayoutParams)
     private var origins = emptyList<Origin>()
+    private var backgrounds = emptyList<Pair<View, android.graphics.drawable.Drawable?>>()
+    private val tabStyleTag = Any()
+    private var tabViews = emptyList<View?>()
+    private var tabPadding = emptyList<Pair<View, android.graphics.Rect>>()
+    private var scrollbars = false to false
+    private var tabIndicator: android.graphics.drawable.Drawable? = null
+    private val spacing = object : androidx.recyclerview.widget.RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: androidx.recyclerview.widget.RecyclerView, state: androidx.recyclerview.widget.RecyclerView.State) {
+            val gap = (4 * view.resources.displayMetrics.density).toInt()
+            outRect.set(gap, gap, gap, gap)
+        }
+    }
+
+    private fun styleSurface() {
+        scrollbars = candidates.isVerticalScrollBarEnabled to candidates.isHorizontalScrollBarEnabled
+        backgrounds = listOf(toolbar, tabs, strip).map { it to it.background }
+        (candidates as? androidx.recyclerview.widget.RecyclerView)?.addItemDecoration(spacing)
+        (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
+            tabIndicator = layout.tabSelectedIndicator
+            tabViews = (0 until layout.tabCount).map { layout.getTabAt(it)?.customView }
+        }
+        refreshAppearance()
+    }
+
+    fun refreshAppearance() {
+        if (!attached) return
+        backgrounds.forEach { (view, _) ->
+            if ((view.background as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
+        val tabLayout = tabs as? com.google.android.material.tabs.TabLayout ?: return
+        val surface = tabs.context.getColor(com.kazumaproject.core.R.color.keyboard_bg)
+        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(surface) < .45
+        val ink = if (dark) android.graphics.Color.rgb(242,243,250) else android.graphics.Color.rgb(35,39,53)
+        val accent = if (dark) android.graphics.Color.rgb(190,199,255) else android.graphics.Color.rgb(65,78,166)
+        if ((tabLayout.tabSelectedIndicator as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) tabLayout.setSelectedTabIndicator(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        val tabStrip = tabLayout.getChildAt(0) as? ViewGroup
+        if (tabStrip != null) for (index in 0 until tabStrip.childCount) {
+            val view = tabStrip.getChildAt(index)
+            if (tabPadding.none { it.first === view }) tabPadding = tabPadding + (view to android.graphics.Rect(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom))
+            val padding = (4 * view.resources.displayMetrics.density).toInt()
+            if (view.paddingLeft != padding || view.paddingRight != padding) view.setPadding(padding, 0, padding, 0)
+        }
+        for (index in 0 until tabLayout.tabCount) {
+            val tab = tabLayout.getTabAt(index) ?: continue
+            if (tab.customView?.tag === tabStyleTag) continue
+            tab.customView = android.widget.TextView(tabs.context).apply {
+                tag = tabStyleTag
+                text = tab.text
+                textSize = 13f
+                maxLines = 1
+                setHorizontallyScrolling(false)
+                includeFontPadding = false
+                androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(this, 10, 13, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                gravity = android.view.Gravity.CENTER
+                setPadding(0, 0, 0, 0)
+                layoutParams = ViewGroup.LayoutParams(-1, -1)
+                setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()), intArrayOf(if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE, ink)))
+                background = android.graphics.drawable.StateListDrawable().apply {
+                    addState(intArrayOf(android.R.attr.state_selected), android.graphics.drawable.GradientDrawable().apply { setColor(accent); cornerRadius = 10 * resources.displayMetrics.density })
+                    addState(intArrayOf(), android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                }
+            }
+        }
+    }
+
+    private fun restoreSurface() {
+        candidates.isVerticalScrollBarEnabled = scrollbars.first
+        candidates.isHorizontalScrollBarEnabled = scrollbars.second
+        (candidates as? androidx.recyclerview.widget.RecyclerView)?.removeItemDecoration(spacing)
+        backgrounds.forEach { (view, background) -> view.background = background }
+        (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
+            tabViews.forEachIndexed { index, view -> layout.getTabAt(index)?.customView = view }
+            layout.setSelectedTabIndicator(tabIndicator)
+        }
+        tabPadding.forEach { (view, padding) -> view.setPadding(padding.left, padding.top, padding.right, padding.bottom) }
+        tabPadding = emptyList()
+        backgrounds = emptyList()
+        tabViews = emptyList()
+    }
     private var originalCandidateHeight = ViewGroup.LayoutParams.WRAP_CONTENT
     var attached = false
         private set
@@ -32,6 +111,7 @@ internal class CandidateSurfaceHost(
                 if (view == strip) 1f else 0f))
         }
         attached = true
+        styleSurface()
         setExpanded(false)
     }
 
@@ -50,6 +130,7 @@ internal class CandidateSurfaceHost(
     fun detach() {
         if (!attached) return
         setExpanded(false)
+        restoreSurface()
         origins.forEach { (it.view.parent as? ViewGroup)?.removeView(it.view) }
         origins.sortedBy { it.index }.forEach { origin ->
             origin.parent.addView(origin.view, origin.index.coerceAtMost(origin.parent.childCount), origin.params)

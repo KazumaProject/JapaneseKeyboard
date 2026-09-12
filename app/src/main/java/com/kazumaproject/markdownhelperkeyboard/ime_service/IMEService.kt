@@ -2585,14 +2585,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var candidateSurfaceHost: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost? = null
     private val floatingCandidateSurfaceActive get() = candidateSurfaceHost?.attached == true
     private var floatingCandidateVertical: Boolean? = null
+    private val floatingCandidateSizeListener = View.OnLayoutChangeListener { view, left, _, right, _, oldLeft, _, oldRight, _ ->
+        if (right - left != oldRight - oldLeft) view.post {
+            if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+        }
+    }
     private var dockedFullCandidateLayoutManager: RecyclerView.LayoutManager? = null
 
     private fun moveCandidateSurface(target: android.widget.LinearLayout?) {
         val binding = mainLayoutBinding ?: return
         if (target == null) {
             _suggestionViewStatus.value = true
+            binding.suggestionRecyclerView.removeOnLayoutChangeListener(floatingCandidateSizeListener)
             candidateSurfaceHost?.detach()
             candidateSurfaceHost = null
+            suggestionAdapter?.setFloatingPanelWidth(0)
+            binding.suggestionVisibility.isVisible = (currentCandidateStripContent as? CandidateStripContent.Candidates)?.candidates?.isNotEmpty() == true
             binding.candidatesRowView.layoutManager = dockedFullCandidateLayoutManager ?: binding.candidatesRowView.layoutManager
             binding.candidatesRowView.recycledViewPool.clear()
             dockedFullCandidateLayoutManager = null
@@ -2606,6 +2614,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 binding.shortcutToolbarRecyclerview, binding.candidateTabLayout,
                 binding.suggestionViewParent, binding.suggestionRecyclerView, binding.candidatesRowView,
             ).also { it.attach(target) }
+            binding.suggestionRecyclerView.addOnLayoutChangeListener(floatingCandidateSizeListener)
         }
         floatingCandidateVertical = null
         lastSuggestionLayoutKey = null
@@ -2614,10 +2623,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun configureFloatingCandidates(binding: MainLayoutBinding) {
+        candidateSurfaceHost?.refreshAppearance()
+        suggestionAdapter?.setFloatingPanelWidth((binding.suggestionRecyclerView.width.takeIf { it > 0 } ?: applicationContext.dpToPx(248)))
+        binding.suggestionVisibility.visibility = View.GONE
         val vertical = composingGuideSettings.verticalCandidates &&
             (currentCandidateStripContent is CandidateStripContent.Candidates ||
                 currentCandidateStripContent is CandidateStripContent.ZeroQuerySuggestions) &&
             suggestionAdapter?.isInlineSuggestionStripShown() != true
+        binding.suggestionRecyclerView.isVerticalScrollBarEnabled = vertical
+        binding.suggestionRecyclerView.isHorizontalScrollBarEnabled = !vertical
         mainSuggestionGridSpacingDecoration?.let { binding.suggestionRecyclerView.removeItemDecoration(it) }
         mainSuggestionGridSpacingDecoration = null
         if (floatingCandidateVertical != vertical ||
@@ -18116,8 +18130,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
         if (floatingCandidateSurfaceActive) {
-            candidateSurfaceHost?.setExpanded(!isVisible)
-            mainView.suggestionVisibility.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
+            _suggestionViewStatus.value = true
+            candidateSurfaceHost?.setExpanded(false)
+            mainView.suggestionVisibility.visibility = View.GONE
             refreshCandidateStripContent()
             return
         }
@@ -18242,6 +18257,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: View, isVisible: Boolean
     ) {
         mainView.post {
+            if (floatingCandidateSurfaceActive && mainView === mainLayoutBinding?.suggestionVisibility) {
+                mainView.animate().cancel()
+                mainView.visibility = View.GONE
+                return@post
+            }
             mainView.pivotX = mainView.width / 2f
             mainView.pivotY = mainView.height / 2f
 
@@ -21061,6 +21081,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }
+        candidateSurfaceHost?.refreshAppearance()
     }
 
     private fun collapseShortcutEntryExpansion(refreshContent: Boolean = true) {

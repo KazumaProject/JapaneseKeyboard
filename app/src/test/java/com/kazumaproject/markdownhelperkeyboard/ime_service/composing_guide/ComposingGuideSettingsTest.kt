@@ -21,7 +21,7 @@ class ComposingGuideSettingsTest {
         val settings = ComposingGuideSettings(preferences)
         assertFalse(settings.enabled)
         assertTrue(settings.showComposing)
-        assertFalse(settings.verticalCandidates)
+        assertTrue(settings.verticalCandidates)
         val saved = ComposingGuidePlacement(.2f, .7f, 320f, 180f)
         settings.save(false, saved)
         settings.textSize = 36f
@@ -31,6 +31,11 @@ class ComposingGuideSettingsTest {
         assertEquals(saved, reopened.load(false))
         assertEquals(ComposingGuidePlacement(), reopened.load(true))
         assertEquals(36f, reopened.textSize)
+    }
+
+    @Test fun explicitHorizontalPreferenceIsPreserved() {
+        preferences.edit().putString(ComposingGuideSettings.SCROLL_DIRECTION, "horizontal").commit()
+        assertFalse(ComposingGuideSettings(preferences).verticalCandidates)
     }
 
     @Test fun candidateOptionsPersistAndGeometryResetPreservesThem() {

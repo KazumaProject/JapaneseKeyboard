@@ -40,23 +40,17 @@ internal class ComposingGuideView(
         } else Color.rgb(103, 80, 164)
     }.let { if (ColorUtils.calculateContrast(it, surface) >= 3) it else inkColor }
     private val header = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
-    private val title = TextView(context).apply {
-        text = context.getString(R.string.composing_guide_short_title)
-        gravity = Gravity.CENTER_VERTICAL
-        textSize = 12f
-        setTextColor(ColorUtils.setAlphaComponent(inkColor, 180))
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-    }
     private val moveGrip = HandleView(context, GuideHandle.MOVE)
     private val editButton = icon(R.drawable.composing_guide_edit, R.string.composing_guide_edit, onEdit)
     private val hideButton = icon(R.drawable.composing_guide_hide, R.string.composing_guide_hide, onHide)
     private val textView = TextView(context).apply {
         setTextColor(inkColor)
         includeFontPadding = false
+        gravity = Gravity.CENTER_VERTICAL
         setLineSpacing(0f, 1.1f)
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
     }
-    private val scroll = ScrollView(context).apply { isFillViewport = false; addView(textView) }
+    private val scroll = ScrollView(context).apply { isFillViewport = true; addView(textView) }
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     val candidateContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val footer = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -82,6 +76,7 @@ internal class ComposingGuideView(
     }
     private val edges = listOf(GuideHandle.LEFT, GuideHandle.TOP, GuideHandle.RIGHT, GuideHandle.BOTTOM)
         .associateWith { HandleView(context, it) }
+    private var showComposing = true
     private var handlingGesture = false
     var editing = false
         private set
@@ -89,10 +84,9 @@ internal class ComposingGuideView(
     init {
         id = R.id.composing_guide_root
         elevation = dp(8).toFloat()
-        header.addView(title, LinearLayout.LayoutParams(0, -1, 1f))
+        header.addView(scroll, LinearLayout.LayoutParams(0, -1, 1f))
         header.addView(editButton, LinearLayout.LayoutParams(dp(48), dp(48)))
         header.addView(hideButton, LinearLayout.LayoutParams(dp(48), dp(48)))
-        body.addView(scroll, LinearLayout.LayoutParams(-1, dp(64)))
         body.addView(candidateContainer, LinearLayout.LayoutParams(-1, 0, 1f))
         addView(body)
         addView(header)
@@ -123,7 +117,6 @@ internal class ComposingGuideView(
     fun setEditing(value: Boolean) {
         editing = value
         handlingGesture = false
-        title.visibility = if (value) INVISIBLE else VISIBLE
         moveGrip.isEnabled = !value
         moveGrip.alpha = if (value) .35f else 1f
         moveGrip.isPressed = false
@@ -137,13 +130,13 @@ internal class ComposingGuideView(
             cornerRadius = dp(16).toFloat()
             setStroke(dp(if (value) 2 else 1), if (value) accent else ColorUtils.setAlphaComponent(inkColor, 45))
         }
-        header.layoutParams = LayoutParams(-1, dp(48)).apply {
+        header.layoutParams = LayoutParams(-1, dp(if (showComposing) 56 else 48)).apply {
             leftMargin = dp(if (value) 24 else 12); rightMargin = leftMargin
             topMargin = dp(if (value) 24 else 8)
         }
         body.layoutParams = LayoutParams(-1, -1).apply {
             leftMargin = dp(if (value) 24 else 16); rightMargin = leftMargin
-            topMargin = dp(if (value) 72 else 56); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
+            topMargin = dp((if (value) 88 else 76) - if (showComposing) 0 else 12); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
         }
         footer.layoutParams = LayoutParams(-1, dp(48), Gravity.BOTTOM).apply {
             leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 36)
@@ -165,7 +158,10 @@ internal class ComposingGuideView(
     fun setEditAvailable(available: Boolean) { editButton.isEnabled = available; editButton.alpha = if (available) 1f else .4f }
 
     fun setShowComposing(value: Boolean) {
-        scroll.visibility = if (value) VISIBLE else GONE
+        if (showComposing == value) return
+        showComposing = value
+        setEditing(editing)
+        scroll.visibility = if (value) VISIBLE else INVISIBLE
         sizeSlider.isEnabled = value
     }
 

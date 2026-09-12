@@ -294,6 +294,36 @@ class SuggestionAdapterShortcutEntryClickTest {
         adapter.release()
     }
 
+    @Test fun floatingCandidatesWrapWithoutChangingTheirActionsOrDockedStyle() {
+        val adapter = SuggestionAdapter()
+        val value = candidate("長い変換候補を省略せずに表示します")
+        adapter.submitContent(CandidateStripContent.Candidates(listOf(value)))
+        drainMainUntilItemCount(adapter, 1)
+        val dockedType = adapter.getItemViewType(0)
+        var clicked: Candidate? = null
+        var longClicked: Candidate? = null
+        adapter.setOnItemClickListener { candidate, _ -> clicked = candidate }
+        adapter.setOnItemLongClickListener { candidate, _ -> longClicked = candidate }
+        adapter.setFloatingPanelWidth(dp(248))
+        assertTrue(dockedType != adapter.getItemViewType(0))
+        val holder = createSuggestionHolder(adapter, adapter.getItemViewType(0))
+        adapter.onBindViewHolder(holder, 0)
+        val text = holder.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view)
+        assertEquals(value.string, text.text.toString())
+        assertEquals(Int.MAX_VALUE, text.maxLines)
+        assertTrue(text.maxWidth < dp(248))
+        holder.itemView.performClick()
+        holder.itemView.performLongClick()
+        assertEquals(value, clicked)
+        assertEquals(value, longClicked)
+        adapter.setFloatingPanelWidth(0)
+        assertEquals(dockedType, adapter.getItemViewType(0))
+        val restored = createSuggestionHolder(adapter, adapter.getItemViewType(0))
+        adapter.onBindViewHolder(restored, 0)
+        assertEquals(1, restored.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view).maxLines)
+        adapter.release()
+    }
+
     private fun createSuggestionHolder(
         adapter: SuggestionAdapter,
         viewType: Int = SuggestionAdapter.VIEW_TYPE_SUGGESTION

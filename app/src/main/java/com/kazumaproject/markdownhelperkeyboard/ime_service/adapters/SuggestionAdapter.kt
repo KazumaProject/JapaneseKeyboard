@@ -137,6 +137,7 @@ class SuggestionAdapter internal constructor(
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
+        private const val FLOATING_VIEW_TYPE_OFFSET = 10000
         const val VIEW_TYPE_EMPTY = 0
         const val VIEW_TYPE_SUGGESTION = 1
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
@@ -1147,8 +1148,15 @@ class SuggestionAdapter internal constructor(
         val imageView: ImageView = itemView.findViewById(R.id.shortcut_entry_image)
     }
 
+    private var floatingPanelWidth = 0
+    fun setFloatingPanelWidth(width: Int) {
+        if (floatingPanelWidth == width) return
+        floatingPanelWidth = width
+        notifyDataSetChanged()
+    }
+
     override fun getItemViewType(position: Int): Int {
-        return viewTypeFor(displayItems[position])
+        return viewTypeFor(displayItems[position]) + if (floatingPanelWidth > 0) FLOATING_VIEW_TYPE_OFFSET else 0
     }
 
     private fun viewTypeFor(item: SuggestionDisplayItem): Int {
@@ -1195,7 +1203,7 @@ class SuggestionAdapter internal constructor(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
-        return when (viewType) {
+        return when (viewType % FLOATING_VIEW_TYPE_OFFSET) {
             VIEW_TYPE_EMPTY -> {
                 val emptyView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_quick_actions_item, parent, false)
@@ -1281,7 +1289,7 @@ class SuggestionAdapter internal constructor(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = displayItems.getOrNull(position) ?: return
         if (candidateTextColor == null) visitAppearanceViews(holder.itemView, capture = false)
-        when (getItemViewType(position)) {
+        when (getItemViewType(position) % FLOATING_VIEW_TYPE_OFFSET) {
             VIEW_TYPE_EMPTY -> onBindQuickActionsViewHolder(
                 holder as QuickActionsViewHolder,
                 (item as SuggestionDisplayItem.QuickActionsItem).state,
@@ -1344,6 +1352,41 @@ class SuggestionAdapter internal constructor(
                 item as SuggestionDisplayItem.CustomLayoutItem,
             )
         }
+        styleFloatingItem(holder, position)
+    }
+
+    private fun styleFloatingItem(holder: RecyclerView.ViewHolder, position: Int) {
+        if (floatingPanelWidth <= 0 || holder is InlineSuggestionViewHolder) return
+        val root = holder.itemView
+        val density = root.resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
+        val surface = root.context.getColor(com.kazumaproject.core.R.color.keyboard_bg)
+        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(surface) < .45
+        val ink = if (dark) Color.rgb(242, 243, 250) else Color.rgb(35, 39, 53)
+        val accent = if (dark) Color.rgb(190, 199, 255) else Color.rgb(65, 78, 166)
+        val candidateText = when (holder) {
+            is SuggestionViewHolder -> holder.text
+            is ZeroQueryViewHolder -> holder.text
+            else -> null
+        }
+        if (candidateText != null) {
+            root.minimumHeight = dp(44)
+            root.setPadding(dp(12), dp(8), dp(12), dp(8))
+            root.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            candidateText.text = candidateText.text.trim()
+            candidateText.maxLines = Int.MAX_VALUE
+            candidateText.maxWidth = (floatingPanelWidth - dp(64)).coerceAtLeast(dp(40))
+            candidateText.textSize = candidateTextSize.coerceAtLeast(18f)
+            candidateText.setTextColor(if (position == 0) accent else ink)
+            root.findViewById<View>(R.id.candidate_divider)?.visibility = View.GONE
+        }
+        val chip = GradientDrawable().apply {
+            cornerRadius = dp(10).toFloat()
+            setColor(androidx.core.graphics.ColorUtils.blendARGB(surface, if (position == 0 && candidateText != null) accent else ink, if (position == 0 && candidateText != null) .14f else .035f))
+            setStroke(dp(1), androidx.core.graphics.ColorUtils.setAlphaComponent(ink, 24))
+        }
+        root.background = android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(accent, 40)), chip, null)
     }
 
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
@@ -1897,7 +1940,7 @@ class SuggestionAdapter internal constructor(
         val position = item.candidateIndex
         val formulaPresentation = suggestion.presentation
         val isFormula = formulaPresentation != null
-        val paddingLength = when {
+        val paddingLength = if (floatingPanelWidth > 0) 0 else when {
             position == 0 -> 4
             suggestion.string.length == 1 -> 4
             suggestion.string.length == 2 -> 2
@@ -2099,7 +2142,7 @@ class SuggestionAdapter internal constructor(
         suggestion: Candidate,
         position: Int,
     ): CharSequence {
-        val paddingLength = when {
+        val paddingLength = if (floatingPanelWidth > 0) 0 else when {
             position == 0 -> 4
             suggestion.string.length == 1 -> 4
             suggestion.string.length == 2 -> 2
