@@ -18876,9 +18876,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         splitPositions: List<Int>,
         snapshot: BunsetsuConversionSnapshot?,
-    ): List<BunsetsuSegmentState> = buildConvertedBunsetsuSegments(
-        input, sanitizeSplitPositions(input, splitPositions), snapshot, ::displayTextFromCandidate,
-    )
+    ): List<BunsetsuSegmentState> {
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        return buildConvertedBunsetsuSegments(
+            input, sanitizeSplitPositions(input, splitPositions), snapshot, ::displayTextFromCandidate,
+        ).map { segment ->
+            // A full-input candidate can pass an exact NG rule that matches one of its segments.
+            // Invalidate before preparation so even unfocused segments load a permitted alternative.
+            if (NgWordMatcher.matchesAny(segment.reading, segment.displayText, ngWords)) {
+                segment.copy(displayText = segment.reading, hasConvertedDisplay = false)
+            } else {
+                segment
+            }
+        }
+    }
 
     private fun displayTextFromCandidate(candidate: Candidate): String {
         return if (candidate.type == (15).toByte()) {
@@ -18902,8 +18913,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+        val templateCandidates = getLegacyUserTemplateCandidates(input)
         val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
-        val candidates = (result.candidates + romajiCandidates).filter {
+        val candidates = (templateCandidates + result.candidates + romajiCandidates).filter {
             it.length.toInt() == input.length &&
                 !NgWordMatcher.matchesAny(input, it.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
@@ -25129,16 +25141,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return filterNot { it.string.containsHentaigana() }
     }
 
+    private suspend fun getLegacyUserTemplateCandidates(input: String): List<Candidate> {
+        if (isUserTemplateEnable != true) return emptyList()
+        return withContext(Dispatchers.IO) {
+            userTemplateRepository.searchByReading(reading = input, limit = 8)
+                .toUserTemplateCandidates()
+        }
+    }
+
     private suspend fun getUserTemplateCandidates(insertString: String): List<Candidate> {
         return withContext(Dispatchers.IO) {
-            val legacyTemplates = if (isUserTemplateEnable == true) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString,
-                    limit = 8
-                ).toUserTemplateCandidates()
-            } else {
-                emptyList()
-            }
+            val legacyTemplates = getLegacyUserTemplateCandidates(insertString)
             val contextualMacrosAllowed = !isPrivateMode && currentInputType !in passwordTypes
             val macros = if (isTextMacroCandidateEnable) {
                 textMacroRepository.getEnabledByReading(insertString, limit = 8)
