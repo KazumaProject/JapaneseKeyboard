@@ -37,7 +37,7 @@
         <ListPreference
             android:key="composing_guide_scroll_direction"
             android:dependency="composing_guide_enabled"
-            android:defaultValue="horizontal"
+            android:defaultValue="vertical"
             android:title="@string/composing_guide_scroll_direction"
             android:entries="@array/composing_guide_scroll_labels"
             android:entryValues="@array/composing_guide_scroll_values"
