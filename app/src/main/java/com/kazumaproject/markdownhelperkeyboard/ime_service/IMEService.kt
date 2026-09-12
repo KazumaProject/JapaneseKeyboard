@@ -313,6 +313,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SymbolKeyboardState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.CustomRomajiScreenConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -409,6 +410,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -618,6 +620,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var shortcutAdapter: ShortcutAdapter? = null
 
     private var romajiConverter: RomajiKanaConverter? = null
+    private var customRomajiScreenConverter: CustomRomajiScreenConverter? = null
+    private val customScreenCandidateResult = MutableStateFlow<Pair<String, List<Candidate>>?>(null)
+
+    private fun convertScreenQwerty(converter: RomajiKanaConverter, text: String): String =
+        if (isDefaultRomajiHenkanMap) converter.convertQWERTYZenkaku(text)
+        else customRomajiScreenConverter?.convert(text) ?: text
+
+    private fun flushCustomScreenComposition() {
+        if (isDefaultRomajiHenkanMap || isHenkan.get() ||
+            currentInputModeForSession != InputMode.ModeJapanese) return
+        val screenRomaji = qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji ||
+            (qwertyMode.value == TenKeyQWERTYMode.Custom && isCustomLayoutRomajiMode)
+        if (!screenRomaji) return
+        val before = inputString.value
+        val after = customRomajiScreenConverter?.flush(before) ?: before
+        if (after != before) {
+            _inputString.value = after
+            setComposingText(after + stringInTail.get(), 1)
+        }
+    }
 
     private lateinit var clipboardManager: ClipboardManager
 
@@ -1014,6 +1036,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentCandidateStripCandidates = candidates
             currentCandidateStripFullCandidates = fullCandidates
             refreshCandidateStripContent()
+            customScreenCandidateResult.value = insertString to candidates
         }
     }
 
@@ -1900,7 +1923,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suppressNextQwertyGlideSuggestionRefresh: Boolean = false
     private var currentQwertyGlideCompositionText: String? = null
 
-    private var customRomajiZenkakuConversionEnablePreference: Boolean? = true
 
     private var omissionSearchOffsetScorePreference: Int? = 1900
     private var enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference: Int? = 3000
@@ -3172,8 +3194,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customKeyBorderWidth = preferences.customKeyBorderWidth
         qwertySwitchNumberKeyWithoutNumberPreference =
             preferences.qwertySwitchNumberKeyWithoutNumberPreference
-        customRomajiZenkakuConversionEnablePreference =
-            preferences.customRomajiZenkakuConversionEnablePreference
         omissionSearchOffsetScorePreference = preferences.omissionSearchOffsetScorePreference
         enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference =
             preferences.enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
@@ -5474,7 +5494,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         circularFlickWindowScale = null
         customKeyBorderWidth = null
         qwertySwitchNumberKeyWithoutNumberPreference = null
-        customRomajiZenkakuConversionEnablePreference = null
         omissionSearchOffsetScorePreference = null
         enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference = null
 
@@ -7186,7 +7205,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         length = insertString.length.toUByte(),
                         score = 0
                     )
-                }, mainView)
+                }, mainView, fromPhysicalKeyboard = true)
             }
         }
         return true
@@ -7291,7 +7310,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         length = insertString.length.toUByte(),
                         score = 0
                     )
-                }, mainView, insertString)
+                }, mainView, insertString, fromPhysicalKeyboard = true)
             }
         } else {
             handleEmptyInputEnterKey(mainView)
@@ -13444,22 +13463,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
 
                                             } else {
-                                                if (customRomajiZenkakuConversionEnablePreference == true) {
-                                                    _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
-                                                            converter.convertQWERTYZenkaku(
-                                                                sb.toString()
-                                                            )
-                                                        )
-                                                    }
-                                                } else {
-                                                    _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
-                                                            converter.convert(
-                                                                sb.toString()
-                                                            )
-                                                        )
-                                                    }
+                                                _inputString.update {
+                                                    applyCustomLayoutShiftAndCapLock(
+                                                        customRomajiScreenConverter?.convert(sb.toString())
+                                                            ?: sb.toString()
+                                                    )
                                                 }
                                             }
                                         }
@@ -13487,14 +13495,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                         converter.convertCustomLayout(sb.toString())
                                                     }
                                                 } else {
-                                                    if (customRomajiZenkakuConversionEnablePreference == true) {
-                                                        _inputString.update {
-                                                            converter.convertQWERTYZenkaku(sb.toString())
-                                                        }
-                                                    } else {
-                                                        _inputString.update {
-                                                            converter.convert(sb.toString())
-                                                        }
+                                                    _inputString.update {
+                                                        customRomajiScreenConverter?.convert(sb.toString())
+                                                            ?: sb.toString()
                                                     }
                                                 }
                                             }
@@ -16556,6 +16559,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             romajiMapRepository.getActiveMap().map { entity ->
+                // Update software settings before distinctUntilChanged. A settings-only update
+                // must not recreate/reset the existing physical keyboard converter.
+                customRomajiScreenConverter = entity?.takeIf { it.isDeletable }?.let {
+                    CustomRomajiScreenConverter(it.mapData, it.autoSokuon, it.autoN)
+                }
                 entity?.let {
                     Pair(it.mapData, it.isDeletable)
                 } ?: Pair(romajiMapRepository.getDefaultMapData(), false)
@@ -21905,7 +21913,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        convertScreenQwerty(converter, sb.toString())
                                                     }
                                                 }
                                             }
@@ -21921,7 +21929,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        convertScreenQwerty(converter, sb.toString())
                                                     }
                                                 }
                                             }
@@ -21942,7 +21950,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        convertScreenQwerty(converter, sb.toString())
                                                     }
                                                 }
                                             }
@@ -21961,7 +21969,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
                                             Timber.d("QWERTY romaji 2: $charToAppend")
                                             _inputString.update {
-                                                converter.convertQWERTYZenkaku(
+                                                convertScreenQwerty(
+                                                    converter,
                                                     charToAppend.toString()
                                                 )
                                             }
@@ -25534,8 +25543,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFlick: Boolean,
         insertString: String,
         suggestions: List<Candidate>,
-        mainView: MainLayoutBinding
+        mainView: MainLayoutBinding,
+        fromPhysicalKeyboard: Boolean = false
     ) {
+        if (!fromPhysicalKeyboard && !isDefaultRomajiHenkanMap && insertString.isNotEmpty() &&
+            qwertyMode.value == TenKeyQWERTYMode.Custom && isCustomLayoutRomajiMode &&
+            currentInputModeForSession == InputMode.ModeJapanese) {
+            handleSpaceKeyClickInQWERTY(insertString, mainView, suggestions)
+            return
+        }
         clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
             resetFlagsKeySpace()
@@ -25648,7 +25664,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
                             romajiConverter?.flushZenkaku(insertString)?.first
                         } else {
-                            romajiConverter?.flush(insertString)?.first
+                            customRomajiScreenConverter?.flush(insertString)
                         }
                         if (insertStringEndWithN == null) {
                             _inputString.update { insertString }
@@ -25661,6 +25677,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     handleJapaneseModeSpaceKey(
                                         this, suggestions, insertString
                                     )
+                                }
+                            }
+                        } else if (!isDefaultRomajiHenkanMap && isHenkan.get()) {
+                            // Subsequent Space presses cycle the active candidate selection.
+                            // Only the first press should wait for candidates for the reading.
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(mainView, suggestions, insertString)
+                                } else {
+                                    handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                                }
+                            }
+                        } else if (!isDefaultRomajiHenkanMap) {
+                            val converter = customRomajiScreenConverter
+                            val connection = currentInputConnection
+                            if (insertStringEndWithN != insertString) customScreenCandidateResult.value = null
+                            _inputString.value = insertStringEndWithN
+                            setComposingText(insertStringEndWithN + stringInTail.get(), 1)
+                            scope.launch {
+                                val result = withTimeoutOrNull(2_000) {
+                                    combine(customScreenCandidateResult, inputString) { result, current ->
+                                        result to current
+                                    }.first { (result, current) ->
+                                        current != insertStringEndWithN || result?.first == insertStringEndWithN
+                                    }
+                                }
+                                if (currentInputConnection !== connection ||
+                                    customRomajiScreenConverter !== converter ||
+                                    inputString.value != insertStringEndWithN || isHenkan.get()) return@launch
+                                val candidates = result?.first?.second.orEmpty()
+                                if (candidates.isNotEmpty()) {
+                                    if (bunsetsuSeparation == true) {
+                                        handleJapaneseModeSpaceKeyWithBunsetsu(mainView, candidates, insertStringEndWithN)
+                                    } else {
+                                        handleJapaneseModeSpaceKey(mainView, candidates, insertStringEndWithN)
+                                    }
                                 }
                             }
                         } else {
@@ -25968,8 +26020,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleNonEmptyInputEnterKey(
-        suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
+        suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String,
+        fromPhysicalKeyboard: Boolean = false
     ) {
+        if (!fromPhysicalKeyboard) flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitBunsetsuConversionSession()) {
@@ -26019,6 +26073,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
         insertString: String
     ) {
+        flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitBunsetsuConversionSession()) {

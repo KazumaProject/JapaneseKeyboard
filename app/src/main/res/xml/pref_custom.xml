@@ -42,11 +42,7 @@
             android:summaryOn="@string/remember_custom_keyboard_input_mode_summary_on"
             android:title="@string/remember_custom_keyboard_input_mode_title" />
 
-        <SwitchPreferenceCompat
-            android:key="custom_romaji_zenkaku_conversion_enable_preference"
-            android:title="@string/custom_romaji_zenkaku_conversion_enable_preference_title"
-            app:defaultValue="true"
-            app:summary="@string/custom_romaji_zenkaku_conversion_enable_preference_summary" />
+
 
         <SwitchPreferenceCompat
             android:key="flick_keymap_guide"

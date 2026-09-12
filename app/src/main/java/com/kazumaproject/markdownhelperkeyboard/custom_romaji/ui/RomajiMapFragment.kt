@@ -332,7 +332,9 @@ class RomajiMapFragment : Fragment() {
                 name = name,
                 mapData = mapData,
                 isActive = false,
-                isDeletable = obj.readBoolean("isDeletable") ?: true
+                isDeletable = obj.readBoolean("isDeletable") ?: true,
+                autoSokuon = obj.readBoolean("autoSokuon") ?: true,
+                autoN = obj.readBoolean("autoN") ?: true
             )
         }
     }

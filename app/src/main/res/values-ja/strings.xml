@@ -1800,4 +1800,9 @@
     <string name="keyboard_type_qwerty">英語（QWERTY）</string>
     <string name="keyboard_type_romaji">日本語 - ローマ字</string>
     <string name="keyboard_type_custom">カスタム - ユーザー定義</string>
+    <string name="custom_romaji_behavior_scope">画面上のキーボードでの変換（この配列のみ）</string>
+    <string name="custom_romaji_auto_sokuon">同じ子音の連続を「っ」にする</string>
+    <string name="custom_romaji_auto_sokuon_summary">有効：ppa → っぱ。無効：登録ルールに従います。pp → っ の登録は二文字とも消費します。</string>
+    <string name="custom_romaji_auto_n">子音の前・確定時の n を「ん」にする</string>
+    <string name="custom_romaji_auto_n_summary">有効：kanta → かんた、末尾の n は確定時に「ん」。無効：nn → ん などの登録ルールに従います。</string>
 </resources>
