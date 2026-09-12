@@ -645,8 +645,20 @@ class GraphBuilder {
                     repository.findCommonPrefixes(subStr())
                 }
             } ?: emptyList()
-            if (learnedWords.isNotEmpty()) foundInAnyDictionary = true
             learnedWords.forEach { learnedWord ->
+                // Validate persisted pairs before N-best and node deduplication. Invalid history
+                // must not consume every result slot or shadow an explicit user dictionary entry.
+                if (!com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(
+                        learnedWord.input,
+                        com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(
+                            string = learnedWord.out,
+                            type = com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                            length = learnedWord.input.length.toUByte(), score = learnedWord.score,
+                            yomi = learnedWord.input,
+                        ),
+                    )) return@forEach
+                foundInAnyDictionary = true
+
                 val endIndex = i + learnedWord.input.length
                 val node = Node(
                     l = learnedWord.leftId ?: 1851.toShort(),

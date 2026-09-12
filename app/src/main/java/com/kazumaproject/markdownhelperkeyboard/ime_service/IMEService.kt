@@ -210,6 +210,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiC
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
@@ -1014,8 +1015,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString, token)) return@withContext
             collapseShortcutEntryExpansion(refreshContent = false)
-            currentCandidateStripCandidates = candidates
-            currentCandidateStripFullCandidates = fullCandidates
+            currentCandidateStripCandidates = NumberCandidatePolicy.filter(insertString, candidates, predictionConfig)
+            currentCandidateStripFullCandidates = NumberCandidatePolicy.filter(insertString, fullCandidates, predictionConfig)
             refreshCandidateStripContent()
         }
     }
@@ -1032,6 +1033,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
             return
+        }
+
+        // Every strip entry point (including cached/zenz snapshot restoration) ends here.
+        // Revalidate against the current input/config before any candidate reaches the UI.
+        val activeReading = inputString.value
+        if (activeReading.isNotEmpty()) {
+            currentCandidateStripCandidates = NumberCandidatePolicy.filter(activeReading, currentCandidateStripCandidates, predictionConfig)
+            currentCandidateStripFullCandidates = NumberCandidatePolicy.filter(activeReading, currentCandidateStripFullCandidates, predictionConfig)
         }
 
         // CandidateShowFlag.Updating can be emitted once with an empty input while the
@@ -2835,6 +2844,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateTabOrder = preferences.candidateTabOrder
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
+        if (predictionConfig != preferences.predictionConfig) {
+            candidateRequestTracker.invalidate()
+        }
         predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
@@ -17185,7 +17197,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
-        val localCandidates = candidates.withoutZenzLiveSlot(insertString)
+        val localCandidates = NumberCandidatePolicy.filter(insertString, candidates, predictionConfig).withoutZenzLiveSlot(insertString)
         if (
             _zenzLiveSlotState.value?.displayInput == insertString &&
             _zenzLiveSlotState.value?.bunsetsuTarget == null &&
@@ -17255,7 +17267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate?,
     ): Candidate? {
         val utilityResult = utilityCandidateProvider.provide(input, utilityCandidateConfig)
-        return if (utilityResult.hasCandidates) null else candidate
+        return if (utilityResult.hasCandidates) null else candidate?.takeIf { NumberCandidatePolicy.eligible(input, it, predictionConfig) }
     }
 
     private fun commitExplicitUtilityCandidateOnEnter(
@@ -17351,7 +17363,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateToken: CandidateRequestToken,
     ) {
         zenzRerankJob = scope.launch {
-            val reranked = try {
+            val rerankedRaw = try {
                 rerankCandidatesWithZenz(insertString, baseCandidates, plan)
             } catch (e: CancellationException) {
                 throw e
@@ -17360,6 +17372,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 null
             } ?: return@launch
 
+            val reranked = applyMergedCandidateOrder(insertString, rerankedRaw)
             putCachedZenzRerank(plan.cacheKey, reranked)
 
             if (requestToken != zenzRerankRequestToken ||
@@ -18581,6 +18594,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
+        if (!NumberCandidatePolicy.eligible(inputString.value, candidate, predictionConfig)) return
         // Once a candidate owns the composing display, an old toggle timer must not restore kana.
         if (qwertyMode.value == TenKeyQWERTYMode.Custom) resetCustomToggleState()
         beginBatchEdit()
@@ -23137,6 +23151,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processCandidate(
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
+        if (!NumberCandidatePolicy.eligible(insertString, candidate, predictionConfig)) return
         Timber.d("processCandidate ${candidate.type.toInt()} ${insertString.length == candidate.length.toInt()}")
         val qwertyGlideDecision = QwertyGlideCommitPolicy.resolveTapCommitDecision(
             candidate = candidate,
@@ -24105,7 +24120,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
-        val displayedCandidates = cachedReranked ?: filtered
+        val displayedCandidates = if (cachedReranked != null) applyMergedCandidateOrder(insertString, cachedReranked) else filtered
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
@@ -24206,7 +24221,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
-        val displayedCandidates = cachedReranked ?: filtered
+        val displayedCandidates = if (cachedReranked != null) applyMergedCandidateOrder(insertString, cachedReranked) else filtered
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
@@ -24497,7 +24512,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val filteredCandidates = result.filter { candidate ->
-            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
+            NumberCandidatePolicy.eligible(insertString, candidate, predictionConfig) && !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
@@ -24630,7 +24645,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val filteredCandidates = measureDebugStage("IMEService.getSuggestionList.ngWordFilterDistinct") {
             result.filter { candidate ->
-                !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
+                NumberCandidatePolicy.eligible(insertString, candidate, predictionConfig) &&
+                    !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
             }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
         }
 
@@ -24754,7 +24770,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val filteredCandidates = result.filter { candidate ->
-            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
+            NumberCandidatePolicy.eligible(insertString, candidate, predictionConfig) && !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
@@ -24782,9 +24798,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val promotedCandidates = measureDebugStage("IMEService.exactInputPromotion") {
             ExactInputCandidatePromotionPolicy.promote(
                 input = input,
-                candidates = candidates,
+                candidates = NumberCandidatePolicy.filter(input, candidates, predictionConfig),
             )
         }
+        val numericOrdered = NumberCandidatePolicy.order(input, promotedCandidates, predictionConfig.numberCandidateOrder)
         return if (appPreference.candidate_order_override_enable_preference == true) {
             if (candidateSegmentsByString.isNotEmpty()) {
                 latestCandidateSegmentInput = input
@@ -24793,12 +24810,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
-                    candidates = promotedCandidates,
+                    candidates = numericOrdered,
                     candidateSegmentsByString = candidateSegmentsByString,
                 )
             }
         } else {
-            promotedCandidates
+            numericOrdered
         }
     }
 

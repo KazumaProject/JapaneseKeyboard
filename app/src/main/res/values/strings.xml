@@ -1802,4 +1802,6 @@
     <string name="keyboard_type_qwerty">English (QWERTY)</string>
     <string name="keyboard_type_romaji">Japanese – Romaji</string>
     <string name="keyboard_type_custom">Custom – User defined</string>
+    <string name="japanese_number_candidates_enable_title">Generate number candidates from readings</string>
+    <string name="japanese_number_candidates_enable_summary">Generate candidates such as いち → 1 and よじ → 4時 in prediction, conversion, English/kana, and with candidate tabs hidden. Dictionary entries containing numbers and candidates from directly typed digits remain available when disabled.</string>
 </resources>

@@ -56,15 +56,15 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("さんにん").any { it.string == "3人" })
         assertTrue(engine.getCandidatesEnglishKana("ごえん").any { it.string == "5円" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅっぷん").any { it.string == "20分" })
-        assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
+        assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").none { it.string == "20分" })
         assertTrue(engine.getCandidatesEnglishKana("ろくじ").any { it.string == "6時" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ").any { it.string == "24時" })
         assertTrue(engine.getCandidatesEnglishKana("くじ").any { it.string == "9時" })
         assertTrue(engine.getCandidatesEnglishKana("じゅうくじ").any { it.string == "19時" })
         assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
-        assertTrue(engine.getCandidatesEnglishKana("よえん").any { it.string == "4円" })
-        assertTrue(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
-        assertTrue(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
+        assertTrue(engine.getCandidatesEnglishKana("よんえん").any { it.string == "4円" })
+        assertTrue(engine.getCandidatesEnglishKana("きゅうえん").any { it.string == "9円" })
+        assertTrue(engine.getCandidatesEnglishKana("くにん").none { it.string == "9人" })
         assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })
         assertTrue(engine.getCandidatesEnglishKana("ろっぷん").any { it.string == "6分" })
         assertTrue(engine.getCandidatesEnglishKana("はっぷん").any { it.string == "8分" })
@@ -113,13 +113,47 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(oneTrillion.any { it.string == "一兆" })
 
         val historicalForty = engine.getCandidatesEnglishKana("しじゅう")
-        assertTrue(historicalForty.any { it.string == "40" })
-        assertTrue(historicalForty.any { it.string == "四十" })
+        assertTrue(historicalForty.none { it.string == "40" })
+        assertTrue(historicalForty.none { it.string == "四十" })
 
         val threePeople = engine.getCandidatesEnglishKana("さんにん")
         assertTrue(threePeople.any {
             it.string == "3人" && it.leftId == 2044.toShort() && it.rightId == 2011.toShort()
         })
+    }
+
+    @Test
+    fun countersRejectDictionaryHomophonesAndMisplacedSoundChanges() {
+        val inputs = listOf(
+            "じっしじ", "ぜんじ", "ぜんにん", "ぜんえん", "びゃくえん",
+            "いっじ", "じっじ", "はっじ", "ろっじ", "さんせんじ",
+            "じっちょうじ", "ぜんきゅうじ", "ぜんちょうじ", "ぜんさんじ",
+            "はっちょうじ", "ひゃくじ", "せんじ", "ろくせんじ", "ろくまんじ",
+            "いちぷん", "ごぷん", "にぷん", "ななぷん", "はちぷん", "ろくぷん",
+            "ぜろぷん", "よふん", "よえん", "くえん", "にじゅっふん",
+        )
+        for (input in inputs) {
+            val candidates = engine.getCandidatesEnglishKana(input)
+            assertTrue("$input: ${candidates.map { it.string }}", candidates.none {
+                it.string.matches(Regex("[0-9０-９,]+[時分人円]"))
+            })
+        }
+    }
+
+    @Test
+    fun disabledNumberGenerationKeepsLiteralReadingsAndDirectDigits() {
+        val config = PredictionConfig(japaneseNumberCandidatesEnabled = false)
+        for ((input, forbidden) in mapOf(
+            "よじ" to setOf("4時", "４時"),
+            "いち" to setOf("1", "１", "一", "①"),
+            "よんせん" to setOf("4000", "４０００", "4,000", "四千"),
+        )) {
+            val candidates = engine.getCandidatesEnglishKana(input, config)
+            assertEquals(input, candidates.first().string)
+            assertTrue(input, candidates.none { it.string in forbidden })
+        }
+        assertTrue(engine.getCandidatesEnglishKana("1234", config).any { it.string == "1,234" })
+        assertTrue(engine.getCandidatesEnglishKana("１２３４", config).any { it.string == "1234" })
     }
 
     @Test

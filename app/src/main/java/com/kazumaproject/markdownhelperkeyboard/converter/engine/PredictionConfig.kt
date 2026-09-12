@@ -11,7 +11,7 @@ enum class PredictionAggressiveness(val preferenceValue: String) {
     }
 }
 
-/** Runtime settings for dictionary-based completion candidates. */
+/** Runtime settings for completion and generated conversion candidates. */
 data class PredictionConfig(
     val japanesePredictionEnabled: Boolean = true,
     val englishPredictionEnabled: Boolean = true,
@@ -28,6 +28,8 @@ data class PredictionConfig(
     val showSymbolCandidates: Boolean = true,
     val showEmojiCandidates: Boolean = true,
     val showEmoticonCandidates: Boolean = true,
+    val japaneseNumberCandidatesEnabled: Boolean = true,
+    val numberCandidateOrder: NumberCandidateOrder = NumberCandidateOrder.HALF_FULL_KANJI,
 ) {
     val normalizedMinimumInputLength: Int
         get() = minimumInputLength.coerceIn(MIN_INPUT_LENGTH, MAX_INPUT_LENGTH)

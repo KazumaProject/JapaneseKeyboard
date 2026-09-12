@@ -358,6 +358,9 @@ data class ImePreferencesSnapshot(
                     ConversionBackend.LEGACY
                 },
                 predictionConfig = PredictionConfig(
+                    numberCandidateOrder = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.fromPreference(appPreference.number_candidate_order_preference),
+                    japaneseNumberCandidatesEnabled =
+                        appPreference.japanese_number_candidates_enable_preference,
                     japanesePredictionEnabled =
                         appPreference.japanese_prediction_enable_preference,
                     englishPredictionEnabled =

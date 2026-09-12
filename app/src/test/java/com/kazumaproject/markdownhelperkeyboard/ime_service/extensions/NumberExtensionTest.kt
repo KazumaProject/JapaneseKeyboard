@@ -11,11 +11,7 @@ class NumberExtensionTest {
     fun toNumber_converts_basic_hiragana_numbers_to_half_width_digits() {
         val cases = mapOf(
             "いち" to "1",
-            "し" to "4",
-            "よ" to "4",
-            "く" to "9",
             "じゅう" to "10",
-            "いちじゅう" to "10",
             "にじゅう" to "20",
             "ひゃく" to "100",
             "せん" to "1000",
@@ -48,12 +44,8 @@ class NumberExtensionTest {
             "はっせん" to "8000",
             "じゅうまん" to "100000",
             "いっちょう" to "1000000000000",
-            "しじゅう" to "40",
             "じゅうし" to "14",
-            "じゅうよ" to "14",
             "じゅうく" to "19",
-            "さんひゃく" to "300",
-            "はちせん" to "8000",
         )
 
         cases.forEach { (input, expected) ->
@@ -84,6 +76,7 @@ class NumberExtensionTest {
     @Test
     fun toNumber_rejects_invalid_unit_order_repetition_and_contextual_readings() {
         val invalidReadings = listOf(
+            "し", "よ", "く", "いちじゅう", "しじゅう", "じゅうよ", "さんひゃく", "はちせん",
             "よせん",
             "しせん",
             "くせん",

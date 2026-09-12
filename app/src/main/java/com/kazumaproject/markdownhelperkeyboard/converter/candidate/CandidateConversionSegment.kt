@@ -11,5 +11,8 @@ data class CandidateConversionSegment(
     val inputStart: Int,
     val inputEnd: Int,
     val output: String,
+    val reading: String? = null,
+    val startsWithParticle: Boolean = false,
+    val source: com.kazumaproject.graph.CandidateSource = com.kazumaproject.graph.CandidateSource.SYSTEM,
 )
 

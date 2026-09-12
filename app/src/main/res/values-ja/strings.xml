@@ -1800,4 +1800,6 @@
     <string name="keyboard_type_qwerty">英語（QWERTY）</string>
     <string name="keyboard_type_romaji">日本語 - ローマ字</string>
     <string name="keyboard_type_custom">カスタム - ユーザー定義</string>
+    <string name="japanese_number_candidates_enable_title">読みから数字候補を生成</string>
+    <string name="japanese_number_candidates_enable_summary">「いち → 1」「よじ → 4時」などを、予測・変換・英数かな・候補タブ非表示で生成します。無効でも通常辞書の数字表記や、数字を直接入力したときの候補は表示されます。</string>
 </resources>
