@@ -30,7 +30,7 @@ internal class ComposingGuideController(
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private var anchor: View? = null
     private var active = false
-    private var text = ""
+    private var content = ComposingGuideContent()
     private var guideView: ComposingGuideView? = null
     private var windowParams: WindowManager.LayoutParams? = null
     private var bounds: GuideBounds? = null
@@ -40,7 +40,11 @@ internal class ComposingGuideController(
     private var gesture: ComposingGuideGesture? = null
     private var previewTextSize: Float? = null
     private var mountedSurface: LinearLayout? = null
-    private val minimumContentHeight get() = if (settings.showComposing) 232 else 168
+    private val minimumContentHeight get() = if (!settings.showComposing) 168 else {
+        val textExtra = (ComposingGuideView.composingLineHeight(context, previewTextSize ?: settings.textSize) / density - 64).coerceAtLeast(0f).roundToInt()
+        232 + textExtra + if (content.visibleReading(true, settings.showReading).isNotEmpty())
+            (ComposingGuideView.readingLineHeight(context, previewTextSize ?: settings.textSize) / density).roundToInt() else 0
+    }
     private var lastShortcutState: Pair<Boolean, Boolean>? = null
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
@@ -61,7 +65,10 @@ internal class ComposingGuideController(
         refresh()
     }
 
-    fun update(value: CharSequence?) { text = value?.toString().orEmpty(); refresh() }
+    fun update(value: CharSequence?, reading: String = "", liveConversion: Boolean = false) {
+        content = if (value.isNullOrEmpty()) ComposingGuideContent() else ComposingGuideContent(value.toString(), reading, liveConversion)
+        refresh()
+    }
 
     fun toggleVisible() {
         finishGesture(commit = true)
@@ -75,7 +82,7 @@ internal class ComposingGuideController(
         gesture = null
         leaveEditing()
         active = false
-        text = ""
+        content = ComposingGuideContent()
         dismiss()
         anchor?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(layoutListener)
         anchor = null
@@ -120,9 +127,18 @@ internal class ComposingGuideController(
         if (view.editing != editing) view.setEditing(editing)
         view.setEditAvailable(editing || area.height() >= dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP))
         view.setShowComposing(settings.showComposing)
-        view.setContent(text, previewTextSize ?: settings.textSize)
+        view.setContent(content.text, previewTextSize ?: settings.textSize, content.visibleReading(settings.showComposing, settings.showReading))
         if ((!editing && gesture == null) || bounds == null) {
-            val placement = settings.load(landscape)
+            var placement = settings.load(landscape)
+            if (!settings.usesScreenCoordinates(landscape)) {
+                val legacy = legacyAvailableArea(host)
+                val oldArea = GuideBounds(legacy.left, legacy.top, legacy.width().coerceAtLeast(1), (legacy.height() - dp(ComposingGuideView.MOVE_BAND_DP)).coerceAtLeast(1))
+                val newArea = GuideBounds(area.left, area.top, area.width(), (area.height() - dp(ComposingGuideView.MOVE_BAND_DP)).coerceAtLeast(1))
+                val previousMinimum = if (settings.showComposing) 232f else 168f
+                placement = placement.copy(heightDp = placement.heightDp.coerceAtLeast(previousMinimum))
+                    .rebase(oldArea, newArea, density, minimumContentHeight.toFloat())
+                settings.save(landscape, placement)
+            }
             val normal = placement.copy(heightDp = placement.heightDp.coerceAtLeast(minimumContentHeight.toFloat())).resolve(area.left, area.top, area.width(), (area.height() - dp(ComposingGuideView.MOVE_BAND_DP)).coerceAtLeast(1), density)
             val height = (normal.height + extra).coerceAtMost(area.height())
             bounds = normal.copy(y = normal.y.coerceAtMost(area.bottom - height), height = height)
@@ -131,6 +147,23 @@ internal class ComposingGuideController(
     }
 
     private fun availableArea(host: View): Rect {
+        if (Build.VERSION.SDK_INT >= 30) {
+            val metrics = windowManager.currentWindowMetrics
+            val insets = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            return Rect(metrics.bounds).apply {
+                left += insets.left; top += insets.top; right -= insets.right; bottom -= insets.bottom
+            }
+        }
+        val size = android.graphics.Point().also { windowManager.defaultDisplay.getRealSize(it) }
+        val insets = host.rootWindowInsets
+        val cutout = if (Build.VERSION.SDK_INT >= 28) insets?.displayCutout else null
+        return Rect(maxOf(insets?.stableInsetLeft ?: 0, cutout?.safeInsetLeft ?: 0),
+            maxOf(insets?.stableInsetTop ?: 0, cutout?.safeInsetTop ?: 0),
+            size.x - maxOf(insets?.stableInsetRight ?: 0, cutout?.safeInsetRight ?: 0),
+            size.y - maxOf(insets?.stableInsetBottom ?: 0, cutout?.safeInsetBottom ?: 0))
+    }
+
+    private fun legacyAvailableArea(host: View): Rect {
         val keyboardLocation = IntArray(2).also(host::getLocationOnScreen)
         val root = host.rootView
         val frame = Rect().also(root::getWindowVisibleDisplayFrame)

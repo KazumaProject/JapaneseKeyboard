@@ -62,6 +62,12 @@
             android:defaultValue="true"
             android:title="@string/composing_guide_show_composing" />
 
+        <SwitchPreferenceCompat
+            android:key="composing_guide_show_live_reading"
+            android:dependency="composing_guide_show_composing"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_show_live_reading" />
+
         <ListPreference
             android:key="composing_guide_scroll_direction"
             android:dependency="composing_guide_enabled"

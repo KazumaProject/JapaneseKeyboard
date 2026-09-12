@@ -15,6 +15,43 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class CandidateSurfaceHostTest {
+    @Test fun floatingToolbarWrapsToItsWidthAndRestoresDockedLayout() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val root = FrameLayout(context)
+        val toolbar = androidx.recyclerview.widget.RecyclerView(context)
+        val dockedManager = androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.RecyclerView.HORIZONTAL, false)
+        toolbar.layoutManager = dockedManager
+        val adapter = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter()
+        adapter.setShortcutToolbarSize(36, 28)
+        adapter.submitList(com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType.entries.take(8))
+        toolbar.adapter = adapter
+        val tabs = View(context).apply { visibility = View.GONE }
+        val strip = FrameLayout(context)
+        val candidates = androidx.recyclerview.widget.RecyclerView(context)
+        strip.addView(candidates)
+        val full = View(context)
+        listOf(toolbar, tabs, strip, full).forEach { root.addView(it, FrameLayout.LayoutParams(-1, 36)) }
+        val originalParams = toolbar.layoutParams
+        val target = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
+        host.attach(target)
+        fun layout(width: Int) {
+            target.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.EXACTLY))
+            target.layout(0, 0, width, 200)
+            host.refreshAppearance()
+        }
+        layout(200)
+        assertEquals(4, (toolbar.layoutManager as androidx.recyclerview.widget.GridLayoutManager).spanCount)
+        assertEquals(96, toolbar.layoutParams.height)
+        layout(60)
+        assertEquals(1, (toolbar.layoutManager as androidx.recyclerview.widget.GridLayoutManager).spanCount)
+        assertEquals(192, toolbar.layoutParams.height)
+        host.detach()
+        assertSame(dockedManager, toolbar.layoutManager)
+        assertSame(originalParams, toolbar.layoutParams)
+        assertEquals(36, toolbar.layoutParams.height)
+    }
+
     @Test fun verticalLayoutAcceptsHoldersRecycledFromHorizontalLayout() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val params = androidx.recyclerview.widget.RecyclerView.LayoutParams(123, 58)

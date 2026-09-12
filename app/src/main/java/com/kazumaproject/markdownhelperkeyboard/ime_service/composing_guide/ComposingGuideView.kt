@@ -15,7 +15,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.ScrollView
+import android.widget.HorizontalScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
@@ -43,10 +43,23 @@ internal class ComposingGuideView(
         setTextColor(inkColor)
         includeFontPadding = false
         gravity = Gravity.CENTER_VERTICAL
-        setLineSpacing(0f, 1.1f)
+        setSingleLine(true)
+        id = R.id.composing_guide_composing_text
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
     }
-    private val scroll = ScrollView(context).apply { isFillViewport = true; addView(textView) }
+    private val scroll = TextScrollView(context).apply { isFillViewport = true; addView(textView, LayoutParams(-2, -1)) }
+    private val readingView = TextView(context).apply {
+        id = R.id.composing_guide_reading_text
+        setSingleLine(true)
+        includeFontPadding = false
+        gravity = Gravity.CENTER_VERTICAL
+        setTextColor(inkColor)
+    }
+    private val readingScroll = TextScrollView(context).apply {
+        isFillViewport = true
+        visibility = GONE
+        addView(readingView, LayoutParams(-2, -1))
+    }
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     val candidateContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val footer = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -80,9 +93,11 @@ internal class ComposingGuideView(
     init {
         id = R.id.composing_guide_root
         elevation = dp(8).toFloat()
-        header.addView(scroll, LinearLayout.LayoutParams(0, -1, 1f))
+        header.gravity = Gravity.END or Gravity.CENTER_VERTICAL
         header.addView(editButton, LinearLayout.LayoutParams(dp(48), dp(48)))
         header.addView(hideButton, LinearLayout.LayoutParams(dp(48), dp(48)))
+        body.addView(readingScroll, LinearLayout.LayoutParams(-1, dp(28)))
+        body.addView(scroll, LinearLayout.LayoutParams(-1, dp(64)))
         body.addView(candidateContainer, LinearLayout.LayoutParams(-1, 0, 1f))
         addView(body)
         addView(header)
@@ -126,13 +141,13 @@ internal class ComposingGuideView(
             cornerRadius = dp(16).toFloat()
             setStroke(dp(if (value) 2 else 1), if (value) accent else ColorUtils.setAlphaComponent(inkColor, 45))
         }
-        header.layoutParams = LayoutParams(-1, dp(if (showComposing) 56 else 48)).apply {
+        header.layoutParams = LayoutParams(-1, dp(48)).apply {
             leftMargin = dp(if (value) 24 else 12); rightMargin = leftMargin
             topMargin = dp(if (value) 24 else 8)
         }
         body.layoutParams = LayoutParams(-1, -1).apply {
             leftMargin = dp(if (value) 24 else 16); rightMargin = leftMargin
-            topMargin = dp((if (value) 88 else 76) - if (showComposing) 0 else 12); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
+            topMargin = dp(if (value) 80 else 64); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
         }
         footer.layoutParams = LayoutParams(-1, dp(48), Gravity.BOTTOM).apply {
             leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 36)
@@ -155,6 +170,7 @@ internal class ComposingGuideView(
         if (colors == value) return
         colors = value
         textView.setTextColor(inkColor)
+        readingView.setTextColor(inkColor)
         editButton.imageTintList = ColorStateList.valueOf(if (editing) accent else colors.icon)
         hideButton.imageTintList = ColorStateList.valueOf(colors.icon)
         listOf(editButton, hideButton).forEach { button ->
@@ -179,17 +195,29 @@ internal class ComposingGuideView(
         if (showComposing == value) return
         showComposing = value
         setEditing(editing)
-        scroll.visibility = if (value) VISIBLE else INVISIBLE
+        scroll.visibility = if (value) VISIBLE else GONE
+        readingScroll.visibility = if (value && readingView.text.isNotEmpty()) VISIBLE else GONE
         sizeSlider.isEnabled = value
     }
 
-    fun setContent(value: String, size: Float) {
+    fun setContent(value: String, size: Float, reading: String = "") {
         val displayed = value.ifEmpty { context.getString(R.string.composing_guide_empty) }
         if (textView.text.toString() != displayed) {
             textView.text = displayed
-            scroll.post { scroll.fullScroll(FOCUS_DOWN) }
+            scroll.showUpdatedTextEnd()
         }
+        if (readingView.text.toString() != reading) {
+            readingView.text = reading
+            readingScroll.showUpdatedTextEnd()
+        }
+        readingView.textSize = (size * .65f).coerceIn(12f, 20f)
+        readingView.setTextColor(inkColor)
+        val readingHeight = readingLineHeight(context, size)
+        if (readingScroll.layoutParams.height != readingHeight) readingScroll.layoutParams = readingScroll.layoutParams.apply { height = readingHeight }
+        readingScroll.visibility = if (showComposing && reading.isNotEmpty()) VISIBLE else GONE
         textView.textSize = if (value.isEmpty()) 14f else size
+        val lineHeight = composingLineHeight(context, if (value.isEmpty()) 14f else size)
+        if (scroll.layoutParams.height != lineHeight) scroll.layoutParams = scroll.layoutParams.apply { height = lineHeight }
         textView.setTextColor(ColorUtils.setAlphaComponent(inkColor, if (value.isEmpty()) 160 else 255))
         if (!sizeSlider.isPressed) sizeSlider.progress = size.roundToInt() - 18
         sizeValue.text = size.roundToInt().toString()
@@ -229,6 +257,23 @@ internal class ComposingGuideView(
     }
 
     override fun performClick(): Boolean = super.performClick()
+
+    private class TextScrollView(context: Context) : HorizontalScrollView(context) {
+        private var followUpdatedText = false
+
+        fun showUpdatedTextEnd() {
+            followUpdatedText = true
+            requestLayout()
+        }
+
+        override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+            super.onLayout(changed, left, top, right, bottom)
+            if (followUpdatedText) {
+                scrollTo((getChildAt(0).width - width + paddingLeft + paddingRight).coerceAtLeast(0), 0)
+                followUpdatedText = false
+            }
+        }
+    }
 
     private inner class HandleView(context: Context, private val handle: GuideHandle) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
@@ -272,6 +317,17 @@ internal class ComposingGuideView(
     }
 
     companion object {
+        fun composingLineHeight(context: Context, sizeSp: Float) = lineHeight(context, sizeSp, 64)
+        fun readingLineHeight(context: Context, composingSizeSp: Float) = lineHeight(context, (composingSizeSp * .65f).coerceIn(12f, 20f), 28)
+
+        private fun lineHeight(context: Context, sizeSp: Float, minimumDp: Int): Int {
+            val paint = Paint().apply {
+                textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, sizeSp, context.resources.displayMetrics)
+            }
+            val metrics = paint.fontMetrics
+            return maxOf((minimumDp * context.resources.displayMetrics.density).roundToInt(),
+                kotlin.math.ceil(metrics.descent - metrics.ascent + 8 * context.resources.displayMetrics.density).toInt())
+        }
         const val MOVE_BAND_DP = 24
         const val EDIT_EXTRA_DP = 96
     }

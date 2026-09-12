@@ -20,4 +20,7 @@
     <string name="composing_guide_scroll_direction">Candidate scrolling</string>
     <string-array name="composing_guide_scroll_labels"><item>Horizontal scroll</item><item>Wrap and scroll vertically</item></string-array>
     <string-array name="composing_guide_scroll_values"><item>horizontal</item><item>vertical</item></string-array>
+    <string name="composing_guide_show_live_reading">Show reading during live conversion</string>
+    <item name="composing_guide_composing_text" type="id" />
+    <item name="composing_guide_reading_text" type="id" />
 </resources>

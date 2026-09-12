@@ -2653,9 +2653,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.setFloatingPanelWidth((binding.suggestionRecyclerView.width.takeIf { it > 0 } ?: applicationContext.dpToPx(248)))
         binding.suggestionVisibility.visibility = View.GONE
-        val vertical = composingGuideSettings.verticalCandidates &&
+        val shortcutContent = currentCandidateStripContent is CandidateStripContent.ExpandedShortcutEntry ||
+            (currentCandidateStripContent as? CandidateStripContent.EmptyState)?.showIntegratedShortcuts == true
+        val vertical = (shortcutContent || (composingGuideSettings.verticalCandidates &&
             (currentCandidateStripContent is CandidateStripContent.Candidates ||
-                currentCandidateStripContent is CandidateStripContent.ZeroQuerySuggestions) &&
+                currentCandidateStripContent is CandidateStripContent.ZeroQuerySuggestions))) &&
             suggestionAdapter?.isInlineSuggestionStripShown() != true
         binding.suggestionRecyclerView.isVerticalScrollBarEnabled = vertical
         binding.suggestionRecyclerView.isHorizontalScrollBarEnabled = !vertical
@@ -27998,7 +28000,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputConnection == null) return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
-        if (applied) composingGuide?.update(p0)
+        if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
