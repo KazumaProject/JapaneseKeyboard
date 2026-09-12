@@ -304,12 +304,15 @@ class SuggestionAdapterShortcutEntryClickTest {
         var longClicked: Candidate? = null
         adapter.setOnItemClickListener { candidate, _ -> clicked = candidate }
         adapter.setOnItemLongClickListener { candidate, _ -> longClicked = candidate }
+        val colors = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors(1, 2, 3, 4, 5, 6)
+        adapter.setFloatingPanelColors(colors)
         adapter.setFloatingPanelWidth(dp(248))
         assertTrue(dockedType != adapter.getItemViewType(0))
         val holder = createSuggestionHolder(adapter, adapter.getItemViewType(0))
         adapter.onBindViewHolder(holder, 0)
         val text = holder.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view)
         assertEquals(value.string, text.text.toString())
+        assertEquals(colors.selectionText, text.currentTextColor)
         assertEquals(Int.MAX_VALUE, text.maxLines)
         assertTrue(text.maxWidth < dp(248))
         holder.itemView.performClick()
