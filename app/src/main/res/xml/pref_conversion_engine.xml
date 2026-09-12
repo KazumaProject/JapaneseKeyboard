@@ -19,6 +19,15 @@
             android:title="@string/japanese_number_candidates_enable_title"
             app:iconSpaceReserved="false" />
 
+        <ListPreference
+            android:key="number_candidate_order_preference"
+            android:title="@string/number_candidate_order_title"
+            android:defaultValue="half_full_kanji"
+            android:entries="@array/number_candidate_order_entries"
+            android:entryValues="@array/number_candidate_order_values"
+            app:useSimpleSummaryProvider="true"
+            app:iconSpaceReserved="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/prediction_language_category_title">

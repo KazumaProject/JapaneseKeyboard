@@ -29,6 +29,7 @@ data class PredictionConfig(
     val showEmojiCandidates: Boolean = true,
     val showEmoticonCandidates: Boolean = true,
     val japaneseNumberCandidatesEnabled: Boolean = true,
+    val numberCandidateOrder: NumberCandidateOrder = NumberCandidateOrder.HALF_FULL_KANJI,
 ) {
     val normalizedMinimumInputLength: Int
         get() = minimumInputLength.coerceIn(MIN_INPUT_LENGTH, MAX_INPUT_LENGTH)

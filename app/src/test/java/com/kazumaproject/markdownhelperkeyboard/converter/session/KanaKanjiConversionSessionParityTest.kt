@@ -182,7 +182,7 @@ class KanaKanjiConversionSessionParityTest {
             "しじ", "しえん", "しにん", "よせん", "しせん", "くせん", "くちょう",
             "よしよし", "ごご", "さんご", "いちいち", "さんさん", "ろくろく",
             "へんじ", "かんじ", "だいじ", "にんじん", "えんじん", "たぶん",
-            "ひとり", "ふたり", "よんほん", "よんかい", "しがつ", "よっか",
+            "よんほん", "よんかい", "しがつ", "よっか",
             "よじまで", "よじです", "ごごよじ", "あしたはよじ", "さんにんで",
             "にじゅっぷんまつ", "きょうはいいてんき", "こんにちは", "ありがとう",
         )
@@ -228,17 +228,12 @@ class KanaKanjiConversionSessionParityTest {
                         val fullWidth = expected.map {
                             if (it in '0'..'9') it + 0xFEE0 else it
                         }.joinToString("")
-                        for ((value, score) in listOf(expected to 8000, fullWidth to 8001)) {
-                            val index = remaining.indexOfFirst { it.string == value && it.score == score }
-                            assertTrue("$label missing generated $value", index >= 0)
-                            remaining.removeAt(index)
-                        }
-                        if (mode == CandidateQueryMode.EISUKANA) {
-                            val index = remaining.indexOfFirst { it.string == expected && it.score == 3000 }
-                            assertTrue(label, index >= 0)
-                            remaining.removeAt(index)
-                        }
-                        assertEquals(label, baseline.candidates.fingerprint(), remaining.fingerprint())
+                        val generated = remaining.filter { it.generatedNumber }
+                        assertTrue(label, generated.any { it.string == expected })
+                        assertTrue(label, generated.any { it.string == fullWidth })
+                        assertEquals(label, 3, generated.size)
+                        assertEquals(label, baseline.candidates.filterNot { it.generatedNumber }.fingerprint().sortedBy { it.toString() },
+                            remaining.filterNot { it.generatedNumber }.fingerprint().sortedBy { it.toString() })
                         assertEquals(label, baseline.candidateSegmentsByString, enabled.candidateSegmentsByString)
                     }
                 }

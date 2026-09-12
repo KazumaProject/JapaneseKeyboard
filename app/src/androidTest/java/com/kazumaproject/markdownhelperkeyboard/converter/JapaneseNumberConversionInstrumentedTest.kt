@@ -32,6 +32,10 @@ class JapaneseNumberConversionInstrumentedTest {
         val repository = entryPoint.userDictionaryRepository()
 
         val forbiddenByInput = linkedMapOf(
+            // Osaka/Irodori complete-reading policy; these were incorrectly accepted by old tests.
+            "しじゅう" to setOf("40", "４０", "四十"),
+            "じゅうよ" to setOf("14", "１４", "十四"),
+            "くにん" to setOf("9人", "９人", "九人"),
             "よしよし" to setOf("4444", "４４４４", "8383", "８３８３", "四千四百四十四"),
             "しせん" to setOf("4000", "４０００", "4,000", "四千"),
             "くちょう" to setOf("9000000000000", "９００００００００００００", "九兆", "9兆"),
@@ -67,12 +71,12 @@ class JapaneseNumberConversionInstrumentedTest {
             "にじゅうよじ" to setOf("24時"),
             "くじ" to setOf("9時"),
             "いっちょう" to setOf("1000000000000", "一兆"),
-            "しじゅう" to setOf("40", "四十"),
-            "じゅうよ" to setOf("14", "十四"),
+            "よんじゅう" to setOf("40", "四十"),
+            "じゅうよん" to setOf("14", "十四"),
             "よにん" to setOf("4人"),
             "よんえん" to setOf("4円"),
             "きゅうえん" to setOf("9円"),
-            "くにん" to setOf("9人"),
+            "きゅうにん" to setOf("9人"),
             "いっぷん" to setOf("1分"),
             "ろっぷん" to setOf("6分"),
             "はっぷん" to setOf("8分"),

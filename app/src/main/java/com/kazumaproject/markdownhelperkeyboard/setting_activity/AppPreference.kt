@@ -911,6 +911,10 @@ object AppPreference {
         appContext = context.applicationContext
         isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val storedNumberOrder = preferences.all["number_candidate_order_preference"]
+        val numberOrder = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder
+            .fromPreference(storedNumberOrder as? String).preferenceValue
+        if (storedNumberOrder != numberOrder) preferences.edit { it.putString("number_candidate_order_preference", numberOrder) }
         removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
         migrateSymbolEmojiCandidatePreferenceIfNeeded()
@@ -1839,6 +1843,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var number_candidate_order_preference: String
+        get() = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.fromPreference(
+            preferences.all["number_candidate_order_preference"] as? String,
+        ).preferenceValue
+        set(value) = preferences.edit {
+            it.putString("number_candidate_order_preference",
+                com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.fromPreference(value).preferenceValue)
         }
 
     var japanese_number_candidates_enable_preference: Boolean
