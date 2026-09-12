@@ -15,6 +15,12 @@ Uncontracted いちちょう / はちちょう / じゅうちょう (including �
 
 The user-specified contract fixes the supported grammar for descending 1–9999 coefficients of 万 / 億 / 兆, the four position-specific 兆 contractions, terminal じゅうし / じゅうく, and clock hours 0–29. Do not extend these rules to unsupported readings or other counters. The fixed minute ending changes apply only at the end of a complete number and before ぷん. 円 does not borrow the hour/people/minute contractions.
 
+## Lexical words and candidate provenance
+
+[Kanagawa Prefecture’s Japanese cultural material](https://www.pref.kanagawa.jp/documents/79520/culture11.pdf) identifies 七五三 (しちごさん) as a festival. This exact dictionary reading/output pair is lexical, not a numeric reading for 753; it must remain visible. A lexical exception never authorizes generated numeric variants.
+
+Numeric candidates require the complete current input to match the proven reading. Neither a shorter prefix (ごぜん → ご → 5) nor a completed prediction (じゅ → じゅう → 10) can supply missing numeric grammar. Cached candidates retain this condition after editing. Mixed kanji output such as 全五 for ぜんご is also audited: the rejection-only fragment recognizer identifies a suspect numeric reading but never supplies a value. Ordinary lexical readings such as 五感 (ごかん) are not numeral fragments. Segment offsets/readings and their concatenated output must match the candidate; numeric selections must commit the selected notation itself. Explicit user entries exempt only their own segments, never adjacent automatic output or a substituted commit string.
+
 ## Reviewed dictionary fixtures
 
 `legacy-155-review.tsv` records every standalone reading accepted at d0550153f and its manual approve/reject decision. The old values are an **inventory**, not evidence of grammatical correctness. `approved-cardinals.tsv` fixes the 90 approved reading/value pairs; 65 inventory readings are rejected under the above rules. The replacement parser must match this complete map when all 747,244 dictionary readings are enumerated, without a decoder prefilter.
