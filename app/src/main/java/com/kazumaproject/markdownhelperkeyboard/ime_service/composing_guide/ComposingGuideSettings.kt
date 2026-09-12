@@ -4,7 +4,7 @@ import android.content.SharedPreferences
 
 internal class ComposingGuideSettings(private val preferences: SharedPreferences) {
     val showComposing get() = preferences.getBoolean(SHOW_COMPOSING, true)
-    val verticalCandidates get() = preferences.getString(SCROLL_DIRECTION, "horizontal") == "vertical"
+    val verticalCandidates get() = preferences.getString(SCROLL_DIRECTION, "vertical") == "vertical"
     val enabled get() = preferences.getBoolean(ENABLED, false)
     var visible: Boolean
         get() = preferences.getBoolean(VISIBLE, true)

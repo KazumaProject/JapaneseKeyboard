@@ -25,6 +25,35 @@ class CandidateSurfaceHostTest {
         assertEquals(58, converted.height)
     }
 
+    @Test fun restoresTabAppearanceAndRecyclerDecorationWhenDocking() {
+        val context = android.view.ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val root = FrameLayout(context)
+        val toolbar = View(context)
+        val tabs = com.google.android.material.tabs.TabLayout(context)
+        listOf("予測", "変換", "英数カナ").forEach { tabs.addTab(tabs.newTab().setText(it)) }
+        val indicator = tabs.tabSelectedIndicator
+        val strip = FrameLayout(context)
+        val candidates = androidx.recyclerview.widget.RecyclerView(context)
+        strip.addView(candidates)
+        val full = View(context)
+        listOf(toolbar, tabs, strip, full).forEach { root.addView(it) }
+        val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
+        host.attach(LinearLayout(context))
+        assertEquals(1, candidates.itemDecorationCount)
+        val label = tabs.getTabAt(2)?.customView as android.widget.TextView
+        assertEquals("英数カナ", label.text.toString())
+        assertEquals(1, label.maxLines)
+        tabs.removeAllTabs()
+        listOf("予測", "変換", "英数カナ").forEach { tabs.addTab(tabs.newTab().setText(it)) }
+        host.refreshAppearance()
+        assertEquals("英数カナ", (tabs.getTabAt(2)?.customView as android.widget.TextView).text.toString())
+        host.detach()
+        assertEquals(0, candidates.itemDecorationCount)
+        assertNull(tabs.getTabAt(2)?.customView)
+        assertSame(indicator, tabs.tabSelectedIndicator)
+    }
+
     @Test fun movesAllExistingViewsAndRestoresOriginalOrderAndParameters() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val root = FrameLayout(context)
