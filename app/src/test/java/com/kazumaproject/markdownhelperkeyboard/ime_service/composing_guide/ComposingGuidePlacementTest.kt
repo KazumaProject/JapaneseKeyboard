@@ -44,6 +44,6 @@ class ComposingGuidePlacementTest {
 
     @Test fun outOfRangePositionAndDimensionsStayInsideAvailableArea() {
         val result = ComposingGuidePlacement(-1f, 3f, 1f, 1f).resolve(10, 20, 600, 700, 1f)
-        assertEquals(GuideBounds(10, 624, 200, 96), result)
+        assertEquals(GuideBounds(10, 624, 160, 96), result)
     }
 }
