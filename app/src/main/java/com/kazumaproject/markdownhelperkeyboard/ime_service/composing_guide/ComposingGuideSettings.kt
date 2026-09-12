@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide
 import android.content.SharedPreferences
 
 internal class ComposingGuideSettings(private val preferences: SharedPreferences) {
+    val showComposing get() = preferences.getBoolean(SHOW_COMPOSING, true)
+    val verticalCandidates get() = preferences.getString(SCROLL_DIRECTION, "horizontal") == "vertical"
     val enabled get() = preferences.getBoolean(ENABLED, false)
     var visible: Boolean
         get() = preferences.getBoolean(VISIBLE, true)
@@ -15,7 +17,7 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
         val prefix = prefix(landscape)
         return ComposingGuidePlacement(
             preferences.getFloat(prefix + "x", .5f), preferences.getFloat(prefix + "y", 1f),
-            preferences.getFloat(prefix + "width", 280f), preferences.getFloat(prefix + "height", 112f),
+            preferences.getFloat(prefix + "width", 280f), preferences.getFloat(prefix + "height", 264f),
         )
     }
 
@@ -27,6 +29,8 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
     }
 
     companion object {
+        const val SHOW_COMPOSING = "composing_guide_show_composing"
+        const val SCROLL_DIRECTION = "composing_guide_scroll_direction"
         const val ENABLED = "composing_guide_enabled"
         const val VISIBLE = "composing_guide_visible"
         const val RESET = "composing_guide_reset"

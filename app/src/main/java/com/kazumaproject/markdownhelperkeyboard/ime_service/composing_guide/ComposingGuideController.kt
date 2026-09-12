@@ -12,15 +12,17 @@ import android.view.View
 import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import android.view.WindowManager
+import android.widget.LinearLayout
 import androidx.preference.PreferenceManager
 import timber.log.Timber
 import kotlin.math.roundToInt
 
-/** Independent, non-focusable IME child window. Never changes the keyboard view or its insets. */
+/** Non-focusable candidate window; the service owns candidate placement and keyboard sizing. */
 internal class ComposingGuideController(
     private val context: Context,
     private val eligible: () -> Boolean,
     private val onStateChanged: () -> Unit,
+    private val onSurfaceChanged: (LinearLayout?) -> Unit,
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = ComposingGuideSettings(preferences)
@@ -36,6 +38,8 @@ internal class ComposingGuideController(
     private var editing = false
     private var gesture: ComposingGuideGesture? = null
     private var previewTextSize: Float? = null
+    private var mountedSurface: LinearLayout? = null
+    private val minimumContentHeight get() = if (settings.showComposing) 232 else 168
     private var lastShortcutState: Pair<Boolean, Boolean>? = null
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
@@ -43,7 +47,7 @@ internal class ComposingGuideController(
         if (editing) dp(ComposingGuideView.EDIT_EXTRA_DP) else 0
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { refresh() }
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == null || key.startsWith("composing_guide_")) anchor?.post { refresh() }
+        if (key == null || key.startsWith("composing_guide_")) anchor?.post { refresh(); onStateChanged() }
     }
 
     init { preferences.registerOnSharedPreferenceChangeListener(preferenceListener) }
@@ -99,8 +103,8 @@ internal class ComposingGuideController(
         }
         landscape = nextLandscape
         area = nextArea
-        if (area.width() < dp(200) || area.height() < dp(96 + ComposingGuideView.MOVE_BAND_DP)) { dismiss(); return }
-        if (editing && area.height() < dp(96 + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) leaveEditing()
+        if (area.width() < dp(200) || area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP)) { dismiss(); return }
+        if (editing && area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) leaveEditing()
         val view = guideView ?: ComposingGuideView(context,
             onEdit = ::toggleEditing,
             onHide = ::toggleVisible,
@@ -112,10 +116,12 @@ internal class ComposingGuideController(
             onHandleEvent = ::handleEvent,
         ).also { guideView = it }
         if (view.editing != editing) view.setEditing(editing)
-        view.setEditAvailable(editing || area.height() >= dp(96 + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP))
+        view.setEditAvailable(editing || area.height() >= dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP))
+        view.setShowComposing(settings.showComposing)
         view.setContent(text, previewTextSize ?: settings.textSize)
         if ((!editing && gesture == null) || bounds == null) {
-            val normal = settings.load(landscape).resolve(area.left, area.top, area.width(), (area.height() - dp(ComposingGuideView.MOVE_BAND_DP)).coerceAtLeast(1), density)
+            val placement = settings.load(landscape)
+            val normal = placement.copy(heightDp = placement.heightDp.coerceAtLeast(minimumContentHeight.toFloat())).resolve(area.left, area.top, area.width(), (area.height() - dp(ComposingGuideView.MOVE_BAND_DP)).coerceAtLeast(1), density)
             val height = (normal.height + extra).coerceAtMost(area.height())
             bounds = normal.copy(y = normal.y.coerceAtMost(area.bottom - height), height = height)
         }
@@ -137,7 +143,7 @@ internal class ComposingGuideController(
 
     private fun toggleEditing() {
         if (editing) { finishGesture(commit = true); leaveEditing() }
-        else if (area.height() >= dp(96 + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) { editing = true; bounds = null }
+        else if (area.height() >= dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) { editing = true; bounds = null }
         refresh()
     }
 
@@ -164,7 +170,7 @@ internal class ComposingGuideController(
                 if ((handle == GuideHandle.MOVE) == editing) return
                 val current = bounds ?: return
                 val reducer = gesture ?: ComposingGuideGesture(current,
-                    GuideBounds(area.left, area.top, area.width(), area.height()), dp(200), dp(96) + extra)
+                    GuideBounds(area.left, area.top, area.width(), area.height()), dp(200), dp(minimumContentHeight) + extra)
                     .also { gesture = it }
                 reducer.add(id, handle, points.getValue(id))
             }
@@ -196,7 +202,14 @@ internal class ComposingGuideController(
         ))
     }
 
+    private fun mountSurface(surface: LinearLayout?) {
+        if (mountedSurface === surface) return
+        mountedSurface = surface
+        onSurfaceChanged(surface)
+    }
+
     private fun dismiss() {
+        mountSurface(null)
         guideView?.takeIf { it.parent != null }?.let { windowManager.removeViewImmediate(it) }
         windowParams = null
     }
@@ -206,7 +219,8 @@ internal class ComposingGuideController(
         if (!host.isAttachedToWindow) return
         val params = windowParams ?: WindowManager.LayoutParams(target.width, target.height,
             WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply { token = host.windowToken; gravity = Gravity.TOP or Gravity.LEFT; setTitle("Composing text guide") }
@@ -214,9 +228,12 @@ internal class ComposingGuideController(
         try {
             if (view.parent == null) windowManager.addView(view, params) else windowManager.updateViewLayout(view, params)
             windowParams = params
+            mountSurface(view.candidateContainer)
         } catch (exception: WindowManager.BadTokenException) {
+            mountSurface(null)
             Timber.w(exception, "Composing guide lost its IME window")
         } catch (exception: IllegalArgumentException) {
+            mountSurface(null)
             Timber.w(exception, "Composing guide host was detached")
         }
     }

@@ -20,7 +20,7 @@ class ComposingGuideViewTest {
     ).apply {
         setEditing(editing)
         measure(View.MeasureSpec.makeMeasureSpec(px(280), View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(px(if (editing) 232 else 136), View.MeasureSpec.EXACTLY))
+            View.MeasureSpec.makeMeasureSpec(px(if (editing) 384 else 288), View.MeasureSpec.EXACTLY))
         layout(0, 0, measuredWidth, measuredHeight)
     }
 

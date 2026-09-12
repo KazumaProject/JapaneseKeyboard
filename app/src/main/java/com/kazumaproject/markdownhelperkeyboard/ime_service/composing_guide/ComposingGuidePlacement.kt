@@ -6,11 +6,11 @@ internal data class ComposingGuidePlacement(
     val xFraction: Float = .5f,
     val yFraction: Float = 1f,
     val widthDp: Float = 280f,
-    val heightDp: Float = 112f,
+    val heightDp: Float = 264f,
 ) {
     fun resolve(left: Int, top: Int, availableWidth: Int, availableHeight: Int, density: Float): GuideBounds {
         val width = (widthDp.finiteOr(280f).coerceAtLeast(200f) * density).roundToInt().coerceIn(1, availableWidth.coerceAtLeast(1))
-        val height = (heightDp.finiteOr(112f).coerceAtLeast(96f) * density).roundToInt().coerceIn(1, availableHeight.coerceAtLeast(1))
+        val height = (heightDp.finiteOr(264f).coerceAtLeast(96f) * density).roundToInt().coerceIn(1, availableHeight.coerceAtLeast(1))
         return GuideBounds(
             left + ((availableWidth - width).coerceAtLeast(0) * xFraction.finiteOr(.5f).coerceIn(0f, 1f)).roundToInt(),
             top + ((availableHeight - height).coerceAtLeast(0) * yFraction.finiteOr(1f).coerceIn(0f, 1f)).roundToInt(),

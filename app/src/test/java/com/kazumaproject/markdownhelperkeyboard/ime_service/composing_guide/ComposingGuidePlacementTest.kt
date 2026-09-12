@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ComposingGuidePlacementTest {
     @Test fun initialPlacementIsCenteredAboveKeyboard() {
-        assertEquals(GuideBounds(220, 520, 560, 224), ComposingGuidePlacement().resolve(0, 24, 1000, 720, 2f))
+        assertEquals(GuideBounds(220, 216, 560, 528), ComposingGuidePlacement().resolve(0, 24, 1000, 720, 2f))
     }
 
     @Test fun splitScreenClampsWithoutChangingSavedPlacement() {
