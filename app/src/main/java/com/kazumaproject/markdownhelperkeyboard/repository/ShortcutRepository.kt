@@ -50,6 +50,7 @@ class ShortcutRepository @Inject constructor(
     suspend fun updateShortcuts(shortcuts: List<ShortcutType>) {
         withContext(Dispatchers.IO) {
             val normalized = shortcuts
+                .filterNot { it.runtimeOnly }
                 .distinct()
                 .ifEmpty { fallbackShortcuts }
 
@@ -85,7 +86,7 @@ class ShortcutRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             val enabledItems = shortcutDao.getAllShortcuts()
             val enabledTypes = enabledItems.mapNotNull { ShortcutType.fromId(it.typeId) }.toSet()
-            val allTypes = ShortcutType.values()
+            val allTypes = ShortcutType.entries.filterNot { it.runtimeOnly }
 
             val result = mutableListOf<Pair<ShortcutType, Boolean>>()
 

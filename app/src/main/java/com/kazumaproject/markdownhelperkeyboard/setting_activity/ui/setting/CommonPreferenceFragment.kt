@@ -384,6 +384,13 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(preferencesXmlRes, rootKey)
+        findPreference<Preference>("composing_guide_reset")?.setOnPreferenceClickListener {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings.reset(
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
+            )
+            true
+        }
+
 
         findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {

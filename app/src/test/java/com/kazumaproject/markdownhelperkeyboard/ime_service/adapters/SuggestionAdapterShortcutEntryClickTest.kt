@@ -278,6 +278,40 @@ class SuggestionAdapterShortcutEntryClickTest {
         adapter.release()
     }
 
+    @Test
+    fun composingGuideShortcutPreservesCandidateClickIndices() {
+        val adapter = SuggestionAdapter()
+        val first = candidate("通常候補")
+        adapter.setComposingGuideAvailable(true)
+        adapter.submitContent(CandidateStripContent.Candidates(candidates = listOf(first)))
+        drainMainUntilItemCount(adapter, 2)
+        assertEquals(2, adapter.itemCount)
+        assertEquals(SuggestionAdapter.VIEW_TYPE_SHORTCUT, adapter.getItemViewType(0))
+        var clickedIndex = -1
+        var clickedCandidate: Candidate? = null
+        adapter.setOnItemClickListener { value, index ->
+            clickedCandidate = value
+            clickedIndex = index
+        }
+        val holder = createSuggestionHolder(adapter)
+        adapter.onBindViewHolder(holder, 1)
+        holder.itemView.performClick()
+        assertEquals(first, clickedCandidate)
+        assertEquals(0, clickedIndex)
+        adapter.release()
+    }
+
+    @Test
+    fun composingGuideRemainsReachableWithEmptyStripAndDisabledToolbar() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(CandidateStripContent.Empty)
+        adapter.setComposingGuideAvailable(true)
+        drainMainUntilItemCount(adapter, 1)
+        assertEquals(1, adapter.itemCount)
+        assertEquals(SuggestionAdapter.VIEW_TYPE_SHORTCUT, adapter.getItemViewType(0))
+        adapter.release()
+    }
+
     private fun createSuggestionHolder(
         adapter: SuggestionAdapter,
         viewType: Int = SuggestionAdapter.VIEW_TYPE_SUGGESTION
