@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 class ComposingGuideInputWindowTouchTest {
     @Test fun transferredGestureUsesPanelCoordinatesAndCannotReachKeysAfterLeavingThePanel() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val controller = ComposingGuideController(context, { true }, {}, {},
+        val controller = ComposingGuideWindow(context, { true }, {},
             { CandidatePanelColors.resolve(context) }, { 48 })
         val panel = mock<ComposingGuideView>()
         whenever(panel.isAttachedToWindow).thenReturn(true)
@@ -32,7 +32,7 @@ class ComposingGuideInputWindowTouchTest {
             received += event.x to event.y
             false
         }
-        ComposingGuideController::class.java.getDeclaredField("guideView").apply {
+        ComposingGuideWindow::class.java.getDeclaredField("guideView").apply {
             isAccessible = true
             set(controller, panel)
         }

@@ -20,9 +20,9 @@ internal data class ComposingGuidePlacement(
         )
     }
 
-    fun resolve(left: Int, top: Int, availableWidth: Int, availableHeight: Int, density: Float): GuideBounds {
+    fun resolve(left: Int, top: Int, availableWidth: Int, availableHeight: Int, density: Float, minimumHeightDp: Float = 96f): GuideBounds {
         val width = (widthDp.finiteOr(280f).coerceAtLeast(MIN_WIDTH_DP.toFloat()) * density).roundToInt().coerceIn(1, availableWidth.coerceAtLeast(1))
-        val height = (heightDp.finiteOr(264f).coerceAtLeast(96f) * density).roundToInt().coerceIn(1, availableHeight.coerceAtLeast(1))
+        val height = (heightDp.finiteOr(264f).coerceAtLeast(minimumHeightDp) * density).roundToInt().coerceIn(1, availableHeight.coerceAtLeast(1))
         return GuideBounds(
             left + ((availableWidth - width).coerceAtLeast(0) * xFraction.finiteOr(.5f).coerceIn(0f, 1f)).roundToInt(),
             top + ((availableHeight - height).coerceAtLeast(0) * yFraction.finiteOr(1f).coerceIn(0f, 1f)).roundToInt(),
