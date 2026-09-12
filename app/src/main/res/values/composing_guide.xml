@@ -21,4 +21,11 @@
     <string name="composing_guide_show_live_reading">Show reading during live conversion</string>
     <item name="composing_guide_composing_text" type="id" />
     <item name="composing_guide_reading_text" type="id" />
+    <string name="composing_guide_text_title">Floating composing text</string>
+    <string name="composing_guide_display_mode">Display when both are enabled</string>
+    <string name="composing_guide_text_reset">Reset composing text position and size</string>
+    <string name="composing_guide_candidates_reset">Reset candidate panel position and size</string>
+    <string name="composing_guide_integrated_reset">Reset combined panel position and size</string>
+    <string-array name="composing_guide_display_labels"><item>Combined</item><item>Separate</item></string-array>
+    <string-array name="composing_guide_display_values"><item>integrated</item><item>separate</item></string-array>
 </resources>

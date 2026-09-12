@@ -131,7 +131,7 @@ internal class ComposingGuideView(
         moveGrip.isEnabled = !value
         moveGrip.alpha = if (value) .35f else 1f
         moveGrip.isPressed = false
-        footer.visibility = if (value) VISIBLE else GONE
+        footer.visibility = if (value && showComposing) VISIBLE else GONE
         edges.values.forEach { it.visibility = if (value) VISIBLE else GONE }
         editButton.setImageResource(if (value) com.kazumaproject.core.R.drawable.baseline_check_24 else R.drawable.composing_guide_edit)
         editButton.contentDescription = context.getString(if (value) R.string.composing_guide_done else R.string.composing_guide_edit)
@@ -147,7 +147,7 @@ internal class ComposingGuideView(
         }
         body.layoutParams = LayoutParams(-1, -1).apply {
             leftMargin = dp(if (value) 24 else 8); rightMargin = leftMargin
-            topMargin = dp(if (value) 72 else 56); bottomMargin = dp(MOVE_BAND_DP + if (value) 104 else 4)
+            topMargin = dp(if (value) 72 else 56); bottomMargin = dp(MOVE_BAND_DP + if (value) (if (showComposing) 104 else 32) else 4)
         }
         footer.layoutParams = LayoutParams(-1, dp(72), Gravity.BOTTOM).apply {
             leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 28)

@@ -17,4 +17,10 @@
     <string name="composing_guide_scroll_direction">候補のスクロール方向</string>
     <string-array name="composing_guide_scroll_labels"><item>横スクロール</item><item>折り返し・縦スクロール</item></string-array>
     <string name="composing_guide_show_live_reading">ライブ変換時の読みを表示</string>
+    <string name="composing_guide_text_title">未確定文字のフロート表示</string>
+    <string name="composing_guide_display_mode">両方有効時の表示方法</string>
+    <string name="composing_guide_text_reset">未確定文字フロートの位置とサイズをリセット</string>
+    <string name="composing_guide_candidates_reset">候補欄フロートの位置とサイズをリセット</string>
+    <string name="composing_guide_integrated_reset">統合フロートの位置とサイズをリセット</string>
+    <string-array name="composing_guide_display_labels"><item>統合表示</item><item>分離表示</item></string-array>
 </resources>
