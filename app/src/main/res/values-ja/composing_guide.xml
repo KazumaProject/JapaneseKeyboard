@@ -7,8 +7,6 @@
     <string name="composing_guide_short_title">候補</string>
     <string name="composing_guide_edit">ガイドを編集</string>
     <string name="composing_guide_done">ガイドの編集を完了</string>
-    <string name="composing_guide_hide">候補フロートを非表示</string>
-    <string name="composing_guide_show">候補フロートを表示</string>
     <string name="composing_guide_empty">入力するとここに表示</string>
     <string name="composing_guide_text_size">文字サイズ</string>
     <string name="composing_guide_resize_left">左辺のサイズを変更</string>

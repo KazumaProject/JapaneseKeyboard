@@ -70,6 +70,8 @@ class CandidateSurfaceHostTest {
         val tabs = com.google.android.material.tabs.TabLayout(context)
         listOf("予測", "変換", "英数カナ").forEach { tabs.addTab(tabs.newTab().setText(it)) }
         val indicator = tabs.tabSelectedIndicator
+        val originalMode = tabs.tabMode
+        val originalGravity = tabs.tabGravity
         val strip = FrameLayout(context)
         val candidates = androidx.recyclerview.widget.RecyclerView(context)
         strip.addView(candidates)
@@ -78,6 +80,7 @@ class CandidateSurfaceHostTest {
         val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
         host.attach(LinearLayout(context))
         assertEquals(1, candidates.itemDecorationCount)
+        assertEquals(com.google.android.material.tabs.TabLayout.MODE_SCROLLABLE, tabs.tabMode)
         val label = tabs.getTabAt(2)?.customView as android.widget.TextView
         assertEquals("英数カナ", label.text.toString())
         assertEquals(1, label.maxLines)
@@ -94,6 +97,8 @@ class CandidateSurfaceHostTest {
         assertEquals(0, candidates.itemDecorationCount)
         assertNull(tabs.getTabAt(2)?.customView)
         assertSame(indicator, tabs.tabSelectedIndicator)
+        assertEquals(originalMode, tabs.tabMode)
+        assertEquals(originalGravity, tabs.tabGravity)
     }
 
     @Test fun movesAllExistingViewsAndRestoresOriginalOrderAndParameters() {

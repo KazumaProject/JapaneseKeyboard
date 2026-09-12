@@ -17,6 +17,12 @@ class ComposingGuideSettingsTest {
 
     @Before fun clear() { preferences.edit().clear().commit() }
 
+    @Test fun obsoleteHiddenStateCannotDisableTheFeature() {
+        preferences.edit().putBoolean("composing_guide_visible", false)
+            .putBoolean(ComposingGuideSettings.ENABLED, true).commit()
+        assertTrue(ComposingGuideSettings(preferences).enabled)
+    }
+
     @Test fun defaultOffAndIndependentOrientationPersistence() {
         val settings = ComposingGuideSettings(preferences)
         assertFalse(settings.enabled)
@@ -27,9 +33,7 @@ class ComposingGuideSettingsTest {
         val saved = ComposingGuidePlacement(.2f, .7f, 320f, 180f)
         settings.save(false, saved)
         settings.textSize = 36f
-        settings.visible = false
         val reopened = ComposingGuideSettings(preferences)
-        assertFalse(reopened.visible)
         assertEquals(saved, reopened.load(false))
         assertTrue(reopened.usesScreenCoordinates(false))
         assertFalse(reopened.usesScreenCoordinates(true))
@@ -62,10 +66,8 @@ class ComposingGuideSettingsTest {
         val settings = ComposingGuideSettings(preferences)
         settings.save(true, ComposingGuidePlacement(.1f, .1f, 400f, 200f))
         settings.textSize = 56f
-        settings.visible = false
         ComposingGuideSettings.reset(preferences)
         assertTrue(settings.enabled)
-        assertFalse(settings.visible)
         assertTrue(preferences.getBoolean("keyboard_floating_preference", false))
         assertEquals(ComposingGuidePlacement(), settings.load(true))
         assertEquals(28f, settings.textSize)
