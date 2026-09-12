@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="composing_guide_root" type="id" />
-    <string name="composing_guide_title">Composing text guide</string>
-    <string name="composing_guide_summary">Enlarge composing text above the keyboard. Drag the bottom handle to move; use Edit to resize. Position and size are saved. Available with the normal on-screen keyboard.</string>
+    <string name="composing_guide_title">Floating candidate panel</string>
+    <string name="composing_guide_summary">Move the candidate area, including tabs, clipboard, autofill and shortcuts, into a floating panel.</string>
     <string name="composing_guide_reset">Reset guide position and size</string>
     <string name="composing_guide_move">Drag to move guide</string>
-    <string name="composing_guide_short_title">Composing text</string>
+    <string name="composing_guide_short_title">Candidates</string>
     <string name="composing_guide_edit">Edit guide</string>
     <string name="composing_guide_done">Finish editing guide</string>
-    <string name="composing_guide_hide">Hide composing guide</string>
-    <string name="composing_guide_show">Show composing guide</string>
+    <string name="composing_guide_hide">Hide candidate panel</string>
+    <string name="composing_guide_show">Show candidate panel</string>
     <string name="composing_guide_empty">Your composing text appears here</string>
     <string name="composing_guide_text_size">Text size</string>
     <string name="composing_guide_resize_left">Resize left edge</string>
     <string name="composing_guide_resize_top">Resize top edge</string>
     <string name="composing_guide_resize_right">Resize right edge</string>
     <string name="composing_guide_resize_bottom">Resize bottom edge</string>
+    <string name="composing_guide_show_composing">Show composing text</string>
+    <string name="composing_guide_scroll_direction">Candidate scrolling</string>
+    <string-array name="composing_guide_scroll_labels"><item>Horizontal scroll</item><item>Wrap and scroll vertically</item></string-array>
+    <string-array name="composing_guide_scroll_values"><item>horizontal</item><item>vertical</item></string-array>
 </resources>

@@ -57,6 +57,8 @@ internal class ComposingGuideView(
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
     }
     private val scroll = ScrollView(context).apply { isFillViewport = false; addView(textView) }
+    private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    val candidateContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val footer = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
     private val sizeValue = TextView(context).apply { setTextColor(inkColor); textSize = 12f; gravity = Gravity.CENTER }
     private var trackingTextSize = false
@@ -90,7 +92,9 @@ internal class ComposingGuideView(
         header.addView(title, LinearLayout.LayoutParams(0, -1, 1f))
         header.addView(editButton, LinearLayout.LayoutParams(dp(48), dp(48)))
         header.addView(hideButton, LinearLayout.LayoutParams(dp(48), dp(48)))
-        addView(scroll)
+        body.addView(scroll, LinearLayout.LayoutParams(-1, dp(64)))
+        body.addView(candidateContainer, LinearLayout.LayoutParams(-1, 0, 1f))
+        addView(body)
         addView(header)
         footer.addView(TextView(context).apply {
             text = context.getString(R.string.composing_guide_text_size)
@@ -137,7 +141,7 @@ internal class ComposingGuideView(
             leftMargin = dp(if (value) 24 else 12); rightMargin = leftMargin
             topMargin = dp(if (value) 24 else 8)
         }
-        scroll.layoutParams = LayoutParams(-1, -1).apply {
+        body.layoutParams = LayoutParams(-1, -1).apply {
             leftMargin = dp(if (value) 24 else 16); rightMargin = leftMargin
             topMargin = dp(if (value) 72 else 56); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
         }
@@ -159,6 +163,11 @@ internal class ComposingGuideView(
     }
 
     fun setEditAvailable(available: Boolean) { editButton.isEnabled = available; editButton.alpha = if (available) 1f else .4f }
+
+    fun setShowComposing(value: Boolean) {
+        scroll.visibility = if (value) VISIBLE else GONE
+        sizeSlider.isEnabled = value
+    }
 
     fun setContent(value: String, size: Float) {
         val displayed = value.ifEmpty { context.getString(R.string.composing_guide_empty) }

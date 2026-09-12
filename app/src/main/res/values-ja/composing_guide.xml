@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="composing_guide_title">未確定文字のフロートガイド</string>
-    <string name="composing_guide_summary">未確定文字を拡大表示します。下部のハンドルで移動、編集アイコンからサイズを変更できます。変更内容は保存されます。通常のソフトウェアキーボード専用です。</string>
+    <string name="composing_guide_title">候補欄のフロート表示</string>
+    <string name="composing_guide_summary">候補タブ・クリップボード・自動入力・ショートカットを含む候補欄全体をフロートで表示します。</string>
     <string name="composing_guide_reset">ガイドの位置とサイズをリセット</string>
     <string name="composing_guide_move">ドラッグしてガイドを移動</string>
-    <string name="composing_guide_short_title">未確定文字</string>
+    <string name="composing_guide_short_title">候補</string>
     <string name="composing_guide_edit">ガイドを編集</string>
     <string name="composing_guide_done">ガイドの編集を完了</string>
-    <string name="composing_guide_hide">ガイドを非表示</string>
-    <string name="composing_guide_show">ガイドを表示</string>
+    <string name="composing_guide_hide">候補フロートを非表示</string>
+    <string name="composing_guide_show">候補フロートを表示</string>
     <string name="composing_guide_empty">入力するとここに表示</string>
     <string name="composing_guide_text_size">文字サイズ</string>
     <string name="composing_guide_resize_left">左辺のサイズを変更</string>
     <string name="composing_guide_resize_top">上辺のサイズを変更</string>
     <string name="composing_guide_resize_right">右辺のサイズを変更</string>
     <string name="composing_guide_resize_bottom">下辺のサイズを変更</string>
+    <string name="composing_guide_show_composing">未確定文字を表示</string>
+    <string name="composing_guide_scroll_direction">候補のスクロール方向</string>
+    <string-array name="composing_guide_scroll_labels"><item>横スクロール</item><item>折り返し・縦スクロール</item></string-array>
 </resources>
