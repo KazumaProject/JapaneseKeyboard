@@ -10,7 +10,9 @@ internal fun resolveShortcutActiveTypes(
     liveConversionEnabled: Boolean,
     learningPaused: Boolean = false,
     handwritingActive: Boolean = false,
+    composingGuideVisible: Boolean = false,
 ): Set<ShortcutType> = buildSet {
+    if (composingGuideVisible) add(ShortcutType.COMPOSING_GUIDE_TOGGLE)
     if (keyboardLayoutEditActive) {
         add(ShortcutType.KEYBOARD_LAYOUT_EDIT)
     }
@@ -35,3 +37,8 @@ internal fun resolveShortcutActiveTypes(
         add(ShortcutType.GEMMA_HANDWRITING)
     }
 }
+
+/** Runtime-only guide action does not change the user's stored toolbar order. */
+internal fun withComposingGuideShortcut(items: List<ShortcutType>, available: Boolean): List<ShortcutType> =
+    items.filterNot { it == ShortcutType.COMPOSING_GUIDE_TOGGLE } +
+        if (available) listOf(ShortcutType.COMPOSING_GUIDE_TOGGLE) else emptyList()

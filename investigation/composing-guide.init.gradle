@@ -1,0 +1,6 @@
+// Device verification must not replace the user's keyboard or preferences.
+gradle.afterProject { project ->
+    if (project.path == ':app') {
+        project.android.defaultConfig.applicationId = 'com.kazumaproject.composingguidetest'
+    }
+}

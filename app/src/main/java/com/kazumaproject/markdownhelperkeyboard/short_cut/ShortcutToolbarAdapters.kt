@@ -230,6 +230,7 @@ private object DiffCallback : DiffUtil.ItemCallback<ShortcutType>() {
 
 fun ShortcutType.summary(context: android.content.Context): String =
     when (this) {
+        ShortcutType.COMPOSING_GUIDE_TOGGLE -> context.getString(R.string.composing_guide_summary)
         ShortcutType.SETTINGS -> context.getString(R.string.shortcut_toolbar_summary_settings)
         ShortcutType.EMOJI -> context.getString(R.string.shortcut_toolbar_summary_emoji)
         ShortcutType.TEMPLATE -> context.getString(R.string.shortcut_toolbar_summary_template)
