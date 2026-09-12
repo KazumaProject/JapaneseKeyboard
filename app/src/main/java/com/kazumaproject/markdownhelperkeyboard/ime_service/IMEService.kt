@@ -1063,12 +1063,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     currentInlineSuggestionViews.isNotEmpty(),
             toggle = inlineSuggestionToggleForCandidateStrip(),
         )
-        val guideActionAvailable = composingGuideSettings.enabled && isComposingGuideEligible()
-        val independentToolbarShown = resolveCandidateStripPresentation(
-            candidatesShown = effectiveCandidatesShown, content = content
-        ).showIndependentShortcutToolbar
-        suggestionAdapter?.setComposingGuideAvailable(guideActionAvailable && !independentToolbarShown)
-        suggestionAdapterFull?.setComposingGuideAvailable(guideActionAvailable)
         suggestionAdapter?.submitContent(content, inlineSuggestionState)
         if (isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
@@ -20013,9 +20007,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         suggestionAdapterFull?.let { adapter ->
-            adapter.setOnShortcutItemClickListener { type ->
-                handleShortcutAction(type, mainView)
-            }
             adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode: InputMode = currentTenkeyInputMode(mainView)
@@ -20433,7 +20424,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
-        suggestionAdapterFull?.setActiveShortcutTypes(activeTypes)
     }
 
     private fun refreshShortcutAvailability() {

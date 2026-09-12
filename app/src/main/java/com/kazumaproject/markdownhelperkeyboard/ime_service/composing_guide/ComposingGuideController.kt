@@ -39,7 +39,8 @@ internal class ComposingGuideController(
     private var lastShortcutState: Pair<Boolean, Boolean>? = null
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
-    private val extra get() = if (editing) dp(ComposingGuideView.EDIT_EXTRA_DP) else 0
+    private val extra get() = dp(ComposingGuideView.MOVE_BAND_DP) +
+        if (editing) dp(ComposingGuideView.EDIT_EXTRA_DP) else 0
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { refresh() }
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == null || key.startsWith("composing_guide_")) anchor?.post { refresh() }
@@ -98,8 +99,8 @@ internal class ComposingGuideController(
         }
         landscape = nextLandscape
         area = nextArea
-        if (area.width() < dp(200) || area.height() < dp(96)) { dismiss(); return }
-        if (editing && area.height() < dp(96 + ComposingGuideView.EDIT_EXTRA_DP)) leaveEditing()
+        if (area.width() < dp(200) || area.height() < dp(96 + ComposingGuideView.MOVE_BAND_DP)) { dismiss(); return }
+        if (editing && area.height() < dp(96 + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) leaveEditing()
         val view = guideView ?: ComposingGuideView(context,
             onEdit = ::toggleEditing,
             onHide = ::toggleVisible,
@@ -111,10 +112,10 @@ internal class ComposingGuideController(
             onHandleEvent = ::handleEvent,
         ).also { guideView = it }
         if (view.editing != editing) view.setEditing(editing)
-        view.setEditAvailable(editing || area.height() >= dp(96 + ComposingGuideView.EDIT_EXTRA_DP))
+        view.setEditAvailable(editing || area.height() >= dp(96 + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP))
         view.setContent(text, previewTextSize ?: settings.textSize)
-        if (!editing || bounds == null) {
-            val normal = settings.load(landscape).resolve(area.left, area.top, area.width(), area.height(), density)
+        if ((!editing && gesture == null) || bounds == null) {
+            val normal = settings.load(landscape).resolve(area.left, area.top, area.width(), (area.height() - dp(ComposingGuideView.MOVE_BAND_DP)).coerceAtLeast(1), density)
             val height = (normal.height + extra).coerceAtMost(area.height())
             bounds = normal.copy(y = normal.y.coerceAtMost(area.bottom - height), height = height)
         }
@@ -136,7 +137,7 @@ internal class ComposingGuideController(
 
     private fun toggleEditing() {
         if (editing) { finishGesture(commit = true); leaveEditing() }
-        else if (area.height() >= dp(96 + ComposingGuideView.EDIT_EXTRA_DP)) { editing = true; bounds = null }
+        else if (area.height() >= dp(96 + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) { editing = true; bounds = null }
         refresh()
     }
 
@@ -148,7 +149,6 @@ internal class ComposingGuideController(
     }
 
     private fun handleEvent(event: MotionEvent) {
-        if (!editing) return
         // rawX/Y for pointer zero provide the window offset on API 24 as well as newer releases.
         val offsetX = event.rawX - event.x
         val offsetY = event.rawY - event.y
@@ -161,6 +161,7 @@ internal class ComposingGuideController(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 gesture?.move(points)?.let { bounds = it }
                 val handle = guideView?.handleAt(event.getX(index), event.getY(index)) ?: return
+                if ((handle == GuideHandle.MOVE) == editing) return
                 val current = bounds ?: return
                 val reducer = gesture ?: ComposingGuideGesture(current,
                     GuideBounds(area.left, area.top, area.width(), area.height()), dp(200), dp(96) + extra)
@@ -190,7 +191,7 @@ internal class ComposingGuideController(
         val normal = edited.copy(height = edited.height - extra)
         settings.save(landscape, ComposingGuidePlacement(
             (normal.x - area.left).toFloat() / (area.width() - normal.width).coerceAtLeast(1),
-            (normal.y - area.top).toFloat() / (area.height() - normal.height).coerceAtLeast(1),
+            (normal.y - area.top).toFloat() / (area.height() - dp(ComposingGuideView.MOVE_BAND_DP) - normal.height).coerceAtLeast(1),
             normal.width / density, normal.height / density,
         ))
     }

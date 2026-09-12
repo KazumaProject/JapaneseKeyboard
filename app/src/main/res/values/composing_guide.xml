@@ -2,7 +2,7 @@
 <resources>
     <item name="composing_guide_root" type="id" />
     <string name="composing_guide_title">Composing text guide</string>
-    <string name="composing_guide_summary">Enlarge composing text above the keyboard. Use Edit to move or resize; position and size are saved. Available with the normal on-screen keyboard.</string>
+    <string name="composing_guide_summary">Enlarge composing text above the keyboard. Drag the bottom handle to move; use Edit to resize. Position and size are saved. Available with the normal on-screen keyboard.</string>
     <string name="composing_guide_reset">Reset guide position and size</string>
     <string name="composing_guide_move">Drag to move guide</string>
     <string name="composing_guide_short_title">Composing text</string>

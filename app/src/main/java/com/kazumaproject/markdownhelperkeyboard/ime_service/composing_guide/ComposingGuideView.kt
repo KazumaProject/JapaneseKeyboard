@@ -88,7 +88,6 @@ internal class ComposingGuideView(
         id = R.id.composing_guide_root
         elevation = dp(8).toFloat()
         header.addView(title, LinearLayout.LayoutParams(0, -1, 1f))
-        header.addView(moveGrip, LinearLayout.LayoutParams(0, -1, 1f))
         header.addView(editButton, LinearLayout.LayoutParams(dp(48), dp(48)))
         header.addView(hideButton, LinearLayout.LayoutParams(dp(48), dp(48)))
         addView(scroll)
@@ -101,6 +100,7 @@ internal class ComposingGuideView(
         footer.addView(sizeSlider, LinearLayout.LayoutParams(0, dp(48), 1f))
         footer.addView(sizeValue, LinearLayout.LayoutParams(dp(28), -2))
         addView(footer)
+        addView(moveGrip, LayoutParams(-1, dp(MOVE_BAND_DP), Gravity.BOTTOM))
         edges.values.forEach(::addView)
         setEditing(false)
     }
@@ -119,8 +119,10 @@ internal class ComposingGuideView(
     fun setEditing(value: Boolean) {
         editing = value
         handlingGesture = false
-        title.visibility = if (value) GONE else VISIBLE
-        moveGrip.visibility = if (value) VISIBLE else GONE
+        title.visibility = if (value) INVISIBLE else VISIBLE
+        moveGrip.isEnabled = !value
+        moveGrip.alpha = if (value) .35f else 1f
+        moveGrip.isPressed = false
         footer.visibility = if (value) VISIBLE else GONE
         edges.values.forEach { it.visibility = if (value) VISIBLE else GONE }
         editButton.setImageResource(if (value) com.kazumaproject.core.R.drawable.baseline_check_24 else R.drawable.composing_guide_edit)
@@ -137,10 +139,10 @@ internal class ComposingGuideView(
         }
         scroll.layoutParams = LayoutParams(-1, -1).apply {
             leftMargin = dp(if (value) 24 else 16); rightMargin = leftMargin
-            topMargin = dp(if (value) 72 else 56); bottomMargin = dp(if (value) 92 else 12)
+            topMargin = dp(if (value) 72 else 56); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
         }
         footer.layoutParams = LayoutParams(-1, dp(48), Gravity.BOTTOM).apply {
-            leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(36)
+            leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 36)
         }
         edges.forEach { (edge, view) ->
             val horizontal = edge == GuideHandle.TOP || edge == GuideHandle.BOTTOM
@@ -149,7 +151,10 @@ internal class ComposingGuideView(
                 GuideHandle.BOTTOM -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                 GuideHandle.LEFT -> Gravity.LEFT or Gravity.CENTER_VERTICAL
                 else -> Gravity.RIGHT or Gravity.CENTER_VERTICAL
-            })
+            }).apply {
+                if (edge == GuideHandle.BOTTOM) bottomMargin = dp(MOVE_BAND_DP)
+                if (edge == GuideHandle.LEFT || edge == GuideHandle.RIGHT) bottomMargin = dp(MOVE_BAND_DP / 2)
+            }
         }
     }
 
@@ -168,6 +173,8 @@ internal class ComposingGuideView(
     }
 
     fun handleAt(x: Float, y: Float): GuideHandle? {
+        val moveRect = Rect().also(moveGrip::getHitRect)
+        if (moveRect.contains(x.toInt(), y.toInt())) return if (editing) null else GuideHandle.MOVE
         if (!editing) return null
         edges.forEach { (edge, view) ->
             val rect = Rect().also(view::getHitRect)
@@ -175,14 +182,14 @@ internal class ComposingGuideView(
             if (edge == GuideHandle.LEFT || edge == GuideHandle.RIGHT) rect.inset(-dp(12), 0)
             if (rect.contains(x.toInt(), y.toInt())) return edge
         }
-        val rect = Rect().also(moveGrip::getHitRect)
-        rect.offset(header.left, header.top)
-        return if (rect.contains(x.toInt(), y.toInt())) GuideHandle.MOVE else null
+        return null
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-            handlingGesture = handleAt(event.x, event.y) != null
+            val handle = handleAt(event.x, event.y)
+            handlingGesture = handle != null
+            moveGrip.isPressed = handle == GuideHandle.MOVE
         }
         return handlingGesture || super.onInterceptTouchEvent(event)
     }
@@ -192,6 +199,7 @@ internal class ComposingGuideView(
         onHandleEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             handlingGesture = false
+            moveGrip.isPressed = false
             if (event.actionMasked == MotionEvent.ACTION_UP) performClick()
         }
         return true
@@ -211,8 +219,20 @@ internal class ComposingGuideView(
             })
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
         }
+        override fun drawableStateChanged() { super.drawableStateChanged(); invalidate() }
+
         override fun onDraw(canvas: Canvas) {
             if (handle == GuideHandle.MOVE) {
+                paint.color = ColorUtils.setAlphaComponent(accent, if (isPressed) 38 else 16)
+                val radius = dp(16).toFloat()
+                val path = android.graphics.Path().apply {
+                    addRoundRect(0f, 0f, width.toFloat(), height.toFloat(),
+                        floatArrayOf(0f, 0f, 0f, 0f, radius, radius, radius, radius), android.graphics.Path.Direction.CW)
+                }
+                canvas.drawPath(path, paint)
+                paint.color = ColorUtils.setAlphaComponent(inkColor, 35)
+                canvas.drawRect(0f, 0f, width.toFloat(), dp(1).toFloat(), paint)
+                paint.color = accent
                 val center = width / 2f
                 for (column in -1..1) for (row in -1..1 step 2) {
                     canvas.drawCircle(center + column * dp(8), height / 2f + row * dp(4), dp(2).toFloat(), paint)
@@ -227,5 +247,8 @@ internal class ComposingGuideView(
         }
     }
 
-    companion object { const val EDIT_EXTRA_DP = 96 }
+    companion object {
+        const val MOVE_BAND_DP = 24
+        const val EDIT_EXTRA_DP = 96
+    }
 }
