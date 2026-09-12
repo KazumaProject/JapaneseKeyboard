@@ -35,6 +35,17 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
     private var toolbarHeightPx: Int = 0
     private var iconSizePx: Int = 0
+    private var floatingPanel = false
+
+    internal fun floatingPanelItemWidth(context: android.content.Context): Int = maxOf(context.dpToPx(48), iconSizePx + context.dpToPx(16))
+
+    internal fun floatingPanelItemHeight(context: android.content.Context): Int = maxOf(context.dpToPx(48), toolbarHeightPx)
+
+    fun setFloatingPanel(value: Boolean) {
+        if (floatingPanel == value) return
+        floatingPanel = value
+        notifyItemRangeChanged(0, itemCount)
+    }
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -61,6 +72,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
+        holder.itemView.contentDescription = item.description
         applyShortcutToolbarSize(holder)
         holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 
@@ -126,8 +138,8 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         val itemWidthPx = maxOf(itemMinWidthPx, iconSizePx + horizontalPaddingPx)
 
         holder.itemView.layoutParams = holder.itemView.layoutParams.apply {
-            width = itemWidthPx
-            height = toolbarHeightPx
+            width = if (floatingPanel) ViewGroup.LayoutParams.MATCH_PARENT else itemWidthPx
+            height = if (floatingPanel) floatingPanelItemHeight(context) else toolbarHeightPx
         }
         holder.imageView.layoutParams = holder.imageView.layoutParams.apply {
             width = iconSizePx

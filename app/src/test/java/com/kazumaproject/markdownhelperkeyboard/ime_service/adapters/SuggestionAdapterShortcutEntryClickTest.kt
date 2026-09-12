@@ -25,6 +25,50 @@ import org.robolectric.Shadows.shadowOf
 @Config(sdk = [35])
 class SuggestionAdapterShortcutEntryClickTest {
 
+    @Test fun floatingIncognitoStatusHasNoCandidateBackground() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val adapter = SuggestionAdapter()
+        adapter.setIncognitoIcon(android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE))
+        adapter.submitContent(CandidateStripContent.EmptyState(
+            showShortcutEntry = false,
+            quickActions = QuickActionsState(true, false, false, false, "", ""),
+            clipboardPreview = null,
+            shortcutItems = emptyList(),
+            showIntegratedShortcuts = false,
+        ))
+        drainMainUntilItemCount(adapter, 1)
+        adapter.setFloatingPanelWidth(144)
+        val parent = FrameLayout(context)
+        val holder = adapter.onCreateViewHolder(parent, adapter.getItemViewType(0))
+        adapter.onBindViewHolder(holder, 0)
+        val icon = holder.itemView.findViewById<View>(com.kazumaproject.markdownhelperkeyboard.R.id.incognito_icon)
+        assertEquals(View.VISIBLE, icon.visibility)
+        org.junit.Assert.assertNull(holder.itemView.background)
+        adapter.release()
+    }
+
+    @Test fun floatingShortcutIconsHaveOnlyAPressMaskAndKeepTheirClickActions() {
+        val adapter = SuggestionAdapter()
+        val shortcut = com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType.SETTINGS
+        adapter.submitContent(CandidateStripContent.ExpandedShortcutEntry(listOf(shortcut)))
+        drainMainUntilItemCount(adapter, 2)
+        adapter.setFloatingPanelWidth(144)
+        val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
+        var entryClicked = false
+        adapter.setOnShortcutEntryClickListener { entryClicked = true }
+        for (index in 0..1) {
+            val holder = adapter.onCreateViewHolder(parent, adapter.getItemViewType(index))
+            adapter.onBindViewHolder(holder, index)
+            val ripple = holder.itemView.background as android.graphics.drawable.RippleDrawable
+            assertEquals(1, ripple.numberOfLayers)
+            org.junit.Assert.assertNotNull(ripple.findDrawableByLayerId(android.R.id.mask))
+            holder.itemView.performClick()
+        }
+        assertTrue(entryClicked)
+        // Shortcut click dispatch requires a bound RecyclerView position and is covered by its existing tests.
+        adapter.release()
+    }
+
     @Test
     fun shortcutEntryClickNotifiesListener() {
         val adapter = SuggestionAdapter()
@@ -275,6 +319,39 @@ class SuggestionAdapterShortcutEntryClickTest {
 
         assertTrue(holder.itemView.performLongClick())
         assertFalse(normalCandidateLongClicked)
+        adapter.release()
+    }
+
+    @Test fun floatingCandidatesWrapWithoutChangingTheirActionsOrDockedStyle() {
+        val adapter = SuggestionAdapter()
+        val value = candidate("長い変換候補を省略せずに表示します")
+        adapter.submitContent(CandidateStripContent.Candidates(listOf(value)))
+        drainMainUntilItemCount(adapter, 1)
+        val dockedType = adapter.getItemViewType(0)
+        var clicked: Candidate? = null
+        var longClicked: Candidate? = null
+        adapter.setOnItemClickListener { candidate, _ -> clicked = candidate }
+        adapter.setOnItemLongClickListener { candidate, _ -> longClicked = candidate }
+        val colors = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors(1, 2, 3, 4, 5, 6)
+        adapter.setFloatingPanelColors(colors)
+        adapter.setFloatingPanelWidth(dp(248))
+        assertTrue(dockedType != adapter.getItemViewType(0))
+        val holder = createSuggestionHolder(adapter, adapter.getItemViewType(0))
+        adapter.onBindViewHolder(holder, 0)
+        val text = holder.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view)
+        assertEquals(value.string, text.text.toString())
+        assertEquals(colors.selectionText, text.currentTextColor)
+        assertEquals(Int.MAX_VALUE, text.maxLines)
+        assertTrue(text.maxWidth < dp(248))
+        holder.itemView.performClick()
+        holder.itemView.performLongClick()
+        assertEquals(value, clicked)
+        assertEquals(value, longClicked)
+        adapter.setFloatingPanelWidth(0)
+        assertEquals(dockedType, adapter.getItemViewType(0))
+        val restored = createSuggestionHolder(adapter, adapter.getItemViewType(0))
+        adapter.onBindViewHolder(restored, 0)
+        assertEquals(1, restored.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view).maxLines)
         adapter.release()
     }
 
