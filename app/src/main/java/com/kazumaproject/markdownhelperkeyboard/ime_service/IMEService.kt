@@ -276,6 +276,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.canShowComposingGuide
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickInputPreviewCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickPreviewContext
@@ -2382,12 +2384,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onCreate() {
         super.onCreate()
+        window.window?.let { imeWindow ->
+            val callback = imeWindow.callback ?: return@let
+            imeWindow.callback = object : android.view.Window.Callback by callback {
+                override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                    if (composingGuide?.dispatchInputWindowTouch(event) == true) return true
+                    return callback.dispatchTouchEvent(event)
+                }
+            }
+        }
         Timber.d("onCreate")
         registerCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController = InlineAutofillController(
                 context = this,
                 onViewsChanged = ::renderInlineSuggestionViews,
+                maximumContentWidth = {
+                    if (floatingCandidateSurfaceActive) mainLayoutBinding?.suggestionRecyclerView?.width
+                        ?.takeIf { it > 0 }?.minus(applicationContext.dpToPx(8)) else null
+                },
             )
         }
         lifecycleRegistry = LifecycleRegistry(this)
@@ -2599,7 +2614,141 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var candidateSurfaceHost: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost? = null
+    private val floatingCandidateSurfaceActive get() = candidateSurfaceHost?.attached == true
+    private var floatingCandidateVertical: Boolean? = null
+    private val floatingCandidateSizeListener = View.OnLayoutChangeListener { view, left, _, right, _, oldLeft, _, oldRight, _ ->
+        if (right - left != oldRight - oldLeft) view.post {
+            if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+        }
+    }
+    private var dockedFullCandidateLayoutManager: RecyclerView.LayoutManager? = null
+
+    private fun moveCandidateSurface(target: android.widget.LinearLayout?) {
+        val binding = mainLayoutBinding ?: return
+        if (target == null) {
+            _suggestionViewStatus.value = true
+            binding.suggestionRecyclerView.removeOnLayoutChangeListener(floatingCandidateSizeListener)
+            candidateSurfaceHost?.detach()
+            candidateSurfaceHost = null
+            suggestionAdapter?.setFloatingPanelWidth(0)
+            binding.suggestionVisibility.isVisible = (currentCandidateStripContent as? CandidateStripContent.Candidates)?.candidates?.isNotEmpty() == true
+            binding.candidatesRowView.layoutManager = dockedFullCandidateLayoutManager ?: binding.candidatesRowView.layoutManager
+            binding.candidatesRowView.recycledViewPool.clear()
+            dockedFullCandidateLayoutManager = null
+            binding.suggestionVisibility.setImageDrawable(cachedArrowDropDownDrawable)
+        } else {
+            if (floatingCandidateSurfaceActive) return
+            _suggestionViewStatus.value = true
+            updateSuggestionViewVisibility(binding, true)
+            dockedFullCandidateLayoutManager = binding.candidatesRowView.layoutManager
+            candidateSurfaceHost = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost(
+                binding.shortcutToolbarRecyclerview, binding.candidateTabLayout,
+                binding.suggestionViewParent, binding.suggestionRecyclerView, binding.candidatesRowView,
+            ).also { it.attach(target) }
+            binding.suggestionRecyclerView.addOnLayoutChangeListener(floatingCandidateSizeListener)
+        }
+        floatingCandidateVertical = null
+        lastSuggestionLayoutKey = null
+        updateKeyboardLayout(binding)
+        refreshCandidateStripContent()
+        if (target == null) {
+            applyKeyboardContainerBackgrounds(binding)
+            applyCandidateAppearance()
+        }
+    }
+
+    private fun resolveCandidatePanelColors(): com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors {
+        val context = mainLayoutBinding?.root?.context ?: this
+        val custom = if (keyboardThemeMode == "custom") com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors(
+            customThemeBgColor ?: Color.WHITE,
+            customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
+            customThemeCandidateTextColor ?: Color.BLACK,
+            customThemeCandidateItemPressedBgColor ?: context.getColor(com.kazumaproject.core.R.color.qwety_key_bg_color),
+            customThemeSpecialKeyColor ?: Color.GRAY,
+            customThemeSpecialKeyTextColor ?: Color.BLACK,
+            customThemeShortcutIconColor ?: Color.BLACK,
+        ) else null
+        return com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(
+            context, KeyboardSkinRegistry.find(keyboardSkinId)?.palette, custom)
+    }
+
+    private fun configureFloatingCandidates(binding: MainLayoutBinding) {
+        val colors = resolveCandidatePanelColors()
+        candidateSurfaceHost?.setColors(colors)
+        suggestionAdapter?.setFloatingPanelColors(colors)
+        suggestionAdapter?.setCandidateTextColor(colors.text)
+        suggestionAdapter?.setShortcutIconColor(colors.icon)
+        shortcutAdapter?.setIconColor(colors.icon)
+        if (keyboardThemeMode != "custom" || KeyboardSkinRegistry.find(keyboardSkinId) != null) {
+            suggestionAdapter?.setCandidateEmptyPopupColors(colors.background, colors.text)
+        }
+        suggestionAdapter?.setFloatingPanelWidth((binding.suggestionRecyclerView.width.takeIf { it > 0 } ?: applicationContext.dpToPx(248)))
+        binding.suggestionVisibility.visibility = View.GONE
+        val shortcutContent = currentCandidateStripContent is CandidateStripContent.ExpandedShortcutEntry ||
+            (currentCandidateStripContent as? CandidateStripContent.EmptyState)?.showIntegratedShortcuts == true
+        val vertical = (shortcutContent || (composingGuideSettings.verticalCandidates &&
+            (currentCandidateStripContent is CandidateStripContent.Candidates ||
+                currentCandidateStripContent is CandidateStripContent.ZeroQuerySuggestions))) &&
+            suggestionAdapter?.isInlineSuggestionStripShown() != true
+        binding.suggestionRecyclerView.isVerticalScrollBarEnabled = vertical
+        binding.suggestionRecyclerView.isHorizontalScrollBarEnabled = !vertical
+        mainSuggestionGridSpacingDecoration?.let { binding.suggestionRecyclerView.removeItemDecoration(it) }
+        mainSuggestionGridSpacingDecoration = null
+        if (floatingCandidateVertical != vertical ||
+            (vertical && binding.candidatesRowView.layoutManager !is FlexboxLayoutManager) ||
+            (!vertical && binding.candidatesRowView.layoutManager !is LinearLayoutManager)) {
+            floatingCandidateVertical = vertical
+            fun manager() = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.candidatePanelLayoutManager(this, vertical)
+            binding.suggestionRecyclerView.layoutManager = manager()
+            binding.candidatesRowView.layoutManager = manager()
+        }
+        if (binding.suggestionRecyclerView.layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+            binding.suggestionRecyclerView.layoutParams = binding.suggestionRecyclerView.layoutParams.apply { height = ViewGroup.LayoutParams.MATCH_PARENT }
+        }
+        if (currentCandidateStripContent !is CandidateStripContent.Candidates && candidateSurfaceHost?.expanded == true) {
+            _suggestionViewStatus.value = true
+            candidateSurfaceHost?.setExpanded(false)
+            binding.suggestionVisibility.setImageDrawable(cachedArrowDropDownDrawable)
+        }
+    }
+
+    private var composingGuide: ComposingGuideController? = null
+    private val composingGuideSettings by lazy {
+        com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        )
+    }
+
+    private fun isComposingGuideEligible(): Boolean = canShowComposingGuide(
+        inputViewActive = isInputViewActive,
+        fullscreen = isFullscreenMode,
+        hardwareKeyboard = hasHardwareKeyboardConnected == true ||
+            resources.configuration.keyboard != Configuration.KEYBOARD_NOKEYS,
+        physicalKeyboardMode = physicalKeyboardEnable.replayCache.firstOrNull() == true,
+        floatingMode = isKeyboardFloatingMode == true,
+        password = currentInputType.isPassword(),
+        layoutEditing = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
+    )
+
+    private fun startComposingGuide() {
+        val host = mainLayoutBinding?.keyboardTouchEffectContainer ?: return
+        if (composingGuide == null) {
+            composingGuide = ComposingGuideController(this,
+                eligible = ::isComposingGuideEligible,
+                onStateChanged = {
+                    if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+                },
+                minimumCandidateHeight = { candidateSurfaceHost?.minimumHeightPx() ?: applicationContext.dpToPx(48) },
+                onSurfaceChanged = ::moveCandidateSurface,
+                colors = ::resolveCandidatePanelColors,
+            )
+        }
+        composingGuide?.start(host)
+    }
+
     override fun onCreateInputView(): View? {
+        composingGuide?.stop()
         Timber.d("onCreateInputView")
         // もしコンテナがすでに存在している場合、システムが再追加できるように
         // 古い親から切り離す。
@@ -2649,6 +2798,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        composingGuide?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -4755,6 +4905,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        startComposingGuide()
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
         shortcutToolbarHiddenForCandidates = false
@@ -5126,6 +5277,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -5136,6 +5288,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -5175,6 +5328,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        composingGuide?.stop()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -5186,6 +5340,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        composingGuide?.destroy()
+        composingGuide = null
         unregisterCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.destroy()
@@ -6128,6 +6284,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setShortcutIconColor(shortcutColor) }
         listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
         applyCandidateEmptyPopupThemeToAdapters()
+        if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+        composingGuide?.refresh()
     }
 
     private fun applyCandidateEmptyPopupThemeToAdapters() {
@@ -8003,6 +8161,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         this.isKeyboardFloatingMode = isFloatingMode
+        composingGuide?.refresh()
         updateImeWindowBlurForCurrentMode()
         if (isFloatingMode) {
             ensureFloatingInputHostLayout(mainView)
@@ -16610,6 +16769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
+                composingGuide?.refresh()
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
                     disableKeyboardLayoutEditMode()
@@ -16739,6 +16899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             inputString.collect { string ->
+                if (string.isEmpty() && stringInTail.get().isEmpty()) composingGuide?.update(null)
                 try {
                     measureDebugStage("IMEService.input.immediate") {
                         processInputString(string, mainView)
@@ -17537,15 +17698,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateHeightDp = prefs.candidateHeight,
             emptyHeightDp = prefs.candidateEmptyHeight
         )
-        val baseKeyboardHeight = heightPx + applicationContext.dpToPx(candidateStripHeightDp)
+        val baseKeyboardHeight = heightPx + if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
-        val candidateTabOffset = resolveCandidateTabOffsetPx(
+        val candidateTabOffset = if (floatingCandidateSurfaceActive) 0 else resolveCandidateTabOffsetPx(
             presentation = presentation,
             candidateTabHeightPx = candidateTabHeightPx(mainView)
         )
         val finalKeyboardHeight = when {
+            floatingCandidateSurfaceActive -> heightPx + systemBottomInset
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
 
@@ -17554,7 +17716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             else -> baseKeyboardHeight
         }
-        val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
+        val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) heightPx else finalKeyboardHeight - candidateTabOffset
 
         val finalKeyboardWidth =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -18017,6 +18179,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        if (floatingCandidateSurfaceActive) {
+            _suggestionViewStatus.value = true
+            candidateSurfaceHost?.setExpanded(false)
+            mainView.suggestionVisibility.visibility = View.GONE
+            refreshCandidateStripContent()
+            return
+        }
         if (isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 val activeFloatingKeyboardView = when (qwertyMode.value) {
@@ -18138,6 +18307,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: View, isVisible: Boolean
     ) {
         mainView.post {
+            if (floatingCandidateSurfaceActive && mainView === mainLayoutBinding?.suggestionVisibility) {
+                mainView.animate().cancel()
+                mainView.visibility = View.GONE
+                return@post
+            }
             mainView.pivotX = mainView.width / 2f
             mainView.pivotY = mainView.height / 2f
 
@@ -18170,6 +18344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         assertMainThread("hideFirstRowCandidatesInFullScreen")
+        if (floatingCandidateSurfaceActive) return
         mainView.candidatesRowView.post {
             if (!mainView.candidatesRowView.canScrollVertically(-1)) {
                 val flexboxManager =
@@ -20185,6 +20360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         assertMainThread("setMainSuggestionColumn")
+        if (floatingCandidateSurfaceActive) { configureFloatingCandidates(mainView); return }
         measureDebugSection("IMEService.setMainSuggestionColumn") {
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
@@ -20354,6 +20530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         _keyboardLayoutEditState.value = state
+        composingGuide?.refresh()
         keyboardLayoutEditController?.start(
             state = state,
             surfaceAdapter = surfaceAdapter,
@@ -20941,6 +21118,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         showCandidateTab: Boolean
     ) {
+        if (floatingCandidateSurfaceActive) return
         val tabOffset = if (showCandidateTab) candidateTabHeightPx(mainView) else 0
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             if (params.topMargin != tabOffset) {
@@ -21012,10 +21190,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (presentation.showIndependentShortcutToolbar) {
             mainView.shortcutToolbarRecyclerview.isVisible = true
         } else if (presentation.reserveIndependentShortcutToolbarSpace) {
-            mainView.shortcutToolbarRecyclerview.isInvisible = true
+            if (floatingCandidateSurfaceActive) mainView.shortcutToolbarRecyclerview.isVisible = false
+            else mainView.shortcutToolbarRecyclerview.isInvisible = true
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }
+        candidateSurfaceHost?.refreshAppearance()
     }
 
     private fun collapseShortcutEntryExpansion(refreshContent: Boolean = true) {
@@ -27950,6 +28130,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputConnection == null) return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
+        if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
@@ -27972,6 +28153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val finished = composingTextArbiter.finishCanonical()
+        composingGuide?.update(null)
         clearPhysicalCandidateCompositionSession("finish composing text")
         return finished
     }
@@ -27986,6 +28168,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (committed) {
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
+            composingGuide?.update(null)
             clearPhysicalCandidateCompositionSession("commit text")
         }
         return committed
