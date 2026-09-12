@@ -64,7 +64,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
         assertTrue(engine.getCandidatesEnglishKana("よんえん").any { it.string == "4円" })
         assertTrue(engine.getCandidatesEnglishKana("きゅうえん").any { it.string == "9円" })
-        assertTrue(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
+        assertTrue(engine.getCandidatesEnglishKana("くにん").none { it.string == "9人" })
         assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })
         assertTrue(engine.getCandidatesEnglishKana("ろっぷん").any { it.string == "6分" })
         assertTrue(engine.getCandidatesEnglishKana("はっぷん").any { it.string == "8分" })
@@ -113,8 +113,8 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(oneTrillion.any { it.string == "一兆" })
 
         val historicalForty = engine.getCandidatesEnglishKana("しじゅう")
-        assertTrue(historicalForty.any { it.string == "40" })
-        assertTrue(historicalForty.any { it.string == "四十" })
+        assertTrue(historicalForty.none { it.string == "40" })
+        assertTrue(historicalForty.none { it.string == "四十" })
 
         val threePeople = engine.getCandidatesEnglishKana("さんにん")
         assertTrue(threePeople.any {

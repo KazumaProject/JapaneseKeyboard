@@ -12,15 +12,28 @@ class JapaneseNumberCounterReadingTest {
         var rejected = 0
         for (number in 0..9999) {
             val reading = cardinal(number)
-            for (suffix in listOf("えん", "にん")) {
+            for (suffix in listOf("えん")) {
                 assertValue(reading, suffix, number.toLong())
                 accepted++
             }
+            val people = when {
+                number == 1 -> "ひとり"
+                number == 2 -> "ふたり"
+                number % 10 == 4 -> reading.dropLast(2) + "よにん"
+                else -> reading + "にん"
+            }
+            assertEquals(people, number.toLong(), ValidatedNumber.parse(people)?.value)
             val (minutes, suffix) = minuteReading(number)
             assertValue(minutes, suffix, number.toLong())
             accepted++
             if (number <= 29) {
-                assertValue(reading, "じ", number.toLong())
+                val hour = when (number % 10) {
+                    4 -> reading.dropLast(2) + "よ"
+                    7 -> reading.dropLast(2) + "しち"
+                    9 -> reading.dropLast(3) + "く"
+                    else -> reading
+                }
+                assertValue(hour, "じ", number.toLong())
                 accepted++
             } else {
                 assertNull("$reading must not produce a clock hour", JapaneseNumberCounterReading.parse(reading, "じ"))
@@ -58,7 +71,7 @@ class JapaneseNumberCounterReadingTest {
         val cases = listOf(
             Triple("れい", "じ", 0L), Triple("よ", "じ", 4L), Triple("く", "じ", 9L),
             Triple("にじゅうよ", "じ", 24L), Triple("にじゅうく", "じ", 29L),
-            Triple("よ", "にん", 4L), Triple("く", "にん", 9L),
+            Triple("よ", "にん", 4L), Triple("きゅう", "にん", 9L),
             Triple("よん", "ふん", 4L), Triple("はち", "ふん", 8L),
             Triple("じっ", "ぷん", 10L), Triple("にじっ", "ぷん", 20L),
             Triple("ひゃっ", "ぷん", 100L), Triple("さんびゃっ", "ぷん", 300L),

@@ -211,6 +211,34 @@ class PredictionPreferenceTest {
         }
     }
 
+    @Test
+    fun sixNumberOrdersPersistAcrossBothSettingsSurfacesAndInvalidValuesFallBack() {
+        val key = "number_candidate_order_preference"
+        for (scope in listOf(SettingSearchScope.NEW_HOME, SettingSearchScope.LEGACY_TABS)) {
+            val entry = SettingSearchIndex.searchable(context, scope).first { it.key == key }
+            assertEquals(SettingCategory.CONVERSION_ENGINE, entry.category)
+        }
+        val screen = PreferenceManager(context).inflateFromResource(context, R.xml.pref_conversion_engine, null)
+        val preference = requireNotNull(screen.findPreference<androidx.preference.ListPreference>(key))
+        assertEquals(6, preference.entryValues.size)
+        for (order in com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.entries) {
+            preference.value = order.preferenceValue
+            AppPreference.init(context)
+            assertEquals(order.preferenceValue, AppPreference.number_candidate_order_preference)
+            assertEquals(order, ImePreferencesSnapshot.from(AppPreference).predictionConfig.numberCandidateOrder)
+            AppPreference.number_candidate_order_preference = order.preferenceValue
+            assertEquals(order.preferenceValue, PreferenceManager.getDefaultSharedPreferences(context).getString(key, null))
+        }
+        val storage = PreferenceManager.getDefaultSharedPreferences(context)
+        storage.edit().putString(key, "unknown").commit()
+        assertEquals("half_full_kanji", AppPreference.number_candidate_order_preference)
+        storage.edit().putInt(key, 123).commit()
+        assertEquals("half_full_kanji", AppPreference.number_candidate_order_preference)
+        storage.edit().remove(key).commit()
+        assertEquals(com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.HALF_FULL_KANJI,
+            ImePreferencesSnapshot.from(AppPreference).predictionConfig.numberCandidateOrder)
+    }
+
     private companion object {
         val CONVERSION_KEYS = listOf(
             "japanese_number_candidates_enable_preference",

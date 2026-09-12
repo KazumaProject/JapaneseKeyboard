@@ -1176,6 +1176,7 @@ class FindPath(
                         score = element.priorityCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
+                        conversionSegments = getConversionSegmentsFromPath(element),
                     )
                     resultFinal.add(candidate)
                 }
@@ -1872,6 +1873,7 @@ class FindPath(
                         score = totalCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
+                        conversionSegments = getConversionSegmentsFromPath(element),
                     )
                     resultFinal.add(candidate)
                 }
@@ -2591,6 +2593,9 @@ class FindPath(
                         inputStart = currentPosition,
                         inputEnd = nextPosition,
                         output = node.tango,
+                        reading = node.yomiUsed,
+                        startsWithParticle = (node.mozcAttributes and com.kazumaproject.graph.MozcNodeAttributes.STARTS_WITH_PARTICLE) != 0,
+                        source = node.candidateSource,
                     ),
                 )
                 currentPosition = nextPosition

@@ -48,15 +48,16 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                 .putBoolean("flick_input_only_preference", true)
                 .putBoolean("live_conversion_preference", false)
                 .putBoolean("japanese_number_candidates_enable_preference", true)
+                .putString("number_candidate_order_preference", "half_full_kanji")
                 .putBoolean("learn_dictionary_preference", false)
                 .putBoolean("candidate_order_override_enable_preference", false)
                 .putString("candidate_tab_preference", """["PREDICTION","CONVERSION","EISUKANA"]""")
                 .commit()
-            for (incremental in listOf(false, true)) {
+            for (incremental in listOf(false, true)) for (bunsetsu in listOf(false, true)) {
                 for (tab in listOf("予測", "変換", "英数カナ", null)) {
                     preferences.edit()
                         .putBoolean("incremental_conversion_session_preference", incremental)
-                        .putBoolean("conversion_bunsetsu_separation_preference", incremental)
+                        .putBoolean("conversion_bunsetsu_separation_preference", bunsetsu)
                         .putBoolean("candidate_tab_visibility_preference", tab != null)
                         .commit()
                     val scenario = ActivityScenario.launch<FastInputHostActivity>(
@@ -65,10 +66,10 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                     try {
                         for ((reading, expected) in listOf(
                             "よじ" to "4時", "さんにん" to "3人",
-                            "ごえん" to "5円", "にじゅっぷん" to "20分",
+                            "ごえん" to "5円", "にじゅっぷん" to "20分", "に" to "２",
                         )) {
                             instrumentation.sendStatus(2, Bundle().apply {
-                                putString("stream", "Checking incremental=$incremental tab=$tab input=$reading\n")
+                                putString("stream", "Checking incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading\n")
                             })
                             scenario.onActivity { it.restartEditorInput(true) }
                             instrumentation.waitForIdleSync()
@@ -98,7 +99,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                                 }
                             }
                             var clickable: AccessibilityNodeInfo? = requireNotNull(candidate) {
-                                "Missing $expected: incremental=$incremental tab=$tab observed=$observedCandidates"
+                                "Missing $expected: incremental=$incremental bunsetsu=$bunsetsu tab=$tab observed=$observedCandidates"
                             }
                             while (clickable != null && !clickable.isClickable) clickable = clickable.parent
                             assertTrue("Candidate cannot be clicked: $expected",
@@ -106,13 +107,68 @@ class JapaneseNumberCandidateImeInstrumentedTest {
 
                             awaitEditorText(scenario, expected, committed = true)
                             instrumentation.sendStatus(2, Bundle().apply {
-                                putString("stream", "NUMBER_CANDIDATE_COMMIT incremental=$incremental tab=$tab input=$reading PASS\n")
+                                putString("stream", "NUMBER_CANDIDATE_COMMIT incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading PASS\n")
                             })
                         }
                     } finally {
                         scenario.close()
                     }
                 }
+            }
+            preferences.edit().putBoolean("candidate_tab_visibility_preference", false)
+                .putBoolean("incremental_conversion_session_preference", true)
+                .putBoolean("conversion_bunsetsu_separation_preference", true).commit()
+            val extra = ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java))
+            try {
+                for (reading in listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく", "にほんご", "はちみつ", "いちちょう", "はちちょう", "じゅうちょう")) {
+                    extra.onActivity { it.restartEditorInput(true) }
+                    instrumentation.waitForIdleSync()
+                    SystemClock.sleep(1500)
+                    typeNumberReadingWithFlicks(reading)
+                    awaitEditorText(extra, reading, committed = false)
+                    SystemClock.sleep(500)
+                    val observed = linkedSetOf<String>()
+                    repeat(12) {
+                        instrumentation.uiAutomation.windows.mapNotNull { it.root }.forEach { root ->
+                            collectCandidateTexts(root, observed)
+                        }
+                        findVisibleNodeById("suggestion_recycler_view")?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                        SystemClock.sleep(50)
+                    }
+                    val numeric = Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹①-⑳❶-❿]|^[〇零一二三四五六七八九十百千万億兆京]+(?:時|分|人|円)?$")
+                    assertTrue("$reading unexpected visible candidates: $observed", observed.none { numeric.containsMatchIn(it) })
+                    instrumentation.sendStatus(2, Bundle().apply { putString("stream", "NUMBER_FORBIDDEN_UI input=$reading PASS\n") })
+                }
+                for (order in com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.entries) {
+                    preferences.edit().putString("number_candidate_order_preference", order.preferenceValue)
+                        .putBoolean("live_conversion_preference", true).commit()
+                    val forms = listOf("3人", "３人", "三人")
+                    for (selected in forms) {
+                        extra.onActivity { it.restartEditorInput(true) }
+                        instrumentation.waitForIdleSync()
+                        SystemClock.sleep(1500)
+                        typeNumberReadingWithFlicks("さんにん")
+                        awaitEditorText(extra, forms[order.indices.first()], committed = false)
+                        var candidate: AccessibilityNodeInfo? = null
+                        repeat(12) {
+                            if (candidate == null) {
+                                candidate = instrumentation.uiAutomation.windows.mapNotNull { it.root }.firstNotNullOfOrNull { root ->
+                                    findDescendant(root) { it.isVisibleToUser && it.text?.toString()?.trim() == selected &&
+                                        it.viewIdResourceName?.endsWith(":id/suggestion_item_text_view") == true }
+                                }
+                                if (candidate == null) findVisibleNodeById("suggestion_recycler_view")?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                                SystemClock.sleep(100)
+                            }
+                        }
+                        var clickable = requireNotNull(candidate) { "$order missing $selected" }
+                        while (!clickable.isClickable && clickable.parent != null) clickable = clickable.parent
+                        assertTrue(clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                        awaitEditorText(extra, selected, committed = true)
+                        instrumentation.sendStatus(2, Bundle().apply { putString("stream", "NUMBER_ORDER_LIVE_COMMIT order=$order selected=$selected PASS\n") })
+                    }
+                }
+            } finally {
+                extra.close()
             }
         } finally {
             preferences.edit().clear().also { editor ->
@@ -130,6 +186,13 @@ class JapaneseNumberCandidateImeInstrumentedTest {
             if (originalIme.isNotEmpty() && originalIme != "null") shell("ime set $originalIme")
             if (!wasEnabled) shell("ime disable $targetIme")
         }
+    }
+
+    private fun collectCandidateTexts(node: AccessibilityNodeInfo, output: MutableSet<String>) {
+        if (node.isVisibleToUser && node.viewIdResourceName?.endsWith(":id/suggestion_item_text_view") == true) {
+            node.text?.toString()?.let(output::add)
+        }
+        for (index in 0 until node.childCount) node.getChild(index)?.let { collectCandidateTexts(it, output) }
     }
 
     private fun awaitEditorText(
@@ -168,39 +231,27 @@ class JapaneseNumberCandidateImeInstrumentedTest {
             assertTrue(inject(downTime, MotionEvent.ACTION_UP, end))
             SystemClock.sleep(100)
         }
-        fun n() = flick("key_11", 0f, -0.7f)
-        when (reading) {
-            "よじ" -> {
-                flick("key_8", 0f, 0.7f)
-                assertTrue(flickLeft("key_3"))
-                press("key_small_letter")
+        val voiced = mapOf('が' to 'か', 'ぎ' to 'き', 'ぐ' to 'く', 'げ' to 'け', 'ご' to 'こ',
+            'ざ' to 'さ', 'じ' to 'し', 'ず' to 'す', 'ぜ' to 'せ', 'ぞ' to 'そ',
+            'ば' to 'は', 'び' to 'ひ', 'ぶ' to 'ふ', 'べ' to 'へ', 'ぼ' to 'ほ')
+        val semiVoiced = mapOf('ぱ' to 'は', 'ぴ' to 'ひ', 'ぷ' to 'ふ', 'ぺ' to 'へ', 'ぽ' to 'ほ')
+        val small = mapOf('ゃ' to 'や', 'ゅ' to 'ゆ', 'ょ' to 'よ', 'っ' to 'つ')
+        val rows = listOf("あいうえお", "かきくけこ", "さしすせそ", "たちつてと", "なにぬねの", "はひふへほ", "まみむめも", "や ゆ よ", "らりるれろ")
+        for (char in reading) {
+            val base = voiced[char] ?: semiVoiced[char] ?: small[char] ?: char
+            if (base == 'ん') flick("key_11", 0f, -0.7f) else {
+                val row = rows.indexOfFirst { base in it }
+                require(row >= 0) { "Unsupported test character: $char" }
+                val key = "key_${row + 1}"
+                when (rows[row].indexOf(base)) {
+                    0 -> press(key)
+                    1 -> flick(key, -0.7f, 0f)
+                    2 -> flick(key, 0f, -0.7f)
+                    3 -> flick(key, 0.7f, 0f)
+                    4 -> flick(key, 0f, 0.7f)
+                }
+                repeat(if (char in semiVoiced) 2 else if (char in voiced || char in small) 1 else 0) { press("key_small_letter") }
             }
-            "さんにん" -> {
-                press("key_3")
-                n()
-                assertTrue(flickLeft("key_5"))
-                n()
-            }
-            "ごえん" -> {
-                flick("key_2", 0f, 0.7f)
-                press("key_small_letter")
-                flick("key_1", 0.7f, 0f)
-                n()
-            }
-            "にじゅっぷん" -> {
-                assertTrue(flickLeft("key_5"))
-                assertTrue(flickLeft("key_3"))
-                press("key_small_letter")
-                flick("key_8", 0f, -0.7f)
-                press("key_small_letter")
-                flick("key_4", 0f, -0.7f)
-                press("key_small_letter")
-                flick("key_6", 0f, -0.7f)
-                press("key_small_letter")
-                press("key_small_letter")
-                n()
-            }
-            else -> error("Unsupported test reading: $reading")
         }
     }
 

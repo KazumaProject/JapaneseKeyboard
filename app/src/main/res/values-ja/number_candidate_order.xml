@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="number_candidate_order_title">数字候補の優先順</string>
+    <string-array name="number_candidate_order_entries">
+        <item>半角 → 全角 → 漢数字</item>
+        <item>半角 → 漢数字 → 全角</item>
+        <item>全角 → 半角 → 漢数字</item>
+        <item>全角 → 漢数字 → 半角</item>
+        <item>漢数字 → 半角 → 全角</item>
+        <item>漢数字 → 全角 → 半角</item>
+    </string-array>
+</resources>

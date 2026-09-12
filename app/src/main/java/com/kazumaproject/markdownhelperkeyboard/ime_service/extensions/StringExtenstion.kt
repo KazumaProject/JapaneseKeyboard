@@ -335,7 +335,8 @@ fun String.toSubscriptDigits(): String {
  * 0から50までの、Unicodeに存在する主要な記号に対応します。
  */
 fun createValueBasedSymbolCandidates(numberValue: Long, inputLength: UByte): List<Candidate> {
-    val num = numberValue.toInt() // 範囲チェックのためIntに
+    if (numberValue !in 0L..50L) return emptyList()
+    val num = numberValue.toInt() // Narrow only after the Long range check.
     // 0から50の範囲外の場合は空リストを返す
     if (num < 0 || num > 50) {
         return emptyList()
