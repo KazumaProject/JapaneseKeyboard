@@ -8,6 +8,16 @@ internal data class ComposingGuidePlacement(
     val widthDp: Float = 280f,
     val heightDp: Float = 264f,
 ) {
+    fun rebase(oldArea: GuideBounds, newArea: GuideBounds, density: Float, minimumHeightDp: Float = 96f): ComposingGuidePlacement {
+        val old = resolve(oldArea.x, oldArea.y, oldArea.width, oldArea.height, density)
+        val placement = copy(heightDp = heightDp.coerceAtLeast(minimumHeightDp))
+        val resized = placement.resolve(newArea.x, newArea.y, newArea.width, newArea.height, density)
+        return placement.copy(
+            xFraction = ((old.x - newArea.x).toFloat() / (newArea.width - resized.width).coerceAtLeast(1)).coerceIn(0f, 1f),
+            yFraction = ((old.y - newArea.y).toFloat() / (newArea.height - resized.height).coerceAtLeast(1)).coerceIn(0f, 1f),
+        )
+    }
+
     fun resolve(left: Int, top: Int, availableWidth: Int, availableHeight: Int, density: Float): GuideBounds {
         val width = (widthDp.finiteOr(280f).coerceAtLeast(200f) * density).roundToInt().coerceIn(1, availableWidth.coerceAtLeast(1))
         val height = (heightDp.finiteOr(264f).coerceAtLeast(96f) * density).roundToInt().coerceIn(1, availableHeight.coerceAtLeast(1))

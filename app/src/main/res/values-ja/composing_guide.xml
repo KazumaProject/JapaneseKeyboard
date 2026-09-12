@@ -18,4 +18,5 @@
     <string name="composing_guide_show_composing">未確定文字を表示</string>
     <string name="composing_guide_scroll_direction">候補のスクロール方向</string>
     <string-array name="composing_guide_scroll_labels"><item>横スクロール</item><item>折り返し・縦スクロール</item></string-array>
+    <string name="composing_guide_show_live_reading">ライブ変換時の読みを表示</string>
 </resources>

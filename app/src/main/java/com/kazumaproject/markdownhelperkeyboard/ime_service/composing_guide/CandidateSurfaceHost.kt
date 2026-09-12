@@ -28,6 +28,39 @@ internal class CandidateSurfaceHost(
         }
     }
 
+    private var floatingContainer: LinearLayout? = null
+    private var toolbarManager: androidx.recyclerview.widget.RecyclerView.LayoutManager? = null
+    private var toolbarState: android.os.Parcelable? = null
+    private var toolbarScrollbar = false
+    private val toolbarLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> refreshToolbarLayout() }
+    private val toolbarObserver = object : androidx.recyclerview.widget.RecyclerView.AdapterDataObserver() {
+        override fun onChanged() = refreshToolbarLayout()
+        override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = refreshToolbarLayout()
+        override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = refreshToolbarLayout()
+    }
+
+    private fun refreshToolbarLayout() {
+        if (!attached) return
+        val recycler = toolbar as? androidx.recyclerview.widget.RecyclerView ?: return
+        val container = floatingContainer ?: return
+        val manager = recycler.layoutManager as? androidx.recyclerview.widget.GridLayoutManager ?: return
+        val density = toolbar.resources.displayMetrics.density
+        val shortcutAdapter = recycler.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
+        val itemWidth = shortcutAdapter?.floatingPanelItemWidth(toolbar.context) ?: (48 * density).toInt()
+        val columns = (container.width / itemWidth.coerceAtLeast(1)).coerceAtLeast(1)
+        if (manager.spanCount != columns) manager.spanCount = columns
+        val rowHeight = shortcutAdapter?.floatingPanelItemHeight(toolbar.context) ?: (48 * density).toInt()
+        val rows = ((recycler.adapter?.itemCount ?: 0) + columns - 1) / columns
+        val otherContent = (candidates as? androidx.recyclerview.widget.RecyclerView)?.adapter?.itemCount ?: 0
+        val available = (container.height - if (tabs.visibility == View.VISIBLE) tabs.height else 0).coerceAtLeast(0)
+        val limit = if (otherContent > 0) available / 2 else available
+        // Show whole rows at rest; remaining actions are reached by vertical scrolling.
+        val height = if (limit < rowHeight) limit else minOf(rows, limit / rowHeight) * rowHeight
+        if (container.height > 0 && recycler.layoutParams.height != height) {
+            recycler.layoutParams = recycler.layoutParams.apply { this.height = height }
+        }
+    }
+
     private fun styleSurface() {
         scrollbars = candidates.isVerticalScrollBarEnabled to candidates.isHorizontalScrollBarEnabled
         backgrounds = listOf(toolbar, tabs, strip).map { it to it.background }
@@ -41,6 +74,7 @@ internal class CandidateSurfaceHost(
 
     fun refreshAppearance() {
         if (!attached) return
+        refreshToolbarLayout()
         backgrounds.forEach { (view, _) ->
             if ((view.background as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
@@ -110,6 +144,17 @@ internal class CandidateSurfaceHost(
                 if (view == strip) 1f else 0f))
         }
         attached = true
+        floatingContainer = target
+        (toolbar as? androidx.recyclerview.widget.RecyclerView)?.let { recycler ->
+            toolbarManager = recycler.layoutManager
+            toolbarState = toolbarManager?.onSaveInstanceState()
+            toolbarScrollbar = recycler.isVerticalScrollBarEnabled
+            recycler.layoutManager = androidx.recyclerview.widget.GridLayoutManager(toolbar.context, 1)
+            recycler.isVerticalScrollBarEnabled = true
+            (recycler.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter)?.setFloatingPanel(true)
+            recycler.adapter?.registerAdapterDataObserver(toolbarObserver)
+        }
+        target.addOnLayoutChangeListener(toolbarLayoutListener)
         styleSurface()
         setExpanded(false)
     }
@@ -130,6 +175,17 @@ internal class CandidateSurfaceHost(
         if (!attached) return
         setExpanded(false)
         restoreSurface()
+        floatingContainer?.removeOnLayoutChangeListener(toolbarLayoutListener)
+        floatingContainer = null
+        (toolbar as? androidx.recyclerview.widget.RecyclerView)?.let { recycler ->
+            recycler.adapter?.unregisterAdapterDataObserver(toolbarObserver)
+            (recycler.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter)?.setFloatingPanel(false)
+            recycler.layoutManager = toolbarManager
+            toolbarManager?.onRestoreInstanceState(toolbarState)
+            recycler.isVerticalScrollBarEnabled = toolbarScrollbar
+        }
+        toolbarManager = null
+        toolbarState = null
         origins.forEach { (it.view.parent as? ViewGroup)?.removeView(it.view) }
         origins.sortedBy { it.index }.forEach { origin ->
             origin.parent.addView(origin.view, origin.index.coerceAtMost(origin.parent.childCount), origin.params)
