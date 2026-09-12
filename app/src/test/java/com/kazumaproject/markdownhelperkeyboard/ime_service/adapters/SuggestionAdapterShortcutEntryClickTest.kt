@@ -279,36 +279,18 @@ class SuggestionAdapterShortcutEntryClickTest {
     }
 
     @Test
-    fun composingGuideShortcutPreservesCandidateClickIndices() {
+    fun guideVisibilityDoesNotInsertActionsIntoCandidatesOrEmptyStrip() {
         val adapter = SuggestionAdapter()
-        val first = candidate("通常候補")
-        adapter.setComposingGuideAvailable(true)
-        adapter.submitContent(CandidateStripContent.Candidates(candidates = listOf(first)))
-        drainMainUntilItemCount(adapter, 2)
-        assertEquals(2, adapter.itemCount)
-        assertEquals(SuggestionAdapter.VIEW_TYPE_SHORTCUT, adapter.getItemViewType(0))
-        var clickedIndex = -1
-        var clickedCandidate: Candidate? = null
-        adapter.setOnItemClickListener { value, index ->
-            clickedCandidate = value
-            clickedIndex = index
-        }
-        val holder = createSuggestionHolder(adapter)
-        adapter.onBindViewHolder(holder, 1)
-        holder.itemView.performClick()
-        assertEquals(first, clickedCandidate)
-        assertEquals(0, clickedIndex)
-        adapter.release()
-    }
-
-    @Test
-    fun composingGuideRemainsReachableWithEmptyStripAndDisabledToolbar() {
-        val adapter = SuggestionAdapter()
+        adapter.setActiveShortcutTypes(setOf(
+            com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType.COMPOSING_GUIDE_TOGGLE
+        ))
         adapter.submitContent(CandidateStripContent.Empty)
-        adapter.setComposingGuideAvailable(true)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(0, adapter.itemCount)
+        adapter.submitContent(CandidateStripContent.Candidates(candidates = listOf(candidate("通常候補"))))
         drainMainUntilItemCount(adapter, 1)
         assertEquals(1, adapter.itemCount)
-        assertEquals(SuggestionAdapter.VIEW_TYPE_SHORTCUT, adapter.getItemViewType(0))
+        assertEquals(SuggestionAdapter.VIEW_TYPE_SUGGESTION, adapter.getItemViewType(0))
         adapter.release()
     }
 

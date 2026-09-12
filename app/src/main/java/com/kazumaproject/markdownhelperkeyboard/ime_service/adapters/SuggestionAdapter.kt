@@ -318,7 +318,6 @@ class SuggestionAdapter internal constructor(
     private var showIntegratedShortcutEntry: Boolean = false
     private var integratedShortcutEntryExpanded: Boolean = false
     private var shortcutIconColor: Int? = null
-    private var composingGuideAvailable = false
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
@@ -543,15 +542,9 @@ class SuggestionAdapter internal constructor(
     fun setShortcutIconColor(color: Int?) {
         if (shortcutIconColor == color) return
         shortcutIconColor = color
-        if (showIntegratedShortcutItems || showIntegratedShortcutEntry || composingGuideAvailable) {
+        if (showIntegratedShortcutItems || showIntegratedShortcutEntry) {
             notifyItemRangeChanged(0, itemCount)
         }
-    }
-
-    fun setComposingGuideAvailable(available: Boolean) {
-        if (composingGuideAvailable == available) return
-        composingGuideAvailable = available
-        rebuildDisplayItems()
     }
 
     fun setActiveShortcutTypes(activeTypes: Set<ShortcutType>) {
@@ -803,14 +796,6 @@ class SuggestionAdapter internal constructor(
     }
 
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
-        val items = buildBaseDisplayItems()
-        if (!composingGuideAvailable || items.any {
-                it is SuggestionDisplayItem.ShortcutItem && it.shortcutType == ShortcutType.COMPOSING_GUIDE_TOGGLE
-            }) return items
-        return listOf(SuggestionDisplayItem.ShortcutItem(ShortcutType.COMPOSING_GUIDE_TOGGLE)) + items
-    }
-
-    private fun buildBaseDisplayItems(): List<SuggestionDisplayItem> {
         if (
             inlineSuggestionStripState.showInlineSuggestions &&
             inlineSuggestionStripState.views.isNotEmpty()
