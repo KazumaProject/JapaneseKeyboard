@@ -1374,6 +1374,11 @@ class SuggestionAdapter internal constructor(
                 null, GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(android.graphics.Color.WHITE) })
             return
         }
+        if (holder is QuickActionsViewHolder) {
+            // Status icons and individually styled actions are not candidate chips.
+            root.background = null
+            return
+        }
         val selected = position == 0 && (holder is SuggestionViewHolder || holder is ZeroQueryViewHolder)
         val candidateText = when (holder) {
             is SuggestionViewHolder -> holder.text
