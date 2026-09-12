@@ -65,6 +65,60 @@ class FastInputMatrixInstrumentedTest {
         get() = instrumentation.uiAutomation
 
     @Test
+    fun bunsetsuConversionOnNormalAndFloatingSoftwareKeyboards() {
+        runPhysicalDeviceSession("bunsetsu-software") { session ->
+            for (floating in listOf(false, true)) {
+                check(session.preferences.edit()
+                    .putString("keyboard_order_preference", "[\"ROMAJI\",\"TENKEY\",\"QWERTY\",\"GOJUON\",\"SUMIRE\"]")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putInt("save_last_used_keyboard_int", 0)
+                    .putBoolean("keyboard_floating_preference", floating)
+                    .putBoolean("qwerty_show_cursor_buttons_preference", true)
+                    .putBoolean("conversion_bunsetsu_separation_preference", true)
+                    .putBoolean("conversion_bunsetsu_cursor_move_preference", true)
+                    .putBoolean("live_conversion_preference", false)
+                    .putBoolean("candidate_order_override_enable_preference", false)
+                    .putBoolean("learn_dictionary_preference", false)
+                    .commit())
+                val scenario = launchHost(session.context)
+                try {
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    fun tap(id: String) {
+                        assertTrue(injectTap(awaitVisibleNodeBounds(id).center))
+                        SystemClock.sleep(100)
+                    }
+                    "ashitahatoukyouniikimasu".forEach { tap("key_$it") }
+                    awaitEditorText(scenario) { it == "あしたはとうきょうにいきます" }
+                    tap("key_space")
+                    awaitEditorText(scenario) { it == "明日は東京に行きます" }
+                    val initial = readEditorDecoration(scenario)
+                    assertEquals(3, initial.underlines.size)
+                    saveScreenshot(session, "floating-$floating-initial")
+                    tap("cursor_right")
+                    val moved = readEditorDecoration(scenario)
+                    assertEquals(initial.text, moved.text)
+                    assertEquals(3, moved.backgrounds.single().start)
+                    assertEquals(6, moved.backgrounds.single().end)
+                    tap("key_space")
+                    awaitEditorText(scenario) { it != initial.text }
+                    val changed = readEditorDecoration(scenario).text
+                    assertTrue(changed.startsWith("明日は") && changed.endsWith("行きます"))
+                    saveScreenshot(session, "floating-$floating-second-candidate")
+                    tap("key_return")
+                    assertEquals(changed, readEditorDecoration(scenario).text)
+                    scenario.onActivity {
+                        assertEquals(-1, android.view.inputmethod.BaseInputConnection.getComposingSpanStart(it.editText.text))
+                    }
+                } finally {
+                    scenario.close()
+                }
+            }
+        }
+    }
+
+    @Test
     fun flickOnlyBackgroundDoesNotChangeAfterToggleTimeoutOnPhysicalDevice() {
         runPhysicalDeviceSession("flick-background-timeout") { session ->
             val scenario = launchHost(session.context)
