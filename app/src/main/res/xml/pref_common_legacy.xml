@@ -51,6 +51,17 @@
             android:title="@string/allow_fullscreen_mode_preference_title" />
 
         <SwitchPreferenceCompat
+            android:key="composing_guide_enabled"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_title"
+            android:summary="@string/composing_guide_summary" />
+
+        <Preference
+            android:key="composing_guide_reset"
+            android:dependency="composing_guide_enabled"
+            android:title="@string/composing_guide_reset" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_floating_preference"
             android:summary="@string/keyboard_floating_preference_summary"

@@ -61,6 +61,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
+        holder.itemView.contentDescription = item.actionDescription(holder.itemView.context, item in activeShortcutTypes)
         applyShortcutToolbarSize(holder)
         holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 

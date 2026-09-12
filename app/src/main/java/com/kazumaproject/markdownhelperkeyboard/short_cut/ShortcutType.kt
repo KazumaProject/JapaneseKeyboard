@@ -4,7 +4,8 @@ enum class ShortcutType(
     val id: String,
     val iconResId: Int,
     val activeIconResId: Int? = null,
-    val description: String // 設定画面での表示用など
+    val description: String, // 設定画面での表示用など
+    val runtimeOnly: Boolean = false,
 ) {
     SETTINGS(
         "settings",
@@ -42,6 +43,13 @@ enum class ShortcutType(
         com.kazumaproject.core.R.drawable.keyboard_floating_24px,
         activeIconResId = com.kazumaproject.core.R.drawable.keyboard_normal_24px,
         description = "フローティング切替"
+    ),
+    COMPOSING_GUIDE_TOGGLE(
+        "composing_guide_toggle",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.composing_guide_show,
+        activeIconResId = com.kazumaproject.markdownhelperkeyboard.R.drawable.composing_guide_hide,
+        description = "未確定文字ガイドの表示切替",
+        runtimeOnly = true,
     ),
     INPUT_BEHAVIOR_TOGGLE(
         "input_behavior_toggle",
@@ -109,6 +117,12 @@ enum class ShortcutType(
         description = "クリップボード"
     )
     ;
+
+    fun actionDescription(context: android.content.Context, active: Boolean): String =
+        if (this == COMPOSING_GUIDE_TOGGLE) context.getString(
+            if (active) com.kazumaproject.markdownhelperkeyboard.R.string.composing_guide_hide
+            else com.kazumaproject.markdownhelperkeyboard.R.string.composing_guide_show
+        ) else description
 
     companion object {
         fun fromId(id: String): ShortcutType? = entries.find { it.id == id }

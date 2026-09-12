@@ -276,6 +276,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.canShowComposingGuide
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickInputPreviewCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickPreviewContext
@@ -1061,6 +1063,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     currentInlineSuggestionViews.isNotEmpty(),
             toggle = inlineSuggestionToggleForCandidateStrip(),
         )
+        val guideActionAvailable = composingGuideSettings.enabled && isComposingGuideEligible()
+        val independentToolbarShown = resolveCandidateStripPresentation(
+            candidatesShown = effectiveCandidatesShown, content = content
+        ).showIndependentShortcutToolbar
+        suggestionAdapter?.setComposingGuideAvailable(guideActionAvailable && !independentToolbarShown)
+        suggestionAdapterFull?.setComposingGuideAvailable(guideActionAvailable)
         suggestionAdapter?.submitContent(content, inlineSuggestionState)
         if (isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
@@ -2580,6 +2588,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var composingGuide: ComposingGuideController? = null
+    private val composingGuideSettings by lazy {
+        com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        )
+    }
+
+    private fun isComposingGuideEligible(): Boolean = canShowComposingGuide(
+        inputViewActive = isInputViewActive,
+        fullscreen = isFullscreenMode,
+        hardwareKeyboard = hasHardwareKeyboardConnected == true ||
+            resources.configuration.keyboard != Configuration.KEYBOARD_NOKEYS,
+        physicalKeyboardMode = physicalKeyboardEnable.replayCache.firstOrNull() == true,
+        floatingMode = isKeyboardFloatingMode == true,
+        password = currentInputType.isPassword(),
+        layoutEditing = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
+    )
+
+    private fun startComposingGuide() {
+        val host = keyboardContainer ?: return
+        if (composingGuide == null) {
+            composingGuide = ComposingGuideController(this,
+                eligible = ::isComposingGuideEligible,
+                onStateChanged = ::refreshShortcutAvailability,
+            )
+        }
+        composingGuide?.start(host)
+    }
+
     override fun onCreateInputView(): View? {
         Timber.d("onCreateInputView")
         // もしコンテナがすでに存在している場合、システムが再追加できるように
@@ -2630,6 +2667,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        composingGuide?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -4738,6 +4776,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        startComposingGuide()
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
         shortcutToolbarHiddenForCandidates = false
@@ -5109,6 +5148,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -5119,6 +5159,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -5158,6 +5199,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        composingGuide?.stop()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -5169,6 +5211,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        composingGuide?.destroy()
+        composingGuide = null
         unregisterCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.destroy()
@@ -7987,6 +8031,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         this.isKeyboardFloatingMode = isFloatingMode
+        composingGuide?.refresh()
         updateImeWindowBlurForCurrentMode()
         if (isFloatingMode) {
             ensureFloatingInputHostLayout(mainView)
@@ -16605,6 +16650,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
+                composingGuide?.refresh()
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
                     disableKeyboardLayoutEditMode()
@@ -16734,6 +16780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             inputString.collect { string ->
+                if (string.isEmpty() && stringInTail.get().isEmpty()) composingGuide?.update(null)
                 try {
                     measureDebugStage("IMEService.input.immediate") {
                         processInputString(string, mainView)
@@ -19966,6 +20013,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         suggestionAdapterFull?.let { adapter ->
+            adapter.setOnShortcutItemClickListener { type ->
+                handleShortcutAction(type, mainView)
+            }
             adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode: InputMode = currentTenkeyInputMode(mainView)
@@ -20282,6 +20332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         _keyboardLayoutEditState.value = state
+        composingGuide?.refresh()
         keyboardLayoutEditController?.start(
             state = state,
             surfaceAdapter = surfaceAdapter,
@@ -20377,10 +20428,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liveConversionEnabled = isLiveConversionEnable == true,
             learningPaused = learningPausedForSession,
             handwritingActive = handwritingModeActive,
+            composingGuideVisible = composingGuideSettings.enabled && composingGuideSettings.visible,
         )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+        suggestionAdapterFull?.setActiveShortcutTypes(activeTypes)
     }
 
     private fun refreshShortcutAvailability() {
@@ -20392,8 +20445,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 else -> true
             }
         }
-        currentShortcutItems = visibleItems
-        shortcutAdapter?.submitList(visibleItems) {
+        val itemsWithGuide = withComposingGuideShortcut(visibleItems,
+            composingGuideSettings.enabled && isComposingGuideEligible())
+        currentShortcutItems = itemsWithGuide
+        shortcutAdapter?.submitList(itemsWithGuide) {
             updateShortcutActiveStates()
         }
         updateShortcutActiveStates()
@@ -20985,6 +21040,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.KEYBOARD_LAYOUT_EDIT -> {
                 toggleKeyboardLayoutEditMode(mainView)
+            }
+
+            ShortcutType.COMPOSING_GUIDE_TOGGLE -> {
+                if (composingGuideSettings.enabled && isComposingGuideEligible()) composingGuide?.toggleVisible()
             }
 
             ShortcutType.KEYBOARD_FLOATING_TOGGLE -> {
@@ -27826,6 +27885,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputConnection == null) return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
+        if (applied) composingGuide?.update(p0)
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
@@ -27848,6 +27908,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val finished = composingTextArbiter.finishCanonical()
+        composingGuide?.update(null)
         clearPhysicalCandidateCompositionSession("finish composing text")
         return finished
     }
@@ -27862,6 +27923,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (committed) {
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
+            composingGuide?.update(null)
             clearPhysicalCandidateCompositionSession("commit text")
         }
         return committed

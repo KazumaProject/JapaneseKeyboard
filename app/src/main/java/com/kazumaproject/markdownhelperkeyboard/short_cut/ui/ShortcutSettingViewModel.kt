@@ -94,11 +94,11 @@ class ShortcutSettingViewModel @Inject constructor(
     }
 
     private fun updateSelected(selected: List<ShortcutType>) {
-        val normalized = selected.distinct().ifEmpty { listOf(ShortcutType.SETTINGS) }
+        val normalized = selected.filterNot { it.runtimeOnly }.distinct().ifEmpty { listOf(ShortcutType.SETTINGS) }
         _uiState.update {
             ShortcutToolbarEditUiState(
                 selected = normalized,
-                available = ShortcutType.entries.filterNot { type -> type in normalized },
+                available = ShortcutType.entries.filterNot { type -> type.runtimeOnly || type in normalized },
                 canRemove = normalized.size > 1
             )
         }
