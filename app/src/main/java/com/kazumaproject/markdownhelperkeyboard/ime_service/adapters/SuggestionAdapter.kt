@@ -1148,6 +1148,12 @@ class SuggestionAdapter internal constructor(
         val imageView: ImageView = itemView.findViewById(R.id.shortcut_entry_image)
     }
 
+    private var floatingPanelColors: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors? = null
+    internal fun setFloatingPanelColors(colors: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors) {
+        if (floatingPanelColors == colors) return
+        floatingPanelColors = colors
+        if (floatingPanelWidth > 0) notifyDataSetChanged()
+    }
     private var floatingPanelWidth = 0
     fun setFloatingPanelWidth(width: Int) {
         if (floatingPanelWidth == width) return
@@ -1360,10 +1366,9 @@ class SuggestionAdapter internal constructor(
         val root = holder.itemView
         val density = root.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
-        val surface = root.context.getColor(com.kazumaproject.core.R.color.keyboard_bg)
-        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(surface) < .45
-        val ink = if (dark) Color.rgb(242, 243, 250) else Color.rgb(35, 39, 53)
-        val accent = if (dark) Color.rgb(190, 199, 255) else Color.rgb(65, 78, 166)
+        val colors = floatingPanelColors ?: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(root.context)
+        val ink = colors.text
+        val selected = position == 0 && (holder is SuggestionViewHolder || holder is ZeroQueryViewHolder)
         val candidateText = when (holder) {
             is SuggestionViewHolder -> holder.text
             is ZeroQueryViewHolder -> holder.text
@@ -1377,16 +1382,21 @@ class SuggestionAdapter internal constructor(
             candidateText.maxLines = Int.MAX_VALUE
             candidateText.maxWidth = (floatingPanelWidth - dp(64)).coerceAtLeast(dp(40))
             candidateText.textSize = candidateTextSize.coerceAtLeast(18f)
-            candidateText.setTextColor(if (position == 0) accent else ink)
+            candidateText.setTextColor(if (selected) colors.selectionText else ink)
+            if (holder is SuggestionViewHolder) {
+                holder.typeText.setTextColor(if (selected) colors.selectionText else ink)
+                holder.yomiText.setTextColor(if (selected) colors.selectionText else ink)
+                holder.formulaView.setFormulaTextColor(if (selected) colors.selectionText else ink)
+            }
             root.findViewById<View>(R.id.candidate_divider)?.visibility = View.GONE
         }
         val chip = GradientDrawable().apply {
             cornerRadius = dp(10).toFloat()
-            setColor(androidx.core.graphics.ColorUtils.blendARGB(surface, if (position == 0 && candidateText != null) accent else ink, if (position == 0 && candidateText != null) .14f else .035f))
+            setColor(if (selected) colors.selection else colors.candidate)
             setStroke(dp(1), androidx.core.graphics.ColorUtils.setAlphaComponent(ink, 24))
         }
         root.background = android.graphics.drawable.RippleDrawable(
-            android.content.res.ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(accent, 40)), chip, null)
+            android.content.res.ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(colors.pressed, 100)), chip, null)
     }
 
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {

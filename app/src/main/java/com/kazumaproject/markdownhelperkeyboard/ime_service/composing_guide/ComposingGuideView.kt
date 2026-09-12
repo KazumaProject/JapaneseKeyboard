@@ -9,7 +9,6 @@ import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
-import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -32,13 +31,10 @@ internal class ComposingGuideView(
     private val onHandleEvent: (MotionEvent) -> Unit,
 ) : FrameLayout(context) {
     private fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
-    private val surface = context.getColor(com.kazumaproject.core.R.color.keyboard_bg)
-    private val inkColor = if (ColorUtils.calculateLuminance(surface) > .45) Color.rgb(32, 33, 40) else Color.rgb(244, 243, 250)
-    private val accent = TypedValue().let {
-        if (context.theme.resolveAttribute(android.R.attr.colorAccent, it, true)) {
-            if (it.resourceId != 0) context.getColor(it.resourceId) else it.data
-        } else Color.rgb(103, 80, 164)
-    }.let { if (ColorUtils.calculateContrast(it, surface) >= 3) it else inkColor }
+    private var colors = CandidatePanelColors.resolve(context)
+    private val surface get() = colors.background
+    private val inkColor get() = colors.text
+    private val accent get() = colors.selection
     private val header = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
     private val moveGrip = HandleView(context, GuideHandle.MOVE)
     private val editButton = icon(R.drawable.composing_guide_edit, R.string.composing_guide_edit, onEdit)
@@ -105,10 +101,10 @@ internal class ComposingGuideView(
 
     private fun icon(drawable: Int, description: Int, action: () -> Unit) = ImageButton(context).apply {
         setImageResource(drawable)
-        imageTintList = ColorStateList.valueOf(inkColor)
+        imageTintList = ColorStateList.valueOf(colors.icon)
         contentDescription = context.getString(description)
         setPadding(dp(12), dp(12), dp(12), dp(12))
-        background = RippleDrawable(ColorStateList.valueOf(ColorUtils.setAlphaComponent(accent, 40)), null,
+        background = RippleDrawable(ColorStateList.valueOf(ColorUtils.setAlphaComponent(colors.pressed, 80)), null,
             GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
         isFocusable = false
         setOnClickListener { action() }
@@ -124,7 +120,7 @@ internal class ComposingGuideView(
         edges.values.forEach { it.visibility = if (value) VISIBLE else GONE }
         editButton.setImageResource(if (value) com.kazumaproject.core.R.drawable.baseline_check_24 else R.drawable.composing_guide_edit)
         editButton.contentDescription = context.getString(if (value) R.string.composing_guide_done else R.string.composing_guide_edit)
-        editButton.imageTintList = ColorStateList.valueOf(if (value) accent else inkColor)
+        editButton.imageTintList = ColorStateList.valueOf(if (value) accent else colors.icon)
         background = GradientDrawable().apply {
             setColor(surface)
             cornerRadius = dp(16).toFloat()
@@ -153,6 +149,28 @@ internal class ComposingGuideView(
                 if (edge == GuideHandle.LEFT || edge == GuideHandle.RIGHT) bottomMargin = dp(MOVE_BAND_DP / 2)
             }
         }
+    }
+
+    fun setColors(value: CandidatePanelColors) {
+        if (colors == value) return
+        colors = value
+        textView.setTextColor(inkColor)
+        editButton.imageTintList = ColorStateList.valueOf(if (editing) accent else colors.icon)
+        hideButton.imageTintList = ColorStateList.valueOf(colors.icon)
+        listOf(editButton, hideButton).forEach { button ->
+            button.background = RippleDrawable(ColorStateList.valueOf(ColorUtils.setAlphaComponent(colors.pressed, 80)), null,
+                GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+        }
+        for (index in 0 until footer.childCount) (footer.getChildAt(index) as? TextView)?.setTextColor(inkColor)
+        sizeValue.setTextColor(inkColor)
+        sizeSlider.progressTintList = ColorStateList.valueOf(accent)
+        sizeSlider.thumbTintList = ColorStateList.valueOf(accent)
+        background = GradientDrawable().apply {
+            setColor(surface); cornerRadius = dp(16).toFloat()
+            setStroke(dp(if (editing) 2 else 1), if (editing) accent else ColorUtils.setAlphaComponent(inkColor, 45))
+        }
+        moveGrip.invalidate()
+        edges.values.forEach { it.invalidate() }
     }
 
     fun setEditAvailable(available: Boolean) { editButton.isEnabled = available; editButton.alpha = if (available) 1f else .4f }
@@ -227,6 +245,7 @@ internal class ComposingGuideView(
         override fun drawableStateChanged() { super.drawableStateChanged(); invalidate() }
 
         override fun onDraw(canvas: Canvas) {
+            paint.color = accent
             if (handle == GuideHandle.MOVE) {
                 paint.color = ColorUtils.setAlphaComponent(accent, if (isPressed) 38 else 16)
                 val radius = dp(16).toFloat()
