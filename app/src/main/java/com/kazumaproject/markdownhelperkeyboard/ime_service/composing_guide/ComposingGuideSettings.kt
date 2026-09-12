@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide
 import android.content.SharedPreferences
 
 internal class ComposingGuideSettings(private val preferences: SharedPreferences) {
+    val showReading get() = preferences.getBoolean(SHOW_READING, false)
     val showComposing get() = preferences.getBoolean(SHOW_COMPOSING, true)
     val verticalCandidates get() = preferences.getString(SCROLL_DIRECTION, "vertical") == "vertical"
     val enabled get() = preferences.getBoolean(ENABLED, false)
@@ -21,14 +22,17 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
         )
     }
 
+    fun usesScreenCoordinates(landscape: Boolean) = preferences.getBoolean(prefix(landscape) + "screen_coordinates", false)
+
     fun save(landscape: Boolean, placement: ComposingGuidePlacement) {
         val prefix = prefix(landscape)
-        preferences.edit().putFloat(prefix + "x", placement.xFraction)
+        preferences.edit().putBoolean(prefix + "screen_coordinates", true).putFloat(prefix + "x", placement.xFraction)
             .putFloat(prefix + "y", placement.yFraction).putFloat(prefix + "width", placement.widthDp)
             .putFloat(prefix + "height", placement.heightDp).apply()
     }
 
     companion object {
+        const val SHOW_READING = "composing_guide_show_live_reading"
         const val SHOW_COMPOSING = "composing_guide_show_composing"
         const val SCROLL_DIRECTION = "composing_guide_scroll_direction"
         const val ENABLED = "composing_guide_enabled"
@@ -39,7 +43,7 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
         fun reset(preferences: SharedPreferences) {
             preferences.edit().apply {
                 listOf(false, true).forEach { landscape ->
-                    listOf("x", "y", "width", "height").forEach { remove(prefix(landscape) + it) }
+                    listOf("x", "y", "width", "height", "screen_coordinates").forEach { remove(prefix(landscape) + it) }
                 }
                 remove(TEXT_SIZE)
             }.apply()
