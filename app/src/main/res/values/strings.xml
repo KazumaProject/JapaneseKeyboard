@@ -1802,4 +1802,9 @@
     <string name="keyboard_type_qwerty">English (QWERTY)</string>
     <string name="keyboard_type_romaji">Japanese – Romaji</string>
     <string name="keyboard_type_custom">Custom – User defined</string>
+    <string name="custom_romaji_behavior_scope">Software keyboard conversion (this map only)</string>
+    <string name="custom_romaji_auto_sokuon">Convert repeated consonants to small tsu</string>
+    <string name="custom_romaji_auto_sokuon_summary">On: ppa → っぱ. Off: use registered rules; pp → っ consumes both letters.</string>
+    <string name="custom_romaji_auto_n">Convert n before consonants and on confirmation</string>
+    <string name="custom_romaji_auto_n_summary">On: kanta → かんた; final n → ん. Off: use registered rules such as nn → ん.</string>
 </resources>

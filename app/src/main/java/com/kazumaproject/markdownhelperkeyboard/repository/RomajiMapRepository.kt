@@ -36,9 +36,11 @@ class RomajiMapRepository @Inject constructor(
      */
     suspend fun insertAll(maps: List<RomajiMapEntity>) = romajiMapDao.insertAll(maps)
 
-    /**
-     * Update an existing Romaji map.
-     */
+    suspend fun setAutoSokuon(id: Long, enabled: Boolean) = romajiMapDao.setAutoSokuon(id, enabled)
+
+    suspend fun setAutoN(id: Long, enabled: Boolean) = romajiMapDao.setAutoN(id, enabled)
+
+    /** Update an existing Romaji map. */
     suspend fun update(map: RomajiMapEntity) = romajiMapDao.update(map)
 
     /**
