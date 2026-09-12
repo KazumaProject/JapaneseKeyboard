@@ -25,6 +25,28 @@ import org.robolectric.Shadows.shadowOf
 @Config(sdk = [35])
 class SuggestionAdapterShortcutEntryClickTest {
 
+    @Test fun floatingIncognitoStatusHasNoCandidateBackground() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val adapter = SuggestionAdapter()
+        adapter.setIncognitoIcon(android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE))
+        adapter.submitContent(CandidateStripContent.EmptyState(
+            showShortcutEntry = false,
+            quickActions = QuickActionsState(true, false, false, false, "", ""),
+            clipboardPreview = null,
+            shortcutItems = emptyList(),
+            showIntegratedShortcuts = false,
+        ))
+        drainMainUntilItemCount(adapter, 1)
+        adapter.setFloatingPanelWidth(144)
+        val parent = FrameLayout(context)
+        val holder = adapter.onCreateViewHolder(parent, adapter.getItemViewType(0))
+        adapter.onBindViewHolder(holder, 0)
+        val icon = holder.itemView.findViewById<View>(com.kazumaproject.markdownhelperkeyboard.R.id.incognito_icon)
+        assertEquals(View.VISIBLE, icon.visibility)
+        org.junit.Assert.assertNull(holder.itemView.background)
+        adapter.release()
+    }
+
     @Test fun floatingShortcutIconsHaveOnlyAPressMaskAndKeepTheirClickActions() {
         val adapter = SuggestionAdapter()
         val shortcut = com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType.SETTINGS
