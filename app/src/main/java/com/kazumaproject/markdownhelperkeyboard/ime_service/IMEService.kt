@@ -2365,12 +2365,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onCreate() {
         super.onCreate()
+        window.window?.let { imeWindow ->
+            val callback = imeWindow.callback ?: return@let
+            imeWindow.callback = object : android.view.Window.Callback by callback {
+                override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                    if (composingGuide?.dispatchInputWindowTouch(event) == true) return true
+                    return callback.dispatchTouchEvent(event)
+                }
+            }
+        }
         Timber.d("onCreate")
         registerCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController = InlineAutofillController(
                 context = this,
                 onViewsChanged = ::renderInlineSuggestionViews,
+                maximumContentWidth = {
+                    if (floatingCandidateSurfaceActive) mainLayoutBinding?.suggestionRecyclerView?.width
+                        ?.takeIf { it > 0 }?.minus(applicationContext.dpToPx(8)) else null
+                },
             )
         }
         lifecycleRegistry = LifecycleRegistry(this)
@@ -2705,9 +2718,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             composingGuide = ComposingGuideController(this,
                 eligible = ::isComposingGuideEligible,
                 onStateChanged = {
-                    refreshShortcutAvailability()
                     if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
                 },
+                minimumCandidateHeight = { candidateSurfaceHost?.minimumHeightPx() ?: applicationContext.dpToPx(48) },
                 onSurfaceChanged = ::moveCandidateSurface,
                 colors = ::resolveCandidatePanelColors,
             )
@@ -20541,7 +20554,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liveConversionEnabled = isLiveConversionEnable == true,
             learningPaused = learningPausedForSession,
             handwritingActive = handwritingModeActive,
-            composingGuideVisible = composingGuideSettings.enabled && composingGuideSettings.visible,
         )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
@@ -20557,10 +20569,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 else -> true
             }
         }
-        val itemsWithGuide = withComposingGuideShortcut(visibleItems,
-            composingGuideSettings.enabled && isComposingGuideEligible())
-        currentShortcutItems = itemsWithGuide
-        shortcutAdapter?.submitList(itemsWithGuide) {
+        currentShortcutItems = visibleItems
+        shortcutAdapter?.submitList(visibleItems) {
             updateShortcutActiveStates()
         }
         updateShortcutActiveStates()
@@ -21155,10 +21165,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.KEYBOARD_LAYOUT_EDIT -> {
                 toggleKeyboardLayoutEditMode(mainView)
-            }
-
-            ShortcutType.COMPOSING_GUIDE_TOGGLE -> {
-                if (composingGuideSettings.enabled && isComposingGuideEligible()) composingGuide?.toggleVisible()
             }
 
             ShortcutType.KEYBOARD_FLOATING_TOGGLE -> {

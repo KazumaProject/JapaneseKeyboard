@@ -26,7 +26,6 @@ import kotlin.math.roundToInt
 internal class ComposingGuideView(
     context: Context,
     private val onEdit: () -> Unit,
-    private val onHide: () -> Unit,
     private val onTextSize: (Float, Boolean) -> Unit,
     private val onHandleEvent: (MotionEvent) -> Unit,
 ) : FrameLayout(context) {
@@ -38,7 +37,6 @@ internal class ComposingGuideView(
     private val header = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
     private val moveGrip = HandleView(context, GuideHandle.MOVE)
     private val editButton = icon(R.drawable.composing_guide_edit, R.string.composing_guide_edit, onEdit)
-    private val hideButton = icon(R.drawable.composing_guide_hide, R.string.composing_guide_hide, onHide)
     private val textView = TextView(context).apply {
         setTextColor(inkColor)
         includeFontPadding = false
@@ -62,7 +60,8 @@ internal class ComposingGuideView(
     }
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     val candidateContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private val footer = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
+    private val footer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    private val sizeLabelRow = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
     private val sizeValue = TextView(context).apply { setTextColor(inkColor); textSize = 12f; gravity = Gravity.CENTER }
     private var trackingTextSize = false
     private val sizeSlider = SeekBar(context).apply {
@@ -92,22 +91,23 @@ internal class ComposingGuideView(
 
     init {
         id = R.id.composing_guide_root
+        isClickable = true
         elevation = dp(8).toFloat()
         header.gravity = Gravity.END or Gravity.CENTER_VERTICAL
         header.addView(editButton, LinearLayout.LayoutParams(dp(48), dp(48)))
-        header.addView(hideButton, LinearLayout.LayoutParams(dp(48), dp(48)))
-        body.addView(readingScroll, LinearLayout.LayoutParams(-1, dp(28)))
-        body.addView(scroll, LinearLayout.LayoutParams(-1, dp(64)))
+        body.addView(readingScroll, LinearLayout.LayoutParams(-1, dp(28)).apply { bottomMargin = dp(4) })
+        body.addView(scroll, LinearLayout.LayoutParams(-1, dp(32)).apply { bottomMargin = dp(4) })
         body.addView(candidateContainer, LinearLayout.LayoutParams(-1, 0, 1f))
         addView(body)
         addView(header)
-        footer.addView(TextView(context).apply {
+        sizeLabelRow.addView(TextView(context).apply {
             text = context.getString(R.string.composing_guide_text_size)
             textSize = 12f
             setTextColor(inkColor)
-        }, LinearLayout.LayoutParams(-2, -2))
-        footer.addView(sizeSlider, LinearLayout.LayoutParams(0, dp(48), 1f))
-        footer.addView(sizeValue, LinearLayout.LayoutParams(dp(28), -2))
+        }, LinearLayout.LayoutParams(0, -1, 1f))
+        sizeLabelRow.addView(sizeValue, LinearLayout.LayoutParams(dp(28), -1))
+        footer.addView(sizeLabelRow, LinearLayout.LayoutParams(-1, dp(20)))
+        footer.addView(sizeSlider, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
         addView(footer)
         addView(moveGrip, LayoutParams(-1, dp(MOVE_BAND_DP), Gravity.BOTTOM))
         edges.values.forEach(::addView)
@@ -142,15 +142,15 @@ internal class ComposingGuideView(
             setStroke(dp(if (value) 2 else 1), if (value) accent else ColorUtils.setAlphaComponent(inkColor, 45))
         }
         header.layoutParams = LayoutParams(-1, dp(48)).apply {
-            leftMargin = dp(if (value) 24 else 12); rightMargin = leftMargin
-            topMargin = dp(if (value) 24 else 8)
+            leftMargin = dp(if (value) 24 else 8); rightMargin = leftMargin
+            topMargin = dp(if (value) 20 else 4)
         }
         body.layoutParams = LayoutParams(-1, -1).apply {
-            leftMargin = dp(if (value) 24 else 16); rightMargin = leftMargin
-            topMargin = dp(if (value) 80 else 64); bottomMargin = dp(MOVE_BAND_DP + if (value) 92 else 12)
+            leftMargin = dp(if (value) 24 else 8); rightMargin = leftMargin
+            topMargin = dp(if (value) 72 else 56); bottomMargin = dp(MOVE_BAND_DP + if (value) 104 else 4)
         }
-        footer.layoutParams = LayoutParams(-1, dp(48), Gravity.BOTTOM).apply {
-            leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 36)
+        footer.layoutParams = LayoutParams(-1, dp(72), Gravity.BOTTOM).apply {
+            leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 28)
         }
         edges.forEach { (edge, view) ->
             val horizontal = edge == GuideHandle.TOP || edge == GuideHandle.BOTTOM
@@ -172,12 +172,11 @@ internal class ComposingGuideView(
         textView.setTextColor(inkColor)
         readingView.setTextColor(inkColor)
         editButton.imageTintList = ColorStateList.valueOf(if (editing) accent else colors.icon)
-        hideButton.imageTintList = ColorStateList.valueOf(colors.icon)
-        listOf(editButton, hideButton).forEach { button ->
+        listOf(editButton).forEach { button ->
             button.background = RippleDrawable(ColorStateList.valueOf(ColorUtils.setAlphaComponent(colors.pressed, 80)), null,
                 GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
         }
-        for (index in 0 until footer.childCount) (footer.getChildAt(index) as? TextView)?.setTextColor(inkColor)
+        for (index in 0 until sizeLabelRow.childCount) (sizeLabelRow.getChildAt(index) as? TextView)?.setTextColor(inkColor)
         sizeValue.setTextColor(inkColor)
         sizeSlider.progressTintList = ColorStateList.valueOf(accent)
         sizeSlider.thumbTintList = ColorStateList.valueOf(accent)
@@ -317,18 +316,17 @@ internal class ComposingGuideView(
     }
 
     companion object {
-        fun composingLineHeight(context: Context, sizeSp: Float) = lineHeight(context, sizeSp, 64)
-        fun readingLineHeight(context: Context, composingSizeSp: Float) = lineHeight(context, (composingSizeSp * .65f).coerceIn(12f, 20f), 28)
+        fun composingLineHeight(context: Context, sizeSp: Float) = lineHeight(context, sizeSp)
+        fun readingLineHeight(context: Context, composingSizeSp: Float) = lineHeight(context, (composingSizeSp * .65f).coerceIn(12f, 20f))
 
-        private fun lineHeight(context: Context, sizeSp: Float, minimumDp: Int): Int {
+        private fun lineHeight(context: Context, sizeSp: Float): Int {
             val paint = Paint().apply {
                 textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, sizeSp, context.resources.displayMetrics)
             }
             val metrics = paint.fontMetrics
-            return maxOf((minimumDp * context.resources.displayMetrics.density).roundToInt(),
-                kotlin.math.ceil(metrics.descent - metrics.ascent + 8 * context.resources.displayMetrics.density).toInt())
+            return kotlin.math.ceil(metrics.descent - metrics.ascent + 8 * context.resources.displayMetrics.density).toInt()
         }
         const val MOVE_BAND_DP = 24
-        const val EDIT_EXTRA_DP = 96
+        const val EDIT_EXTRA_DP = 116
     }
 }

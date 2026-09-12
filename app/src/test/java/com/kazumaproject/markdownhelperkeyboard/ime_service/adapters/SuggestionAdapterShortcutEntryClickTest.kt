@@ -25,6 +25,28 @@ import org.robolectric.Shadows.shadowOf
 @Config(sdk = [35])
 class SuggestionAdapterShortcutEntryClickTest {
 
+    @Test fun floatingShortcutIconsHaveOnlyAPressMaskAndKeepTheirClickActions() {
+        val adapter = SuggestionAdapter()
+        val shortcut = com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType.SETTINGS
+        adapter.submitContent(CandidateStripContent.ExpandedShortcutEntry(listOf(shortcut)))
+        drainMainUntilItemCount(adapter, 2)
+        adapter.setFloatingPanelWidth(144)
+        val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
+        var entryClicked = false
+        adapter.setOnShortcutEntryClickListener { entryClicked = true }
+        for (index in 0..1) {
+            val holder = adapter.onCreateViewHolder(parent, adapter.getItemViewType(index))
+            adapter.onBindViewHolder(holder, index)
+            val ripple = holder.itemView.background as android.graphics.drawable.RippleDrawable
+            assertEquals(1, ripple.numberOfLayers)
+            org.junit.Assert.assertNotNull(ripple.findDrawableByLayerId(android.R.id.mask))
+            holder.itemView.performClick()
+        }
+        assertTrue(entryClicked)
+        // Shortcut click dispatch requires a bound RecyclerView position and is covered by its existing tests.
+        adapter.release()
+    }
+
     @Test
     fun shortcutEntryClickNotifiesListener() {
         val adapter = SuggestionAdapter()
@@ -275,22 +297,6 @@ class SuggestionAdapterShortcutEntryClickTest {
 
         assertTrue(holder.itemView.performLongClick())
         assertFalse(normalCandidateLongClicked)
-        adapter.release()
-    }
-
-    @Test
-    fun guideVisibilityDoesNotInsertActionsIntoCandidatesOrEmptyStrip() {
-        val adapter = SuggestionAdapter()
-        adapter.setActiveShortcutTypes(setOf(
-            com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType.COMPOSING_GUIDE_TOGGLE
-        ))
-        adapter.submitContent(CandidateStripContent.Empty)
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(0, adapter.itemCount)
-        adapter.submitContent(CandidateStripContent.Candidates(candidates = listOf(candidate("通常候補"))))
-        drainMainUntilItemCount(adapter, 1)
-        assertEquals(1, adapter.itemCount)
-        assertEquals(SuggestionAdapter.VIEW_TYPE_SUGGESTION, adapter.getItemViewType(0))
         adapter.release()
     }
 

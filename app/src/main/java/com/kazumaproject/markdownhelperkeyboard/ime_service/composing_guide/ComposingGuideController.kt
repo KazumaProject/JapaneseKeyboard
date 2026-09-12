@@ -24,6 +24,7 @@ internal class ComposingGuideController(
     private val onStateChanged: () -> Unit,
     private val onSurfaceChanged: (LinearLayout?) -> Unit,
     private val colors: () -> CandidatePanelColors,
+    private val minimumCandidateHeight: () -> Int,
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = ComposingGuideSettings(preferences)
@@ -39,13 +40,16 @@ internal class ComposingGuideController(
     private var editing = false
     private var gesture: ComposingGuideGesture? = null
     private var previewTextSize: Float? = null
+    private var routingInputWindowTouch = false
+    private var lastMinimumHeight = 0
     private var mountedSurface: LinearLayout? = null
-    private val minimumContentHeight get() = if (!settings.showComposing) 168 else {
-        val textExtra = (ComposingGuideView.composingLineHeight(context, previewTextSize ?: settings.textSize) / density - 64).coerceAtLeast(0f).roundToInt()
-        232 + textExtra + if (content.visibleReading(true, settings.showReading).isNotEmpty())
-            (ComposingGuideView.readingLineHeight(context, previewTextSize ?: settings.textSize) / density).roundToInt() else 0
+    private val minimumContentHeight get(): Int {
+        val size = previewTextSize ?: settings.textSize
+        val textHeight = if (settings.showComposing) ComposingGuideView.composingLineHeight(context, if (content.text.isEmpty()) 14f else size) + dp(4) else 0
+        val readingHeight = if (content.visibleReading(settings.showComposing, settings.showReading).isNotEmpty())
+            ComposingGuideView.readingLineHeight(context, size) + dp(4) else 0
+        return kotlin.math.ceil((dp(60) + textHeight + readingHeight + minimumCandidateHeight()) / density).toInt()
     }
-    private var lastShortcutState: Pair<Boolean, Boolean>? = null
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
     private val extra get() = dp(ComposingGuideView.MOVE_BAND_DP) +
@@ -70,13 +74,6 @@ internal class ComposingGuideController(
         refresh()
     }
 
-    fun toggleVisible() {
-        finishGesture(commit = true)
-        leaveEditing()
-        settings.visible = !settings.visible
-        refresh()
-    }
-
     fun stop() {
         // Interrupted gestures are cancelled, not persisted during an editor/mode transition.
         gesture = null
@@ -86,17 +83,14 @@ internal class ComposingGuideController(
         dismiss()
         anchor?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(layoutListener)
         anchor = null
-        lastShortcutState = null
     }
 
     fun destroy() { stop(); preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener); guideView = null }
 
     fun refresh() {
         val allowed = settings.enabled && eligible()
-        val shortcutState = allowed to settings.visible
-        if (lastShortcutState != shortcutState) { lastShortcutState = shortcutState; onStateChanged() }
         val host = anchor
-        if (!active || !allowed || !settings.visible || host?.isAttachedToWindow != true) {
+        if (!active || !allowed || host?.isAttachedToWindow != true) {
             gesture = null
             leaveEditing()
             dismiss()
@@ -111,18 +105,35 @@ internal class ComposingGuideController(
         }
         landscape = nextLandscape
         area = nextArea
-        if (area.width() < dp(200) || area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP)) { dismiss(); return }
+        if (area.width() < dp(ComposingGuidePlacement.MIN_WIDTH_DP) || area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP)) { dismiss(); return }
         if (editing && area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP)) leaveEditing()
         val view = guideView ?: ComposingGuideView(context,
             onEdit = ::toggleEditing,
-            onHide = ::toggleVisible,
             onTextSize = { size, commit ->
                 previewTextSize = size
                 if (commit) { settings.textSize = size; previewTextSize = null }
                 refresh()
             },
             onHandleEvent = ::handleEvent,
-        ).also { guideView = it }
+        ).also { view ->
+            guideView = view
+            val minimumLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+                val minimum = minimumContentHeight
+                if (minimum != lastMinimumHeight) {
+                    lastMinimumHeight = minimum
+                    view.post { refresh() }
+                }
+            }
+            view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    lastMinimumHeight = 0
+                    v.viewTreeObserver.addOnGlobalLayoutListener(minimumLayoutListener)
+                }
+                override fun onViewDetachedFromWindow(v: View) {
+                    v.viewTreeObserver.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(minimumLayoutListener)
+                }
+            })
+        }
         view.setColors(colors())
         if (view.editing != editing) view.setEditing(editing)
         view.setEditAvailable(editing || area.height() >= dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + ComposingGuideView.EDIT_EXTRA_DP))
@@ -143,7 +154,34 @@ internal class ComposingGuideController(
             val height = (normal.height + extra).coerceAtMost(area.height())
             bounds = normal.copy(y = normal.y.coerceAtMost(area.bottom - height), height = height)
         }
+        bounds = bounds?.let { current ->
+            val height = current.height.coerceAtLeast(dp(minimumContentHeight) + extra).coerceAtMost(area.height())
+            current.copy(height = height, y = current.y.coerceIn(area.top, area.bottom - height))
+        }
         bounds?.let { updateWindow(it, host) }
+    }
+
+    /** InlineContentView transfers swipe focus to the IME window, not its hosting panel. */
+    fun dispatchInputWindowTouch(event: MotionEvent): Boolean {
+        val view = guideView?.takeIf { it.isAttachedToWindow && it.isShown }
+        if (view == null && !routingInputWindowTouch) return false
+        val location = IntArray(2)
+        view?.getLocationOnScreen(location)
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            routingInputWindowTouch = view != null && event.rawX >= location[0] &&
+                event.rawX < location[0] + view.width && event.rawY >= location[1] &&
+                event.rawY < location[1] + view.height
+        }
+        if (!routingInputWindowTouch) return false
+        if (view != null) {
+            val translated = MotionEvent.obtain(event)
+            translated.offsetLocation(event.rawX - event.x - location[0], event.rawY - event.y - location[1])
+            try { view.dispatchTouchEvent(translated) } finally { translated.recycle() }
+        }
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            routingInputWindowTouch = false
+        }
+        return true
     }
 
     private fun availableArea(host: View): Rect {
@@ -205,7 +243,7 @@ internal class ComposingGuideController(
                 if ((handle == GuideHandle.MOVE) == editing) return
                 val current = bounds ?: return
                 val reducer = gesture ?: ComposingGuideGesture(current,
-                    GuideBounds(area.left, area.top, area.width(), area.height()), dp(200), dp(minimumContentHeight) + extra)
+                    GuideBounds(area.left, area.top, area.width(), area.height()), dp(ComposingGuidePlacement.MIN_WIDTH_DP), dp(minimumContentHeight) + extra)
                     .also { gesture = it }
                 reducer.add(id, handle, points.getValue(id))
             }

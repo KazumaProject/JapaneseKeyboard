@@ -160,7 +160,7 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
 
     private fun renderCandidates() {
         val query = binding.shortcutAddSearchInput.text?.toString().orEmpty().trim()
-        val available = ShortcutType.entries.filterNot { it.runtimeOnly }
+        val available = ShortcutType.entries
             .filterNot { !AppVariantConfig.hasGemma && it in GEMMA_SHORTCUTS }
             .filterNot { it.id in selectedTypeIds }
             .filter { type ->

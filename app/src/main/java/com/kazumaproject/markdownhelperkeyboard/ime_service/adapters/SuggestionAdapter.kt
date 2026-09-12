@@ -1368,6 +1368,12 @@ class SuggestionAdapter internal constructor(
         fun dp(value: Int) = (value * density).toInt()
         val colors = floatingPanelColors ?: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(root.context)
         val ink = colors.text
+        if (holder is ShortcutViewHolder || holder is ShortcutEntryViewHolder) {
+            root.background = android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(colors.pressed, 100)),
+                null, GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(android.graphics.Color.WHITE) })
+            return
+        }
         val selected = position == 0 && (holder is SuggestionViewHolder || holder is ZeroQueryViewHolder)
         val candidateText = when (holder) {
             is SuggestionViewHolder -> holder.text
@@ -1817,12 +1823,12 @@ class SuggestionAdapter internal constructor(
         val shortcutType = item.shortcutType
         holder.imageView.apply {
             setImageResource(shortcutType.resolveShortcutIconResId())
-            contentDescription = shortcutType.actionDescription(holder.itemView.context, shortcutType in activeShortcutTypes)
+            contentDescription = shortcutType.description
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)
             } ?: clearColorFilter()
         }
-        holder.itemView.contentDescription = shortcutType.actionDescription(holder.itemView.context, shortcutType in activeShortcutTypes)
+        holder.itemView.contentDescription = shortcutType.description
         holder.itemView.setOnClickListener {
             val adapterPosition = holder.bindingAdapterPosition
             if (adapterPosition != RecyclerView.NO_POSITION) {

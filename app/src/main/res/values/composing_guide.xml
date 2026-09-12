@@ -8,8 +8,6 @@
     <string name="composing_guide_short_title">Candidates</string>
     <string name="composing_guide_edit">Edit guide</string>
     <string name="composing_guide_done">Finish editing guide</string>
-    <string name="composing_guide_hide">Hide candidate panel</string>
-    <string name="composing_guide_show">Show candidate panel</string>
     <string name="composing_guide_empty">Your composing text appears here</string>
     <string name="composing_guide_text_size">Text size</string>
     <string name="composing_guide_resize_left">Resize left edge</string>

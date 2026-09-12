@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 internal class InlineAutofillController(
     context: Context,
     private val onViewsChanged: (List<InlineContentView>) -> Unit,
+    private val maximumContentWidth: () -> Int? = { null },
 ) {
     // InlineContentView is attached to the IME window, so inflate it with the service context.
     private val hostContext = context
@@ -94,12 +95,16 @@ internal class InlineAutofillController(
             }
         }
 
+        val widthLimit = maximumContentWidth()?.takeIf { it > 0 }
         suggestions.forEachIndexed { index, suggestion ->
             runCatching {
+                val spec = suggestion.info.inlinePresentationSpec
+                val width = widthLimit?.coerceIn(spec.minSize.width, spec.maxSize.width)
+                    ?: ViewGroup.LayoutParams.WRAP_CONTENT
                 suggestion.inflate(
                     hostContext,
                     Size(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        width,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     ),
                     inflateExecutor,

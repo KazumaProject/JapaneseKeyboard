@@ -20,6 +20,8 @@ internal class CandidateSurfaceHost(
     private var tabViews = emptyList<View?>()
     private var tabPadding = emptyList<Pair<View, android.graphics.Rect>>()
     private var scrollbars = false to false
+    private var tabMode = 0
+    private var tabGravity = 0
     private var tabIndicator: android.graphics.drawable.Drawable? = null
     private val spacing = object : androidx.recyclerview.widget.RecyclerView.ItemDecoration() {
         override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: androidx.recyclerview.widget.RecyclerView, state: androidx.recyclerview.widget.RecyclerView.State) {
@@ -37,6 +39,25 @@ internal class CandidateSurfaceHost(
         override fun onChanged() = refreshToolbarLayout()
         override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = refreshToolbarLayout()
         override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = refreshToolbarLayout()
+    }
+
+    fun minimumHeightPx(): Int {
+        val density = toolbar.resources.displayMetrics.density
+        val row = (48 * density).toInt()
+        val tabHeight = if (tabs.visibility == View.VISIBLE) tabs.layoutParams.height.coerceAtLeast((36 * density).toInt()) else 0
+        val toolbarHeight = if (toolbar.visibility == View.VISIBLE)
+            ((toolbar as? androidx.recyclerview.widget.RecyclerView)?.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter)
+                ?.floatingPanelItemHeight(toolbar.context) ?: row else 0
+        val recycler = candidates as? androidx.recyclerview.widget.RecyclerView
+        val hasContent = (recycler?.adapter?.itemCount ?: 0) > 0
+        val candidateHeight = if (hasContent || toolbarHeight == 0) maxOf(row + (8 * density).toInt(),
+            (0 until (recycler?.childCount ?: 0)).maxOfOrNull { index ->
+                val child = recycler!!.getChildAt(index)
+                val label = child.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view)
+                    ?: child.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.zero_query_item_text_view)
+                label?.let { kotlin.math.ceil(it.paint.fontMetrics.descent - it.paint.fontMetrics.ascent + 24 * density).toInt() } ?: maxOf(row, child.layoutParams.height) + (8 * density).toInt()
+            } ?: row) else 0
+        return tabHeight + toolbarHeight + candidateHeight
     }
 
     private fun refreshToolbarLayout() {
@@ -66,6 +87,10 @@ internal class CandidateSurfaceHost(
         backgrounds = listOf(toolbar, tabs, strip).map { it to it.background }
         (candidates as? androidx.recyclerview.widget.RecyclerView)?.addItemDecoration(spacing)
         (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
+            tabMode = layout.tabMode
+            tabGravity = layout.tabGravity
+            layout.tabMode = com.google.android.material.tabs.TabLayout.MODE_SCROLLABLE
+            layout.tabGravity = com.google.android.material.tabs.TabLayout.GRAVITY_START
             tabIndicator = layout.tabSelectedIndicator
             tabViews = (0 until layout.tabCount).map { layout.getTabAt(it)?.customView }
         }
@@ -120,6 +145,8 @@ internal class CandidateSurfaceHost(
         (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
             tabViews.forEachIndexed { index, view -> layout.getTabAt(index)?.customView = view }
             layout.setSelectedTabIndicator(tabIndicator)
+            layout.tabMode = tabMode
+            layout.tabGravity = tabGravity
         }
         tabPadding.forEach { (view, padding) -> view.setPadding(padding.left, padding.top, padding.right, padding.bottom) }
         tabPadding = emptyList()
