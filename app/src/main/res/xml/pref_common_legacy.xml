@@ -56,6 +56,21 @@
             android:title="@string/composing_guide_title"
             android:summary="@string/composing_guide_summary" />
 
+        <SwitchPreferenceCompat
+            android:key="composing_guide_show_composing"
+            android:dependency="composing_guide_enabled"
+            android:defaultValue="true"
+            android:title="@string/composing_guide_show_composing" />
+
+        <ListPreference
+            android:key="composing_guide_scroll_direction"
+            android:dependency="composing_guide_enabled"
+            android:defaultValue="horizontal"
+            android:title="@string/composing_guide_scroll_direction"
+            android:entries="@array/composing_guide_scroll_labels"
+            android:entryValues="@array/composing_guide_scroll_values"
+            app:useSimpleSummaryProvider="true" />
+
         <Preference
             android:key="composing_guide_reset"
             android:dependency="composing_guide_enabled"

@@ -20,6 +20,8 @@ class ComposingGuideSettingsTest {
     @Test fun defaultOffAndIndependentOrientationPersistence() {
         val settings = ComposingGuideSettings(preferences)
         assertFalse(settings.enabled)
+        assertTrue(settings.showComposing)
+        assertFalse(settings.verticalCandidates)
         val saved = ComposingGuidePlacement(.2f, .7f, 320f, 180f)
         settings.save(false, saved)
         settings.textSize = 36f
@@ -29,6 +31,17 @@ class ComposingGuideSettingsTest {
         assertEquals(saved, reopened.load(false))
         assertEquals(ComposingGuidePlacement(), reopened.load(true))
         assertEquals(36f, reopened.textSize)
+    }
+
+    @Test fun candidateOptionsPersistAndGeometryResetPreservesThem() {
+        preferences.edit().putBoolean(ComposingGuideSettings.SHOW_COMPOSING, false)
+            .putString(ComposingGuideSettings.SCROLL_DIRECTION, "vertical").commit()
+        val reopened = ComposingGuideSettings(preferences)
+        assertFalse(reopened.showComposing)
+        assertTrue(reopened.verticalCandidates)
+        ComposingGuideSettings.reset(preferences)
+        assertFalse(reopened.showComposing)
+        assertTrue(reopened.verticalCandidates)
     }
 
     @Test fun resetPreservesEnabledAndExistingKeyboardSettings() {
