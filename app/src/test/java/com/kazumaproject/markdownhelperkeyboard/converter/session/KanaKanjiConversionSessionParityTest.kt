@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.session
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.BunsetsuConversionSnapshot
+import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunsetsuSegments
+import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
@@ -21,6 +24,38 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class KanaKanjiConversionSessionParityTest {
+
+    @Test
+    fun bunsetsuDisplayPreservesFullLatticeResultAcrossBackendsAndCandidateLoading() = runBlocking {
+        val input = "あしたはとうきょうにいきます"
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.PREDICTION, CandidateQueryMode.CONVERSION)) {
+                val query = request(input, mode, bunsetsu = true)
+                val result = session.query(query)
+                val first = result.candidates.first()
+                val splits = result.bunsetsuResult!!.primarySplitPositions
+                assertTrue("$backend/$mode must have multiple bunsetsu", splits.size >= 2)
+                val segments = buildConvertedBunsetsuSegments(
+                    input, splits,
+                    BunsetsuConversionSnapshot(input, result.candidates, result.candidateSegmentsByString),
+                )
+                assertTrue("$backend/$mode must provide exact paths", segments.all { it.hasConvertedDisplay })
+                assertEquals(first.string, segments.joinToString("") { it.displayText })
+                for (segment in segments) {
+                    val alternatives = session.query(request(segment.reading, CandidateQueryMode.CONVERSION, true))
+                    val loaded = mergeBunsetsuCandidates(segment, alternatives.candidates.filter {
+                        it.length.toInt() == segment.reading.length
+                    })
+                    assertEquals(segment.displayText, loaded.displayText)
+                    assertEquals(segment.displayText, loaded.candidates[loaded.selectedIndex].string)
+                }
+                // Collection changes metadata only, not the converter's scores or ordering.
+                val withoutPaths = session.query(query.copy(collectCandidateSegments = false))
+                assertEquals(result.candidates.fingerprint(), withoutPaths.candidates.fingerprint())
+            }
+        }
+    }
 
     @Test
     fun incrementalSessionMatchesLegacyAcrossModesAndBunsetsu() = runBlocking {

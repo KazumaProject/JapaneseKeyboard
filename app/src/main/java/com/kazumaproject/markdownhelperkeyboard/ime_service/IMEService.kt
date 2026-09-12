@@ -455,18 +455,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         QwertyGlideDecode
     }
 
-    private data class BunsetsuSegmentState(
-        val reading: String,
-        val displayText: String,
-        val candidates: List<Candidate> = emptyList(),
-        val selectedIndex: Int = 0,
-        val overrideDisplayCandidate: Candidate? = null
-    )
-
     private data class BunsetsuConversionSession(
         val rawInput: String,
         val conversionInput: String,
         val segments: List<BunsetsuSegmentState>,
+        val generation: Long,
+        val conversionSnapshot: BunsetsuConversionSnapshot?,
         val tailText: String = "",
         val focusedIndex: Int = 0,
         val splitPatterns: List<List<Int>> = emptyList(),
@@ -699,6 +693,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuPositionList: List<Int>? = emptyList()
     private var bunsetsuSplitPatterns: List<List<Int>> = emptyList()
     private var bunsetsuConversionSession: BunsetsuConversionSession? = null
+    private var latestBunsetsuConversionSnapshot: BunsetsuConversionSnapshot? = null
+    private var bunsetsuSessionGeneration = 0L
+    private val bunsetsuOperationMutex = Mutex()
     private var pendingReconversionEntry: ReconversionEntry? = null
     private var pendingReconversionValid: Boolean = false
     private val reconversionValidationRequestId = AtomicLong(0L)
@@ -18809,9 +18806,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun normalizeBunsetsuSplitPatterns(
         input: String,
-        splitPatterns: List<List<Int>>
+        splitPatterns: List<List<Int>>,
+        initialSplitPositions: List<Int>,
     ): List<List<Int>> {
-        val initialPattern = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty())
+        val initialPattern = sanitizeSplitPositions(input, initialSplitPositions)
         val normalizedPatterns = splitPatterns
             .map { sanitizeSplitPositions(input, it) }
             .distinct()
@@ -18850,9 +18848,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateBunsetsuStateAfterCandidateMerge(
         input: String,
         mergedCandidates: List<Candidate>,
-        engineResult: BunsetsuCandidateResult?
+        engineResult: BunsetsuCandidateResult?,
+        candidateSegments: Map<String, List<CandidateConversionSegment>>,
     ) {
         if (bunsetsuSeparation != true || engineResult == null) {
+            latestBunsetsuConversionSnapshot = null
             bunsetsuSplitPatterns = emptyList()
             bunsetsuPositionList = emptyList()
             return
@@ -18866,32 +18866,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mergedCandidates = mergedCandidates,
             engineResult = engineResult
         )
+        latestBunsetsuConversionSnapshot = BunsetsuConversionSnapshot(
+            input, mergedCandidates, candidateSegments, bunsetsuSplitPatterns,
+            bunsetsuPositionList.orEmpty(),
+        )
     }
 
     private fun buildBunsetsuSegments(
         input: String,
-        splitPositions: List<Int>
-    ): List<BunsetsuSegmentState> {
-        val sanitizedSplitPositions = sanitizeSplitPositions(input, splitPositions)
-
-        val boundaries = buildList {
-            add(0)
-            addAll(sanitizedSplitPositions)
-            add(input.length)
-        }.distinct()
-
-        return boundaries.zipWithNext()
-            .mapNotNull { (start, end) ->
-                input.substring(start, end)
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { reading ->
-                        BunsetsuSegmentState(
-                            reading = reading,
-                            displayText = reading
-                        )
-                    }
-            }
-    }
+        splitPositions: List<Int>,
+        snapshot: BunsetsuConversionSnapshot?,
+    ): List<BunsetsuSegmentState> = buildConvertedBunsetsuSegments(
+        input, sanitizeSplitPositions(input, splitPositions), snapshot, ::displayTextFromCandidate,
+    )
 
     private fun displayTextFromCandidate(candidate: Candidate): String {
         return if (candidate.type == (15).toByte()) {
@@ -18901,39 +18888,75 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private suspend fun queryBunsetsuConversion(input: String): KanaKanjiQueryResult {
+        // Query the converter directly: suggestion lookup also mutates the whole-input split state.
+        val result = withContext(kanaKanjiConversionDispatcher) {
+            queryKanaKanjiCore(
+                input = input,
+                mode = CandidateQueryMode.CONVERSION,
+                learnRepository = learnedRepositoryForSuggestion(),
+            )
+        }
+        val romajiCandidates = if (conversionCandidatesRomajiEnablePreference == true) {
+            getRomajiCandidates(input)
+        } else {
+            emptyList()
+        }
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        val candidates = (result.candidates + romajiCandidates).filter {
+            it.length.toInt() == input.length &&
+                !NgWordMatcher.matchesAny(input, it.string, ngWords)
+        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            candidateOrderOverrideRepository.applyOrderFromSnapshot(
+                input = input,
+                candidates = candidates,
+                candidateSegmentsByString = result.candidateSegmentsByString,
+            )
+        } else candidates
+        return result.copy(candidates = orderedCandidates)
+    }
+
     private suspend fun loadCandidatesForBunsetsuSegment(
         session: BunsetsuConversionSession,
         segmentIndex: Int,
-        mainView: MainLayoutBinding
     ): BunsetsuConversionSession {
-        if (segmentIndex !in session.segments.indices) return session
+        val targetSegment = session.segments.getOrNull(segmentIndex) ?: return session
+        if (targetSegment.candidatesLoaded) return session
 
-        val targetSegment = session.segments[segmentIndex]
-        if (targetSegment.candidates.isNotEmpty()) return session
-
-        val previousPositions = bunsetsuPositionList
-        val previousSplitPatterns = bunsetsuSplitPatterns
-        val targetReadingLength = targetSegment.reading.length
-        val candidates = try {
-            getSuggestionList(targetSegment.reading, mainView).filter {
-                it.length.toInt() == targetReadingLength
-            }
-        } finally {
-            bunsetsuPositionList = previousPositions
-            bunsetsuSplitPatterns = previousSplitPatterns
-        }
-
-        val displayText = candidates.firstOrNull()?.let(::displayTextFromCandidate)
-            ?: targetSegment.reading
-
+        val candidates = queryBunsetsuConversion(targetSegment.reading).candidates
         val updatedSegments = session.segments.toMutableList()
-        updatedSegments[segmentIndex] = targetSegment.copy(
-            candidates = candidates,
-            displayText = displayText,
-            selectedIndex = 0,
-            overrideDisplayCandidate = null
+        updatedSegments[segmentIndex] = mergeBunsetsuCandidates(
+            targetSegment, candidates, ::displayTextFromCandidate,
         )
         return session.copy(segments = updatedSegments)
+    }
+
+    private suspend fun prepareBunsetsuSegments(
+        session: BunsetsuConversionSession,
+    ): BunsetsuConversionSession {
+        var prepared = session
+        for (index in session.segments.indices) {
+            if (index == session.focusedIndex || !session.segments[index].hasConvertedDisplay) {
+                prepared = loadCandidatesForBunsetsuSegment(prepared, index)
+            }
+        }
+        return prepared
+    }
+
+    private fun launchBunsetsuOperation(
+        operation: suspend (BunsetsuConversionSession) -> Unit,
+    ) {
+        val generation = bunsetsuConversionSession?.generation ?: return
+        scope.launch {
+            bunsetsuOperationMutex.withLock {
+                val current = bunsetsuConversionSession ?: return@withLock
+                if (current.generation != generation || !isBunsetsuCursorMoveSessionActive()) {
+                    return@withLock
+                }
+                operation(current)
+            }
+        }
     }
 
     private suspend fun activateBunsetsuConversionSession(
@@ -18941,43 +18964,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
     ): Boolean {
-        if (!shouldUseBunsetsuCursorMoveSession()) return false
+        val requestedGeneration = bunsetsuSessionGeneration
+        return bunsetsuOperationMutex.withLock {
+            if (requestedGeneration != bunsetsuSessionGeneration || inputString.value != input) {
+                return@withLock true
+            }
+            if (!shouldUseBunsetsuCursorMoveSession()) return@withLock false
+            if (isBunsetsuCursorMoveSessionActive()) return@withLock true
 
-        val tailText = stringInTail.get()
-        val splitPatterns = normalizeBunsetsuSplitPatterns(input, bunsetsuSplitPatterns)
-        val initialSplitPositions = splitPatterns.firstOrNull().orEmpty()
-        val initialSegments = buildBunsetsuSegments(input, initialSplitPositions)
-        if (initialSegments.isEmpty()) {
-            clearBunsetsuConversionSession()
-            return false
+            val tailText = stringInTail.get()
+            val snapshot = latestBunsetsuConversionSnapshot?.takeIf { it.input == input }
+                ?: queryBunsetsuConversion(input).let { result ->
+                    BunsetsuConversionSnapshot(
+                        input = input,
+                        candidates = result.candidates,
+                        paths = result.candidateSegmentsByString,
+                        splitPatterns = result.bunsetsuResult?.splitPatterns.orEmpty(),
+                        initialSplitPositions = resolveInitialBunsetsuSplitPositions(
+                            input, result.candidates, result.bunsetsuResult,
+                        ),
+                    )
+                }
+            if (requestedGeneration != bunsetsuSessionGeneration || inputString.value != input) {
+                return@withLock true
+            }
+            val splitPatterns = normalizeBunsetsuSplitPatterns(
+                input, snapshot.splitPatterns, snapshot.initialSplitPositions,
+            )
+            val initialSplitPositions = splitPatterns.firstOrNull().orEmpty()
+            val initialSegments = buildBunsetsuSegments(input, initialSplitPositions, snapshot)
+            if (initialSegments.isEmpty()) {
+                clearBunsetsuConversionSession()
+                return@withLock false
+            }
+
+            val initialSession = BunsetsuConversionSession(
+                rawInput = input + tailText,
+                generation = ++bunsetsuSessionGeneration,
+                conversionSnapshot = snapshot,
+                conversionInput = input,
+                segments = initialSegments,
+                tailText = tailText,
+                focusedIndex = 0,
+                splitPatterns = splitPatterns,
+                activeSplitPatternIndex = 0
+            )
+
+            clearZenzLiveSlot("bunsetsu conversion session activated")
+            isHenkan.set(true)
+            henkanPressedWithBunsetsuDetect = true
+            bunsetusMultipleDetect = true
+            stringInTail.set("")
+            suggestionClickNum = 0
+            currentHighlightIndex = RecyclerView.NO_POSITION
+            bunsetsuPositionList = initialSplitPositions
+            bunsetsuSplitPatterns = splitPatterns
+            bunsetsuConversionSession = initialSession
+            val prepared = prepareBunsetsuSegments(initialSession)
+            if (bunsetsuConversionSession !== initialSession || !isBunsetsuCursorMoveSessionActive()) {
+                return@withLock true
+            }
+            bunsetsuConversionSession = prepared
+            renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+            true
         }
-
-        val initialSession = BunsetsuConversionSession(
-            rawInput = input + tailText,
-            conversionInput = input,
-            segments = initialSegments,
-            tailText = tailText,
-            focusedIndex = 0,
-            splitPatterns = splitPatterns,
-            activeSplitPatternIndex = 0
-        )
-
-        clearZenzLiveSlot("bunsetsu conversion session activated")
-        isHenkan.set(true)
-        henkanPressedWithBunsetsuDetect = true
-        bunsetusMultipleDetect = true
-        stringInTail.set("")
-        suggestionClickNum = 0
-        currentHighlightIndex = RecyclerView.NO_POSITION
-        bunsetsuPositionList = initialSplitPositions
-        bunsetsuSplitPatterns = splitPatterns
-        bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
-            initialSession,
-            segmentIndex = 0,
-            mainView = mainView
-        )
-        renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-        return true
     }
 
     private fun buildBunsetsuSegmentRanges(
@@ -19026,19 +19076,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
         val mainView = mainLayoutBinding ?: return false
-        val session = bunsetsuConversionSession ?: return false
-        if (session.splitPatterns.size <= 1) return false
+        if ((bunsetsuConversionSession?.splitPatterns?.size ?: 0) <= 1) return false
 
-        scope.launch {
+        launchBunsetsuOperation { session ->
             val nextPatternIndex =
                 ((session.activeSplitPatternIndex + delta) % session.splitPatterns.size + session.splitPatterns.size) % session.splitPatterns.size
             val nextSplitPositions = session.splitPatterns[nextPatternIndex]
             val rebuiltSegments = buildBunsetsuSegments(
                 input = session.conversionInput,
-                splitPositions = nextSplitPositions
+                splitPositions = nextSplitPositions,
+                snapshot = session.conversionSnapshot,
             )
             if (rebuiltSegments.isEmpty()) {
-                return@launch
+                return@launchBunsetsuOperation
             }
 
             val nextFocusedIndex = findFocusedSegmentIndexForSplitPattern(
@@ -19052,13 +19102,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 focusedIndex = nextFocusedIndex,
                 activeSplitPatternIndex = nextPatternIndex
             )
+            val prepared = prepareBunsetsuSegments(switchedSession)
+            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+                return@launchBunsetsuOperation
+            }
             bunsetsuPositionList = nextSplitPositions
             bunsetsuSplitPatterns = session.splitPatterns
-            bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
-                switchedSession,
-                segmentIndex = nextFocusedIndex,
-                mainView = mainView
-            )
+            bunsetsuConversionSession = prepared
             renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
         }
         return true
@@ -19256,6 +19306,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearBunsetsuConversionSession() {
+        bunsetsuSessionGeneration++
         bunsetsuConversionSession = null
         bunsetusMultipleDetect = false
     }
@@ -19322,17 +19373,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
         val mainView = mainLayoutBinding ?: return false
-        val session = bunsetsuConversionSession ?: return false
-        val nextIndex = (session.focusedIndex + delta).coerceIn(0, session.segments.lastIndex)
-        if (nextIndex == session.focusedIndex) return true
-
-        scope.launch {
+        launchBunsetsuOperation { session ->
+            val nextIndex = (session.focusedIndex + delta).coerceIn(0, session.segments.lastIndex)
+            if (nextIndex == session.focusedIndex) return@launchBunsetsuOperation
             val movedSession = session.copy(focusedIndex = nextIndex)
-            bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
+            val loadedSession = loadCandidatesForBunsetsuSegment(
                 movedSession,
-                segmentIndex = nextIndex,
-                mainView = mainView
+                segmentIndex = nextIndex
             )
+            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+                return@launchBunsetsuOperation
+            }
+            bunsetsuConversionSession = loadedSession
             renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
         }
         return true
@@ -19344,19 +19396,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
         val mainView = mainLayoutBinding ?: return false
-        val session = bunsetsuConversionSession ?: return false
-
-        scope.launch {
+        launchBunsetsuOperation { session ->
             val loadedSession = loadCandidatesForBunsetsuSegment(
                 session,
-                segmentIndex = session.focusedIndex,
-                mainView = mainView
+                segmentIndex = session.focusedIndex
             )
+            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+                return@launchBunsetsuOperation
+            }
             val segment = loadedSession.segments[loadedSession.focusedIndex]
             if (segment.candidates.isEmpty()) {
                 bunsetsuConversionSession = loadedSession
                 renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-                return@launch
+                return@launchBunsetsuOperation
             }
 
             val candidateCount = segment.candidates.size
@@ -24690,7 +24742,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateBunsetsuStateAfterCandidateMerge(
                 input = insertString,
                 mergedCandidates = orderedCandidates,
-                engineResult = engineResult
+                engineResult = engineResult,
+                candidateSegments = coreResult.candidateSegmentsByString,
             )
         }
 
@@ -24824,7 +24877,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateBunsetsuStateAfterCandidateMerge(
                 input = insertString,
                 mergedCandidates = orderedCandidates,
-                engineResult = engineResult
+                engineResult = engineResult,
+                candidateSegments = coreResult.candidateSegmentsByString,
             )
         }
 
@@ -24947,7 +25001,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateBunsetsuStateAfterCandidateMerge(
                 input = insertString,
                 mergedCandidates = orderedCandidates,
-                engineResult = engineResult
+                engineResult = engineResult,
+                candidateSegments = coreResult.candidateSegmentsByString,
             )
         }
 
@@ -25048,7 +25103,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 beamWidth = conversionBeamWidth,
                 predictionConfig = predictionConfig,
                 collectCandidateSegments =
-                    appPreference.candidate_order_override_enable_preference == true,
+                    appPreference.candidate_order_override_enable_preference == true ||
+                        shouldUseBunsetsuCursorMoveSession(),
             )
         )
         if (BuildConfig.DEBUG) {
