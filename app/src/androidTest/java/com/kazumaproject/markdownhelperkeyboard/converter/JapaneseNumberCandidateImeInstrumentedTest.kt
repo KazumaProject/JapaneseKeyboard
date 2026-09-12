@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -31,6 +32,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
         val context = instrumentation.targetContext
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all
+        val orderOnly = InstrumentationRegistry.getArguments().getString("number_order_only") == "true"
         fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
             instrumentation.uiAutomation.executeShellCommand(command),
         ).bufferedReader().use { it.readText().trim() }
@@ -53,7 +55,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                 .putBoolean("candidate_order_override_enable_preference", false)
                 .putString("candidate_tab_preference", """["PREDICTION","CONVERSION","EISUKANA"]""")
                 .commit()
-            for (incremental in listOf(false, true)) for (bunsetsu in listOf(false, true)) {
+            for (incremental in if (orderOnly) emptyList() else listOf(false, true)) for (bunsetsu in listOf(false, true)) {
                 for (tab in listOf("予測", "変換", "英数カナ", null)) {
                     preferences.edit()
                         .putBoolean("incremental_conversion_session_preference", incremental)
@@ -64,10 +66,11 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                         Intent(context, FastInputHostActivity::class.java),
                     )
                     try {
-                        for ((reading, expected) in listOf(
+                        val positiveCases = listOf(
                             "よじ" to "4時", "さんにん" to "3人",
                             "ごえん" to "5円", "にじゅっぷん" to "20分", "に" to "２",
-                        )) {
+                        ) + if (tab == "英数カナ") emptyList() else listOf("しちごさん" to "七五三")
+                        for ((reading, expected) in positiveCases) {
                             instrumentation.sendStatus(2, Bundle().apply {
                                 putString("stream", "Checking incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading\n")
                             })
@@ -110,6 +113,22 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                                 putString("stream", "NUMBER_CANDIDATE_COMMIT incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading PASS\n")
                             })
                         }
+                        for (reading in listOf("ごぜん", "ぜんご")) {
+                            scenario.onActivity { it.restartEditorInput(true) }
+                            instrumentation.waitForIdleSync()
+                            SystemClock.sleep(1500)
+                            typeNumberReadingWithFlicks(reading)
+                            awaitEditorText(scenario, reading, committed = false)
+                            if (tab != null) {
+                                assertTrue(tap(awaitVisibleText(tab).center()))
+                                SystemClock.sleep(250)
+                            }
+                            val observed = inspectCandidateStrip()
+                            assertNoNumericCandidates(reading, observed)
+                            instrumentation.sendStatus(2, Bundle().apply {
+                                putString("stream", "NUMBER_FORBIDDEN_MODE_UI incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading PASS\n")
+                            })
+                        }
                     } finally {
                         scenario.close()
                     }
@@ -120,23 +139,14 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                 .putBoolean("conversion_bunsetsu_separation_preference", true).commit()
             val extra = ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java))
             try {
-                for (reading in listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく", "にほんご", "はちみつ", "いちちょう", "はちちょう", "じゅうちょう")) {
+                for (reading in if (orderOnly) emptyList() else listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく", "にほんご", "はちみつ", "いちちょう", "はちちょう", "じゅうちょう", "じゅ", "ひゃ", "いっ")) {
                     extra.onActivity { it.restartEditorInput(true) }
                     instrumentation.waitForIdleSync()
                     SystemClock.sleep(1500)
                     typeNumberReadingWithFlicks(reading)
                     awaitEditorText(extra, reading, committed = false)
                     SystemClock.sleep(500)
-                    val observed = linkedSetOf<String>()
-                    repeat(12) {
-                        instrumentation.uiAutomation.windows.mapNotNull { it.root }.forEach { root ->
-                            collectCandidateTexts(root, observed)
-                        }
-                        findVisibleNodeById("suggestion_recycler_view")?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
-                        SystemClock.sleep(50)
-                    }
-                    val numeric = Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹①-⑳❶-❿]|^[〇零一二三四五六七八九十百千万億兆京]+(?:時|分|人|円)?$")
-                    assertTrue("$reading unexpected visible candidates: $observed", observed.none { numeric.containsMatchIn(it) })
+                    assertNoNumericCandidates(reading, inspectCandidateStrip())
                     instrumentation.sendStatus(2, Bundle().apply { putString("stream", "NUMBER_FORBIDDEN_UI input=$reading PASS\n") })
                 }
                 for (order in com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.entries) {
@@ -149,6 +159,8 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                         SystemClock.sleep(1500)
                         typeNumberReadingWithFlicks("さんにん")
                         awaitEditorText(extra, forms[order.indices.first()], committed = false)
+                        val displayed = inspectCandidateStrip()
+                        assertEquals("Visible order $order", order.indices.map(forms::get), displayed.filter { it in forms })
                         var candidate: AccessibilityNodeInfo? = null
                         repeat(12) {
                             if (candidate == null) {
@@ -188,9 +200,34 @@ class JapaneseNumberCandidateImeInstrumentedTest {
         }
     }
 
+    private fun inspectCandidateStrip(): List<String> {
+        val observed = linkedSetOf<String>()
+        repeat(12) {
+            instrumentation.uiAutomation.windows.mapNotNull { it.root }.forEach { collectCandidateTexts(it, observed) }
+            findVisibleNodeById("suggestion_recycler_view")?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            SystemClock.sleep(50)
+        }
+        // RecyclerView scroll actions animate asynchronously. Without waiting, repeated
+        // actions coalesce and leave the first candidates off-screen before selection.
+        repeat(24) {
+            val moved = findVisibleNodeById("suggestion_recycler_view")
+                ?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) == true
+            if (moved) SystemClock.sleep(100)
+        }
+        SystemClock.sleep(250)
+        assertTrue("Candidate inspection must not pass on an empty strip", observed.isNotEmpty())
+        return observed.toList()
+    }
+
+    private fun assertNoNumericCandidates(reading: String, observed: List<String>) {
+        val numeric = Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿⑴-⒛㉑-㉟㊱-㊿Ⅰ-Ⅻⅰ-ⅻ]|^[〇零一二三四五六七八九十百千万億兆京]+(?:時|分|人|円)?$")
+        assertTrue("$reading unexpected visible candidates: $observed", observed.none { numeric.containsMatchIn(it) })
+    }
+
     private fun collectCandidateTexts(node: AccessibilityNodeInfo, output: MutableSet<String>) {
         if (node.isVisibleToUser && node.viewIdResourceName?.endsWith(":id/suggestion_item_text_view") == true) {
-            node.text?.toString()?.let(output::add)
+            // SuggestionAdapter pads labels with spaces for touch targets.
+            node.text?.toString()?.trim()?.let(output::add)
         }
         for (index in 0 until node.childCount) node.getChild(index)?.let { collectCandidateTexts(it, output) }
     }

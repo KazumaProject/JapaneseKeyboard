@@ -1035,6 +1035,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        // Every strip entry point (including cached/zenz snapshot restoration) ends here.
+        // Revalidate against the current input/config before any candidate reaches the UI.
+        val activeReading = inputString.value
+        if (activeReading.isNotEmpty()) {
+            currentCandidateStripCandidates = NumberCandidatePolicy.filter(activeReading, currentCandidateStripCandidates, predictionConfig)
+            currentCandidateStripFullCandidates = NumberCandidatePolicy.filter(activeReading, currentCandidateStripFullCandidates, predictionConfig)
+        }
+
         // CandidateShowFlag.Updating can be emitted once with an empty input while the
         // editor/IME is being recreated (for example, after hiding and showing the keyboard).
         // That event must not make the empty strip behave like an active conversion strip.

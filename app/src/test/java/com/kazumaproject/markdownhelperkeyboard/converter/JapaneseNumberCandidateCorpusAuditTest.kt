@@ -65,7 +65,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
 
     @Test
     fun finalCandidatesAcrossModesBackendsSegmentationSettingsAndInputEdits() = runBlocking {
-        val invalid = listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく")
+        val invalid = listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく", "じゅ", "ひゃ", "いっ")
         val ordinary = readings.asSequence().filter { it.length in 2..12 && it.all { c -> c in 'ぁ'..'ゖ' } }
             .sortedBy(String::hashCode).take(1000).toList()
         val corpus = (readings.filter { input -> suffixes.any(input::endsWith) } + reviewed.keys + invalid + ordinary).distinct()
@@ -177,6 +177,23 @@ class JapaneseNumberCandidateCorpusAuditTest {
     }
 
     @Test
+    fun lexicalWordsThatContainNumeralsAreNotRemoved() = runBlocking {
+        val expected = mapOf("しちごさん" to "七五三", "じゅうぶん" to "十分", "にほんご" to "日本語")
+        val failures = mutableListOf<String>()
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for ((input, word) in expected) for (mode in CandidateQueryMode.entries.filter { it != CandidateQueryMode.EISUKANA }) for (bunsetsu in listOf(false, true)) {
+                val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
+                    repository, null, false, false, false, 3000, 1900, 20)
+                val candidates = session.query(request).candidates
+                if (candidates.none { it.string == word }) failures += "$input/$backend/$mode/$bunsetsu missing $word"
+            }
+        }
+        report("lexical-word-review-failures.txt", failures.joinToString("\n"))
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test
     fun everyValueThrough9999KeepsAllThreeFormsAcrossAllFinalPaths() = runBlocking {
         var comparisons = 0
         for (backend in ConversionBackend.entries) {
@@ -204,7 +221,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
     @Test
     fun persistedInvalidHistoryNeverReappearsAndValidDictionaryDuplicatesRetainProof() = runBlocking {
         val history = org.mockito.Mockito.mock(com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository::class.java)
-        val invalidSurfaces = listOf("1005", "１００５", "千五", "1,005", "10月5日", "10⁸", "①", "全5")
+        val invalidSurfaces = listOf("1005", "１００５", "千五", "1,005", "10月5日", "10⁸", "①", "全5", "全５", "全五")
         val entries = invalidSurfaces.map {
             com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("ぜんご", it, score = -100000)
         } + listOf(
@@ -239,7 +256,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
             }
         }
         // The backing rows were not deleted or rewritten by visibility filtering.
-        assertEquals(10, entries.size)
+        assertEquals(12, entries.size)
         org.mockito.Mockito.verify(history, org.mockito.Mockito.never()).deleteAll()
     }
 

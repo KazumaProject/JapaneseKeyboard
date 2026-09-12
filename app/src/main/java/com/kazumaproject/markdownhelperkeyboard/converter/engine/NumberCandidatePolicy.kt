@@ -12,7 +12,7 @@ object NumberCandidatePolicy {
     private val derived = Regex("(?:[0-9０-９]+[⁰¹²³⁴⁵⁶⁷⁸⁹]+|[⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]+|[0-9０-９]+[:/][0-9０-９]+|[0-9０-９]+月[0-9０-９]+日|[0-9０-９]+時[0-9０-９]+分)")
     // Lexical words, not numeral readings. Only automatic dictionary words may use this list;
     // generated variants always require a proof. Keep paired readings, never blanket exceptions.
-    private val lexical = setOf("じゅうぶん" to "十分", "いちぶん" to "一分", "まんいち" to "万一")
+    private val lexical = setOf("じゅうぶん" to "十分", "いちぶん" to "一分", "まんいち" to "万一", "しちごさん" to "七五三")
     private fun explicit(candidate: Candidate): Boolean = candidate.type in setOf(
         CANDIDATE_TYPE_USER_DICTIONARY, CANDIDATE_TYPE_USER_TEMPLATE, CANDIDATE_TYPE_TEXT_MACRO)
 
@@ -31,24 +31,36 @@ object NumberCandidatePolicy {
         candidate.number?.let { proof ->
             if (candidate.generatedNumber && proof.origin == NumberInputOrigin.READING && !config.japaneseNumberCandidatesEnabled) return false
             if (candidate.generatedNumber && proof.reading != input) return false
-            if (!candidate.generatedNumber && !(proof.reading.startsWith(input) || input.startsWith(proof.reading))) return false
-            return validSurface(proof, candidate.string) && validSurface(proof, candidate.commitText)
+            if (proof.reading != input) return false
+            return candidate.commitText == candidate.string && validSurface(proof, candidate.string)
         }
         val reading = candidate.yomi ?: input.take(candidate.length.toInt())
-        if (candidate.conversionSegments.any { it.source == CandidateSource.USER_DICTIONARY }) {
-            return candidate.conversionSegments.all { it.source == CandidateSource.USER_DICTIONARY ||
-                eligibleSurface(it.reading ?: input.substring(it.inputStart, it.inputEnd), it.output) }
+        val segments = candidate.conversionSegments
+        val hasSegments = segments.isNotEmpty()
+        val numericCandidate = containsNumericText(reading, candidate.string) || containsNumericText(reading, candidate.commitText) ||
+            segments.any { containsNumericText(it.reading ?: reading, it.output) }
+        if (numericCandidate && candidate.commitText != candidate.string) return false
+        if (numericCandidate && reading != input) return false
+        if (hasSegments) {
+            var end = 0
+            for (segment in segments) {
+                if (segment.inputStart != end || segment.inputEnd !in segment.inputStart..reading.length) return false
+                if (numericCandidate && segment.reading != null &&
+                    segment.reading != reading.substring(segment.inputStart, segment.inputEnd)) return false
+                end = segment.inputEnd
+            }
+            if (end != reading.length) return false
+            // A path proves only its own output. Copies must not borrow its proof for a
+            // different display/commit string, including paths containing user entries.
+            if (segments.joinToString("") { it.output } != candidate.string) return false
+            if (segments.any { it.source == CandidateSource.USER_DICTIONARY } &&
+                candidate.commitText != candidate.string) return false
+            if (!validNumericRuns(reading, segments)) return false
+            if (segments.any { it.source == CandidateSource.USER_DICTIONARY }) return true
+        } else if (unmappedDigits(reading, candidate.string) || unmappedDigits(reading, candidate.commitText)) {
+            return false
         }
-        if (!validNumericRuns(input, candidate.conversionSegments)) return false
-        val hasSegments = candidate.conversionSegments.isNotEmpty()
-        if (!hasSegments && (unmappedDigits(reading, candidate.string) || unmappedDigits(reading, candidate.commitText))) return false
-        if (!eligibleSurface(reading, candidate.string) || !eligibleSurface(reading, candidate.commitText)) return false
-        // A complete counter may cross lattice nodes (e.g. よ + 時). Validate its complete
-        // reading above; a standalone-node rule must not erase legitimate counter allomorphs.
-        if (numeric.matches(candidate.string) || derived.matches(candidate.string)) return true
-        // The complete interval was checked above, including its exact numeric value.
-        // Rechecking よ + 時 as isolated nodes would erase a valid 4時 inside a sentence.
-        return true
+        return eligibleSurface(reading, candidate.string) && eligibleSurface(reading, candidate.commitText)
     }
 
     private fun validNumericRuns(input: String, segments: List<CandidateConversionSegment>): Boolean {
@@ -61,8 +73,7 @@ object NumberCandidatePolicy {
             ValidatedNumber.parse(reading)?.let { validSurface(it, output) } == true
         for (segment in segments) {
             val yomi = segment.reading ?: input.substring(segment.inputStart, segment.inputEnd)
-            val numericOutput = (numeric.matches(segment.output) || derived.matches(segment.output) ||
-                numberSymbol(segment.output)) && yomi to segment.output !in lexical
+            val numericOutput = containsNumericText(yomi, segment.output) && yomi to segment.output !in lexical
             val clockPrefix = segment.inputStart == 0 && segment.source == CandidateSource.SYSTEM &&
                 (yomi to segment.output in setOf("ごぜん" to "午前", "ごご" to "午後"))
             // A guessed particle cannot rescue a malformed number. A real boundary follows
@@ -101,8 +112,17 @@ object NumberCandidatePolicy {
         return validSurface(proof, surface)
     }
 
+    private fun containsNumericText(reading: String, surface: String): Boolean =
+        containsNumericText(surface) || (reading to surface !in lexical &&
+            surface.any { it in "〇零一二三四五六七八九十百千万億兆京" } &&
+            ValidatedNumber.isNumericFragment(reading))
+
+    private fun containsNumericText(surface: String): Boolean =
+        numeric.matches(surface) || derived.matches(surface) || numberSymbol(surface) ||
+            surface.any { it in '0'..'9' || it in '０'..'９' || it in "⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉" || numberSymbol(it.toString()) }
+
     private fun unmappedDigits(reading: String, surface: String): Boolean =
-        surface != reading && surface.any { it in '0'..'9' || it in '０'..'９' } &&
+        surface != reading && containsNumericText(reading, surface) &&
             !numeric.matches(surface) && !derived.matches(surface)
 
     private fun numberSymbol(text: String): Boolean = text.length == 1 &&
