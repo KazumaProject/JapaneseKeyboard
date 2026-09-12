@@ -383,7 +383,32 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+        val guidePreferences = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
+        val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(guidePreferences)
         setPreferencesFromResource(preferencesXmlRes, rootKey)
+        fun updateGuideModeEnabled(text: Boolean = guideSettings.textEnabled, candidates: Boolean = guideSettings.enabled) {
+            findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = text && candidates
+        }
+        updateGuideModeEnabled()
+        findPreference<SwitchPreferenceCompat>("composing_guide_text_enabled")?.setOnPreferenceChangeListener { _, value ->
+            updateGuideModeEnabled(text = value as Boolean)
+            true
+        }
+        findPreference<SwitchPreferenceCompat>("composing_guide_enabled")?.setOnPreferenceChangeListener { _, value ->
+            updateGuideModeEnabled(candidates = value as Boolean)
+            true
+        }
+        findPreference<SeekBarPreference>("composing_guide_text_size_setting")?.apply {
+            value = guideSettings.textSize.toInt()
+            setOnPreferenceChangeListener { _, newValue -> guideSettings.textSize = (newValue as Int).toFloat(); true }
+        }
+        com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.GuideProfile.entries.forEach { profile ->
+            findPreference<Preference>("composing_guide_${profile.key}_reset")?.setOnPreferenceClickListener {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings.reset(guidePreferences, profile)
+                true
+            }
+        }
+
 
         findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -1028,6 +1053,10 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onResume() {
         super.onResume()
+        val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()))
+        findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = guideSettings.textEnabled && guideSettings.enabled
+        findPreference<SeekBarPreference>("composing_guide_text_size_setting")?.value = guideSettings.textSize.toInt()
         syncDefaultEmojiSkinTonePreference()
         updateCursorMoveTargetPairsSummary()
     }
