@@ -7,11 +7,5 @@
     <string name="split_keyboard_both">メインとサブ</string>
     <string name="split_keyboard_main_only">メインのみ</string>
     <string name="split_keyboard_sub_only">サブのみ</string>
-    <string name="split_keyboard_edit">編集</string>
-    <string name="split_keyboard_done">完了</string>
-    <string name="split_keyboard_resize">サイズ変更</string>
     <string name="split_keyboard_summary">２つのキーボードを自由に配置し、入力と変換候補を共有します</string>
-    <string name="split_keyboard_main_handle">メイン</string>
-    <string name="split_keyboard_sub_handle">サブ</string>
-    <string name="split_keyboard_next">次のキーボード</string>
 </resources>
