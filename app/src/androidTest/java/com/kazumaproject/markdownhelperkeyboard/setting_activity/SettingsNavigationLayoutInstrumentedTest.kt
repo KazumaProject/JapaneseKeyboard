@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.NavHostFragment
+import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -164,6 +166,35 @@ class SettingsNavigationLayoutInstrumentedTest {
                     scenario.onActivity { assertTrue(navController(it).popBackStack()) }
                     instrumentation.waitForIdleSync()
                     assertLayout(scenario, if (useNewHome) View.GONE else View.VISIBLE, if (useNewHome) 0 else 1)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun splitQwertyScreensOpenFromBothHomeModes() {
+        val destinations = mapOf(
+            R.id.qwertyPreferenceFragment to "qwerty_button_size_preference",
+            R.id.qwertyEnglishPreferenceFragment to "qwerty_english_direct_input_preference",
+            R.id.qwertyRomajiPreferenceFragment to "qwerty_romaji_space_flick_preference",
+            R.id.kanaPreferenceFragment to "tenkey_space_flick_preference",
+        )
+        for (useNewHome in listOf(false, true)) {
+            withHomeMode(useNewHome) { scenario ->
+                for ((destination, preferenceKey) in destinations) {
+                    scenario.onActivity { navController(it).navigate(destination) }
+                    instrumentation.waitForIdleSync()
+                    scenario.onActivity { activity ->
+                        val host = activity.supportFragmentManager
+                            .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                        val screen = host.childFragmentManager.primaryNavigationFragment as PreferenceFragmentCompat
+                        assertTrue(screen.findPreference<Preference>(preferenceKey) != null)
+                        if (destination == R.id.qwertyEnglishPreferenceFragment) {
+                            assertTrue(screen.findPreference<Preference>("qwerty_romaji_space_flick_preference") == null)
+                        }
+                        assertTrue(navController(activity).popBackStack())
+                    }
+                    instrumentation.waitForIdleSync()
                 }
             }
         }

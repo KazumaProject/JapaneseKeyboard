@@ -500,6 +500,8 @@ object SettingDestinations {
         "setting_route_sumire_preferences",
         "setting_route_kana_preferences",
         "setting_route_qwerty_preferences",
+        "setting_route_qwerty_english_preferences",
+        "setting_route_qwerty_romaji_preferences",
         "setting_route_custom_keyboard_preferences",
         "setting_route_tablet_preferences",
         "flick_input_only_preference",
@@ -512,6 +514,8 @@ object SettingDestinations {
         "vibration_preference",
         "key_sound_preference",
         "space_key_preference",
+        "tenkey_space_flick_preference",
+        "qwerty_romaji_space_flick_preference",
         "clipboard_history_preference_fragment",
         "clipboard_preview_enable_preference",
         "shortcut_toolbar_visibility_preference",
@@ -776,6 +780,8 @@ object SettingDestinations {
             "key_popup_text_color_preference" -> R.id.keyboardThemeFragment
             "setting_route_kana_preferences" -> R.id.kanaPreferenceFragment
             "setting_route_qwerty_preferences" -> R.id.qwertyPreferenceFragment
+            "setting_route_qwerty_english_preferences" -> R.id.qwertyEnglishPreferenceFragment
+            "setting_route_qwerty_romaji_preferences" -> R.id.qwertyRomajiPreferenceFragment
             "setting_route_sumire_preferences" -> R.id.sumirePreferenceFragment
             "setting_route_custom_keyboard_preferences" -> R.id.customKeyboardPreferenceFragment
             "setting_route_tablet_preferences" -> R.id.tabletPreferenceFragment

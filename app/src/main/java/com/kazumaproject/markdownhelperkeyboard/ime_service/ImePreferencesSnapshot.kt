@@ -61,6 +61,8 @@ data class ImePreferencesSnapshot(
     val qwertyGlideCommitPreviousCandidateOnNewGlidePreference: Boolean,
     val qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference: Boolean,
     val qwertyShowPopupWindowPreference: Boolean,
+    val tenkeySpaceFlickPreference: Boolean,
+    val qwertyRomajiSpaceFlickPreference: Boolean,
     val qwertyEnableFlickUpPreference: Boolean,
     val qwertyEnableFlickDownPreference: Boolean,
     val qwertyNumberKeyFlickUpChars: Map<String, String>,
@@ -412,6 +414,8 @@ data class ImePreferencesSnapshot(
                 qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference =
                     appPreference.qwerty_glide_insert_space_after_committing_previous_candidate_preference,
                 qwertyShowPopupWindowPreference = appPreference.qwerty_show_popup_window ?: true,
+                tenkeySpaceFlickPreference = appPreference.tenkey_space_flick_preference,
+                qwertyRomajiSpaceFlickPreference = appPreference.qwerty_romaji_space_flick_preference,
                 qwertyEnableFlickUpPreference =
                     appPreference.qwerty_enable_flick_up_preference ?: false,
                 qwertyEnableFlickDownPreference =
