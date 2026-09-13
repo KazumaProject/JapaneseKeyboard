@@ -2342,6 +2342,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         var symbolState: SymbolKeyboardState = SymbolKeyboardState(),
         var presentedMode: TenKeyQWERTYMode = mode,
         var layoutJob: Job? = null,
+        var imageJob: Job? = null,
+        var backgroundPlayer: ExoPlayer? = null,
+        var backgroundVideoConfig: KeyboardBackgroundVideoConfig? = null,
     )
     private var splitController: SplitKeyboardController? = null
     private val splitInputs = linkedMapOf<SplitSlot, SplitInputState>()
@@ -2422,6 +2425,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         disableKeyboardLayoutEditMode()
         stopAllOngoingKeyLongPresses()
         floatingKeyboardView?.dismiss()
+        releaseFloatingKeyboardBackgroundVideoPlayer()
         customKeyboardRenderJob?.cancel()
         numberKeyboardRenderJob?.cancel()
         savedSingleFloatingBinding = floatingKeyboardBinding
@@ -2435,7 +2439,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val host = checkNotNull(window.window?.decorView) { "IME window is unavailable" }
                 val controller = SplitKeyboardController(main.root.context, host,
                     onActivate = ::activateSplitInput, onInputFinished = ::saveSplitInput,
-                    onEditing = { stopAllOngoingKeyLongPresses() }, onNext = ::switchNextKeyboard,
+                    onEditing = { stopAllOngoingKeyLongPresses() }, colors = ::resolveCandidatePanelColors,
                     onWindowFailure = {
                         stopSplitKeyboard(restoreSurface = true)
                         showResolvedKeyboard(KeyboardType.TENKEY)
@@ -2509,14 +2513,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     binding.suggestionRecyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@IMEService, RecyclerView.HORIZONTAL, false)
                     binding.suggestionRecyclerView.adapter = adapter
                     binding.suggestionRecyclerView.itemAnimator = null
-                    val body = FrameLayout(this@IMEService)
+                    // Keep the original background, media, and touch-dispatch layers.
+                    // Only the old single-window chrome is replaced by the shared frame.
+                    val body = binding.root as InkTouchDispatchFrameLayout
+                    body.removeView(binding.floatingKeyboardContent)
                     listOf(binding.floatingKeyboardContainer, binding.floatingSymbolKeyboard).forEach { view ->
                         (view.parent as? ViewGroup)?.removeView(view)
                         body.addView(view, FrameLayout.LayoutParams(-1, -1))
                     }
+                    body.fitsSystemWindows = false
+                    body.fallbackTouchTargetProvider = {
+                        listOf(binding.keyboardViewFloating, binding.gojuonViewFloating,
+                            binding.qwertyViewFloating, binding.customLayoutFloating).firstOrNull { it.isShown }
+                    }
+                    binding.floatingKeyboardBackgroundContainer.layoutParams = FrameLayout.LayoutParams(-1, -1)
+                    binding.floatingKeyboardTouchEffectContainer.layoutParams = FrameLayout.LayoutParams(-1, -1)
                     controller.add(slot, body, binding.suggestionRecyclerView,
                         minimumWidthDp, minimumHeightDp)
                     setSymbolKeyboard(main, binding.floatingSymbolKeyboard)
+                    applyFloatingSymbolKeyboardAppearance(binding.floatingSymbolKeyboard)
+                    applyFloatingKeyboardContainerBackgrounds(binding)
+                    applyFloatingKeyboardBackgroundIfNeeded(binding)
+                    setupFloatingKeyboardTouchEffect(binding)
                 }
                 activateSplitInput(SplitSlot.MAIN)
                 val observer = object : RecyclerView.AdapterDataObserver() {
@@ -2550,6 +2568,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val source = suggestionAdapter ?: return@post
             splitInputs.values.forEach { state ->
                 state.adapter.mirrorSplitContentFrom(source)
+                val colors = resolveCandidatePanelColors()
+                state.adapter.setFloatingPanelColors(colors)
+                state.adapter.setCandidateTextColor(colors.text)
+                state.adapter.setShortcutIconColor(colors.icon)
+                state.adapter.setCandidateEmptyPopupColors(colors.background, colors.text)
                 if (activeSplitSlot == state.slot) setTenkeyIconsInHenkanFloating(inputString.value, state.binding)
             }
         }
@@ -2572,6 +2595,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         splitController = null
         retiredInputs.forEach {
             it.layoutJob?.cancel()
+            it.imageJob?.cancel()
+            keyboardBackgroundImageRequestIds.remove(it.binding.floatingKeyboardBackgroundImage)
+            clearKeyboardBackgroundImage(it.binding.floatingKeyboardBackgroundImage)
+            releaseSplitBackgroundVideo(it)
+            it.binding.floatingSuminagashiInkView.releaseInk()
+            it.binding.floatingLiquidRippleEffectView.releaseRipple()
+            it.binding.floatingSprayPaintEffectView.releaseSpray()
+            it.binding.floatingLuminousBlobEffectView.releaseBlob()
+            it.binding.floatingCinematicWaveEffectView.releaseWave()
+            (it.binding.root as? InkTouchDispatchFrameLayout)?.apply {
+                touchEffectMotionEventListener = null
+                fallbackTouchTargetProvider = null
+            }
             it.binding.floatingSymbolKeyboard.release()
             it.adapter.release()
         }
@@ -3780,7 +3816,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyKeyboardBackgroundImageToViewIfNeeded(
         imageView: ImageView,
         onApplied: (Boolean) -> Unit = {}
-    ) {
+    ): Job? {
         assertMainThread("applyKeyboardBackgroundImageToViewIfNeeded")
         val requestId = keyboardBackgroundImageRequestId.incrementAndGet()
         keyboardBackgroundImageRequestIds[imageView] = requestId
@@ -3789,10 +3825,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearKeyboardBackgroundImage(imageView)
         if (uriString.isBlank()) {
             onApplied(false)
-            return
+            return null
         }
 
-        ioScope.launch {
+        return ioScope.launch {
             val bitmap = loadKeyboardBackgroundBitmap(uriString)
             runOnMainThread {
                 if (keyboardBackgroundImageRequestIds[imageView] != requestId) return@runOnMainThread
@@ -3821,8 +3857,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyFloatingKeyboardBackgroundImageIfNeeded(
         floatingView: FloatingKeyboardLayoutBinding
-    ) {
-        applyKeyboardBackgroundImageToViewIfNeeded(
+    ): Job? {
+        return applyKeyboardBackgroundImageToViewIfNeeded(
             imageView = floatingView.floatingKeyboardBackgroundImage,
             onApplied = { applied ->
                 applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
@@ -3906,6 +3942,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun releaseSplitBackgroundVideo(state: SplitInputState) {
+        state.binding.floatingKeyboardBackgroundVideo.player = null
+        state.binding.floatingKeyboardBackgroundVideo.isVisible = false
+        state.backgroundPlayer?.release()
+        state.backgroundPlayer = null
+        state.backgroundVideoConfig = null
+    }
+
     private fun releaseFloatingKeyboardBackgroundVideoPlayer() {
         floatingKeyboardBinding?.floatingKeyboardBackgroundVideo?.player = null
         floatingKeyboardBinding?.floatingKeyboardBackgroundVideo?.isVisible = false
@@ -3918,6 +3962,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFloatingKeyboardBackgroundVideoIfNeeded(
         floatingView: FloatingKeyboardLayoutBinding
     ): Boolean {
+        splitInputs.values.firstOrNull { it.binding === floatingView }?.let { state ->
+            val uri = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_video_uri else ""
+            val config = KeyboardBackgroundVideoConfig(uri, appPreference.keyboard_background_video_quality)
+            if (uri.isNotBlank() && state.backgroundVideoConfig == config && state.backgroundPlayer != null) return true
+            return applyKeyboardBackgroundVideoToViewIfNeeded(
+                playerView = floatingView.floatingKeyboardBackgroundVideo,
+                releasePlayer = { releaseSplitBackgroundVideo(state) },
+                onPlayerCreated = { state.backgroundPlayer = it; state.backgroundVideoConfig = config },
+                surfaceName = "split ${state.slot}")
+        }
         val playerView = floatingView.floatingKeyboardBackgroundVideo
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         playerView.setKeepContentOnPlayerReset(true)
@@ -4060,15 +4114,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         applyFloatingKeyboardRoundedClipping(floatingView)
         updateFloatingKeyboardBackgroundBounds(floatingView)
+        val state = splitInputs.values.firstOrNull { it.binding === floatingView }
+        state?.imageJob?.cancel()
         val isBackgroundVideoApplied = applyFloatingKeyboardBackgroundVideoIfNeeded(floatingView)
         if (isBackgroundVideoApplied) {
+            keyboardBackgroundImageRequestIds.remove(floatingView.floatingKeyboardBackgroundImage)
             clearKeyboardBackgroundImage(floatingView.floatingKeyboardBackgroundImage)
             applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
                 floatingView,
                 enabled = true
             )
         } else {
-            applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
+            val job = applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
+            if (state != null) state.imageJob = job
         }
     }
 
@@ -4808,6 +4866,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView: FloatingKeyboardLayoutBinding,
         fallbackKeyboardHeightPx: Int? = null
     ) {
+        if (splitInputs.values.any { it.binding === floatingView }) {
+            floatingView.floatingKeyboardBackgroundContainer.layoutParams = FrameLayout.LayoutParams(-1, -1)
+            floatingView.floatingKeyboardTouchEffectContainer.layoutParams = FrameLayout.LayoutParams(-1, -1)
+            floatingView.floatingLuminousBlobEffectView.layoutParams = FrameLayout.LayoutParams(-1, -1)
+            return
+        }
         fun applyHeight(height: Int) {
             if (height <= 0) return
             val params = floatingView.floatingKeyboardBackgroundContainer.layoutParams
@@ -6486,15 +6550,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 view.restoreDefaultKeyboardTheme()
             }
         }
-        floatingKeyboardBinding?.floatingSymbolKeyboard?.let { view ->
-            val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
-            if (palette != null) {
-                view.setKeyboardTheme(palette.background, palette.text, palette.selectionText,
-                    palette.key, false, keyboardSkinId)
-            } else {
-                // Floating symbols did not receive custom themes before skins were added.
-                view.restoreDefaultKeyboardTheme()
-            }
+        (listOfNotNull(floatingKeyboardBinding?.floatingSymbolKeyboard) +
+            splitInputs.values.map { it.binding.floatingSymbolKeyboard }).distinct()
+            .forEach(::applyFloatingSymbolKeyboardAppearance)
+    }
+
+    private fun applyFloatingSymbolKeyboardAppearance(view: CustomSymbolKeyboardView) {
+        val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
+        if (palette != null) {
+            view.setKeyboardTheme(palette.background, palette.text, palette.selectionText,
+                palette.key, false, keyboardSkinId)
+        } else {
+            // Preserve the existing floating-symbol theme policy.
+            view.restoreDefaultKeyboardTheme()
         }
     }
 
