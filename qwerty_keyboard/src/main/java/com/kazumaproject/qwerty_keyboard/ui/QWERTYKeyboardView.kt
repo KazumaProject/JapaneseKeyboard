@@ -221,8 +221,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         QWERTYKey.QWERTYKeyCursorRight
     )
 
+    private var onSpaceUpFlickListener: (() -> Unit)? = null
+    private var spaceUpFlickEnabled = false
+
     /**
-     * 上フリック検知を有効にするかどうかのフラグ
+     * 文字キーの上フリック検知を有効にするかどうかのフラグ
      */
     private var enableFlickUpDetection = false
 
@@ -1089,6 +1092,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setPopUpViewState(state: Boolean) {
         this.showPopupView = state
+    }
+
+    fun setOnSpaceUpFlickListener(listener: (() -> Unit)?) {
+        onSpaceUpFlickListener = listener
+    }
+
+    fun setSpaceUpFlickEnabled(enabled: Boolean) {
+        spaceUpFlickEnabled = enabled
     }
 
     fun setFlickUpDetectionEnabled(enabled: Boolean) {
@@ -2396,6 +2407,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         previousView.id == binding.keyDelete.id -> {
                         applyCommonFlickEffects(pointerId, previousView)
                         onDeleteUpFlickListener?.invoke()
+                        true
+                    }
+
+                    previousView?.id == binding.keySpace.id && romajiModeState.value -> {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        if (spaceUpFlickEnabled) {
+                            onSpaceUpFlickListener?.invoke()
+                        } else {
+                            qwertyKeyListener?.onReleasedQWERTYKey(
+                                QWERTYKey.QWERTYKeySpace, null, null
+                            )
+                        }
                         true
                     }
 
