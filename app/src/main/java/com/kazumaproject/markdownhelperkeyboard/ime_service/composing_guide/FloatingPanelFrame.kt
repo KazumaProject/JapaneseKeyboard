@@ -8,12 +8,14 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import com.kazumaproject.markdownhelperkeyboard.R
 import kotlin.math.roundToInt
@@ -23,6 +25,8 @@ internal open class FloatingPanelFrame(
     context: Context,
     onEdit: () -> Unit,
     private val onHandleEvent: (MotionEvent) -> Unit = {},
+    title: CharSequence? = null,
+    onHide: (() -> Unit)? = null,
 ) : FrameLayout(context) {
     protected fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
     protected var colors = CandidatePanelColors.resolve(context)
@@ -37,6 +41,16 @@ internal open class FloatingPanelFrame(
         setPadding(dp(12), dp(12), dp(12), dp(12))
         isFocusable = false
         setOnClickListener { onEdit() }
+    }
+    private val panelTitle = title?.let { value -> TextView(context).apply {
+        text = value
+        textSize = 15f
+        setSingleLine(true)
+        ellipsize = TextUtils.TruncateAt.END
+        gravity = Gravity.CENTER_VERTICAL
+    } }
+    private val hideButton = onHide?.let { action ->
+        icon(com.kazumaproject.core.R.drawable.ic_close, R.string.floating_dictionary_hide, action)
     }
     private val edges = listOf(GuideHandle.LEFT, GuideHandle.TOP, GuideHandle.RIGHT, GuideHandle.BOTTOM)
         .associateWith { HandleView(context, it) }
@@ -53,7 +67,9 @@ internal open class FloatingPanelFrame(
         isClickable = true
         elevation = dp(8).toFloat()
         addView(contentContainer)
+        panelTitle?.let { header.addView(it, LinearLayout.LayoutParams(0, dp(48), 1f)) }
         header.addView(editButton, LinearLayout.LayoutParams(dp(48), dp(48)))
+        hideButton?.let { header.addView(it, LinearLayout.LayoutParams(dp(48), dp(48))) }
         addView(header)
         addView(footerContainer)
         addView(moveGrip, LayoutParams(-1, dp(MOVE_BAND_DP), Gravity.BOTTOM))
@@ -100,8 +116,12 @@ internal open class FloatingPanelFrame(
         editButton.setImageResource(if (editing) com.kazumaproject.core.R.drawable.baseline_check_24 else R.drawable.composing_guide_edit)
         editButton.contentDescription = context.getString(if (editing) R.string.composing_guide_done else R.string.composing_guide_edit)
         editButton.imageTintList = ColorStateList.valueOf(if (editing) accent else colors.icon)
-        editButton.background = RippleDrawable(ColorStateList.valueOf(ColorUtils.setAlphaComponent(colors.pressed, 80)), null,
-            GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+        panelTitle?.setTextColor(inkColor)
+        hideButton?.imageTintList = ColorStateList.valueOf(colors.icon)
+        listOfNotNull(editButton, hideButton).forEach { button ->
+            button.background = RippleDrawable(ColorStateList.valueOf(ColorUtils.setAlphaComponent(colors.pressed, 80)), null,
+                GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+        }
         background = GradientDrawable().apply {
             setColor(this@FloatingPanelFrame.colors.background)
             cornerRadius = dp(16).toFloat()
@@ -132,6 +152,14 @@ internal open class FloatingPanelFrame(
             }
         }
         moveGrip.invalidate()
+    }
+
+    private fun icon(drawable: Int, description: Int, action: () -> Unit) = ImageButton(context).apply {
+        setImageResource(drawable)
+        contentDescription = context.getString(description)
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        isFocusable = false
+        setOnClickListener { action() }
     }
 
     fun handleAt(x: Float, y: Float): GuideHandle? {
