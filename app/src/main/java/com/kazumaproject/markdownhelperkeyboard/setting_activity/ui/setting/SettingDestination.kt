@@ -516,6 +516,7 @@ object SettingDestinations {
         "space_key_preference",
         "tenkey_space_flick_preference",
         "qwerty_romaji_space_flick_preference",
+        "qwerty_english_space_flick_preference",
         "clipboard_history_preference_fragment",
         "clipboard_preview_enable_preference",
         "shortcut_toolbar_visibility_preference",

@@ -1811,4 +1811,5 @@
     <string name="space_flick_preference_title">スペースキーのフリック</string>
     <string name="tenkey_space_flick_summary">左フリックで、既存のスペース設定と反対の幅（半角・全角）の空白を入力します。</string>
     <string name="qwerty_romaji_space_flick_summary">上フリックで、既存のローマ字のスペース設定と反対の幅（半角・全角）の空白を入力します。文字キーの上フリック設定とは独立しています。</string>
+    <string name="qwerty_english_space_flick_summary">上フリックで全角スペースを入力します。未確定文字がある場合は確定して全角スペースを挿入します。タップは半角スペースのままです。文字キーの上フリック設定とは独立しています。</string>
 </resources>

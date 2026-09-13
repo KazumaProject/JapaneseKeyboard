@@ -175,7 +175,7 @@ class SettingsNavigationLayoutInstrumentedTest {
     fun splitQwertyScreensOpenFromBothHomeModes() {
         val destinations = mapOf(
             R.id.qwertyPreferenceFragment to "qwerty_button_size_preference",
-            R.id.qwertyEnglishPreferenceFragment to "qwerty_english_direct_input_preference",
+            R.id.qwertyEnglishPreferenceFragment to "qwerty_english_space_flick_preference",
             R.id.qwertyRomajiPreferenceFragment to "qwerty_romaji_space_flick_preference",
             R.id.kanaPreferenceFragment to "tenkey_space_flick_preference",
         )
