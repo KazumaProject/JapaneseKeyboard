@@ -1,0 +1,30 @@
+<resources>
+    <string name="keyboard_type_dynamic_orbit">Dynamic Orbit β</string>
+    <string name="orbit_start_hint">Touch inside the outline to start</string>
+    <string name="orbit_too_small">More space needed — use Mode to switch</string>
+    <string name="orbit_return_hint">Return to the center for the next letter</string>
+    <string name="orbit_vowel_hint">Choose a vowel · cross the outer ring</string>
+    <string name="orbit_row_hint">Choose a row · move out for vowels</string>
+    <string name="orbit_mode">Mode</string>
+    <string name="orbit_japanese">Japanese · Orbit</string>
+    <string name="orbit_english">English · QWERTY</string>
+    <string name="orbit_number">Numbers</string>
+    <string name="orbit_symbols">Symbols</string>
+    <string name="orbit_next_keyboard">Next keyboard</string>
+    <string name="orbit_ime_picker">Android keyboard picker</string>
+    <string name="orbit_cursor">Move cursor</string>
+    <string name="orbit_left">← Left</string>
+    <string name="orbit_right">Right →</string>
+    <string name="orbit_up">↑ Up</string>
+    <string name="orbit_down">↓ Down</string>
+    <string name="orbit_space">Space</string>
+    <string name="orbit_convert">Convert</string>
+    <string name="orbit_delete">Delete</string>
+    <item name="orbit_touch_area" type="id" />
+    <item name="orbit_mode" type="id" />
+    <item name="orbit_cursor" type="id" />
+    <item name="orbit_space" type="id" />
+    <item name="orbit_delete" type="id" />
+    <item name="orbit_enter" type="id" />
+    <string name="orbit_confirm">Confirm</string>
+</resources>

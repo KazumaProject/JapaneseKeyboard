@@ -10,6 +10,7 @@ class KeyboardTypeTest {
         assertTrue(KeyboardType.TENKEY.isTenKeyFamily)
         assertTrue(KeyboardType.GOJUON.isTenKeyFamily)
         assertTrue(KeyboardType.SUMIRE.isTenKeyFamily)
+        assertTrue(KeyboardType.DYNAMIC_ORBIT.isTenKeyFamily)
         assertTrue(KeyboardType.CUSTOM.isTenKeyFamily)
         assertFalse(KeyboardType.QWERTY.isTenKeyFamily)
         assertFalse(KeyboardType.ROMAJI.isTenKeyFamily)

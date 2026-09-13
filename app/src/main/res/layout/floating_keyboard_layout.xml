@@ -139,6 +139,13 @@
             android:layout_marginBottom="16dp"
             app:layout_constraintBottom_toTopOf="@+id/drag_handle">
 
+            <com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.DynamicOrbitView
+                android:id="@+id/dynamic_orbit_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="bottom"
+                android:visibility="gone" />
+
             <com.kazumaproject.tenkey.TenKey
                 android:id="@+id/keyboard_view_floating"
                 android:layout_width="match_parent"

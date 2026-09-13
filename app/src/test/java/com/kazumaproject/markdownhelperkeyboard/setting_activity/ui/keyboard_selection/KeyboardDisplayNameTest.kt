@@ -17,6 +17,7 @@ class KeyboardDisplayNameTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         assertEquals("Japanese – Gojūon", context.getKeyboardDisplayName(KeyboardType.GOJUON))
+        assertEquals("Dynamic Orbit β", context.getKeyboardDisplayName(KeyboardType.DYNAMIC_ORBIT))
     }
 
     @Test
@@ -25,5 +26,6 @@ class KeyboardDisplayNameTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         assertEquals("日本語 - 50音", context.getKeyboardDisplayName(KeyboardType.GOJUON))
+        assertEquals("Dynamic Orbit β", context.getKeyboardDisplayName(KeyboardType.DYNAMIC_ORBIT))
     }
 }

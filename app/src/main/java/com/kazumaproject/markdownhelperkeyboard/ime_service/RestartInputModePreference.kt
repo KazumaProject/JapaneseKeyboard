@@ -116,6 +116,7 @@ internal object RestartInputModePreference {
                     RestartInputModeQwertyReturnSource.GojuonNumber -> return KeyboardType.GOJUON
 
                     RestartInputModeQwertyReturnSource.Sumire -> return KeyboardType.SUMIRE
+                    RestartInputModeQwertyReturnSource.DynamicOrbit -> return null
                     RestartInputModeQwertyReturnSource.None,
                     RestartInputModeQwertyReturnSource.Custom -> Unit
                 }
@@ -364,6 +365,7 @@ internal data class RestartInputModeState(
 
 internal enum class RestartInputModeQwertyReturnSource {
     None,
+    DynamicOrbit,
     TenKeyDefault,
     GojuonDefault,
     Sumire,

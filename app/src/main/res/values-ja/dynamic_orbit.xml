@@ -1,0 +1,24 @@
+<resources>
+    <string name="keyboard_type_dynamic_orbit">Dynamic Orbit β</string>
+    <string name="orbit_start_hint">枠内に指を置いて入力を開始</string>
+    <string name="orbit_too_small">表示領域が不足しています — モードで切り替え</string>
+    <string name="orbit_return_hint">中心へ戻ると次の文字を入力できます</string>
+    <string name="orbit_vowel_hint">母音を選び、外周を越えて入力</string>
+    <string name="orbit_row_hint">行を選び、外側へ進むと母音選択</string>
+    <string name="orbit_mode">モード</string>
+    <string name="orbit_japanese">日本語 · Orbit</string>
+    <string name="orbit_english">英語 · QWERTY</string>
+    <string name="orbit_number">数字</string>
+    <string name="orbit_symbols">記号</string>
+    <string name="orbit_next_keyboard">次のキーボード</string>
+    <string name="orbit_ime_picker">Android の入力方法を選択</string>
+    <string name="orbit_cursor">カーソル移動</string>
+    <string name="orbit_left">← 左へ</string>
+    <string name="orbit_right">右へ →</string>
+    <string name="orbit_up">↑ 上へ</string>
+    <string name="orbit_down">↓ 下へ</string>
+    <string name="orbit_space">空白</string>
+    <string name="orbit_convert">変換</string>
+    <string name="orbit_delete">削除</string>
+    <string name="orbit_confirm">確定</string>
+</resources>

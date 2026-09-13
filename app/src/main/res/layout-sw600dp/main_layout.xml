@@ -144,6 +144,13 @@
         android:layout_height="36dp" />
 
     <!-- Custom Keyboard View -->
+    <com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.DynamicOrbitView
+        android:id="@+id/dynamic_orbit_view"
+        android:layout_width="match_parent"
+        android:layout_height="256dp"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
+
     <com.kazumaproject.tenkey.TenKey
         android:id="@+id/keyboard_view"
         android:layout_width="match_parent"

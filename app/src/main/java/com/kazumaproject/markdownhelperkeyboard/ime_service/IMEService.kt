@@ -1,5 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.DynamicOrbitView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.OrbitColors
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.OrbitCommand
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.OrbitGeometry
+
 import android.annotation.SuppressLint
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -2328,6 +2333,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val gojuonView: GojuonKeyboardView?,
         val qwertyView: QWERTYKeyboardView?,
         val customLayout: FlickKeyboardView?,
+        val orbitView: DynamicOrbitView?,
         val handwritingView: GemmaHandwritingKeyboardView?,
         val suggestionRecyclerView: RecyclerView?,
         val symbolKeyboard: CustomSymbolKeyboardView?
@@ -2798,6 +2804,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        cancelOrbitStroke()
         composingGuide?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
@@ -5277,6 +5284,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        cancelOrbitStroke()
         composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
@@ -5288,6 +5296,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        cancelOrbitStroke()
         composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
@@ -5340,6 +5349,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        cancelOrbitStroke()
         composingGuide?.destroy()
         composingGuide = null
         unregisterCrossWindowBlurListener()
@@ -6072,7 +6082,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         return (availableWidth * (widthPercent / 100f))
             .toInt()
-            .coerceAtLeast(1)
+            .coerceAtLeast(if (mode == TenKeyQWERTYMode.DynamicOrbit) applicationContext.dpToPx(OrbitGeometry.MIN_WIDTH) else 1)
+            .coerceAtMost(availableWidth)
     }
 
     private fun ensureFloatingKeyboardPopupWindow(): PopupWindow? {
@@ -6400,6 +6411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     binding.gojuonView,
                     binding.qwertyView,
                     binding.customLayoutDefault,
+                    binding.dynamicOrbitView,
                     binding.gemmaHandwritingKeyboard,
                 ).firstOrNull {
                     it.isAttachedToWindow && it.isShown
@@ -6427,6 +6439,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
             val heightPx = when {
+                qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit && !keyboardSymbolViewState.value.isShown ->
+                    (maxOf(getKeyboardSizePreferences().heightPref, OrbitGeometry.MIN_HEIGHT) * density).toInt()
                 keyboardSymbolViewState.value.isShown -> {
                     val height = if (isPortrait) 320 else 220
                     (height * density).toInt()
@@ -8286,6 +8300,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             gojuonView = mainView.gojuonView,
             qwertyView = mainView.qwertyView,
             customLayout = mainView.customLayoutDefault,
+            orbitView = mainView.dynamicOrbitView,
             handwritingView = mainView.gemmaHandwritingKeyboard,
             suggestionRecyclerView = mainView.suggestionRecyclerView,
             symbolKeyboard = mainView.keyboardSymbolView
@@ -8300,6 +8315,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             gojuonView = floatingView.gojuonViewFloating,
             qwertyView = floatingView.qwertyViewFloating,
             customLayout = floatingView.customLayoutFloating,
+            orbitView = floatingView.dynamicOrbitView,
             handwritingView = null,
             suggestionRecyclerView = floatingView.suggestionRecyclerView,
             symbolKeyboard = floatingView.floatingSymbolKeyboard
@@ -8324,6 +8340,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surface.qwertyView?.isVisible = false
         surface.customLayout?.isVisible = false
         surface.handwritingView?.isVisible = false
+        if (qwertyMode.value != TenKeyQWERTYMode.DynamicOrbit || handwritingModeActive) surface.orbitView?.isVisible = false
     }
 
     private fun renderKeyboardMode(
@@ -8337,6 +8354,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         when (mode) {
+            TenKeyQWERTYMode.DynamicOrbit -> {
+                surface.orbitView?.let { configureOrbit(it); it.isVisible = true }
+            }
             TenKeyQWERTYMode.Default -> {
                 surface.keyboardView?.isVisible = true
             }
@@ -8521,6 +8541,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun renderDynamicKeysOnActiveSurface() {
+        if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit) {
+            getActiveKeyboardSurface()?.orbitView?.let(::configureOrbit)
+        }
         val customLayout = getActiveKeyboardSurface()?.customLayout ?: return
         customLayout.updateDynamicKey(
             keyId = "enter_key",
@@ -9134,6 +9157,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val mainView = mainLayoutBinding ?: return
         val floatingView = floatingKeyboardBinding ?: return
         when (mode) {
+            TenKeyQWERTYMode.DynamicOrbit -> configureOrbit(floatingView.dynamicOrbitView)
             TenKeyQWERTYMode.Default -> {
                 configureFloatingTenKeyView(floatingView)
             }
@@ -9364,7 +9388,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
-        val heightPx = (heightPref.coerceIn(60, 420) * density).toInt()
+        val heightPx = (heightPref.coerceIn(if (mode == TenKeyQWERTYMode.DynamicOrbit) OrbitGeometry.MIN_HEIGHT else 60, 420) * density).toInt()
         val widthPx = resolveFloatingKeyboardUpdateWidthPx(mode)
         var sizeChanged = false
         var containerHeightChanged = false
@@ -11310,7 +11334,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setCurrentInputModeForSession(InputMode.ModeJapanese)
                             }
 
-                            KeyboardType.SUMIRE -> {
+                            KeyboardType.SUMIRE, KeyboardType.DYNAMIC_ORBIT -> {
                                 setCurrentInputModeForSession(InputMode.ModeJapanese)
                             }
 
@@ -11812,11 +11836,96 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("SideKeySpace LongPress Floating after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
 
-    /**
-     * 全てのキーボードビューを確実に非表示にする
-     */
+    private fun cancelOrbitStroke() {
+        mainLayoutBinding?.dynamicOrbitView?.cancelStroke()
+        floatingKeyboardBinding?.dynamicOrbitView?.cancelStroke()
+    }
+
+    private fun configureOrbit(view: DynamicOrbitView) {
+        view.windowAnchor = { window.window?.decorView ?: mainLayoutBinding?.root }
+        val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
+        val custom = keyboardThemeMode == "custom"
+        view.configure(OrbitColors(
+            palette?.background ?: if (custom) customThemeBgColor ?: Color.WHITE else ContextCompat.getColor(view.context, com.kazumaproject.core.R.color.keyboard_bg),
+            palette?.key ?: if (custom) customThemeKeyColor ?: Color.LTGRAY else ContextCompat.getColor(view.context, com.kazumaproject.core.R.color.qwety_key_bg_color),
+            palette?.text ?: if (custom) customThemeKeyTextColor ?: Color.BLACK else ContextCompat.getColor(view.context, com.kazumaproject.core.R.color.keyboard_icon_color),
+            palette?.selection ?: com.google.android.material.color.MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary, Color.BLUE)
+        ), if (inputString.value.isNotEmpty()) getString(R.string.orbit_confirm) else editorEnterLabel(japanese = true), inputString.value.isNotEmpty())
+        view.onLetter = { letter ->
+            if (isInputViewActive && qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit && !isKeyboardLayoutEditModeActive()) {
+                clearDeleteBufferWithView()
+                mainLayoutBinding?.let { handleFlick(letter, inputString.value, StringBuilder(), it) }
+            }
+        }
+        view.onCommand = ::handleOrbitCommand
+    }
+
+    private fun returnToOrbit() {
+        cancelOrbitStroke()
+        if (qwertyMode.value != TenKeyQWERTYMode.DynamicOrbit && inputString.value.isNotEmpty()) {
+            mainLayoutBinding?.let {
+                handleNonEmptyInputEnterKey(suggestionAdapter?.suggestions.orEmpty(), it, inputString.value)
+            }
+        }
+        _tenKeyQWERTYMode.value = TenKeyQWERTYMode.DynamicOrbit
+        previousTenKeyQWERTYMode = null
+        clearQwertySwitchNumberKeyReturnSource()
+        showResolvedKeyboard(KeyboardType.DYNAMIC_ORBIT)
+        mainLayoutBinding?.let(::setKeyboardSizeSwitchKeyboard)
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.DynamicOrbit)
+    }
+
+    private fun handleOrbitCommand(command: OrbitCommand) {
+        if (isKeyboardLayoutEditModeActive()) return
+        val mainView = mainLayoutBinding ?: return
+        val text = inputString.value
+        val candidates = suggestionAdapter?.suggestions.orEmpty()
+        when (command) {
+            OrbitCommand.JAPANESE -> returnToOrbit()
+            OrbitCommand.ENGLISH, OrbitCommand.NUMBER -> {
+                cancelOrbitStroke()
+                // Finalize the existing reading before entering another input language.
+                if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, mainView, text)
+                _tenKeyQWERTYMode.value = TenKeyQWERTYMode.TenKeyQWERTY
+                previousTenKeyQWERTYMode = TenKeyQWERTYMode.DynamicOrbit
+                setQwertySwitchNumberKeyReturnSource(RestartInputModeQwertyReturnSource.DynamicOrbit)
+                setCurrentInputModeForSession(if (command == OrbitCommand.NUMBER) InputMode.ModeNumber else InputMode.ModeEnglish)
+                setCurrentQwertyRomajiModeForSession(false)
+                syncFloatingKeyboardContentForMode(qwertyMode.value)
+                getActiveKeyboardSurface()?.qwertyView?.apply {
+                    resetQWERTYKeyboard(editorEnterLabel(japanese = false))
+                    if (command == OrbitCommand.NUMBER) setNumberView()
+                    setSwitchNumberLayoutKeyVisibility(true)
+                }
+                renderCurrentKeyboardStateOnActiveSurface()
+                setKeyboardSizeSwitchKeyboard(mainView)
+                updateFloatingKeyboardSizeForMode(qwertyMode.value)
+            }
+            OrbitCommand.SYMBOLS -> { cancelOrbitStroke(); toggleEmojiKeyboard() }
+            OrbitCommand.NEXT_KEYBOARD -> { cancelOrbitStroke(); switchNextKeyboard() }
+            OrbitCommand.IME_PICKER -> { cancelOrbitStroke(); showKeyboardPicker() }
+            OrbitCommand.SPACE -> handleSpaceKeyClick(hankakuPreference == true, text, candidates, mainView)
+            OrbitCommand.DELETE -> handleDeleteKeyTap(text, candidates)
+            OrbitCommand.ENTER -> if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, mainView, text) else handleEmptyInputEnterKey(mainView)
+            OrbitCommand.LEFT -> if (!moveFocusedBunsetsuSegment(-1)) {
+                if (isHenkan.get()) handleDeleteKeyInHenkan(candidates, text) else handleLeftCursor(GestureType.Tap, text)
+            }
+            OrbitCommand.RIGHT -> if (!moveFocusedBunsetsuSegment(1)) {
+                if (isHenkan.get()) handleJapaneseModeSpaceKey(mainView, candidates, text) else actionInRightKeyPressed(GestureType.Tap, text)
+            }
+            OrbitCommand.UP, OrbitCommand.DOWN -> {
+                val delta = if (command == OrbitCommand.UP) -1 else 1
+                if (!cycleFocusedBunsetsuCandidate(delta) && text.isEmpty() && stringInTail.get().isEmpty()) {
+                    sendDownUpKeyEvents(if (delta < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN)
+                }
+            }
+        }
+    }
+
+    /** Hide every keyboard before a type change. */
     private fun hideAllKeyboards() {
         mainLayoutBinding?.apply {
+            dynamicOrbitView.isVisible = false
             keyboardView.isVisible = false
             qwertyView.isVisible = false
             gojuonView.isVisible = false
@@ -11916,6 +12025,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("showKeyboard called: resolved=$type")
         mainLayoutBinding?.apply {
             when (type) {
+                KeyboardType.DYNAMIC_ORBIT -> {
+                    if (qwertyMode.value == TenKeyQWERTYMode.Number) {
+                        customLayoutDefault.isVisible = true
+                        setCurrentInputModeForSession(InputMode.ModeNumber)
+                        setNumberLayoutTo(customLayoutDefault)
+                    } else {
+                        clearQwertySwitchNumberKeyReturnSource()
+                        _tenKeyQWERTYMode.value = TenKeyQWERTYMode.DynamicOrbit
+                        setCurrentInputModeForSession(InputMode.ModeJapanese)
+                        dynamicOrbitView.isVisible = true
+                        configureOrbit(dynamicOrbitView)
+                    }
+                }
+
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         clearQwertySwitchNumberKeyReturnSource()
@@ -12093,6 +12216,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateKeyboardLayout() {
         Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
         when (qwertyMode.value) {
+            TenKeyQWERTYMode.DynamicOrbit -> Unit
             TenKeyQWERTYMode.Custom -> {}
 
             TenKeyQWERTYMode.Default -> {}
@@ -12135,6 +12259,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun createNewKeyboardLayoutForSumire() {
         Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
         when (qwertyMode.value) {
+            TenKeyQWERTYMode.DynamicOrbit -> Unit
             TenKeyQWERTYMode.Gojuon -> Unit
             TenKeyQWERTYMode.Custom -> {
                 when (customKeyboardMode) {
@@ -16613,6 +16738,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyMode.collectLatest {
                 Timber.d("qwertyMode value: $it")
                 when (it) {
+                    TenKeyQWERTYMode.DynamicOrbit -> suggestionAdapter?.updateState(TenKeyQWERTYMode.DynamicOrbit, emptyList())
                     TenKeyQWERTYMode.Default -> {
                         suggestionAdapter?.updateState(
                             TenKeyQWERTYMode.Default, emptyList()
@@ -17651,6 +17777,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 2. ピクセル値の計算
         val heightPx = when {
+            qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit && !keyboardSymbolViewState.value.isShown ->
+                (maxOf(getKeyboardSizePreferences().heightPref, OrbitGeometry.MIN_HEIGHT) * density).toInt()
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 val clampedHeight = if (isPortrait) {
                     prefs.qwertyHeightPref.coerceIn(100, 420)
@@ -17718,11 +17846,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) heightPx else finalKeyboardHeight - candidateTabOffset
 
-        val finalKeyboardWidth =
+        val finalKeyboardWidth = (
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
                 qwertyWidthPx
             } else {
                 widthPx
+            }).let { requestedWidth ->
+                if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit && requestedWidth != ViewGroup.LayoutParams.MATCH_PARENT)
+                    requestedWidth.coerceAtLeast(applicationContext.dpToPx(OrbitGeometry.MIN_WIDTH)).coerceAtMost(screenWidth)
+                else requestedWidth
             }
 
         val finalStartMargin =
@@ -17874,6 +18006,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.keyboardView,
             mainView.gojuonView,
             mainView.customLayoutDefault,
+            mainView.dynamicOrbitView,
             mainView.qwertyView,
             mainView.gemmaHandwritingKeyboard,
             mainView.candidatesRowView
@@ -18007,6 +18140,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val heightPx = when {
+            qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit && !keyboardSymbolViewState.value.isShown ->
+                (maxOf(getKeyboardSizePreferences().heightPref, OrbitGeometry.MIN_HEIGHT) * density).toInt()
             keyboardSymbolViewState.value.isShown -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
@@ -18067,11 +18202,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val finalKeyboardHeight = keyboardHeight + candidateTabOffset
         val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
 
-        val finalKeyboardWidth =
+        val finalKeyboardWidth = (
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
                 qwertyWidthPx
             } else {
                 widthPx
+            }).let { requestedWidth ->
+                if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit && requestedWidth != ViewGroup.LayoutParams.MATCH_PARENT)
+                    requestedWidth.coerceAtLeast(applicationContext.dpToPx(OrbitGeometry.MIN_WIDTH)).coerceAtMost(screenWidth)
+                else requestedWidth
             }
 
         val gravity =
@@ -18101,6 +18240,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.keyboardView,
             mainView.gojuonView,
             mainView.customLayoutDefault,
+            mainView.dynamicOrbitView,
             mainView.qwertyView,
             mainView.gemmaHandwritingKeyboard,
         ).forEach { view ->
@@ -18189,6 +18329,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 val activeFloatingKeyboardView = when (qwertyMode.value) {
+                    TenKeyQWERTYMode.DynamicOrbit -> floatingKeyboardLayoutBinding.dynamicOrbitView
                     TenKeyQWERTYMode.TenKeyQWERTY,
                     TenKeyQWERTYMode.TenKeyQWERTYRomaji -> floatingKeyboardLayoutBinding.qwertyViewFloating
 
@@ -18230,6 +18371,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isVisible) {
             mainLayoutBinding?.apply {
                 when {
+                    dynamicOrbitView.isInvisible && qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit -> {
+                        animateViewVisibility(dynamicOrbitView, isVisible = true, true)
+                    }
                     customLayoutDefault.isInvisible -> {
                         animateViewVisibility(
                             customLayoutDefault, isVisible = true, true
@@ -18258,6 +18402,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             mainLayoutBinding?.apply {
                 when {
+                    dynamicOrbitView.isVisible -> dynamicOrbitView.visibility = View.INVISIBLE
                     keyboardView.isVisible -> keyboardView.visibility = View.INVISIBLE
                     qwertyView.isVisible -> qwertyView.visibility = View.INVISIBLE
                     customLayoutDefault.isVisible -> customLayoutDefault.visibility = View.INVISIBLE
@@ -18381,6 +18526,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit) getActiveKeyboardSurface()?.orbitView?.let(::configureOrbit)
         physicalCandidateCompositionSession?.let { session ->
             if (session.queryText != string) {
                 clearPhysicalCandidateCompositionSession("reading edited")
@@ -18576,6 +18722,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * TenKeyQWERTY以外のモードの入力処理を担当します。
      */
     private fun handleDefaultInput(string: String) {
+        if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit) {
+            applyRawComposingFallback(string)
+            requestCandidateRefresh(CandidateShowFlag.Updating, string)
+            return
+        }
         if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
             renderCustomKeyboardComposingText(string)
             requestCandidateRefresh(CandidateShowFlag.Updating, string)
@@ -18602,6 +18753,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleDefaultInputFinalize(string: String) {
+        if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit) return
         if (qwertyMode.value == TenKeyQWERTYMode.Custom) return
         // フリック専用入力はすでに編集後の背景で表示されており、トグル待機は不要。
         if (isFlickOnlyMode == true) return
@@ -18729,6 +18881,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         return when (qwertyMode.value) {
+            TenKeyQWERTYMode.DynamicOrbit,
             TenKeyQWERTYMode.Default,
             TenKeyQWERTYMode.Gojuon,
             TenKeyQWERTYMode.Sumire,
@@ -20001,6 +20154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applyOrientation = false
         ).resolvedKeyboard
         when (firstItem) {
+            KeyboardType.DYNAMIC_ORBIT -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.DynamicOrbit }
             KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
             KeyboardType.GOJUON -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Gojuon }
             KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -21872,6 +22026,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
                             if (!onKeyboardSwitchLongPressUp) {
+                                if (qwertySwitchNumberKeyReturnSource == RestartInputModeQwertyReturnSource.DynamicOrbit) {
+                                    returnToOrbit()
+                                    return
+                                }
                                 switchNextKeyboard()
                                 _inputString.update { "" }
                                 finishComposingText()
@@ -21980,6 +22138,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 return
                             }
                             when (qwertySwitchNumberKeyReturnSource) {
+                                RestartInputModeQwertyReturnSource.DynamicOrbit -> {
+                                    returnToOrbit()
+                                    return
+                                }
                                 RestartInputModeQwertyReturnSource.TenKeyDefault -> {
                                     returnDefaultQwertyProxyToTenkey(mainView, insertString)
                                     return
@@ -26467,6 +26629,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
+        if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit) configureOrbit(mainView.dynamicOrbitView)
         val currentDrawable = editorEnterDrawable()
         if (isGojuonSurface()) {
             mainView.gojuonView.setSideKeyEnterDrawable(currentDrawable)
@@ -26476,6 +26639,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setDrawableToEnterKeyCorrespondingToImeOptionsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+        if (qwertyMode.value == TenKeyQWERTYMode.DynamicOrbit) configureOrbit(floatingKeyboardLayoutBinding.dynamicOrbitView)
         val currentDrawable = editorEnterDrawable()
         setFloatingKanaEnterDrawable(floatingKeyboardLayoutBinding, currentDrawable)
     }
@@ -27292,7 +27456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setCurrentInputModeForSession(InputMode.ModeJapanese)
             }
 
-            KeyboardType.SUMIRE -> {
+            KeyboardType.SUMIRE, KeyboardType.DYNAMIC_ORBIT -> {
                 setCurrentInputModeForSession(InputMode.ModeJapanese)
             }
 
@@ -27320,6 +27484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (qwertyMode.value == TenKeyQWERTYMode.Number) {
             val type = when (nextType) {
+                KeyboardType.DYNAMIC_ORBIT -> TenKeyQWERTYMode.DynamicOrbit
                 KeyboardType.TENKEY -> TenKeyQWERTYMode.Default
                 KeyboardType.GOJUON -> TenKeyQWERTYMode.Gojuon
                 KeyboardType.SUMIRE -> TenKeyQWERTYMode.Sumire

@@ -1,5 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.DynamicOrbitView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.OrbitColors
+import com.kazumaproject.markdownhelperkeyboard.ime_service.dynamic_orbit.OrbitGeometry
+import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
@@ -134,7 +139,12 @@ internal data class CandidateKeyboardPreviewViews(
     val gojuon: GojuonKeyboardView,
     val qwerty: QWERTYKeyboardView,
     val flick: FlickKeyboardView
-)
+) {
+    val orbit: DynamicOrbitView by lazy {
+        DynamicOrbitView(container.context).also { container.addView(it,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)) }
+    }
+}
 
 internal fun renderCandidateKeyboardPreview(
     fragment: Fragment,
@@ -159,6 +169,7 @@ internal fun renderCandidateKeyboardPreview(
     views.gojuon.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
+    views.orbit.isVisible = false
 
     when (previewKeyboardType) {
         KeyboardType.CUSTOM -> {
@@ -241,8 +252,22 @@ private fun renderNonCustomKeyboardPreviewType(
     views.gojuon.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
+    views.orbit.isVisible = false
 
     when (type) {
+        KeyboardType.DYNAMIC_ORBIT -> {
+            views.orbit.isVisible = true
+            val palette = KeyboardSkinRegistry.find(appPreference.keyboardSkin)?.palette
+            val context = views.container.context
+            views.orbit.configure(OrbitColors(
+                palette?.background ?: context.getColor(com.kazumaproject.core.R.color.keyboard_bg),
+                palette?.key ?: context.getColor(com.kazumaproject.core.R.color.qwety_key_bg_color),
+                palette?.text ?: context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color),
+                palette?.selection ?: com.google.android.material.color.MaterialColors.getColor(views.orbit,
+                    androidx.appcompat.R.attr.colorPrimary, android.graphics.Color.BLUE)
+            ), "↵", false)
+        }
+
         KeyboardType.TENKEY -> {
             views.tenKey.isVisible = true
             configureTenKeyPreview(fragment.requireContext(), appPreference, views.tenKey)
@@ -341,9 +366,13 @@ private fun applyCandidateKeyboardPreviewLayout(
     val widthPx = if (widthPercent >= 98) {
         ViewGroup.LayoutParams.MATCH_PARENT
     } else {
-        (screenWidth * (widthPercent / 100f)).roundToInt()
+        val requestedWidth = (screenWidth * (widthPercent / 100f)).roundToInt()
+        if (type == KeyboardType.DYNAMIC_ORBIT) requestedWidth
+            .coerceAtLeast(container.context.dpToPx(OrbitGeometry.MIN_WIDTH)).coerceAtMost(screenWidth)
+        else requestedWidth
     }
-    val heightPx = config.heightDp.coerceIn(100, 420).let(container.context::dpToPx)
+    val minimumHeight = if (type == KeyboardType.DYNAMIC_ORBIT) OrbitGeometry.MIN_HEIGHT else 100
+    val heightPx = config.heightDp.coerceIn(minimumHeight, 420).let(container.context::dpToPx)
     val horizontalGravity = if (config.positionIsEnd) Gravity.END else Gravity.START
     val startMarginPx = if (config.positionIsEnd) 0 else container.context.dpToPx(config.startMarginDp)
     val endMarginPx = if (config.positionIsEnd) container.context.dpToPx(config.endMarginDp) else 0

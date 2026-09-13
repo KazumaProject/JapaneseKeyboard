@@ -1,0 +1,6 @@
+// Isolate device-test preferences and dictionaries from the user's installed keyboard.
+gradle.afterProject { project ->
+    if (project.path == ':app') {
+        project.android.defaultConfig.applicationId = 'com.kazumaproject.dynamicorbittest'
+    }
+}
