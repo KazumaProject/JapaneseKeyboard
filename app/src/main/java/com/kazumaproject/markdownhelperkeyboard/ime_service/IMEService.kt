@@ -1702,6 +1702,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var defaultEmojiSkinTonePreference: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
     private var tenkeySpaceFlickPreference = true
     private var qwertyRomajiSpaceFlickPreference = false
+    private var qwertyEnglishSpaceFlickPreference = false
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
     private var qwertyNumberKeyFlickUpChars: Map<String, String> = emptyMap()
@@ -3088,6 +3089,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
         tenkeySpaceFlickPreference = preferences.tenkeySpaceFlickPreference
         qwertyRomajiSpaceFlickPreference = preferences.qwertyRomajiSpaceFlickPreference
+        qwertyEnglishSpaceFlickPreference = preferences.qwertyEnglishSpaceFlickPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
         qwertyNumberKeyFlickUpChars = preferences.qwertyNumberKeyFlickUpChars
@@ -5213,6 +5215,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 qwertyView.setSpaceUpFlickEnabled(qwertyRomajiSpaceFlickPreference)
+                qwertyView.setEnglishSpaceUpFlickEnabled(qwertyEnglishSpaceFlickPreference)
                 qwertyView.setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
                 qwertyView.setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
                 qwertyView.setNumberKeyFlickUpChars(qwertyNumberKeyFlickUpChars)
@@ -21782,6 +21785,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
             setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
             setSpaceUpFlickEnabled(qwertyRomajiSpaceFlickPreference)
+            setEnglishSpaceUpFlickEnabled(qwertyEnglishSpaceFlickPreference)
             setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
             setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
             setNumberKeyFlickUpChars(qwertyNumberKeyFlickUpChars)
@@ -21838,8 +21842,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
 
             setOnSpaceUpFlickListener {
-                if (!isKeyboardLayoutEditModeActive() && currentQwertyRomajiModeForSession &&
-                    qwertyRomajiSpaceFlickPreference && !isSpaceKeyLongPressed &&
+                val spaceFlickEnabled = if (currentQwertyRomajiModeForSession) {
+                    qwertyRomajiSpaceFlickPreference
+                } else {
+                    qwertyEnglishSpaceFlickPreference
+                }
+                if (!isKeyboardLayoutEditModeActive() &&
+                    spaceFlickEnabled && !isSpaceKeyLongPressed &&
                     !shouldSuppressSpaceConvertTapAfterLongPress()
                 ) {
                     handleKeyReleaseFeedback()
@@ -25850,11 +25859,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         reverseSpaceWidth: Boolean = false
     ) {
         val reverseRomajiSpace = reverseSpaceWidth && currentQwertyRomajiModeForSession
+        val englishSpace = if (reverseSpaceWidth && !currentQwertyRomajiModeForSession) "　" else " "
         clearZeroQueryAllState(refresh = false)
         val directSpace = if (reverseRomajiSpace) {
             oppositeSpace(qwertyEnableZenkakuSpacePreference == true)
         } else {
-            " "
+            englishSpace
         }
         if (dispatchDirectTextIfNeeded(directSpace)) {
             resetFlagsKeySpace()
@@ -25944,7 +25954,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString, englishSpace)
                 }
             }
         } else {
@@ -25956,7 +25966,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else if (romajiMode && qwertyEnableZenkakuSpacePreference == true) {
                 handleSpaceKeyClick(false, insertString, suggestions, mainView)
             } else {
-                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString, englishSpace)
             }
         }
         resetFlagsKeySpace()
@@ -27607,19 +27617,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String) {
+    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String, space: String = " ") {
         Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $insertString ${stringInTail.get()}")
         if (stringInTail.get().isNotEmpty()) {
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)
             val currentCursorPosition = extractedText?.selectionEnd ?: 0
-            commitText("$insertString $stringInTail", 1)
+            commitText("$insertString$space$stringInTail", 1)
             val newCursorPosition =
                 (currentCursorPosition - stringInTail.get().length + 1).coerceAtLeast(0)
             stringInTail.set("")
             setSelection(newCursorPosition, newCursorPosition)
             Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $currentCursorPosition ${extractedText?.text}")
         } else {
-            commitText("$insertString ", 1)
+            commitText("$insertString$space", 1)
         }
         _inputString.update {
             ""

@@ -63,6 +63,7 @@ data class ImePreferencesSnapshot(
     val qwertyShowPopupWindowPreference: Boolean,
     val tenkeySpaceFlickPreference: Boolean,
     val qwertyRomajiSpaceFlickPreference: Boolean,
+    val qwertyEnglishSpaceFlickPreference: Boolean,
     val qwertyEnableFlickUpPreference: Boolean,
     val qwertyEnableFlickDownPreference: Boolean,
     val qwertyNumberKeyFlickUpChars: Map<String, String>,
@@ -416,6 +417,7 @@ data class ImePreferencesSnapshot(
                 qwertyShowPopupWindowPreference = appPreference.qwerty_show_popup_window ?: true,
                 tenkeySpaceFlickPreference = appPreference.tenkey_space_flick_preference,
                 qwertyRomajiSpaceFlickPreference = appPreference.qwerty_romaji_space_flick_preference,
+                qwertyEnglishSpaceFlickPreference = appPreference.qwerty_english_space_flick_preference,
                 qwertyEnableFlickUpPreference =
                     appPreference.qwerty_enable_flick_up_preference ?: false,
                 qwertyEnableFlickDownPreference =
