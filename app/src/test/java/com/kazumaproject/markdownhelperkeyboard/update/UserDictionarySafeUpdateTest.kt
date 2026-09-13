@@ -112,6 +112,19 @@ class UserDictionarySafeUpdateTest {
 private class FakeUserTemplateDao(
     private val templates: MutableList<UserTemplate>
 ) : UserTemplateDao {
+    override suspend fun editEntry(entry: UserTemplate): Int {
+        if (templates.none { it.id == entry.id }) return 0
+        update(entry)
+        return 1
+    }
+
+    override suspend fun insertStrict(entry: UserTemplate) {
+        if (templates.any { it.reading == entry.reading && it.word == entry.word }) {
+            throw SQLiteConstraintException("duplicate")
+        }
+        templates.add(entry)
+    }
+
     override fun getAll(): LiveData<List<UserTemplate>> = MutableLiveData(templates)
 
     override suspend fun getAllSuspend(): List<UserTemplate> = templates
@@ -160,6 +173,20 @@ private class FakeUserTemplateDao(
 private class FakeLearnDao(
     private val entries: MutableList<LearnEntity>
 ) : LearnDao {
+    override suspend fun editEntry(id: Int, input: String, output: String, score: Int): Int {
+        val value = entries.firstOrNull { it.id == id } ?: return 0
+        updateLearnedData(value.copy(input = input, out = output, score = score))
+        return 1
+    }
+    override suspend fun deleteById(id: Int) { entries.removeAll { it.id == id } }
+
+    override suspend fun insertStrict(entry: LearnEntity) {
+        if (entries.any { it.input == entry.input && it.out == entry.out }) {
+            throw SQLiteConstraintException("duplicate")
+        }
+        entries.add(entry)
+    }
+
     override suspend fun insert(learnData: LearnEntity) {
         if (entries.none { it.input == learnData.input && it.out == learnData.out }) {
             entries.add(learnData)
@@ -236,6 +263,19 @@ private class FakeLearnDao(
 private class FakeUserWordDao(
     private val words: MutableList<UserWord>
 ) : UserWordDao {
+    override suspend fun editEntry(entry: UserWord): Int {
+        if (words.none { it.id == entry.id }) return 0
+        update(entry)
+        return 1
+    }
+
+    override suspend fun insertStrict(entry: UserWord) {
+        if (words.any { it.reading == entry.reading && it.word == entry.word }) {
+            throw SQLiteConstraintException("duplicate")
+        }
+        words.add(entry)
+    }
+
     override fun getAll(): LiveData<List<UserWord>> = MutableLiveData(words)
 
     override suspend fun getAllSuspend(): List<UserWord> = words
