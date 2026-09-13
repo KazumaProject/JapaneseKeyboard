@@ -1,0 +1,18 @@
+<resources>
+    <string name="floating_dictionary_summary">Show, add, edit and delete entries in a floating panel</string>
+    <string name="floating_dictionary_learn">Learning dictionary</string>
+    <string name="floating_dictionary_user">User dictionary</string>
+    <string name="floating_dictionary_template">Templates</string>
+    <string name="floating_dictionary_search">Search reading or text</string>
+    <string name="floating_dictionary_add">Add entry</string>
+    <string name="floating_dictionary_hide">Hide floating panel</string>
+    <string name="floating_dictionary_empty">No entries</string>
+    <string name="floating_dictionary_reading">Reading</string>
+    <string name="floating_dictionary_word">Word / text</string>
+    <string name="floating_dictionary_score">Score</string>
+    <string name="floating_dictionary_pos">Part of speech</string>
+    <string name="floating_dictionary_invalid">Enter reading, text and a valid integer score.</string>
+    <string name="floating_dictionary_delete_confirm">Delete this entry?</string>
+    <string name="floating_dictionary_unavailable">There is not enough space to show the panel.</string>
+    <string name="floating_dictionary_details">Part of speech / score</string>
+</resources>
