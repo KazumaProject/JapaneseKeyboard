@@ -85,7 +85,7 @@ class ShortcutRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             val enabledItems = shortcutDao.getAllShortcuts()
             val enabledTypes = enabledItems.mapNotNull { ShortcutType.fromId(it.typeId) }.toSet()
-            val allTypes = ShortcutType.values()
+            val allTypes = ShortcutType.entries
 
             val result = mutableListOf<Pair<ShortcutType, Boolean>>()
 

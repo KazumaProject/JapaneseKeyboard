@@ -84,7 +84,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         CustomZeroQueryEntry::class,
         TextMacro::class,
     ],
-    version = 47,
+    version = 48,
     exportSchema = false
 )
 @TypeConverters(
@@ -1200,6 +1200,13 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE `key_definitions` ADD COLUMN `textInputBehavior` TEXT NOT NULL DEFAULT 'NORMAL'"
                 )
+            }
+        }
+
+        val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE romaji_maps ADD COLUMN autoSokuon INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE romaji_maps ADD COLUMN autoN INTEGER NOT NULL DEFAULT 1")
             }
         }
 

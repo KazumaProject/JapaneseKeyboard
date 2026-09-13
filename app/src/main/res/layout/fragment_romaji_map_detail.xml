@@ -5,6 +5,47 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <LinearLayout
+        android:id="@+id/conversion_settings"
+        android:visibility="gone"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/custom_romaji_behavior_scope" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/auto_sokuon_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/custom_romaji_auto_sokuon" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/custom_romaji_auto_sokuon_summary" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/auto_n_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/custom_romaji_auto_n" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/custom_romaji_auto_n_summary" />
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/romaji_pair_recycler_view"
         android:layout_width="0dp"
@@ -12,7 +53,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/conversion_settings"
         tools:listitem="@layout/list_item_romaji_pair" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton

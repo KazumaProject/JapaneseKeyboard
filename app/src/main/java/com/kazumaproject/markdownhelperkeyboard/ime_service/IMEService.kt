@@ -276,6 +276,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.canShowComposingGuide
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickInputPreviewCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickPreviewContext
@@ -313,6 +315,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SymbolKeyboardState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.CustomRomajiScreenConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -409,6 +412,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -453,18 +457,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         QwertyGlideDecode
     }
 
-    private data class BunsetsuSegmentState(
-        val reading: String,
-        val displayText: String,
-        val candidates: List<Candidate> = emptyList(),
-        val selectedIndex: Int = 0,
-        val overrideDisplayCandidate: Candidate? = null
-    )
-
     private data class BunsetsuConversionSession(
         val rawInput: String,
         val conversionInput: String,
         val segments: List<BunsetsuSegmentState>,
+        val generation: Long,
+        val conversionSnapshot: BunsetsuConversionSnapshot?,
         val tailText: String = "",
         val focusedIndex: Int = 0,
         val splitPatterns: List<List<Int>> = emptyList(),
@@ -624,6 +622,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var shortcutAdapter: ShortcutAdapter? = null
 
     private var romajiConverter: RomajiKanaConverter? = null
+    private var customRomajiScreenConverter: CustomRomajiScreenConverter? = null
+    private val customScreenCandidateResult = MutableStateFlow<Pair<String, List<Candidate>>?>(null)
+
+    private fun convertScreenQwerty(converter: RomajiKanaConverter, text: String): String =
+        if (isDefaultRomajiHenkanMap) converter.convertQWERTYZenkaku(text)
+        else customRomajiScreenConverter?.convert(text) ?: text
+
+    private fun flushCustomScreenComposition() {
+        if (isDefaultRomajiHenkanMap || isHenkan.get() ||
+            currentInputModeForSession != InputMode.ModeJapanese) return
+        val screenRomaji = qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji ||
+            (qwertyMode.value == TenKeyQWERTYMode.Custom && isCustomLayoutRomajiMode)
+        if (!screenRomaji) return
+        val before = inputString.value
+        val after = customRomajiScreenConverter?.flush(before) ?: before
+        if (after != before) {
+            _inputString.value = after
+            setComposingText(after + stringInTail.get(), 1)
+        }
+    }
 
     private lateinit var clipboardManager: ClipboardManager
 
@@ -697,6 +715,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuPositionList: List<Int>? = emptyList()
     private var bunsetsuSplitPatterns: List<List<Int>> = emptyList()
     private var bunsetsuConversionSession: BunsetsuConversionSession? = null
+    private var latestBunsetsuConversionSnapshot: BunsetsuConversionSnapshot? = null
+    private var bunsetsuSessionGeneration = 0L
+    private val bunsetsuOperationMutex = Mutex()
     private var pendingReconversionEntry: ReconversionEntry? = null
     private var pendingReconversionValid: Boolean = false
     private val reconversionValidationRequestId = AtomicLong(0L)
@@ -1017,6 +1038,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentCandidateStripCandidates = candidates
             currentCandidateStripFullCandidates = fullCandidates
             refreshCandidateStripContent()
+            customScreenCandidateResult.value = insertString to candidates
         }
     }
 
@@ -1903,7 +1925,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suppressNextQwertyGlideSuggestionRefresh: Boolean = false
     private var currentQwertyGlideCompositionText: String? = null
 
-    private var customRomajiZenkakuConversionEnablePreference: Boolean? = true
 
     private var omissionSearchOffsetScorePreference: Int? = 1900
     private var enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference: Int? = 3000
@@ -2363,12 +2384,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onCreate() {
         super.onCreate()
+        window.window?.let { imeWindow ->
+            val callback = imeWindow.callback ?: return@let
+            imeWindow.callback = object : android.view.Window.Callback by callback {
+                override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                    if (composingGuide?.dispatchInputWindowTouch(event) == true) return true
+                    return callback.dispatchTouchEvent(event)
+                }
+            }
+        }
         Timber.d("onCreate")
         registerCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController = InlineAutofillController(
                 context = this,
                 onViewsChanged = ::renderInlineSuggestionViews,
+                maximumContentWidth = {
+                    if (floatingCandidateSurfaceActive) mainLayoutBinding?.suggestionRecyclerView?.width
+                        ?.takeIf { it > 0 }?.minus(applicationContext.dpToPx(8)) else null
+                },
             )
         }
         lifecycleRegistry = LifecycleRegistry(this)
@@ -2580,7 +2614,141 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var candidateSurfaceHost: com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost? = null
+    private val floatingCandidateSurfaceActive get() = candidateSurfaceHost?.attached == true
+    private var floatingCandidateVertical: Boolean? = null
+    private val floatingCandidateSizeListener = View.OnLayoutChangeListener { view, left, _, right, _, oldLeft, _, oldRight, _ ->
+        if (right - left != oldRight - oldLeft) view.post {
+            if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+        }
+    }
+    private var dockedFullCandidateLayoutManager: RecyclerView.LayoutManager? = null
+
+    private fun moveCandidateSurface(target: android.widget.LinearLayout?) {
+        val binding = mainLayoutBinding ?: return
+        if (target == null) {
+            _suggestionViewStatus.value = true
+            binding.suggestionRecyclerView.removeOnLayoutChangeListener(floatingCandidateSizeListener)
+            candidateSurfaceHost?.detach()
+            candidateSurfaceHost = null
+            suggestionAdapter?.setFloatingPanelWidth(0)
+            binding.suggestionVisibility.isVisible = (currentCandidateStripContent as? CandidateStripContent.Candidates)?.candidates?.isNotEmpty() == true
+            binding.candidatesRowView.layoutManager = dockedFullCandidateLayoutManager ?: binding.candidatesRowView.layoutManager
+            binding.candidatesRowView.recycledViewPool.clear()
+            dockedFullCandidateLayoutManager = null
+            binding.suggestionVisibility.setImageDrawable(cachedArrowDropDownDrawable)
+        } else {
+            if (floatingCandidateSurfaceActive) return
+            _suggestionViewStatus.value = true
+            updateSuggestionViewVisibility(binding, true)
+            dockedFullCandidateLayoutManager = binding.candidatesRowView.layoutManager
+            candidateSurfaceHost = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost(
+                binding.shortcutToolbarRecyclerview, binding.candidateTabLayout,
+                binding.suggestionViewParent, binding.suggestionRecyclerView, binding.candidatesRowView,
+            ).also { it.attach(target) }
+            binding.suggestionRecyclerView.addOnLayoutChangeListener(floatingCandidateSizeListener)
+        }
+        floatingCandidateVertical = null
+        lastSuggestionLayoutKey = null
+        updateKeyboardLayout(binding)
+        refreshCandidateStripContent()
+        if (target == null) {
+            applyKeyboardContainerBackgrounds(binding)
+            applyCandidateAppearance()
+        }
+    }
+
+    private fun resolveCandidatePanelColors(): com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors {
+        val context = mainLayoutBinding?.root?.context ?: this
+        val custom = if (keyboardThemeMode == "custom") com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors(
+            customThemeBgColor ?: Color.WHITE,
+            customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
+            customThemeCandidateTextColor ?: Color.BLACK,
+            customThemeCandidateItemPressedBgColor ?: context.getColor(com.kazumaproject.core.R.color.qwety_key_bg_color),
+            customThemeSpecialKeyColor ?: Color.GRAY,
+            customThemeSpecialKeyTextColor ?: Color.BLACK,
+            customThemeShortcutIconColor ?: Color.BLACK,
+        ) else null
+        return com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(
+            context, KeyboardSkinRegistry.find(keyboardSkinId)?.palette, custom)
+    }
+
+    private fun configureFloatingCandidates(binding: MainLayoutBinding) {
+        val colors = resolveCandidatePanelColors()
+        candidateSurfaceHost?.setColors(colors)
+        suggestionAdapter?.setFloatingPanelColors(colors)
+        suggestionAdapter?.setCandidateTextColor(colors.text)
+        suggestionAdapter?.setShortcutIconColor(colors.icon)
+        shortcutAdapter?.setIconColor(colors.icon)
+        if (keyboardThemeMode != "custom" || KeyboardSkinRegistry.find(keyboardSkinId) != null) {
+            suggestionAdapter?.setCandidateEmptyPopupColors(colors.background, colors.text)
+        }
+        suggestionAdapter?.setFloatingPanelWidth((binding.suggestionRecyclerView.width.takeIf { it > 0 } ?: applicationContext.dpToPx(248)))
+        binding.suggestionVisibility.visibility = View.GONE
+        val shortcutContent = currentCandidateStripContent is CandidateStripContent.ExpandedShortcutEntry ||
+            (currentCandidateStripContent as? CandidateStripContent.EmptyState)?.showIntegratedShortcuts == true
+        val vertical = (shortcutContent || (composingGuideSettings.verticalCandidates &&
+            (currentCandidateStripContent is CandidateStripContent.Candidates ||
+                currentCandidateStripContent is CandidateStripContent.ZeroQuerySuggestions))) &&
+            suggestionAdapter?.isInlineSuggestionStripShown() != true
+        binding.suggestionRecyclerView.isVerticalScrollBarEnabled = vertical
+        binding.suggestionRecyclerView.isHorizontalScrollBarEnabled = !vertical
+        mainSuggestionGridSpacingDecoration?.let { binding.suggestionRecyclerView.removeItemDecoration(it) }
+        mainSuggestionGridSpacingDecoration = null
+        if (floatingCandidateVertical != vertical ||
+            (vertical && binding.candidatesRowView.layoutManager !is FlexboxLayoutManager) ||
+            (!vertical && binding.candidatesRowView.layoutManager !is LinearLayoutManager)) {
+            floatingCandidateVertical = vertical
+            fun manager() = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.candidatePanelLayoutManager(this, vertical)
+            binding.suggestionRecyclerView.layoutManager = manager()
+            binding.candidatesRowView.layoutManager = manager()
+        }
+        if (binding.suggestionRecyclerView.layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+            binding.suggestionRecyclerView.layoutParams = binding.suggestionRecyclerView.layoutParams.apply { height = ViewGroup.LayoutParams.MATCH_PARENT }
+        }
+        if (currentCandidateStripContent !is CandidateStripContent.Candidates && candidateSurfaceHost?.expanded == true) {
+            _suggestionViewStatus.value = true
+            candidateSurfaceHost?.setExpanded(false)
+            binding.suggestionVisibility.setImageDrawable(cachedArrowDropDownDrawable)
+        }
+    }
+
+    private var composingGuide: ComposingGuideController? = null
+    private val composingGuideSettings by lazy {
+        com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        )
+    }
+
+    private fun isComposingGuideEligible(): Boolean = canShowComposingGuide(
+        inputViewActive = isInputViewActive,
+        fullscreen = isFullscreenMode,
+        hardwareKeyboard = hasHardwareKeyboardConnected == true ||
+            resources.configuration.keyboard != Configuration.KEYBOARD_NOKEYS,
+        physicalKeyboardMode = physicalKeyboardEnable.replayCache.firstOrNull() == true,
+        floatingMode = isKeyboardFloatingMode == true,
+        password = currentInputType.isPassword(),
+        layoutEditing = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
+    )
+
+    private fun startComposingGuide() {
+        val host = mainLayoutBinding?.keyboardTouchEffectContainer ?: return
+        if (composingGuide == null) {
+            composingGuide = ComposingGuideController(this,
+                eligible = ::isComposingGuideEligible,
+                onStateChanged = {
+                    if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+                },
+                minimumCandidateHeight = { candidateSurfaceHost?.minimumHeightPx() ?: applicationContext.dpToPx(48) },
+                onSurfaceChanged = ::moveCandidateSurface,
+                colors = ::resolveCandidatePanelColors,
+            )
+        }
+        composingGuide?.start(host)
+    }
+
     override fun onCreateInputView(): View? {
+        composingGuide?.stop()
         Timber.d("onCreateInputView")
         // もしコンテナがすでに存在している場合、システムが再追加できるように
         // 古い親から切り離す。
@@ -2630,6 +2798,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        composingGuide?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -3175,8 +3344,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customKeyBorderWidth = preferences.customKeyBorderWidth
         qwertySwitchNumberKeyWithoutNumberPreference =
             preferences.qwertySwitchNumberKeyWithoutNumberPreference
-        customRomajiZenkakuConversionEnablePreference =
-            preferences.customRomajiZenkakuConversionEnablePreference
         omissionSearchOffsetScorePreference = preferences.omissionSearchOffsetScorePreference
         enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference =
             preferences.enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
@@ -4738,6 +4905,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        startComposingGuide()
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
         shortcutToolbarHiddenForCandidates = false
@@ -5109,6 +5277,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -5119,6 +5288,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -5158,6 +5328,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        composingGuide?.stop()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -5169,6 +5340,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        composingGuide?.destroy()
+        composingGuide = null
         unregisterCrossWindowBlurListener()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.destroy()
@@ -5477,7 +5650,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         circularFlickWindowScale = null
         customKeyBorderWidth = null
         qwertySwitchNumberKeyWithoutNumberPreference = null
-        customRomajiZenkakuConversionEnablePreference = null
         omissionSearchOffsetScorePreference = null
         enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference = null
 
@@ -6112,6 +6284,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setShortcutIconColor(shortcutColor) }
         listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
         applyCandidateEmptyPopupThemeToAdapters()
+        if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
+        composingGuide?.refresh()
     }
 
     private fun applyCandidateEmptyPopupThemeToAdapters() {
@@ -7189,7 +7363,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         length = insertString.length.toUByte(),
                         score = 0
                     )
-                }, mainView)
+                }, mainView, fromPhysicalKeyboard = true)
             }
         }
         return true
@@ -7294,7 +7468,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         length = insertString.length.toUByte(),
                         score = 0
                     )
-                }, mainView, insertString)
+                }, mainView, insertString, fromPhysicalKeyboard = true)
             }
         } else {
             handleEmptyInputEnterKey(mainView)
@@ -7987,6 +8161,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         this.isKeyboardFloatingMode = isFloatingMode
+        composingGuide?.refresh()
         updateImeWindowBlurForCurrentMode()
         if (isFloatingMode) {
             ensureFloatingInputHostLayout(mainView)
@@ -13447,22 +13622,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
 
                                             } else {
-                                                if (customRomajiZenkakuConversionEnablePreference == true) {
-                                                    _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
-                                                            converter.convertQWERTYZenkaku(
-                                                                sb.toString()
-                                                            )
-                                                        )
-                                                    }
-                                                } else {
-                                                    _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
-                                                            converter.convert(
-                                                                sb.toString()
-                                                            )
-                                                        )
-                                                    }
+                                                _inputString.update {
+                                                    applyCustomLayoutShiftAndCapLock(
+                                                        customRomajiScreenConverter?.convert(sb.toString())
+                                                            ?: sb.toString()
+                                                    )
                                                 }
                                             }
                                         }
@@ -13490,14 +13654,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                         converter.convertCustomLayout(sb.toString())
                                                     }
                                                 } else {
-                                                    if (customRomajiZenkakuConversionEnablePreference == true) {
-                                                        _inputString.update {
-                                                            converter.convertQWERTYZenkaku(sb.toString())
-                                                        }
-                                                    } else {
-                                                        _inputString.update {
-                                                            converter.convert(sb.toString())
-                                                        }
+                                                    _inputString.update {
+                                                        customRomajiScreenConverter?.convert(sb.toString())
+                                                            ?: sb.toString()
                                                     }
                                                 }
                                             }
@@ -16559,6 +16718,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             romajiMapRepository.getActiveMap().map { entity ->
+                // Update software settings before distinctUntilChanged. A settings-only update
+                // must not recreate/reset the existing physical keyboard converter.
+                customRomajiScreenConverter = entity?.takeIf { it.isDeletable }?.let {
+                    CustomRomajiScreenConverter(it.mapData, it.autoSokuon, it.autoN)
+                }
                 entity?.let {
                     Pair(it.mapData, it.isDeletable)
                 } ?: Pair(romajiMapRepository.getDefaultMapData(), false)
@@ -16605,6 +16769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
+                composingGuide?.refresh()
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
                     disableKeyboardLayoutEditMode()
@@ -16734,6 +16899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             inputString.collect { string ->
+                if (string.isEmpty() && stringInTail.get().isEmpty()) composingGuide?.update(null)
                 try {
                     measureDebugStage("IMEService.input.immediate") {
                         processInputString(string, mainView)
@@ -17532,15 +17698,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateHeightDp = prefs.candidateHeight,
             emptyHeightDp = prefs.candidateEmptyHeight
         )
-        val baseKeyboardHeight = heightPx + applicationContext.dpToPx(candidateStripHeightDp)
+        val baseKeyboardHeight = heightPx + if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
-        val candidateTabOffset = resolveCandidateTabOffsetPx(
+        val candidateTabOffset = if (floatingCandidateSurfaceActive) 0 else resolveCandidateTabOffsetPx(
             presentation = presentation,
             candidateTabHeightPx = candidateTabHeightPx(mainView)
         )
         val finalKeyboardHeight = when {
+            floatingCandidateSurfaceActive -> heightPx + systemBottomInset
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
 
@@ -17549,7 +17716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             else -> baseKeyboardHeight
         }
-        val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
+        val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) heightPx else finalKeyboardHeight - candidateTabOffset
 
         val finalKeyboardWidth =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -18012,6 +18179,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        if (floatingCandidateSurfaceActive) {
+            _suggestionViewStatus.value = true
+            candidateSurfaceHost?.setExpanded(false)
+            mainView.suggestionVisibility.visibility = View.GONE
+            refreshCandidateStripContent()
+            return
+        }
         if (isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 val activeFloatingKeyboardView = when (qwertyMode.value) {
@@ -18133,6 +18307,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: View, isVisible: Boolean
     ) {
         mainView.post {
+            if (floatingCandidateSurfaceActive && mainView === mainLayoutBinding?.suggestionVisibility) {
+                mainView.animate().cancel()
+                mainView.visibility = View.GONE
+                return@post
+            }
             mainView.pivotX = mainView.width / 2f
             mainView.pivotY = mainView.height / 2f
 
@@ -18165,6 +18344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         assertMainThread("hideFirstRowCandidatesInFullScreen")
+        if (floatingCandidateSurfaceActive) return
         mainView.candidatesRowView.post {
             if (!mainView.candidatesRowView.canScrollVertically(-1)) {
                 val flexboxManager =
@@ -18634,9 +18814,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun normalizeBunsetsuSplitPatterns(
         input: String,
-        splitPatterns: List<List<Int>>
+        splitPatterns: List<List<Int>>,
+        initialSplitPositions: List<Int>,
     ): List<List<Int>> {
-        val initialPattern = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty())
+        val initialPattern = sanitizeSplitPositions(input, initialSplitPositions)
         val normalizedPatterns = splitPatterns
             .map { sanitizeSplitPositions(input, it) }
             .distinct()
@@ -18675,9 +18856,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateBunsetsuStateAfterCandidateMerge(
         input: String,
         mergedCandidates: List<Candidate>,
-        engineResult: BunsetsuCandidateResult?
+        engineResult: BunsetsuCandidateResult?,
+        candidateSegments: Map<String, List<CandidateConversionSegment>>,
     ) {
         if (bunsetsuSeparation != true || engineResult == null) {
+            latestBunsetsuConversionSnapshot = null
             bunsetsuSplitPatterns = emptyList()
             bunsetsuPositionList = emptyList()
             return
@@ -18691,31 +18874,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mergedCandidates = mergedCandidates,
             engineResult = engineResult
         )
+        latestBunsetsuConversionSnapshot = BunsetsuConversionSnapshot(
+            input, mergedCandidates, candidateSegments, bunsetsuSplitPatterns,
+            bunsetsuPositionList.orEmpty(),
+        )
     }
 
     private fun buildBunsetsuSegments(
         input: String,
-        splitPositions: List<Int>
+        splitPositions: List<Int>,
+        snapshot: BunsetsuConversionSnapshot?,
     ): List<BunsetsuSegmentState> {
-        val sanitizedSplitPositions = sanitizeSplitPositions(input, splitPositions)
-
-        val boundaries = buildList {
-            add(0)
-            addAll(sanitizedSplitPositions)
-            add(input.length)
-        }.distinct()
-
-        return boundaries.zipWithNext()
-            .mapNotNull { (start, end) ->
-                input.substring(start, end)
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { reading ->
-                        BunsetsuSegmentState(
-                            reading = reading,
-                            displayText = reading
-                        )
-                    }
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        return buildConvertedBunsetsuSegments(
+            input, sanitizeSplitPositions(input, splitPositions), snapshot, ::displayTextFromCandidate,
+        ).map { segment ->
+            // A full-input candidate can pass an exact NG rule that matches one of its segments.
+            // Invalidate before preparation so even unfocused segments load a permitted alternative.
+            if (NgWordMatcher.matchesAny(segment.reading, segment.displayText, ngWords)) {
+                segment.copy(displayText = segment.reading, hasConvertedDisplay = false)
+            } else {
+                segment
             }
+        }
     }
 
     private fun displayTextFromCandidate(candidate: Candidate): String {
@@ -18726,39 +18907,76 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private suspend fun queryBunsetsuConversion(input: String): KanaKanjiQueryResult {
+        // Query the converter directly: suggestion lookup also mutates the whole-input split state.
+        val result = withContext(kanaKanjiConversionDispatcher) {
+            queryKanaKanjiCore(
+                input = input,
+                mode = CandidateQueryMode.CONVERSION,
+                learnRepository = learnedRepositoryForSuggestion(),
+            )
+        }
+        val romajiCandidates = if (conversionCandidatesRomajiEnablePreference == true) {
+            getRomajiCandidates(input)
+        } else {
+            emptyList()
+        }
+        val templateCandidates = getLegacyUserTemplateCandidates(input)
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        val candidates = (templateCandidates + result.candidates + romajiCandidates).filter {
+            it.length.toInt() == input.length &&
+                !NgWordMatcher.matchesAny(input, it.string, ngWords)
+        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            candidateOrderOverrideRepository.applyOrderFromSnapshot(
+                input = input,
+                candidates = candidates,
+                candidateSegmentsByString = result.candidateSegmentsByString,
+            )
+        } else candidates
+        return result.copy(candidates = orderedCandidates)
+    }
+
     private suspend fun loadCandidatesForBunsetsuSegment(
         session: BunsetsuConversionSession,
         segmentIndex: Int,
-        mainView: MainLayoutBinding
     ): BunsetsuConversionSession {
-        if (segmentIndex !in session.segments.indices) return session
+        val targetSegment = session.segments.getOrNull(segmentIndex) ?: return session
+        if (targetSegment.candidatesLoaded) return session
 
-        val targetSegment = session.segments[segmentIndex]
-        if (targetSegment.candidates.isNotEmpty()) return session
-
-        val previousPositions = bunsetsuPositionList
-        val previousSplitPatterns = bunsetsuSplitPatterns
-        val targetReadingLength = targetSegment.reading.length
-        val candidates = try {
-            getSuggestionList(targetSegment.reading, mainView).filter {
-                it.length.toInt() == targetReadingLength
-            }
-        } finally {
-            bunsetsuPositionList = previousPositions
-            bunsetsuSplitPatterns = previousSplitPatterns
-        }
-
-        val displayText = candidates.firstOrNull()?.let(::displayTextFromCandidate)
-            ?: targetSegment.reading
-
+        val candidates = queryBunsetsuConversion(targetSegment.reading).candidates
         val updatedSegments = session.segments.toMutableList()
-        updatedSegments[segmentIndex] = targetSegment.copy(
-            candidates = candidates,
-            displayText = displayText,
-            selectedIndex = 0,
-            overrideDisplayCandidate = null
+        updatedSegments[segmentIndex] = mergeBunsetsuCandidates(
+            targetSegment, candidates, ::displayTextFromCandidate,
         )
         return session.copy(segments = updatedSegments)
+    }
+
+    private suspend fun prepareBunsetsuSegments(
+        session: BunsetsuConversionSession,
+    ): BunsetsuConversionSession {
+        var prepared = session
+        for (index in session.segments.indices) {
+            if (index == session.focusedIndex || !session.segments[index].hasConvertedDisplay) {
+                prepared = loadCandidatesForBunsetsuSegment(prepared, index)
+            }
+        }
+        return prepared
+    }
+
+    private fun launchBunsetsuOperation(
+        operation: suspend (BunsetsuConversionSession) -> Unit,
+    ) {
+        val generation = bunsetsuConversionSession?.generation ?: return
+        scope.launch {
+            bunsetsuOperationMutex.withLock {
+                val current = bunsetsuConversionSession ?: return@withLock
+                if (current.generation != generation || !isBunsetsuCursorMoveSessionActive()) {
+                    return@withLock
+                }
+                operation(current)
+            }
+        }
     }
 
     private suspend fun activateBunsetsuConversionSession(
@@ -18766,43 +18984,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
     ): Boolean {
-        if (!shouldUseBunsetsuCursorMoveSession()) return false
+        val requestedGeneration = bunsetsuSessionGeneration
+        return bunsetsuOperationMutex.withLock {
+            if (requestedGeneration != bunsetsuSessionGeneration || inputString.value != input) {
+                return@withLock true
+            }
+            if (!shouldUseBunsetsuCursorMoveSession()) return@withLock false
+            if (isBunsetsuCursorMoveSessionActive()) return@withLock true
 
-        val tailText = stringInTail.get()
-        val splitPatterns = normalizeBunsetsuSplitPatterns(input, bunsetsuSplitPatterns)
-        val initialSplitPositions = splitPatterns.firstOrNull().orEmpty()
-        val initialSegments = buildBunsetsuSegments(input, initialSplitPositions)
-        if (initialSegments.isEmpty()) {
-            clearBunsetsuConversionSession()
-            return false
+            val tailText = stringInTail.get()
+            val snapshot = latestBunsetsuConversionSnapshot?.takeIf { it.input == input }
+                ?: queryBunsetsuConversion(input).let { result ->
+                    BunsetsuConversionSnapshot(
+                        input = input,
+                        candidates = result.candidates,
+                        paths = result.candidateSegmentsByString,
+                        splitPatterns = result.bunsetsuResult?.splitPatterns.orEmpty(),
+                        initialSplitPositions = resolveInitialBunsetsuSplitPositions(
+                            input, result.candidates, result.bunsetsuResult,
+                        ),
+                    )
+                }
+            if (requestedGeneration != bunsetsuSessionGeneration || inputString.value != input) {
+                return@withLock true
+            }
+            val splitPatterns = normalizeBunsetsuSplitPatterns(
+                input, snapshot.splitPatterns, snapshot.initialSplitPositions,
+            )
+            val initialSplitPositions = splitPatterns.firstOrNull().orEmpty()
+            val initialSegments = buildBunsetsuSegments(input, initialSplitPositions, snapshot)
+            if (initialSegments.isEmpty()) {
+                clearBunsetsuConversionSession()
+                return@withLock false
+            }
+
+            val initialSession = BunsetsuConversionSession(
+                rawInput = input + tailText,
+                generation = ++bunsetsuSessionGeneration,
+                conversionSnapshot = snapshot,
+                conversionInput = input,
+                segments = initialSegments,
+                tailText = tailText,
+                focusedIndex = 0,
+                splitPatterns = splitPatterns,
+                activeSplitPatternIndex = 0
+            )
+
+            clearZenzLiveSlot("bunsetsu conversion session activated")
+            isHenkan.set(true)
+            henkanPressedWithBunsetsuDetect = true
+            bunsetusMultipleDetect = true
+            stringInTail.set("")
+            suggestionClickNum = 0
+            currentHighlightIndex = RecyclerView.NO_POSITION
+            bunsetsuPositionList = initialSplitPositions
+            bunsetsuSplitPatterns = splitPatterns
+            bunsetsuConversionSession = initialSession
+            val prepared = prepareBunsetsuSegments(initialSession)
+            if (bunsetsuConversionSession !== initialSession || !isBunsetsuCursorMoveSessionActive()) {
+                return@withLock true
+            }
+            bunsetsuConversionSession = prepared
+            renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+            true
         }
-
-        val initialSession = BunsetsuConversionSession(
-            rawInput = input + tailText,
-            conversionInput = input,
-            segments = initialSegments,
-            tailText = tailText,
-            focusedIndex = 0,
-            splitPatterns = splitPatterns,
-            activeSplitPatternIndex = 0
-        )
-
-        clearZenzLiveSlot("bunsetsu conversion session activated")
-        isHenkan.set(true)
-        henkanPressedWithBunsetsuDetect = true
-        bunsetusMultipleDetect = true
-        stringInTail.set("")
-        suggestionClickNum = 0
-        currentHighlightIndex = RecyclerView.NO_POSITION
-        bunsetsuPositionList = initialSplitPositions
-        bunsetsuSplitPatterns = splitPatterns
-        bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
-            initialSession,
-            segmentIndex = 0,
-            mainView = mainView
-        )
-        renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-        return true
     }
 
     private fun buildBunsetsuSegmentRanges(
@@ -18851,19 +19096,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
         val mainView = mainLayoutBinding ?: return false
-        val session = bunsetsuConversionSession ?: return false
-        if (session.splitPatterns.size <= 1) return false
+        if ((bunsetsuConversionSession?.splitPatterns?.size ?: 0) <= 1) return false
 
-        scope.launch {
+        launchBunsetsuOperation { session ->
             val nextPatternIndex =
                 ((session.activeSplitPatternIndex + delta) % session.splitPatterns.size + session.splitPatterns.size) % session.splitPatterns.size
             val nextSplitPositions = session.splitPatterns[nextPatternIndex]
             val rebuiltSegments = buildBunsetsuSegments(
                 input = session.conversionInput,
-                splitPositions = nextSplitPositions
+                splitPositions = nextSplitPositions,
+                snapshot = session.conversionSnapshot,
             )
             if (rebuiltSegments.isEmpty()) {
-                return@launch
+                return@launchBunsetsuOperation
             }
 
             val nextFocusedIndex = findFocusedSegmentIndexForSplitPattern(
@@ -18877,13 +19122,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 focusedIndex = nextFocusedIndex,
                 activeSplitPatternIndex = nextPatternIndex
             )
+            val prepared = prepareBunsetsuSegments(switchedSession)
+            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+                return@launchBunsetsuOperation
+            }
             bunsetsuPositionList = nextSplitPositions
             bunsetsuSplitPatterns = session.splitPatterns
-            bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
-                switchedSession,
-                segmentIndex = nextFocusedIndex,
-                mainView = mainView
-            )
+            bunsetsuConversionSession = prepared
             renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
         }
         return true
@@ -19081,6 +19326,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearBunsetsuConversionSession() {
+        bunsetsuSessionGeneration++
         bunsetsuConversionSession = null
         bunsetusMultipleDetect = false
     }
@@ -19147,17 +19393,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
         val mainView = mainLayoutBinding ?: return false
-        val session = bunsetsuConversionSession ?: return false
-        val nextIndex = (session.focusedIndex + delta).coerceIn(0, session.segments.lastIndex)
-        if (nextIndex == session.focusedIndex) return true
-
-        scope.launch {
+        launchBunsetsuOperation { session ->
+            val nextIndex = (session.focusedIndex + delta).coerceIn(0, session.segments.lastIndex)
+            if (nextIndex == session.focusedIndex) return@launchBunsetsuOperation
             val movedSession = session.copy(focusedIndex = nextIndex)
-            bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
+            val loadedSession = loadCandidatesForBunsetsuSegment(
                 movedSession,
-                segmentIndex = nextIndex,
-                mainView = mainView
+                segmentIndex = nextIndex
             )
+            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+                return@launchBunsetsuOperation
+            }
+            bunsetsuConversionSession = loadedSession
             renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
         }
         return true
@@ -19169,19 +19416,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
         val mainView = mainLayoutBinding ?: return false
-        val session = bunsetsuConversionSession ?: return false
-
-        scope.launch {
+        launchBunsetsuOperation { session ->
             val loadedSession = loadCandidatesForBunsetsuSegment(
                 session,
-                segmentIndex = session.focusedIndex,
-                mainView = mainView
+                segmentIndex = session.focusedIndex
             )
+            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+                return@launchBunsetsuOperation
+            }
             val segment = loadedSession.segments[loadedSession.focusedIndex]
             if (segment.candidates.isEmpty()) {
                 bunsetsuConversionSession = loadedSession
                 renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-                return@launch
+                return@launchBunsetsuOperation
             }
 
             val candidateCount = segment.candidates.size
@@ -20113,6 +20360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         assertMainThread("setMainSuggestionColumn")
+        if (floatingCandidateSurfaceActive) { configureFloatingCandidates(mainView); return }
         measureDebugSection("IMEService.setMainSuggestionColumn") {
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
@@ -20282,6 +20530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         _keyboardLayoutEditState.value = state
+        composingGuide?.refresh()
         keyboardLayoutEditController?.start(
             state = state,
             surfaceAdapter = surfaceAdapter,
@@ -20869,6 +21118,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         showCandidateTab: Boolean
     ) {
+        if (floatingCandidateSurfaceActive) return
         val tabOffset = if (showCandidateTab) candidateTabHeightPx(mainView) else 0
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             if (params.topMargin != tabOffset) {
@@ -20940,10 +21190,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (presentation.showIndependentShortcutToolbar) {
             mainView.shortcutToolbarRecyclerview.isVisible = true
         } else if (presentation.reserveIndependentShortcutToolbarSpace) {
-            mainView.shortcutToolbarRecyclerview.isInvisible = true
+            if (floatingCandidateSurfaceActive) mainView.shortcutToolbarRecyclerview.isVisible = false
+            else mainView.shortcutToolbarRecyclerview.isInvisible = true
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }
+        candidateSurfaceHost?.refreshAppearance()
     }
 
     private fun collapseShortcutEntryExpansion(refreshContent: Boolean = true) {
@@ -21841,7 +22093,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        convertScreenQwerty(converter, sb.toString())
                                                     }
                                                 }
                                             }
@@ -21857,7 +22109,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        convertScreenQwerty(converter, sb.toString())
                                                     }
                                                 }
                                             }
@@ -21878,7 +22130,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        convertScreenQwerty(converter, sb.toString())
                                                     }
                                                 }
                                             }
@@ -21897,7 +22149,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
                                             Timber.d("QWERTY romaji 2: $charToAppend")
                                             _inputString.update {
-                                                converter.convertQWERTYZenkaku(
+                                                convertScreenQwerty(
+                                                    converter,
                                                     charToAppend.toString()
                                                 )
                                             }
@@ -24510,7 +24763,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateBunsetsuStateAfterCandidateMerge(
                 input = insertString,
                 mergedCandidates = orderedCandidates,
-                engineResult = engineResult
+                engineResult = engineResult,
+                candidateSegments = coreResult.candidateSegmentsByString,
             )
         }
 
@@ -24644,7 +24898,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateBunsetsuStateAfterCandidateMerge(
                 input = insertString,
                 mergedCandidates = orderedCandidates,
-                engineResult = engineResult
+                engineResult = engineResult,
+                candidateSegments = coreResult.candidateSegmentsByString,
             )
         }
 
@@ -24767,7 +25022,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateBunsetsuStateAfterCandidateMerge(
                 input = insertString,
                 mergedCandidates = orderedCandidates,
-                engineResult = engineResult
+                engineResult = engineResult,
+                candidateSegments = coreResult.candidateSegmentsByString,
             )
         }
 
@@ -24868,7 +25124,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 beamWidth = conversionBeamWidth,
                 predictionConfig = predictionConfig,
                 collectCandidateSegments =
-                    appPreference.candidate_order_override_enable_preference == true,
+                    appPreference.candidate_order_override_enable_preference == true ||
+                        shouldUseBunsetsuCursorMoveSession(),
             )
         )
         if (BuildConfig.DEBUG) {
@@ -24893,16 +25150,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return filterNot { it.string.containsHentaigana() }
     }
 
+    private suspend fun getLegacyUserTemplateCandidates(input: String): List<Candidate> {
+        if (isUserTemplateEnable != true) return emptyList()
+        return withContext(Dispatchers.IO) {
+            userTemplateRepository.searchByReading(reading = input, limit = 8)
+                .toUserTemplateCandidates()
+        }
+    }
+
     private suspend fun getUserTemplateCandidates(insertString: String): List<Candidate> {
         return withContext(Dispatchers.IO) {
-            val legacyTemplates = if (isUserTemplateEnable == true) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString,
-                    limit = 8
-                ).toUserTemplateCandidates()
-            } else {
-                emptyList()
-            }
+            val legacyTemplates = getLegacyUserTemplateCandidates(insertString)
             val contextualMacrosAllowed = !isPrivateMode && currentInputType !in passwordTypes
             val macros = if (isTextMacroCandidateEnable) {
                 textMacroRepository.getEnabledByReading(insertString, limit = 8)
@@ -25465,8 +25723,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFlick: Boolean,
         insertString: String,
         suggestions: List<Candidate>,
-        mainView: MainLayoutBinding
+        mainView: MainLayoutBinding,
+        fromPhysicalKeyboard: Boolean = false
     ) {
+        if (!fromPhysicalKeyboard && !isDefaultRomajiHenkanMap && insertString.isNotEmpty() &&
+            qwertyMode.value == TenKeyQWERTYMode.Custom && isCustomLayoutRomajiMode &&
+            currentInputModeForSession == InputMode.ModeJapanese) {
+            handleSpaceKeyClickInQWERTY(insertString, mainView, suggestions)
+            return
+        }
         clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
             resetFlagsKeySpace()
@@ -25579,7 +25844,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
                             romajiConverter?.flushZenkaku(insertString)?.first
                         } else {
-                            romajiConverter?.flush(insertString)?.first
+                            customRomajiScreenConverter?.flush(insertString)
                         }
                         if (insertStringEndWithN == null) {
                             _inputString.update { insertString }
@@ -25592,6 +25857,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     handleJapaneseModeSpaceKey(
                                         this, suggestions, insertString
                                     )
+                                }
+                            }
+                        } else if (!isDefaultRomajiHenkanMap && isHenkan.get()) {
+                            // Subsequent Space presses cycle the active candidate selection.
+                            // Only the first press should wait for candidates for the reading.
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(mainView, suggestions, insertString)
+                                } else {
+                                    handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                                }
+                            }
+                        } else if (!isDefaultRomajiHenkanMap) {
+                            val converter = customRomajiScreenConverter
+                            val connection = currentInputConnection
+                            if (insertStringEndWithN != insertString) customScreenCandidateResult.value = null
+                            _inputString.value = insertStringEndWithN
+                            setComposingText(insertStringEndWithN + stringInTail.get(), 1)
+                            scope.launch {
+                                val result = withTimeoutOrNull(2_000) {
+                                    combine(customScreenCandidateResult, inputString) { result, current ->
+                                        result to current
+                                    }.first { (result, current) ->
+                                        current != insertStringEndWithN || result?.first == insertStringEndWithN
+                                    }
+                                }
+                                if (currentInputConnection !== connection ||
+                                    customRomajiScreenConverter !== converter ||
+                                    inputString.value != insertStringEndWithN || isHenkan.get()) return@launch
+                                val candidates = result?.first?.second.orEmpty()
+                                if (candidates.isNotEmpty()) {
+                                    if (bunsetsuSeparation == true) {
+                                        handleJapaneseModeSpaceKeyWithBunsetsu(mainView, candidates, insertStringEndWithN)
+                                    } else {
+                                        handleJapaneseModeSpaceKey(mainView, candidates, insertStringEndWithN)
+                                    }
                                 }
                             }
                         } else {
@@ -25899,8 +26200,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleNonEmptyInputEnterKey(
-        suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
+        suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String,
+        fromPhysicalKeyboard: Boolean = false
     ) {
+        if (!fromPhysicalKeyboard) flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitBunsetsuConversionSession()) {
@@ -25950,6 +26253,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
         insertString: String
     ) {
+        flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitBunsetsuConversionSession()) {
@@ -27826,6 +28130,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputConnection == null) return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
+        if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
@@ -27848,6 +28153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val finished = composingTextArbiter.finishCanonical()
+        composingGuide?.update(null)
         clearPhysicalCandidateCompositionSession("finish composing text")
         return finished
     }
@@ -27862,6 +28168,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (committed) {
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
+            composingGuide?.update(null)
             clearPhysicalCandidateCompositionSession("commit text")
         }
         return committed
