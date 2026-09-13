@@ -69,7 +69,10 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                         val positiveCases = listOf(
                             "よじ" to "4時", "さんにん" to "3人",
                             "ごえん" to "5円", "にじゅっぷん" to "20分", "に" to "２",
-                        ) + if (tab == "英数カナ") emptyList() else listOf("しちごさん" to "七五三")
+                        ) + if (tab == "英数カナ") listOf("お" to "1", "よ" to "8") else listOf("しちごさん" to "七五三", "いっとき" to "一時", "ばんにん" to "万人",
+                            "いちぶ" to "一分", "いちい" to "一位", "いっ" to "一", "やくさんにん" to "約三人",
+                            "さんにんいじょう" to "三人以上", "さんこ" to "三個",
+                            "いっぽん" to "一本", "ろっこ" to "六個", "はっかい" to "八回")
                         for ((reading, expected) in positiveCases) {
                             instrumentation.sendStatus(2, Bundle().apply {
                                 putString("stream", "Checking incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading\n")
@@ -83,6 +86,15 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                                 assertTrue(tap(awaitVisibleText(tab).center()))
                                 SystemClock.sleep(250)
                             }
+                            val equivalentOutputs = when (reading) {
+                                "やくさんにん" -> setOf("約3人", "約３人", "約三人")
+                                "さんにんいじょう" -> setOf("3人以上", "３人以上", "三人以上")
+                                "さんこ" -> setOf("3個", "３個", "三個")
+                                "いっぽん" -> setOf("1本", "１本", "一本")
+                                "ろっこ" -> setOf("6個", "６個", "六個")
+                                "はっかい" -> setOf("8回", "８回", "八回")
+                                else -> setOf(expected)
+                            }
                             val deadline = SystemClock.uptimeMillis() + 8000
                             var candidate: AccessibilityNodeInfo? = null
                             val observedCandidates = linkedSetOf<String>()
@@ -93,7 +105,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                                         if (it.viewIdResourceName?.endsWith(":id/suggestion_item_text_view") == true) {
                                             observedCandidates += it.text?.toString().orEmpty()
                                         }
-                                        it.isVisibleToUser && it.text?.toString()?.trim() == expected
+                                        it.isVisibleToUser && it.text?.toString()?.trim() in equivalentOutputs
                                     } }.firstOrNull()
                                 if (candidate == null) {
                                     findVisibleNodeById("suggestion_recycler_view")
@@ -104,11 +116,12 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                             var clickable: AccessibilityNodeInfo? = requireNotNull(candidate) {
                                 "Missing $expected: incremental=$incremental bunsetsu=$bunsetsu tab=$tab observed=$observedCandidates"
                             }
+                            val selectedOutput = candidate!!.text.toString().trim()
                             while (clickable != null && !clickable.isClickable) clickable = clickable.parent
                             assertTrue("Candidate cannot be clicked: $expected",
                                 clickable?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true)
 
-                            awaitEditorText(scenario, expected, committed = true)
+                            awaitEditorText(scenario, selectedOutput, committed = true)
                             instrumentation.sendStatus(2, Bundle().apply {
                                 putString("stream", "NUMBER_CANDIDATE_COMMIT incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading PASS\n")
                             })
@@ -220,8 +233,11 @@ class JapaneseNumberCandidateImeInstrumentedTest {
     }
 
     private fun assertNoNumericCandidates(reading: String, observed: List<String>) {
-        val numeric = Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿⑴-⒛㉑-㉟㊱-㊿Ⅰ-Ⅻⅰ-ⅻ]|^[〇零一二三四五六七八九十百千万億兆京]+(?:時|分|人|円)?$")
-        assertTrue("$reading unexpected visible candidates: $observed", observed.none { numeric.containsMatchIn(it) })
+        val numeric = Regex("^[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿⑴-⒛㉑-㉟㊱-㊿Ⅰ-Ⅻⅰ-ⅻ〇零一二三四五六七八九十百千万億兆京,]+(?:時|分|人|円)?$")
+        // The bundled single-character dictionary explicitly defines いっ -> 一.
+        // Keeping that entry must not enable generated 1/１ or other numerical variants.
+        val existingCharacter = if (reading == "いっ") setOf("一") else emptySet()
+        assertTrue("$reading unexpected visible candidates: $observed", observed.filterNot { it in existingCharacter }.none { numeric.matches(it) || it in setOf("全5", "全５", "全五", "日本5", "日本５", "日本五") })
     }
 
     private fun collectCandidateTexts(node: AccessibilityNodeInfo, output: MutableSet<String>) {

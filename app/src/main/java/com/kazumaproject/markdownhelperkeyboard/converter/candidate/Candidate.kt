@@ -26,4 +26,6 @@ data class Candidate(
     val conversionSegments: List<CandidateConversionSegment> = emptyList(),
     /** Optional non-text presentation, currently used by formula candidates. */
     val presentation: FormulaCandidatePresentation? = null,
+    /** Exact output of a character transform or the independent English dictionary. */
+    val nonNumericSource: Pair<String, String>? = null,
 )

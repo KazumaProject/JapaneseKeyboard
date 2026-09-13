@@ -126,6 +126,8 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
+        // Dictionary corpus audits load production dictionaries, including the large web lexicon.
+        unitTests.all { maxHeapSize = "2g" }
     }
 
     androidResources {

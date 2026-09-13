@@ -92,11 +92,17 @@ class JapaneseNumberConversionInstrumentedTest {
         forbiddenByInput.forEach { (input, forbidden) ->
             val candidates = engine.convertOriginal(input, repository)
             standardResults[input] = candidates
+            val lexical = exactLexicalDictionaryOutputs(engine, input)
             assertTrue(
                 "$input unexpectedly generated ${candidates.map { it.string }}",
-                candidates.none { it.string in forbidden },
+                candidates.none { it.string in forbidden && !(it.string in lexical &&
+                    it.commitText == it.string && !it.generatedNumber && it.number == null) },
             )
         }
+
+        assertTrue("stored しじゅう -> 四十 must remain lexical",
+            "四十" in exactLexicalDictionaryOutputs(engine, "しじゅう") &&
+                standardResults.getValue("しじゅう").any { it.string == "四十" && it.commitText == "四十" && !it.generatedNumber })
 
         val benchmarkCorpus = (forbiddenByInput.keys + validInputs.keys).toList()
         val englishKanaBenchmark = measureConversions(
@@ -138,6 +144,29 @@ class JapaneseNumberConversionInstrumentedTest {
         val outputDir = File(context.filesDir, "conversion-perf").apply { mkdirs() }
         File(outputDir, "japanese-number-conversion.txt").writeText(report)
         println("JAPANESE_NUMBER_CONVERSION_REPORT\n$report")
+    }
+
+    // The spoken-number generator's forbidden forms do not prohibit independently stored
+    // lexical words (for example しじゅう -> 四十). Read the dictionary, not filtered output.
+    private fun exactLexicalDictionaryOutputs(engine: KanaKanjiEngine, input: String): Set<String> {
+        fun field(name: String): Any = requireNotNull(KanaKanjiEngine::class.java.getDeclaredField(name)
+            .apply { isAccessible = true }.get(engine))
+        val trie = field("systemYomiTrie") as com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+        val bits = field("systemSuccinctBitVectorLBSYomi") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        if (input !in trie.commonPrefixSearch(input, bits)) return emptySet()
+        val leaves = field("systemSuccinctBitVectorIsLeafYomi") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        val tokens = field("systemTokenArray") as com.kazumaproject.dictionary.TokenArray
+        val tokenBits = field("systemSuccinctBitVectorTokenArray") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        val tango = field("systemTangoTrie") as com.kazumaproject.Louds.LOUDS
+        val tangoBits = field("systemSuccinctBitVectorTangoLBS") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        val term = trie.getTermId(trie.getNodeIndex(input, bits), leaves)
+        return tokens.getListDictionaryByYomiTermId(term, tokenBits).filter {
+            tokens.leftIds[it.posTableIndex.toInt()].toInt() !in 2043..2055
+        }.mapTo(hashSetOf()) { entry -> when (entry.nodeId) {
+            -2 -> input
+            -1 -> input.map { if (it in 'ぁ'..'ゖ') it + 0x60 else it }.joinToString("")
+            else -> tango.getLetter(entry.nodeId, tangoBits)
+        } }
     }
 
     private suspend fun KanaKanjiEngine.convertOriginal(

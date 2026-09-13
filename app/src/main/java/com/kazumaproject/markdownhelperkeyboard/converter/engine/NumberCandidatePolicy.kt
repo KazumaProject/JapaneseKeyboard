@@ -10,11 +10,32 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommas
 object NumberCandidatePolicy {
     private val numeric = Regex("[0-9０-９〇零一二三四五六七八九十百千万億兆京,，]+(?:時|人|分|円)?")
     private val derived = Regex("(?:[0-9０-９]+[⁰¹²³⁴⁵⁶⁷⁸⁹]+|[⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]+|[0-9０-９]+[:/][0-9０-９]+|[0-9０-９]+月[0-9０-９]+日|[0-9０-９]+時[0-9０-９]+分)")
-    // Lexical words, not numeral readings. Only automatic dictionary words may use this list;
-    // generated variants always require a proof. Keep paired readings, never blanket exceptions.
-    private val lexical = setOf("じゅうぶん" to "十分", "いちぶん" to "一分", "まんいち" to "万一", "しちごさん" to "七五三")
+    // These ranges are the numeral/suffix/prefix classes in the shipped id.def.
+    // A system lexical entry is evidence for its own reading/output, never a generated copy.
+    private fun independentTextSegment(segment: CandidateConversionSegment): Boolean =
+        segment.nonNumericSource?.let { it.first == segment.reading && it.second == segment.output } == true
+
+    private fun lexicalEntry(segment: CandidateConversionSegment): Boolean =
+        independentTextSegment(segment) || (segment.source == CandidateSource.SYSTEM && segment.leftId != null &&
+            segment.leftId.toInt() !in 2043..2055)
+
+    private fun directWidth(input: String, output: String): Boolean {
+        if (input.isEmpty() || input.any { it !in '0'..'9' && it !in '０'..'９' }) return false
+        fun half(s: String) = s.map { if (it in '０'..'９') it - 0xFEE0 else it }.joinToString("")
+        return half(input) == half(output)
+    }
+
     private fun explicit(candidate: Candidate): Boolean = candidate.type in setOf(
         CANDIDATE_TYPE_USER_DICTIONARY, CANDIDATE_TYPE_USER_TEMPLATE, CANDIDATE_TYPE_TEXT_MACRO)
+
+    /** Called only at dictionary lookup sites; copies cannot change the recorded output. */
+    fun dictionaryCandidate(candidate: Candidate): Candidate {
+        val reading = candidate.yomi ?: return candidate
+        return candidate.copy(conversionSegments = listOf(CandidateConversionSegment(
+            0, reading.length, candidate.string, reading,
+            leftId = candidate.leftId, rightId = candidate.rightId,
+        )))
+    }
 
     fun eligible(input: String, candidate: Candidate, config: PredictionConfig = PredictionConfig()): Boolean {
         if (explicit(candidate) && candidate.conversionSegments.isEmpty()) return true
@@ -24,10 +45,18 @@ object NumberCandidatePolicy {
         candidate.temporalSource?.let { (reading, output) ->
             return reading == input && candidate.string == output && candidate.commitText == output
         }
+        candidate.nonNumericSource?.let { (reading, output) ->
+            return candidate.number == null && !candidate.generatedNumber && reading == input &&
+                candidate.string == output && candidate.commitText == output
+        }
+        if (candidate.number == null && candidate.string == input && candidate.commitText == input) return true
+        if (directWidth(input, candidate.string) && candidate.commitText == candidate.string) return true
         // A prefix numeral must not make an invalid whole reading look numeric (ごぜん → 5).
         // Complete sentence paths can still prove their individual numeric segments below.
         if (candidate.length.toInt() < input.length && (numeric.matches(candidate.string) ||
-                derived.matches(candidate.string) || numberSymbol(candidate.string))) return false
+                derived.matches(candidate.string) || numberSymbol(candidate.string)) &&
+            candidate.conversionSegments.none { lexicalEntry(it) && it.output == candidate.string &&
+                (it.output.length > 1 || !ValidatedNumber.isNumericFragment(it.reading.orEmpty())) }) return false
         candidate.number?.let { proof ->
             if (candidate.generatedNumber && proof.origin == NumberInputOrigin.READING && !config.japaneseNumberCandidatesEnabled) return false
             if (candidate.generatedNumber && proof.reading != input) return false
@@ -37,9 +66,15 @@ object NumberCandidatePolicy {
         val reading = candidate.yomi ?: input.take(candidate.length.toInt())
         val segments = candidate.conversionSegments
         val hasSegments = segments.isNotEmpty()
-        val numericCandidate = containsNumericText(reading, candidate.string) || containsNumericText(reading, candidate.commitText) ||
-            segments.any { containsNumericText(it.reading ?: reading, it.output) }
-        if (numericCandidate && candidate.commitText != candidate.string) return false
+        val lexicalCandidate = segments.size == 1 && lexicalEntry(segments.single()) &&
+            segments.single().reading == reading && segments.single().output == candidate.string &&
+            (reading == input || candidate.string.length > 1 || !ValidatedNumber.isNumericFragment(reading))
+        val numericCandidate = !lexicalCandidate && (containsNumericText(reading, candidate.string) || containsNumericText(reading, candidate.commitText) ||
+            segments.any { !lexicalEntry(it) && containsNumericText(it.reading ?: reading, it.output) })
+        if (candidate.commitText != candidate.string &&
+            (numericCandidate || containsNumericText(reading, candidate.commitText))) return false
+        if (!numericCandidate && !lexicalCandidate &&
+            segments.none { it.source == CandidateSource.USER_DICTIONARY }) return true
         if (numericCandidate && reading != input) return false
         if (hasSegments) {
             var end = 0
@@ -55,8 +90,9 @@ object NumberCandidatePolicy {
             if (segments.joinToString("") { it.output } != candidate.string) return false
             if (segments.any { it.source == CandidateSource.USER_DICTIONARY } &&
                 candidate.commitText != candidate.string) return false
+            if (lexicalCandidate) return true
             if (!validNumericRuns(reading, segments)) return false
-            if (segments.any { it.source == CandidateSource.USER_DICTIONARY }) return true
+            return true
         } else if (unmappedDigits(reading, candidate.string) || unmappedDigits(reading, candidate.commitText)) {
             return false
         }
@@ -67,54 +103,71 @@ object NumberCandidatePolicy {
         var reading = ""
         var output = ""
         var hasNumber = false
-        var hasLiteral = false
-        var hasLexicalWord = false
-        fun complete(): Boolean = !hasNumber ||
-            ValidatedNumber.parse(reading)?.let { validSurface(it, output) } == true
+        var leftWord = false
+        var permitsBareNumber = true
+        fun complete(withDictionaryCounter: Boolean = false): Boolean {
+            if (!hasNumber) return true
+            if (directWidth(reading, output)) return true
+            val proof = ValidatedNumber.parse(reading) ?: if (withDictionaryCounter) {
+                // Dictionary counter inflections (一 + 本, 六 + 個, 八 + 回) do not
+                // extend the grammar used to generate standalone numerical candidates.
+                val ending = listOf("じゅっ" to "じゅう", "じっ" to "じゅう", "ひゃっ" to "ひゃく",
+                    "びゃっ" to "びゃく", "ぴゃっ" to "ぴゃく", "いっ" to "いち", "ろっ" to "ろく", "はっ" to "はち")
+                    .firstOrNull { reading.endsWith(it.first) } ?: return false
+                ValidatedNumber.parseReading(reading.dropLast(ending.first.length) + ending.second) ?: return false
+            } else return false
+            return validSurface(proof, output) &&
+                (!leftWord || permitsBareNumber || withDictionaryCounter || proof.counter.isNotEmpty())
+        }
+        fun clear() { reading = ""; output = ""; hasNumber = false }
         for (segment in segments) {
             val yomi = segment.reading ?: input.substring(segment.inputStart, segment.inputEnd)
-            val numericOutput = containsNumericText(yomi, segment.output) && yomi to segment.output !in lexical
-            val clockPrefix = segment.inputStart == 0 && segment.source == CandidateSource.SYSTEM &&
-                (yomi to segment.output in setOf("ごぜん" to "午前", "ごご" to "午後"))
-            // A guessed particle cannot rescue a malformed number. A real boundary follows
-            // a complete number or an independent lexical word, never unknown kana fragments.
-            val completeNumber = ValidatedNumber.parse(reading) != null
-            val particleBoundary = segment.startsWithParticle &&
-                (completeNumber || (!hasNumber && !hasLiteral && hasLexicalWord))
-            val copulaBoundary = completeNumber && segment.source == CandidateSource.SYSTEM &&
-                segment.output == yomi && yomi in setOf("です", "でした", "だ", "だった")
-            if (particleBoundary || copulaBoundary || clockPrefix || segment.source == CandidateSource.USER_DICTIONARY) {
-                if (!complete()) return false
-                reading = ""
-                output = ""
-                hasNumber = false
-                hasLiteral = false
-                hasLexicalWord = false
-            } else {
-                // Audit the entire corresponding interval, including ordinary-word nodes:
-                // 日本 + 5 must not turn the tail of にほんご into an isolated valid ご.
-                reading += yomi
-                output += segment.output
-                hasNumber = hasNumber || numericOutput
-                val numericFragment = ValidatedNumber.isNumericFragment(yomi)
-                hasLiteral = hasLiteral || (segment.output == yomi && numericFragment) || segment.source == CandidateSource.UNKNOWN
-                hasLexicalWord = hasLexicalWord || (!numericOutput &&
-                    segment.source == CandidateSource.SYSTEM && !numericFragment)
+            val id = segment.leftId?.toInt()
+            val trusted = lexicalEntry(segment)
+            val counter = trusted && id in 2011..2018
+            val supportedCounter = trusted && (counter || hasNumber) && segment.output in setOf("時", "人", "分", "円")
+            val fragment = ValidatedNumber.isNumericFragment(yomi)
+            // Numeric fragments stay together even if the dictionary calls 全 a prefix.
+            // A complete lexical numeral spelling (一時/万人/七五三) is an ordinary word.
+            val numeralAtom = fragment && segment.output.length == 1 && numeric.matches(segment.output)
+            val lexicalNumeral = trusted && numeric.matches(segment.output) && !numeralAtom
+            val boundary = independentTextSegment(segment) || segment.source == CandidateSource.USER_DICTIONARY ||
+                (trusted && !supportedCounter && !numeralAtom && (!fragment || lexicalNumeral ||
+                    (segment.output != yomi && id !in 2596..2642))) ||
+                (segment.startsWithParticle && (ValidatedNumber.parse(reading) != null ||
+                    (!hasNumber && !ValidatedNumber.isNumericFragment(reading)))) ||
+                (segment.output == yomi && yomi in setOf("です", "でした", "だ", "だった") &&
+                    ValidatedNumber.parse(reading) != null)
+            if (boundary) {
+                if (!complete(withDictionaryCounter = counter && !supportedCounter)) return false
+                clear()
+                leftWord = !segment.startsWithParticle
+                permitsBareNumber = id in 2639..2642 || id == 2628 || id == 2630 || id in 2643..2656 ||
+                    segment.startsWithParticle
+                continue
             }
+            reading += yomi
+            output += segment.output
+            hasNumber = hasNumber || containsNumericText(yomi, segment.output)
         }
         return complete()
     }
 
     private fun eligibleSurface(reading: String, surface: String): Boolean {
-        if (reading to surface in lexical) return true
+        // Ungenerated kanji words with a non-numeral reading are lexical, including history.
+        // Suspect numeric fragments still require an exact dictionary segment or numeric proof.
+        if (!surface.any { it in '0'..'9' || it in '０'..'９' } &&
+            numeric.matches(surface) && !ValidatedNumber.isNumericFragment(reading)) return true
         if (!numeric.matches(surface) && !derived.matches(surface) && !numberSymbol(surface)) return true
         val proof = ValidatedNumber.parse(reading) ?: return false
         return validSurface(proof, surface)
     }
 
+    internal fun needsDictionaryEvidence(reading: String, output: String): Boolean =
+        containsNumericText(reading, output)
+
     private fun containsNumericText(reading: String, surface: String): Boolean =
-        containsNumericText(surface) || (reading to surface !in lexical &&
-            surface.any { it in "〇零一二三四五六七八九十百千万億兆京" } &&
+        containsNumericText(surface) || (surface.any { it in "〇零一二三四五六七八九十百千万億兆京" } &&
             ValidatedNumber.isNumericFragment(reading))
 
     private fun containsNumericText(surface: String): Boolean =
@@ -156,16 +209,26 @@ object NumberCandidatePolicy {
     fun filter(input: String, candidates: List<Candidate>, config: PredictionConfig): List<Candidate> =
         candidates.filter { eligible(input, it, config) }.map { candidate ->
             // Preserve a proof even when a dictionary/history duplicate wins de-duplication.
-            if (candidate.number != null || candidate.temporalSource != null || explicit(candidate)) candidate else {
+            if (candidate.number != null || candidate.temporalSource != null || candidate.nonNumericSource != null || explicit(candidate) ||
+                (candidate.conversionSegments.size == 1 && lexicalEntry(candidate.conversionSegments.single()))) candidate else {
                 val reading = candidate.yomi ?: input.take(candidate.length.toInt())
                 val proof = if (numeric.matches(candidate.string) || derived.matches(candidate.string) || numberSymbol(candidate.string))
                     ValidatedNumber.parse(reading) else null
-                if (proof != null) candidate.copy(number = proof, generatedNumber = false, yomi = reading) else candidate
+                if (proof != null && validSurface(proof, candidate.string)) candidate.copy(number = proof, generatedNumber = false, yomi = reading) else candidate
             }
         }
 
     /** Replaces only slots already occupied by the three basic representations. */
     fun order(input: String, candidates: List<Candidate>, order: NumberCandidateOrder): List<Candidate> {
+        if (input.isNotEmpty() && input.all { it in '0'..'9' || it in '０'..'９' } &&
+            ValidatedNumber.parseDigits(input) == null) {
+            val half = input.map { if (it in '０'..'９') it - 0xFEE0 else it }.joinToString("")
+            val forms = listOf(half, half.map { it + 0xFEE0 }.joinToString(""))
+            val slots = candidates.indices.filter { candidates[it].string in forms &&
+                candidates[it].commitText == candidates[it].string && !explicit(candidates[it]) }
+            val sorted = slots.map(candidates::get).sortedBy { order.indices.indexOf(forms.indexOf(it.string)) }
+            return candidates.toMutableList().apply { slots.forEachIndexed { index, slot -> this[slot] = sorted[index] } }
+        }
         val groups = linkedMapOf<Pair<Long, String>, MutableList<Int>>()
         candidates.forEachIndexed { index, candidate ->
             if (explicit(candidate)) return@forEachIndexed

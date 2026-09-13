@@ -2588,16 +2588,25 @@ class FindPath(
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
                 val nextPosition = currentPosition + node.len.toInt()
-                result.add(
-                    CandidateConversionSegment(
-                        inputStart = currentPosition,
-                        inputEnd = nextPosition,
-                        output = node.tango,
-                        reading = node.yomiUsed,
-                        startsWithParticle = (node.mozcAttributes and com.kazumaproject.graph.MozcNodeAttributes.STARTS_WITH_PARTICLE) != 0,
-                        source = node.candidateSource,
-                    ),
-                )
+                if (node.conversionSegments.isNotEmpty()) {
+                    result.addAll(node.conversionSegments.map { segment -> segment.copy(
+                        inputStart = segment.inputStart + currentPosition,
+                        inputEnd = segment.inputEnd + currentPosition,
+                    ) })
+                } else {
+                    result.add(
+                        CandidateConversionSegment(
+                            inputStart = currentPosition,
+                            inputEnd = nextPosition,
+                            output = node.tango,
+                            reading = node.yomiUsed,
+                            leftId = node.l,
+                            rightId = node.r,
+                            startsWithParticle = (node.mozcAttributes and com.kazumaproject.graph.MozcNodeAttributes.STARTS_WITH_PARTICLE) != 0,
+                            source = node.candidateSource,
+                        ),
+                    )
+                }
                 currentPosition = nextPosition
             }
             current = current.next

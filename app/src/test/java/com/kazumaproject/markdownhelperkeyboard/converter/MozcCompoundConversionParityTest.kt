@@ -246,7 +246,7 @@ internal object TestEngineFactory {
         }
     }
 
-    private fun loadTriple(
+    fun loadTriple(
         tangoPath: String,
         yomiPath: String,
         tokenPath: String,
@@ -290,7 +290,7 @@ internal object TestEngineFactory {
         return input.use(block)
     }
 
-    private data class TripleData(
+    data class TripleData(
         val tangoTrie: LOUDS,
         val yomiTrie: LOUDSWithTermId,
         val tokenArray: TokenArray,

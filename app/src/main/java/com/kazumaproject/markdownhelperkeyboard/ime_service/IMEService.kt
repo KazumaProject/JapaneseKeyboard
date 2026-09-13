@@ -206,6 +206,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.FloatingCandidateProvenance
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withUserRequestedTextResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
@@ -2103,6 +2105,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var currentPage: Int = 0
     private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
+    private val floatingCandidateProvenance = FloatingCandidateProvenance()
     private var fullSuggestionsList: List<CandidateItem> = emptyList()
 
     private var initialCursorDetectInFloatingCandidateView = false
@@ -7972,14 +7975,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             else -> {
-                handleSpaceKeyClick(false, insertString, suggestions.map {
-                    Candidate(
-                        string = it.word,
-                        type = (1).toByte(),
-                        length = insertString.length.toUByte(),
-                        score = 0
-                    )
-                }, mainView, fromPhysicalKeyboard = true)
+                handleSpaceKeyClick(
+                    false,
+                    insertString,
+                    suggestions.mapNotNull(floatingCandidateProvenance::resolve),
+                    mainView,
+                    fromPhysicalKeyboard = true,
+                )
             }
         }
         return true
@@ -8077,14 +8079,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 romajiConverter?.clear()
                 return true
             } else {
-                handleNonEmptyInputEnterKey(suggestions.map {
-                    Candidate(
-                        string = it.word,
-                        type = (1).toByte(),
-                        length = insertString.length.toUByte(),
-                        score = 0
-                    )
-                }, mainView, insertString, fromPhysicalKeyboard = true)
+                handleNonEmptyInputEnterKey(
+                    suggestions.mapNotNull(floatingCandidateProvenance::resolve),
+                    mainView,
+                    insertString,
+                    fromPhysicalKeyboard = true,
+                )
             }
         } else {
             handleEmptyInputEnterKey(mainView)
@@ -11755,9 +11755,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         transformedText: String,
         resultCandidateType: Int
     ) {
-        val updatedCandidate = originalCandidate.copy(
-            string = transformedText,
-            type = resultCandidateType.toByte()
+        val updatedCandidate = originalCandidate.withUserRequestedTextResult(
+            input = inputString.value, output = transformedText, resultType = resultCandidateType.toByte()
         )
 
         currentCandidateStripCandidates = replaceCandidateInList(
@@ -12313,6 +12312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     applyFirstSuggestion(
                                         Candidate(
                                             string = insertString.hiraganaToKatakana(),
+                                            nonNumericSource = insertString to insertString.hiraganaToKatakana(),
                                             type = (3).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 4000
@@ -12322,6 +12322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     applyFirstSuggestion(
                                         Candidate(
                                             string = insertString,
+                                            nonNumericSource = insertString to insertString,
                                             type = (3).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 4000
@@ -12333,6 +12334,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     applyFirstSuggestion(
                                         Candidate(
                                             string = insertString,
+                                            nonNumericSource = insertString to insertString,
                                             type = (3).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 4000
@@ -12342,6 +12344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     applyFirstSuggestion(
                                         Candidate(
                                             string = insertString.hiraganaToKatakana(),
+                                            nonNumericSource = insertString to insertString.hiraganaToKatakana(),
                                             type = (3).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 4000
@@ -12378,6 +12381,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
+                                    nonNumericSource = insertString to insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12387,6 +12391,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString,
+                                    nonNumericSource = insertString to insertString,
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12398,6 +12403,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString,
+                                    nonNumericSource = insertString to insertString,
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12407,6 +12413,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
+                                    nonNumericSource = insertString to insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12442,6 +12449,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
+                                    nonNumericSource = insertString to insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12451,6 +12459,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString,
+                                    nonNumericSource = insertString to insertString,
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12462,6 +12471,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString,
+                                    nonNumericSource = insertString to insertString,
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -12471,6 +12481,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
+                                    nonNumericSource = insertString to insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
@@ -16316,7 +16327,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun ZenzCandidate.toZenzLiveSlotCandidate(displayInput: String): Candidate {
-        return Candidate(
+        return kanaKanjiEngine.restoreNumberCandidateDictionaryEvidence(Candidate(
             string = string,
             type = type,
             length = displayInput.length.toUByte(),
@@ -16324,7 +16335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             yomi = displayInput,
             leftId = leftId,
             rightId = rightId
-        )
+        ))
     }
 
     private fun buildDisplayedCandidatesWithZenzSlot(
@@ -18152,14 +18163,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun Candidate.toFloatingCandidateItem(
         displayWord: String = string,
-    ): CandidateItem = CandidateItem(
-        word = displayWord,
-        length = length,
-        candidateType = type,
-        sourceId = sourceId,
-        formulaSource = presentation?.normalizedTex,
-        formulaFallbackText = commitText,
-    )
+    ): CandidateItem = floatingCandidateProvenance.present(this, displayWord)
 
     private fun candidateForAutomaticApplication(
         input: String,
@@ -25504,13 +25508,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     suggestionLearnRepository.predictiveSearchByInput(
                         prefix = insertString, limit = learnDictionaryPredictionCandidateLimit
                     ).map {
-                        Candidate(
+                        kanaKanjiEngine.restoreNumberCandidateDictionaryEvidence(Candidate(
                             string = it.out,
                             type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
                             score = it.score,
                             yomi = it.input,
-                        )
+                        ))
                     }.sortedBy { it.score }
                 }
             } else {
@@ -25627,13 +25631,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             prefix = insertString,
                             limit = learnDictionaryPredictionCandidateLimit,
                         ).map {
-                            Candidate(
+                            kanaKanjiEngine.restoreNumberCandidateDictionaryEvidence(Candidate(
                                 string = it.out,
                                 type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                                 length = (it.input.length).toUByte(),
                                 score = it.score,
                                 yomi = it.input,
-                            )
+                            ))
                         }.sortedBy { it.score }
                     }
                 }
@@ -25779,13 +25783,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     suggestionLearnRepository.predictiveSearchByInput(
                         prefix = insertString, limit = learnDictionaryPredictionCandidateLimit
                     ).map {
-                        Candidate(
+                        kanaKanjiEngine.restoreNumberCandidateDictionaryEvidence(Candidate(
                             string = it.out,
                             type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
                             score = it.score,
                             yomi = it.input,
-                        )
+                        ))
                     }.sortedBy { it.score }
                 }
             } else {

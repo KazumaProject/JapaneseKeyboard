@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
+import com.kazumaproject.hiraToKata
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -28,6 +29,203 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class JapaneseNumberCandidateCorpusAuditTest {
+    @Test
+    fun numericAffixesAndLearnedLexicalWordsSurviveEveryDictionaryPath() = runBlocking {
+        val expected = mapOf("やくさんにん" to setOf("約3人", "約３人", "約三人"),
+            "さんにんいじょう" to setOf("3人以上", "３人以上", "三人以上"),
+            "さんこ" to setOf("3個", "３個", "三個"),
+            "いっぽん" to setOf("1本", "１本", "一本"), "ろっこ" to setOf("6個", "６個", "六個"),
+            "はっかい" to setOf("8回", "８回", "八回"))
+        for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries.filter { it != CandidateQueryMode.EISUKANA })
+            for (bunsetsu in listOf(false, true)) for ((input, forms) in expected) {
+                val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
+                    repository, null, false, false, false, 3000, 1900, 20)
+                val candidates = KanaKanjiConversionSession(engine, backend).query(query).candidates
+                assertTrue("$input/$backend/$mode/$bunsetsu: ${candidates.map { it.string }}",
+                    candidates.any { it.string in forms && it.commitText == it.string })
+            }
+        for ((input, output) in listOf("しちごさん" to "七五三", "いちい" to "一位",
+            "じゅうぶん" to "十分", "いっとき" to "一時", "ばんにん" to "万人",
+            "やくさんにん" to "約三人", "さんにんいじょう" to "三人以上",
+            "これはさんにん" to "これは三人", "いっぽん" to "一本", "いっ" to "一", "よ" to "8", "あ1" to "ア1", "a1" to "Ａ１")) {
+            val history = Candidate(output, com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                input.length.toUByte(), 0, yomi = input)
+            val restored = engine.restoreNumberCandidateDictionaryEvidence(history)
+            assertTrue("history $input/$output", com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, restored))
+        }
+    }
+
+    @Test
+    fun generatedModelTextRequiresExactDictionaryAndNumericEvidence() {
+        for ((input, output) in listOf("やくさんにん" to "約3人", "これはさんにん" to "これは3人", "あ1" to "ア1",
+            "やくひゃくにじゅうさんにん" to "約123人", "これはひゃくにじゅうさんにん" to "これは123人")) {
+            val raw = Candidate(output, 33, input.length.toUByte(), 0, yomi = input)
+            assertTrue("raw model output has no numeric evidence", !com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, raw))
+            val restored = engine.restoreNumberCandidateDictionaryEvidence(raw)
+            assertTrue("model $input/$output", com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, restored))
+            assertTrue(restored.conversionSegments.isNotEmpty())
+        }
+        for ((input, output) in listOf("やくさんにん" to "約5人", "やくひゃくにじゅうさんにん" to "約124人", "ぜんご" to "全5", "にほんご" to "日本5")) {
+            val restored = engine.restoreNumberCandidateDictionaryEvidence(Candidate(output, 33, input.length.toUByte(), 0, yomi = input))
+            assertTrue("invalid model $input/$output: ${restored.conversionSegments}", !com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, restored))
+        }
+    }
+
+    @Test
+    fun independentTextTransformationsKeepDigitsAcrossAllCandidatePaths() = runBlocking {
+        for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries)
+            for (bunsetsu in listOf(false, true)) for ((input, outputs) in mapOf(
+                "a1" to setOf("a1", "ａ１", "Ａ１"), "あ1" to setOf("あ1", "ア1", "ｱ1"),
+                "Ａ１" to if (mode == CandidateQueryMode.EISUKANA) setOf("Ａ１") else setOf("Ａ１", "A1"))) {
+                val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
+                    repository, null, false, false, false, 3000, 1900, 20)
+                val candidates = KanaKanjiConversionSession(engine, backend).query(query).candidates
+                for (output in outputs) assertTrue("literal $input/$output/$backend/$mode/$bunsetsu: ${candidates.map { it.string }}",
+                    candidates.any { it.string == output && it.commitText == output })
+            }
+        for (input in listOf("お", "こ", "そ", "と", "の", "ほ", "も", "よ", "ろ", "〜", "しょうねんよう")) {
+            val candidates = engine.getCandidatesEnglishKana(input, PredictionConfig(japaneseNumberCandidatesEnabled = false))
+            for (output in IndependentLiteralCandidates.englishKeyForms(input)) {
+                assertTrue("keyboard $input/$output", candidates.any { it.string == output && it.commitText == output && !it.generatedNumber })
+            }
+        }
+    }
+
+    @Test
+    fun independentEnglishDictionaryKeepsAlphanumericWordsForHalfAndFullWidthQueries() = runBlocking {
+        val field = KanaKanjiEngine::class.java.getDeclaredField("englishEngine").apply { isAccessible = true }
+        val original = field.get(engine)
+        val english = org.mockito.Mockito.mock(com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine::class.java)
+        val word = Candidate("B2B", 8, 1u, 0)
+        whenever(english.getCandidates("b", false)).thenReturn(listOf(word))
+        whenever(english.getCandidates("b", false, false)).thenReturn(listOf(word))
+        field.set(engine, english)
+        try {
+            for (input in listOf("b", "ｂ")) for (backend in ConversionBackend.entries)
+                for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
+                    val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
+                        repository, null, false, false, false, 3000, 1900, 20)
+                    val restored = engine.restoreNumberCandidateDictionaryEvidence(Candidate("B2B",
+                        com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                        input.length.toUByte(), 0, yomi = input))
+                    assertTrue("English history $input", com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, restored))
+                    assertTrue(restored.conversionSegments.any { it.nonNumericSource == (input to "B2B") })
+                    val candidates = KanaKanjiConversionSession(engine, backend).query(query).candidates
+                    assertTrue("English $input/$backend/$mode/$bunsetsu", candidates.any {
+                        it.string == "B2B" && it.commitText == "B2B" && it.nonNumericSource == (input to "B2B")
+                    })
+                }
+        } finally {
+            field.set(engine, original)
+        }
+    }
+
+    @Test(timeout = 5000)
+    fun ambiguousHistoryRestorationHasBoundedWork() {
+        val input = "ご".repeat(80)
+        val history = Candidate("五".repeat(80),
+            com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+            input.length.toUByte(), 0, yomi = input)
+        val restored = engine.restoreNumberCandidateDictionaryEvidence(history)
+        assertTrue(restored.string == history.string && restored.yomi == history.yomi)
+        assertTrue(!com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, restored))
+    }
+
+    @Test
+    fun everySystemDictionaryEntryPreservesLexicalReadings() {
+        fun field(name: String): Any = requireNotNull(KanaKanjiEngine::class.java.getDeclaredField(name)
+            .apply { isAccessible = true }.get(engine))
+        val trie = field("systemYomiTrie") as LOUDSWithTermId
+        val bits = field("systemSuccinctBitVectorLBSYomi") as SuccinctBitVector
+        val leaves = field("systemSuccinctBitVectorIsLeafYomi") as SuccinctBitVector
+        val tokens = field("systemTokenArray") as com.kazumaproject.dictionary.TokenArray
+        val tokenBits = field("systemSuccinctBitVectorTokenArray") as SuccinctBitVector
+        val tango = field("systemTangoTrie") as com.kazumaproject.Louds.LOUDS
+        val tangoBits = field("systemSuccinctBitVectorTangoLBS") as SuccinctBitVector
+        val resolver = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberDictionaryResolver(
+            trie, tango, tokens, bits, leaves, tokenBits, tangoBits)
+        var checked = 0
+        val failures = mutableListOf<String>()
+        for (reading in readings) {
+            val term = trie.getTermId(trie.getNodeIndex(reading, bits), leaves)
+            for (entry in tokens.getListDictionaryByYomiTermId(term, tokenBits)) {
+                val output = when (entry.nodeId) {
+                    -2 -> reading
+                    -1 -> reading.hiraToKata()
+                    else -> tango.getLetter(entry.nodeId, tangoBits)
+                }
+                val left = tokens.leftIds[entry.posTableIndex.toInt()]
+                val right = tokens.rightIds[entry.posTableIndex.toInt()]
+                checked++
+                val candidate = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.dictionaryCandidate(
+                    Candidate(output, 1, reading.length.toUByte(), 0, leftId = left, rightId = right, yomi = reading))
+                val eligible = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(reading, candidate)
+                if (left.toInt() !in 2043..2055 && !eligible) failures += "$reading\t$output\t$left\t$right"
+                if (left.toInt() !in 2043..2055) {
+                    val history = candidate.copy(type = com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                        conversionSegments = emptyList())
+                    if (!com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(reading, resolver.restore(history)))
+                        failures += "history\t$reading\t$output\t$left\t$right"
+                }
+            }
+        }
+        report("lexical-entry-audit.tsv", failures.joinToString("\n"))
+        report("lexical-entry-summary.txt", "readings=${readings.size}\nentries=$checked\nrejectedLexical=${failures.size}")
+        assertTrue(failures.take(50).joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test
+    fun everyAdditionalDictionaryEntryPreservesLexicalReadings() {
+        val dictionaries = listOf(
+            Triple("wiki/tango_wiki.dat.zip", "wiki/yomi_wiki.dat.zip", "wiki/token_wiki.dat.zip"),
+            Triple("web/tango_web.dat.zip", "web/yomi_web.dat.zip", "web/token_web.dat.zip"),
+            Triple("neologd/tango_neologd.dat.zip", "neologd/yomi_neologd.dat.zip", "neologd/token_neologd.dat.zip"),
+            Triple("person_name/tango_person_names.dat", "person_name/yomi_person_names.dat", "person_name/token_person_names.dat"),
+            Triple("places/tango_places.dat.zip", "places/yomi_places.dat.zip", "places/token_places.dat.zip"),
+            Triple("single_kanji/tango_singleKanji.dat", "single_kanji/yomi_singleKanji.dat", "single_kanji/token_singleKanji.dat"),
+            Triple("symbol/tango_symbol.dat", "symbol/yomi_symbol.dat", "symbol/token_symbol.dat"),
+            Triple("emoji/tango_emoji.dat", "emoji/yomi_emoji.dat", "emoji/token_emoji.dat"),
+            Triple("emoticon/tango_emoticon.dat", "emoticon/yomi_emoticon.dat", "emoticon/token_emoticon.dat"),
+            Triple("kotowaza/tango_kotowaza.dat", "kotowaza/yomi_kotowaza.dat", "kotowaza/token_kotowaza.dat"),
+            Triple("reading_correction/tango_reading_correction.dat", "reading_correction/yomi_reading_correction.dat", "reading_correction/token_reading_correction.dat"),
+            Triple("english_reading/tango.dat.zip", "english_reading/yomi.dat.zip", "english_reading/token.dat.zip"),
+        )
+        val summary = mutableListOf<String>()
+        for ((tangoPath, yomiPath, tokenPath) in dictionaries) {
+            val data = TestEngineFactory.loadTriple(tangoPath, yomiPath, tokenPath)
+            val resolver = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberDictionaryResolver(
+                data.yomiTrie, data.tangoTrie, data.tokenArray, data.succinctBitVectorLBSYomi,
+                data.succinctBitVectorIsLeafYomi, data.succinctBitVectorTokenArray, data.succinctBitVectorTangoLBS)
+            var checked = 0
+            val failures = mutableListOf<String>()
+            for (reading in data.yomiTrie.predictiveSearch("", data.succinctBitVectorLBSYomi)) {
+                val term = data.yomiTrie.getTermId(data.yomiTrie.getNodeIndex(reading, data.succinctBitVectorLBSYomi), data.succinctBitVectorIsLeafYomi)
+                for (entry in data.tokenArray.getListDictionaryByYomiTermId(term, data.succinctBitVectorTokenArray)) {
+                    val output = when (entry.nodeId) { -2 -> reading; -1 -> reading.hiraToKata()
+                        else -> data.tangoTrie.getLetter(entry.nodeId, data.succinctBitVectorTangoLBS) }
+                    val left = data.tokenArray.leftIds[entry.posTableIndex.toInt()]
+                    val right = data.tokenArray.rightIds[entry.posTableIndex.toInt()]
+                    checked++
+                    val candidate = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.dictionaryCandidate(
+                        Candidate(output, 1, reading.length.toUByte(), 0, leftId = left, rightId = right, yomi = reading))
+                    if (left.toInt() !in 2043..2055 && !com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(reading, candidate))
+                        failures += "$reading\t$output\t$left\t$right"
+                    if (left.toInt() !in 2043..2055) {
+                        val history = candidate.copy(type = com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                            conversionSegments = emptyList())
+                        if (!com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(reading, resolver.restore(history)))
+                            failures += "history\t$reading\t$output\t$left\t$right"
+                    }
+                }
+            }
+            val name = tangoPath.substringBefore('/')
+            report("$name-lexical-failures.tsv", failures.joinToString("\n"))
+            summary += "$name\t$checked\t${failures.size}"
+            report("additional-dictionary-summary.tsv", summary.joinToString("\n"))
+            assertTrue("$name: ${failures.take(30)}", failures.isEmpty())
+        }
+    }
+
     @Test
     fun everySystemDictionaryReadingMatchesTheReviewedCounterAllowlist() {
         val generate = KanaKanjiEngine::class.java.getDeclaredMethod(
@@ -95,9 +293,15 @@ class JapaneseNumberCandidateCorpusAuditTest {
                     }
                 }
                 if (input in invalid) for (candidate in candidates) {
+                    // An existing character reading is not a generated cardinal. For example,
+                    // the character dictionary explicitly contains いっ -> 一, but not いっ -> 1.
+                    if (candidate.type == 7.toByte() && candidate.string in characterOutputs(input) &&
+                        candidate.commitText == candidate.string && !candidate.generatedNumber) continue
+                    if (mode == CandidateQueryMode.EISUKANA && candidate.string in IndependentLiteralCandidates.englishKeyForms(input) &&
+                        candidate.commitText == candidate.string && candidate.number == null && !candidate.generatedNumber) continue
                     assertTrue("$label unexpected $candidate", candidate.number == null &&
                         !numeric.matches(candidate.string) && !numeric.matches(candidate.commitText) &&
-                        !candidate.string.contains(Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿]")))
+                        candidate.string !in setOf("全5", "全５", "全五", "日本5", "日本５", "日本五"))
                 }
                 comparisons++
             }
@@ -130,7 +334,8 @@ class JapaneseNumberCandidateCorpusAuditTest {
 
     @Test
     fun fiveThousandBrokenReadingsCannotBeRescuedByAnyCandidatePath() = runBlocking {
-        val numberText = Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿]|^[〇零一二三四五六七八九十百千万億兆京]+$")
+        // This is a rejected CARDINAL reading, not a ban on homophones such as 二膳.
+        val numberText = Regex("^[0-9０-９〇零一二三四五六七八九十百千万億兆京,⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿]+(?:時|人|分|円)?$")
         var comparisons = 0
         val failures = linkedSetOf<String>()
         for (backend in ConversionBackend.entries) {
@@ -141,7 +346,8 @@ class JapaneseNumberCandidateCorpusAuditTest {
                     val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 4, false, false, false, false, false,
                         repository, null, false, false, false, 3000, 1900, 20)
                     for (candidate in session.query(request).candidates) {
-                        if (candidate.number != null || numberText.containsMatchIn(candidate.string) || numberText.containsMatchIn(candidate.commitText)) {
+                        if (candidate.number != null || numberText.containsMatchIn(candidate.string) || numberText.containsMatchIn(candidate.commitText) ||
+                        candidate.string in setOf("日本5", "日本５", "日本五", "全5", "全５", "全五")) {
                             failures += "$input/$backend/$mode/$bunsetsu unexpected $candidate"
                         }
                     }
@@ -158,7 +364,8 @@ class JapaneseNumberCandidateCorpusAuditTest {
     @Test
     fun ordinaryWordsCannotProduceNumbersFromTheirPrefixesOrSuffixes() = runBlocking {
         val words = listOf("ごはん", "にほんご", "いちご", "さんぽ", "ごめん", "にせもの", "はちみつ", "くすり", "しごと")
-        val numberText = Regex("[0-9０-９⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿]|^[〇零一二三四五六七八九十百千万億兆京]+$")
+        // This is a rejected CARDINAL reading, not a ban on homophones such as 二膳.
+        val numberText = Regex("^[0-9０-９〇零一二三四五六七八九十百千万億兆京,⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉①-⑳❶-❿]+(?:時|人|分|円)?$")
         val failures = linkedSetOf<String>()
         for (backend in ConversionBackend.entries) {
             val session = KanaKanjiConversionSession(engine, backend)
@@ -166,7 +373,8 @@ class JapaneseNumberCandidateCorpusAuditTest {
                 val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
                     repository, null, false, false, false, 3000, 1900, 20)
                 for (candidate in session.query(request).candidates) {
-                    if (candidate.number != null || numberText.containsMatchIn(candidate.string) || numberText.containsMatchIn(candidate.commitText)) {
+                    if (candidate.number != null || numberText.containsMatchIn(candidate.string) || numberText.containsMatchIn(candidate.commitText) ||
+                        candidate.string in setOf("日本5", "日本５", "日本五", "全5", "全５", "全五")) {
                         failures += "$input/$backend/$mode/$bunsetsu unexpected $candidate"
                     }
                 }
@@ -178,7 +386,8 @@ class JapaneseNumberCandidateCorpusAuditTest {
 
     @Test
     fun lexicalWordsThatContainNumeralsAreNotRemoved() = runBlocking {
-        val expected = mapOf("しちごさん" to "七五三", "じゅうぶん" to "十分", "にほんご" to "日本語")
+        val expected = mapOf("しちごさん" to "七五三", "じゅうぶん" to "十分", "にほんご" to "日本語",
+            "いっとき" to "一時", "ばんにん" to "万人", "いちぶ" to "一分")
         val failures = mutableListOf<String>()
         for (backend in ConversionBackend.entries) {
             val session = KanaKanjiConversionSession(engine, backend)
@@ -226,7 +435,9 @@ class JapaneseNumberCandidateCorpusAuditTest {
             com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("ぜんご", it, score = -100000)
         } + listOf(
             com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("ぜんご", "前後", score = -100000),
-            com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("さんにん", "3人", score = -100000))
+            com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("さんにん", "3人", score = -100000),
+            com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("よ", "8", score = -100000),
+            com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity("あ1", "ア1", score = -100000))
         whenever(history.findCommonPrefixes(any())).thenAnswer { invocation ->
             entries.filter { (invocation.arguments[0] as String).startsWith(it.input) }
         }
@@ -236,15 +447,20 @@ class JapaneseNumberCandidateCorpusAuditTest {
         for (backend in ConversionBackend.entries) {
             val session = KanaKanjiConversionSession(engine, backend)
             for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) for (enabled in listOf(false, true)) {
-                for (input in listOf("ぜん", "ぜんご", "さんにん", "ぜんご")) {
+                for (input in listOf("ぜん", "ぜんご", "さんにん", "ぜんご", "よ", "あ1")) {
                     val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 4, false, false, false, false, false,
                         repository, history, false, false, false, 3000, 1900, 20,
                         PredictionConfig(japaneseNumberCandidatesEnabled = enabled))
                     val candidates = session.query(query).candidates.distinctBy { it.string }
                     val label = "$input/$backend/$mode/$bunsetsu/$enabled"
                     if (input == "ぜんご") {
-                        assertTrue(label, candidates.none { it.string in invalidSurfaces || it.commitText in invalidSurfaces })
+                        assertTrue("$label: $candidates", candidates.none { it.string in invalidSurfaces || it.commitText in invalidSurfaces })
                         if (mode != CandidateQueryMode.EISUKANA) assertTrue(label, candidates.any { it.string == "前後" })
+                    }
+                    if (input in setOf("よ", "あ1") && mode != CandidateQueryMode.EISUKANA) {
+                        val expected = if (input == "よ") "8" else "ア1"
+                        assertTrue("learned text $label: $candidates", candidates.any { it.string == expected &&
+                            it.conversionSegments.any { segment -> segment.nonNumericSource == (input to expected) } })
                     }
                     if (input == "さんにん" && mode != CandidateQueryMode.EISUKANA) {
                         val number = candidates.first { it.string == "3人" }
@@ -256,7 +472,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
             }
         }
         // The backing rows were not deleted or rewritten by visibility filtering.
-        assertEquals(12, entries.size)
+        assertEquals(14, entries.size)
         org.mockito.Mockito.verify(history, org.mockito.Mockito.never()).deleteAll()
     }
 
@@ -279,6 +495,17 @@ class JapaneseNumberCandidateCorpusAuditTest {
     }
 
     companion object {
+        private val characterDictionary by lazy { TestEngineFactory.loadTriple(
+            "single_kanji/tango_singleKanji.dat", "single_kanji/yomi_singleKanji.dat", "single_kanji/token_singleKanji.dat") }
+        private fun characterOutputs(input: String): Set<String> = with(characterDictionary) {
+            val node = yomiTrie.getNodeIndex(input, succinctBitVectorLBSYomi)
+            if (node <= 0) return emptySet()
+            val term = yomiTrie.getTermId(node, succinctBitVectorIsLeafYomi)
+            return tokenArray.getListDictionaryByYomiTermId(term, succinctBitVectorTokenArray).map {
+                when (it.nodeId) { -2 -> input; -1 -> input.hiraToKata()
+                    else -> tangoTrie.getLetter(it.nodeId, succinctBitVectorTangoLBS) }
+            }.toSet()
+        }
         private lateinit var engine: KanaKanjiEngine
         private lateinit var readings: List<String>
         private lateinit var repository: UserDictionaryRepository

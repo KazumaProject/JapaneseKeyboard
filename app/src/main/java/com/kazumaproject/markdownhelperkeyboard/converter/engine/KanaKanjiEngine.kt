@@ -107,12 +107,97 @@ internal fun createJapaneseNumberValueBasedCandidates(
 }
 
 class KanaKanjiEngine {
+    /** Optional audit sink; production queries do not retain raw candidate lists. */
+    internal var numberCandidateAuditObserver: ((String, List<Candidate>, List<Candidate>) -> Unit)? = null
+
+    internal fun restoreNumberCandidateDictionaryEvidence(candidate: Candidate): Candidate {
+        if (!this::systemYomiTrie.isInitialized) return candidate
+        val reading = candidate.yomi
+        if (reading != null && reading.length <= UByte.MAX_VALUE.toInt() && candidate.number == null &&
+            !candidate.generatedNumber && candidate.nonNumericSource == null && candidate.conversionSegments.isEmpty() &&
+            candidate.commitText == candidate.string && NumberCandidatePolicy.needsDictionaryEvidence(reading, candidate.string)) {
+            val literalForms = mutableSetOf(reading, reading.hiraToKata(), reading.toHankakuKatakana(),
+                reading.convertFullWidthAlnumToHalfWidth(), reading.convertFullWidthNumbersToHalfWidth())
+            if (reading.isAllHalfWidthAscii()) {
+                literalForms += reading.toFullWidth().lowercase()
+                literalForms += reading.toFullWidth().uppercase()
+            }
+            val learned = candidate.type == com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
+            if (learned) {
+                val keyText = reading.replaceJapaneseCharactersForEnglish()
+                literalForms += keyText
+                literalForms += keyText.replaceFirstChar { it.uppercaseChar() }
+                literalForms += keyText.uppercase()
+            }
+            val englishWord = learned && this::englishEngine.isInitialized &&
+                (reading.isAllEnglishLetters() || reading.isAllFullWidthAscii()) &&
+                getEnglishCandidates(reading.toHankakuAlphabet(), enablePrediction = true).any {
+                    it.string == candidate.string && it.commitText == candidate.commitText
+                }
+            if (candidate.string in literalForms || englishWord) {
+                return candidate.copy(conversionSegments = listOf(CandidateConversionSegment(
+                    0, reading.length, candidate.string, reading,
+                    source = if (learned) com.kazumaproject.graph.CandidateSource.LEARNED_DICTIONARY else com.kazumaproject.graph.CandidateSource.UNKNOWN,
+                    nonNumericSource = reading to candidate.string,
+                )))
+            }
+        }
+        return NumberDictionaryResolver(systemYomiTrie, systemTangoTrie, systemTokenArray,
+            systemSuccinctBitVectorLBSYomi, systemSuccinctBitVectorIsLeafYomi,
+            systemSuccinctBitVectorTokenArray, systemSuccinctBitVectorTangoLBS,
+            additional = listOfNotNull(
+                NumberDictionaryResolver.create(personYomiTrie, personTangoTrie, personTokenArray,
+                    personSuccinctBitVectorLBSYomi, personSuccinctBitVectorIsLeaf,
+                    personSuccinctBitVectorTokenArray, personSuccinctBitVectorLBSTango),
+                NumberDictionaryResolver.create(placesYomiTrie, placesTangoTrie, placesTokenArray,
+                    placesSuccinctBitVectorLBSYomi, placesSuccinctBitVectorIsLeaf,
+                    placesSuccinctBitVectorTokenArray, placesSuccinctBitVectorLBSTango),
+                NumberDictionaryResolver.create(wikiYomiTrie, wikiTangoTrie, wikiTokenArray,
+                    wikiSuccinctBitVectorLBSYomi, wikiSuccinctBitVectorIsLeaf,
+                    wikiSuccinctBitVectorTokenArray, wikiSuccinctBitVectorLBSTango),
+                NumberDictionaryResolver.create(webYomiTrie, webTangoTrie, webTokenArray,
+                    webSuccinctBitVectorLBSYomi, webSuccinctBitVectorIsLeaf,
+                    webSuccinctBitVectorTokenArray, webSuccinctBitVectorLBSTango),
+                NumberDictionaryResolver.create(neologdYomiTrie, neologdTangoTrie, neologdTokenArray,
+                    neologdSuccinctBitVectorLBSYomi, neologdSuccinctBitVectorIsLeaf,
+                    neologdSuccinctBitVectorTokenArray, neologdSuccinctBitVectorLBSTango),
+                NumberDictionaryResolver.create(systemUserYomiTrie, systemUserTangoTrie, systemUserTokenArray,
+                    systemUserSuccinctBitVectorLBSYomi, systemUserSuccinctBitVectorIsLeaf,
+                    systemUserSuccinctBitVectorTokenArray, systemUserSuccinctBitVectorLBSTango),
+                englishReadingDictionary?.let { NumberDictionaryResolver.create(it.yomiTrie, it.tangoTrie, it.tokenArray,
+                    it.succinctBitVectorLBSYomi, it.succinctBitVectorIsLeafYomi, it.succinctBitVectorTokenArray, it.succinctBitVectorTangoLBS) },
+                if (this::singleKanjiYomiTrie.isInitialized) NumberDictionaryResolver.create(singleKanjiYomiTrie, singleKanjiTangoTrie, singleKanjiTokenArray,
+                    singleKanjiSuccinctBitVectorLBSYomi, singleKanjiSuccinctBitVectorIsLeafYomi, singleKanjiSuccinctBitVectorTokenArray, singleKanjiSuccinctBitVectorTangoLBS) else null,
+                if (this::emojiYomiTrie.isInitialized) NumberDictionaryResolver.create(emojiYomiTrie, emojiTangoTrie, emojiTokenArray,
+                    emojiSuccinctBitVectorLBSYomi, emojiSuccinctBitVectorIsLeafYomi, emojiSuccinctBitVectorTokenArray, emojiSuccinctBitVectorTangoLBS) else null,
+                if (this::emoticonYomiTrie.isInitialized) NumberDictionaryResolver.create(emoticonYomiTrie, emoticonTangoTrie, emoticonTokenArray,
+                    emoticonSuccinctBitVectorLBSYomi, emoticonSuccinctBitVectorIsLeafYomi, emoticonSuccinctBitVectorTokenArray, emoticonSuccinctBitVectorTangoLBS) else null,
+                if (this::readingCorrectionYomiTrie.isInitialized) NumberDictionaryResolver.create(readingCorrectionYomiTrie, readingCorrectionTangoTrie, readingCorrectionTokenArray,
+                    readingCorrectionSuccinctBitVectorLBSYomi, readingCorrectionSuccinctBitVectorIsLeafYomi, readingCorrectionSuccinctBitVectorTokenArray, readingCorrectionSuccinctBitVectorTangoLBS) else null,
+                if (this::kotowazaYomiTrie.isInitialized) NumberDictionaryResolver.create(kotowazaYomiTrie, kotowazaTangoTrie, kotowazaTokenArray,
+                    kotowazaSuccinctBitVectorLBSYomi, kotowazaSuccinctBitVectorIsLeafYomi, kotowazaSuccinctBitVectorTokenArray, kotowazaSuccinctBitVectorTangoLBS) else null,
+                if (this::symbolYomiTrie.isInitialized) NumberDictionaryResolver.create(symbolYomiTrie, symbolTangoTrie, symbolTokenArray,
+                    symbolSuccinctBitVectorLBSYomi, symbolSuccinctBitVectorIsLeafYomi, symbolSuccinctBitVectorTokenArray, symbolSuccinctBitVectorTangoLBS) else null,
+            )).restore(candidate)
+    }
+
     private fun finalizeNumberCandidates(input: String, candidates: List<Candidate>, config: PredictionConfig): List<Candidate> {
         // Dictionary modes return early for one-character kana (に / ご). They still need
         // the same verified generated forms as every longer numerical reading.
+        val literalDigits = if (input.isNotEmpty() && input.all { it in '0'..'9' || it in '０'..'９' }) {
+            val half = input.map { if (it in '０'..'９') it - 0xFEE0 else it }.joinToString("")
+            listOf(half, half.map { it + 0xFEE0 }.joinToString("")).map {
+                Candidate(it, 18, input.length.toUByte(), 8000, yomi = input)
+            }
+        } else emptyList()
         val complete = if (input.length == 1 && input[0] in 'ぁ'..'ゖ')
             candidates + generateNumberCandidates(input, config) else candidates
-        return NumberCandidatePolicy.order(input, NumberCandidatePolicy.filter(input, complete, config), config.numberCandidateOrder)
+        val before = complete + literalDigits.filter { literal -> complete.none {
+            it.string == literal.string && it.commitText == literal.commitText
+        } }
+        val result = NumberCandidatePolicy.order(input, NumberCandidatePolicy.filter(input, before, config), config.numberCandidateOrder)
+        numberCandidateAuditObserver?.invoke(input, before, result)
+        return result
     }
 
     suspend fun getCandidatesOriginal(
@@ -581,6 +666,7 @@ class KanaKanjiEngine {
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             graphNodeTrace = graphNodeTrace,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         if (graph.isNotEmpty()) {
@@ -1343,6 +1429,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1377,7 +1464,7 @@ class KanaKanjiEngine {
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
-            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val resultWithHankaku = addHalfWidthCandidates(input, resultNBestFinalDeferred)
             val finalList = resultWithHankaku.sortedBy { it.score }
             // 3. Combine and return all generated candidates.
             return finalList
@@ -1387,7 +1474,7 @@ class KanaKanjiEngine {
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
             Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
-        )
+        ).map { it.copy(nonNumericSource = input to it.string) }
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
@@ -1495,6 +1582,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
@@ -1516,7 +1604,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -1566,7 +1654,7 @@ class KanaKanjiEngine {
             systemTokenArray.getListDictionaryByYomiTermId(
                 termId, succinctBitVector = systemSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -1580,7 +1668,7 @@ class KanaKanjiEngine {
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -1594,7 +1682,7 @@ class KanaKanjiEngine {
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId, readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -1617,7 +1705,7 @@ class KanaKanjiEngine {
                         },
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
-                    )
+                    ))
                 }
             }
 
@@ -1630,7 +1718,7 @@ class KanaKanjiEngine {
             kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                 termId, kotowazaSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -1653,7 +1741,7 @@ class KanaKanjiEngine {
                     },
                     leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -1764,6 +1852,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1800,7 +1889,7 @@ class KanaKanjiEngine {
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
-            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val resultWithHankaku = addHalfWidthCandidates(input, resultNBestFinalDeferred)
 
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
@@ -1816,7 +1905,7 @@ class KanaKanjiEngine {
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
             Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
-        )
+        ).map { it.copy(nonNumericSource = input to it.string) }
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
@@ -1924,6 +2013,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
@@ -1945,7 +2035,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -2003,7 +2093,7 @@ class KanaKanjiEngine {
             systemTokenArray.getListDictionaryByYomiTermId(
                 termId, succinctBitVector = systemSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -2017,7 +2107,7 @@ class KanaKanjiEngine {
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -2031,7 +2121,7 @@ class KanaKanjiEngine {
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId, readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -2054,7 +2144,7 @@ class KanaKanjiEngine {
                         },
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
-                    )
+                    ))
                 }
             }
 
@@ -2067,7 +2157,7 @@ class KanaKanjiEngine {
             kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                 termId, kotowazaSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -2090,7 +2180,7 @@ class KanaKanjiEngine {
                     },
                     leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -2210,6 +2300,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2246,7 +2337,7 @@ class KanaKanjiEngine {
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
-            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val resultWithHankaku = addHalfWidthCandidates(input, resultNBestFinalDeferred)
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
             return BunsetsuCandidateResult(
@@ -2260,7 +2351,7 @@ class KanaKanjiEngine {
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
             Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
-        )
+        ).map { it.copy(nonNumericSource = input to it.string) }
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
@@ -2283,6 +2374,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
@@ -2304,7 +2396,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -2428,7 +2520,7 @@ class KanaKanjiEngine {
             systemTokenArray.getListDictionaryByYomiTermId(
                 termId, succinctBitVector = systemSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -2442,7 +2534,7 @@ class KanaKanjiEngine {
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -2456,7 +2548,7 @@ class KanaKanjiEngine {
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId, readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -2479,7 +2571,7 @@ class KanaKanjiEngine {
                         },
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
-                    )
+                    ))
                 }
             }
 
@@ -2492,7 +2584,7 @@ class KanaKanjiEngine {
             kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                 termId, kotowazaSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -2515,7 +2607,7 @@ class KanaKanjiEngine {
                     },
                     leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -2637,6 +2729,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2671,7 +2764,7 @@ class KanaKanjiEngine {
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
-            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val resultWithHankaku = addHalfWidthCandidates(input, resultNBestFinalDeferred)
 
             val finalList = resultWithHankaku.sortedBy { it.score }
 
@@ -2683,7 +2776,7 @@ class KanaKanjiEngine {
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
             Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
-        )
+        ).map { it.copy(nonNumericSource = input to it.string) }
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
@@ -2706,6 +2799,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
@@ -2742,7 +2836,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -2858,7 +2952,7 @@ class KanaKanjiEngine {
             systemTokenArray.getListDictionaryByYomiTermId(
                 termId, succinctBitVector = systemSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -2872,7 +2966,7 @@ class KanaKanjiEngine {
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -2886,7 +2980,7 @@ class KanaKanjiEngine {
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId, readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -2909,7 +3003,7 @@ class KanaKanjiEngine {
                         },
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
-                    )
+                    ))
                 }
             }
 
@@ -2922,7 +3016,7 @@ class KanaKanjiEngine {
             kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                 termId, kotowazaSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -2945,7 +3039,7 @@ class KanaKanjiEngine {
                     },
                     leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -3051,6 +3145,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -3085,7 +3180,7 @@ class KanaKanjiEngine {
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
-            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val resultWithHankaku = addHalfWidthCandidates(input, resultNBestFinalDeferred)
             val finalList = resultWithHankaku.sortedBy { it.score }
             return finalList
         }
@@ -3094,7 +3189,7 @@ class KanaKanjiEngine {
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
             Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
-        )
+        ).map { it.copy(nonNumericSource = input to it.string) }
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
@@ -3199,6 +3294,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
@@ -3219,7 +3315,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -3266,7 +3362,7 @@ class KanaKanjiEngine {
             systemTokenArray.getListDictionaryByYomiTermId(
                 termId, succinctBitVector = systemSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -3280,7 +3376,7 @@ class KanaKanjiEngine {
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -3294,7 +3390,7 @@ class KanaKanjiEngine {
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId, readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -3317,7 +3413,7 @@ class KanaKanjiEngine {
                         },
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
-                    )
+                    ))
                 }
             }
 
@@ -3330,7 +3426,7 @@ class KanaKanjiEngine {
             kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                 termId, kotowazaSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -3353,7 +3449,7 @@ class KanaKanjiEngine {
                     },
                     leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -3459,6 +3555,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            restoreLearnedCandidate = ::restoreNumberCandidateDictionaryEvidence,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -3495,7 +3592,7 @@ class KanaKanjiEngine {
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
-            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val resultWithHankaku = addHalfWidthCandidates(input, resultNBestFinalDeferred)
 
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
@@ -3511,7 +3608,7 @@ class KanaKanjiEngine {
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
             Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
-        )
+        ).map { it.copy(nonNumericSource = input to it.string) }
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
@@ -3616,6 +3713,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
@@ -3636,7 +3734,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -3691,7 +3789,7 @@ class KanaKanjiEngine {
             systemTokenArray.getListDictionaryByYomiTermId(
                 termId, succinctBitVector = systemSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -3705,7 +3803,7 @@ class KanaKanjiEngine {
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -3719,7 +3817,7 @@ class KanaKanjiEngine {
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId, readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -3742,7 +3840,7 @@ class KanaKanjiEngine {
                         },
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
-                    )
+                    ))
                 }
             }
 
@@ -3755,7 +3853,7 @@ class KanaKanjiEngine {
             kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                 termId, kotowazaSuccinctBitVectorTokenArray
             ).map {
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -3778,7 +3876,7 @@ class KanaKanjiEngine {
                     },
                     leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
+                ))
             }
         }
 
@@ -3831,9 +3929,10 @@ class KanaKanjiEngine {
 
     private fun getEnglishCandidates(
         input: String,
+        sourceReading: String = input,
         enableTypoCorrection: Boolean = false,
         enablePrediction: Boolean,
-    ): List<Candidate> = if (enablePrediction) {
+    ): List<Candidate> = (if (enablePrediction) {
         englishEngine.getCandidates(
             input = input,
             enableTypoCorrection = enableTypoCorrection,
@@ -3844,7 +3943,7 @@ class KanaKanjiEngine {
             enableTypoCorrection = enableTypoCorrection,
             enablePrediction = false,
         )
-    }
+    }).map { it.copy(nonNumericSource = sourceReading to it.string) }
 
     private fun getCandidatesEnglishKanaUnchecked(
         input: String,
@@ -3885,7 +3984,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 score = 3000
             ))
-        }
+        }.map { it.copy(nonNumericSource = input to it.string) }
         val proof = ValidatedNumber.parse(input)
         val numericCandidates = proof?.takeIf {
             it.origin == NumberInputOrigin.DIGITS || predictionConfig.japaneseNumberCandidatesEnabled
@@ -3899,6 +3998,7 @@ class KanaKanjiEngine {
         } else if (input.isAllFullWidthAscii()) {
             getEnglishCandidates(
                 input = input.toHankakuAlphabet(),
+                sourceReading = input,
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
@@ -3919,7 +4019,7 @@ class KanaKanjiEngine {
                     length = input.length.toUByte(),
                     score = 30000
                 )
-            )
+            ).map { it.copy(nonNumericSource = input to it.string) }
         } else {
             emptyList()
         }
@@ -4388,7 +4488,7 @@ class KanaKanjiEngine {
             tokenArray.getListDictionaryByYomiTermIdShortArray(
                 termIdArray, succinctBitVectorTokenArray
             ).map { entry ->
-                Candidate(
+                NumberCandidatePolicy.dictionaryCandidate(Candidate(
                     string = when (entry.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
@@ -4407,7 +4507,7 @@ class KanaKanjiEngine {
                     ),
                     leftId = tokenArray.leftIds[entry.posTableIndex.toInt()],
                     rightId = tokenArray.rightIds[entry.posTableIndex.toInt()]
-                )
+                ))
             }
         }
     }
@@ -4442,7 +4542,7 @@ class KanaKanjiEngine {
         tokenArray.getListDictionaryByYomiTermId(
             termId, succinctBitVectorTokenArray
         ).map {
-            Candidate(
+            NumberCandidatePolicy.dictionaryCandidate(Candidate(
                 string = when (it.nodeId) {
                     -2 -> yomi
                     -1 -> yomi.hiraToKata()
@@ -4461,7 +4561,7 @@ class KanaKanjiEngine {
                 ),
                 leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
                 rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
-            )
+            ))
         }
     }.sortedBy { it.score }.take(n)
 
@@ -4486,7 +4586,7 @@ class KanaKanjiEngine {
                 termId, succinctBitVectorTokenArray
             ) { posTableIndex, wordCost, nodeId ->
                 add(
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
@@ -4500,7 +4600,7 @@ class KanaKanjiEngine {
                         score = wordCost.toInt(),
                         leftId = tokenArray.leftIds[posTableIndex.toInt()],
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
-                    )
+                    ))
                 )
             }
         }
@@ -4523,7 +4623,7 @@ class KanaKanjiEngine {
         val existingStrings = existingCandidates.asSequence().map { it.string }.toMutableSet()
         return buildList {
             fun addCandidate(candidate: Candidate) {
-                if (existingStrings.add(candidate.string)) add(candidate)
+                if (existingStrings.add(candidate.string)) add(NumberCandidatePolicy.dictionaryCandidate(candidate))
             }
 
             fun addEnglishCaseCandidates(candidate: Candidate) {
@@ -4535,16 +4635,16 @@ class KanaKanjiEngine {
                     char.uppercase(Locale.ROOT)
                 }
                 val uppercase = lowercase.uppercase(Locale.ROOT)
-                addCandidate(candidate.copy(string = lowercase))
+                addCandidate(candidate.copy(string = lowercase, commitText = lowercase))
                 addCandidate(
                     candidate.copy(
-                        string = capitalized,
+                        string = capitalized, commitText = capitalized,
                         score = candidate.score + ENGLISH_READING_CAPITALIZED_SCORE_OFFSET,
                     )
                 )
                 addCandidate(
                     candidate.copy(
-                        string = uppercase,
+                        string = uppercase, commitText = uppercase,
                         score = candidate.score + ENGLISH_READING_UPPERCASE_SCORE_OFFSET,
                     )
                 )
@@ -4564,6 +4664,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 2,
+                    yomi = input,
                     length = input.length.toUByte(),
                     score = wordCost.toInt(),
                     leftId = dictionary.tokenArray.leftIds[posTableIndex.toInt()],
@@ -4593,7 +4694,7 @@ class KanaKanjiEngine {
                 termIdArray, succinctBitVectorTokenArray
             ) { posTableIndex, wordCost, nodeId ->
                 add(
-                    Candidate(
+                    NumberCandidatePolicy.dictionaryCandidate(Candidate(
                         string = when (nodeId) {
                             -2 -> input
                             -1 -> input.hiraToKata()
@@ -4602,11 +4703,12 @@ class KanaKanjiEngine {
                             )
                         },
                         type = type,
+                        yomi = input,
                         length = input.length.toUByte(),
                         score = wordCost.toInt(),
                         leftId = tokenArray.leftIds[posTableIndex.toInt()],
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
-                    )
+                    ))
                 )
             }
         }
@@ -4710,7 +4812,7 @@ class KanaKanjiEngine {
                         readingLength = yomi.length,
                     )
                     add(
-                        Candidate(
+                        NumberCandidatePolicy.dictionaryCandidate(Candidate(
                             string = when (nodeId) {
                                 -2 -> yomi
                                 -1 -> yomi.hiraToKata()
@@ -4722,7 +4824,7 @@ class KanaKanjiEngine {
                             score = score,
                             leftId = tokenArray.leftIds[posTableIndex.toInt()],
                             rightId = tokenArray.rightIds[posTableIndex.toInt()],
-                        )
+                        ))
                     )
                 }
             }
@@ -4927,6 +5029,7 @@ class KanaKanjiEngine {
      * @return 元の候補と、半角変換された候補の両方を含む新しい Pair
      */
     private fun addHalfWidthCandidates(
+        input: String,
         originalData: Pair<List<Candidate>, List<Int>>
     ): Pair<List<Candidate>, List<Int>> {
 
@@ -4943,7 +5046,14 @@ class KanaKanjiEngine {
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
-                    string = newString, commitText = newString, type = 31, score = candidate.score + 6000
+                    string = newString, commitText = newString, type = 31, score = candidate.score + 6000,
+                    nonNumericSource = if (candidate.number == null && candidate.commitText == candidate.string &&
+                        (candidate.string == input || candidate.nonNumericSource == (input to candidate.string))) input to newString else null,
+                    conversionSegments = candidate.conversionSegments.map { segment ->
+                        segment.copy(output = segment.output.convertFullWidthNumbersToHalfWidth(),
+                            nonNumericSource = segment.nonNumericSource?.takeIf { it.first == segment.reading && it.second == segment.output }
+                                ?.let { it.first to it.second.convertFullWidthNumbersToHalfWidth() })
+                    }
                     // type, length, score など他のプロパティはそのままコピーされます
                 )
 
@@ -4962,9 +5072,10 @@ class KanaKanjiEngine {
     }
 
     private fun addHalfWidthCandidates(
+        input: String,
         originalData: BunsetsuCandidateResult
     ): BunsetsuCandidateResult {
-        val newList = addHalfWidthCandidates(originalData.candidates)
+        val newList = addHalfWidthCandidates(input, originalData.candidates)
         return BunsetsuCandidateResult(
             candidates = newList,
             splitPatterns = originalData.splitPatterns,
@@ -4981,6 +5092,7 @@ class KanaKanjiEngine {
      * @return 元の候補と、半角変換された候補の両方を含む新しい List
      */
     private fun addHalfWidthCandidates(
+        input: String,
         originalList: List<Candidate>
     ): List<Candidate> {
 
@@ -4994,7 +5106,14 @@ class KanaKanjiEngine {
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
-                    string = newString, commitText = newString, type = 31, score = candidate.score + 6000
+                    string = newString, commitText = newString, type = 31, score = candidate.score + 6000,
+                    nonNumericSource = if (candidate.number == null && candidate.commitText == candidate.string &&
+                        (candidate.string == input || candidate.nonNumericSource == (input to candidate.string))) input to newString else null,
+                    conversionSegments = candidate.conversionSegments.map { segment ->
+                        segment.copy(output = segment.output.convertFullWidthAlnumToHalfWidth(),
+                            nonNumericSource = segment.nonNumericSource?.takeIf { it.first == segment.reading && it.second == segment.output }
+                                ?.let { it.first to it.second.convertFullWidthAlnumToHalfWidth() })
+                    }
                     // type, length, score など他のプロパティはそのままコピーされます
                 )
 
