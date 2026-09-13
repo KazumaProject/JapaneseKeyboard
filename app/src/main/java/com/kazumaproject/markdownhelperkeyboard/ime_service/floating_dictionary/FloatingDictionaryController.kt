@@ -35,6 +35,7 @@ internal class FloatingDictionaryController(
     private val colors: () -> CandidatePanelColors,
     private val onInputTarget: (EditText?) -> Unit,
     private val onStateChanged: () -> Unit,
+    private val onEditorSelectionChanged: (EditText, Int, Int) -> Unit = { _, _, _ -> },
 ) {
     private val panels = linkedMapOf<DictionaryKind, Panel>()
     private var anchor: View? = null
@@ -169,7 +170,8 @@ internal class FloatingDictionaryController(
             backgroundTintList = ColorStateList.valueOf(palette.pressed)
             setOnClickListener { if (!busy) action() }
         }
-        private fun editor(hintId: Int) = EditText(context).apply {
+        private fun editor(hintId: Int) = FloatingDictionaryEditText(context).apply {
+            onSelectionChangedListener = onEditorSelectionChanged
             hint = context.getString(hintId); contentDescription = hint
             setTextColor(palette.text); setHintTextColor(palette.text)
             textSize = 16f

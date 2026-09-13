@@ -3156,6 +3156,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun switchDictionaryInputTarget(editor: EditText?) {
         val targetChanged = dictionaryInputEditor !== editor
+        if (targetChanged) {
+            // Undo entries contain editor text and must never cross input targets.
+            deletedBuffer.clear()
+            activeDeleteHistoryBatch = null
+        }
+        forwardDeleteCoordinator.cancel()
         // Finish the old composition before changing targets; never transfer it to another field.
         flickInputPreviewCoordinator.cancel(restore = true)
         finishComposingText()
@@ -3174,6 +3180,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             dictionaryEditorInfo = info
         }
         editorMutationRevision.advance()
+        // App selection may have changed while its callbacks were ignored. Let the
+        // next extracted-text read establish it instead of reusing a stale range.
+        forwardDeleteCoordinator.reset(editor?.selectionStart ?: -1, editor?.selectionEnd ?: -1)
         resetEditorSelectionSnapshot()
         resetCustomToggleState()
         clearZeroQueryAllState(refresh = false)
@@ -3183,6 +3192,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setCurrentInputModeForSession(defaultInputModeFor(currentInputType))
         }
         resetRuntimeInputBehaviorForCurrentInput()
+        if (targetChanged) refreshEditHistoryUi()
+    }
+
+    private fun onDictionaryEditorSelectionChanged(editor: EditText, start: Int, end: Int) {
+        if (dictionaryInputEditor !== editor) return
+        forwardDeleteCoordinator.onSelectionChanged(start, end)
     }
 
     private fun toggleDictionaryFloat(type: ShortcutType) {
@@ -3196,6 +3211,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ::resolveCandidatePanelColors,
             ::switchDictionaryInputTarget,
             ::updateShortcutActiveStates,
+            ::onDictionaryEditorSelectionChanged,
         ).also { dictionaryFloats = it; it.attach(host) }
         controller.toggle(kind)
     }
