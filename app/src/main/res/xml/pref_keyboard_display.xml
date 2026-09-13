@@ -23,6 +23,59 @@
             android:title="@string/allow_fullscreen_mode_preference_title" />
 
         <SwitchPreferenceCompat
+            android:key="composing_guide_text_enabled"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_text_title" />
+
+        <SwitchPreferenceCompat
+            android:key="composing_guide_show_live_reading"
+            android:dependency="composing_guide_text_enabled"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_show_live_reading" />
+
+        <SeekBarPreference
+            android:key="composing_guide_text_size_setting"
+            android:dependency="composing_guide_text_enabled"
+            android:persistent="false"
+            android:title="@string/composing_guide_text_size"
+            android:max="56"
+            app:min="18"
+            app:showSeekBarValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="composing_guide_enabled"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_title"
+            android:summary="@string/composing_guide_summary" />
+
+        <ListPreference
+            android:key="composing_guide_scroll_direction"
+            android:dependency="composing_guide_enabled"
+            android:defaultValue="vertical"
+            android:title="@string/composing_guide_scroll_direction"
+            android:entries="@array/composing_guide_scroll_labels"
+            android:entryValues="@array/composing_guide_scroll_values"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            android:key="composing_guide_display_mode"
+            android:defaultValue="integrated"
+            android:title="@string/composing_guide_display_mode"
+            android:entries="@array/composing_guide_display_labels"
+            android:entryValues="@array/composing_guide_display_values"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            android:key="composing_guide_text_reset"
+            android:title="@string/composing_guide_text_reset" />
+        <Preference
+            android:key="composing_guide_candidates_reset"
+            android:title="@string/composing_guide_candidates_reset" />
+        <Preference
+            android:key="composing_guide_integrated_reset"
+            android:title="@string/composing_guide_integrated_reset" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_floating_preference"
             android:summary="@string/keyboard_floating_preference_summary"
