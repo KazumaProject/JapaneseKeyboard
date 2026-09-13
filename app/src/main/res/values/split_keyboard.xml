@@ -1,0 +1,17 @@
+<resources>
+    <string name="split_keyboard_title">Split keyboard</string>
+    <string name="split_keyboard_main">Main keyboard</string>
+    <string name="split_keyboard_sub">Sub keyboard</string>
+    <string name="split_keyboard_custom">Custom layout</string>
+    <string name="split_keyboard_candidates">Candidate placement</string>
+    <string name="split_keyboard_both">Both keyboards</string>
+    <string name="split_keyboard_main_only">Main only</string>
+    <string name="split_keyboard_sub_only">Sub only</string>
+    <string name="split_keyboard_edit">Edit</string>
+    <string name="split_keyboard_done">Done</string>
+    <string name="split_keyboard_resize">Resize</string>
+    <string name="split_keyboard_summary">Two movable keyboards with shared input and candidates</string>
+    <string name="split_keyboard_main_handle">Main</string>
+    <string name="split_keyboard_sub_handle">Sub</string>
+    <string name="split_keyboard_next">Next keyboard</string>
+</resources>

@@ -25,6 +25,7 @@ internal class ComposingGuideWindow(
     private val minimumCandidateHeight: () -> Int,
     private val profile: GuideProfile = GuideProfile.INTEGRATED,
     private val candidateBounds: () -> GuideBounds? = { null },
+    private val profileAllowed: ((GuideProfile) -> Boolean)? = null,
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = ComposingGuideSettings(preferences)
@@ -84,7 +85,7 @@ internal class ComposingGuideWindow(
     fun destroy() { stop(); guideView = null }
 
     fun refresh() {
-        val allowed = profile in settings.profiles && eligible()
+        val allowed = (profileAllowed?.invoke(profile) ?: (profile in settings.profiles)) && eligible()
         val host = anchor
         if (!active || !allowed || host?.isAttachedToWindow != true) {
             gesture = null

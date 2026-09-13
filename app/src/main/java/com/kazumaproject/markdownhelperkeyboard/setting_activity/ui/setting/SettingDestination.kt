@@ -543,6 +543,15 @@ object SettingDestinations {
 
     fun categories(context: Context): List<SettingDestination> = listOf(
         destination(
+            key = "setting_route_split_keyboard",
+            title = context.getString(R.string.split_keyboard_title),
+            summary = context.getString(R.string.split_keyboard_summary),
+            category = SettingCategory.INPUT_METHOD,
+            keywords = listOf("split", "分割", "メイン", "サブ", "floating"),
+            destinationId = R.id.splitKeyboardPreferenceFragment,
+            iconRes = CoreR.drawable.keyboard_24px,
+        ),
+        destination(
             key = "setting_route_keyboard_display",
             title = context.getString(R.string.setting_category_keyboard_display_title),
             summary = context.getString(R.string.setting_category_keyboard_display_summary),

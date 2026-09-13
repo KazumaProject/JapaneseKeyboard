@@ -1,0 +1,11 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory android:title="@string/split_keyboard_main">
+        <ListPreference android:key="split_keyboard_main_type" android:title="@string/split_keyboard_main" android:defaultValue="TENKEY" app:useSimpleSummaryProvider="true" />
+        <ListPreference android:key="split_keyboard_main_custom" android:title="@string/split_keyboard_custom" app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/split_keyboard_sub">
+        <ListPreference android:key="split_keyboard_sub_type" android:title="@string/split_keyboard_sub" android:defaultValue="TENKEY" app:useSimpleSummaryProvider="true" />
+        <ListPreference android:key="split_keyboard_sub_custom" android:title="@string/split_keyboard_custom" app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+    <ListPreference android:key="split_keyboard_candidates" android:title="@string/split_keyboard_candidates" android:defaultValue="BOTH" app:useSimpleSummaryProvider="true" />
+</PreferenceScreen>
