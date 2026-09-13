@@ -1805,4 +1805,10 @@
     <string name="custom_romaji_auto_sokuon_summary">有効：ppa → っぱ。無効：登録ルールに従います。pp → っ の登録は二文字とも消費します。</string>
     <string name="custom_romaji_auto_n">子音の前・確定時の n を「ん」にする</string>
     <string name="custom_romaji_auto_n_summary">有効：kanta → かんた、末尾の n は確定時に「ん」。無効：nn → ん などの登録ルールに従います。</string>
+    <string name="qwerty_common_category_title">QWERTY（共通）</string>
+    <string name="qwerty_english_category_title">QWERTY（英語）</string>
+    <string name="qwerty_romaji_category_title">QWERTY（ローマ字）</string>
+    <string name="space_flick_preference_title">スペースキーのフリック</string>
+    <string name="tenkey_space_flick_summary">左フリックで、既存のスペース設定と反対の幅（半角・全角）の空白を入力します。</string>
+    <string name="qwerty_romaji_space_flick_summary">上フリックで、既存のローマ字のスペース設定と反対の幅（半角・全角）の空白を入力します。文字キーの上フリック設定とは独立しています。</string>
 </resources>

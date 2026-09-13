@@ -2472,6 +2472,18 @@ object AppPreference {
             it.putBoolean(OMISSION_SEARCH.first, value ?: false)
         }
 
+    var tenkey_space_flick_preference: Boolean
+        get() = preferences.getBoolean("tenkey_space_flick_preference", true)
+        set(value) = preferences.edit {
+            it.putBoolean("tenkey_space_flick_preference", value)
+        }
+
+    var qwerty_romaji_space_flick_preference: Boolean
+        get() = preferences.getBoolean("qwerty_romaji_space_flick_preference", false)
+        set(value) = preferences.edit {
+            it.putBoolean("qwerty_romaji_space_flick_preference", value)
+        }
+
     var space_hankaku_preference: Boolean?
         get() = preferences.getBoolean(SPACE_HANKAKU_ENABLE.first, SPACE_HANKAKU_ENABLE.second)
         set(value) = preferences.edit {
