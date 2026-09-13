@@ -62,8 +62,11 @@ class FloatingDictionaryControllerTest {
         val store = mock<FloatingDictionaryStore>()
         DictionaryKind.entries.forEach { whenever(store.observe(it)).thenReturn(flowOf(emptyList())) }
         var target: EditText? = null
+        var selectionEditor: EditText? = null
+        var selection = -1 to -1
         val controller = FloatingDictionaryController(activity, store,
-            { CandidatePanelColors(-1, -1, -16777216, -1, -16777216, -1) }, { target = it }, {})
+            { CandidatePanelColors(-1, -1, -16777216, -1, -16777216, -1) }, { target = it }, {},
+            { editor, start, end -> selectionEditor = editor; selection = start to end })
         try {
             for (kind in DictionaryKind.entries) {
                 controller.toggle(kind)
@@ -81,6 +84,12 @@ class FloatingDictionaryControllerTest {
                 assertSame(reading, target)
                 assertEquals("かな", reading.text.toString())
                 assertEquals("仮名", word.text.toString())
+                reading.setSelection(0, 1)
+                assertSame(reading, selectionEditor)
+                assertEquals(0 to 1, selection)
+                word.setSelection(1)
+                assertSame(word, selectionEditor)
+                assertEquals(1 to 1, selection)
                 controller.toggle(kind)
                 assertNull(target)
             }
