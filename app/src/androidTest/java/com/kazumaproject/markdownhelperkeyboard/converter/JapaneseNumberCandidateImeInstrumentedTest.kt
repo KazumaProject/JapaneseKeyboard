@@ -32,7 +32,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
         val context = instrumentation.targetContext
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all
-        val defaultsOnly = InstrumentationRegistry.getArguments().getString("number_defaults_only") == "true"
+        val disabledOnly = InstrumentationRegistry.getArguments().getString("number_disabled_only") == "true"
         val dateOnly = InstrumentationRegistry.getArguments().getString("number_dates_only") == "true"
         val orderOnly = InstrumentationRegistry.getArguments().getString("number_order_only") == "true"
         fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
@@ -57,8 +57,8 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                 .putBoolean("candidate_order_override_enable_preference", false)
                 .putString("candidate_tab_preference", """["PREDICTION","CONVERSION","EISUKANA"]""")
                 .commit()
-            if (defaultsOnly) {
-                preferences.edit().remove("japanese_number_candidates_enable_preference").commit()
+            if (disabledOnly) {
+                preferences.edit().putBoolean("japanese_number_candidates_enable_preference", false).commit()
                 com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.init(context)
                 assertEquals(false, com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.japanese_number_candidates_enable_preference)
             }
@@ -73,7 +73,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                         Intent(context, FastInputHostActivity::class.java),
                     )
                     try {
-                        val positiveCases = if (defaultsOnly) {
+                        val positiveCases = if (disabledOnly) {
                             if (tab == "英数カナ") listOf("さんにん" to "サンニン")
                             else listOf("しちごさん" to "七五三", "いっとき" to "一時")
                         } else if (dateOnly) listOf(
@@ -139,7 +139,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                                 putString("stream", "NUMBER_CANDIDATE_COMMIT incremental=$incremental bunsetsu=$bunsetsu tab=$tab input=$reading PASS\n")
                             })
                         }
-                        if (defaultsOnly) {
+                        if (disabledOnly) {
                             scenario.onActivity { it.restartEditorInput(true) }
                             instrumentation.waitForIdleSync()
                             SystemClock.sleep(1500)
@@ -150,7 +150,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                             assertTrue("Default OFF generated variants: $observed", observed.none {
                                 it in setOf("12,345", "1万2345", "¹²³⁴⁵", "₁₂₃₄₅")
                             })
-                            instrumentation.sendStatus(2, Bundle().apply { putString("stream", "NUMBER_DEFAULT_OFF_UI incremental=$incremental bunsetsu=$bunsetsu tab=$tab PASS\n") })
+                            instrumentation.sendStatus(2, Bundle().apply { putString("stream", "NUMBER_DISABLED_UI incremental=$incremental bunsetsu=$bunsetsu tab=$tab PASS\n") })
                         }
                         for (reading in listOf("ごぜん", "ぜんご")) {
                             scenario.onActivity { it.restartEditorInput(true) }
@@ -173,7 +173,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                     }
                 }
             }
-            if (dateOnly || defaultsOnly) return
+            if (dateOnly || disabledOnly) return
             preferences.edit().putBoolean("candidate_tab_visibility_preference", false)
                 .putBoolean("incremental_conversion_session_preference", true)
                 .putBoolean("conversion_bunsetsu_separation_preference", true).commit()

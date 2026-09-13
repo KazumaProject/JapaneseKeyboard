@@ -42,15 +42,15 @@ class PredictionPreferenceTest {
     }
 
     @Test
-    fun numberGenerationDefaultsOffWithoutOverwritingStoredChoices() {
+    fun numberGenerationDefaultsOnWithoutOverwritingStoredChoices() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val key = "japanese_number_candidates_enable_preference"
-        assertFalse(PredictionConfig().japaneseNumberCandidatesEnabled)
+        assertTrue(PredictionConfig().japaneseNumberCandidatesEnabled)
         for (existingInstall in listOf(false, true)) {
             prefs.edit().remove(key).putBoolean("japanese_prediction_enable_preference", existingInstall).commit()
             AppPreference.init(context)
-            assertFalse(AppPreference.japanese_number_candidates_enable_preference)
-            assertFalse(ImePreferencesSnapshot.from(AppPreference).predictionConfig.japaneseNumberCandidatesEnabled)
+            assertTrue(AppPreference.japanese_number_candidates_enable_preference)
+            assertTrue(ImePreferencesSnapshot.from(AppPreference).predictionConfig.japaneseNumberCandidatesEnabled)
         }
         for (enabled in listOf(true, false)) {
             prefs.edit().putBoolean(key, enabled).commit()
@@ -205,7 +205,7 @@ class PredictionPreferenceTest {
             assertEquals(SettingCategory.CONVERSION_ENGINE, setting.category)
             if (scope == SettingSearchScope.NEW_HOME) {
                 val target = setting.destination as SettingDestinationType.SwitchPreference
-                assertFalse(target.defaultValue)
+                assertTrue(target.defaultValue)
                 assertEquals(R.id.conversionEnginePreferenceFragment, target.destinationId)
             } else {
                 assertEquals(SettingTabRegistry.TAB_CONVERSION_ENGINE, setting.legacyTarget?.tabKey)
@@ -216,7 +216,7 @@ class PredictionPreferenceTest {
             context, R.xml.pref_conversion_engine, null,
         )
         val switch = requireNotNull(screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key))
-        assertFalse(switch.isChecked)
+        assertTrue(switch.isChecked)
         for (incremental in listOf(false, true)) {
             AppPreference.incremental_conversion_session_preference = incremental
             for (enabled in listOf(false, true)) {

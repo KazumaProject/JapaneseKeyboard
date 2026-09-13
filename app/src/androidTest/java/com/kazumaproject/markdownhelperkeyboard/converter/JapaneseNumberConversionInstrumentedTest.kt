@@ -42,7 +42,7 @@ class JapaneseNumberConversionInstrumentedTest {
             val spoken = engine.getCandidatesEnglishKana("ひゃくいち", config)
             assertEquals(enabled, spoken.any { it.string == "1月1日" })
         }
-        assertTrue(engine.getCandidatesEnglishKana("ひゃくいち").none { it.generatedNumber })
+        assertTrue(engine.getCandidatesEnglishKana("ひゃくいち").any { it.generatedNumber && it.string == "1月1日" })
     }
 
     @Test
