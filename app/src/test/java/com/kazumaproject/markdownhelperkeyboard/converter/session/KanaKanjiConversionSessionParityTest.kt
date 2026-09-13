@@ -156,6 +156,7 @@ class KanaKanjiConversionSessionParityTest {
             "よしよし" to setOf("4444", "４４４４"),
         )
         val disabled = PredictionConfig(
+            japaneseNumberCandidatesEnabled = true,
             japanesePredictionEnabled = false,
             englishPredictionEnabled = false,
             showSymbolCandidates = false,
@@ -610,6 +611,7 @@ class KanaKanjiConversionSessionParityTest {
         omissionSearchOffsetScore = 1900,
         beamWidth = 20,
         collectCandidateSegments = true,
+        predictionConfig = PredictionConfig(japaneseNumberCandidatesEnabled = true),
     )
 
     private fun List<Candidate>.fingerprint(): List<List<Any?>> = map { candidate ->

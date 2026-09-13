@@ -201,7 +201,7 @@ object NumberCandidatePolicy {
         }
         if (digits.length in 3..4) {
             val month = digits.dropLast(2).toInt(); val day = digits.takeLast(2).toInt()
-            if (month in 1..12 && day in 1..java.time.Month.of(month).maxLength() && text == "${month}月${day}日") return true
+            if (NumberCandidateDate.isValid(month, day) && text == "${month}月${day}日") return true
         }
         return createValueBasedSymbolCandidates(proof.value, proof.reading.length.toUByte()).any { it.string == text }
     }

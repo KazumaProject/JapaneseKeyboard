@@ -13,7 +13,7 @@
             app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
-            android:defaultValue="true"
+            android:defaultValue="false"
             android:key="japanese_number_candidates_enable_preference"
             android:summary="@string/japanese_number_candidates_enable_summary"
             android:title="@string/japanese_number_candidates_enable_title"

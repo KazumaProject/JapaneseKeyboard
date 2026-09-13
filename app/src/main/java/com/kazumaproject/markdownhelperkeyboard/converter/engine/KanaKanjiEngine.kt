@@ -4341,9 +4341,8 @@ class KanaKanjiEngine {
             return emptyList()
         }
 
-        // 日が1から31の範囲内かチェック（簡略版）
-        // ※より厳密にする場合は、月ごとの日数（30日、31日、閏年など）を考慮する必要があります。
-        if (day !in 1..java.time.Month.of(month).maxLength()) {
+        // 年を持たない月日候補として検証する（2月29日は許可）。
+        if (!NumberCandidateDate.isValid(month, day)) {
             return emptyList()
         }
 

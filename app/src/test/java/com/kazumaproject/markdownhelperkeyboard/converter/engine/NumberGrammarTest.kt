@@ -136,7 +136,7 @@ class NumberGrammarTest {
 
     @Test fun malformedInputCannotReturnThroughOldAsyncResultsOrEditedInput() {
         val engine = KanaKanjiEngine()
-        val candidate = engine.getCandidatesEnglishKana("ごせん").first { it.string == "5000" }
+        val candidate = engine.getCandidatesEnglishKana("ごせん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).first { it.string == "5000" }
         val tracker = com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestTracker()
         val backend = com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend.LEGACY
         val mode = com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode.PREDICTION

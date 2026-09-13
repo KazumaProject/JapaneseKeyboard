@@ -39,7 +39,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
         for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries.filter { it != CandidateQueryMode.EISUKANA })
             for (bunsetsu in listOf(false, true)) for ((input, forms) in expected) {
                 val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
-                    repository, null, false, false, false, 3000, 1900, 20)
+                    repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                 val candidates = KanaKanjiConversionSession(engine, backend).query(query).candidates
                 assertTrue("$input/$backend/$mode/$bunsetsu: ${candidates.map { it.string }}",
                     candidates.any { it.string in forms && it.commitText == it.string })
@@ -78,7 +78,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
                 "a1" to setOf("a1", "ａ１", "Ａ１"), "あ1" to setOf("あ1", "ア1", "ｱ1"),
                 "Ａ１" to if (mode == CandidateQueryMode.EISUKANA) setOf("Ａ１") else setOf("Ａ１", "A1"))) {
                 val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
-                    repository, null, false, false, false, 3000, 1900, 20)
+                    repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                 val candidates = KanaKanjiConversionSession(engine, backend).query(query).candidates
                 for (output in outputs) assertTrue("literal $input/$output/$backend/$mode/$bunsetsu: ${candidates.map { it.string }}",
                     candidates.any { it.string == output && it.commitText == output })
@@ -104,7 +104,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
             for (input in listOf("b", "ｂ")) for (backend in ConversionBackend.entries)
                 for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
                     val query = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
-                        repository, null, false, false, false, 3000, 1900, 20)
+                        repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                     val restored = engine.restoreNumberCandidateDictionaryEvidence(Candidate("B2B",
                         com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
                         input.length.toUByte(), 0, yomi = input))
@@ -278,6 +278,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
                     userDictionaryRepository = repository, learnRepository = null, omissionSearchEnabled = false,
                     typoCorrectionJapaneseFlickEnabled = false, typoCorrectionQwertyEnglishEnabled = false,
                     typoCorrectionOffsetScore = 3000, omissionSearchOffsetScore = 1900, beamWidth = 20, collectCandidateSegments = true,
+                    predictionConfig = PredictionConfig(japaneseNumberCandidatesEnabled = true),
                 )
                 val candidates = session.query(request).candidates.distinctBy { it.string }
                 val label = "$input/$backend/$mode/bunsetsu=$bunsetsu"
@@ -344,7 +345,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
                 val input = prefix + if (n == 0) "" else com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberGrammarTest.spoken(n)
                 for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
                     val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 4, false, false, false, false, false,
-                        repository, null, false, false, false, 3000, 1900, 20)
+                        repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                     for (candidate in session.query(request).candidates) {
                         if (candidate.number != null || numberText.containsMatchIn(candidate.string) || numberText.containsMatchIn(candidate.commitText) ||
                         candidate.string in setOf("日本5", "日本５", "日本五", "全5", "全５", "全五")) {
@@ -371,7 +372,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
             val session = KanaKanjiConversionSession(engine, backend)
             for (input in words) for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
                 val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
-                    repository, null, false, false, false, 3000, 1900, 20)
+                    repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                 for (candidate in session.query(request).candidates) {
                     if (candidate.number != null || numberText.containsMatchIn(candidate.string) || numberText.containsMatchIn(candidate.commitText) ||
                         candidate.string in setOf("日本5", "日本５", "日本五", "全5", "全５", "全五")) {
@@ -393,7 +394,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
             val session = KanaKanjiConversionSession(engine, backend)
             for ((input, word) in expected) for (mode in CandidateQueryMode.entries.filter { it != CandidateQueryMode.EISUKANA }) for (bunsetsu in listOf(false, true)) {
                 val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 32, false, false, false, false, false,
-                    repository, null, false, false, false, 3000, 1900, 20)
+                    repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                 val candidates = session.query(request).candidates
                 if (candidates.none { it.string == word }) failures += "$input/$backend/$mode/$bunsetsu missing $word"
             }
@@ -412,7 +413,7 @@ class JapaneseNumberCandidateCorpusAuditTest {
                 val forms = listOf(value.toString(), fullWidth(value.toString()), independentKanji(value.toLong()))
                 for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
                     val request = KanaKanjiQueryRequest(input, mode, bunsetsu, 4, false, false, false, false, false,
-                        repository, null, false, false, false, 3000, 1900, 20)
+                        repository, null, false, false, false, 3000, 1900, 20, PredictionConfig(japaneseNumberCandidatesEnabled = true))
                     val candidates = session.query(request).candidates.distinctBy { it.string }
                     assertEquals("$value/$input/$backend/$mode/$bunsetsu", forms,
                         candidates.filter { it.string in forms }.map { it.string })

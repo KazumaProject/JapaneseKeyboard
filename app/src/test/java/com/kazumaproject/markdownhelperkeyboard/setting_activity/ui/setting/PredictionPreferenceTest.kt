@@ -42,6 +42,24 @@ class PredictionPreferenceTest {
     }
 
     @Test
+    fun numberGenerationDefaultsOffWithoutOverwritingStoredChoices() {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val key = "japanese_number_candidates_enable_preference"
+        assertFalse(PredictionConfig().japaneseNumberCandidatesEnabled)
+        for (existingInstall in listOf(false, true)) {
+            prefs.edit().remove(key).putBoolean("japanese_prediction_enable_preference", existingInstall).commit()
+            AppPreference.init(context)
+            assertFalse(AppPreference.japanese_number_candidates_enable_preference)
+            assertFalse(ImePreferencesSnapshot.from(AppPreference).predictionConfig.japaneseNumberCandidatesEnabled)
+        }
+        for (enabled in listOf(true, false)) {
+            prefs.edit().putBoolean(key, enabled).commit()
+            AppPreference.init(context)
+            assertEquals(enabled, ImePreferencesSnapshot.from(AppPreference).predictionConfig.japaneseNumberCandidatesEnabled)
+        }
+    }
+
+    @Test
     fun predictionSettingsArePersistedInTheImeSnapshot() {
         AppPreference.japanese_number_candidates_enable_preference = false
         AppPreference.japanese_prediction_enable_preference = false
@@ -170,7 +188,6 @@ class PredictionPreferenceTest {
         assertTrue(lookahead?.showSeekBarValue == true)
 
         listOf(
-            "japanese_number_candidates_enable_preference",
             "symbol_candidate_enable_preference",
             "emoji_candidate_enable_preference",
             "emoticon_candidate_enable_preference",
@@ -188,7 +205,7 @@ class PredictionPreferenceTest {
             assertEquals(SettingCategory.CONVERSION_ENGINE, setting.category)
             if (scope == SettingSearchScope.NEW_HOME) {
                 val target = setting.destination as SettingDestinationType.SwitchPreference
-                assertTrue(target.defaultValue)
+                assertFalse(target.defaultValue)
                 assertEquals(R.id.conversionEnginePreferenceFragment, target.destinationId)
             } else {
                 assertEquals(SettingTabRegistry.TAB_CONVERSION_ENGINE, setting.legacyTarget?.tabKey)
@@ -199,7 +216,7 @@ class PredictionPreferenceTest {
             context, R.xml.pref_conversion_engine, null,
         )
         val switch = requireNotNull(screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key))
-        assertTrue(switch.isChecked)
+        assertFalse(switch.isChecked)
         for (incremental in listOf(false, true)) {
             AppPreference.incremental_conversion_session_preference = incremental
             for (enabled in listOf(false, true)) {

@@ -167,7 +167,7 @@ object AppPreference {
     private val INCREMENTAL_CONVERSION_SESSION_PREFERENCE =
         Pair("incremental_conversion_session_preference", false)
     private val JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE =
-        Pair("japanese_number_candidates_enable_preference", true)
+        Pair("japanese_number_candidates_enable_preference", false)
     private val JAPANESE_PREDICTION_ENABLE_PREFERENCE =
         Pair("japanese_prediction_enable_preference", true)
     private val ENGLISH_PREDICTION_ENABLE_PREFERENCE =

@@ -211,7 +211,9 @@ internal class ComposingGuideWindow(
         val frame = Rect().also(root::getWindowVisibleDisplayFrame)
         val rootLocation = IntArray(2).also(root::getLocationOnScreen)
         val safe = if (Build.VERSION.SDK_INT >= 30) root.rootWindowInsets?.getInsets(
-            WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout()) else null
+            WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout())?.let {
+                Rect(it.left, it.top, it.right, it.bottom)
+            } else null
         return Rect(maxOf(rootLocation[0], frame.left, safe?.left ?: 0),
             maxOf(frame.top, safe?.top ?: 0),
             minOf(rootLocation[0] + root.width - (safe?.right ?: 0), frame.right),

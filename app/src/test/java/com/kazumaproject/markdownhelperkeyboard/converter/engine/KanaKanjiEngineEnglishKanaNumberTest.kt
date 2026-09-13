@@ -43,7 +43,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     @Test
     fun getCandidatesEnglishKana_returns_numeric_variants_for_hiragana_numbers() {
         val candidateStrings =
-            engine.getCandidatesEnglishKana("いちまんにせんさんびゃくよんじゅうご").map { it.string }
+            engine.getCandidatesEnglishKana("いちまんにせんさんびゃくよんじゅうご", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).map { it.string }
 
         assertTrue(candidateStrings.contains("12345"))
         assertTrue(candidateStrings.contains("12,345"))
@@ -53,21 +53,21 @@ class KanaKanjiEngineEnglishKanaNumberTest {
 
     @Test
     fun getCandidatesEnglishKana_returns_number_unit_candidates_for_hiragana_inputs() {
-        assertTrue(engine.getCandidatesEnglishKana("さんにん").any { it.string == "3人" })
-        assertTrue(engine.getCandidatesEnglishKana("ごえん").any { it.string == "5円" })
-        assertTrue(engine.getCandidatesEnglishKana("にじゅっぷん").any { it.string == "20分" })
-        assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").none { it.string == "20分" })
-        assertTrue(engine.getCandidatesEnglishKana("ろくじ").any { it.string == "6時" })
-        assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ").any { it.string == "24時" })
-        assertTrue(engine.getCandidatesEnglishKana("くじ").any { it.string == "9時" })
-        assertTrue(engine.getCandidatesEnglishKana("じゅうくじ").any { it.string == "19時" })
-        assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
-        assertTrue(engine.getCandidatesEnglishKana("よんえん").any { it.string == "4円" })
-        assertTrue(engine.getCandidatesEnglishKana("きゅうえん").any { it.string == "9円" })
-        assertTrue(engine.getCandidatesEnglishKana("くにん").none { it.string == "9人" })
-        assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })
-        assertTrue(engine.getCandidatesEnglishKana("ろっぷん").any { it.string == "6分" })
-        assertTrue(engine.getCandidatesEnglishKana("はっぷん").any { it.string == "8分" })
+        assertTrue(engine.getCandidatesEnglishKana("さんにん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "3人" })
+        assertTrue(engine.getCandidatesEnglishKana("ごえん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "5円" })
+        assertTrue(engine.getCandidatesEnglishKana("にじゅっぷん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "20分" })
+        assertTrue(engine.getCandidatesEnglishKana("にじゅっふん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).none { it.string == "20分" })
+        assertTrue(engine.getCandidatesEnglishKana("ろくじ", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "6時" })
+        assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "24時" })
+        assertTrue(engine.getCandidatesEnglishKana("くじ", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "9時" })
+        assertTrue(engine.getCandidatesEnglishKana("じゅうくじ", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "19時" })
+        assertTrue(engine.getCandidatesEnglishKana("よにん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "4人" })
+        assertTrue(engine.getCandidatesEnglishKana("よんえん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "4円" })
+        assertTrue(engine.getCandidatesEnglishKana("きゅうえん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "9円" })
+        assertTrue(engine.getCandidatesEnglishKana("くにん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).none { it.string == "9人" })
+        assertTrue(engine.getCandidatesEnglishKana("いっぷん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "1分" })
+        assertTrue(engine.getCandidatesEnglishKana("ろっぷん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "6分" })
+        assertTrue(engine.getCandidatesEnglishKana("はっぷん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "8分" })
     }
 
     @Test
@@ -89,7 +89,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         )
 
         cases.forEach { (input, forbidden) ->
-            val candidates = engine.getCandidatesEnglishKana(input).map { it.string }
+            val candidates = engine.getCandidatesEnglishKana(input, com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).map { it.string }
             assertEquals(input, candidates.first())
             assertTrue("$input: $candidates", candidates.none { it in forbidden })
         }
@@ -97,26 +97,26 @@ class KanaKanjiEngineEnglishKanaNumberTest {
 
     @Test
     fun getCandidatesEnglishKana_keeps_valid_cardinal_and_counter_candidates() {
-        val fourThousand = engine.getCandidatesEnglishKana("よんせん")
+        val fourThousand = engine.getCandidatesEnglishKana("よんせん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
         assertTrue(fourThousand.any { it.string == "4000" })
         assertTrue(fourThousand.any { it.string == "四千" })
         assertTrue(fourThousand.any {
             it.string == "四千" && it.leftId == 2046.toShort() && it.rightId == 2046.toShort()
         })
 
-        val nineTrillion = engine.getCandidatesEnglishKana("きゅうちょう")
+        val nineTrillion = engine.getCandidatesEnglishKana("きゅうちょう", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
         assertTrue(nineTrillion.any { it.string == "9000000000000" })
         assertTrue(nineTrillion.any { it.string == "九兆" })
 
-        val oneTrillion = engine.getCandidatesEnglishKana("いっちょう")
+        val oneTrillion = engine.getCandidatesEnglishKana("いっちょう", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
         assertTrue(oneTrillion.any { it.string == "1000000000000" })
         assertTrue(oneTrillion.any { it.string == "一兆" })
 
-        val historicalForty = engine.getCandidatesEnglishKana("しじゅう")
+        val historicalForty = engine.getCandidatesEnglishKana("しじゅう", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
         assertTrue(historicalForty.none { it.string == "40" })
         assertTrue(historicalForty.none { it.string == "四十" })
 
-        val threePeople = engine.getCandidatesEnglishKana("さんにん")
+        val threePeople = engine.getCandidatesEnglishKana("さんにん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
         assertTrue(threePeople.any {
             it.string == "3人" && it.leftId == 2044.toShort() && it.rightId == 2011.toShort()
         })
@@ -133,7 +133,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
             "ぜろぷん", "よふん", "よえん", "くえん", "にじゅっふん",
         )
         for (input in inputs) {
-            val candidates = engine.getCandidatesEnglishKana(input)
+            val candidates = engine.getCandidatesEnglishKana(input, com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
             assertTrue("$input: ${candidates.map { it.string }}", candidates.none {
                 it.string.matches(Regex("[0-9０-９,]+[時分人円]"))
             })
@@ -158,7 +158,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
 
     @Test
     fun timeCandidatesDoNotUseFullWidthCandidateType() {
-        val candidates = engine.getCandidatesEnglishKana("1234")
+        val candidates = engine.getCandidatesEnglishKana("1234", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
 
         assertEquals(
             CANDIDATE_TYPE_TIME,
@@ -173,7 +173,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
 
     @Test
     fun halfWidthTimeUnitUsesTimeTypeAndFullWidthVariantKeepsFullWidthType() {
-        val candidates = engine.getCandidatesEnglishKana("にじゅっぷん")
+        val candidates = engine.getCandidatesEnglishKana("にじゅっぷん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
 
         assertTrue(candidates.any { it.string == "20分" && it.type == CANDIDATE_TYPE_TIME })
         assertFalse(candidates.any { it.string == "20分" && it.type == 30.toByte() })
@@ -198,17 +198,17 @@ class KanaKanjiEngineEnglishKanaNumberTest {
 
     @Test
     fun getCandidatesEnglishKana_preserves_existing_non_numeric_behaviour() {
-        assertTrue(engine.getCandidatesEnglishKana("1234").any { it.string == "1234" })
-        assertTrue(engine.getCandidatesEnglishKana("1234").any { it.string == "1,234" })
-        assertTrue(engine.getCandidatesEnglishKana("１２３４").any { it.string == "１２３４" })
-        assertTrue(engine.getCandidatesEnglishKana("１２３４").any { it.string == "1234" })
-        assertTrue(engine.getCandidatesEnglishKana("abc").any { it.string == "abc" })
-        assertTrue(engine.getCandidatesEnglishKana("ａｂｃ").any { it.string == "abc" })
-        assertTrue(engine.getCandidatesEnglishKana("きょう").any { it.string == "きょう" })
-        assertTrue(engine.getCandidatesEnglishKana("ことし").any { it.string == "ことし" })
-        assertTrue(engine.getCandidatesEnglishKana("きょねん").any { it.string == "きょねん" })
-        assertTrue(engine.getCandidatesEnglishKana("らいねん").any { it.string == "らいねん" })
-        assertTrue(engine.getCandidatesEnglishKana("2025/04/01").any { it.string == "2025/04/01" })
+        assertTrue(engine.getCandidatesEnglishKana("1234", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "1234" })
+        assertTrue(engine.getCandidatesEnglishKana("1234", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "1,234" })
+        assertTrue(engine.getCandidatesEnglishKana("１２３４", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "１２３４" })
+        assertTrue(engine.getCandidatesEnglishKana("１２３４", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "1234" })
+        assertTrue(engine.getCandidatesEnglishKana("abc", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "abc" })
+        assertTrue(engine.getCandidatesEnglishKana("ａｂｃ", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "abc" })
+        assertTrue(engine.getCandidatesEnglishKana("きょう", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "きょう" })
+        assertTrue(engine.getCandidatesEnglishKana("ことし", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "ことし" })
+        assertTrue(engine.getCandidatesEnglishKana("きょねん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "きょねん" })
+        assertTrue(engine.getCandidatesEnglishKana("らいねん", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "らいねん" })
+        assertTrue(engine.getCandidatesEnglishKana("2025/04/01", com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).any { it.string == "2025/04/01" })
     }
 
     @Test
@@ -227,7 +227,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     private fun assertYearCandidates(input: String, yearOffset: Int) {
-        val candidateStrings = engine.getCandidatesEnglishKana(input).map { it.string }
+        val candidateStrings = engine.getCandidatesEnglishKana(input, com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true)).map { it.string }
         val calendar = Calendar.getInstance().apply { add(Calendar.YEAR, yearOffset) }
         val year = calendar.get(Calendar.YEAR)
         val reiwaYear = year - 2018

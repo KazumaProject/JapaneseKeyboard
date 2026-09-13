@@ -185,11 +185,12 @@ class NumberCandidateReviewRegressionTest {
     }
 
     @Test fun selectingANumericNotationCommitsThatSameNotation() {
+        val config = PredictionConfig(japaneseNumberCandidatesEnabled = true)
         val proof = requireNotNull(ValidatedNumber.parse("さん"))
         val generated = Candidate("3", 18, 2u, 0, yomi = "さん", number = proof, commitText = "三")
-        assertFalse(NumberCandidatePolicy.eligible("さん", generated))
-        assertFalse(NumberCandidatePolicy.eligible("さん", generated.copy(number = null, generatedNumber = false)))
-        assertTrue(NumberCandidatePolicy.eligible("さん", generated.copy(commitText = "3")))
+        assertFalse(NumberCandidatePolicy.eligible("さん", generated, config))
+        assertFalse(NumberCandidatePolicy.eligible("さん", generated.copy(number = null, generatedNumber = false), config))
+        assertTrue(NumberCandidatePolicy.eligible("さん", generated.copy(commitText = "3"), config))
     }
 
     @Test fun theFestivalNameIsNotAnInvalidNumber() {
