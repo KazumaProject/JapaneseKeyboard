@@ -24,6 +24,28 @@ import java.io.File
 class NumberCandidateSettingsInstrumentedTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
+    private var enabledImeForTest: String? = null
+
+    @org.junit.Before fun enableKeyboardForSettings() {
+        val manager = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        val ime = manager.inputMethodList.first { it.packageName == context.packageName }
+        if (manager.enabledInputMethodList.none { it.id == ime.id }) {
+            enabledImeForTest = ime.id
+            shell("ime enable ${ime.id}")
+            val deadline = android.os.SystemClock.uptimeMillis() + 5000
+            while (manager.enabledInputMethodList.none { it.id == ime.id } && android.os.SystemClock.uptimeMillis() < deadline) android.os.SystemClock.sleep(100)
+            assertTrue(manager.enabledInputMethodList.any { it.id == ime.id })
+        }
+    }
+
+    @org.junit.After fun restoreKeyboardEnabledState() {
+        enabledImeForTest?.let { shell("ime disable $it") }
+    }
+
+    private fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+        instrumentation.uiAutomation.executeShellCommand(command)
+    ).bufferedReader().use { it.readText() }
+
     private var uiContext: android.content.Context? = null
     private fun label(id: Int) = (uiContext ?: context).getString(id)
     private fun fill(id: Int, value: String) {
@@ -57,6 +79,7 @@ class NumberCandidateSettingsInstrumentedTest {
             assertTrue("TalkBack touch exploration must be active", manager.isTouchExplorationEnabled)
             scenario = ActivityScenario.launch(Intent(context, MainActivity::class.java))
             scenario.onActivity {
+                uiContext = it
                 val nav = (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController
                 nav.navigate(R.id.numberUnitEditorFragment)
             }
@@ -195,6 +218,33 @@ class NumberCandidateSettingsInstrumentedTest {
             if (japanese) setLocales(oldLocales)
         }
     }
+    @Test fun editingSpecialReadingKeepsInvalidUnitFieldsVisible() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val original = preferences.getString("number_candidate_config_v1", null)
+        AppPreference.init(context)
+        val unit = CustomNumberUnit("pieces", "個", "こ", specialReadings = listOf(SpecialNumberReading(1, "いっこ")))
+        AppPreference.number_candidate_config = NumberCandidateConfig(units = listOf(unit))
+        try {
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+                scenario.onActivity {
+                    uiContext = it
+                    (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment)
+                        .navController.navigate(R.id.numberUnitEditorFragment, Bundle().apply { putString("unitId", unit.id) })
+                }
+                fill(R.string.number_unit_output, "")
+                onView(withText(label(R.string.number_edit) + "：いっこ")).perform(scrollTo(), click())
+                onView(withText(label(R.string.number_invalid_output))).perform(scrollTo()).check(matches(isDisplayed()))
+                fill(R.string.number_unit_output, "個")
+                fill(R.string.number_unit_reading, "")
+                onView(withText(label(R.string.number_edit) + "：いっこ")).perform(scrollTo(), click())
+                onView(withText(label(R.string.number_invalid_reading))).perform(scrollTo()).check(matches(isDisplayed()))
+            }
+        } finally {
+            preferences.edit().apply { if (original == null) remove("number_candidate_config_v1") else putString("number_candidate_config_v1", original) }.commit()
+            AppPreference.init(context)
+        }
+    }
+
     @Test fun registeredUnitLoadsAfterAColdProcessRestart() {
         org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("number_restart_verify") == "true")
         val backup = File(context.filesDir, "number-restart-original.json")

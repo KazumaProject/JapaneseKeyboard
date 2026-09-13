@@ -263,6 +263,7 @@ class NumberUnitEditorFragment : Fragment() {
         specials.forEachIndexed { index, special ->
             text(specialList, "${special.value}${unit.output}　${special.reading} → ${special.value}${unit.output}")
             button(specialList, getString(R.string.number_edit) + "：" + special.reading) {
+                if (!validUnitFields()) return@button
                 editing = index; specialOpen = true
                 specialValue.setText(special.value.toString()); specialReading.setText(special.reading); refreshSpecial()
                 specialReading.requestFocus()
