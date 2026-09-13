@@ -4,7 +4,7 @@ enum class ShortcutType(
     val id: String,
     val iconResId: Int,
     val activeIconResId: Int? = null,
-    val description: String // 設定画面での表示用など
+    val description: String, // 設定画面での表示用など
 ) {
     SETTINGS(
         "settings",
