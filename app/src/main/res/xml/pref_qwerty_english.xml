@@ -28,5 +28,11 @@
             app:defaultValue="false"
             app:summary="@string/qwerty_english_direct_input_preference_summary" />
 
+        <SwitchPreferenceCompat
+            android:key="qwerty_english_space_flick_preference"
+            app:defaultValue="false"
+            android:title="@string/space_flick_preference_title"
+            android:summary="@string/qwerty_english_space_flick_summary" />
+
     </PreferenceCategory>
 </PreferenceScreen>

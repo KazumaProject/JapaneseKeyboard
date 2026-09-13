@@ -223,6 +223,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var onSpaceUpFlickListener: (() -> Unit)? = null
     private var spaceUpFlickEnabled = false
+    private var englishSpaceUpFlickEnabled = false
 
     /**
      * 文字キーの上フリック検知を有効にするかどうかのフラグ
@@ -1100,6 +1101,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setSpaceUpFlickEnabled(enabled: Boolean) {
         spaceUpFlickEnabled = enabled
+    }
+
+    fun setEnglishSpaceUpFlickEnabled(enabled: Boolean) {
+        englishSpaceUpFlickEnabled = enabled
     }
 
     fun setFlickUpDetectionEnabled(enabled: Boolean) {
@@ -2410,9 +2415,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         true
                     }
 
-                    previousView?.id == binding.keySpace.id && romajiModeState.value -> {
+                    previousView?.id == binding.keySpace.id &&
+                        (romajiModeState.value || englishSpaceUpFlickEnabled) -> {
                         applyCommonFlickEffects(pointerId, previousView)
-                        if (spaceUpFlickEnabled) {
+                        if (if (romajiModeState.value) spaceUpFlickEnabled else englishSpaceUpFlickEnabled) {
                             onSpaceUpFlickListener?.invoke()
                         } else {
                             qwertyKeyListener?.onReleasedQWERTYKey(

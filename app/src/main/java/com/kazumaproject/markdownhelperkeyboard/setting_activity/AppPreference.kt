@@ -2478,6 +2478,12 @@ object AppPreference {
             it.putBoolean("tenkey_space_flick_preference", value)
         }
 
+    var qwerty_english_space_flick_preference: Boolean
+        get() = preferences.getBoolean("qwerty_english_space_flick_preference", false)
+        set(value) = preferences.edit {
+            it.putBoolean("qwerty_english_space_flick_preference", value)
+        }
+
     var qwerty_romaji_space_flick_preference: Boolean
         get() = preferences.getBoolean("qwerty_romaji_space_flick_preference", false)
         set(value) = preferences.edit {

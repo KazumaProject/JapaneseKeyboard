@@ -29,13 +29,15 @@ class AppPreferenceSpaceFlickTest {
     fun defaultsPreserveTenkeyAndOptInRomaji() {
         assertTrue(AppPreference.tenkey_space_flick_preference)
         assertFalse(AppPreference.qwerty_romaji_space_flick_preference)
+        assertFalse(AppPreference.qwerty_english_space_flick_preference)
     }
 
     @Test
     fun newAndLegacySearchResolveSplitCategoriesAndDefaults() {
         val expected = mapOf(
             "tenkey_space_flick_preference" to (R.id.kanaPreferenceFragment to true),
-            "qwerty_romaji_space_flick_preference" to (R.id.qwertyRomajiPreferenceFragment to false)
+            "qwerty_romaji_space_flick_preference" to (R.id.qwertyRomajiPreferenceFragment to false),
+            "qwerty_english_space_flick_preference" to (R.id.qwertyEnglishPreferenceFragment to false)
         )
         val newItems = SettingSearchIndex.searchable(context)
         for ((key, target) in expected) {
@@ -51,7 +53,6 @@ class AppPreferenceSpaceFlickTest {
             assertEquals(R.id.qwertyEnglishPreferenceFragment, SettingDestinations.destinationId(english.destination))
             val width = items.first { it.key == "qwerty_romaji_zenkaku_space_preference" }
             assertEquals(R.id.qwertyRomajiPreferenceFragment, SettingDestinations.destinationId(width.destination))
-            assertFalse(items.any { it.key == "qwerty_english_space_flick_preference" })
         }
         val favorites = SettingDestinations.frequentCandidates(context).map { it.key }
         assertTrue(favorites.containsAll(expected.keys))
@@ -63,12 +64,17 @@ class AppPreferenceSpaceFlickTest {
         AppPreference.qwerty_enable_zenkaku_space_preference = true
         AppPreference.tenkey_space_flick_preference = false
         AppPreference.qwerty_romaji_space_flick_preference = true
+        AppPreference.qwerty_english_space_flick_preference = true
         AppPreference.init(context)
         assertFalse(AppPreference.tenkey_space_flick_preference)
         assertTrue(AppPreference.qwerty_romaji_space_flick_preference)
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
         assertFalse(snapshot.tenkeySpaceFlickPreference)
         assertTrue(snapshot.qwertyRomajiSpaceFlickPreference)
+        assertTrue(snapshot.qwertyEnglishSpaceFlickPreference)
+        AppPreference.qwerty_english_space_flick_preference = false
+        assertTrue(AppPreference.qwerty_romaji_space_flick_preference)
+        assertFalse(AppPreference.qwerty_english_space_flick_preference)
         assertTrue(AppPreference.space_hankaku_preference == true)
         assertTrue(AppPreference.qwerty_enable_zenkaku_space_preference == true)
         AppPreference.tenkey_space_flick_preference = true

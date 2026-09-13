@@ -1813,4 +1813,5 @@
     <string name="space_flick_preference_title">Space key flick</string>
     <string name="tenkey_space_flick_summary">Flick left to insert the opposite space width to your current space setting.</string>
     <string name="qwerty_romaji_space_flick_summary">Flick up to insert the opposite space width to your Romaji space setting. Independent of letter-key up flicks.</string>
+    <string name="qwerty_english_space_flick_summary">Flick up to insert a full-width space. If there is composing text, commit it with a full-width space. Tapping still inserts a half-width space. Independent of letter-key up flicks.</string>
 </resources>
