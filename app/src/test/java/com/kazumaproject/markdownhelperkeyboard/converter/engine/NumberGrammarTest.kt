@@ -163,7 +163,46 @@ class NumberGrammarTest {
         assertTrue(NumberCandidatePolicy.eligible("ぜんご", c.copy(type = CANDIDATE_TYPE_TEXT_MACRO)))
     }
 
+    @Test fun everyClockTimeHasConsistentGeneratedForms() {
+        val engine = KanaKanjiEngine()
+        for (hour in 0..29) for (minute in 0..59) {
+            val reading = clockReading(hour, minute)
+            val candidates = engine.getCandidatesEnglishKana(reading, PredictionConfig(japaneseNumberCandidatesEnabled = true))
+            val expected = "${hour}時${minute}分"
+            val wide = expected.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString("")
+            fun kanji(n: Int): String {
+                val ones = "〇一二三四五六七八九"
+                return if (n < 10) ones[n].toString() else (if (n < 20) "" else ones[n / 10].toString()) + "十" + (if (n % 10 == 0) "" else ones[n % 10].toString())
+            }
+            assertTrue(reading, candidates.any { it.string == wide && it.commitText == wide })
+            val kanjiTime = kanji(hour) + "時" + kanji(minute) + "分"
+            assertTrue(reading, candidates.any { it.string == kanjiTime && it.commitText == kanjiTime })
+            assertTrue("$reading -> $expected: ${candidates.map { it.string }}", candidates.any { it.generatedNumber && it.string == expected && it.commitText == expected })
+            assertTrue(reading, candidates.any { it.generatedNumber && it.string == "$hour:${minute.toString().padStart(2, '0')}" })
+        }
+    }
+
     companion object {
+        fun clockReading(hour: Int, minute: Int): String {
+            val hourReading = when (hour % 10) {
+                4 -> spoken(hour).removeSuffix("よん") + "よ"
+                7 -> spoken(hour).removeSuffix("なな") + "しち"
+                9 -> spoken(hour).removeSuffix("きゅう") + "く"
+                else -> spoken(hour)
+            } + "じ"
+            val minuteReading = when {
+                minute == 0 -> "ぜろふん"
+                minute % 10 == 0 -> spoken(minute).removeSuffix("じゅう") + "じゅっぷん"
+                minute % 10 == 1 -> spoken(minute).removeSuffix("いち") + "いっぷん"
+                minute % 10 == 3 -> spoken(minute) + "ぷん"
+                minute % 10 == 6 -> spoken(minute).removeSuffix("ろく") + "ろっぷん"
+                minute % 10 == 8 -> spoken(minute).removeSuffix("はち") + "はっぷん"
+                else -> spoken(minute) + "ふん"
+            }
+            return hourReading + minuteReading
+
+        }
+
         fun spoken(n: Int): String {
             if (n == 0) return "ぜろ"
             val digit = arrayOf("", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう")

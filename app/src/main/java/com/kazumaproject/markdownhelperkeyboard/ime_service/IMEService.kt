@@ -7948,6 +7948,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         romajiConverter?.flush(insertString)?.first
                     } ?: insertString
 
+                    if (!isHenkan.get() || normalizedInsertString != insertString) {
+                        // The last keystroke's conversion may still be in flight, even when nn
+                        // has already become ん. First Space must await this query's candidates.
+                        // Subsequent Space presses can cycle the established conversion list.
+                        candidateRequestTracker.invalidate()
+                        currentHighlightIndex = RecyclerView.NO_POSITION
+                        updateSuggestionsForFloatingCandidate(emptyList())
+                    }
                     isHenkan.set(true)
                     Timber.d("KEYCODE_SPACE is pressed: $normalizedInsertString $stringInTail")
                     _inputString.update { normalizedInsertString }

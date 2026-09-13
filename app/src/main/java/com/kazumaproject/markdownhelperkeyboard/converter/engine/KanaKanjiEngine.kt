@@ -3985,10 +3985,9 @@ class KanaKanjiEngine {
                 score = 3000
             ))
         }.map { it.copy(nonNumericSource = input to it.string) }
-        val proof = ValidatedNumber.parse(input)
-        val numericCandidates = proof?.takeIf {
-            it.origin == NumberInputOrigin.DIGITS || predictionConfig.japaneseNumberCandidatesEnabled
-        }?.let { createValidatedNumberCandidates(it, predictionConfig) }.orEmpty()
+        val numericCandidates = ValidatedNumber.parseAll(input, predictionConfig.numberCandidateConfig)
+            .filter { it.origin == NumberInputOrigin.DIGITS || predictionConfig.japaneseNumberCandidatesEnabled }
+            .flatMap { createValidatedNumberCandidates(it, predictionConfig) }
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             getEnglishCandidates(
@@ -4125,8 +4124,9 @@ class KanaKanjiEngine {
             rightId = if (type.toInt() == 32 && proof.counter.isEmpty()) POS_ID_NUMBER_KANJI else if (proof.counter == "時") POS_ID_COUNTER_TIME else if (proof.counter.isNotEmpty()) POS_ID_COUNTER_GENERIC else POS_ID_NUMBER_ARABIC,
         )
         val result = proof.basicForms.mapIndexed { index, text ->
-            candidate(text, if (index == 0 && proof.counter in listOf("時", "分")) CANDIDATE_TYPE_TIME else if (index == 1 && proof.counter in listOf("時", "分")) 30 else listOf<Byte>(18, 22, 32)[index], 8000 + index)
+            candidate(text, if (index == 0 && (proof.clock != null || proof.counter in listOf("時", "分"))) CANDIDATE_TYPE_TIME else if (index == 1 && (proof.clock != null || proof.counter in listOf("時", "分"))) 30 else listOf<Byte>(18, 22, 32)[index], 8000 + index)
         }.toMutableList()
+        proof.clockText?.let { result += candidate(it, CANDIDATE_TYPE_TIME, 8003) }
         if (proof.counter.isEmpty()) {
             proof.digits.addCommasToNumber().takeIf { it.contains(',') }?.let { result += candidate(it, 19, 8003) }
             if (proof.value >= 10000) result += candidate(proof.value.convertToKanjiNotation(), 23, 8004)
@@ -4138,7 +4138,7 @@ class KanaKanjiEngine {
             if (config.showSymbolCandidates) result += createValueBasedSymbolCandidates(proof.value, proof.reading.length.toUByte())
                 .map { it.copy(yomi = proof.reading, number = proof, generatedNumber = true) }
         }
-        return NumberCandidatePolicy.order(proof.reading, result.distinctBy { it.string }, config.numberCandidateOrder)
+        return NumberCandidatePolicy.order(proof.reading, result.filter { config.numberCandidateConfig.permits(proof, it.string) }.distinctBy { it.string }, config.numberCandidateOrder)
     }
 
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray.getNodeIds().map { nodeId ->
@@ -5015,8 +5015,8 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig,
     ): List<Candidate> {
         if (!predictionConfig.japaneseNumberCandidatesEnabled) return emptyList()
-        val proof = ValidatedNumber.parse(input) ?: return emptyList()
-        return createValidatedNumberCandidates(proof, predictionConfig)
+        return ValidatedNumber.parseAll(input, predictionConfig.numberCandidateConfig)
+            .flatMap { createValidatedNumberCandidates(it, predictionConfig) }
     }
 
     /**

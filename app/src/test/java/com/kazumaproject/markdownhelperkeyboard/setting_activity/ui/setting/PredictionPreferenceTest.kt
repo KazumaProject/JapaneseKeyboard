@@ -31,6 +31,22 @@ class PredictionPreferenceTest {
     }
 
     @Test
+    fun numericKindsAndUnitsSurviveBackupAndRefreshTheSnapshot() {
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("pieces", "個", "こ",
+            specialReadings = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReading(1, "いっこ")))
+        val settings = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(
+            disabledKinds = setOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateKind.TIME), units = listOf(unit))
+        val before = ImePreferencesSnapshot.from(AppPreference).predictionConfig
+        AppPreference.number_candidate_config = settings
+        assertEquals(settings, ImePreferencesSnapshot.from(AppPreference).predictionConfig.numberCandidateConfig)
+        assertFalse(before == ImePreferencesSnapshot.from(AppPreference).predictionConfig)
+        val backup = AppPreference.exportAllToJson()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        assertEquals(settings, AppPreference.number_candidate_config)
+    }
+
+    @Test
     fun defaultsAreSeparatedFromNBestAndMatchTheSettingsScreen() {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 

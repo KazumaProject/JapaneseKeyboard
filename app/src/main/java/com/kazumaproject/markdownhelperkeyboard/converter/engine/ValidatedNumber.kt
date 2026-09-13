@@ -12,13 +12,22 @@ class ValidatedNumber private constructor(
     val origin: NumberInputOrigin,
     val counter: String,
     val digits: String,
+    val clock: Pair<Int, Int>? = null,
+    val customUnit: CustomNumberUnit? = null,
 ) {
     override fun equals(other: Any?): Boolean = other is ValidatedNumber &&
-        value == other.value && reading == other.reading && origin == other.origin && counter == other.counter && digits == other.digits
-    override fun hashCode(): Int = listOf(value, reading, origin, counter, digits).hashCode()
+        value == other.value && reading == other.reading && origin == other.origin && counter == other.counter && digits == other.digits && clock == other.clock && customUnit == other.customUnit
+    override fun hashCode(): Int = listOf(value, reading, origin, counter, digits, clock, customUnit).hashCode()
 
     val fullWidth: String get() = digits.map { it + 0xFEE0 }.joinToString("")
-    val basicForms: List<String> get() = listOf(digits + counter, fullWidth + counter, value.toKanji() + counter)
+    val basicForms: List<String> get() = clock?.let { (hour, minute) ->
+        val half = "${hour}時${minute}分"
+        listOf(half, half.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString(""),
+            hour.toLong().toKanji() + "時" + minute.toLong().toKanji() + "分")
+    } ?: listOf(digits + counter, fullWidth + counter, value.toKanji() + counter)
+
+    val clockText: String? get() = clock?.let { (hour, minute) -> "$hour:${minute.toString().padStart(2, '0')}" }
+
 
     fun exponent(): String? {
         if (counter.isNotEmpty() || value < 100_000_000L) return null
@@ -131,6 +140,14 @@ class ValidatedNumber private constructor(
         fun parse(input: String): ValidatedNumber? {
             parseDigits(input)?.let { return it }
             parseReading(input)?.let { return it }
+            if (input.endsWith("ふん") || input.endsWith("ぷん")) {
+                for (split in input.indices.filter { input[it] == 'じ' }) {
+                    val hour = parse(input.substring(0, split + 1))?.takeIf { it.counter == "時" } ?: continue
+                    val minute = parse(input.substring(split + 1))?.takeIf { it.counter == "分" && it.value in 0..59 } ?: continue
+                    return ValidatedNumber(hour.value * 60 + minute.value, input, NumberInputOrigin.READING,
+                        "時分", "", hour.value.toInt() to minute.value.toInt())
+                }
+            }
             if (input == "ひとり") return make(input, "人", 1)
             if (input == "ふたり") return make(input, "人", 2)
             for ((suffix, counter) in listOf("えん" to "円", "にん" to "人", "ふん" to "分", "ぷん" to "分", "じ" to "時")) {
@@ -174,6 +191,16 @@ class ValidatedNumber private constructor(
             val value = cardinal(stem, false) ?: return null
             return value.takeIf { it % 10 in listOf(3L, 4L) || (it > 0 && it % 1000 == 0L &&
                 listOf("せん", "ぜん", "まん").any(stem::endsWith)) }
+        }
+
+        fun parseAll(input: String, config: NumberCandidateConfig): List<ValidatedNumber> = buildList {
+            parse(input)?.let(::add)
+            for (unit in config.units.filter { it.enabled }) {
+                val special = unit.specialReadings.firstOrNull { it.reading == input }
+                val ordinary = if (input.endsWith(unit.reading)) parseReading(input.dropLast(unit.reading.length)) else null
+                val value = special?.value ?: ordinary?.value?.takeIf { n -> unit.specialReadings.none { it.value == n } }
+                if (value != null) add(ValidatedNumber(value, input, NumberInputOrigin.READING, unit.output, value.toString(), customUnit = unit))
+            }
         }
 
         private fun make(input: String, counter: String, value: Long?): ValidatedNumber? =

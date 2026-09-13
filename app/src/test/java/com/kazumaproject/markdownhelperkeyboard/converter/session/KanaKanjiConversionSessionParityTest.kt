@@ -588,6 +588,52 @@ class KanaKanjiConversionSessionParityTest {
         )
     }
 
+    @Test fun everyClockTimeTraversesEveryModeBackendAndSegmentation() = runBlocking {
+        // Exhaustive queries must not retain every suspend invocation in a Mockito history.
+        val repository = org.mockito.Mockito.mock(UserDictionaryRepository::class.java, org.mockito.Mockito.withSettings().stubOnly())
+        whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+        whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (hour in 0..29) for (minute in 0..59) {
+                val input = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberGrammarTest.clockReading(hour, minute)
+                val expected = "${hour}時${minute}分"
+                for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(request(input, mode, bunsetsu).copy(userDictionaryRepository = repository))
+                    val label = "$backend/$mode/$bunsetsu/$input"
+                    assertTrue(label, result.candidates.any { it.string == expected && it.commitText == expected })
+                    val colon = "$hour:${minute.toString().padStart(2, '0')}"
+                    fun kanji(n: Int): String {
+                        val ones = "〇一二三四五六七八九"
+                        return if (n < 10) ones[n].toString() else (if (n < 20) "" else ones[n / 10].toString()) + "十" + (if (n % 10 == 0) "" else ones[n % 10].toString())
+                    }
+                    val forms = listOf(expected, expected.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString(""),
+                        kanji(hour) + "時" + kanji(minute) + "分", colon)
+                    // The IME merges duplicate dictionary/generated surfaces before displaying them.
+                    assertEquals(label, forms, result.candidates.map { it.string }.distinct().filter { it in forms })
+                }
+            }
+        }
+    }
+
+    @Test fun customUnitEditsAndKindChangesInvalidateSessionResults() = runBlocking {
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("pieces", "個", "こ",
+            specialReadings = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReading(1, "いっこ")))
+        for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val settings = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit))
+            val query = request("いっこ", mode, bunsetsu).copy(predictionConfig = PredictionConfig(numberCandidateConfig = settings))
+            assertTrue("$backend/$mode/$bunsetsu", session.query(query).candidates.any { it.string == "1個" })
+            val removed = session.query(query.copy(predictionConfig = PredictionConfig()))
+            assertTrue(removed.candidates.none { it.generatedNumber && it.number?.customUnit != null })
+            val time = request("さんじごふん", mode, bunsetsu)
+            assertTrue(session.query(time).candidates.any { it.string == "3時5分" })
+            val disabled = PredictionConfig(numberCandidateConfig = settings.copy(disabledKinds = setOf(
+                com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateKind.TIME)))
+            assertTrue(session.query(time.copy(predictionConfig = disabled)).candidates.none { it.generatedNumber && it.number?.clock != null })
+        }
+    }
+
     private fun request(
         input: String,
         mode: CandidateQueryMode,

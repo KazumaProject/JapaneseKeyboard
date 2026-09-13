@@ -32,6 +32,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
         val context = instrumentation.targetContext
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all
+        val clockOnly = InstrumentationRegistry.getArguments().getString("number_clock_only") == "true"
         val disabledOnly = InstrumentationRegistry.getArguments().getString("number_disabled_only") == "true"
         val dateOnly = InstrumentationRegistry.getArguments().getString("number_dates_only") == "true"
         val orderOnly = InstrumentationRegistry.getArguments().getString("number_order_only") == "true"
@@ -76,7 +77,10 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                         val positiveCases = if (disabledOnly) {
                             if (tab == "英数カナ") listOf("さんにん" to "サンニン")
                             else listOf("しちごさん" to "七五三", "いっとき" to "一時")
-                        } else if (dateOnly) listOf(
+                        } else if (clockOnly) listOf(
+                            "いちじごふん" to "1時5分", "さんじごふん" to "3時5分",
+                            "にじゅうくじごじゅうきゅうふん" to "29時59分", "ひゃっぷん" to "100分",
+                        ) else if (dateOnly) listOf(
                             "ひゃくいち" to "1月1日", "にひゃくにじゅうきゅう" to "2月29日",
                             "よんひゃくさんじゅう" to "4月30日", "せんにひゃくさんじゅういち" to "12月31日",
                         ) else listOf(
@@ -179,7 +183,7 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                 .putBoolean("conversion_bunsetsu_separation_preference", true).commit()
             val extra = ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java))
             try {
-                for (reading in if (orderOnly) emptyList() else listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく", "にほんご", "はちみつ", "いちちょう", "はちちょう", "じゅうちょう", "じゅ", "ひゃ", "いっ")) {
+                for (reading in if (orderOnly || clockOnly) emptyList() else listOf("ごぜん", "ぜんご", "いちぜん", "じゅうよ", "にびゃく", "ごぴゃく", "にぜん", "いっまん", "じゅっおく", "にほんご", "はちみつ", "いちちょう", "はちちょう", "じゅうちょう", "じゅ", "ひゃ", "いっ")) {
                     extra.onActivity { it.restartEditorInput(true) }
                     instrumentation.waitForIdleSync()
                     SystemClock.sleep(1500)
@@ -192,15 +196,17 @@ class JapaneseNumberCandidateImeInstrumentedTest {
                 for (order in com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder.entries) {
                     preferences.edit().putString("number_candidate_order_preference", order.preferenceValue)
                         .putBoolean("live_conversion_preference", true).commit()
-                    val forms = listOf("3人", "３人", "三人")
+                    val forms = if (clockOnly) listOf("3時5分", "３時５分", "三時五分") else listOf("3人", "３人", "三人")
                     for (selected in forms) {
                         extra.onActivity { it.restartEditorInput(true) }
                         instrumentation.waitForIdleSync()
                         SystemClock.sleep(1500)
-                        typeNumberReadingWithFlicks("さんにん")
+                        typeNumberReadingWithFlicks(if (clockOnly) "さんじごふん" else "さんにん")
                         awaitEditorText(extra, forms[order.indices.first()], committed = false)
                         val displayed = inspectCandidateStrip()
                         assertEquals("Visible order $order", order.indices.map(forms::get), displayed.filter { it in forms })
+                        if (clockOnly) assertEquals("Colon must follow all basic forms: $order",
+                            order.indices.map(forms::get) + "3:05", displayed.filter { it in forms || it == "3:05" })
                         var candidate: AccessibilityNodeInfo? = null
                         repeat(12) {
                             if (candidate == null) {
@@ -295,21 +301,31 @@ class JapaneseNumberCandidateImeInstrumentedTest {
     }
 
     private fun typeNumberReadingWithFlicks(reading: String) {
+        fun stableBounds(id: String): Rect {
+            var previous = awaitVisibleBounds(id)
+            repeat(8) {
+                SystemClock.sleep(120)
+                val current = awaitVisibleBounds(id)
+                if (current == previous) return current
+                previous = current
+            }
+            error("Keyboard bounds did not settle: $id")
+        }
         fun press(id: String) {
-            assertTrue(tap(awaitVisibleBounds(id).center()))
-            SystemClock.sleep(100)
+            assertTrue(tap(stableBounds(id).center()))
+            SystemClock.sleep(150)
         }
         fun flick(id: String, dx: Float, dy: Float) {
-            val bounds = awaitVisibleBounds(id)
+            val bounds = stableBounds(id)
             val start = bounds.center()
             val end = PointF(start.x + bounds.width() * dx, start.y + bounds.height() * dy)
             val downTime = SystemClock.uptimeMillis()
             assertTrue(inject(downTime, MotionEvent.ACTION_DOWN, start))
-            SystemClock.sleep(16)
+            SystemClock.sleep(40)
             assertTrue(inject(downTime, MotionEvent.ACTION_MOVE, end))
-            SystemClock.sleep(16)
+            SystemClock.sleep(40)
             assertTrue(inject(downTime, MotionEvent.ACTION_UP, end))
-            SystemClock.sleep(100)
+            SystemClock.sleep(150)
         }
         val voiced = mapOf('が' to 'か', 'ぎ' to 'き', 'ぐ' to 'く', 'げ' to 'け', 'ご' to 'こ',
             'ざ' to 'さ', 'じ' to 'し', 'ず' to 'す', 'ぜ' to 'せ', 'ぞ' to 'そ',

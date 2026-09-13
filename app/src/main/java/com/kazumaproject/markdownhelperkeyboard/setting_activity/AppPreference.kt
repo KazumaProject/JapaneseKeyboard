@@ -1863,6 +1863,11 @@ object AppPreference {
             it.putBoolean(JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE.first, value)
         }
 
+    var number_candidate_config: com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig
+        get() = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig.decode(
+            preferences.getString("number_candidate_config_v1", null))
+        set(value) { preferences.edit().putString("number_candidate_config_v1", value.encode()).apply() }
+
     var utility_candidate_config: UtilityCandidateConfig
         get() {
             val calculationPrecision = preferences.getString(

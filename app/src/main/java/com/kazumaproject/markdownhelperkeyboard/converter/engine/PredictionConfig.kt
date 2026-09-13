@@ -28,6 +28,7 @@ data class PredictionConfig(
     val showSymbolCandidates: Boolean = true,
     val showEmojiCandidates: Boolean = true,
     val showEmoticonCandidates: Boolean = true,
+    val numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
     val japaneseNumberCandidatesEnabled: Boolean = true,
     val numberCandidateOrder: NumberCandidateOrder = NumberCandidateOrder.HALF_FULL_KANJI,
 ) {

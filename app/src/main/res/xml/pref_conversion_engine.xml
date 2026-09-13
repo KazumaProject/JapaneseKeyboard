@@ -19,6 +19,8 @@
             android:title="@string/japanese_number_candidates_enable_title"
             app:iconSpaceReserved="false" />
 
+        <Preference android:key="setting_route_number_candidates" android:title="@string/number_types_title" android:summary="@string/number_types_note" app:iconSpaceReserved="false" />
+
         <ListPreference
             android:key="number_candidate_order_preference"
             android:title="@string/number_candidate_order_title"

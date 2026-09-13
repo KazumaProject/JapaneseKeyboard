@@ -38,6 +38,8 @@ object NumberCandidatePolicy {
     }
 
     fun eligible(input: String, candidate: Candidate, config: PredictionConfig = PredictionConfig()): Boolean {
+        if (candidate.generatedNumber && candidate.number != null &&
+            !config.numberCandidateConfig.permits(candidate.number, candidate.string)) return false
         if (explicit(candidate) && candidate.conversionSegments.isEmpty()) return true
         // These have independent expression/unit/TeX grammars, not spoken-number generation.
         if (candidate.type in setOf(CANDIDATE_TYPE_CALCULATION, CANDIDATE_TYPE_UNIT_CONVERSION,
@@ -183,6 +185,7 @@ object NumberCandidatePolicy {
 
     private fun validSurface(proof: ValidatedNumber, text: String): Boolean {
         if (text in proof.basicForms) return true
+        if (proof.clock != null) return text == proof.clockText
         val written = if (proof.counter.isEmpty()) text else text.takeIf { it.endsWith(proof.counter) }?.dropLast(proof.counter.length)
         // Direct decimal input keeps its leading zeros; alternative kanji spellings may
         // express the same value. Unknown dictionary spellings must not change that value.
@@ -218,7 +221,7 @@ object NumberCandidatePolicy {
             }
         }
 
-    /** Replaces only slots already occupied by the three basic representations. */
+    /** Reorders numeric slots, placing a compound clock's colon form after its three basic forms. */
     fun order(input: String, candidates: List<Candidate>, order: NumberCandidateOrder): List<Candidate> {
         if (input.isNotEmpty() && input.all { it in '0'..'9' || it in '０'..'９' } &&
             ValidatedNumber.parseDigits(input) == null) {
@@ -229,19 +232,19 @@ object NumberCandidatePolicy {
             val sorted = slots.map(candidates::get).sortedBy { order.indices.indexOf(forms.indexOf(it.string)) }
             return candidates.toMutableList().apply { slots.forEachIndexed { index, slot -> this[slot] = sorted[index] } }
         }
-        val groups = linkedMapOf<Pair<Long, String>, MutableList<Int>>()
+        val groups = linkedMapOf<List<String>, MutableList<Int>>()
         candidates.forEachIndexed { index, candidate ->
             if (explicit(candidate)) return@forEachIndexed
             val proof = candidate.number ?: ValidatedNumber.parse(candidate.yomi ?: input) ?: return@forEachIndexed
-            if (candidate.string in proof.basicForms && candidate.commitText == candidate.string) {
-                groups.getOrPut(proof.value to proof.counter) { mutableListOf() }.add(index)
+            if ((candidate.string in proof.basicForms || candidate.string == proof.clockText) && candidate.commitText == candidate.string) {
+                groups.getOrPut(proof.basicForms) { mutableListOf() }.add(index)
             }
         }
         val result = candidates.toMutableList()
         for (slots in groups.values) {
             val sorted = slots.map(candidates::get).sortedBy { candidate ->
                 val proof = candidate.number ?: ValidatedNumber.parse(candidate.yomi ?: input)!!
-                order.indices.indexOf(proof.basicForms.indexOf(candidate.string))
+                order.indices.indexOf(proof.basicForms.indexOf(candidate.string)).takeIf { it >= 0 } ?: order.indices.size
             }
             slots.forEachIndexed { index, slot -> result[slot] = sorted[index] }
         }
