@@ -243,7 +243,7 @@ private fun renderNonCustomKeyboardPreviewType(
     views.flick.isVisible = false
 
     when (type) {
-        KeyboardType.TENKEY -> {
+        KeyboardType.TENKEY, KeyboardType.SPLIT -> {
             views.tenKey.isVisible = true
             configureTenKeyPreview(fragment.requireContext(), appPreference, views.tenKey)
         }
