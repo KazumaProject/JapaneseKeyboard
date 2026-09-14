@@ -113,4 +113,22 @@ class ComposingGuideViewTest {
         assertEquals(View.GONE, (reading.parent as View).visibility)
     }
 
+    @Test fun sharedChromeMatchesComposingGuideWithThemeColorsInBothModes() {
+        val palette = CandidatePanelColors(0xff152433.toInt(), 0xff234455.toInt(), 0xffe0c080.toInt(),
+            0xff557788.toInt(), 0xffff6600.toInt(), 0xff001122.toInt(), 0xff55ccdd.toInt())
+        for (editing in listOf(false, true)) {
+            val guide = view(editing).apply { setShowComposing(false); setColors(palette) }
+            val frame = FloatingPanelFrame(context, {}, {}).apply { setEditing(editing); setColors(palette) }
+            fun bitmap(view: View): android.graphics.Bitmap {
+                view.measure(View.MeasureSpec.makeMeasureSpec(px(320), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(px(420), View.MeasureSpec.EXACTLY))
+                view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+                return android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+                    .also { view.draw(android.graphics.Canvas(it)) }
+            }
+            org.junit.Assert.assertTrue(bitmap(guide).sameAs(bitmap(frame)))
+            assertEquals(guide.handleAt(px(160).toFloat(), px(12).toFloat()), frame.handleAt(px(160).toFloat(), px(12).toFloat()))
+        }
+    }
+
 }

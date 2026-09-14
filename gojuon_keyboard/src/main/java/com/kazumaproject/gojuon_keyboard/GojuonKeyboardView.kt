@@ -1,6 +1,8 @@
 package com.kazumaproject.gojuon_keyboard
 
 import android.annotation.SuppressLint
+import com.kazumaproject.core.domain.extensions.screenWidth
+import com.kazumaproject.core.domain.extensions.screenHeight
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
@@ -3082,6 +3084,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
             InputMode.ModeEnglish -> buildKeyRectsEnglish()
             InputMode.ModeJapanese -> buildKeyRects()
             InputMode.ModeNumber -> buildKeyRectsNumber()
+        }.let { rects ->
+            val sx = screenWidth().toFloat() / width.coerceAtLeast(1)
+            val sy = screenHeight().toFloat() / height.coerceAtLeast(1)
+            if (sx == 1f && sy == 1f) rects else rects.map { rect ->
+                rect.copy(right = rect.left + ((rect.right - rect.left) * sx).toInt(),
+                    bottom = rect.top + ((rect.bottom - rect.top) * sy).toInt())
+            }
         }
 
         keyRects.forEach { rect ->
