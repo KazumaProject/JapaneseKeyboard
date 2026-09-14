@@ -50,10 +50,26 @@ class SplitKeyboardSettingsTest {
             assertEquals(placement != SplitCandidatePlacement.MAIN, restored.shows(SplitSlot.SUB))
         }
     }
+    @Test fun smallBodiesAndEditPlacementSurviveRecreation() {
+        assertEquals(SplitEditPlacement.MAIN, settings.editPlacement)
+        prefs.edit().putString(SplitKeyboardSettings.EDIT_PLACEMENT, "invalid").commit()
+        assertEquals(SplitEditPlacement.MAIN, settings.editPlacement)
+        SplitEditPlacement.entries.forEach { value ->
+            prefs.edit().putString(SplitKeyboardSettings.EDIT_PLACEMENT, value.name).commit()
+            assertEquals(value, SplitKeyboardSettings(prefs).editPlacement)
+            assertTrue(value.shows(SplitSlot.MAIN))
+            assertEquals(value == SplitEditPlacement.BOTH, value.shows(SplitSlot.SUB))
+        }
+        for (slot in SplitSlot.entries) for (landscape in listOf(false, true)) {
+            val placement = SplitPlacement(.25f, .75f, 120f, 80f)
+            settings.savePlacement(slot, landscape, placement)
+            assertEquals(placement, SplitKeyboardSettings(prefs).placement(slot, landscape))
+        }
+    }
     @Test fun corruptedGeometryIsFiniteAndBounded() {
         val value = SplitPlacement(Float.NaN, Float.POSITIVE_INFINITY, -1f, Float.NaN).normalized()
-        assertEquals(SplitPlacement(0f, 1f, 160f, 240f), value)
+        assertEquals(SplitPlacement(0f, 1f, 120f, 240f), value)
         settings.savePlacement(SplitSlot.SUB, false, SplitPlacement(-2f, 4f, 10000f, 1f))
-        assertEquals(SplitPlacement(0f, 1f, 1200f, 180f), settings.placement(SplitSlot.SUB, false))
+        assertEquals(SplitPlacement(0f, 1f, 1200f, 80f), settings.placement(SplitSlot.SUB, false))
     }
 }

@@ -8,4 +8,5 @@
         <ListPreference android:key="split_keyboard_sub_custom" android:title="@string/split_keyboard_custom" app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
     <ListPreference android:key="split_keyboard_candidates" android:title="@string/split_keyboard_candidates" android:defaultValue="BOTH" app:useSimpleSummaryProvider="true" />
+    <ListPreference android:key="split_keyboard_edit_placement" android:title="@string/split_keyboard_edit_placement" android:defaultValue="MAIN" app:useSimpleSummaryProvider="true" />
 </PreferenceScreen>

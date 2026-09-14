@@ -29,7 +29,7 @@ internal class SplitKeyboardController(
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = SplitKeyboardSettings(preferences)
     private val preferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == SplitKeyboardSettings.CANDIDATES) anchor.post { refresh() }
+        if (key == SplitKeyboardSettings.CANDIDATES || key == SplitKeyboardSettings.EDIT_PLACEMENT) anchor.post { refresh() }
     }
     private val density get() = context.resources.displayMetrics.density
     private val panes = linkedMapOf<SplitSlot, Pane>()
@@ -55,7 +55,9 @@ internal class SplitKeyboardController(
         }
     }
 
-    private inner class Pane(val slot: SplitSlot, val minWidth: Int, val minHeight: Int) {
+    private inner class Pane(val slot: SplitSlot, val layoutMinWidth: Int, val layoutMinHeight: Int) {
+        val minWidth = 120
+        val minHeight = 80
         val root = FloatingPanelFrame(context, { setEditing(!editing) }, { gesture(this, it) }).apply {
             contentDescription = context.getString(if (slot == SplitSlot.MAIN) R.string.split_keyboard_main else R.string.split_keyboard_sub)
         }
@@ -82,7 +84,9 @@ internal class SplitKeyboardController(
         (candidates.parent as? ViewGroup)?.removeView(candidates)
         pane.candidates = candidates
         pane.contents.addView(candidates, LinearLayout.LayoutParams(-1, dp(58)))
-        pane.contents.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
+        val scaledBody = SplitKeyboardBody(context, dp(minimumWidthDp), dp(minimumHeightDp))
+        scaledBody.addView(body)
+        pane.contents.addView(scaledBody, LinearLayout.LayoutParams(-1, 0, 1f))
         panes[slot] = pane
     }
 
@@ -115,11 +119,12 @@ internal class SplitKeyboardController(
             panes.values.forEach {
                 it.gesture = null
                 it.gestureStart = null
+                it.root.setHeaderVisible(settings.editPlacement.shows(it.slot))
                 it.root.setEditing(false)
                 it.placement = settings.placement(it.slot, landscape)
                 if (!settings.hasPlacement(it.slot, landscape)) {
                     val halfWidth = ((area.width() - dp(8)) / 2f - it.horizontalChrome) / density
-                    it.placement = it.placement.copy(widthDp = halfWidth.coerceAtLeast(it.minWidth.toFloat()).coerceAtMost(280f))
+                    it.placement = it.placement.copy(widthDp = halfWidth.coerceAtMost(280f).coerceAtLeast(it.layoutMinWidth.toFloat()))
                 }
             }
             val totalWidth = panes.values.sumOf { dp(it.placement.widthDp).coerceAtLeast(dp(it.minWidth)) + it.horizontalChrome }
@@ -135,6 +140,7 @@ internal class SplitKeyboardController(
 
     private fun render(pane: Pane) {
         if (disposed) return
+        pane.root.setHeaderVisible(settings.editPlacement.shows(pane.slot))
         pane.root.setColors(colors())
         pane.root.setEditing(editing)
         pane.candidates.isVisible = settings.candidates.shows(pane.slot)

@@ -63,3 +63,16 @@ private fun Drawable.applyBorderToDrawable(@ColorInt color: Int, widthPx: Int) {
 
 private fun RippleDrawable.safeGetDrawable(index: Int): Drawable? =
     runCatching { getDrawable(index) }.getOrNull()
+
+/** Axis-aligned size in screen pixels, including the scale of floating keyboard ancestors. */
+fun View.screenWidth(): Int = (width * screenScale(true)).toInt()
+fun View.screenHeight(): Int = (height * screenScale(false)).toInt()
+private fun View.screenScale(horizontal: Boolean): Float {
+    var value = if (horizontal) scaleX else scaleY
+    var ancestor = parent
+    while (ancestor is View) {
+        value *= if (horizontal) ancestor.scaleX else ancestor.scaleY
+        ancestor = (ancestor as View).parent
+    }
+    return value
+}

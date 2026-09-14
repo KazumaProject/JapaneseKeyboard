@@ -4,6 +4,9 @@ import android.content.SharedPreferences
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
 enum class SplitSlot { MAIN, SUB }
+enum class SplitEditPlacement { MAIN, BOTH;
+    fun shows(slot: SplitSlot) = this == BOTH || slot == SplitSlot.MAIN
+}
 enum class SplitCandidatePlacement { BOTH, MAIN, SUB;
     fun shows(slot: SplitSlot) = this == BOTH || name == slot.name
 }
@@ -15,7 +18,7 @@ data class SplitKeyboardSelection(val type: KeyboardType = KeyboardType.TENKEY, 
 /** Width/height describe the keyboard body; candidate and editing chrome are separate. */
 data class SplitPlacement(val x: Float, val y: Float, val widthDp: Float, val heightDp: Float) {
     fun normalized() = copy(x = x.finite(0f).coerceIn(0f, 1f), y = y.finite(1f).coerceIn(0f, 1f),
-        widthDp = widthDp.finite(280f).coerceIn(160f, 1200f), heightDp = heightDp.finite(240f).coerceIn(180f, 800f))
+        widthDp = widthDp.finite(280f).coerceIn(120f, 1200f), heightDp = heightDp.finite(240f).coerceIn(80f, 800f))
     private fun Float.finite(default: Float) = if (isFinite()) this else default
 }
 class SplitKeyboardSettings(private val prefs: SharedPreferences) {
@@ -31,6 +34,9 @@ class SplitKeyboardSettings(private val prefs: SharedPreferences) {
     val candidates: SplitCandidatePlacement get() = runCatching {
         SplitCandidatePlacement.valueOf(prefs.getString(CANDIDATES, "BOTH")!!)
     }.getOrDefault(SplitCandidatePlacement.BOTH)
+    val editPlacement: SplitEditPlacement get() = runCatching {
+        SplitEditPlacement.valueOf(prefs.getString(EDIT_PLACEMENT, "MAIN")!!)
+    }.getOrDefault(SplitEditPlacement.MAIN)
     fun hasPlacement(slot: SplitSlot, landscape: Boolean) = prefs.contains("${geometryKey(slot, landscape)}_width")
     fun placement(slot: SplitSlot, landscape: Boolean): SplitPlacement {
         val key = geometryKey(slot, landscape)
@@ -45,6 +51,7 @@ class SplitKeyboardSettings(private val prefs: SharedPreferences) {
             .putFloat("${key}_width", safe.widthDp).putFloat("${key}_height", safe.heightDp).apply()
     }
     companion object {
+        const val EDIT_PLACEMENT = "split_keyboard_edit_placement"
         const val CANDIDATES = "split_keyboard_candidates"
         fun typeKey(slot: SplitSlot) = "split_keyboard_${slot.name.lowercase()}_type"
         fun customKey(slot: SplitSlot) = "split_keyboard_${slot.name.lowercase()}_custom"

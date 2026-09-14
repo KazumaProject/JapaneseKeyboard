@@ -2335,7 +2335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         var shift: CustomKeyboardShiftState = CustomKeyboardShiftState.OFF,
         var customRomaji: Boolean = false,
         var customDirect: Boolean = false,
-        var previousMode: TenKeyQWERTYMode? = TenKeyQWERTYMode.Default,
+        var previousMode: TenKeyQWERTYMode? = null,
         var numberReturn: RestartInputModeQwertyReturnSource = RestartInputModeQwertyReturnSource.None,
         var numberFromTenkey: Boolean = false,
         var hardShift: Boolean = false,
@@ -2523,7 +2523,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     body.fitsSystemWindows = false
                     body.fallbackTouchTargetProvider = {
-                        listOf(binding.keyboardViewFloating, binding.gojuonViewFloating,
+                        // The fallback assumes translation only; scaled panes use native matrix dispatch.
+                        if (body.scaleX != 1f || body.scaleY != 1f) null else listOf(binding.keyboardViewFloating, binding.gojuonViewFloating,
                             binding.qwertyViewFloating, binding.customLayoutFloating).firstOrNull { it.isShown }
                     }
                     binding.floatingKeyboardBackgroundContainer.layoutParams = FrameLayout.LayoutParams(-1, -1)
@@ -9110,6 +9111,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun shouldShowQwertySwitchNumberLayoutKey(): Boolean {
+        if (activeSplitSlot?.let(splitInputs::get)?.selection?.type == KeyboardType.QWERTY) return false
         if (qwertyMode.value != TenKeyQWERTYMode.TenKeyQWERTY) return false
         if (qwertyNumberOpenedFromTenkeyTwoStateNumberKey) return true
         if (isTenkeyThreeStateQwertyNumberProxyActive()) return true
@@ -22465,6 +22467,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                            if (activeSplitSlot?.let(splitInputs::get)?.selection?.type == KeyboardType.QWERTY) return
                             if (qwertyNumberOpenedFromTenkeyTwoStateNumberKey) {
                                 returnTenkeyFromTwoStateQwertyNumber(
                                     mainView = mainView,
