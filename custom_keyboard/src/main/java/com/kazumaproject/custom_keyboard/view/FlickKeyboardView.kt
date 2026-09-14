@@ -2858,7 +2858,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         val displayOriginX: Float,
         val displayOriginY: Float,
         val localOffsetX: Float = 0f,
-        val localOffsetY: Float = 0f
+        val localOffsetY: Float = 0f,
+        val displayScaleX: Float = 1f,
+        val displayScaleY: Float = 1f
     )
 
     private val motionTargets = mutableMapOf<Int, MotionTarget>()
@@ -2902,6 +2904,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         pointerDownTime.clear()
     }
 
+    private fun View.displayScale(): Pair<Float, Float> {
+        var sx = scaleX; var sy = scaleY
+        var ancestor = parent
+        while (ancestor is View) {
+            sx *= ancestor.scaleX; sy *= ancestor.scaleY
+            ancestor = (ancestor as View).parent
+        }
+        return sx to sy
+    }
+
     private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
         if (keyHitTestMode == KeyHitTestMode.NEAREST_KEY) {
             return findNearestKeyTarget(displayX, displayY)
@@ -2911,17 +2923,19 @@ class FlickKeyboardView @JvmOverloads constructor(
             val child = getChildAt(i)
             if (child.visibility != View.VISIBLE || !child.isEnabled) continue
             child.getLocationOnScreen(location)
+            val (sx, sy) = child.displayScale()
             hitRect.set(
                 location[0],
                 location[1],
-                location[0] + child.width,
-                location[1] + child.height
+                location[0] + (child.width * sx).toInt(),
+                location[1] + (child.height * sy).toInt()
             )
             if (hitRect.contains(displayX.toInt(), displayY.toInt())) {
                 return MotionTarget(
                     view = child,
                     displayOriginX = location[0].toFloat(),
-                    displayOriginY = location[1].toFloat()
+                    displayOriginY = location[1].toFloat(),
+                    displayScaleX = sx, displayScaleY = sy
                 )
             }
         }
@@ -2940,8 +2954,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
         val location = IntArray(2)
         getLocationOnScreen(location)
-        if (displayX < location[0] || displayX >= location[0] + width ||
-            displayY < location[1] || displayY >= location[1] + height
+        val (surfaceScaleX, surfaceScaleY) = displayScale()
+        if (displayX < location[0] || displayX >= location[0] + width * surfaceScaleX ||
+            displayY < location[1] || displayY >= location[1] + height * surfaceScaleY
         ) return null
 
         var nearest: MotionTarget? = null
@@ -2954,24 +2969,28 @@ class FlickKeyboardView @JvmOverloads constructor(
             key.getLocationOnScreen(location)
             val left = location[0].toFloat()
             val top = location[1].toFloat()
-            if (displayX >= left && displayX < left + key.width &&
-                displayY >= top && displayY < top + key.height
-            ) return MotionTarget(key, left, top)
+            val (sx, sy) = key.displayScale()
+            val screenWidth = key.width * sx
+            val screenHeight = key.height * sy
+            if (displayX >= left && displayX < left + screenWidth &&
+                displayY >= top && displayY < top + screenHeight
+            ) return MotionTarget(key, left, top, displayScaleX = sx, displayScaleY = sy)
 
-            val dx = displayX - (left + key.width / 2f)
-            val dy = displayY - (top + key.height / 2f)
+            val dx = displayX - (left + screenWidth / 2f)
+            val dy = displayY - (top + screenHeight / 2f)
             val distance = dx * dx + dy * dy
             // Strict comparison deliberately preserves layout order for equal distances.
             if (distance < nearestDistance) {
                 nearestDistance = distance
-                val localX = displayX - left
-                val localY = displayY - top
+                val localX = (displayX - left) / sx
+                val localY = (displayY - top) / sy
                 nearest = MotionTarget(
                     view = key,
                     displayOriginX = left,
                     displayOriginY = top,
                     localOffsetX = localX.coerceIn(0f, key.width - 1f) - localX,
-                    localOffsetY = localY.coerceIn(0f, key.height - 1f) - localY
+                    localOffsetY = localY.coerceIn(0f, key.height - 1f) - localY,
+                    displayScaleX = sx, displayScaleY = sy
                 )
             }
         }
@@ -3015,8 +3034,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         // A fixed local translation admits a margin-origin touch without changing raw screen
         // coordinates or movement deltas. Re-clamping MOVE would distort/cancel flick gestures.
         childEvent.offsetLocation(
-            -target.displayOriginX + target.localOffsetX,
-            -target.displayOriginY + target.localOffsetY
+            (displayX - target.displayOriginX) / target.displayScaleX + target.localOffsetX - displayX,
+            (displayY - target.displayOriginY) / target.displayScaleY + target.localOffsetY - displayY
         )
         target.view.dispatchTouchEvent(childEvent)
         childEvent.recycle()

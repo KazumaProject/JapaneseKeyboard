@@ -1,0 +1,12 @@
+<resources>
+    <string name="split_keyboard_title">分割キーボード</string>
+    <string name="split_keyboard_main">メインキーボード</string>
+    <string name="split_keyboard_sub">サブキーボード</string>
+    <string name="split_keyboard_custom">カスタムレイアウト</string>
+    <string name="split_keyboard_candidates">変換候補欄の表示</string>
+    <string name="split_keyboard_both">メインとサブ</string>
+    <string name="split_keyboard_main_only">メインのみ</string>
+    <string name="split_keyboard_sub_only">サブのみ</string>
+    <string name="split_keyboard_summary">２つのキーボードを自由に配置し、入力と変換候補を共有します</string>
+    <string name="split_keyboard_edit_placement">編集アイコンの表示</string>
+</resources>

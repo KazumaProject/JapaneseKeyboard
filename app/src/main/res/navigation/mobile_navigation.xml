@@ -575,4 +575,7 @@
             app:argType="long" />
     </fragment>
 
+    <fragment android:id="@+id/splitKeyboardPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SplitKeyboardPreferenceFragment"
+        android:label="@string/split_keyboard_title" />
 </navigation>
