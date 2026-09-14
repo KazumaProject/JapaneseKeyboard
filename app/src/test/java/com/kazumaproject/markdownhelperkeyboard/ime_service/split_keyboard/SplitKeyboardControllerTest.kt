@@ -274,4 +274,72 @@ class SplitKeyboardControllerTest {
         } finally { controller.stop(); activity.finish() }
     }
 
+    @Test fun gestureLifetimeBracketsDispatchAndFinishesAfterInputStateIsSaved() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(FrameLayout(activity))
+        val events = mutableListOf<String>()
+        val controller = SplitKeyboardController(activity, activity.window.decorView,
+            { events += "activate" }, { events += "save" }, {},
+            onGestureChanged = { _, touching -> events += if (touching) "down" else "released" })
+        val body = FrameLayout(activity).apply {
+            setOnTouchListener { _, _ -> events += "dispatch"; true }
+        }
+        controller.add(SplitSlot.MAIN, body, RecyclerView(activity), 160)
+        try {
+            controller.start()
+            layout(root(body))
+            val input = body.parent.parent.parent as ViewGroup
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_CANCEL)) {
+                val event = MotionEvent.obtain(0, 0, action, 30f, 100f, 0)
+                try { input.dispatchTouchEvent(event) } finally { event.recycle() }
+            }
+            assertEquals(listOf("activate", "down", "dispatch", "save",
+                "activate", "dispatch", "save", "released"), events)
+        } finally { controller.stop(); activity.finish() }
+    }
+
+    @Test @Config(sdk = [30])
+    fun screenPositionIsNotOffsetAgainBySystemBarsOrCutout() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(FrameLayout(activity))
+        val controller = SplitKeyboardController(activity, activity.window.decorView, {}, {}, {})
+        val body = FrameLayout(activity)
+        controller.add(SplitSlot.MAIN, body, RecyclerView(activity), 160)
+        try {
+            controller.start()
+            val params = root(body).layoutParams as android.view.WindowManager.LayoutParams
+            assertEquals(0, params.fitInsetsTypes)
+            assertEquals(android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS,
+                params.layoutInDisplayCutoutMode)
+            assertTrue(params.flags and android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN != 0)
+        } finally { controller.stop(); activity.finish() }
+    }
+
+    @Test fun enteringEditModeCancelsAndReleasesAnOngoingKeyboardGesture() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(FrameLayout(activity))
+        PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()
+        val phases = mutableListOf<Boolean>()
+        val actions = mutableListOf<Int>()
+        val controller = SplitKeyboardController(activity, activity.window.decorView, {}, {}, {},
+            onGestureChanged = { _, touching -> phases.add(touching) })
+        val body = object : View(activity) {
+            override fun onTouchEvent(event: MotionEvent): Boolean {
+                actions.add(event.actionMasked)
+                return true
+            }
+        }
+        controller.add(SplitSlot.MAIN, body, RecyclerView(activity), 160)
+        try {
+            controller.start()
+            layout(root(body))
+            val input = body.parent.parent.parent as ViewGroup
+            val down = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 20f, input.height - 20f, 0)
+            try { input.dispatchTouchEvent(down) } finally { down.recycle() }
+            controller.setEditing(true)
+            assertEquals(listOf(true, false), phases)
+            assertEquals(listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_CANCEL), actions)
+        } finally { controller.stop(); activity.finish() }
+    }
+
 }
