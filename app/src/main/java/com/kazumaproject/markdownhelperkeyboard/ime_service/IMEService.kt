@@ -1,6 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.*
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.DictionaryKind
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryStore
 import android.annotation.SuppressLint
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -3139,6 +3142,80 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var dictionaryFloats: FloatingDictionaryController? = null
+    private var dictionaryInputConnection: InputConnection? = null
+    private var dictionaryInputEditor: EditText? = null
+    private var dictionaryEditorInfo: EditorInfo? = null
+    private var dictionaryConfigurationChanging = false
+
+    override fun getCurrentInputConnection(): InputConnection? =
+        dictionaryInputConnection ?: super.getCurrentInputConnection()
+
+    override fun getCurrentInputEditorInfo(): EditorInfo? =
+        dictionaryEditorInfo ?: super.getCurrentInputEditorInfo()
+
+    private fun switchDictionaryInputTarget(editor: EditText?) {
+        val targetChanged = dictionaryInputEditor !== editor
+        if (targetChanged) {
+            // Undo entries contain editor text and must never cross input targets.
+            deletedBuffer.clear()
+            activeDeleteHistoryBatch = null
+        }
+        forwardDeleteCoordinator.cancel()
+        // Finish the old composition before changing targets; never transfer it to another field.
+        flickInputPreviewCoordinator.cancel(restore = true)
+        finishComposingText()
+        candidateRequestTracker.invalidate()
+        candidateRefreshCoordinator.invalidate()
+        defaultInputFinalizeJob?.cancel()
+        defaultInputFinalizeJob = null
+        clearDirectCommitCompositionState("dictionary input target")
+        dictionaryInputConnection?.closeConnection()
+        dictionaryInputConnection = null
+        dictionaryEditorInfo = null
+        dictionaryInputEditor = editor
+        if (editor != null) {
+            val info = EditorInfo().apply { packageName = this@IMEService.packageName }
+            dictionaryInputConnection = editor.onCreateInputConnection(info)
+            dictionaryEditorInfo = info
+        }
+        editorMutationRevision.advance()
+        // App selection may have changed while its callbacks were ignored. Let the
+        // next extracted-text read establish it instead of reusing a stale range.
+        forwardDeleteCoordinator.reset(editor?.selectionStart ?: -1, editor?.selectionEnd ?: -1)
+        resetEditorSelectionSnapshot()
+        resetCustomToggleState()
+        clearZeroQueryAllState(refresh = false)
+        currentInputType = getCurrentInputTypeForIME2(currentInputEditorInfo)
+        suppressSuggestions = showCandidateInPasswordPreference == true && currentInputType.isPassword()
+        if (targetChanged) {
+            setCurrentInputModeForSession(defaultInputModeFor(currentInputType))
+        }
+        resetRuntimeInputBehaviorForCurrentInput()
+        if (targetChanged) refreshEditHistoryUi()
+    }
+
+    private fun onDictionaryEditorSelectionChanged(editor: EditText, start: Int, end: Int) {
+        if (dictionaryInputEditor !== editor) return
+        forwardDeleteCoordinator.onSelectionChanged(start, end)
+    }
+
+    private fun toggleDictionaryFloat(type: ShortcutType) {
+        val host = mainLayoutBinding?.keyboardTouchEffectContainer ?: return
+        val kind = DictionaryKind.entries
+            .first { it.shortcut == type }
+        val controller = dictionaryFloats ?: FloatingDictionaryController(
+            host.context,
+            FloatingDictionaryStore(
+                learnRepository, userDictionaryRepository, userTemplateRepository),
+            ::resolveCandidatePanelColors,
+            ::switchDictionaryInputTarget,
+            ::updateShortcutActiveStates,
+            ::onDictionaryEditorSelectionChanged,
+        ).also { dictionaryFloats = it; it.attach(host) }
+        controller.toggle(kind)
+    }
+
     private var composingGuide: ComposingGuideController? = null
     private val composingGuideSettings by lazy {
         com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
@@ -5372,6 +5449,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncNgramDictionaryPreferences()
         isInputViewActive = true
         startComposingGuide()
+        mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
         shortcutToolbarHiddenForCandidates = false
@@ -5757,6 +5835,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onFinishInput() {
         stopSplitKeyboard()
+        if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
@@ -5769,6 +5848,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onFinishInputView(finishingInput: Boolean) {
         stopSplitKeyboard()
+        if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
@@ -5810,6 +5890,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onWindowHidden() {
         stopSplitKeyboard()
+        if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         composingGuide?.stop()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
@@ -5823,6 +5904,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         stopSplitKeyboard()
+        dictionaryFloats?.destroy()
+        dictionaryFloats = null
         composingGuide?.destroy()
         composingGuide = null
         unregisterCrossWindowBlurListener()
@@ -6304,7 +6387,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
+        dictionaryConfigurationChanging = true
+        dictionaryFloats?.detach()
+        try {
+            super.onConfigurationChanged(newConfig)
+        } finally {
+            dictionaryConfigurationChanging = false
+        }
+        mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
         clearZeroQueryAllState(refresh = false)
         collapseShortcutEntryExpansion()
         when (newConfig.orientation) {
@@ -7136,6 +7226,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidatesStart: Int,
         candidatesEnd: Int
     ) {
+        // Android reports selection from the underlying app, not our local dictionary editor.
+        if (dictionaryInputConnection != null) return
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
@@ -7250,6 +7342,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        dictionaryInputEditor?.let { editor ->
+            if (event != null && keyCode != KeyEvent.KEYCODE_BACK) {
+                switchDictionaryInputTarget(editor)
+                editor.dispatchKeyEvent(event)
+                return true
+            }
+        }
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             gemmaMediaPanelController?.handleBack() == true
         ) {
@@ -8242,6 +8341,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        dictionaryInputEditor?.let { editor ->
+            if (event != null && keyCode != KeyEvent.KEYCODE_BACK) {
+                editor.dispatchKeyEvent(event)
+                return true
+            }
+        }
         if (keyCode == KeyEvent.KEYCODE_BACK && consumeGemmaBackKeyUp) {
             consumeGemmaBackKeyUp = false
             return true
@@ -15485,7 +15590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // 2. ターゲットアプリに読み取り権限を一時的に付与
             // (FileProviderのgrantUriPermissions属性がtrueなら不要な場合もあるが、明示的に行うのが安全)
             grantUriPermission(
-                currentInputEditorInfo.packageName,
+                currentInputEditorInfo?.packageName ?: return,
                 contentUri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
@@ -21258,7 +21363,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liveConversionEnabled = isLiveConversionEnable == true,
             learningPaused = learningPausedForSession,
             handwritingActive = handwritingModeActive,
-        )
+        ) + dictionaryFloats?.activeShortcuts.orEmpty()
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
@@ -21854,6 +21959,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 finishComposingText()
                 setComposingText("", 0)
             }
+
+            ShortcutType.FLOATING_LEARN_DICTIONARY,
+            ShortcutType.FLOATING_USER_DICTIONARY,
+            ShortcutType.FLOATING_USER_TEMPLATE -> toggleDictionaryFloat(type)
 
             ShortcutType.TEMPLATE -> {
                 showUserTemplateListPopup()
@@ -24148,7 +24257,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun isLearningWriteEnabled(): Boolean =
-        isLearnDictionaryMode == true && !isPrivateMode && !learningPausedForSession
+        isLearnDictionaryMode == true && !isPrivateMode && !learningPausedForSession && dictionaryInputConnection == null
 
     private fun recordCandidateLearning(
         currentInputMode: InputMode,
@@ -28795,34 +28904,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun getCursorCapsMode(p0: Int): Int {
-        if (currentInputConnection == null) return 0
-        return currentInputConnection.getCursorCapsMode(p0)
+        val connection = currentInputConnection ?: return 0
+        return connection.getCursorCapsMode(p0)
     }
 
     override fun getExtractedText(p0: ExtractedTextRequest?, p1: Int): ExtractedText? {
-        return currentInputConnection.getExtractedText(p0, p1)
+        return currentInputConnection?.getExtractedText(p0, p1)
     }
 
     override fun deleteSurroundingText(p0: Int, p1: Int): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
-        val deleted = currentInputConnection.deleteSurroundingText(p0, p1)
+        val deleted = connection.deleteSurroundingText(p0, p1)
         if (deleted) editorMutationRevision.advance()
         return deleted
     }
 
     override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
-        val deleted = currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
+        val deleted = connection.deleteSurroundingTextInCodePoints(p0, p1)
         if (deleted) editorMutationRevision.advance()
         return deleted
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
         if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
@@ -28830,20 +28939,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
             customToggleExpectedEditorSelection =
-                captureCustomToggleEditorSelection(currentInputConnection)
+                captureCustomToggleEditorSelection(connection)
         }
         return applied
     }
 
     override fun setComposingRegion(p0: Int, p1: Int): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        return currentInputConnection.setComposingRegion(p0, p1)
+        return connection.setComposingRegion(p0, p1)
     }
 
     override fun finishComposingText(): Boolean {
         if (!customToggleEditInProgress) resetCustomToggleState()
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
@@ -28855,11 +28964,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
         if (!customToggleEditInProgress) resetCustomToggleState()
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
-        val committed = currentInputConnection.commitText(p0, p1)
+        val committed = connection.commitText(p0, p1)
         if (committed) {
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
@@ -28870,72 +28979,72 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun commitCompletion(p0: CompletionInfo?): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        val committed = currentInputConnection.commitCompletion(p0)
+        val committed = connection.commitCompletion(p0)
         if (committed) editorMutationRevision.advance()
         return committed
     }
 
     override fun commitCorrection(p0: CorrectionInfo?): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        val committed = currentInputConnection.commitCorrection(p0)
+        val committed = connection.commitCorrection(p0)
         if (committed) editorMutationRevision.advance()
         return committed
     }
 
     override fun setSelection(p0: Int, p1: Int): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
-        val changed = currentInputConnection.setSelection(p0, p1)
+        val changed = connection.setSelection(p0, p1)
         if (changed) editorMutationRevision.advance()
         return changed
     }
 
     override fun performEditorAction(p0: Int): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.performEditorAction(p0)
+        val connection = currentInputConnection ?: return false
+        return connection.performEditorAction(p0)
     }
 
     override fun performContextMenuAction(p0: Int): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.performContextMenuAction(p0)
+        val connection = currentInputConnection ?: return false
+        return connection.performContextMenuAction(p0)
     }
 
     override fun beginBatchEdit(): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.beginBatchEdit()
+        val connection = currentInputConnection ?: return false
+        return connection.beginBatchEdit()
     }
 
     override fun endBatchEdit(): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.endBatchEdit()
+        val connection = currentInputConnection ?: return false
+        return connection.endBatchEdit()
     }
 
     override fun sendKeyEvent(p0: KeyEvent?): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.sendKeyEvent(p0)
+        val connection = currentInputConnection ?: return false
+        return connection.sendKeyEvent(p0)
     }
 
     override fun clearMetaKeyStates(p0: Int): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.clearMetaKeyStates(p0)
+        val connection = currentInputConnection ?: return false
+        return connection.clearMetaKeyStates(p0)
     }
 
     override fun reportFullscreenMode(p0: Boolean): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.reportFullscreenMode(p0)
+        val connection = currentInputConnection ?: return false
+        return connection.reportFullscreenMode(p0)
     }
 
     override fun performPrivateCommand(p0: String?, p1: Bundle?): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.performPrivateCommand(p0, p1)
+        val connection = currentInputConnection ?: return false
+        return connection.performPrivateCommand(p0, p1)
     }
 
     override fun requestCursorUpdates(p0: Int): Boolean {
-        if (currentInputConnection == null) return false
-        return currentInputConnection.requestCursorUpdates(p0)
+        val connection = currentInputConnection ?: return false
+        return connection.requestCursorUpdates(p0)
     }
 
     override fun getHandler(): Handler? {
@@ -28943,16 +29052,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun closeConnection() {
-        if (currentInputConnection == null) return
-        return currentInputConnection.closeConnection()
+        val connection = currentInputConnection ?: return
+        return connection.closeConnection()
     }
 
     override fun commitContent(
         inputContent: InputContentInfo, flags: Int, opts: Bundle?
     ): Boolean {
-        if (currentInputConnection == null) return false
+        val connection = currentInputConnection ?: return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            currentInputConnection.commitContent(inputContent, flags, opts)
+            connection.commitContent(inputContent, flags, opts)
         } else {
             false
         }

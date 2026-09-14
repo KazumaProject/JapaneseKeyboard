@@ -13,6 +13,14 @@ class UserTemplateRepository @Inject constructor(
     private val userTemplateDao: UserTemplateDao
 ) {
 
+    suspend fun editEntry(entry: UserTemplate) {
+        check(userTemplateDao.editEntry(entry) == 1)
+    }
+
+    suspend fun insertStrict(entry: UserTemplate) {
+        userTemplateDao.insertStrict(entry)
+    }
+
     val allTemplates: LiveData<List<UserTemplate>> = userTemplateDao.getAll()
 
     suspend fun allTemplatesSuspend(): List<UserTemplate> = withContext(Dispatchers.IO) {

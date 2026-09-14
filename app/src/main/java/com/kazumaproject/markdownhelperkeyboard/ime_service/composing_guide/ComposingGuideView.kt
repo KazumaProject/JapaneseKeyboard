@@ -20,7 +20,9 @@ internal class ComposingGuideView(
     onEdit: () -> Unit,
     private val onTextSize: (Float, Boolean) -> Unit,
     onHandleEvent: (MotionEvent) -> Unit,
-) : FloatingPanelFrame(context, onEdit, onHandleEvent) {
+    title: CharSequence? = null,
+    onHide: (() -> Unit)? = null,
+) : FloatingPanelFrame(context, onEdit, onHandleEvent, title, onHide) {
     private val textView = TextView(context).apply {
         setTextColor(inkColor)
         includeFontPadding = false
