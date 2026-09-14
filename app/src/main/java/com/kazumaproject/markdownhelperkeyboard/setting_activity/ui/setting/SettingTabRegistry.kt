@@ -28,6 +28,7 @@ object SettingTabRegistry {
     const val TAB_QWERTY_ENGLISH = "qwerty_english"
     const val TAB_QWERTY_ROMAJI = "qwerty_romaji"
     const val TAB_SUMIRE = "sumire"
+    const val TAB_SPLIT = "split_keyboard"
     const val TAB_CUSTOM = "custom"
     const val TAB_TABLET = "tablet"
     const val TAB_HARDWARE_KEYBOARD = "hardware_keyboard"
@@ -135,6 +136,13 @@ object SettingTabRegistry {
                 xmlRes = R.xml.pref_custom,
                 destinationId = R.id.customKeyboardPreferenceFragment,
                 fragmentFactory = { CustomKeyboardPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_SPLIT,
+                title = { it.getString(R.string.split_keyboard_title) },
+                xmlRes = R.xml.pref_split_keyboard,
+                destinationId = R.id.splitKeyboardPreferenceFragment,
+                fragmentFactory = { SplitKeyboardPreferenceFragment() },
             ),
             SettingTabSpec(
                 key = TAB_TABLET,

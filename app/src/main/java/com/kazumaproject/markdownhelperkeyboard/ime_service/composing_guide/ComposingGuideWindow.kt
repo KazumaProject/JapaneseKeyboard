@@ -25,10 +25,12 @@ internal class ComposingGuideWindow(
     private val minimumCandidateHeight: () -> Int,
     private val profile: GuideProfile = GuideProfile.INTEGRATED,
     private val candidateBounds: () -> GuideBounds? = { null },
+    private val profileAllowed: ((GuideProfile) -> Boolean)? = null,
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = ComposingGuideSettings(preferences)
     private val windowManager = context.getSystemService(WindowManager::class.java)
+    private val coordinates = FloatingWindowCoordinates(windowManager)
     private var anchor: View? = null
     private var active = false
     private var content = ComposingGuideContent()
@@ -84,7 +86,7 @@ internal class ComposingGuideWindow(
     fun destroy() { stop(); guideView = null }
 
     fun refresh() {
-        val allowed = profile in settings.profiles && eligible()
+        val allowed = (profileAllowed?.invoke(profile) ?: (profile in settings.profiles)) && eligible()
         val host = anchor
         if (!active || !allowed || host?.isAttachedToWindow != true) {
             gesture = null
@@ -114,6 +116,7 @@ internal class ComposingGuideWindow(
             onHandleEvent = ::handleEvent,
         ).also { view ->
             guideView = view
+            coordinates.observeLegacyOrigin(view, { windowParams }, ::refresh)
             val minimumLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
                 val minimum = minimumContentHeight
                 if (minimum != lastMinimumHeight) {
@@ -200,22 +203,7 @@ internal class ComposingGuideWindow(
 
     fun currentBounds(): GuideBounds? = bounds?.takeIf { guideView?.isAttachedToWindow == true }
 
-    private fun availableArea(host: View): Rect {
-        if (Build.VERSION.SDK_INT >= 30) {
-            val metrics = windowManager.currentWindowMetrics
-            val insets = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-            return Rect(metrics.bounds).apply {
-                left += insets.left; top += insets.top; right -= insets.right; bottom -= insets.bottom
-            }
-        }
-        val size = android.graphics.Point().also { windowManager.defaultDisplay.getRealSize(it) }
-        val insets = host.rootWindowInsets
-        val cutout = if (Build.VERSION.SDK_INT >= 28) insets?.displayCutout else null
-        return Rect(maxOf(insets?.stableInsetLeft ?: 0, cutout?.safeInsetLeft ?: 0),
-            maxOf(insets?.stableInsetTop ?: 0, cutout?.safeInsetTop ?: 0),
-            size.x - maxOf(insets?.stableInsetRight ?: 0, cutout?.safeInsetRight ?: 0),
-            size.y - maxOf(insets?.stableInsetBottom ?: 0, cutout?.safeInsetBottom ?: 0))
-    }
+    private fun availableArea(host: View): Rect = coordinates.safeArea(host)
 
     private fun legacyAvailableArea(host: View): Rect {
         val keyboardLocation = IntArray(2).also(host::getLocationOnScreen)
@@ -312,8 +300,9 @@ internal class ComposingGuideWindow(
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
-        ).apply { token = host.windowToken; gravity = Gravity.TOP or Gravity.LEFT; setTitle("Floating guide: ${profile.key}") }
-        params.x = target.x; params.y = target.y; params.width = target.width; params.height = target.height
+        ).apply { token = host.windowToken; gravity = Gravity.TOP or Gravity.LEFT; setTitle("Floating guide: ${profile.key}"); coordinates.configure(this) }
+        coordinates.position(params, target.x, target.y)
+        params.width = target.width; params.height = target.height
         try {
             if (view.parent == null) windowManager.addView(view, params) else windowManager.updateViewLayout(view, params)
             windowParams = params
