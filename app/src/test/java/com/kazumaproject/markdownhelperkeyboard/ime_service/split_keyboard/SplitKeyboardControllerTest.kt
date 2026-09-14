@@ -42,7 +42,7 @@ class SplitKeyboardControllerTest {
         bodies.forEach { (slot, body) -> controller.add(slot, body, lists.getValue(slot), 160) }
         try {
             controller.start()
-            val inputFrames = bodies.mapValues { (_, body) -> body.parent.parent as ViewGroup }
+            val inputFrames = bodies.mapValues { (_, body) -> body.parent.parent.parent as ViewGroup }
             fun touch(slot: SplitSlot) {
                 val event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1f, 200f, 0)
                 try { inputFrames.getValue(slot).dispatchTouchEvent(event) } finally { event.recycle() }
@@ -246,6 +246,31 @@ class SplitKeyboardControllerTest {
             }
             assertEquals(width - 2, params.width)
             assertEquals(right, params.x + params.width)
+        } finally { controller.stop(); activity.finish() }
+    }
+
+    @Test fun mainOnlyHeaderSavesSpaceWithoutChangingBodySize() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(FrameLayout(activity))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
+        prefs.edit().clear().commit()
+        val controller = SplitKeyboardController(activity, activity.window.decorView, {}, {}, {})
+        val bodies = SplitSlot.entries.associateWith { FrameLayout(activity) }
+        bodies.forEach { (slot, body) -> controller.add(slot, body, RecyclerView(activity), 240) }
+        try {
+            controller.start()
+            val main = root(bodies.getValue(SplitSlot.MAIN))
+            val sub = root(bodies.getValue(SplitSlot.SUB))
+            assertEquals(48, main.contentInsets.top - sub.contentInsets.top)
+            assertEquals(View.GONE, sub.getChildAt(1).visibility)
+            val height = (sub.layoutParams as android.view.WindowManager.LayoutParams).height
+            controller.setEditing(true)
+            assertEquals(24, sub.contentInsets.top)
+            controller.setEditing(false)
+            prefs.edit().putString(SplitKeyboardSettings.EDIT_PLACEMENT, "BOTH").commit()
+            controller.refresh()
+            assertEquals(View.VISIBLE, sub.getChildAt(1).visibility)
+            assertEquals(height + 48, (sub.layoutParams as android.view.WindowManager.LayoutParams).height)
         } finally { controller.stop(); activity.finish() }
     }
 

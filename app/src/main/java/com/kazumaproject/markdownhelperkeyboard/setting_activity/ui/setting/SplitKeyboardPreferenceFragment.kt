@@ -36,6 +36,11 @@ class SplitKeyboardPreferenceFragment : PreferenceFragmentCompat() {
             entries = arrayOf(getString(R.string.split_keyboard_both), getString(R.string.split_keyboard_main_only), getString(R.string.split_keyboard_sub_only))
             entryValues = SplitCandidatePlacement.entries.map { it.name }.toTypedArray()
         }
+        findPreference<ListPreference>(SplitKeyboardSettings.EDIT_PLACEMENT)!!.apply {
+            entries = arrayOf(getString(R.string.split_keyboard_main_only), getString(R.string.split_keyboard_both))
+            entryValues = SplitEditPlacement.entries.map { it.name }.toTypedArray()
+            value = SplitKeyboardSettings(preferenceManager.sharedPreferences!!).editPlacement.name
+        }
         lifecycleScope.launch {
             repository.getLayoutsNotFlowEnsuringStableIds()
             repository.getLayouts().collect { layouts ->
