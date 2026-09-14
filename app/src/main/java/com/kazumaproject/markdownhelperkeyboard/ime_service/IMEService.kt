@@ -1701,6 +1701,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowEmojiButtonPreference: Boolean? = false
     private var defaultEmojiSkinTonePreference: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
+    private var tenkeySpaceFlickPreference = true
+    private var qwertyRomajiSpaceFlickPreference = false
+    private var qwertyEnglishSpaceFlickPreference = false
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
     private var qwertyNumberKeyFlickUpChars: Map<String, String> = emptyMap()
@@ -3508,6 +3511,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
+        tenkeySpaceFlickPreference = preferences.tenkeySpaceFlickPreference
+        qwertyRomajiSpaceFlickPreference = preferences.qwertyRomajiSpaceFlickPreference
+        qwertyEnglishSpaceFlickPreference = preferences.qwertyEnglishSpaceFlickPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
         qwertyNumberKeyFlickUpChars = preferences.qwertyNumberKeyFlickUpChars
@@ -5674,6 +5680,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.updateSymbolKeymapState(qwertyShowKeymapSymbolsPreference ?: false)
                 qwertyView.updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
+                qwertyView.setSpaceUpFlickEnabled(qwertyRomajiSpaceFlickPreference)
+                qwertyView.setEnglishSpaceUpFlickEnabled(qwertyEnglishSpaceFlickPreference)
                 qwertyView.setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
                 qwertyView.setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
                 qwertyView.setNumberKeyFlickUpChars(qwertyNumberKeyFlickUpChars)
@@ -10370,7 +10378,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (gestureType == GestureType.FlickLeft &&
                             cycleFocusedBunsetsuCandidate(delta = -1)
                         ) {
-                        } else if (gestureType == GestureType.FlickLeft) {
+                        } else if (gestureType == GestureType.FlickLeft &&
+                            (isGojuonSurface() || tenkeySpaceFlickPreference)
+                        ) {
                             val isHankaku = hankakuPreference == true
                             if (isHankaku) {
                                 handleSpaceKeyClick(false, insertString, suggestions, mainView)
@@ -10554,7 +10564,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (gestureType == GestureType.FlickLeft &&
                             cycleFocusedBunsetsuCandidate(delta = -1, floatingKeyboardLayoutBinding)
                         ) {
-                        } else if (gestureType == GestureType.FlickLeft) {
+                        } else if (gestureType == GestureType.FlickLeft &&
+                            (isGojuonSurface() || tenkeySpaceFlickPreference)
+                        ) {
                             val isHankaku = hankakuPreference == true
                             if (isHankaku) {
                                 handleSpaceKeyClickFloating(
@@ -22387,6 +22399,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             updateSymbolKeymapState(qwertyShowKeymapSymbolsPreference ?: false)
             updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
             setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
+            setSpaceUpFlickEnabled(qwertyRomajiSpaceFlickPreference)
+            setEnglishSpaceUpFlickEnabled(qwertyEnglishSpaceFlickPreference)
             setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
             setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
             setNumberKeyFlickUpChars(qwertyNumberKeyFlickUpChars)
@@ -22442,6 +22456,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     cancelOngoingLongPressForQwertyKey(key)
                 }
             })
+
+            setOnSpaceUpFlickListener {
+                val spaceFlickEnabled = if (currentQwertyRomajiModeForSession) {
+                    qwertyRomajiSpaceFlickPreference
+                } else {
+                    qwertyEnglishSpaceFlickPreference
+                }
+                if (!isKeyboardLayoutEditModeActive() &&
+                    spaceFlickEnabled && !isSpaceKeyLongPressed &&
+                    !shouldSuppressSpaceConvertTapAfterLongPress()
+                ) {
+                    handleKeyReleaseFeedback()
+                    handleSpaceKeyClickInQWERTY(
+                        inputString.value, mainView,
+                        suggestionAdapter?.suggestions ?: emptyList(),
+                        reverseSpaceWidth = true
+                    )
+                }
+                isSpaceKeyLongPressed = false
+            }
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
@@ -26448,10 +26482,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleSpaceKeyClickInQWERTY(
-        insertString: String, mainView: MainLayoutBinding, suggestions: List<Candidate>
+        insertString: String, mainView: MainLayoutBinding, suggestions: List<Candidate>,
+        reverseSpaceWidth: Boolean = false
     ) {
+        val reverseRomajiSpace = reverseSpaceWidth && currentQwertyRomajiModeForSession
+        val englishSpace = if (reverseSpaceWidth && !currentQwertyRomajiModeForSession) "　" else " "
         clearZeroQueryAllState(refresh = false)
-        if (dispatchDirectSpaceIfNeeded()) {
+        val directSpace = if (reverseRomajiSpace) {
+            oppositeSpace(qwertyEnableZenkakuSpacePreference == true)
+        } else {
+            englishSpace
+        }
+        if (dispatchDirectTextIfNeeded(directSpace)) {
             resetFlagsKeySpace()
             return
         }
@@ -26539,17 +26581,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString, englishSpace)
                 }
             }
         } else {
             if (stringInTail.get().isNotEmpty()) return
             val romajiMode = currentQwertyRomajiModeForSession
             Timber.d("handleSpaceKeyClickInQWERTY: $romajiMode")
-            if (romajiMode && qwertyEnableZenkakuSpacePreference == true) {
+            if (reverseRomajiSpace) {
+                commitText(oppositeSpace(qwertyEnableZenkakuSpacePreference == true), 1)
+            } else if (romajiMode && qwertyEnableZenkakuSpacePreference == true) {
                 handleSpaceKeyClick(false, insertString, suggestions, mainView)
             } else {
-                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString, englishSpace)
             }
         }
         resetFlagsKeySpace()
@@ -28205,19 +28249,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String) {
+    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String, space: String = " ") {
         Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $insertString ${stringInTail.get()}")
         if (stringInTail.get().isNotEmpty()) {
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)
             val currentCursorPosition = extractedText?.selectionEnd ?: 0
-            commitText("$insertString $stringInTail", 1)
+            commitText("$insertString$space$stringInTail", 1)
             val newCursorPosition =
                 (currentCursorPosition - stringInTail.get().length + 1).coerceAtLeast(0)
             stringInTail.set("")
             setSelection(newCursorPosition, newCursorPosition)
             Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $currentCursorPosition ${extractedText?.text}")
         } else {
-            commitText("$insertString ", 1)
+            commitText("$insertString$space", 1)
         }
         _inputString.update {
             ""
