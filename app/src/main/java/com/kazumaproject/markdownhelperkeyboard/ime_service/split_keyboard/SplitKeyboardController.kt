@@ -195,7 +195,12 @@ internal class SplitKeyboardController(
         coordinates.position(params, x, y)
         params.width = width; params.height = height
         try {
-            if (pane.root.parent == null) manager.addView(pane.root, params) else manager.updateViewLayout(pane.root, params)
+            if (pane.root.parent == null) {
+                manager.addView(pane.root, params)
+            } else {
+                manager.updateViewLayout(pane.root, params)
+                pane.root.notifyWindowPositionChanged()
+            }
             pane.params = params
         } catch (_: WindowManager.BadTokenException) {
             stop(); onWindowFailure()
