@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.graphics.Rect
-import android.os.Build
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -38,7 +37,15 @@ internal class SplitKeyboardController(
         private set
     private var landscape = isLandscape()
     private var area = Rect()
-    private var windowOrigin = android.graphics.Point()
+    private val coordinates = FloatingWindowCoordinates(manager)
+    private var candidatesDetached = false
+    private fun showsCandidates(slot: SplitSlot) = !candidatesDetached && settings.candidates.shows(slot)
+
+    fun setCandidatesDetached(detached: Boolean) {
+        if (candidatesDetached == detached) return
+        candidatesDetached = detached
+        refresh()
+    }
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { refresh() }
     private var disposed = false
 
@@ -90,24 +97,12 @@ internal class SplitKeyboardController(
         var gestureStart: SplitPlacement? = null
         var bounds = GuideBounds(0, 0, 1, 1)
         val horizontalChrome get() = root.contentInsets.let { it.left + it.right }
-        val verticalChrome get() = root.contentInsets.let { it.top + it.bottom } + if (settings.candidates.shows(slot)) dp(58) else 0
+        val verticalChrome get() = root.contentInsets.let { it.top + it.bottom } + if (showsCandidates(slot)) dp(58) else 0
         init {
             input.addView(contents, FrameLayout.LayoutParams(-1, -1))
             root.contentContainer.addView(input, FrameLayout.LayoutParams(-1, -1))
-            if (Build.VERSION.SDK_INT < 30) {
-                root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                    val requested = params ?: return@addOnLayoutChangeListener
-                    val location = IntArray(2).also(root::getLocationOnScreen)
-                    val originX = location[0] - requested.x
-                    val originY = location[1] - requested.y
-                    if (windowOrigin.x != originX || windowOrigin.y != originY) {
-                        // Pre-R WindowManager chooses its own inset origin. Measure that origin
-                        // instead of assuming stable insets equal navigation-bar insets.
-                        windowOrigin.set(originX, originY)
-                        root.post { if (!disposed) refresh() }
-                    }
-                }
-            }
+            coordinates.observeLegacyOrigin(root, { params }) { if (!disposed) refresh() }
+
         }
     }
 
@@ -179,7 +174,7 @@ internal class SplitKeyboardController(
         pane.root.setHeaderVisible(settings.editPlacement.shows(pane.slot))
         pane.root.setColors(colors())
         pane.root.setEditing(editing)
-        pane.candidates.isVisible = settings.candidates.shows(pane.slot)
+        pane.candidates.isVisible = showsCandidates(pane.slot)
         pane.input.importantForAccessibility = if (editing) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         val width = (dp(pane.placement.widthDp).coerceAtLeast(dp(pane.minWidth)) + pane.horizontalChrome).coerceAtMost(area.width())
         val height = (dp(pane.placement.heightDp).coerceAtLeast(dp(pane.minHeight)) + pane.verticalChrome).coerceAtMost(area.height())
@@ -195,14 +190,9 @@ internal class SplitKeyboardController(
             token = anchor.windowToken
             gravity = Gravity.TOP or Gravity.LEFT
             setTitle("Split keyboard ${pane.slot}")
-            if (Build.VERSION.SDK_INT >= 30) {
-                setFitInsetsTypes(0)
-                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-            } else if (Build.VERSION.SDK_INT >= 28) {
-                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
+            coordinates.configure(this)
         }
-        params.x = x - windowOrigin.x; params.y = y - windowOrigin.y
+        coordinates.position(params, x, y)
         params.width = width; params.height = height
         try {
             if (pane.root.parent == null) manager.addView(pane.root, params) else manager.updateViewLayout(pane.root, params)
@@ -270,19 +260,5 @@ internal class SplitKeyboardController(
     private fun dp(value: Int) = dp(value.toFloat())
     private fun dp(value: Float) = (value * density).roundToInt()
     private fun isLandscape() = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    private fun availableArea(): Rect {
-        if (Build.VERSION.SDK_INT >= 30) {
-            val window = manager.currentWindowMetrics
-            val insets = window.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-            windowOrigin.set(window.bounds.left, window.bounds.top)
-            return Rect(window.bounds).apply { left += insets.left; top += insets.top; right -= insets.right; bottom -= insets.bottom }
-        }
-        val size = android.graphics.Point().also { manager.defaultDisplay.getRealSize(it) }
-        val insets = anchor.rootWindowInsets
-        val cutout = if (Build.VERSION.SDK_INT >= 28) insets?.displayCutout else null
-        return Rect(maxOf(insets?.stableInsetLeft ?: 0, cutout?.safeInsetLeft ?: 0),
-            maxOf(insets?.stableInsetTop ?: 0, cutout?.safeInsetTop ?: 0),
-            size.x - maxOf(insets?.stableInsetRight ?: 0, cutout?.safeInsetRight ?: 0),
-            size.y - maxOf(insets?.stableInsetBottom ?: 0, cutout?.safeInsetBottom ?: 0))
-    }
+    private fun availableArea(): Rect = coordinates.safeArea(anchor)
 }
