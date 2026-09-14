@@ -70,34 +70,6 @@ class ComposingGuideControllerTest {
         } finally { controller.destroy() }
     }
 
-    @Test fun splitKeepsTextButDetachesCandidateWindowsWithoutChangingPreferences() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        prefs.edit().clear().putBoolean(ComposingGuideSettings.ENABLED, true)
-            .putBoolean(ComposingGuideSettings.TEXT_ENABLED, true).commit()
-        var allowCandidates = true
-        val controller = ComposingGuideController(context, { true }, {}, {},
-            { CandidatePanelColors.resolve(context) }, { 48 }, candidatesAllowed = { allowCandidates })
-        val windows = mockedWindows(controller)
-        val host = mock<View>()
-        try {
-            controller.start(host)
-            controller.update("あか")
-            clearInvocations(*windows.values.toTypedArray())
-            allowCandidates = false
-            controller.refresh()
-            inOrder(*windows.values.toTypedArray()) {
-                verify(windows.getValue(GuideProfile.INTEGRATED)).stop()
-                verify(windows.getValue(GuideProfile.TEXT)).start(host, ComposingGuideContent("あか"))
-            }
-            verify(windows.getValue(GuideProfile.CANDIDATES), never()).start(any(), any())
-            assertTrue(prefs.getBoolean(ComposingGuideSettings.ENABLED, false))
-            allowCandidates = true
-            controller.refresh()
-            verify(windows.getValue(GuideProfile.TEXT)).stop()
-        } finally { controller.destroy() }
-    }
-
     @Suppress("UNCHECKED_CAST")
     private fun mockedWindows(controller: ComposingGuideController): Map<GuideProfile, ComposingGuideWindow> {
         val field = ComposingGuideController::class.java.getDeclaredField("windows").apply { isAccessible = true }

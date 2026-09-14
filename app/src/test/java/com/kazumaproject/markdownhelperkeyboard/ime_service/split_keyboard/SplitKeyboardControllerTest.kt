@@ -342,4 +342,37 @@ class SplitKeyboardControllerTest {
         } finally { controller.stop(); activity.finish() }
     }
 
+    @Test @Config(qualifiers = "w1000dp-h1000dp-mdpi") fun detachedCandidatesCollapseChromeAndRestoreAllPlacementsWithoutSavingGeometry() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(FrameLayout(activity))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
+        prefs.edit().clear().commit()
+        val controller = SplitKeyboardController(activity, activity.window.decorView, {}, {}, {})
+        val bodies = SplitSlot.entries.associateWith { FrameLayout(activity) }
+        val lists = SplitSlot.entries.associateWith { RecyclerView(activity) }
+        bodies.forEach { (slot, body) -> controller.add(slot, body, lists.getValue(slot), 160) }
+        try {
+            controller.start()
+            for (placement in SplitCandidatePlacement.entries) {
+                prefs.edit().putString(SplitKeyboardSettings.CANDIDATES, placement.name).commit()
+                controller.refresh()
+                val before = prefs.all.toMap()
+                val heights = bodies.mapValues { (_, body) -> (root(body).layoutParams as android.view.WindowManager.LayoutParams).height }
+                controller.setCandidatesDetached(true)
+                lists.forEach { (slot, list) ->
+                    assertEquals(View.GONE, list.visibility)
+                    val height = (root(bodies.getValue(slot)).layoutParams as android.view.WindowManager.LayoutParams).height
+                    assertEquals(if (placement.shows(slot)) (58 * activity.resources.displayMetrics.density).toInt() else 0,
+                        heights.getValue(slot) - height)
+                }
+                controller.setCandidatesDetached(false)
+                lists.forEach { (slot, list) ->
+                    assertEquals(placement.shows(slot), list.visibility == View.VISIBLE)
+                    assertEquals(heights.getValue(slot), (root(bodies.getValue(slot)).layoutParams as android.view.WindowManager.LayoutParams).height)
+                }
+                assertEquals(before, prefs.all)
+            }
+        } finally { controller.stop(); activity.finish() }
+    }
+
 }

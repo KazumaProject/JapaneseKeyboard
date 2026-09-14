@@ -1085,7 +1085,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             toggle = inlineSuggestionToggleForCandidateStrip(),
         )
         suggestionAdapter?.submitContent(content, inlineSuggestionState)
-        if (isKeyboardFloatingMode != true) {
+        if (floatingCandidateSurfaceActive || isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
                 setMainSuggestionColumn(binding)
             }
@@ -1108,7 +1108,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun isFullCandidateViewVisible(): Boolean {
-        return if (isKeyboardFloatingMode == true) {
+        return if (!floatingCandidateSurfaceActive && isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.candidatesRowView?.isVisible == true
         } else {
             mainLayoutBinding?.candidatesRowView?.isVisible == true
@@ -2392,12 +2392,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         scheduleSplitPresentation()
     }
 
-    private fun activateSplitView(view: View) {
-        splitInputs.values.firstOrNull { state ->
-            state.binding.let { view === it.keyboardViewFloating || view === it.gojuonViewFloating ||
-                view === it.qwertyViewFloating || view === it.customLayoutFloating || view === it.floatingSymbolKeyboard }
-        }?.let { activateSplitInput(it.slot) }
+    private fun splitInputForView(view: View): SplitInputState? = splitInputs.values.firstOrNull { state ->
+        state.binding.let { view === it.keyboardViewFloating || view === it.gojuonViewFloating ||
+            view === it.qwertyViewFloating || view === it.customLayoutFloating || view === it.floatingSymbolKeyboard }
     }
+
+    private fun activateSplitView(view: View) {
+        splitInputForView(view)?.let { activateSplitInput(it.slot) }
+    }
+
+    private fun isInactiveSplitView(view: View): Boolean =
+        splitInputForView(view)?.let { it.slot != activeSplitSlot } == true
 
     private fun activateSplitInput(slot: SplitSlot) {
         val state = splitInputs[slot] ?: return
@@ -2471,6 +2476,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showResolvedKeyboard(KeyboardType.TENKEY)
                     })
                 splitController = controller
+                // The detached candidate window always owns the original shared adapters.
+                savedSingleFloatingBinding?.suggestionRecyclerView?.adapter = null
+                savedSingleFloatingBinding?.candidatesRowView?.adapter = null
+                main.suggestionRecyclerView.adapter = suggestionAdapter
+                main.candidatesRowView.adapter = suggestionAdapterFull
+                controller.setCandidatesDetached(floatingCandidateSurfaceActive)
                 SplitSlot.entries.forEach { slot ->
                     val configured = splitSettings.selection(slot)
                     val selection = configured.resolved(layouts.map { it.stableId }.toSet())
@@ -3036,7 +3047,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var dockedFullCandidateLayoutManager: RecyclerView.LayoutManager? = null
 
     private fun moveCandidateSurface(target: android.widget.LinearLayout?) {
-        if (target != null && splitController != null) return
         val binding = mainLayoutBinding ?: return
         if (target == null) {
             _suggestionViewStatus.value = true
@@ -3060,6 +3070,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ).also { it.attach(target) }
             binding.suggestionRecyclerView.addOnLayoutChangeListener(floatingCandidateSizeListener)
         }
+        splitController?.setCandidatesDetached(floatingCandidateSurfaceActive)
         floatingCandidateVertical = null
         lastSuggestionLayoutKey = null
         updateKeyboardLayout(binding)
@@ -3148,7 +3159,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (composingGuide == null) {
             composingGuide = ComposingGuideController(this,
                 eligible = ::isComposingGuideEligible,
-                candidatesAllowed = { splitController == null },
                 onStateChanged = {
                     if (floatingCandidateSurfaceActive) mainLayoutBinding?.let(::configureFloatingCandidates)
                 },
@@ -4950,7 +4960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!inlineSuggestionEnabled) return
         if (!inlineSuggestionDisplayState.toggleSurface()) return
         refreshCandidateStripContent()
-        if (isKeyboardFloatingMode == true) {
+        if (isKeyboardFloatingMode == true && !floatingCandidateSurfaceActive) {
             floatingKeyboardBinding?.suggestionRecyclerView?.scrollToPosition(0)
         } else {
             mainLayoutBinding?.suggestionRecyclerView?.scrollToPosition(0)
@@ -9854,7 +9864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
                 override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
-                    activateSplitView(floatingKeyboardLayoutBinding.keyboardViewFloating)
+                    if (isInactiveSplitView(floatingKeyboardLayoutBinding.keyboardViewFloating)) return
                     cancelOngoingLongPressForKey(key)
                 }
             })
@@ -10218,7 +10228,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
                 override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
-                    activateSplitView(gojuonView)
+                    if (isInactiveSplitView(gojuonView)) return
                     cancelOngoingLongPressForKey(key)
                 }
             })
@@ -13350,8 +13360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onLongPressActionCanceled(action: KeyAction) {
                 // Rebuilding an inactive pane also emits cancellation; it is not an input gesture.
-                val state = splitInputs.values.firstOrNull { it.binding.customLayoutFloating === flickView }
-                if (state != null && activeSplitSlot != state.slot) return
+                if (isInactiveSplitView(flickView)) return
                 cancelOngoingLongPressForAction(action)
             }
 
@@ -20916,7 +20925,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun updateMainCandidateStripAfterListUpdated() {
         assertMainThread("updateMainCandidateStripAfterListUpdated")
-        if (isKeyboardFloatingMode == true) return
+        if (isKeyboardFloatingMode == true && !floatingCandidateSurfaceActive) return
         val binding = mainLayoutBinding ?: return
         measureDebugSection("IMEService.updateMainCandidateStripAfterListUpdated") {
             measureDebugSection("IMEService.scrollToPosition0") {
@@ -20928,7 +20937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun anchorActiveSuggestionStripStartForLeadingContent() {
         assertMainThread("anchorActiveSuggestionStripStartForLeadingContent")
         measureDebugSection("IMEService.anchorActiveSuggestionStripStartForLeadingContent") {
-            if (isKeyboardFloatingMode == true) {
+            if (isKeyboardFloatingMode == true && !floatingCandidateSurfaceActive) {
                 floatingKeyboardBinding?.suggestionRecyclerView?.scrollToPosition(0)
                 return@measureDebugSection
             }
@@ -22429,7 +22438,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     key: QWERTYKey,
                     reason: KeyTouchCancelReason
                 ) {
-                    activateSplitView(qwertyView)
+                    if (isInactiveSplitView(qwertyView)) return
                     cancelOngoingLongPressForQwertyKey(key)
                 }
             })

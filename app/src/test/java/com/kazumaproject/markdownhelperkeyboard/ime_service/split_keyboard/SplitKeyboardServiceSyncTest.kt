@@ -166,4 +166,31 @@ class SplitKeyboardServiceSyncTest {
         }
     }
 
+    @Test fun detachedCandidateSurfaceUsesSharedSourceAndRestoresItsOriginalParent() {
+        val main = com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding.inflate(LayoutInflater.from(context))
+        Reflect.setField(service, "mainLayoutBinding", main)
+        Reflect.setField(service, "listAdapter", mock(IMEService::class.java.getDeclaredField("listAdapter").type))
+        val source = SuggestionAdapter()
+        Reflect.setField(service, "suggestionAdapter", source)
+        main.suggestionRecyclerView.adapter = source
+        val original = main.suggestionViewParent.parent
+        val target = android.widget.LinearLayout(context)
+        install(SplitSlot.MAIN, TenKeyQWERTYMode.Default)
+        install(SplitSlot.SUB, TenKeyQWERTYMode.TenKeyQWERTYRomaji)
+        select(SplitSlot.SUB, TenKeyQWERTYMode.TenKeyQWERTYRomaji)
+        fun move(to: android.widget.LinearLayout?) = Reflect.callInstanceMethod<Unit>(service, "moveCandidateSurface",
+            ClassParameter.from(android.widget.LinearLayout::class.java, to))
+        move(target)
+        assertSame(target, main.suggestionViewParent.parent)
+        assertSame(source, main.suggestionRecyclerView.adapter)
+        assertEquals(SplitSlot.SUB, Reflect.getField<SplitSlot>(service, "activeSplitSlot"))
+        val firstHost = Reflect.getField<Any>(service, "candidateSurfaceHost")
+        move(target)
+        assertSame(firstHost, Reflect.getField<Any>(service, "candidateSurfaceHost"))
+        move(null)
+        assertSame(original, main.suggestionViewParent.parent)
+        assertNull(Reflect.getField<Any?>(service, "candidateSurfaceHost"))
+        assertEquals(SplitSlot.SUB, Reflect.getField<SplitSlot>(service, "activeSplitSlot"))
+    }
+
 }

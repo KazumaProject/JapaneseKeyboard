@@ -14,7 +14,6 @@ internal class ComposingGuideController(
     onSurfaceChanged: (LinearLayout?) -> Unit,
     colors: () -> CandidatePanelColors,
     minimumCandidateHeight: () -> Int,
-    private val candidatesAllowed: () -> Boolean = { true },
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val settings = ComposingGuideSettings(preferences)
@@ -38,8 +37,7 @@ internal class ComposingGuideController(
         preferences.registerOnSharedPreferenceChangeListener(listener)
     }
 
-    private fun allowedProfiles(): List<GuideProfile> = if (candidatesAllowed()) settings.profiles
-        else if (settings.textEnabled) listOf(GuideProfile.TEXT) else emptyList()
+    private fun allowedProfiles(): List<GuideProfile> = settings.profiles
 
     fun start(view: View) { stop(); anchor = view; refresh() }
 
