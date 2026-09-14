@@ -16,6 +16,21 @@ import javax.inject.Singleton
 class LearnRepository @Inject constructor(
     private val learnDao: LearnDao
 ) {
+
+    suspend fun editEntry(id: Int, input: String, output: String, score: Int) {
+        check(learnDao.editEntry(id, input, output, score) == 1)
+        invalidateConversionSnapshot()
+    }
+
+    suspend fun deleteById(id: Int) {
+        learnDao.deleteById(id)
+        invalidateConversionSnapshot()
+    }
+
+    suspend fun insertStrict(entry: LearnEntity) {
+        learnDao.insertStrict(entry)
+        invalidateConversionSnapshot()
+    }
     @Volatile
     private var conversionSnapshot: Map<Char, List<LearnEntity>> = emptyMap()
     @Volatile
