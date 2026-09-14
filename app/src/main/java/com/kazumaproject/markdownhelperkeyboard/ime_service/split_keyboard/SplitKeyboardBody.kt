@@ -5,7 +5,14 @@ import android.view.View
 import android.view.ViewGroup
 
 /** Measures the original body at a usable size; ViewGroup maps touches through its child matrix. */
-internal class SplitKeyboardBody(context: Context, private val layoutWidth: Int, private val layoutHeight: Int) : ViewGroup(context) {
+internal class SplitKeyboardBody(context: Context, private var layoutWidth: Int, private var layoutHeight: Int) : ViewGroup(context) {
+    fun setMinimumLayoutSize(width: Int, height: Int) {
+        if (layoutWidth == width && layoutHeight == height) return
+        layoutWidth = width
+        layoutHeight = height
+        requestLayout()
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = MeasureSpec.getSize(heightMeasureSpec)

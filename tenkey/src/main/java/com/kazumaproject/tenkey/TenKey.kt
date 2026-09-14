@@ -1,5 +1,6 @@
 package com.kazumaproject.tenkey
 
+import com.kazumaproject.core.domain.extensions.touchScreenCoordinates
 import android.annotation.SuppressLint
 import com.kazumaproject.core.domain.extensions.screenWidth
 import com.kazumaproject.core.domain.extensions.screenHeight
@@ -1482,21 +1483,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(GestureType.Down, key, null)
 
-                    pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        PressedKey(
-                            key = key,
-                            pointer = 0,
-                            initialX = event.getRawX(event.actionIndex),
-                            initialY = event.getRawY(event.actionIndex),
-                        )
-                    } else {
-                        PressedKey(
-                            key = key,
-                            pointer = 0,
-                            initialX = event.getX(event.actionIndex),
-                            initialY = event.getY(event.actionIndex),
-                        )
-                    }
+                    val (initialX, initialY) = getRawCoordinates(event, event.actionIndex)
+                    pressedKey = PressedKey(key = key, pointer = 0, initialX = initialX, initialY = initialY)
 
                     if (isCursorMode) {
                         flickTextPreviewEmitter.cancel()
@@ -1666,32 +1654,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         (getButtonFromKey(pressedKey.key) as? AppCompatButton)?.let { button ->
                             setTextForMode(button, currentInputMode.value)
                         }
+                        val (initialX, initialY) = getRawCoordinates(event, event.actionIndex)
                         pressedKey = pressedKey.copy(
-                            key = key, pointer = pointer, initialX = if (pointer == 0) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    event.getRawX(0)
-                                } else {
-                                    event.getX(0)
-                                }
-                            } else {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    event.getRawX(1)
-                                } else {
-                                    event.getX(1)
-                                }
-                            }, initialY = if (pointer == 0) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    event.getRawY(0)
-                                } else {
-                                    event.getY(0)
-                                }
-                            } else {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    event.getRawY(1)
-                                } else {
-                                    event.getY(1)
-                                }
-                            }
+                            key = key, pointer = pointer, initialX = initialX, initialY = initialY
                         )
                         setKeyPressed()
                         flickTextPreviewEmitter.begin(
@@ -2078,28 +2043,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /** Get absolute coordinates for the given pointer **/
-    private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer) to event.getRawY(pointer)
-        } else {
-            val location = IntArray(2)
-            this.getLocationOnScreen(location)
-            (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
-        }
-    }
+    private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> =
+        touchScreenCoordinates(event, pointer)
 
     /** Determine whether the movement is a tap or a flick in a direction **/
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
-        val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer)
-        } else {
-            event.getX(pointer)
-        }
-        val finalY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawY(pointer)
-        } else {
-            event.getY(pointer)
-        }
+        val (finalX, finalY) = getRawCoordinates(event, pointer)
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when (

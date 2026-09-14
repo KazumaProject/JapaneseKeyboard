@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 internal open class FloatingPanelFrame(
     context: Context,
     onEdit: () -> Unit,
-    private val onHandleEvent: (MotionEvent) -> Unit,
+    private val onHandleEvent: (MotionEvent) -> Unit = {},
 ) : FrameLayout(context) {
     protected fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
     protected var colors = CandidatePanelColors.resolve(context)
@@ -158,7 +158,7 @@ internal open class FloatingPanelFrame(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!handlingGesture) return super.onTouchEvent(event)
-        onHandleEvent(event)
+        dispatchHandleEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             handlingGesture = false
             moveGrip.isPressed = false
@@ -166,6 +166,36 @@ internal open class FloatingPanelFrame(
         }
         return true
     }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Older accessibility services retain descendant screen bounds when only the window moves.
+        addOnLayoutChangeListener(positionAccessibilityListener)
+    }
+
+    override fun onDetachedFromWindow() {
+        removeOnLayoutChangeListener(positionAccessibilityListener)
+        super.onDetachedFromWindow()
+    }
+
+    private val positionAccessibilityListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        notifyAccessibilityBoundsChanged()
+    }
+
+    private fun notifyAccessibilityBoundsChanged() {
+        if (!context.getSystemService(android.view.accessibility.AccessibilityManager::class.java).isEnabled) return
+        val event = android.view.accessibility.AccessibilityEvent.obtain(
+            android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        event.contentChangeTypes = android.view.accessibility.AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE
+        sendAccessibilityEventUnchecked(event)
+    }
+
+    fun notifyWindowPositionChanged() {
+        // Deliver after the window traversal, when descendant screen coordinates are current.
+        postOnAnimation { post { if (isAttachedToWindow) notifyAccessibilityBoundsChanged() } }
+    }
+
+    protected open fun dispatchHandleEvent(event: MotionEvent) = onHandleEvent(event)
 
     override fun performClick(): Boolean = super.performClick()
 
