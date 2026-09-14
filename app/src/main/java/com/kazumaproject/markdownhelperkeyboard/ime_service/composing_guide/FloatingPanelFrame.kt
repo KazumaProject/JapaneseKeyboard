@@ -41,11 +41,12 @@ internal open class FloatingPanelFrame(
     private val edges = listOf(GuideHandle.LEFT, GuideHandle.TOP, GuideHandle.RIGHT, GuideHandle.BOTTOM)
         .associateWith { HandleView(context, it) }
     private var handlingGesture = false
+    private var headerVisible = true
     private var footerEnabled = false
     var editing = false
         private set
 
-    val contentInsets: Rect get() = Rect(dp(if (editing) 24 else 8), dp(if (editing) 72 else 56),
+    val contentInsets: Rect get() = Rect(dp(if (editing) 24 else 8), dp(if (headerVisible) (if (editing) 72 else 56) else (if (editing) 24 else 8)),
         dp(if (editing) 24 else 8), dp(MOVE_BAND_DP + if (editing) (if (footerEnabled) 104 else 32) else 4))
 
     init {
@@ -68,6 +69,12 @@ internal open class FloatingPanelFrame(
         renderChrome()
     }
 
+    fun setHeaderVisible(value: Boolean) {
+        if (headerVisible == value) return
+        headerVisible = value
+        renderChrome()
+    }
+
     fun setFooterEnabled(value: Boolean) {
         footerEnabled = value
         renderChrome()
@@ -85,6 +92,7 @@ internal open class FloatingPanelFrame(
     }
 
     private fun renderChrome() {
+        header.visibility = if (headerVisible) VISIBLE else GONE
         moveGrip.isEnabled = !editing
         moveGrip.alpha = if (editing) .35f else 1f
         footerContainer.visibility = if (editing && footerEnabled) VISIBLE else GONE

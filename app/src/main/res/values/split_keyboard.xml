@@ -8,4 +8,5 @@
     <string name="split_keyboard_main_only">Main only</string>
     <string name="split_keyboard_sub_only">Sub only</string>
     <string name="split_keyboard_summary">Two movable keyboards with shared input and candidates</string>
+    <string name="split_keyboard_edit_placement">Edit icon placement</string>
 </resources>
