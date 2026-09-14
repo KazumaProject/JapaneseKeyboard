@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="number_candidate_order_title">Number candidate order</string>
+    <string-array name="number_candidate_order_entries">
+        <item>Half width → Full width → Kanji</item>
+        <item>Half width → Kanji → Full width</item>
+        <item>Full width → Half width → Kanji</item>
+        <item>Full width → Kanji → Half width</item>
+        <item>Kanji → Half width → Full width</item>
+        <item>Kanji → Full width → Half width</item>
+    </string-array>
+    <string-array name="number_candidate_order_values">
+        <item>half_full_kanji</item>
+        <item>half_kanji_full</item>
+        <item>full_half_kanji</item>
+        <item>full_kanji_half</item>
+        <item>kanji_half_full</item>
+        <item>kanji_full_half</item>
+    </string-array>
+</resources>

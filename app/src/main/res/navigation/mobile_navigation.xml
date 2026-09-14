@@ -158,6 +158,13 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.UtilityCandidatePreferenceFragment"
         android:label="@string/utility_candidate_settings_title" />
 
+    <fragment android:id="@+id/numberCandidateSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.NumberCandidateSettingsFragment"
+        android:label="@string/number_types_title" />
+    <fragment android:id="@+id/numberUnitEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.NumberUnitEditorFragment"
+        android:label="@string/number_edit_unit" />
+
     <fragment
         android:id="@+id/unitTargetSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.UnitTargetSettingsFragment"

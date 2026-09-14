@@ -11,5 +11,13 @@ data class CandidateConversionSegment(
     val inputStart: Int,
     val inputEnd: Int,
     val output: String,
+    val reading: String? = null,
+    /** Context IDs of the actual dictionary node, not inferred from its spelling. */
+    val leftId: Short? = null,
+    val rightId: Short? = null,
+    val startsWithParticle: Boolean = false,
+    val source: com.kazumaproject.graph.CandidateSource = com.kazumaproject.graph.CandidateSource.SYSTEM,
+    /** Restored literal/English evidence, scoped to this exact segment. */
+    val nonNumericSource: Pair<String, String>? = null,
 )
 

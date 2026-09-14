@@ -32,6 +32,25 @@ class PhysicalCandidateCompositionInstrumentedTest {
     private lateinit var host: ActivityScenario<FastInputHostActivity>
     private var keyboardId = 0
 
+    @Test fun clockCandidatesCommitTheWholeReadingWithHardwareKeys() = withKeyboard {
+        for ((romaji, reading, expected) in listOf(
+            Triple("ichijigofun", "いちじごふん", "1時5分"),
+            Triple("sanjigofun", "さんじごふん", "3時5分"),
+            Triple("ichijigofunn", "いちじごふん", "1時5分"),
+            Triple("sanjigofunn", "さんじごふん", "3時5分"))) {
+            host.onActivity { it.restartEditorInput(true) }
+            SystemClock.sleep(500)
+            type(romaji)
+            // A single terminal n stays pending until Space; nn has already committed ん.
+            awaitText(if (romaji.endsWith("nn")) reading else reading.dropLast(1) + "ｎ")
+            key(KeyEvent.KEYCODE_SPACE)
+            awaitText(expected)
+            key(KeyEvent.KEYCODE_ENTER)
+            awaitText(expected)
+            host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+        }
+    }
+
     @Test fun bunsetsuFirstConversionAndCandidateChangePreserveOtherSegments() = withKeyboard(bunsetsu = true) {
         assertBunsetsuConversionAndNavigation()
     }
@@ -419,6 +438,9 @@ class PhysicalCandidateCompositionInstrumentedTest {
             "ng_word_enable_preference" to true,
             "physical_keyboard_input_mode_preference" to if (kana) "kana" else "romaji",
             "live_conversion_preference" to false,
+            "japanese_number_candidates_enable_preference" to true,
+            "number_candidate_order_preference" to "half_full_kanji",
+            "number_candidate_config_v1" to com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig().encode(),
             "sumire_keymap_guide_japanese" to false,
             "sumire_keymap_guide_modes_migrated" to true,
         )

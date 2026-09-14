@@ -5,6 +5,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunset
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -100,6 +101,178 @@ class KanaKanjiConversionSessionParityTest {
                     legacyResult.candidateSegmentsByString,
                     incrementalResult.candidateSegmentsByString,
                 )
+            }
+        }
+    }
+
+    @Test
+    fun numberWithCounterCandidatesAreAvailableAcrossModesAndBackends() = runBlocking {
+        val cases = mapOf(
+            "よじ" to "4時",
+            "にじゅうよじ" to "24時",
+            "くじ" to "9時",
+            "さんにん" to "3人",
+            "ごえん" to "5円",
+            "にじゅっぷん" to "20分",
+            "いっぷん" to "1分",
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for ((input, expected) in cases) {
+                        val label = "$input/$mode/$backend/bunsetsu=$bunsetsu"
+                        val result = session.query(request(input, mode, bunsetsu))
+                        val fullWidth = expected.map {
+                            if (it in '0'..'9') it + 0xFEE0 else it
+                        }.joinToString("")
+                        for (value in listOf(expected, fullWidth)) {
+                            assertTrue("$label missing $value", result.candidates.any {
+                                it.string == value && it.length.toInt() == input.length
+                            })
+                        }
+                        // Dictionary candidates may share the surface; the generated candidate
+                        // must retain its type and POS IDs for full-input commits.
+                        val generated = result.candidates.first {
+                            it.string == expected && it.score == 8000
+                        }
+                        assertEquals(label, 2044.toShort(), generated.leftId)
+                        assertEquals(label, (if (expected.endsWith("時")) 2015 else 2011).toShort(), generated.rightId)
+                        assertEquals(label, if (expected.endsWith("時") || expected.endsWith("分")) {
+                            CANDIDATE_TYPE_TIME
+                        } else 18.toByte(), generated.type)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun numberCandidatesKeepReadingGuardsAndIgnorePredictionAndSymbolToggles() = runBlocking {
+        val forbidden = mapOf(
+            "しじ" to setOf("4時", "４時"),
+            "しえん" to setOf("4円", "４円"),
+            "よせん" to setOf("4000", "４０００"),
+            "よしよし" to setOf("4444", "４４４４"),
+        )
+        val disabled = PredictionConfig(
+            japaneseNumberCandidatesEnabled = true,
+            japanesePredictionEnabled = false,
+            englishPredictionEnabled = false,
+            showSymbolCandidates = false,
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for ((input, values) in forbidden) {
+                        val result = session.query(request(input, mode, bunsetsu))
+                        assertTrue("$input/$mode/$backend/$bunsetsu", result.candidates.none {
+                            it.string in values
+                        })
+                    }
+                    for ((input, expected) in mapOf("よじ" to "4時", "よんせん" to "4000")) {
+                        val result = session.query(request(input, mode, bunsetsu).copy(
+                            predictionConfig = disabled,
+                        ))
+                        assertTrue("$input/$mode/$backend/$bunsetsu", result.candidates.any {
+                            it.string == expected
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun numberCandidateToggleCanBeChangedOnAnExistingSession() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    val query = request("よじ", mode, bunsetsu)
+                    val enabled = session.query(query)
+                    val disabled = session.query(query.copy(predictionConfig = PredictionConfig(
+                        japaneseNumberCandidatesEnabled = false,
+                    )))
+                    val restored = session.query(query)
+                    val label = "$mode/$backend/$bunsetsu"
+                    assertTrue(label, enabled.candidates.any { it.string == "4時" && it.score == 8000 })
+                    assertFalse(label, disabled.candidates.any {
+                        it.string in setOf("4時", "４時") && it.score in 8000..8001
+                    })
+                    assertEquals(label, enabled.candidates.fingerprint(), restored.candidates.fingerprint())
+                    // Directly typed digits are outside the reading-generation toggle.
+                    val digits = session.query(request("1234", mode, bunsetsu).copy(
+                        predictionConfig = PredictionConfig(japaneseNumberCandidatesEnabled = false),
+                    ))
+                    assertTrue(label, digits.candidates.any { it.string == "1234" })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun ordinaryWordsAndSentencesKeepExactlyTheSameCandidatesAndSegments() = runBlocking {
+        val corpus = listOf(
+            "しじ", "しえん", "しにん", "よせん", "しせん", "くせん", "くちょう",
+            "よしよし", "ごご", "さんご", "いちいち", "さんさん", "ろくろく",
+            "へんじ", "かんじ", "だいじ", "にんじん", "えんじん", "たぶん",
+            "よんほん", "よんかい", "しがつ", "よっか",
+            "よじまで", "よじです", "ごごよじ", "あしたはよじ", "さんにんで",
+            "にじゅっぷんまつ", "きょうはいいてんき", "こんにちは", "ありがとう",
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for (input in corpus) {
+                        val query = request(input, mode, bunsetsu)
+                        val baseline = session.query(query.copy(predictionConfig = PredictionConfig(
+                            japaneseNumberCandidatesEnabled = false,
+                        )))
+                        val enabled = session.query(query)
+                        val label = "$input/$mode/$backend/$bunsetsu"
+                        assertEquals(label, baseline.candidates.fingerprint(), enabled.candidates.fingerprint())
+                        assertEquals(label, baseline.candidateSegmentsByString, enabled.candidateSegmentsByString)
+                        assertEquals(label, baseline.bunsetsuResult, enabled.bunsetsuResult)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun ambiguousCounterReadingsOnlyAddExpectedVariantsWithoutReorderingDictionaryCandidates() = runBlocking {
+        val cases = mapOf(
+            "にじ" to "2時", "さんじ" to "3時", "くじ" to "9時", "ごえん" to "5円",
+            "よじ" to "4時", "さんにん" to "3人", "にじゅっぷん" to "20分",
+            "よにん" to "4人", "よんえん" to "4円", "きゅうえん" to "9円",
+        )
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                for (mode in CandidateQueryMode.entries) {
+                    for ((input, expected) in cases) {
+                        val query = request(input, mode, bunsetsu)
+                        val baseline = session.query(query.copy(predictionConfig = PredictionConfig(
+                            japaneseNumberCandidatesEnabled = false,
+                        )))
+                        val enabled = session.query(query)
+                        val remaining = enabled.candidates.toMutableList()
+                        val label = "$input/$mode/$backend/$bunsetsu"
+                        val fullWidth = expected.map {
+                            if (it in '0'..'9') it + 0xFEE0 else it
+                        }.joinToString("")
+                        val generated = remaining.filter { it.generatedNumber }
+                        assertTrue(label, generated.any { it.string == expected })
+                        assertTrue(label, generated.any { it.string == fullWidth })
+                        assertEquals(label, 3, generated.size)
+                        assertEquals(label, baseline.candidates.filterNot { it.generatedNumber }.fingerprint().sortedBy { it.toString() },
+                            remaining.filterNot { it.generatedNumber }.fingerprint().sortedBy { it.toString() })
+                        assertEquals(label, baseline.candidateSegmentsByString, enabled.candidateSegmentsByString)
+                    }
+                }
             }
         }
     }
@@ -415,6 +588,52 @@ class KanaKanjiConversionSessionParityTest {
         )
     }
 
+    @Test fun everyClockTimeTraversesEveryModeBackendAndSegmentation() = runBlocking {
+        // Exhaustive queries must not retain every suspend invocation in a Mockito history.
+        val repository = org.mockito.Mockito.mock(UserDictionaryRepository::class.java, org.mockito.Mockito.withSettings().stubOnly())
+        whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+        whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (hour in 0..29) for (minute in 0..59) {
+                val input = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberGrammarTest.clockReading(hour, minute)
+                val expected = "${hour}時${minute}分"
+                for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(request(input, mode, bunsetsu).copy(userDictionaryRepository = repository))
+                    val label = "$backend/$mode/$bunsetsu/$input"
+                    assertTrue(label, result.candidates.any { it.string == expected && it.commitText == expected })
+                    val colon = "$hour:${minute.toString().padStart(2, '0')}"
+                    fun kanji(n: Int): String {
+                        val ones = "〇一二三四五六七八九"
+                        return if (n < 10) ones[n].toString() else (if (n < 20) "" else ones[n / 10].toString()) + "十" + (if (n % 10 == 0) "" else ones[n % 10].toString())
+                    }
+                    val forms = listOf(expected, expected.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString(""),
+                        kanji(hour) + "時" + kanji(minute) + "分", colon)
+                    // The IME merges duplicate dictionary/generated surfaces before displaying them.
+                    assertEquals(label, forms, result.candidates.map { it.string }.distinct().filter { it in forms })
+                }
+            }
+        }
+    }
+
+    @Test fun customUnitEditsAndKindChangesInvalidateSessionResults() = runBlocking {
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("pieces", "個", "こ",
+            specialReadings = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReading(1, "いっこ")))
+        for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val settings = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit))
+            val query = request("いっこ", mode, bunsetsu).copy(predictionConfig = PredictionConfig(numberCandidateConfig = settings))
+            assertTrue("$backend/$mode/$bunsetsu", session.query(query).candidates.any { it.string == "1個" })
+            val removed = session.query(query.copy(predictionConfig = PredictionConfig()))
+            assertTrue(removed.candidates.none { it.generatedNumber && it.number?.customUnit != null })
+            val time = request("さんじごふん", mode, bunsetsu)
+            assertTrue(session.query(time).candidates.any { it.string == "3時5分" })
+            val disabled = PredictionConfig(numberCandidateConfig = settings.copy(disabledKinds = setOf(
+                com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateKind.TIME)))
+            assertTrue(session.query(time.copy(predictionConfig = disabled)).candidates.none { it.generatedNumber && it.number?.clock != null })
+        }
+    }
+
     private fun request(
         input: String,
         mode: CandidateQueryMode,
@@ -438,6 +657,7 @@ class KanaKanjiConversionSessionParityTest {
         omissionSearchOffsetScore = 1900,
         beamWidth = 20,
         collectCandidateSegments = true,
+        predictionConfig = PredictionConfig(japaneseNumberCandidatesEnabled = true),
     )
 
     private fun List<Candidate>.fingerprint(): List<List<Any?>> = map { candidate ->

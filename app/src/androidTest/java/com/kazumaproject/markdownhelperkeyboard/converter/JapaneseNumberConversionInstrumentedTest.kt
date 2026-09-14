@@ -22,6 +22,30 @@ import java.util.Locale
 class JapaneseNumberConversionInstrumentedTest {
 
     @Test
+    fun numericDatesWorkOnTheMinimumSupportedApiWithGenerationOffAndOn() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val engine = EntryPointAccessors.fromApplication(context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java).kanaKanjiEngine()
+        val dates = mapOf("101" to "1月1日", "229" to "2月29日", "430" to "4月30日", "1231" to "12月31日")
+        for (enabled in listOf(false, true)) {
+            val config = com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = enabled)
+            for ((input, output) in dates) {
+                val candidates = engine.getCandidatesEnglishKana(input, config)
+                assertTrue("$input/$enabled", candidates.any { it.string == output && it.commitText == output })
+                val restored = Candidate(output, 1, input.length.toUByte(), 0, yomi = input)
+                assertTrue(com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(input, restored, config))
+            }
+            for (input in listOf("100", "230", "431", "631", "931", "1131", "1301")) {
+                val candidates = engine.getCandidatesEnglishKana(input, config)
+                assertTrue(input, candidates.none { it.string.matches(Regex("[0-9]+月[0-9]+日")) })
+            }
+            val spoken = engine.getCandidatesEnglishKana("ひゃくいち", config)
+            assertEquals(enabled, spoken.any { it.string == "1月1日" })
+        }
+        assertTrue(engine.getCandidatesEnglishKana("ひゃくいち").any { it.generatedNumber && it.string == "1月1日" })
+    }
+
+    @Test
     fun verifyCorrectnessAndMeasureProductionPaths() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -32,6 +56,10 @@ class JapaneseNumberConversionInstrumentedTest {
         val repository = entryPoint.userDictionaryRepository()
 
         val forbiddenByInput = linkedMapOf(
+            // Osaka/Irodori complete-reading policy; these were incorrectly accepted by old tests.
+            "しじゅう" to setOf("40", "４０", "四十"),
+            "じゅうよ" to setOf("14", "１４", "十四"),
+            "くにん" to setOf("9人", "９人", "九人"),
             "よしよし" to setOf("4444", "４４４４", "8383", "８３８３", "四千四百四十四"),
             "しせん" to setOf("4000", "４０００", "4,000", "四千"),
             "くちょう" to setOf("9000000000000", "９００００００００００００", "九兆", "9兆"),
@@ -47,9 +75,10 @@ class JapaneseNumberConversionInstrumentedTest {
             "くせん" to setOf("9000", "９０００", "9,000", "九千"),
         )
 
+        reportStage("correctness English/kana")
         val englishKanaResults = linkedMapOf<String, List<Candidate>>()
         forbiddenByInput.forEach { (input, forbidden) ->
-            val candidates = engine.getCandidatesEnglishKana(input)
+            val candidates = engine.getCandidatesEnglishKana(input, com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
             englishKanaResults[input] = candidates
             assertEquals(input, candidates.first().string)
             assertTrue(
@@ -67,42 +96,51 @@ class JapaneseNumberConversionInstrumentedTest {
             "にじゅうよじ" to setOf("24時"),
             "くじ" to setOf("9時"),
             "いっちょう" to setOf("1000000000000", "一兆"),
-            "しじゅう" to setOf("40", "四十"),
-            "じゅうよ" to setOf("14", "十四"),
+            "よんじゅう" to setOf("40", "四十"),
+            "じゅうよん" to setOf("14", "十四"),
             "よにん" to setOf("4人"),
-            "よえん" to setOf("4円"),
-            "くえん" to setOf("9円"),
-            "くにん" to setOf("9人"),
+            "よんえん" to setOf("4円"),
+            "きゅうえん" to setOf("9円"),
+            "きゅうにん" to setOf("9人"),
             "いっぷん" to setOf("1分"),
             "ろっぷん" to setOf("6分"),
             "はっぷん" to setOf("8分"),
         )
         validInputs.forEach { (input, required) ->
-            val candidates = engine.getCandidatesEnglishKana(input)
+            val candidates = engine.getCandidatesEnglishKana(input, com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
             englishKanaResults[input] = candidates
             val values = candidates.mapTo(hashSetOf()) { it.string }
             assertTrue("$input missing $required from $values", values.containsAll(required))
         }
 
+        reportStage("correctness standard dictionary")
         val standardResults = linkedMapOf<String, List<Candidate>>()
         forbiddenByInput.forEach { (input, forbidden) ->
             val candidates = engine.convertOriginal(input, repository)
             standardResults[input] = candidates
+            val lexical = exactLexicalDictionaryOutputs(engine, input)
             assertTrue(
                 "$input unexpectedly generated ${candidates.map { it.string }}",
-                candidates.none { it.string in forbidden },
+                candidates.none { it.string in forbidden && !(it.string in lexical &&
+                    it.commitText == it.string && !it.generatedNumber && it.number == null) },
             )
         }
 
+        assertTrue("stored しじゅう -> 四十 must remain lexical",
+            "四十" in exactLexicalDictionaryOutputs(engine, "しじゅう") &&
+                standardResults.getValue("しじゅう").any { it.string == "四十" && it.commitText == "四十" && !it.generatedNumber })
+
         val benchmarkCorpus = (forbiddenByInput.keys + validInputs.keys).toList()
+        reportStage("benchmark English/kana")
         val englishKanaBenchmark = measureConversions(
             label = "englishKana",
             corpus = benchmarkCorpus,
             warmupIterations = 1_000,
             measuredIterations = 20_000,
         ) { input ->
-            engine.getCandidatesEnglishKana(input)
+            engine.getCandidatesEnglishKana(input, com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true))
         }
+        reportStage("benchmark standard dictionary")
         val standardBenchmark = measureConversions(
             label = "standardDictionary",
             corpus = benchmarkCorpus,
@@ -136,6 +174,29 @@ class JapaneseNumberConversionInstrumentedTest {
         println("JAPANESE_NUMBER_CONVERSION_REPORT\n$report")
     }
 
+    // The spoken-number generator's forbidden forms do not prohibit independently stored
+    // lexical words (for example しじゅう -> 四十). Read the dictionary, not filtered output.
+    private fun exactLexicalDictionaryOutputs(engine: KanaKanjiEngine, input: String): Set<String> {
+        fun field(name: String): Any = requireNotNull(KanaKanjiEngine::class.java.getDeclaredField(name)
+            .apply { isAccessible = true }.get(engine))
+        val trie = field("systemYomiTrie") as com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+        val bits = field("systemSuccinctBitVectorLBSYomi") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        if (input !in trie.commonPrefixSearch(input, bits)) return emptySet()
+        val leaves = field("systemSuccinctBitVectorIsLeafYomi") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        val tokens = field("systemTokenArray") as com.kazumaproject.dictionary.TokenArray
+        val tokenBits = field("systemSuccinctBitVectorTokenArray") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        val tango = field("systemTangoTrie") as com.kazumaproject.Louds.LOUDS
+        val tangoBits = field("systemSuccinctBitVectorTangoLBS") as com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+        val term = trie.getTermId(trie.getNodeIndex(input, bits), leaves)
+        return tokens.getListDictionaryByYomiTermId(term, tokenBits).filter {
+            tokens.leftIds[it.posTableIndex.toInt()].toInt() !in 2043..2055
+        }.mapTo(hashSetOf()) { entry -> when (entry.nodeId) {
+            -2 -> input
+            -1 -> input.map { if (it in 'ぁ'..'ゖ') it + 0x60 else it }.joinToString("")
+            else -> tango.getLetter(entry.nodeId, tangoBits)
+        } }
+    }
+
     private suspend fun KanaKanjiEngine.convertOriginal(
         input: String,
         repository: UserDictionaryRepository,
@@ -155,9 +216,18 @@ class JapaneseNumberConversionInstrumentedTest {
         typoCorrectionOffsetScore = 3_000,
         omissionSearchOffsetScore = 3_000,
         beamWidth = 20,
+        predictionConfig = com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(japaneseNumberCandidatesEnabled = true),
     )
 
-    private suspend fun measureConversions(
+    private fun reportStage(stage: String) {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().sendStatus(2,
+            android.os.Bundle().apply { putString("stream", "NUMBER_ENGINE_STAGE $stage\n") })
+    }
+
+    // API 24 ART misidentifies live registers in the long-lived suspend measurement loop
+    // during GC. Keep the harness frame synchronous and scope each coroutine to one query.
+    // Timings include the same runBlocking harness overhead for both measured paths.
+    private fun measureConversions(
         label: String,
         corpus: List<String>,
         warmupIterations: Int,
@@ -166,22 +236,25 @@ class JapaneseNumberConversionInstrumentedTest {
     ): BenchmarkResult {
         var blackHole = 0L
         repeat(warmupIterations) { index ->
-            val candidates = convert(corpus[index % corpus.size])
+            val candidates = runBlocking { convert(corpus[index % corpus.size]) }
             blackHole += candidates.size + (candidates.firstOrNull()?.string?.length ?: 0)
         }
 
+        reportStage("$label warmup complete; collecting")
         forceGc()
+        reportStage("$label collection complete; measuring")
         val baseline = memorySnapshot()
         val allocatedBefore = allocatedBytes()
         val samplesNs = LongArray(measuredIterations)
 
         repeat(measuredIterations) { index ->
             val startedNs = System.nanoTime()
-            val candidates = convert(corpus[index % corpus.size])
+            val candidates = runBlocking { convert(corpus[index % corpus.size]) }
             samplesNs[index] = System.nanoTime() - startedNs
             blackHole += candidates.size + (candidates.firstOrNull()?.string?.length ?: 0)
         }
 
+        reportStage("$label measurement complete")
         val allocatedAfter = allocatedBytes()
         val immediate = memorySnapshot()
         forceGc()

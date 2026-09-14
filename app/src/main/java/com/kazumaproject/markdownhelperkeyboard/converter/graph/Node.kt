@@ -36,6 +36,7 @@ data class Node(
     val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
+    val conversionSegments: List<com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment> = emptyList(),
 ) {
     override fun toString(): String {
         return this.tango

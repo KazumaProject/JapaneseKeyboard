@@ -343,6 +343,7 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
         sessionState: SessionState? = null,
+        restoreLearnedCandidate: ((com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate) -> com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate)? = null,
     ): MutableMap<Int, MutableList<Node>> {
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
@@ -354,6 +355,11 @@ class GraphBuilder {
                 sessionState?.lastConstructGraphNs = System.nanoTime() - performanceStartNs
             }
             return mutableMapOf()
+        }
+        val historyNumberResolver by lazy {
+            com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberDictionaryResolver(
+                yomiTrie, tangoTrie, tokenArray, succinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi, succinctBitVectorTokenArray, succinctBitVectorTangoLBS)
         }
         fun mozcAttributesFor(leftId: Short): Int =
             mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
@@ -645,8 +651,20 @@ class GraphBuilder {
                     repository.findCommonPrefixes(subStr())
                 }
             } ?: emptyList()
-            if (learnedWords.isNotEmpty()) foundInAnyDictionary = true
             learnedWords.forEach { learnedWord ->
+                // Validate persisted pairs before N-best and node deduplication. Invalid history
+                // must not consume every result slot or shadow an explicit user dictionary entry.
+                val historyCandidate = (restoreLearnedCandidate ?: historyNumberResolver::restore).invoke(
+                    com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(
+                        string = learnedWord.out,
+                        type = com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY,
+                        length = learnedWord.input.length.toUByte(), score = learnedWord.score,
+                        yomi = learnedWord.input,
+                    ))
+                if (!com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidatePolicy.eligible(
+                        learnedWord.input, historyCandidate)) return@forEach
+                foundInAnyDictionary = true
+
                 val endIndex = i + learnedWord.input.length
                 val node = Node(
                     l = learnedWord.leftId ?: 1851.toShort(),
@@ -660,6 +678,7 @@ class GraphBuilder {
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(learnedWord.leftId ?: 1851.toShort()),
                     candidateSource = CandidateSource.LEARNED_DICTIONARY,
+                    conversionSegments = historyCandidate.conversionSegments,
                 )
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "LEARN")
             }
