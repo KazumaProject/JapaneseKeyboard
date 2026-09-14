@@ -1,6 +1,8 @@
 package com.kazumaproject.tenkey
 
 import android.annotation.SuppressLint
+import com.kazumaproject.core.domain.extensions.screenWidth
+import com.kazumaproject.core.domain.extensions.screenHeight
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
@@ -1801,116 +1803,116 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 Key.SideKeyPreviousChar,
                 binding.keyReturn.layoutXPosition(),
                 binding.keyReturn.layoutYPosition(),
-                binding.keyReturn.layoutXPosition() + binding.keyReturn.width,
-                binding.keyReturn.layoutYPosition() + binding.keyReturn.height
+                binding.keyReturn.layoutXPosition() + binding.keyReturn.screenWidth(),
+                binding.keyReturn.layoutYPosition() + binding.keyReturn.screenHeight()
             ), KeyRect(
                 Key.KeyA,
                 binding.key1.layoutXPosition(),
                 binding.key1.layoutYPosition(),
-                binding.key1.layoutXPosition() + binding.key1.width,
-                binding.key1.layoutYPosition() + binding.key1.height
+                binding.key1.layoutXPosition() + binding.key1.screenWidth(),
+                binding.key1.layoutYPosition() + binding.key1.screenHeight()
             ), KeyRect(
                 Key.KeyKA,
                 binding.key2.layoutXPosition(),
                 binding.key2.layoutYPosition(),
-                binding.key2.layoutXPosition() + binding.key2.width,
-                binding.key2.layoutYPosition() + binding.key2.height
+                binding.key2.layoutXPosition() + binding.key2.screenWidth(),
+                binding.key2.layoutYPosition() + binding.key2.screenHeight()
             ), KeyRect(
                 Key.KeySA,
                 binding.key3.layoutXPosition(),
                 binding.key3.layoutYPosition(),
-                binding.key3.layoutXPosition() + binding.key3.width,
-                binding.key3.layoutYPosition() + binding.key3.height
+                binding.key3.layoutXPosition() + binding.key3.screenWidth(),
+                binding.key3.layoutYPosition() + binding.key3.screenHeight()
             ), KeyRect(
                 Key.SideKeyDelete,
                 binding.keyDelete.layoutXPosition(),
                 binding.keyDelete.layoutYPosition(),
-                binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
-                binding.keyDelete.layoutYPosition() + binding.keyDelete.height
+                binding.keyDelete.layoutXPosition() + binding.keyDelete.screenWidth(),
+                binding.keyDelete.layoutYPosition() + binding.keyDelete.screenHeight()
             ), KeyRect(
                 Key.SideKeyCursorLeft,
                 binding.keySoftLeft.layoutXPosition(),
                 binding.keySoftLeft.layoutYPosition(),
-                binding.keySoftLeft.layoutXPosition() + binding.keySoftLeft.width,
-                binding.keySoftLeft.layoutYPosition() + binding.keySoftLeft.height
+                binding.keySoftLeft.layoutXPosition() + binding.keySoftLeft.screenWidth(),
+                binding.keySoftLeft.layoutYPosition() + binding.keySoftLeft.screenHeight()
             ), KeyRect(
                 Key.KeyTA,
                 binding.key4.layoutXPosition(),
                 binding.key4.layoutYPosition(),
-                binding.key4.layoutXPosition() + binding.key4.width,
-                binding.key4.layoutYPosition() + binding.key4.height
+                binding.key4.layoutXPosition() + binding.key4.screenWidth(),
+                binding.key4.layoutYPosition() + binding.key4.screenHeight()
             ), KeyRect(
                 Key.KeyNA,
                 binding.key5.layoutXPosition(),
                 binding.key5.layoutYPosition(),
-                binding.key5.layoutXPosition() + binding.key5.width,
-                binding.key5.layoutYPosition() + binding.key5.height
+                binding.key5.layoutXPosition() + binding.key5.screenWidth(),
+                binding.key5.layoutYPosition() + binding.key5.screenHeight()
             ), KeyRect(
                 Key.KeyHA,
                 binding.key6.layoutXPosition(),
                 binding.key6.layoutYPosition(),
-                binding.key6.layoutXPosition() + binding.key6.width,
-                binding.key6.layoutYPosition() + binding.key6.height
+                binding.key6.layoutXPosition() + binding.key6.screenWidth(),
+                binding.key6.layoutYPosition() + binding.key6.screenHeight()
             ), KeyRect(
                 Key.SideKeyCursorRight,
                 binding.keyMoveCursorRight.layoutXPosition(),
                 binding.keyMoveCursorRight.layoutYPosition(),
-                binding.keyMoveCursorRight.layoutXPosition() + binding.keyMoveCursorRight.width,
-                binding.keyMoveCursorRight.layoutYPosition() + binding.keyMoveCursorRight.height
+                binding.keyMoveCursorRight.layoutXPosition() + binding.keyMoveCursorRight.screenWidth(),
+                binding.keyMoveCursorRight.layoutYPosition() + binding.keyMoveCursorRight.screenHeight()
             ), KeyRect(
                 Key.KeyMA,
                 binding.key7.layoutXPosition(),
                 binding.key7.layoutYPosition(),
-                binding.key7.layoutXPosition() + binding.key7.width,
-                binding.key7.layoutYPosition() + binding.key7.height
+                binding.key7.layoutXPosition() + binding.key7.screenWidth(),
+                binding.key7.layoutYPosition() + binding.key7.screenHeight()
             ), KeyRect(
                 Key.KeyYA,
                 binding.key8.layoutXPosition(),
                 binding.key8.layoutYPosition(),
-                binding.key8.layoutXPosition() + binding.key8.width,
-                binding.key8.layoutYPosition() + binding.key8.height
+                binding.key8.layoutXPosition() + binding.key8.screenWidth(),
+                binding.key8.layoutYPosition() + binding.key8.screenHeight()
             ), KeyRect(
                 Key.KeyRA,
                 binding.key9.layoutXPosition(),
                 binding.key9.layoutYPosition(),
-                binding.key9.layoutXPosition() + binding.key9.width,
-                binding.key9.layoutYPosition() + binding.key9.height
+                binding.key9.layoutXPosition() + binding.key9.screenWidth(),
+                binding.key9.layoutYPosition() + binding.key9.screenHeight()
             ), KeyRect(
                 Key.SideKeySpace,
                 binding.keySpace.layoutXPosition(),
                 binding.keySpace.layoutYPosition(),
-                binding.keySpace.layoutXPosition() + binding.keySpace.width,
-                binding.keySpace.layoutYPosition() + binding.keySpace.height
+                binding.keySpace.layoutXPosition() + binding.keySpace.screenWidth(),
+                binding.keySpace.layoutYPosition() + binding.keySpace.screenHeight()
             ), KeyRect(
                 Key.SideKeyInputMode,
                 binding.keySwitchKeyMode.layoutXPosition(),
                 binding.keySwitchKeyMode.layoutYPosition(),
-                binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
-                binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+                binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.screenWidth(),
+                binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.screenHeight()
             ), KeyRect(
                 Key.KeyDakutenSmall,
                 binding.keySmallLetter.layoutXPosition(),
                 binding.keySmallLetter.layoutYPosition(),
-                binding.keySmallLetter.layoutXPosition() + binding.keySmallLetter.width,
-                binding.keySmallLetter.layoutYPosition() + binding.keySmallLetter.height
+                binding.keySmallLetter.layoutXPosition() + binding.keySmallLetter.screenWidth(),
+                binding.keySmallLetter.layoutYPosition() + binding.keySmallLetter.screenHeight()
             ), KeyRect(
                 Key.KeyWA,
                 binding.key11.layoutXPosition(),
                 binding.key11.layoutYPosition(),
-                binding.key11.layoutXPosition() + binding.key11.width,
-                binding.key11.layoutYPosition() + binding.key11.height
+                binding.key11.layoutXPosition() + binding.key11.screenWidth(),
+                binding.key11.layoutYPosition() + binding.key11.screenHeight()
             ), KeyRect(
                 Key.KeyKutouten,
                 binding.key12.layoutXPosition(),
                 binding.key12.layoutYPosition(),
-                binding.key12.layoutXPosition() + binding.key12.width,
-                binding.key12.layoutYPosition() + binding.key12.height
+                binding.key12.layoutXPosition() + binding.key12.screenWidth(),
+                binding.key12.layoutYPosition() + binding.key12.screenHeight()
             ), KeyRect(
                 Key.SideKeyEnter,
                 binding.keyEnter.layoutXPosition(),
                 binding.keyEnter.layoutYPosition(),
-                binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
-                binding.keyEnter.layoutYPosition() + binding.keyEnter.height
+                binding.keyEnter.layoutXPosition() + binding.keyEnter.screenWidth(),
+                binding.keyEnter.layoutYPosition() + binding.keyEnter.screenHeight()
             )
         ) + sideKeySymbolModeKeyRects()
 
@@ -1936,12 +1938,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val container = binding.sideKeySymbolModeContainer
         val left = container.layoutXPosition()
         val top = container.layoutYPosition()
-        val right = left + container.width
-        val bottom = top + container.height
+        val right = left + container.screenWidth()
+        val bottom = top + container.screenHeight()
         if (useThreeStateKeyboard) {
             return listOf(KeyRect(Key.SideKeySymbol, left, top, right, bottom))
         }
-        val centerX = left + (container.width / 2)
+        val centerX = left + (container.screenWidth() / 2)
         return listOf(
             KeyRect(Key.SideKeyNumberMode, left, top, centerX, bottom),
             KeyRect(Key.SideKeySymbol, centerX, top, right, bottom)
