@@ -1,5 +1,6 @@
 package com.kazumaproject.gojuon_keyboard
 
+import com.kazumaproject.core.domain.extensions.touchScreenCoordinates
 import android.annotation.SuppressLint
 import com.kazumaproject.core.domain.extensions.screenWidth
 import com.kazumaproject.core.domain.extensions.screenHeight
@@ -3110,15 +3111,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     // --- Utility to get consistent absolute coordinates ---
-    private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer) to event.getRawY(pointer)
-        } else {
-            val location = IntArray(2)
-            this.getLocationOnScreen(location)
-            (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
-        }
-    }
+    private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> =
+        touchScreenCoordinates(event, pointer)
 
     private fun resetLongPressAction() {
         if (isLongPressed) {

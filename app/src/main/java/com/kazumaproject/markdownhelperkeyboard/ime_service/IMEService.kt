@@ -5747,6 +5747,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onWindowShown() {
         super.onWindowShown()
+        window.window?.decorView?.post {
+            if (isInputViewShown && isKeyboardFloatingMode == true && splitController == null && floatingKeyboardView?.isShowing != true) {
+                applyFloatingModeState(true)
+            }
+        }
         consumePendingGemmaPickedImage()
     }
 
@@ -6506,7 +6511,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val savedY = appPreference.keyboard_floating_position_y
 
                 if (savedX >= 0 && savedY >= 0) {
-                    popupWindow.update(savedX, savedY, widthPx, heightPx)
+                    updatePopupWindowPositionSafely(popupWindow, savedX, savedY)
+                    popupWindow.update(widthPx, heightPx)
                 } else {
                     popupWindow.update(widthPx, heightPx)
                 }
@@ -6554,14 +6560,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             .coerceAtLeast(1)
     }
 
+    private var floatingKeyboardPanel: com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel? = null
+
+    private fun floatingPanel(binding: FloatingKeyboardLayoutBinding): com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel {
+        val existing = floatingKeyboardPanel
+        if (existing?.matches(binding) == true) return existing
+        return com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel(
+            binding,
+            onEdit = { mainLayoutBinding?.let(::toggleKeyboardLayoutEditMode) },
+            onPosition = { x, y, persist ->
+                updatePopupWindowPositionSafely(floatingKeyboardView, x, y)
+                if (persist) {
+                    appPreference.keyboard_floating_position_x = x
+                    appPreference.keyboard_floating_position_y = y
+                }
+            },
+        ).also { panel ->
+            panel.setColors(resolveCandidatePanelColors())
+            floatingKeyboardPanel = panel
+        }
+    }
+
+    private fun createFloatingKeyboardPopup(binding: FloatingKeyboardLayoutBinding, width: Int): PopupWindow =
+        com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardWindow(floatingPanel(binding), width)
+
     private fun ensureFloatingKeyboardPopupWindow(): PopupWindow? {
         val floatingView = floatingKeyboardBinding ?: return null
         floatingKeyboardView?.let { return it }
 
-        return PopupWindow(
-            floatingView.root,
-            resolveFloatingKeyboardWidthPx(qwertyMode.value),
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+        return createFloatingKeyboardPopup(
+            floatingView, resolveFloatingKeyboardWidthPx(qwertyMode.value)
         ).also { popupWindow ->
             popupWindow.setOnDismissListener {
                 disableKeyboardLayoutEditMode(updateSurface = false)
@@ -6893,6 +6921,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         releaseFloatingKeyboardBackgroundVideoPlayer()
+        floatingKeyboardPanel = null
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
         // floatingKeyboardBinding を作り直したので configureQwertyView guard をリセット。
         isFloatingQwertyConfigured = false
@@ -6934,21 +6963,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             if (floatingKeyboardView == null) {
-                floatingKeyboardView = PopupWindow(
-                    floatingKeyboardLayoutBinding.root,
-                    widthPx,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
+                floatingKeyboardView = createFloatingKeyboardPopup(floatingKeyboardLayoutBinding, widthPx)
             } else {
                 stopAllOngoingKeyLongPresses()
                 floatingKeyboardView?.dismiss()
                 floatingKeyboardView = null
 
-                floatingKeyboardView = PopupWindow(
-                    floatingKeyboardLayoutBinding.root,
-                    widthPx,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
+                floatingKeyboardView = createFloatingKeyboardPopup(floatingKeyboardLayoutBinding, widthPx)
             }
             floatingKeyboardView?.setOnDismissListener {
                 stopAllOngoingKeyLongPresses()
@@ -8658,26 +8679,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val anchorView = window.window?.decorView
                     val savedX = appPreference.keyboard_floating_position_x
                     val savedY = appPreference.keyboard_floating_position_y
-                    val shown = if (savedX != -1 && savedY != -1) {
-                        showPopupWindowSafely(
-                            popupWindow = popupWindow,
-                            anchorView = anchorView,
-                            gravity = Gravity.NO_GRAVITY,
-                            x = savedX,
-                            y = savedY,
-                            source = "applyFloatingModeState(saved)"
-                        )
+                    updateFloatingKeyboardSizeForMode(qwertyMode.value)
+                    val panel = popupWindow.contentView
+                    val area = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.FloatingWindowCoordinates(
+                        getSystemService(WindowManager::class.java)
+                    ).safeArea(mainView.root)
+                    val width = resolveFloatingKeyboardUpdateWidthPx(qwertyMode.value).coerceAtMost(area.width())
+                    panel.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(area.height(), View.MeasureSpec.AT_MOST))
+                    val x = (if (savedX >= 0) savedX else area.right - width).coerceIn(area.left, (area.right - width).coerceAtLeast(area.left))
+                    val y = (if (savedY >= 0) savedY else area.bottom - panel.measuredHeight).coerceIn(area.top, (area.bottom - panel.measuredHeight).coerceAtLeast(area.top))
+                    val shown = showPopupWindowSafely(
+                        popupWindow = popupWindow, anchorView = anchorView,
+                        gravity = Gravity.TOP or Gravity.LEFT, x = x, y = y,
+                        source = "applyFloatingModeState"
+                    )
+                    if (shown) {
+                        panel.post { updatePopupWindowPositionSafely(popupWindow, x, y) }
                     } else {
-                        showPopupWindowSafely(
-                            popupWindow = popupWindow,
-                            anchorView = anchorView,
-                            gravity = Gravity.BOTTOM or Gravity.END,
-                            x = 0,
-                            y = 0,
-                            source = "applyFloatingModeState(default)"
-                        )
-                    }
-                    if (!shown) {
                         Timber.w("Could not show floating keyboard, window token is not available yet.")
                     }
                     shown
@@ -9887,6 +9906,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isKeyboardFloatingMode != true) return false
         val floatingView = floatingKeyboardBinding ?: return false
         val popupWindow = floatingKeyboardView ?: return false
+        floatingKeyboardPanel?.setColors(resolveCandidatePanelColors())
+        floatingKeyboardPanel?.setKeyboardMode(mode)
+        floatingView.root.background = null
         val prefs = getKeyboardSizePreferences()
         val density = resources.displayMetrics.density
         val usesQwertySize =
@@ -21131,6 +21153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val floatingBinding = floatingKeyboardBinding ?: return
                 FloatingKeyboardLayoutEditSurface(
                     binding = floatingBinding,
+                    panel = floatingKeyboardPanel,
                     availableWidthProvider = {
                         resources.displayMetrics.widthPixels
                     },

@@ -33,4 +33,19 @@ class FloatingWindowCoordinatesTest {
         assertEquals(0, params.fitInsetsTypes)
         assertEquals(WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS, params.layoutInDisplayCutoutMode)
     }
+    @Test
+    @Config(sdk = [24, 28])
+    fun legacyImeWithEmptyInsetsStillAvoidsSideNavigationBar() {
+        val manager = mock<WindowManager>()
+        val display = mock<android.view.Display>()
+        whenever(manager.defaultDisplay).thenReturn(display)
+        doAnswer { (it.arguments[0] as android.graphics.Point).set(1920, 1080); null }
+            .whenever(display).getRealSize(any())
+        val anchor = mock<View>()
+        whenever(anchor.rootWindowInsets).thenReturn(mock<WindowInsets>())
+        doAnswer { (it.arguments[0] as Rect).set(0, 63, 1794, 1080); null }
+            .whenever(anchor).getWindowVisibleDisplayFrame(any())
+        assertEquals(Rect(0, 63, 1794, 1080), FloatingWindowCoordinates(manager).safeArea(anchor))
+    }
+
 }
