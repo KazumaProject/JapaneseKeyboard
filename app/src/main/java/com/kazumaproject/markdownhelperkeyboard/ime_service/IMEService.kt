@@ -2340,7 +2340,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         var numberFromTenkey: Boolean = false,
         var hardShift: Boolean = false,
         var symbolState: SymbolKeyboardState = SymbolKeyboardState(),
+        var symbolRequest: SymbolKeyboardState? = null,
+        var symbolJob: Job? = null,
         var presentedMode: TenKeyQWERTYMode = mode,
+        var touching: Boolean = false,
+        var pendingLayout: (() -> Unit)? = null,
         var layoutJob: Job? = null,
         var imageJob: Job? = null,
         var backgroundPlayer: ExoPlayer? = null,
@@ -2354,6 +2358,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var splitLoadingJob: Job? = null
     private var splitCandidateObserver: RecyclerView.AdapterDataObserver? = null
     private var splitCandidateRefreshPosted = false
+    private var splitPresentationRefreshPosted = false
     private val splitSettings by lazy {
         SplitKeyboardSettings(androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
     }
@@ -2382,7 +2387,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             previousMode = previousTenKeyQWERTYMode
             numberReturn = qwertySwitchNumberKeyReturnSource
             numberFromTenkey = qwertyNumberOpenedFromTenkeyTwoStateNumberKey
+            syncSplitSymbols(this)
         }
+        scheduleSplitPresentation()
     }
 
     private fun activateSplitView(view: View) {
@@ -2394,7 +2401,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun activateSplitInput(slot: SplitSlot) {
         val state = splitInputs[slot] ?: return
-        if (activeSplitSlot == slot) return
+        if (activeSplitSlot == slot) {
+            syncSplitPresentation()
+            return
+        }
         activeSplitSlot?.let(::saveSplitInput)
         if (activeSplitSlot != null) finishCustomToggleForAction()
         stopAllOngoingKeyLongPresses()
@@ -2415,8 +2425,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentCustomKeyboardPosition = customLayouts.indexOfFirst { it.stableId == state.selection.customStableId }
         }
         _keyboardSymbolViewState.value = state.symbolState
+        syncSplitSymbols(state)
         _tenKeyQWERTYMode.value = state.mode
         refreshBaselineInputBehaviorForCurrentKeyboard("split input source")
+        syncSplitPresentation()
     }
 
     private fun startSplitKeyboard() {
@@ -2439,7 +2451,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val host = checkNotNull(window.window?.decorView) { "IME window is unavailable" }
                 val controller = SplitKeyboardController(main.root.context, host,
                     onActivate = ::activateSplitInput, onInputFinished = ::saveSplitInput,
-                    onEditing = { stopAllOngoingKeyLongPresses() }, colors = ::resolveCandidatePanelColors,
+                    onGestureChanged = { slot, touching ->
+                        splitInputs[slot]?.touching = touching
+                        if (!touching) {
+                            splitInputs[slot]?.let { state ->
+                                val apply = state.pendingLayout
+                                state.pendingLayout = null
+                                apply?.invoke()
+                            }
+                            syncSplitPresentation()
+                        }
+                    },
+                    onEditing = {
+                        stopAllOngoingKeyLongPresses()
+                        scheduleSplitPresentation()
+                    }, colors = ::resolveCandidatePanelColors,
                     onWindowFailure = {
                         stopSplitKeyboard(restoreSurface = true)
                         showResolvedKeyboard(KeyboardType.TENKEY)
@@ -2562,6 +2588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleSplitCandidates() {
+        scheduleSplitPresentation()
         if (splitController == null || splitCandidateRefreshPosted) return
         splitCandidateRefreshPosted = true
         mainHandler.post {
@@ -2574,7 +2601,92 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 state.adapter.setCandidateTextColor(colors.text)
                 state.adapter.setShortcutIconColor(colors.icon)
                 state.adapter.setCandidateEmptyPopupColors(colors.background, colors.text)
-                if (activeSplitSlot == state.slot) setTenkeyIconsInHenkanFloating(inputString.value, state.binding)
+            }
+        }
+    }
+
+    private fun updateFloatingClipboardItems(items: List<ClipboardItem>) {
+        (splitInputs.values.map { it.binding.floatingSymbolKeyboard } +
+            listOfNotNull(floatingKeyboardBinding?.floatingSymbolKeyboard)).distinct()
+            .forEach { it.updateClipboardItems(items) }
+    }
+
+    private fun syncSplitSymbols(state: SplitInputState) {
+        val requested = state.symbolState
+        if (state.symbolRequest == requested) return
+        state.symbolRequest = requested
+        state.symbolJob?.cancel()
+        val binding = state.binding
+        val surface = getFloatingKeyboardSurface(binding) ?: return
+        binding.floatingSymbolKeyboard.isVisible = requested.isShown
+        if (!requested.isShown) {
+            renderKeyboardMode(surface, state.mode, isFloating = true)
+            return
+        }
+        hideKeyboardViews(surface)
+        // A source switch must neither reset this pane's tab/scroll nor cancel its loading job.
+        state.symbolJob = scope.launch {
+            setSymbolsFloating(binding, if (requested.mode == SymbolMode.CLIPBOARD) SymbolMode.CLIPBOARD
+                else symbolKeyboardFirstItem ?: SymbolMode.EMOJI)
+            if (splitInputs[state.slot] === state && state.symbolRequest == requested) {
+                updateFloatingKeyboardTouchEffectBounds(binding)
+            }
+        }
+    }
+
+    private fun scheduleSplitPresentation() {
+        if (splitController == null || splitPresentationRefreshPosted) return
+        splitPresentationRefreshPosted = true
+        mainHandler.post {
+            splitPresentationRefreshPosted = false
+            syncSplitPresentation()
+        }
+    }
+
+    private fun syncSplitPresentation() {
+        if (splitController == null) return
+        // Capture live state without routing input to the pane being painted.
+        val text = inputString.value
+        splitInputs.values.forEach { state ->
+            if (state.touching) return@forEach
+            val active = activeSplitSlot == state.slot
+            val mode = if (active) qwertyMode.value else state.mode
+            val inputMode = if (active) currentInputModeForSession else state.inputMode
+            val direct = if (active) isCustomLayoutDirectMode else state.customDirect
+            val forceDirect = QwertyEnglishDirectInputPolicy.shouldForceDirectCommit(
+                qwertyEnglishDirectInputPreference, mode, inputMode,
+                if (active) currentQwertyRomajiModeForSession else state.romaji)
+            val behavior = RuntimeInputBehaviorPolicy.effective(
+                RuntimeInputBehaviorPolicy.resolveBaseline(mode, direct, inputBehaviorResolver.resolve(currentInputType)),
+                shortcutInputBehaviorOverride, forceDirect)
+            val typeNullUsesEditor = EditorEnterPolicy.usesEditorActionForDefaultTypeNull(
+                currentInputEditorInfo?.inputType,
+                TypeNullInputBehaviorSetting.fromPreferenceValue(appPreference.type_null_input_behavior_preference),
+                shortcutInputBehaviorOverride != null || (mode == TenKeyQWERTYMode.Custom && direct) || forceDirect)
+            val enterAction = if (behavior == ResolvedInputBehavior.DIRECT_COMMIT && !typeNullUsesEditor)
+                EditorEnterAction.Enter else EditorEnterPolicy.resolve(currentInputEditorInfo)
+            val presentation = SplitKeyboardPresentation.resolve(mode, inputMode, text,
+                stringInTail.get().isNotEmpty(), isHenkan.get(), tenkeyShowIMEButtonPreference != false,
+                EditorEnterPolicy.keyStateIndex(enterAction))
+            val enterDrawable = when (enterAction) {
+                EditorEnterAction.Enter, EditorEnterAction.Newline -> cachedReturnDrawable
+                is EditorEnterAction.Action -> when (enterAction.id) {
+                    EditorInfo.IME_ACTION_SEARCH -> cachedSearchDrawable
+                    EditorInfo.IME_ACTION_NEXT -> cachedTabDrawable
+                    EditorInfo.IME_ACTION_PREVIOUS -> AppCompatResources.getDrawable(this, com.kazumaproject.core.R.drawable.baseline_arrow_left_24)
+                    EditorInfo.IME_ACTION_DONE -> cachedCheckDrawable
+                    else -> cachedArrowRightDrawable
+                }
+            }
+            renderSplitKeyboardPresentation(state.binding, mode, presentation,
+                SplitKeyboardDrawables(cachedKanaDrawable, cachedEnglishDrawable, cachedSpaceDrawable,
+                    cachedHenkanDrawable, cachedReturnDrawable, enterDrawable),
+                EditorEnterPolicy.label(enterAction, presentation.japanese))
+            if (mode == TenKeyQWERTYMode.Custom) {
+                syncCustomKeyboardTogglePresentation(state.binding.customLayoutFloating,
+                    if (active) customKeyboardShiftState else state.shift,
+                    if (active) isCustomLayoutDirectMode else state.customDirect,
+                    if (active) isCustomLayoutRomajiMode else state.customRomaji)
             }
         }
     }
@@ -2595,6 +2707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         splitController?.stop()
         splitController = null
         retiredInputs.forEach {
+            it.symbolJob?.cancel()
             it.layoutJob?.cancel()
             it.imageJob?.cancel()
             keyboardBackgroundImageRequestIds.remove(it.binding.floatingKeyboardBackgroundImage)
@@ -8747,6 +8860,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyId: String,
         stateIndex: Int
     ) {
+        if (splitController != null) { scheduleSplitPresentation(); return }
         getActiveKeyboardSurface()
             ?.customLayout
             ?.updateDynamicKey(
@@ -8889,6 +9003,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun renderDynamicKeysOnActiveSurface() {
+        if (splitController != null) { scheduleSplitPresentation(); return }
         val customLayout = getActiveKeyboardSurface()?.customLayout ?: return
         customLayout.updateDynamicKey(
             keyId = "enter_key",
@@ -9278,52 +9393,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
     }
 
-    private fun syncCustomKeyboardTogglePresentation(flickView: FlickKeyboardView) {
-        flickView.setKeyCharacterCase(customKeyboardShiftState.keyCharacterCase)
-        flickView.updateKeyIconByAction(
-            KeyAction.SwitchDirectMode,
-            if (isCustomLayoutDirectMode) {
-                com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
-            } else {
-                com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
-            }
-        )
-        flickView.updateKeyIconByAction(
-            KeyAction.SwitchRomajiEnglish,
-            if (isCustomLayoutRomajiMode) {
-                com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
-            } else {
-                com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
-            }
-        )
-        flickView.updateKeyIconByAction(
-            KeyAction.ShiftKey,
-            when (customKeyboardShiftState) {
-                CustomKeyboardShiftState.OFF ->
-                    com.kazumaproject.core.R.drawable.shift_24px
-                CustomKeyboardShiftState.ONE_SHOT ->
-                    com.kazumaproject.core.R.drawable.shift_fill_24px
-                CustomKeyboardShiftState.LOCKED ->
-                    com.kazumaproject.core.R.drawable.caps_lock
-            }
-        )
-        flickView.updateKeyIconByAction(
-            KeyAction.CapLockKey,
-            if (isCustomLayoutCapLock) {
-                com.kazumaproject.core.R.drawable.caps_lock
-            } else {
-                com.kazumaproject.core.R.drawable.caps_lock_outline
-            }
-        )
+    private fun syncCustomKeyboardTogglePresentation(
+        flickView: FlickKeyboardView,
+        shift: CustomKeyboardShiftState = customKeyboardShiftState,
+        direct: Boolean = isCustomLayoutDirectMode,
+        romaji: Boolean = isCustomLayoutRomajiMode,
+    ) {
+        renderCustomKeyboardToggles(flickView, shift, direct, romaji)
     }
 
     private fun syncCustomKeyboardTogglePresentationOnAvailableSurfaces() {
+        if (splitController != null) { scheduleSplitPresentation(); return }
         getNormalKeyboardSurface()
             ?.customLayout
-            ?.let(::syncCustomKeyboardTogglePresentation)
+            ?.let { syncCustomKeyboardTogglePresentation(it) }
         getFloatingKeyboardSurface()
             ?.customLayout
-            ?.let(::syncCustomKeyboardTogglePresentation)
+            ?.let { syncCustomKeyboardTogglePresentation(it) }
     }
 
     private fun applyCurrentFlickGuidePreference(flickView: FlickKeyboardView) {
@@ -9437,6 +9523,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun loadSplitCustomLayout(state: SplitInputState, selected: CustomKeyboardLayout) {
         state.layoutJob?.cancel()
+        state.pendingLayout = null
         val expectedMode = state.presentedMode
         state.layoutJob = scope.launch {
             val layout = try {
@@ -9450,9 +9537,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return@launch
             }
             if (splitInputs[state.slot] !== state || state.presentedMode != expectedMode) return@launch
-            val view = state.binding.customLayoutFloating
-            setKeyboardWithDeleteKeyFlickPreferences(view, layout)
-            view.setKeyCharacterCase(if (expectedMode == TenKeyQWERTYMode.Number) KeyCharacterCase.AS_DEFINED else state.shift.keyCharacterCase)
+            val apply = {
+                if (splitInputs[state.slot] === state && state.presentedMode == expectedMode) {
+                    val view = state.binding.customLayoutFloating
+                    setKeyboardWithDeleteKeyFlickPreferences(view, layout)
+                    view.setKeyCharacterCase(if (expectedMode == TenKeyQWERTYMode.Number) KeyCharacterCase.AS_DEFINED else state.shift.keyCharacterCase)
+                    syncSplitPresentation()
+                }
+            }
+            if (state.touching) state.pendingLayout = apply else apply()
         }
     }
 
@@ -13256,7 +13349,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onLongPressActionCanceled(action: KeyAction) {
-                activateSplitView(flickView)
+                // Rebuilding an inactive pane also emits cancellation; it is not an input gesture.
+                val state = splitInputs.values.firstOrNull { it.binding.customLayoutFloating === flickView }
+                if (state != null && activeSplitSlot != state.slot) return
                 cancelOngoingLongPressForAction(action)
             }
 
@@ -13981,7 +14076,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         baselineInputBehavior = resolveBaselineInputBehavior()
                         applyEffectiveInputBehavior("custom direct mode key")
 
-                        Handler(mainLooper).post {
+                        if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchDirectMode,
                                 if (isCustomLayoutDirectMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
@@ -13993,7 +14088,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchRomajiEnglish -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
                         persistCurrentCustomKeyboardInputModeIfEnabled()
-                        Handler(mainLooper).post {
+                        if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchRomajiEnglish,
                                 if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
@@ -14435,7 +14530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         baselineInputBehavior = resolveBaselineInputBehavior()
                         applyEffectiveInputBehavior("custom direct mode key")
 
-                        Handler(mainLooper).post {
+                        if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchDirectMode,
                                 if (isCustomLayoutDirectMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
@@ -14451,7 +14546,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchRomajiEnglish -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
                         persistCurrentCustomKeyboardInputModeIfEnabled()
-                        Handler(mainLooper).post {
+                        if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchRomajiEnglish,
                                 if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
@@ -14565,19 +14660,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleCustomKeyboardShiftTap() {
         customKeyboardShiftState = customKeyboardShiftState.onShiftTap()
-        Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
+        if (splitController != null) scheduleSplitPresentation()
+        else Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
     }
 
     private fun handleCustomKeyboardCapsLockTap() {
         customKeyboardShiftState = customKeyboardShiftState.onCapsLockTap()
-        Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
+        if (splitController != null) scheduleSplitPresentation()
+        else Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
     }
 
     private fun consumeCustomKeyboardOneShotShift() {
         val consumedState = customKeyboardShiftState.consumeOneShot()
         if (consumedState == customKeyboardShiftState) return
         customKeyboardShiftState = consumedState
-        Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
+        if (splitController != null) scheduleSplitPresentation()
+        else Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
     }
 
     private fun applyCustomLayoutShiftAndCapLock(text: String): String {
@@ -16983,6 +17081,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
+                if (splitController != null) {
+                    activeSplitSlot?.let(splitInputs::get)?.let { state ->
+                        state.symbolState = isSymbolKeyboardShow
+                        syncSplitSymbols(state)
+                    }
+                    return@collectLatest
+                }
                 clearZeroQueryAllState(refresh = false)
                 applySymbolKeyboardAppearance()
                 setKeyboardSizeSwitchKeyboard(mainView)
@@ -17190,7 +17295,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 // 3. CustomSymbolKeyboardViewの表示を更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
-                floatingKeyboardBinding?.floatingSymbolKeyboard?.updateClipboardItems(uiItems)
+                updateFloatingClipboardItems(uiItems)
             }
         }
 
@@ -17389,6 +17494,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (string.isNotEmpty() && inputString.value == string) {
                         applyRawComposingFallback(string)
                     }
+                } finally {
+                    scheduleSplitPresentation()
                 }
             }
         }
@@ -22142,7 +22249,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnDefaultEmojiSkinToneChangeListener { skinTone ->
                 defaultEmojiSkinTonePreference = skinTone
                 appPreference.default_emoji_skin_tone_preference = skinTone
-                floatingKeyboardBinding?.floatingSymbolKeyboard?.setDefaultEmojiSkinTone(skinTone)
+                (splitInputs.values.map { it.binding.floatingSymbolKeyboard } +
+                    listOfNotNull(floatingKeyboardBinding?.floatingSymbolKeyboard)).distinct()
+                    .forEach { it.setDefaultEmojiSkinTone(skinTone) }
             }
         }
 
@@ -22223,6 +22332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 defaultEmojiSkinTonePreference = skinTone
                 appPreference.default_emoji_skin_tone_preference = skinTone
                 mainView.keyboardSymbolView.setDefaultEmojiSkinTone(skinTone)
+                splitInputs.values.forEach { it.binding.floatingSymbolKeyboard.setDefaultEmojiSkinTone(skinTone) }
             }
         }
     }
@@ -22967,7 +23077,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private suspend fun setSymbolsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+    private suspend fun setSymbolsFloating(
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
+        initialMode: SymbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
+    ) {
         val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
@@ -22991,7 +23104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
+            symbolMode = initialMode,
             defaultEmojiSkinTone = defaultEmojiSkinTonePreference
 
         )
@@ -24566,6 +24679,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setTenkeyIconsInHenkanFloating(
         insertString: String, floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (splitController != null) { scheduleSplitPresentation(); return }
         if (isGojuonSurface()) {
             floatingKeyboardLayoutBinding.gojuonViewFloating.apply {
                 when (currentInputMode.get()) {
@@ -24733,6 +24847,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateUIinHenkanFloating(
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding, insertString: String
     ) {
+        if (splitController != null) { scheduleSplitPresentation(); return }
         if (isGojuonSurface()) {
             floatingKeyboardLayoutBinding.gojuonViewFloating.apply {
                 setSideKeyEnterDrawable(cachedReturnDrawable)

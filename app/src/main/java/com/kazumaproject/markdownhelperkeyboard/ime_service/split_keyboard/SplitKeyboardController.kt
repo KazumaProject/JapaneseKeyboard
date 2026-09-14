@@ -24,6 +24,7 @@ internal class SplitKeyboardController(
     private val onEditing: () -> Unit,
     private val colors: () -> CandidatePanelColors = { CandidatePanelColors.resolve(context) },
     private val onWindowFailure: () -> Unit = {},
+    private val onGestureChanged: (SplitSlot, Boolean) -> Unit = { _, _ -> },
 ) {
     private val manager = context.getSystemService(WindowManager::class.java)
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -37,11 +38,23 @@ internal class SplitKeyboardController(
         private set
     private var landscape = isLandscape()
     private var area = Rect()
+    private var windowOrigin = android.graphics.Point()
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { refresh() }
     private var disposed = false
 
     private inner class InputFrame(val slot: SplitSlot) : FrameLayout(context) {
         private var keyboardGesture = false
+        fun cancelKeyboardGesture() {
+            if (!keyboardGesture) return
+            val now = android.os.SystemClock.uptimeMillis()
+            val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+            try { super.dispatchTouchEvent(cancel) } finally {
+                cancel.recycle()
+                keyboardGesture = false
+                onInputFinished(slot)
+                onGestureChanged(slot, false)
+            }
+        }
         override fun dispatchTouchEvent(event: MotionEvent): Boolean {
             if (editing) return true
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
@@ -51,7 +64,14 @@ internal class SplitKeyboardController(
             // Candidate selection uses the shared composing session, not this pane's mode.
             if (!keyboardGesture) return super.dispatchTouchEvent(event)
             onActivate(slot)
-            return try { super.dispatchTouchEvent(event) } finally { onInputFinished(slot) }
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) onGestureChanged(slot, true)
+            return try { super.dispatchTouchEvent(event) } finally {
+                onInputFinished(slot)
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    keyboardGesture = false
+                    onGestureChanged(slot, false)
+                }
+            }
         }
     }
 
@@ -74,6 +94,20 @@ internal class SplitKeyboardController(
         init {
             input.addView(contents, FrameLayout.LayoutParams(-1, -1))
             root.contentContainer.addView(input, FrameLayout.LayoutParams(-1, -1))
+            if (Build.VERSION.SDK_INT < 30) {
+                root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    val requested = params ?: return@addOnLayoutChangeListener
+                    val location = IntArray(2).also(root::getLocationOnScreen)
+                    val originX = location[0] - requested.x
+                    val originY = location[1] - requested.y
+                    if (windowOrigin.x != originX || windowOrigin.y != originY) {
+                        // Pre-R WindowManager chooses its own inset origin. Measure that origin
+                        // instead of assuming stable insets equal navigation-bar insets.
+                        windowOrigin.set(originX, originY)
+                        root.post { if (!disposed) refresh() }
+                    }
+                }
+            }
         }
     }
 
@@ -99,6 +133,7 @@ internal class SplitKeyboardController(
     fun setEditing(value: Boolean) {
         if (disposed) return
         panes.values.forEach { pane ->
+            if (value) pane.input.cancelKeyboardGesture()
             pane.gestureStart?.let { pane.placement = it }
             pane.gestureStart = null
             pane.gesture = null
@@ -117,6 +152,7 @@ internal class SplitKeyboardController(
             landscape = nextLandscape
             area = nextArea
             panes.values.forEach {
+                it.input.cancelKeyboardGesture()
                 it.gesture = null
                 it.gestureStart = null
                 it.root.setHeaderVisible(settings.editPlacement.shows(it.slot))
@@ -153,13 +189,21 @@ internal class SplitKeyboardController(
         val params = pane.params ?: WindowManager.LayoutParams(width, height,
             WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT).apply {
             token = anchor.windowToken
             gravity = Gravity.TOP or Gravity.LEFT
             setTitle("Split keyboard ${pane.slot}")
+            if (Build.VERSION.SDK_INT >= 30) {
+                setFitInsetsTypes(0)
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } else if (Build.VERSION.SDK_INT >= 28) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
         }
-        params.x = x; params.y = y; params.width = width; params.height = height
+        params.x = x - windowOrigin.x; params.y = y - windowOrigin.y
+        params.width = width; params.height = height
         try {
             if (pane.root.parent == null) manager.addView(pane.root, params) else manager.updateViewLayout(pane.root, params)
             pane.params = params
@@ -227,14 +271,18 @@ internal class SplitKeyboardController(
     private fun dp(value: Float) = (value * density).roundToInt()
     private fun isLandscape() = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     private fun availableArea(): Rect {
-        val metrics = context.resources.displayMetrics
         if (Build.VERSION.SDK_INT >= 30) {
             val window = manager.currentWindowMetrics
             val insets = window.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            windowOrigin.set(window.bounds.left, window.bounds.top)
             return Rect(window.bounds).apply { left += insets.left; top += insets.top; right -= insets.right; bottom -= insets.bottom }
         }
+        val size = android.graphics.Point().also { manager.defaultDisplay.getRealSize(it) }
         val insets = anchor.rootWindowInsets
-        return Rect(insets?.stableInsetLeft ?: 0, insets?.stableInsetTop ?: 0,
-            metrics.widthPixels - (insets?.stableInsetRight ?: 0), metrics.heightPixels - (insets?.stableInsetBottom ?: 0))
+        val cutout = if (Build.VERSION.SDK_INT >= 28) insets?.displayCutout else null
+        return Rect(maxOf(insets?.stableInsetLeft ?: 0, cutout?.safeInsetLeft ?: 0),
+            maxOf(insets?.stableInsetTop ?: 0, cutout?.safeInsetTop ?: 0),
+            size.x - maxOf(insets?.stableInsetRight ?: 0, cutout?.safeInsetRight ?: 0),
+            size.y - maxOf(insets?.stableInsetBottom ?: 0, cutout?.safeInsetBottom ?: 0))
     }
 }
