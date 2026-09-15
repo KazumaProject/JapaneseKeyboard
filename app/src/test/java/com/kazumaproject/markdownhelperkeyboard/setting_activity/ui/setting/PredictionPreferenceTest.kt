@@ -31,6 +31,26 @@ class PredictionPreferenceTest {
     }
 
     @Test
+    fun numberPreferencesPersistAndReachTheImeSnapshot() {
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("test", "個", "こ")
+        val config = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit))
+        AppPreference.japanese_number_candidates_enable_preference = false
+        AppPreference.number_candidate_order_preference = "kanji_full_half"
+        AppPreference.number_candidate_config = config
+        AppPreference.init(context)
+        val snapshot = ImePreferencesSnapshot.from(AppPreference).predictionConfig
+        assertFalse(snapshot.japaneseNumberCandidatesEnabled)
+        assertEquals("kanji_full_half", snapshot.numberCandidateOrder.preferenceValue)
+        assertEquals(config, snapshot.numberCandidateConfig)
+        val backup = AppPreference.exportAllToJson()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        assertEquals(snapshot, ImePreferencesSnapshot.from(AppPreference).predictionConfig)
+        AppPreference.number_candidate_order_preference = "unknown"
+        assertEquals("half_full_kanji", AppPreference.number_candidate_order_preference)
+    }
+
+    @Test
     fun defaultsAreSeparatedFromNBestAndMatchTheSettingsScreen() {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 

@@ -26,6 +26,34 @@ import org.robolectric.annotation.Config
 class KanaKanjiConversionSessionParityTest {
 
     @Test
+    fun numberSettingsAreAppliedAcrossQueriesAndSessionReuse() = runBlocking {
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit(
+            "session-test", "カスタム単位甲", "こてすと",
+        )
+        val config = PredictionConfig(numberCandidateConfig =
+            com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit)))
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in CandidateQueryMode.entries) {
+                for (bunsetsu in listOf(false, true)) {
+                    val query = request("にこてすと", mode, bunsetsu).copy(predictionConfig = config)
+                    val enabled = session.query(query).candidates
+                    assertTrue("$backend/$mode/$bunsetsu", enabled.any { it.string == "2カスタム単位甲" })
+                    val disabled = session.query(query.copy(predictionConfig = config.copy(
+                        japaneseNumberCandidatesEnabled = false))).candidates
+                    assertFalse("$backend/$mode/$bunsetsu", disabled.any { it.string == "2カスタム単位甲" })
+                    val edited = config.copy(numberCandidateConfig = config.numberCandidateConfig.copy(
+                        units = listOf(unit.copy(output = "カスタム単位乙"))))
+                    val refreshed = session.query(query.copy(predictionConfig = edited)).candidates
+                    assertTrue(refreshed.any { it.string == "2カスタム単位乙" })
+                    assertFalse(refreshed.any { it.string == "2カスタム単位甲" })
+                    assertTrue(session.query(request("さんじごふん", mode, bunsetsu)).candidates.any { it.string == "3時5分" })
+                }
+            }
+        }
+    }
+
+    @Test
     fun bunsetsuDisplayPreservesFullLatticeResultAcrossBackendsAndCandidateLoading() = runBlocking {
         val input = "あしたはとうきょうにいきます"
         for (backend in ConversionBackend.entries) {

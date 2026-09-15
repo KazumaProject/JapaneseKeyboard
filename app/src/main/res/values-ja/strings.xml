@@ -1813,4 +1813,6 @@
     <string name="qwerty_romaji_space_flick_summary">上フリックで、既存のローマ字のスペース設定と反対の幅（半角・全角）の空白を入力します。文字キーの上フリック設定とは独立しています。</string>
     <string name="qwerty_english_space_flick_summary">上フリックで全角スペースを入力します。未確定文字がある場合は確定して全角スペースを挿入します。タップは半角スペースのままです。文字キーの上フリック設定とは独立しています。</string>
     <string name="floating_keyboard_hide">キーボードを非表示</string>
+    <string name="japanese_number_candidates_enable_title">読みから数字候補を生成</string>
+    <string name="japanese_number_candidates_enable_summary">「いち → 1」「よじ → 4時」などを、予測・変換・英数かな・候補タブ非表示で生成します。無効でも通常辞書の数字表記や、数字を直接入力したときの候補は表示されます。</string>
 </resources>

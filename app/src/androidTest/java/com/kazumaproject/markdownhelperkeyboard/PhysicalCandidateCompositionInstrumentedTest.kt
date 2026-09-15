@@ -32,6 +32,39 @@ class PhysicalCandidateCompositionInstrumentedTest {
     private lateinit var host: ActivityScenario<FastInputHostActivity>
     private var keyboardId = 0
 
+    @Test fun numericCandidatesSurviveMovingBetweenBunsetsuSegments() = withKeyboard(bunsetsu = true) {
+        type("korehayoji")
+        awaitText("これはよじ")
+        key(KeyEvent.KEYCODE_SPACE)
+        await { focusedRange().first == 0 && focusedRange().last < text().lastIndex }
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await { focusedRange().first > 0 }
+        val prefix = text().take(focusedRange().first)
+        instrumentation.runOnMainSync {
+            // Inspect the real strip state too: physical selection has a separate candidate list.
+            val activityThread = Class.forName("android.app.ActivityThread")
+            val current = activityThread.getDeclaredMethod("currentActivityThread").invoke(null)
+            val services = activityThread.getDeclaredField("mServices").apply { isAccessible = true }
+                .get(current) as Map<*, *>
+            val ime = services.values.filterIsInstance<com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService>().single()
+            val candidates = ime.javaClass.getDeclaredField("currentCandidateStripCandidates")
+                .apply { isAccessible = true }.get(ime) as List<*>
+            assertTrue("The segment's numeric candidate must reach the shared strip", candidates.any {
+                (it as com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate).string == "4時"
+            })
+        }
+        // Exercise the IME's loaded segment candidates, display and selection, not only its parser.
+        var attempts = 0
+        while (text() != prefix + "4時" && attempts++ < 30) key(KeyEvent.KEYCODE_SPACE)
+        assertEquals(prefix + "4時", text())
+        key(KeyEvent.KEYCODE_DPAD_LEFT)
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        assertEquals(prefix + "4時", text())
+        key(KeyEvent.KEYCODE_ENTER)
+        awaitText(prefix + "4時")
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
     @Test fun bunsetsuFirstConversionAndCandidateChangePreserveOtherSegments() = withKeyboard(bunsetsu = true) {
         assertBunsetsuConversionAndNavigation()
     }
