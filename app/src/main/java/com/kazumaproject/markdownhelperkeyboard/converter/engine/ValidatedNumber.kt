@@ -16,12 +16,12 @@ class ValidatedNumber private constructor(
     val customUnit: CustomNumberUnit? = null,
     val builtInCounter: BuiltInCounter? = null,
 ) {
-    val fullWidth: String get() = digits.map { it + 0xFEE0 }.joinToString("")
-    val basicForms: List<String> get() = clock?.let { (hour, minute) ->
+    val fullWidth: String by lazy { buildString(digits.length) { digits.forEach { append(it + 0xFEE0) } } }
+    val basicForms: List<String> by lazy { clock?.let { (hour, minute) ->
         val half = "${hour}時${minute}分"
         listOf(half, half.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString(""),
             hour.toLong().toKanji() + "時" + minute.toLong().toKanji() + "分")
-    } ?: listOf(digits + counter, fullWidth + counter, value.toKanji() + counter)
+    } ?: listOf(digits + counter, fullWidth + counter, value.toKanji() + counter) }
 
     val clockText: String? get() = clock?.let { (hour, minute) -> "$hour:${minute.toString().padStart(2, '0')}" }
 
@@ -74,7 +74,10 @@ class ValidatedNumber private constructor(
 
         private fun cardinal(text: String, terminal: Boolean): Long? {
             if (text == "ぜろ" || text == "れい") return 0
-            if (text.isEmpty() || text.any { it !in 'ぁ'..'ゖ' }) return null
+            // Every accepted cardinal starts/ends with one of these characters. Reject
+            // ordinary words before walking the numeric grammar; counter rules stay separate.
+            if (text.isEmpty() || text.first() !in "いにさしよごろなはきじひせ" ||
+                text.last() !in "ちにんごくなうしよ" || text.any { it !in 'ぁ'..'ゖ' }) return null
             var remaining = text
             var total = 0L
             for ((place, magnitude) in listOf("ちょう" to 1_000_000_000_000L,
@@ -165,26 +168,17 @@ class ValidatedNumber private constructor(
                 listOf("せん", "ぜん", "まん").any(stem::endsWith)) }
         }
 
-        fun parseAll(input: String, config: NumberCandidateConfig): List<ValidatedNumber> = buildList {
+        fun parseAll(input: String, config: NumberCandidateConfig): List<ValidatedNumber> =
+            if (input.length > UByte.MAX_VALUE.toInt()) emptyList() else config.parse(input)
+
+        internal fun parseUncached(input: String, config: NumberCandidateConfig): List<ValidatedNumber> = buildList {
             parse(input)?.let(::add)
-            for (counter in BuiltInCounter.entries) {
+            for (counter in BuiltInCounter.matching(input)) {
                 for (value in counter.parse(input)) add(ValidatedNumber(value, input, NumberInputOrigin.READING,
                     counter.output, value.toString(), builtInCounter = counter))
             }
-            for (unit in config.units.filter { it.enabled && it.isValid() }) {
-                val exact = unit.specialReadings.filter { it.reading == input }.map { it.value }
-                val composed = if (exact.isEmpty()) unit.specialReadings.mapNotNull { it.compose(input) } else emptyList()
-                val ordinary = if (input.endsWith(unit.reading)) parseReading(input.dropLast(unit.reading.length)) else null
-                val values = (exact + composed).ifEmpty {
-                    listOfNotNull(ordinary?.value?.takeIf { n ->
-                        unit.specialReadings.none { it.value == n } &&
-                            unit.specialReadings.none { special ->
-                                special.mode == SpecialNumberReadingMode.COMPOSE &&
-                                    input.dropLast(unit.reading.length).endsWith(special.baseReading)
-                            }
-                    })
-                }
-                for (value in values.distinct()) add(ValidatedNumber(value, input, NumberInputOrigin.READING,
+            for ((unit, values) in config.compiledUnits.match(input)) {
+                for (value in values) add(ValidatedNumber(value, input, NumberInputOrigin.READING,
                     unit.output, value.toString(), customUnit = unit))
             }
         }

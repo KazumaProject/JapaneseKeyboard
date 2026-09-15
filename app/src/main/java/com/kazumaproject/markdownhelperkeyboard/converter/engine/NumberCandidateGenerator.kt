@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createVal
 /** Generates numeric additions only. Dictionary candidates are never validated or filtered here. */
 object NumberCandidateGenerator {
     fun generate(input: String, config: PredictionConfig): List<Candidate> {
+        if (input.length > UByte.MAX_VALUE.toInt()) return emptyList()
         val proofs = ValidatedNumber.parseAll(input, config.numberCandidateConfig)
             .filter { it.origin == NumberInputOrigin.DIGITS || config.japaneseNumberCandidatesEnabled }
         if (proofs.isEmpty() && input.isNotEmpty() && input.all { it in '0'..'9' || it in '０'..'９' }) {
@@ -26,6 +27,7 @@ object NumberCandidateGenerator {
     }
 
     fun generate(proof: ValidatedNumber, config: PredictionConfig): List<Candidate> {
+        if (proof.reading.length > UByte.MAX_VALUE.toInt()) return emptyList()
         fun candidate(text: String, type: Byte, score: Int) = Candidate(
             string = text, type = type, length = proof.reading.length.toUByte(), score = score,
             yomi = proof.reading,
@@ -33,12 +35,14 @@ object NumberCandidateGenerator {
             rightId = if (proof.counter == "時") 2015 else if (proof.counter.isNotEmpty()) 2011
                 else if (type.toInt() == 32) 2046 else 2044,
         )
-        val time = proof.clock != null || proof.counter in listOf("時", "分")
+        val time = proof.clock != null || proof.counter == "時" || proof.counter == "分"
         val result = config.numberCandidateOrder.indices.mapIndexed { rank, index ->
             val type: Byte = when {
                 time && index == 0 -> CANDIDATE_TYPE_TIME
                 time && index == 1 -> 30
-                else -> listOf<Byte>(18, 22, 32)[index]
+                index == 0 -> 18
+                index == 1 -> 22
+                else -> 32
             }
             candidate(proof.basicForms[index], type, 8000 + rank)
         }.toMutableList()
@@ -47,8 +51,8 @@ object NumberCandidateGenerator {
             proof.digits.addCommasToNumber().takeIf { it.contains(',') }?.let { result += candidate(it, 19, 8003) }
             if (proof.value >= 10000) result += candidate(proof.value.convertToKanjiNotation(), 23, 8004)
             proof.exponent()?.let { result += candidate(it, 20, 8005) }
-            result += candidate(proof.digits.map { "⁰¹²³⁴⁵⁶⁷⁸⁹"[it - '0'] }.joinToString(""), 23, 8006)
-            result += candidate(proof.digits.map { "₀₁₂₃₄₅₆₇₈₉"[it - '0'] }.joinToString(""), 24, 8007)
+            result += candidate(buildString { proof.digits.forEach { append("⁰¹²³⁴⁵⁶⁷⁸⁹"[it - '0']) } }, 23, 8006)
+            result += candidate(buildString { proof.digits.forEach { append("₀₁₂₃₄₅₆₇₈₉"[it - '0']) } }, 24, 8007)
             if (proof.digits.length == 4) {
                 val hour = proof.digits.take(2)
                 val minute = proof.digits.takeLast(2)
@@ -75,6 +79,7 @@ object NumberCandidateGenerator {
 
     /** Orders only slots for this input's numeric forms; explicit user entries keep their slots. */
     fun order(input: String, candidates: List<Candidate>, config: PredictionConfig): List<Candidate> {
+        if (input.length > UByte.MAX_VALUE.toInt()) return candidates
         val groups = ValidatedNumber.parseAll(input, config.numberCandidateConfig)
             .filter { it.origin == NumberInputOrigin.DIGITS || config.japaneseNumberCandidatesEnabled }
             .map { proof ->
@@ -90,7 +95,8 @@ object NumberCandidateGenerator {
                 val candidate = result[index]
                 candidate.string in forms && candidate.commitText == candidate.string &&
                     candidate.length.toInt() == input.length &&
-                    candidate.type !in listOf(CANDIDATE_TYPE_USER_DICTIONARY, CANDIDATE_TYPE_USER_TEMPLATE, CANDIDATE_TYPE_TEXT_MACRO)
+                    candidate.type != CANDIDATE_TYPE_USER_DICTIONARY &&
+                    candidate.type != CANDIDATE_TYPE_USER_TEMPLATE && candidate.type != CANDIDATE_TYPE_TEXT_MACRO
             }
             val ordered = slots.map(result::get).sortedBy { forms.indexOf(it.string) }
             slots.forEachIndexed { index, slot -> result[slot] = ordered[index] }

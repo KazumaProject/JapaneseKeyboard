@@ -13,7 +13,7 @@ enum class NumberCandidateKind(val storageId: String) {
     companion object {
         fun of(proof: ValidatedNumber, text: String): NumberCandidateKind? = when {
             proof.customUnit != null -> null
-            proof.clock != null || proof.counter in setOf("時", "分") -> TIME
+            proof.clock != null || proof.counter == "時" || proof.counter == "分" -> TIME
             proof.counter == "人" -> PEOPLE
             proof.counter == "円" -> YEN
             text in proof.basicForms -> null
@@ -107,15 +107,45 @@ data class CustomNumberUnit(
     }
 }
 
-data class NumberCandidateConfig(
-    val disabledKinds: Set<NumberCandidateKind> = emptySet(),
-    val units: List<CustomNumberUnit> = emptyList(),
-    val disabledCounters: Set<String> = emptySet(),
+class NumberCandidateConfig(
+    disabledKinds: Set<NumberCandidateKind> = emptySet(),
+    units: List<CustomNumberUnit> = emptyList(),
+    disabledCounters: Set<String> = emptySet(),
 ) {
+    // Settings snapshots must not change underneath their compiled index or cached parse.
+    val disabledKinds: Set<NumberCandidateKind> = java.util.Collections.unmodifiableSet(disabledKinds.toSet())
+    val units: List<CustomNumberUnit> = java.util.Collections.unmodifiableList(units.map {
+        it.copy(specialReadings = java.util.Collections.unmodifiableList(it.specialReadings.toList()))
+    })
+    val disabledCounters: Set<String> = java.util.Collections.unmodifiableSet(disabledCounters.toSet())
+    internal val compiledUnits = if (this.units.isEmpty()) CompiledNumberUnits.EMPTY else CompiledNumberUnits(this.units)
+
+    private data class ParsedInput(val input: String, val proofs: List<ValidatedNumber>)
+    private var lastParsedInput: ParsedInput? = null
+
+    @Synchronized
+    internal fun parse(input: String): List<ValidatedNumber> {
+        lastParsedInput?.takeIf { it.input == input }?.let { return it.proofs }
+        val proofs = java.util.Collections.unmodifiableList(ValidatedNumber.parseUncached(input, this))
+        lastParsedInput = ParsedInput(input, proofs)
+        return proofs
+    }
+
+    fun copy(
+        disabledKinds: Set<NumberCandidateKind> = this.disabledKinds,
+        units: List<CustomNumberUnit> = this.units,
+        disabledCounters: Set<String> = this.disabledCounters,
+    ) = NumberCandidateConfig(disabledKinds, units, disabledCounters)
+
+    override fun equals(other: Any?): Boolean = this === other || other is NumberCandidateConfig &&
+        disabledKinds == other.disabledKinds && units == other.units && disabledCounters == other.disabledCounters
+    override fun hashCode(): Int = 31 * (31 * disabledKinds.hashCode() + units.hashCode()) + disabledCounters.hashCode()
+    override fun toString(): String = "NumberCandidateConfig(disabledKinds=$disabledKinds, units=$units, disabledCounters=$disabledCounters)"
+
     fun permits(proof: ValidatedNumber, text: String): Boolean {
-        proof.customUnit?.let { old -> return units.any { it.enabled && it == old } }
+        proof.customUnit?.let { old -> return compiledUnits.permits(old) }
         return proof.builtInCounter?.storageId !in disabledCounters &&
-            NumberCandidateKind.of(proof, text) !in disabledKinds
+            (disabledKinds.isEmpty() || NumberCandidateKind.of(proof, text) !in disabledKinds)
     }
 
     fun encode(): String = JsonObject().apply {
@@ -151,9 +181,10 @@ data class NumberCandidateConfig(
                             it.asJsonObject.get("baseReading")?.asString.orEmpty())
                     })
             }
-            require(units.size <= 256 && units.all { it.isValid() })
+            require(units.size <= 256)
             require(units.distinctBy { it.id }.size == units.size && units.distinctBy { it.reading to it.output }.size == units.size)
             NumberCandidateConfig(disabled, units, root.getAsJsonArray("disabledCounters")?.map { it.asString }?.toSet().orEmpty())
+                .also { require(it.compiledUnits.allValid) }
         }.getOrElse { NumberCandidateConfig() }
     }
 }

@@ -31,6 +31,26 @@ class PredictionPreferenceTest {
     }
 
     @Test
+    fun numberSettingsIndexIsReusedUntilStoredJsonChanges() {
+        val first = AppPreference.number_candidate_config
+        org.junit.Assert.assertSame(first, AppPreference.number_candidate_config)
+        val stored = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(
+            units = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("box", "箱", "はこ")))
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        preferences.edit().putString("number_candidate_config_v1", stored.encode()).commit()
+        val changed = AppPreference.number_candidate_config
+        org.junit.Assert.assertNotSame(first, changed)
+        assertEquals(stored, changed)
+        org.junit.Assert.assertSame(changed, AppPreference.number_candidate_config)
+        preferences.edit().putString("number_candidate_config_v1", "invalid backup").commit()
+        assertEquals(com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(), AppPreference.number_candidate_config)
+        val invalid = AppPreference.number_candidate_config
+        org.junit.Assert.assertSame(invalid, AppPreference.number_candidate_config)
+        preferences.edit().remove("number_candidate_config_v1").commit()
+        org.junit.Assert.assertNotSame(invalid, AppPreference.number_candidate_config)
+    }
+
+    @Test
     fun numberPreferencesPersistAndReachTheImeSnapshot() {
         val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("test", "個", "こ",
             specialReadings = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReading(

@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig
 import android.graphics.Color
 import androidx.core.graphics.toColorInt
 import androidx.preference.PreferenceManager
@@ -1859,9 +1860,25 @@ object AppPreference {
             it.putBoolean(JAPANESE_NUMBER_CANDIDATES_ENABLE_PREFERENCE.first, value)
         }
 
-    var number_candidate_config: com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig
-        get() = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig.decode(
-            preferences.getString("number_candidate_config_v1", null))
+    private data class NumberSettingsSnapshot(
+        val source: SharedPreferences,
+        val json: String?,
+        val config: NumberCandidateConfig,
+    )
+    private val numberSettingsLock = Any()
+    private var numberSettingsSnapshot: NumberSettingsSnapshot? = null
+
+    var number_candidate_config: NumberCandidateConfig
+        get() = synchronized(numberSettingsLock) {
+            val source = preferences
+            val json = source.getString("number_candidate_config_v1", null)
+            val cached = numberSettingsSnapshot
+            if (cached != null && cached.source === source && cached.json == json) cached.config
+            else NumberCandidateConfig.decode(json).also {
+                // Raw preference writes (including backup restore) invalidate the snapshot too.
+                numberSettingsSnapshot = NumberSettingsSnapshot(source, json, it)
+            }
+        }
         set(value) { preferences.edit().putString("number_candidate_config_v1", value.encode()).apply() }
 
     var utility_candidate_config: UtilityCandidateConfig

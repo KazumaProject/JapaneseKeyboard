@@ -97,6 +97,20 @@ enum class BuiltInCounter(val storageId: String, val output: String, val reading
         }
     }
 
+    companion object {
+        // Ordinary suffixes, sound changes and exact exceptions all participate.
+        // Preserve enum order when several counters share a reading (e.g. 回 / 階).
+        private val byLastCharacter: Map<Char, List<BuiltInCounter>> by lazy {
+            entries.flatMap { counter ->
+                (listOf(counter.reading) + counter.endings.map { it.surface } + counter.exact.keys)
+                    .map { it.last() }.distinct().map { it to counter }
+            }.groupBy({ it.first }, { it.second })
+        }
+
+        internal fun matching(input: String): List<BuiltInCounter> =
+            byLastCharacter[input.lastOrNull()].orEmpty()
+    }
+
     fun parse(input: String): List<Long> {
         exact[input]?.let { return listOf(it) }
         if (this == THINGS) return emptyList()
