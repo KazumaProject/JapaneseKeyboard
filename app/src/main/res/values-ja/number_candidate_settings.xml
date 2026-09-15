@@ -2,7 +2,7 @@
     <string name="number_types_title">数字候補の種類</string>
     <string name="number_types_note">OFFにした種類の候補は自動生成しません。辞書にある言葉はOFFでも表示されます。</string>
     <string name="number_generation_off">数字候補の生成がOFFです。ここで設定を編集できます。</string>
-    <string name="number_custom_units">自分で追加した単位</string>
+    <string name="number_custom_units">ユーザー登録</string>
     <string name="number_add_unit">単位を追加</string>
     <string name="number_edit_unit">単位を編集</string>
     <string name="number_unit_intro">数字の後ろに付ける言葉を登録します。「こ → 個」を登録すると、「にこ」から「2個」を生成できます。</string>
@@ -26,7 +26,7 @@
     <string name="number_try_reading">読みを試す</string>
     <string name="number_try_hint">例：にこ、いっこ</string>
     <string name="number_try_empty">読みを入力すると、この登録から生成される候補を確認できます。</string>
-    <string name="number_try_no_match">この登録では生成されません。数字＋単位の読み、または登録した特別な読みを入力してください。音の変化は自動では推測しません。</string>
+    <string name="number_try_no_match">この単位に一致する候補はありません。数字と単位の読み、または登録したルールに合う読みを入力してください。</string>
     <string name="number_invalid_output">1〜32文字で入力してください。前後の空白や改行は使えません。</string>
     <string name="number_invalid_reading">ひらがな・長音符で1〜255文字を入力してください。</string>
     <string name="number_invalid_value">0〜9223372036854775807の整数を入力してください。</string>
@@ -43,7 +43,7 @@
     <string name="number_unit_summary">%1$s → %2$s　特別な読み：%3$d件</string>
     <string name="number_limit">登録できる上限に達しています。不要な登録を削除してください。</string>
     <string name="number_finish_special">編集中の特別な読みを追加するか、キャンセルしてください。</string>
-    <string name="number_kind_time">時間</string>
+    <string name="number_kind_time">時刻・分</string>
     <string name="number_example_time">よじ → 4時、 ごふん → 5分、 いちじごふん → 1時5分・1:05</string>
     <string name="number_kind_people">人数</string>
     <string name="number_example_people">さんにん → 3人</string>
@@ -83,4 +83,15 @@
         <item>漢数字 → 半角 → 全角</item>
         <item>漢数字 → 全角 → 半角</item>
     </string-array>
+    <string name="number_builtin_tab">内蔵</string>
+    <string name="number_builtin_counters">助数詞</string>
+    <string name="number_units_empty">登録した単位はありません。「単位を追加」から登録できます。</string>
+    <string name="number_unit_enabled">%1$sを有効にする</string>
+    <string name="number_mode_exact">完全一致</string>
+    <string name="number_mode_compose">ルール合成</string>
+    <string name="number_base_reading">置き換え元の数字読み</string>
+    <string name="number_base_reading_hint">例：いち → いっこ、じゅう → じゅっこ。単位を含めず数字の読みを入力してください。</string>
+    <string name="number_compose_effect">数字の末尾「%1$s」を「%2$s」に置き換えます。大きい数字の末尾にも適用します。</string>
+    <string name="number_compose_limit">例：「いち → いっこ」なら「じゅういっこ → 11個」も生成します。「はたち」などの例外には完全一致を使ってください。</string>
+    <string name="number_invalid_base">登録した数字と一致する読みを入力してください。ルール合成では1以上の数字を指定してください。</string>
 </resources>

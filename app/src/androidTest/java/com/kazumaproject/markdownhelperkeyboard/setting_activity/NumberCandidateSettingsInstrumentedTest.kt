@@ -72,9 +72,10 @@ class NumberCandidateSettingsInstrumentedTest {
                 val nav = (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController
                 nav.navigate(R.id.numberCandidateSettingsFragment)
             }
-            onView(withText(startsWith(label(R.string.number_kind_time) + "\n"))).perform(click())
+            onView(withText((uiContext ?: context).getString(R.string.number_type_row, label(R.string.number_kind_time), label(R.string.number_example_time)))).perform(click())
             assertTrue(NumberCandidateKind.TIME in AppPreference.number_candidate_config.disabledKinds)
-            onView(withText(startsWith(label(R.string.number_kind_time) + "\n"))).perform(click())
+            onView(withText((uiContext ?: context).getString(R.string.number_type_row, label(R.string.number_kind_time), label(R.string.number_example_time)))).perform(click())
+            onView(withText(label(R.string.number_custom_units))).perform(click())
             click(R.string.number_add_unit)
             capture("number-unit-empty")
             fill(R.string.number_unit_output, "個")
@@ -129,7 +130,7 @@ class NumberCandidateSettingsInstrumentedTest {
             val unit = AppPreference.number_candidate_config.units.single()
             assertEquals(listOf(SpecialNumberReading(1, "いっこ")), unit.specialReadings)
             scenario.recreate()
-            onView(withText(label(R.string.number_edit) + "：個")).perform(scrollTo(), click())
+            onView(withContentDescription(label(R.string.number_edit) + "：個")).perform(scrollTo(), click())
             fill(R.string.number_unit_output, "セット")
             scenario.onActivity { it.onSupportNavigateUp() }
             capture("number-discard-dialog")
@@ -137,7 +138,7 @@ class NumberCandidateSettingsInstrumentedTest {
             onView(withId(android.R.id.button2)).perform(click())
             click(R.string.number_save)
             assertEquals("セット", AppPreference.number_candidate_config.units.single().output)
-            onView(withText(label(R.string.number_edit) + "：セット")).perform(scrollTo(), click())
+            onView(withContentDescription(label(R.string.number_edit) + "：セット")).perform(scrollTo(), click())
             click(R.string.number_delete)
             onView(withText(label(R.string.number_delete_unit))).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).check(matches(isDisplayed()))
             onView(withId(android.R.id.button1)).perform(click())
@@ -162,12 +163,72 @@ class NumberCandidateSettingsInstrumentedTest {
                         .navController.navigate(R.id.numberUnitEditorFragment, Bundle().apply { putString("unitId", unit.id) })
                 }
                 fill(R.string.number_unit_output, "")
-                onView(withText(label(R.string.number_edit) + "：いっこ")).perform(scrollTo(), click())
+                onView(withContentDescription(label(R.string.number_edit) + "：いっこ")).perform(scrollTo(), click())
                 onView(withText(label(R.string.number_invalid_output))).perform(scrollTo()).check(matches(isDisplayed()))
                 fill(R.string.number_unit_output, "個")
                 fill(R.string.number_unit_reading, "")
-                onView(withText(label(R.string.number_edit) + "：いっこ")).perform(scrollTo(), click())
+                onView(withContentDescription(label(R.string.number_edit) + "：いっこ")).perform(scrollTo(), click())
                 onView(withText(label(R.string.number_invalid_reading))).perform(scrollTo()).check(matches(isDisplayed()))
+            }
+        } finally {
+            preferences.edit().apply { if (original == null) remove("number_candidate_config_v1") else putString("number_candidate_config_v1", original) }.commit()
+            AppPreference.init(context)
+        }
+    }
+
+    @Test fun tabsAndCompositionSurviveRecreationAndRemainIndependent() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val original = preferences.getString("number_candidate_config_v1", null)
+        AppPreference.init(context)
+        AppPreference.number_candidate_config = NumberCandidateConfig()
+        try {
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+                scenario.onActivity {
+                    uiContext = it
+                    (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment)
+                        .navController.navigate(R.id.numberCandidateSettingsFragment)
+                }
+                capture("number-built-in-tab")
+                onView(withText(startsWith("個\n"))).perform(scrollTo(), click())
+                assertTrue("pieces" in AppPreference.number_candidate_config.disabledCounters)
+                onView(withText(label(R.string.number_custom_units))).perform(click())
+                onView(withText(label(R.string.number_units_empty))).check(matches(isDisplayed()))
+                scenario.recreate()
+                click(R.string.number_add_unit)
+                fill(R.string.number_unit_output, "個")
+                fill(R.string.number_unit_reading, "こ")
+                click(R.string.number_special_add)
+                onView(withHint(startsWith(label(R.string.number_special_value)))).perform(scrollTo(), replaceText("1"), closeSoftKeyboard())
+                fill(R.string.number_special_reading, "いっこ")
+                onView(withText(label(R.string.number_mode_compose))).perform(scrollTo(), click())
+                onView(withHint(label(R.string.number_base_reading))).check(matches(withText("いち")))
+                fill(R.string.number_base_reading, "に")
+                click(R.string.number_apply_reading)
+                onView(withText(label(R.string.number_invalid_base))).perform(scrollTo()).check(matches(isDisplayed()))
+                fill(R.string.number_base_reading, "いち")
+                scenario.recreate()
+                onView(withText(label(R.string.number_mode_compose))).perform(scrollTo()).check(matches(isChecked()))
+                onView(withHint(label(R.string.number_base_reading))).check(matches(withText("いち")))
+                capture("number-compose-rule")
+                click(R.string.number_apply_reading)
+                fill(R.string.number_try_reading, "じゅういっこ")
+                onView(withText("じゅういっこ → 11個・１１個・十一個")).perform(scrollTo()).check(matches(isDisplayed()))
+                click(R.string.number_save)
+                assertEquals(SpecialNumberReading(1, "いっこ", SpecialNumberReadingMode.COMPOSE, "いち"),
+                    AppPreference.number_candidate_config.units.single().specialReadings.single())
+                capture("number-user-tab")
+                val enabledDescription = (uiContext ?: context).getString(R.string.number_unit_enabled, "個")
+                onView(withContentDescription(enabledDescription)).perform(click())
+                assertFalse(AppPreference.number_candidate_config.units.single().enabled)
+                click(R.string.number_add_unit)
+                scenario.onActivity { it.onSupportNavigateUp() }
+                onView(withContentDescription(enabledDescription)).perform(click())
+                assertTrue(AppPreference.number_candidate_config.units.single().enabled)
+                scenario.recreate()
+                onView(withContentDescription(label(R.string.number_edit) + "：個")).perform(scrollTo(), click())
+                fill(R.string.number_try_reading, "じゅういっこ")
+                onView(withText("じゅういっこ → 11個・１１個・十一個")).perform(scrollTo()).check(matches(isDisplayed()))
+                assertTrue("pieces" in AppPreference.number_candidate_config.disabledCounters)
             }
         } finally {
             preferences.edit().apply { if (original == null) remove("number_candidate_config_v1") else putString("number_candidate_config_v1", original) }.commit()

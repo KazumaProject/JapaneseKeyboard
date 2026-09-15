@@ -62,7 +62,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("くじ").any { it.string == "9時" })
         assertTrue(engine.getCandidatesEnglishKana("じゅうくじ").any { it.string == "19時" })
         assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
-        assertFalse(engine.getCandidatesEnglishKana("よえん").any { it.string == "4円" })
+        assertTrue(engine.getCandidatesEnglishKana("よえん").any { it.string == "4円" })
         assertFalse(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
         assertFalse(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
         assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })

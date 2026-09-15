@@ -32,8 +32,10 @@ class PredictionPreferenceTest {
 
     @Test
     fun numberPreferencesPersistAndReachTheImeSnapshot() {
-        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("test", "個", "こ")
-        val config = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit))
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("test", "個", "こ",
+            specialReadings = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReading(
+                1, "いっこ", com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReadingMode.COMPOSE, "いち")))
+        val config = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit), disabledCounters = setOf("pieces"))
         AppPreference.japanese_number_candidates_enable_preference = false
         AppPreference.number_candidate_order_preference = "kanji_full_half"
         AppPreference.number_candidate_config = config

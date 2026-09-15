@@ -14,6 +14,7 @@ class ValidatedNumber private constructor(
     val digits: String,
     val clock: Pair<Int, Int>? = null,
     val customUnit: CustomNumberUnit? = null,
+    val builtInCounter: BuiltInCounter? = null,
 ) {
     val fullWidth: String get() = digits.map { it + 0xFEE0 }.joinToString("")
     val basicForms: List<String> get() = clock?.let { (hour, minute) ->
@@ -97,6 +98,8 @@ class ValidatedNumber private constructor(
             return total.takeIf { it > 0 }
         }
 
+        internal fun parseCounterReading(input: String): Long? = cardinal(input, false)
+
         fun parseReading(input: String): ValidatedNumber? = make(input, "", cardinal(input, true))
 
         fun parseDigits(input: String): ValidatedNumber? {
@@ -123,7 +126,7 @@ class ValidatedNumber private constructor(
                 if (!input.endsWith(suffix)) continue
                 val stem = input.dropLast(suffix.length)
                 val value = when (suffix) {
-                    "えん" -> cardinal(stem, false)
+                    "えん" -> cardinal(if (stem.endsWith("よ")) stem.dropLast(1) + "よん" else stem, false)
                     "じ" -> {
                         val special = listOf("よ" to "よん", "く" to "きゅう")
                             .firstOrNull { stem in listOf(it.first, "じゅう" + it.first, "にじゅう" + it.first) }
@@ -164,11 +167,25 @@ class ValidatedNumber private constructor(
 
         fun parseAll(input: String, config: NumberCandidateConfig): List<ValidatedNumber> = buildList {
             parse(input)?.let(::add)
-            for (unit in config.units.filter { it.enabled }) {
-                val special = unit.specialReadings.firstOrNull { it.reading == input }
+            for (counter in BuiltInCounter.entries) {
+                for (value in counter.parse(input)) add(ValidatedNumber(value, input, NumberInputOrigin.READING,
+                    counter.output, value.toString(), builtInCounter = counter))
+            }
+            for (unit in config.units.filter { it.enabled && it.isValid() }) {
+                val exact = unit.specialReadings.filter { it.reading == input }.map { it.value }
+                val composed = if (exact.isEmpty()) unit.specialReadings.mapNotNull { it.compose(input) } else emptyList()
                 val ordinary = if (input.endsWith(unit.reading)) parseReading(input.dropLast(unit.reading.length)) else null
-                val value = special?.value ?: ordinary?.value?.takeIf { n -> unit.specialReadings.none { it.value == n } }
-                if (value != null) add(ValidatedNumber(value, input, NumberInputOrigin.READING, unit.output, value.toString(), customUnit = unit))
+                val values = (exact + composed).ifEmpty {
+                    listOfNotNull(ordinary?.value?.takeIf { n ->
+                        unit.specialReadings.none { it.value == n } &&
+                            unit.specialReadings.none { special ->
+                                special.mode == SpecialNumberReadingMode.COMPOSE &&
+                                    input.dropLast(unit.reading.length).endsWith(special.baseReading)
+                            }
+                    })
+                }
+                for (value in values.distinct()) add(ValidatedNumber(value, input, NumberInputOrigin.READING,
+                    unit.output, value.toString(), customUnit = unit))
             }
         }
 

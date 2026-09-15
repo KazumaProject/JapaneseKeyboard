@@ -26,7 +26,7 @@
     <string name="number_try_reading">Try a reading</string>
     <string name="number_try_hint">Example: にこ, いっこ</string>
     <string name="number_try_empty">Enter a reading to preview candidates from this unit.</string>
-    <string name="number_try_no_match">No match for this unit. Enter a number plus the unit reading, or a registered special reading. Sound changes are not inferred.</string>
+    <string name="number_try_no_match">No match for this unit. Enter a number with its unit, or a reading covered by a registered rule.</string>
     <string name="number_invalid_output">Enter 1–32 characters without surrounding spaces or control characters.</string>
     <string name="number_invalid_reading">Enter 1–255 hiragana or long-vowel characters.</string>
     <string name="number_invalid_value">Enter an integer from 0 to 9223372036854775807.</string>
@@ -43,7 +43,7 @@
     <string name="number_unit_summary">%1$s → %2$s · Special readings: %3$d</string>
     <string name="number_limit">Registration limit reached. Remove an unused entry first.</string>
     <string name="number_finish_special">Add or cancel the special reading being edited first.</string>
-    <string name="number_kind_time">Time</string>
+    <string name="number_kind_time">Time of day and minutes</string>
     <string name="number_example_time">よじ → 4時、 ごふん → 5分、 いちじごふん → 1時5分・1:05</string>
     <string name="number_kind_people">People</string>
     <string name="number_example_people">さんにん → 3人</string>
@@ -91,4 +91,15 @@
         <item>kanji_half_full</item>
         <item>kanji_full_half</item>
     </string-array>
+    <string name="number_builtin_tab">Built-in</string>
+    <string name="number_builtin_counters">Counters</string>
+    <string name="number_units_empty">No units registered. Add a unit to customize number candidates.</string>
+    <string name="number_unit_enabled">Enable %1$s</string>
+    <string name="number_mode_exact">Exact match</string>
+    <string name="number_mode_compose">Compose with other numbers</string>
+    <string name="number_base_reading">Original number reading</string>
+    <string name="number_base_reading_hint">Examples: いち → いっこ, じゅう → じゅっこ. Enter the number reading without the unit.</string>
+    <string name="number_compose_effect">Replace the ending %1$s with %2$s. The same ending in larger numbers also uses this rule.</string>
+    <string name="number_compose_limit">Example: いち → いっこ also generates 11個 from じゅういっこ. Use exact match for exceptions such as はたち.</string>
+    <string name="number_invalid_base">Enter a number reading equal to the registered value. Composition requires a value greater than zero.</string>
 </resources>

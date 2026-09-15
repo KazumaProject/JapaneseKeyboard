@@ -63,8 +63,12 @@ class NumberCandidateGeneratorTest {
         val unit = CustomNumberUnit("pieces", "個", "こ", specialReadings = listOf(
             SpecialNumberReading(1, "いっこ"), SpecialNumberReading(8, "はっこ"), SpecialNumberReading(8, "はちこ")))
         val settings = NumberCandidateConfig(units = listOf(unit))
-        fun own(reading: String, units: List<CustomNumberUnit> = listOf(unit)) = generated(reading,
-            PredictionConfig(numberCandidateConfig = settings.copy(units = units)))
+        fun own(reading: String, units: List<CustomNumberUnit> = listOf(unit)): List<String> {
+            val config = settings.copy(units = units)
+            return ValidatedNumber.parseAll(reading, config).filter { it.customUnit != null }.flatMap {
+                NumberCandidateGenerator.generate(it, PredictionConfig(numberCandidateConfig = config))
+            }.map { it.string }
+        }
         assertEquals(settings, NumberCandidateConfig.decode(settings.encode()))
         assertEquals(listOf("2個", "２個", "二個"), own("にこ"))
         assertEquals(listOf("1個", "１個", "一個"), own("いっこ"))
@@ -100,4 +104,131 @@ class NumberCandidateGeneratorTest {
             PredictionConfig(japaneseNumberCandidatesEnabled = false)))
         assertEquals(candidates, NumberCandidateGenerator.order("これはよじ", candidates, PredictionConfig()))
     }
+    @Test fun allBuiltInCountersAndTheirSwitches() {
+        val cases = listOf(
+            Triple(BuiltInCounter.THINGS, "ひとつ", "1つ"), Triple(BuiltInCounter.DAY, "ふつか", "2日"),
+            Triple(BuiltInCounter.MONTH, "しがつ", "4月"), Triple(BuiltInCounter.HOURS, "よじかん", "4時間"),
+            Triple(BuiltInCounter.YEAR, "さんねん", "3年"), Triple(BuiltInCounter.AGE, "はたち", "20歳"),
+            Triple(BuiltInCounter.MONTHS, "いっかげつ", "1か月"), Triple(BuiltInCounter.PIECES, "いっこ", "1個"),
+            Triple(BuiltInCounter.LONG_OBJECTS, "さんぼん", "3本"), Triple(BuiltInCounter.ANIMALS, "ろっぴき", "6匹"),
+            Triple(BuiltInCounter.CUPS, "いっぱい", "1杯"), Triple(BuiltInCounter.BOOKS, "いっさつ", "1冊"),
+            Triple(BuiltInCounter.TIMES, "ろっかい", "6回"), Triple(BuiltInCounter.FLOORS, "さんがい", "3階"),
+            Triple(BuiltInCounter.CASES, "いっけん", "1件"), Triple(BuiltInCounter.HOUSES, "さんげん", "3軒"),
+            Triple(BuiltInCounter.HEADS, "いっとう", "1頭"), Triple(BuiltInCounter.MACHINES, "さんだい", "3台"),
+            Triple(BuiltInCounter.SHEETS, "さんまい", "3枚"), Triple(BuiltInCounter.CLOTHES, "いっちゃく", "1着"),
+            Triple(BuiltInCounter.PAIRS, "いっそく", "1足"), Triple(BuiltInCounter.NIGHTS, "ろっぱく", "6泊"),
+            Triple(BuiltInCounter.SHOTS, "さんぱつ", "3発"), Triple(BuiltInCounter.POINTS, "さんてん", "3点"),
+            Triple(BuiltInCounter.LETTERS, "いっつう", "1通"),
+        )
+        assertEquals(BuiltInCounter.entries.toSet(), cases.map { it.first }.toSet())
+        cases.forEach { (counter, reading, surface) ->
+            assertTrue(reading, surface in generated(reading))
+            val config = NumberCandidateConfig(disabledCounters = setOf(counter.storageId))
+            assertFalse(reading, surface in generated(reading, PredictionConfig(numberCandidateConfig = config)))
+            assertEquals(config, NumberCandidateConfig.decode(config.encode()))
+            assertTrue(generated(reading, PredictionConfig(japaneseNumberCandidatesEnabled = false)).isEmpty())
+        }
+        assertTrue(generated("いっかい").containsAll(listOf("1回", "1階")))
+        assertTrue("1階" in generated("いっかい", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(disabledCounters = setOf(BuiltInCounter.TIMES.storageId)))))
+        assertEquals(listOf("4円", "４円", "四円"), generated("よえん"))
+        assertEquals(generated("よえん"), generated("よんえん"))
+    }
+
+    @Test fun builtInCompositionAndExactExceptions() {
+        val valid = mapOf("じゅういっこ" to "11個", "にじゅうさんぼん" to "23本", "にじゅうろっぽん" to "26本",
+            "にじゅっこ" to "20個", "さんじっこ" to "30個", "ひゃっこ" to "100個", "さんびゃっぽん" to "300本",
+            "せんびき" to "1000匹", "いちまんいっさつ" to "10001冊", "じゅうよっか" to "14日",
+            "にじゅうよっか" to "24日", "はつか" to "20日", "じゅうくにち" to "19日", "ひゃくにち" to "100日",
+            "しちがつ" to "7月", "くがつ" to "9月", "じゅうにがつ" to "12月", "さんじゅうよじかん" to "34時間",
+            "いちにち" to "1日", "よんぱつ" to "4発", "ろくはつ" to "6発", "にじゅうよんぱく" to "24泊",
+            "にじゅっさい" to "20歳", "にじゅういっさい" to "21歳", "さんけん" to "3件")
+        valid.forEach { (reading, surface) -> assertTrue("$reading: ${generated(reading)}", surface in generated(reading)) }
+        listOf("じゅうひとつ", "じゅうはたち", "にじゅうふつか", "さんひゃっぽん", "いちほん", "ろくこ",
+            "いちさつ", "じゅうさんがつ", "ぜろがつ", "よんがつ", "じゅうきゅうにち", "にじゅうしこ",
+            "これはいっこ", "いっこです", "いっこいっこ").forEach {
+            assertTrue("$it: ${generated(it)}", generated(it).isEmpty())
+        }
+        assertTrue("2月29日" in generated("229", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(disabledCounters = setOf(BuiltInCounter.DAY.storageId)))))
+        assertTrue("2日" in generated("ふつか", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(disabledKinds = setOf(NumberCandidateKind.DATE)))))
+    }
+
+    @Test fun customCompositionValidationPrecedenceAndRoundTrip() {
+        val compose = SpecialNumberReadingMode.COMPOSE
+        val unit = CustomNumberUnit("packs", "箱", "はこ", specialReadings = listOf(
+            SpecialNumberReading(1, "いっぱこ", compose, "いち"),
+            SpecialNumberReading(10, "じゅっぱこ", compose, "じゅう"),
+            SpecialNumberReading(100, "ひゃっぱこ", compose, "ひゃく"),
+            SpecialNumberReading(1000, "せんぱこ", compose, "せん"),
+            SpecialNumberReading(20, "はたはこ")))
+        val config = NumberCandidateConfig(units = listOf(unit), disabledCounters = setOf("pieces"))
+        assertTrue(unit.isValid())
+        assertEquals(config, NumberCandidateConfig.decode(config.encode()))
+        fun own(reading: String, u: CustomNumberUnit = unit) = generated(reading,
+            PredictionConfig(numberCandidateConfig = config.copy(units = listOf(u))))
+        mapOf("じゅういっぱこ" to "11箱", "にじゅっぱこ" to "20箱", "にひゃっぱこ" to "200箱",
+            "にせんぱこ" to "2000箱", "はたはこ" to "20箱", "にはこ" to "2箱").forEach { (r, v) -> assertTrue(r, v in own(r)) }
+        listOf("じゅうはたはこ", "じゅういちはこ", "にじゅうはこ", "これはいっぱこ", "いっぱこです").forEach { assertTrue(it, own(it).isEmpty()) }
+        assertTrue(own("じゅういっぱこ", unit.copy(enabled = false)).isEmpty())
+        val exactWins = unit.copy(specialReadings = unit.specialReadings + SpecialNumberReading(42, "じゅういっぱこ"))
+        assertEquals(listOf("42箱", "４２箱", "四十二箱"), own("じゅういっぱこ", exactWins))
+        val overlapping = unit.copy(specialReadings = listOf(
+            SpecialNumberReading(1, "いっこ", compose, "いち"),
+            SpecialNumberReading(10, "じゅういっこ", compose, "じゅう")))
+        assertTrue(own("にじゅういっこ", overlapping).containsAll(listOf("21箱", "20箱")))
+        assertFalse(SpecialNumberReading(1, "いっぱこ", compose, "に").isValid())
+        assertFalse(SpecialNumberReading(0, "れいはこ", compose, "れい").isValid())
+        assertFalse(SpecialNumberReading(1, "いっぱこ", compose, "").isValid())
+        assertTrue(SpecialNumberReading(20, "はたち").isValid())
+        val sameOutput = CustomNumberUnit("pieces", "個", "こ", specialReadings = listOf(SpecialNumberReading(1, "いっこ", compose, "いち")))
+        assertEquals(listOf("11個", "１１個", "十一個"), generated("じゅういっこ", PredictionConfig(
+            numberCandidateConfig = NumberCandidateConfig(units = listOf(sameOutput)))))
+        assertEquals(listOf("11個", "１１個", "十一個"), generated("じゅういっこ", PredictionConfig(
+            numberCandidateConfig = NumberCandidateConfig(units = listOf(sameOutput), disabledCounters = setOf("pieces")))))
+    }
+
+    @Test fun suggestedBaseReadingsParseToTheRegisteredValue() {
+        for (value in listOf(0L, 1, 10, 20, 100, 300, 600, 800, 1000, 3000, 8000, 10000, 100000001,
+            1_000_000_000_000, 8_000_000_000_000, 10_000_000_000_000, 9_999_999_999_999_999)) {
+            assertEquals(value, ValidatedNumber.parseReading(SpecialNumberReading.suggestBase(value))?.value)
+        }
+        assertEquals("", SpecialNumberReading.suggestBase(Long.MAX_VALUE))
+    }
+
+    @Test fun counterReadingsOneThroughTen() {
+        val rows = mapOf(
+            "つ" to "ひとつ ふたつ みっつ よっつ いつつ むっつ ななつ やっつ ここのつ とお",
+            "日" to "ついたち ふつか みっか よっか いつか むいか なのか ようか ここのか とおか",
+            "月" to "いちがつ にがつ さんがつ しがつ ごがつ ろくがつ しちがつ はちがつ くがつ じゅうがつ",
+            "時間" to "いちじかん にじかん さんじかん よじかん ごじかん ろくじかん しちじかん はちじかん くじかん じゅうじかん",
+            "年" to "いちねん にねん さんねん よねん ごねん ろくねん ななねん はちねん きゅうねん じゅうねん",
+            "歳" to "いっさい にさい さんさい よんさい ごさい ろくさい ななさい はっさい きゅうさい じゅっさい",
+            "か月" to "いっかげつ にかげつ さんかげつ よんかげつ ごかげつ ろっかげつ ななかげつ はっかげつ きゅうかげつ じゅっかげつ",
+            "個" to "いっこ にこ さんこ よんこ ごこ ろっこ ななこ はっこ きゅうこ じゅっこ",
+            "本" to "いっぽん にほん さんぼん よんほん ごほん ろっぽん ななほん はっぽん きゅうほん じゅっぽん",
+            "匹" to "いっぴき にひき さんびき よんひき ごひき ろっぴき ななひき はっぴき きゅうひき じゅっぴき",
+            "杯" to "いっぱい にはい さんばい よんはい ごはい ろっぱい ななはい はっぱい きゅうはい じゅっぱい",
+            "冊" to "いっさつ にさつ さんさつ よんさつ ごさつ ろくさつ ななさつ はっさつ きゅうさつ じゅっさつ",
+            "回" to "いっかい にかい さんかい よんかい ごかい ろっかい ななかい はっかい きゅうかい じゅっかい",
+            "階" to "いっかい にかい さんがい よんかい ごかい ろっかい ななかい はっかい きゅうかい じゅっかい",
+            "件" to "いっけん にけん さんけん よんけん ごけん ろっけん ななけん はっけん きゅうけん じゅっけん",
+            "軒" to "いっけん にけん さんげん よんけん ごけん ろっけん ななけん はっけん きゅうけん じゅっけん",
+            "頭" to "いっとう にとう さんとう よんとう ごとう ろくとう ななとう はっとう きゅうとう じゅっとう",
+            "台" to "いちだい にだい さんだい よんだい ごだい ろくだい ななだい はちだい きゅうだい じゅうだい",
+            "枚" to "いちまい にまい さんまい よんまい ごまい ろくまい ななまい はちまい きゅうまい じゅうまい",
+            "着" to "いっちゃく にちゃく さんちゃく よんちゃく ごちゃく ろくちゃく ななちゃく はっちゃく きゅうちゃく じゅっちゃく",
+            "足" to "いっそく にそく さんそく よんそく ごそく ろくそく ななそく はっそく きゅうそく じゅっそく",
+            "泊" to "いっぱく にはく さんぱく よんぱく ごはく ろっぱく ななはく はっぱく きゅうはく じゅっぱく",
+            "発" to "いっぱつ にはつ さんぱつ よんぱつ ごはつ ろっぱつ ななはつ はっぱつ きゅうはつ じゅっぱつ",
+            "点" to "いってん にてん さんてん よんてん ごてん ろくてん ななてん はってん きゅうてん じゅってん",
+            "通" to "いっつう につう さんつう よんつう ごつう ろくつう ななつう はっつう きゅうつう じゅっつう",
+        )
+        rows.forEach { (counter, readings) ->
+            val inputs = readings.split(" ")
+            inputs.forEachIndexed { i, reading -> assertTrue("$reading: ${generated(reading)}", "${i + 1}$counter" in generated(reading)) }
+        }
+    }
+
 }

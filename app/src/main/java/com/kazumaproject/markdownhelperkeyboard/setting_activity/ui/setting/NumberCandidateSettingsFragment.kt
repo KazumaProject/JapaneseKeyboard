@@ -9,6 +9,9 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import com.google.android.material.tabs.TabLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
@@ -45,14 +48,69 @@ private fun Fragment.button(parent: LinearLayout, title: String, action: () -> U
 }
 
 class NumberCandidateSettingsFragment : Fragment() {
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View = scroll(column())
+    private var selectedTab = 0
+    private val positions = intArrayOf(0, 0)
+    private var pages = emptyList<ScrollView>()
+
+    override fun onCreate(state: Bundle?) {
+        super.onCreate(state)
+        selectedTab = state?.getInt("tab", 0) ?: 0
+        state?.getIntArray("positions")?.takeIf { it.size == 2 }?.copyInto(positions)
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
+        val root = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }
+        val tabs = TabLayout(requireContext())
+        root.addView(tabs)
+        pages = listOf(scroll(column()), scroll(column()))
+        pages.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
+        tabs.addTab(tabs.newTab().setText(R.string.number_builtin_tab), false)
+        tabs.addTab(tabs.newTab().setText(R.string.number_custom_units), false)
+        tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                selectedTab = tab.position
+                pages.forEachIndexed { index, page -> page.visibility = if (index == selectedTab) View.VISIBLE else View.GONE }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
+        tabs.getTabAt(selectedTab)?.select()
+        return root
+    }
 
     override fun onResume() {
         super.onResume()
-        val root = (requireView() as ScrollView).getChildAt(0) as LinearLayout
-        root.removeAllViews()
+        render()
+    }
+
+    override fun onPause() {
+        rememberPositions()
+        super.onPause()
+    }
+
+    private fun rememberPositions() { pages.forEachIndexed { i, page -> positions[i] = page.scrollY } }
+
+    override fun onSaveInstanceState(out: Bundle) {
+        rememberPositions()
+        out.putInt("tab", selectedTab)
+        out.putIntArray("positions", positions)
+        super.onSaveInstanceState(out)
+    }
+
+    override fun onDestroyView() {
+        pages = emptyList()
+        super.onDestroyView()
+    }
+
+    private fun render() {
+        val root = pages[0].getChildAt(0) as LinearLayout
+        val custom = pages[1].getChildAt(0) as LinearLayout
+        root.removeAllViews(); custom.removeAllViews()
         text(root, getString(R.string.number_types_note))
-        if (!AppPreference.japanese_number_candidates_enable_preference) text(root, getString(R.string.number_generation_off))
+        if (!AppPreference.japanese_number_candidates_enable_preference) {
+            text(root, getString(R.string.number_generation_off))
+            text(custom, getString(R.string.number_generation_off))
+        }
         val config = AppPreference.number_candidate_config
         val labels = listOf(
             R.string.number_kind_time to R.string.number_example_time,
@@ -82,10 +140,44 @@ class NumberCandidateSettingsFragment : Fragment() {
                 }
             })
         }
-        text(root, getString(R.string.number_custom_units), true)
-        config.units.forEach { unit ->
+        text(root, getString(R.string.number_builtin_counters), true)
+        BuiltInCounter.entries.forEach { counter ->
             root.addView(SwitchCompat(requireContext()).apply {
-                text = getString(R.string.number_type_row, unit.output, getString(R.string.number_unit_summary, unit.reading, unit.output, unit.specialReadings.size))
+                text = getString(R.string.number_type_row, counter.output, counter.example)
+                minHeight = (64 * resources.displayMetrics.density).toInt()
+                isChecked = counter.storageId !in config.disabledCounters
+                setOnCheckedChangeListener { _, enabled ->
+                    val current = AppPreference.number_candidate_config
+                    AppPreference.number_candidate_config = current.copy(disabledCounters =
+                        if (enabled) current.disabledCounters - counter.storageId else current.disabledCounters + counter.storageId)
+                }
+            })
+        }
+        button(custom, getString(R.string.number_add_unit)) { findNavController().navigate(R.id.numberUnitEditorFragment) }
+        if (config.units.isEmpty()) text(custom, getString(R.string.number_units_empty))
+        config.units.forEach { unit ->
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                minimumHeight = (72 * resources.displayMetrics.density).toInt()
+            }
+            row.addView(TextView(requireContext()).apply {
+                text = getString(R.string.number_type_row, unit.output + "  ›",
+                    getString(R.string.number_unit_summary, unit.reading, unit.output, unit.specialReadings.size))
+                textSize = 16f
+                setPadding(0, 24, 16, 24)
+                isFocusable = true
+                val background = android.util.TypedValue()
+                requireContext().theme.resolveAttribute(android.R.attr.selectableItemBackground, background, true)
+                setBackgroundResource(background.resourceId)
+                contentDescription = getString(R.string.number_edit) + "：" + unit.output
+                setOnClickListener {
+                    findNavController().navigate(R.id.numberUnitEditorFragment, Bundle().apply { putString("unitId", unit.id) })
+                }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(SwitchCompat(requireContext()).apply {
+                contentDescription = getString(R.string.number_unit_enabled, unit.output)
+                minHeight = (48 * resources.displayMetrics.density).toInt()
                 isChecked = unit.enabled
                 setOnCheckedChangeListener { _, enabled ->
                     val current = AppPreference.number_candidate_config
@@ -94,11 +186,9 @@ class NumberCandidateSettingsFragment : Fragment() {
                     })
                 }
             })
-            button(root, getString(R.string.number_edit) + "：" + unit.output) {
-                findNavController().navigate(R.id.numberUnitEditorFragment, Bundle().apply { putString("unitId", unit.id) })
-            }
+            custom.addView(row)
         }
-        button(root, getString(R.string.number_add_unit)) { findNavController().navigate(R.id.numberUnitEditorFragment) }
+        pages.forEachIndexed { index, page -> page.post { page.scrollTo(0, positions[index]) } }
     }
 }
 
@@ -116,6 +206,11 @@ class NumberUnitEditorFragment : Fragment() {
     private lateinit var specialPanel: LinearLayout
     private lateinit var specialValue: TextInputEditText
     private lateinit var specialReading: TextInputEditText
+    private lateinit var baseReading: TextInputEditText
+    private lateinit var baseLayout: TextInputLayout
+    private lateinit var modeGroup: RadioGroup
+    private lateinit var exactMode: RadioButton
+    private lateinit var composeMode: RadioButton
     private lateinit var valueLayout: TextInputLayout
     private lateinit var specialReadingLayout: TextInputLayout
     private lateinit var specialResult: TextView
@@ -137,7 +232,11 @@ class NumberUnitEditorFragment : Fragment() {
         specials.addAll(if (state == null) original.specialReadings else {
             val values = (state.getLongArray("values") ?: longArrayOf())
             val readings = state.getStringArrayList("readings").orEmpty()
-            values.indices.map { SpecialNumberReading(values[it], readings[it]) }
+            val modes = state.getStringArrayList("modes").orEmpty()
+            val bases = state.getStringArrayList("bases").orEmpty()
+            values.indices.map { SpecialNumberReading(values[it], readings[it],
+                modes.getOrNull(it)?.let(SpecialNumberReadingMode::valueOf) ?: SpecialNumberReadingMode.EXACT,
+                bases.getOrNull(it).orEmpty()) }
         })
         editing = state?.getInt("editing", -1) ?: -1
         specialOpen = state?.getBoolean("specialOpen") ?: false
@@ -171,7 +270,7 @@ class NumberUnitEditorFragment : Fragment() {
             if (!validUnitFields()) return@button
             if (specialOpen) { specialValue.requestFocus(); return@button }
             editing = -1; specialOpen = true
-            specialValue.setText(""); specialReading.setText("")
+            specialValue.setText(""); specialReading.setText(""); baseReading.setText(""); exactMode.isChecked = true
             refreshSpecial()
             specialValue.requestFocus()
         }
@@ -179,6 +278,12 @@ class NumberUnitEditorFragment : Fragment() {
         text(specialPanel, getString(R.string.number_special_add), true)
         field(specialPanel, getString(R.string.number_special_value), numeric = true).also { valueLayout = it.first; specialValue = it.second }
         field(specialPanel, getString(R.string.number_special_reading), getString(R.string.number_special_hint)).also { specialReadingLayout = it.first; specialReading = it.second }
+        modeGroup = RadioGroup(requireContext()).also(specialPanel::addView)
+        exactMode = RadioButton(requireContext()).apply { id = View.generateViewId(); text = getString(R.string.number_mode_exact) }
+        composeMode = RadioButton(requireContext()).apply { id = View.generateViewId(); text = getString(R.string.number_mode_compose) }
+        modeGroup.addView(exactMode); modeGroup.addView(composeMode)
+        field(specialPanel, getString(R.string.number_base_reading), getString(R.string.number_base_reading_hint)).also { baseLayout = it.first; baseReading = it.second }
+        modeGroup.setOnCheckedChangeListener { _, _ -> if (initialized) refreshSpecial() }
         text(specialPanel, getString(R.string.number_special_result), true)
         specialResult = text(specialPanel, "")
         specialEffect = text(specialPanel, "")
@@ -203,7 +308,12 @@ class NumberUnitEditorFragment : Fragment() {
         trial.setText(state?.getString("trial").orEmpty())
         specialValue.setText(state?.getString("specialValue").orEmpty())
         specialReading.setText(state?.getString("specialReading").orEmpty())
-        listOf(output, reading, trial, specialValue, specialReading).forEach { it.doAfterTextChanged { if (initialized) refresh() } }
+        baseReading.setText(state?.getString("baseReading").orEmpty())
+        if (state?.getBoolean("compose") == true) composeMode.isChecked = true else exactMode.isChecked = true
+        specialValue.doAfterTextChanged {
+            if (initialized) baseReading.setText(SpecialNumberReading.suggestBase(it.toString().toLongOrNull()))
+        }
+        listOf(output, reading, trial, specialValue, specialReading, baseReading).forEach { it.doAfterTextChanged { if (initialized) refresh() } }
         initialized = true
         refresh()
         return scroll(root)
@@ -233,6 +343,10 @@ class NumberUnitEditorFragment : Fragment() {
         out.putString("trial", trial.text.toString()); out.putString("specialValue", specialValue.text.toString())
         out.putString("specialReading", specialReading.text.toString()); out.putBoolean("specialOpen", specialOpen)
         out.putInt("editing", editing)
+        out.putBoolean("compose", composeMode.isChecked)
+        out.putString("baseReading", baseReading.text.toString())
+        out.putStringArrayList("modes", ArrayList(specials.map { it.mode.name }))
+        out.putStringArrayList("bases", ArrayList(specials.map { it.baseReading }))
         out.putLongArray("values", specials.map { it.value }.toLongArray())
         out.putStringArrayList("readings", ArrayList(specials.map { it.reading }))
     }
@@ -267,12 +381,23 @@ class NumberUnitEditorFragment : Fragment() {
         renderedOutput = unit.output
         specialList.removeAllViews()
         specials.forEachIndexed { index, special ->
-            text(specialList, "${special.value}${unit.output}　${special.reading} → ${special.value}${unit.output}")
-            button(specialList, getString(R.string.number_edit) + "：" + special.reading) {
-                if (!validUnitFields()) return@button
-                editing = index; specialOpen = true
-                specialValue.setText(special.value.toString()); specialReading.setText(special.reading); refreshSpecial()
-                specialReading.requestFocus()
+            val modeLabel = getString(if (special.mode == SpecialNumberReadingMode.COMPOSE) R.string.number_mode_compose else R.string.number_mode_exact)
+            text(specialList, "${special.reading} → ${special.value}${unit.output}  ›\n$modeLabel").apply {
+                minHeight = (56 * resources.displayMetrics.density).toInt()
+                contentDescription = getString(R.string.number_edit) + "：" + special.reading
+                isFocusable = true
+                val background = android.util.TypedValue()
+                requireContext().theme.resolveAttribute(android.R.attr.selectableItemBackground, background, true)
+                setBackgroundResource(background.resourceId)
+                setOnClickListener {
+                    if (!validUnitFields()) return@setOnClickListener
+                    editing = index; specialOpen = true
+                    specialValue.setText(special.value.toString()); specialReading.setText(special.reading)
+                    baseReading.setText(special.baseReading.ifEmpty { SpecialNumberReading.suggestBase(special.value) })
+                    if (special.mode == SpecialNumberReadingMode.COMPOSE) composeMode.isChecked = true else exactMode.isChecked = true
+                    refreshSpecial()
+                    specialReading.requestFocus()
+                }
             }
             button(specialList, getString(R.string.number_delete) + "：" + special.reading) {
                 AlertDialog.Builder(requireContext()).setMessage(R.string.number_delete_special)
@@ -285,7 +410,7 @@ class NumberUnitEditorFragment : Fragment() {
 
     private fun refreshSpecial() {
         (requireActivity() as androidx.appcompat.app.AppCompatActivity).supportActionBar?.title = getString(if (specialOpen) R.string.number_special_add else if (arguments?.getString("unitId") == null) R.string.number_add_unit else R.string.number_edit_unit)
-        // Focus this step on its two fields, result and scope explanation; the unit draft stays intact.
+        // Keep the unit draft intact while editing a special reading and its composition rule.
         for (index in 0 until editorRoot.childCount) {
             val child = editorRoot.getChildAt(index)
             child.visibility = if (child === specialPanel) {
@@ -293,6 +418,7 @@ class NumberUnitEditorFragment : Fragment() {
             } else if (specialOpen && child !== error) View.GONE else View.VISIBLE
         }
         if (!specialOpen) return
+        baseLayout.visibility = if (composeMode.isChecked) View.VISIBLE else View.GONE
         val value = specialValue.text.toString().toLongOrNull()?.takeIf { it >= 0 }
         val wholeReading = specialReading.text.toString()
         val unit = draft()
@@ -300,7 +426,7 @@ class NumberUnitEditorFragment : Fragment() {
         if (value == null || !CustomNumberUnit.validReading(wholeReading) || !CustomNumberUnit.validText(unit.output, 32)) {
             specialResult.text = getString(R.string.number_special_hint); specialEffect.text = ""; specialLimit.text = ""; return
         }
-        val temporary = unit.copy(specialReadings = listOf(SpecialNumberReading(value, wholeReading)))
+        val temporary = unit.copy(specialReadings = listOf(specialDraft(value, wholeReading)))
         specialResult.text = getString(R.string.number_conversion_example, wholeReading, candidates(temporary, wholeReading))
         val ordinaryOne = "いち" + unit.reading
         val ordinaryOneRegistered = wholeReading == ordinaryOne || specials.withIndex().any {
@@ -308,6 +434,11 @@ class NumberUnitEditorFragment : Fragment() {
         }
         specialEffect.text = if (value == 1L && !ordinaryOneRegistered) getString(R.string.number_special_one_effect, unit.output, wholeReading, unit.reading)
             else getString(R.string.number_special_effect, "$value${unit.output}")
+        if (composeMode.isChecked) {
+            specialEffect.text = getString(R.string.number_compose_effect, baseReading.text.toString(), wholeReading)
+            specialLimit.text = getString(R.string.number_compose_limit)
+            return
+        }
         specialLimit.text = if (value == 1L && unit.reading == "こ" && wholeReading == "いっこ") getString(R.string.number_special_one_limit, unit.output, unit.reading)
             else getString(R.string.number_special_limit, "$value${unit.output}")
     }
@@ -319,6 +450,10 @@ class NumberUnitEditorFragment : Fragment() {
         readingLayout.error = if (b) null else getString(R.string.number_invalid_reading)
         return a && b
     }
+
+    private fun specialDraft(value: Long, whole: String) = SpecialNumberReading(value, whole,
+        if (composeMode.isChecked) SpecialNumberReadingMode.COMPOSE else SpecialNumberReadingMode.EXACT,
+        if (composeMode.isChecked) baseReading.text.toString() else "")
 
     private fun saveSpecial() {
         val value = specialValue.text.toString().toLongOrNull()?.takeIf { it >= 0 }
@@ -335,7 +470,9 @@ class NumberUnitEditorFragment : Fragment() {
         }
         if (value == null || specialReadingLayout.error != null || !validUnitFields()) return
         if (editing < 0 && specials.size >= 256) { error.text = getString(R.string.number_limit); return }
-        val entry = SpecialNumberReading(value, whole)
+        val entry = specialDraft(value, whole)
+        baseLayout.error = if (entry.isValid()) null else getString(R.string.number_invalid_base)
+        if (!entry.isValid()) return
         if (editing in specials.indices) specials[editing] = entry else specials.add(entry)
         specialOpen = false; editing = -1; error.text = ""; refresh()
     }

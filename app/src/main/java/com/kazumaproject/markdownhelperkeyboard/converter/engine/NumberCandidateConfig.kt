@@ -35,7 +35,55 @@ enum class NumberCandidateKind(val storageId: String) {
     }
 }
 
-data class SpecialNumberReading(val value: Long, val reading: String)
+enum class SpecialNumberReadingMode { EXACT, COMPOSE }
+
+data class SpecialNumberReading(
+    val value: Long,
+    val reading: String,
+    val mode: SpecialNumberReadingMode = SpecialNumberReadingMode.EXACT,
+    val baseReading: String = "",
+) {
+    fun isValid(): Boolean = value >= 0 && CustomNumberUnit.validReading(reading) &&
+        (mode == SpecialNumberReadingMode.EXACT ||
+            (value > 0 && CustomNumberUnit.validReading(baseReading) &&
+                ValidatedNumber.parseReading(baseReading)?.value == value))
+
+    companion object {
+        fun suggestBase(value: Long?): String {
+            if (value == null || value < 0 || value > 9_999_999_999_999_999L) return ""
+            if (value == 0L) return "れい"
+            val ones = listOf("", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう")
+            fun section(n: Int): String = buildString {
+                val thousands = n / 1000
+                append(when (thousands) { 0 -> ""; 1 -> "せん"; 3 -> "さんぜん"; 8 -> "はっせん"; else -> ones[thousands] + "せん" })
+                val hundreds = n / 100 % 10
+                append(when (hundreds) { 0 -> ""; 1 -> "ひゃく"; 3 -> "さんびゃく"; 6 -> "ろっぴゃく"; 8 -> "はっぴゃく"; else -> ones[hundreds] + "ひゃく" })
+                val tens = n / 10 % 10
+                if (tens > 0) append((if (tens == 1) "" else ones[tens]) + "じゅう")
+                append(ones[n % 10])
+            }
+            var remaining = value
+            return buildString {
+                for ((magnitude, suffix) in listOf(1_000_000_000_000L to "ちょう", 100_000_000L to "おく", 10_000L to "まん", 1L to "")) {
+                    val coefficient = (remaining / magnitude).toInt()
+                    remaining %= magnitude
+                    if (coefficient == 0) continue
+                    var part = section(coefficient)
+                    if (suffix == "ちょう") {
+                        listOf("いち" to "いっ", "はち" to "はっ", "じゅう" to "じゅっ")
+                            .firstOrNull { part.endsWith(it.first) }?.let { part = part.dropLast(it.first.length) + it.second }
+                    }
+                    append(part); append(suffix)
+                }
+            }
+        }
+    }
+
+    fun compose(input: String): Long? {
+        if (mode != SpecialNumberReadingMode.COMPOSE || !isValid() || !input.endsWith(reading)) return null
+        return ValidatedNumber.parseReading(input.dropLast(reading.length) + baseReading)?.value
+    }
+}
 data class CustomNumberUnit(
     val id: String,
     val output: String,
@@ -46,7 +94,7 @@ data class CustomNumberUnit(
     fun isValid(): Boolean = id.isNotBlank() && id.length <= 64 && validText(output, 32) &&
         validReading(reading) && specialReadings.size <= 256 &&
         specialReadings.all { special ->
-            special.value >= 0 && validReading(special.reading) &&
+            special.isValid() &&
                 (!special.reading.endsWith(reading) || ValidatedNumber.parseReading(special.reading.dropLast(reading.length))
                     ?.value?.let { it == special.value } != false)
         } &&
@@ -62,21 +110,25 @@ data class CustomNumberUnit(
 data class NumberCandidateConfig(
     val disabledKinds: Set<NumberCandidateKind> = emptySet(),
     val units: List<CustomNumberUnit> = emptyList(),
+    val disabledCounters: Set<String> = emptySet(),
 ) {
     fun permits(proof: ValidatedNumber, text: String): Boolean {
         proof.customUnit?.let { old -> return units.any { it.enabled && it == old } }
-        return NumberCandidateKind.of(proof, text) !in disabledKinds
+        return proof.builtInCounter?.storageId !in disabledCounters &&
+            NumberCandidateKind.of(proof, text) !in disabledKinds
     }
 
     fun encode(): String = JsonObject().apply {
         addProperty("version", 1)
         add("disabledKinds", JsonArray().apply { disabledKinds.forEach { add(it.storageId) } })
+        add("disabledCounters", JsonArray().apply { disabledCounters.forEach { add(it) } })
         add("units", JsonArray().apply {
             units.forEach { unit -> add(JsonObject().apply {
                 addProperty("id", unit.id); addProperty("output", unit.output); addProperty("reading", unit.reading)
                 addProperty("enabled", unit.enabled)
                 add("specialReadings", JsonArray().apply { unit.specialReadings.forEach { special -> add(JsonObject().apply {
                     addProperty("value", special.value.toString()); addProperty("reading", special.reading)
+                    addProperty("mode", special.mode.name); addProperty("baseReading", special.baseReading)
                 }) } })
             }) }
         })
@@ -94,12 +146,14 @@ data class NumberCandidateConfig(
                 val unit = entry.asJsonObject
                 CustomNumberUnit(unit.get("id").asString, unit.get("output").asString, unit.get("reading").asString,
                     unit.get("enabled").asBoolean, unit.getAsJsonArray("specialReadings").map {
-                        SpecialNumberReading(it.asJsonObject.get("value").asString.toLong(), it.asJsonObject.get("reading").asString)
+                        SpecialNumberReading(it.asJsonObject.get("value").asString.toLong(), it.asJsonObject.get("reading").asString,
+                            it.asJsonObject.get("mode")?.asString?.let(SpecialNumberReadingMode::valueOf) ?: SpecialNumberReadingMode.EXACT,
+                            it.asJsonObject.get("baseReading")?.asString.orEmpty())
                     })
             }
             require(units.size <= 256 && units.all { it.isValid() })
             require(units.distinctBy { it.id }.size == units.size && units.distinctBy { it.reading to it.output }.size == units.size)
-            NumberCandidateConfig(disabled, units)
+            NumberCandidateConfig(disabled, units, root.getAsJsonArray("disabledCounters")?.map { it.asString }?.toSet().orEmpty())
         }.getOrElse { NumberCandidateConfig() }
     }
 }
