@@ -15,6 +15,8 @@ internal class CompiledNumberUnits(units: List<CustomNumberUnit>) {
         var ordinary = false
     }
 
+    val startCharacters: Set<Char>
+    val endCharacters: Set<Char>
     val allValid: Boolean
     private val enabled: List<UnitRules>
     private val byId: Map<String, List<UnitRules>>
@@ -27,6 +29,8 @@ internal class CompiledNumberUnits(units: List<CustomNumberUnit>) {
         allValid = validUnits.size == units.size
         enabled = validUnits.withIndex().filter { it.value.enabled }.map { UnitRules(it.index, it.value) }
         byId = enabled.groupBy { it.unit.id }
+        startCharacters = enabled.flatMap { it.unit.specialReadings.map { rule -> rule.reading.first() } }.toSet()
+        endCharacters = enabled.flatMap { listOf(it.unit.reading.last()) + it.unit.specialReadings.map { rule -> rule.reading.last() } }.toSet()
         val rules = enabled.flatMap { owner -> owner.unit.specialReadings.mapIndexed { i, s -> Rule(owner, i, s) } }
         specialReadings = SuffixIndex(rules.map { it.special.reading to it })
         ordinary = SuffixIndex(enabled.map { it.unit.reading to it })

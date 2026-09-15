@@ -1175,6 +1175,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1590,6 +1591,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2035,6 +2037,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2461,6 +2464,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2869,6 +2873,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -3271,6 +3276,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {

@@ -120,6 +120,9 @@ class NumberCandidateConfig(
     val disabledCounters: Set<String> = java.util.Collections.unmodifiableSet(disabledCounters.toSet())
     internal val compiledUnits = if (this.units.isEmpty()) CompiledNumberUnits.EMPTY else CompiledNumberUnits(this.units)
 
+    // Graph signatures are queried on every keystroke; hash the immutable rule snapshot once.
+    private val snapshotHash = 31 * (31 * this.disabledKinds.hashCode() + this.units.hashCode()) + this.disabledCounters.hashCode()
+
     private data class ParsedInput(val input: String, val proofs: List<ValidatedNumber>)
     private var lastParsedInput: ParsedInput? = null
 
@@ -139,7 +142,7 @@ class NumberCandidateConfig(
 
     override fun equals(other: Any?): Boolean = this === other || other is NumberCandidateConfig &&
         disabledKinds == other.disabledKinds && units == other.units && disabledCounters == other.disabledCounters
-    override fun hashCode(): Int = 31 * (31 * disabledKinds.hashCode() + units.hashCode()) + disabledCounters.hashCode()
+    override fun hashCode(): Int = snapshotHash
     override fun toString(): String = "NumberCandidateConfig(disabledKinds=$disabledKinds, units=$units, disabledCounters=$disabledCounters)"
 
     fun permits(proof: ValidatedNumber, text: String): Boolean {

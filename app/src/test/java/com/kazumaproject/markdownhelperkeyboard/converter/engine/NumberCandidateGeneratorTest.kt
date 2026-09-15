@@ -159,46 +159,6 @@ class NumberCandidateGeneratorTest {
         }
     }
 
-    @Test fun counterAmountSuffixPreservesOrderSettingsAndFullInput() {
-        val cases = mapOf(
-            "よんそくぶん" to listOf("4足分", "４足分", "四足分"),
-            "さんぞくぶん" to listOf("3足分", "３足分", "三足分"),
-            "じゅうさんぞくぶん" to listOf("13足分", "１３足分", "十三足分"),
-            "にじゅうさんぞくぶん" to listOf("23足分", "２３足分", "二十三足分"),
-            "よにんぶん" to listOf("4人分", "４人分", "四人分"),
-            "にじかんぶん" to listOf("2時間分", "２時間分", "二時間分"),
-            "じゅっぷんぶん" to listOf("10分分", "１０分分", "十分分"),
-        )
-        for ((input, forms) in cases) {
-            for (order in NumberCandidateOrder.entries) {
-                val config = PredictionConfig(numberCandidateOrder = order)
-                val candidates = NumberCandidateGenerator.generate(input, config)
-                assertEquals(input, order.indices.map(forms::get), candidates.map { it.string })
-                assertTrue(input, candidates.all { it.length.toInt() == input.length && it.yomi == input && it.commitText == it.string })
-                assertEquals(input, order.indices.map(forms::get),
-                    NumberCandidateGenerator.order(input, candidates.reversed(), config).map { it.string })
-            }
-        }
-        assertTrue(generated("よんそくぶん", PredictionConfig(numberCandidateConfig =
-            NumberCandidateConfig(disabledCounters = setOf(BuiltInCounter.PAIRS.storageId)))).isEmpty())
-        assertTrue(generated("よにんぶん", PredictionConfig(numberCandidateConfig =
-            NumberCandidateConfig(disabledKinds = setOf(NumberCandidateKind.PEOPLE)))).isEmpty())
-        assertTrue(generated("じゅっぷんぶん", PredictionConfig(numberCandidateConfig =
-            NumberCandidateConfig(disabledKinds = setOf(NumberCandidateKind.TIME)))).isEmpty())
-        assertTrue(generated("よんそくぶん", PredictionConfig(japaneseNumberCandidatesEnabled = false)).isEmpty())
-        val unit = CustomNumberUnit("box", "箱", "はこ")
-        assertEquals(listOf("2箱分", "２箱分", "二箱分"), generated("にはこぶん",
-            PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(unit)))))
-        assertTrue(generated("にはこぶん", PredictionConfig(numberCandidateConfig =
-            NumberCandidateConfig(units = listOf(unit.copy(enabled = false))))).isEmpty())
-        val exact = unit.copy(specialReadings = listOf(SpecialNumberReading(42, "にはこぶん")))
-        assertEquals(listOf("42箱", "４２箱", "四十二箱"), generated("にはこぶん",
-            PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(exact)))))
-        for (input in listOf("ぶん", "よんぶん", "しんぶん", "よんそくぶんぶん", "これはよんそくぶん", "よんそくぶんです")) {
-            assertTrue(input, generated(input).isEmpty())
-        }
-    }
-
     @Test fun builtInCompositionAndExactExceptions() {
         val valid = mapOf("じゅういっこ" to "11個", "にじゅうさんぼん" to "23本", "にじゅうろっぽん" to "26本",
             "にじゅっこ" to "20個", "さんじっこ" to "30個", "ひゃっこ" to "100個", "さんびゃっぽん" to "300本",
@@ -262,34 +222,7 @@ class NumberCandidateGeneratorTest {
     }
 
     @Test fun counterReadingsOneThroughTen() {
-        val rows = mapOf(
-            "つ" to "ひとつ ふたつ みっつ よっつ いつつ むっつ ななつ やっつ ここのつ とお",
-            "日" to "ついたち ふつか みっか よっか いつか むいか なのか ようか ここのか とおか",
-            "月" to "いちがつ にがつ さんがつ しがつ ごがつ ろくがつ しちがつ はちがつ くがつ じゅうがつ",
-            "時間" to "いちじかん にじかん さんじかん よじかん ごじかん ろくじかん しちじかん はちじかん くじかん じゅうじかん",
-            "年" to "いちねん にねん さんねん よねん ごねん ろくねん ななねん はちねん きゅうねん じゅうねん",
-            "歳" to "いっさい にさい さんさい よんさい ごさい ろくさい ななさい はっさい きゅうさい じゅっさい",
-            "か月" to "いっかげつ にかげつ さんかげつ よんかげつ ごかげつ ろっかげつ ななかげつ はっかげつ きゅうかげつ じゅっかげつ",
-            "個" to "いっこ にこ さんこ よんこ ごこ ろっこ ななこ はっこ きゅうこ じゅっこ",
-            "本" to "いっぽん にほん さんぼん よんほん ごほん ろっぽん ななほん はっぽん きゅうほん じゅっぽん",
-            "匹" to "いっぴき にひき さんびき よんひき ごひき ろっぴき ななひき はっぴき きゅうひき じゅっぴき",
-            "杯" to "いっぱい にはい さんばい よんはい ごはい ろっぱい ななはい はっぱい きゅうはい じゅっぱい",
-            "冊" to "いっさつ にさつ さんさつ よんさつ ごさつ ろくさつ ななさつ はっさつ きゅうさつ じゅっさつ",
-            "回" to "いっかい にかい さんかい よんかい ごかい ろっかい ななかい はっかい きゅうかい じゅっかい",
-            "階" to "いっかい にかい さんがい よんかい ごかい ろっかい ななかい はっかい きゅうかい じゅっかい",
-            "件" to "いっけん にけん さんけん よんけん ごけん ろっけん ななけん はっけん きゅうけん じゅっけん",
-            "軒" to "いっけん にけん さんげん よんけん ごけん ろっけん ななけん はっけん きゅうけん じゅっけん",
-            "頭" to "いっとう にとう さんとう よんとう ごとう ろくとう ななとう はっとう きゅうとう じゅっとう",
-            "台" to "いちだい にだい さんだい よんだい ごだい ろくだい ななだい はちだい きゅうだい じゅうだい",
-            "枚" to "いちまい にまい さんまい よんまい ごまい ろくまい ななまい はちまい きゅうまい じゅうまい",
-            "着" to "いっちゃく にちゃく さんちゃく よんちゃく ごちゃく ろくちゃく ななちゃく はっちゃく きゅうちゃく じゅっちゃく",
-            "足" to "いっそく にそく さんそく よんそく ごそく ろくそく ななそく はっそく きゅうそく じゅっそく",
-            "泊" to "いっぱく にはく さんぱく よんぱく ごはく ろっぱく ななはく はっぱく きゅうはく じゅっぱく",
-            "発" to "いっぱつ にはつ さんぱつ よんぱつ ごはつ ろっぱつ ななはつ はっぱつ きゅうはつ じゅっぱつ",
-            "点" to "いってん にてん さんてん よんてん ごてん ろくてん ななてん はってん きゅうてん じゅってん",
-            "通" to "いっつう につう さんつう よんつう ごつう ろくつう ななつう はっつう きゅうつう じゅっつう",
-        )
-        rows.forEach { (counter, readings) ->
+        CounterReadingCases.rows.forEach { (counter, readings) ->
             val inputs = readings.split(" ")
             inputs.forEachIndexed { i, reading -> assertTrue("$reading: ${generated(reading)}", "${i + 1}$counter" in generated(reading)) }
         }

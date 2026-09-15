@@ -1019,6 +1019,7 @@ class FindPath(
     }
 
     companion object {
+        private const val GENERATED_NUMBER_MASK = 4
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
         private val bosNodes: List<Node> = listOf(BOS)
         private const val MAX_BUNSETSU_SPLIT_PATTERNS = 4
@@ -1457,7 +1458,10 @@ class FindPath(
         } else {
             scratch.prependOutput(previousNode.tango, element.outputPathId)
         }
-        val sourceMask = element.sourceMask or previousNode.candidateSource.toMask()
+        // Generated counter forms already carry the user's notation preference. The
+        // legacy digit surcharge must not reverse it in a multi-word candidate.
+        val sourceMask = element.sourceMask or previousNode.candidateSource.toMask() or
+            (if (previousNode.isGeneratedNumber) GENERATED_NUMBER_MASK else 0)
         val nodeIds = scratch.nodeIds
         if (
             !scratch.bestBackwardCostByState.putIfLower(
@@ -1477,7 +1481,7 @@ class FindPath(
             scratch.queueElement(
                 node = previousNode,
                 priorityCost = backwardCost + previousNode.f +
-                    if (scratch.outputContainsDigit(outputPathId)) 2000 else 0,
+                    if (scratch.outputContainsDigit(outputPathId) && (sourceMask and GENERATED_NUMBER_MASK) == 0) 2000 else 0,
                 backwardCost = backwardCost,
                 next = element,
                 outputPathId = outputPathId,
@@ -2072,7 +2076,8 @@ class FindPath(
                         ),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
-                        score = if (stringFromNode.any { it.isDigit() }) {
+                        score = if (stringFromNode.any { it.isDigit() } &&
+                            generateSequence(node.first) { it.next }.none { it.isGeneratedNumber }) {
                             node.second + 2000
                         } else {
                             node.second
