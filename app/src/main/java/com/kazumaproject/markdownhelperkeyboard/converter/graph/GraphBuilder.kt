@@ -8,6 +8,8 @@ import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeAttributes
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberGraphMatcher
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
@@ -254,7 +256,9 @@ class GraphBuilder {
             GraphNodeDedupMode.EXISTING_BY_TANGO_L_R -> {
                 // tango, l, r の3つがすべて一致するノードを探す
                 val existingNodeIndex = nodes.indexOfFirst {
-                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r
+                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r &&
+                        it.isGeneratedNumber == newNode.isGeneratedNumber &&
+                        (!newNode.isGeneratedNumber || it.sPos == newNode.sPos && it.len == newNode.len)
                 }
 
                 if (existingNodeIndex != -1) {
@@ -343,6 +347,7 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
         sessionState: SessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
     ): MutableMap<Int, MutableList<Node>> {
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
@@ -374,11 +379,13 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
+            predictionConfig = predictionConfig,
         )
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
                 it.signature == signature &&
+                (it.input.length <= UByte.MAX_VALUE.toInt()) == (str.length <= UByte.MAX_VALUE.toInt()) &&
                 (
                     sessionState != null && str.length > it.input.length ||
                         sessionState == null && str.length == it.input.length + 1
@@ -599,6 +606,7 @@ class GraphBuilder {
                 mozcNodeType = MozcNodeType.EOS,
             )
         )
+        val numberMatcher = NumberGraphMatcher(str, predictionConfig)
         for (i in str.indices) {
             currentCoroutineContext().ensureActive()
             var subStrCache: String? = null
@@ -608,6 +616,21 @@ class GraphBuilder {
                 return str.substring(i).also { subStrCache = it }
             }
             var foundInAnyDictionary = false
+
+            for (match in numberMatcher.matches(i, reusablePrefixLength + 1)) {
+                foundInAnyDictionary = true
+                for (form in match.forms) {
+                    val node = Node(
+                        l = form.leftId, r = form.rightId,
+                        score = form.cost, f = form.cost, g = form.cost,
+                        tango = form.text, yomiUsed = match.reading,
+                        len = match.reading.length.toShort(), sPos = i,
+                        mozcAttributes = mozcAttributesFor(form.leftId),
+                        isGeneratedNumber = true,
+                    )
+                    addOrUpdateNode(graph, match.end, node, graphNodeDedupMode, graphNodeTrace, str, "NUMBER")
+                }
+            }
 
             // 1. ユーザー辞書
             val userWords = userDictionaryRepository?.let { repository ->
@@ -1470,6 +1493,7 @@ class GraphBuilder {
         beamWidth: Int,
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
+        predictionConfig: PredictionConfig,
     ): Int {
         var result = System.identityHashCode(yomiTrie)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
@@ -1489,6 +1513,9 @@ class GraphBuilder {
         result = 31 * result + beamWidth
         result = 31 * result + graphNodeDedupMode.hashCode()
         result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)
+        result = 31 * result + predictionConfig.japaneseNumberCandidatesEnabled.hashCode()
+        result = 31 * result + predictionConfig.numberCandidateOrder.hashCode()
+        result = 31 * result + predictionConfig.numberCandidateConfig.hashCode()
         return result
     }
 

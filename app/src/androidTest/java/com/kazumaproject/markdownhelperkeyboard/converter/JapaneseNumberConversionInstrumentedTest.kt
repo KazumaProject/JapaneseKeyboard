@@ -22,6 +22,29 @@ import java.util.Locale
 class JapaneseNumberConversionInstrumentedTest {
 
     @Test
+    fun countersConnectToSurroundingWords() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(context.applicationContext, KanaKanjiEngineEntryPoint::class.java)
+        val engine = entryPoint.kanaKanjiEngine()
+        val repository = entryPoint.userDictionaryRepository()
+        val cases = mapOf(
+            "よんそくぶん" to "4足分", "さんぼんだけ" to "3本だけ", "ろっぴきいる" to "6匹いる",
+            "じゅういっこほしい" to "11個欲しい", "ふたりぶんください" to "2人分ください",
+            "ほんをにじゅうさんさつかう" to "本を23冊買う", "にじゅうさんぞくぶんください" to "23足分ください",
+            "えんぴつをさんぼんください" to "鉛筆を3本ください", "ねこがろっぴきいる" to "猫が6匹いる",
+            "さんまいとにまい" to "3枚と2枚", "にじかんまつ" to "2時間待つ",
+            "はつかまで" to "20日まで", "さんじごふんにでる" to "3時5分に出る", "ひゃくえんだけ" to "100円だけ",
+        )
+        for ((input, expected) in cases) {
+            val candidates = engine.convertOriginal(input, repository)
+            assertEquals("$input: ${candidates.take(8).map { it.string }}", expected, candidates.first().string)
+            assertEquals(expected, candidates.first().commitText)
+            assertEquals(input.length, candidates.first().length.toInt())
+            println("COUNTER_SENTENCE $input: ${candidates.take(8).map { it.string }}")
+        }
+    }
+
+    @Test
     fun verifyCorrectnessAndMeasureProductionPaths() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -32,6 +55,7 @@ class JapaneseNumberConversionInstrumentedTest {
         val repository = entryPoint.userDictionaryRepository()
 
         val forbiddenByInput = linkedMapOf(
+            "230" to setOf("2月30日"),
             "よしよし" to setOf("4444", "４４４４", "8383", "８３８３", "四千四百四十四"),
             "しせん" to setOf("4000", "４０００", "4,000", "四千"),
             "くちょう" to setOf("9000000000000", "９００００００００００００", "九兆", "9兆"),
@@ -59,6 +83,7 @@ class JapaneseNumberConversionInstrumentedTest {
         }
 
         val validInputs = linkedMapOf(
+            "229" to setOf("2月29日"),
             "よんせん" to setOf("4000", "四千"),
             "きゅうちょう" to setOf("9000000000000", "九兆"),
             "さんにん" to setOf("3人"),
@@ -70,9 +95,14 @@ class JapaneseNumberConversionInstrumentedTest {
             "しじゅう" to setOf("40", "四十"),
             "じゅうよ" to setOf("14", "十四"),
             "よにん" to setOf("4人"),
+            "よんえん" to setOf("4円"),
             "よえん" to setOf("4円"),
-            "くえん" to setOf("9円"),
-            "くにん" to setOf("9人"),
+            "じゅういっこ" to setOf("11個"),
+            "にじゅうさんぼん" to setOf("23本"),
+            "いっかい" to setOf("1回", "1階"),
+            "はつか" to setOf("20日"),
+            "きゅうえん" to setOf("9円"),
+            "きゅうにん" to setOf("9人"),
             "いっぷん" to setOf("1分"),
             "ろっぷん" to setOf("6分"),
             "はっぷん" to setOf("8分"),

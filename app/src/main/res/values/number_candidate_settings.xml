@@ -1,0 +1,105 @@
+<resources>
+    <string name="number_types_title">Number candidate types</string>
+    <string name="number_types_note">Disabled types are not generated. Dictionary entries may still appear.</string>
+    <string name="number_generation_off">Reading-based number generation is off. You can still edit these settings.</string>
+    <string name="number_custom_units">Your units</string>
+    <string name="number_add_unit">Add a unit</string>
+    <string name="number_edit_unit">Edit unit</string>
+    <string name="number_unit_intro">Add a word after a number. For example, registering こ → 個 generates 2個 from にこ.</string>
+    <string name="number_unit_output">Unit to display</string>
+    <string name="number_unit_output_hint">Example: 個, 台, セット</string>
+    <string name="number_unit_reading">Unit reading</string>
+    <string name="number_unit_reading_hint">Example: こ (do not include the number)</string>
+    <string name="number_preview_title">Conversion example</string>
+    <string name="number_preview_placeholder">Example: にこ → 2個・２個・二個</string>
+    <string name="number_special_title">When the reading changes</string>
+    <string name="number_special_intro">Register a reading for each number when its pronunciation changes, such as いっこ or ろっこ.</string>
+    <string name="number_special_add">Add a special reading</string>
+    <string name="number_special_value">Which number?</string>
+    <string name="number_special_reading">How is it read?</string>
+    <string name="number_special_hint">Example: いっこ (include the unit reading)</string>
+    <string name="number_special_result">Generated candidates</string>
+    <string name="number_special_effect">%1$s uses only its registered special readings. To keep an ordinary reading, register it here too.</string>
+    <string name="number_special_one_effect">1%1$s uses %2$s. The ordinary combination いち%3$s will no longer generate it.</string>
+    <string name="number_special_limit">This registration applies only to %1$s. Other numbers need their own registrations.</string>
+    <string name="number_special_one_limit">This applies only to 1%1$s. じゅういっ%2$s → 11%1$s requires a separate registration for 11.</string>
+    <string name="number_try_reading">Try a reading</string>
+    <string name="number_try_hint">Example: にこ, いっこ</string>
+    <string name="number_try_empty">Enter a reading to preview candidates from this unit.</string>
+    <string name="number_try_no_match">No match for this unit. Enter a number with its unit, or a reading covered by a registered rule.</string>
+    <string name="number_invalid_output">Enter 1–32 characters without surrounding spaces or control characters.</string>
+    <string name="number_invalid_reading">Enter 1–255 hiragana or long-vowel characters.</string>
+    <string name="number_invalid_value">Enter an integer from 0 to 9223372036854775807.</string>
+    <string name="number_duplicate_reading">This reading is already registered. One reading cannot represent different numbers in this unit.</string>
+    <string name="number_duplicate_unit">A unit with this reading and output already exists.</string>
+    <string name="number_discard">Discard unsaved changes?</string>
+    <string name="number_delete_unit">Delete this unit and its special readings?</string>
+    <string name="number_delete_special">Delete this reading? Removing the last special reading for a number restores its ordinary number reading plus the unit reading.</string>
+    <string name="number_save">Save</string>
+    <string name="number_cancel">Cancel</string>
+    <string name="number_delete">Delete</string>
+    <string name="number_edit">Edit</string>
+    <string name="number_apply_reading">Register this reading</string>
+    <string name="number_unit_summary">%1$s → %2$s · Special readings: %3$d</string>
+    <string name="number_limit">Registration limit reached. Remove an unused entry first.</string>
+    <string name="number_finish_special">Add or cancel the special reading being edited first.</string>
+    <string name="number_kind_time">Time of day and minutes</string>
+    <string name="number_example_time">よじ → 4時、 ごふん → 5分、 いちじごふん → 1時5分・1:05</string>
+    <string name="number_kind_people">People</string>
+    <string name="number_example_people">さんにん → 3人</string>
+    <string name="number_kind_yen">Yen</string>
+    <string name="number_example_yen">ひゃくえん → 100円</string>
+    <string name="number_kind_date">Dates</string>
+    <string name="number_example_date">ひゃくいち → 1月1日</string>
+    <string name="number_kind_comma">Digit grouping</string>
+    <string name="number_example_comma">せん → 1,000</string>
+    <string name="number_kind_large_unit">Large-unit notation</string>
+    <string name="number_example_large_unit">いちまん → 1万</string>
+    <string name="number_kind_exponent">Powers of ten</string>
+    <string name="number_example_exponent">いちおく → 10⁸</string>
+    <string name="number_kind_superscript">Superscript</string>
+    <string name="number_example_superscript">さん → ³</string>
+    <string name="number_kind_subscript">Subscript</string>
+    <string name="number_example_subscript">さん → ₃</string>
+    <string name="number_kind_circled">Circled numbers</string>
+    <string name="number_example_circled">さん → ③</string>
+    <string name="number_kind_black_circled">Black circled numbers</string>
+    <string name="number_example_black_circled">さん → ❸</string>
+    <string name="number_kind_roman">Roman numerals</string>
+    <string name="number_example_roman">さん → Ⅲ・ⅲ</string>
+    <string name="number_kind_parenthesized">Parenthesized numbers</string>
+    <string name="number_example_parenthesized">さん → ⑶</string>
+    <string name="number_kind_period">Numbers with a period</string>
+    <string name="number_example_period">さん → ⒊</string>
+    <string name="number_type_row">%1$s\n%2$s</string>
+    <string name="number_conversion_example">%1$s → %2$s</string>
+
+    <string name="number_candidate_order_title">Number candidate order</string>
+    <string-array name="number_candidate_order_entries">
+        <item>Half width → Full width → Kanji</item>
+        <item>Half width → Kanji → Full width</item>
+        <item>Full width → Half width → Kanji</item>
+        <item>Full width → Kanji → Half width</item>
+        <item>Kanji → Half width → Full width</item>
+        <item>Kanji → Full width → Half width</item>
+    </string-array>
+    <string-array name="number_candidate_order_values">
+        <item>half_full_kanji</item>
+        <item>half_kanji_full</item>
+        <item>full_half_kanji</item>
+        <item>full_kanji_half</item>
+        <item>kanji_half_full</item>
+        <item>kanji_full_half</item>
+    </string-array>
+    <string name="number_builtin_tab">Built-in</string>
+    <string name="number_builtin_counters">Counters</string>
+    <string name="number_units_empty">No units registered. Add a unit to customize number candidates.</string>
+    <string name="number_unit_enabled">Enable %1$s</string>
+    <string name="number_mode_exact">Exact match</string>
+    <string name="number_mode_compose">Compose with other numbers</string>
+    <string name="number_base_reading">Original number reading</string>
+    <string name="number_base_reading_hint">Examples: いち → いっこ, じゅう → じゅっこ. Enter the number reading without the unit.</string>
+    <string name="number_compose_effect">Replace the ending %1$s with %2$s. The same ending in larger numbers also uses this rule.</string>
+    <string name="number_compose_limit">Example: いち → いっこ also generates 11個 from じゅういっこ. Use exact match for exceptions such as はたち.</string>
+    <string name="number_invalid_base">Enter a number reading equal to the registered value. Composition requires a value greater than zero.</string>
+</resources>

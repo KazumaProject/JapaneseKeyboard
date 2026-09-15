@@ -763,6 +763,7 @@ object SettingDestinations {
     @IdRes
     fun routeDestinationId(key: String): Int? =
         when (key) {
+            "setting_route_number_candidates" -> R.id.numberCandidateSettingsFragment
             "setting_route_keyboard_display" -> R.id.keyboardDisplayPreferenceFragment
             "setting_route_input_method" -> R.id.inputMethodPreferenceFragment
             "setting_route_candidate_conversion" -> R.id.candidateConversionPreferenceFragment
