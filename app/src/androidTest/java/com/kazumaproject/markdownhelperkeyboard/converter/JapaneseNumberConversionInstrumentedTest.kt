@@ -6,6 +6,8 @@ import android.os.Debug
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -20,6 +22,36 @@ import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class JapaneseNumberConversionInstrumentedTest {
+
+    @Test
+    fun counterAmountSuffixProducesCompleteCandidates() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
+        )
+        val engine = entryPoint.kanaKanjiEngine()
+        val repository = entryPoint.userDictionaryRepository()
+        val cases = mapOf(
+            "よんそくぶん" to listOf("4足分", "４足分", "四足分"),
+            "さんぞくぶん" to listOf("3足分", "３足分", "三足分"),
+            "じゅうさんぞくぶん" to listOf("13足分", "１３足分", "十三足分"),
+            "にじゅうさんぞくぶん" to listOf("23足分", "２３足分", "二十三足分"),
+            "よにんぶん" to listOf("4人分", "４人分", "四人分"),
+        )
+        for ((input, forms) in cases) {
+            val candidates = engine.convertOriginal(input, repository)
+            assertTrue("$input: ${candidates.map { it.string }}", forms.all { form ->
+                candidates.any { it.string == form && it.commitText == form && it.length.toInt() == input.length }
+            })
+            println("COUNTER_SUFFIX $input: ${candidates.take(12).map { it.string }}")
+            for (order in NumberCandidateOrder.entries) {
+                val displayed = engine.getCandidatesEnglishKana(input,
+                    PredictionConfig(numberCandidateOrder = order)).distinctBy { it.string }
+                assertEquals("$input / $order", order.indices.map(forms::get),
+                    displayed.filter { it.string in forms }.map { it.string })
+            }
+        }
+    }
 
     @Test
     fun verifyCorrectnessAndMeasureProductionPaths() = runBlocking {

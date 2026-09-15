@@ -135,6 +135,70 @@ class NumberCandidateGeneratorTest {
         assertEquals(generated("よえん"), generated("よんえん"))
     }
 
+    @Test fun pairsAcceptVoicedAndOrdinaryReadingsAndRespectSwitch() {
+        val disabled = PredictionConfig(numberCandidateConfig = NumberCandidateConfig(
+            disabledCounters = setOf(BuiltInCounter.PAIRS.storageId)))
+        for ((prefix, forms) in listOf(
+            "" to listOf("3足", "３足", "三足"),
+            "じゅう" to listOf("13足", "１３足", "十三足"),
+            "にじゅう" to listOf("23足", "２３足", "二十三足")
+        )) {
+            for (ending in listOf("さんぞく", "さんそく")) {
+                val reading = prefix + ending
+                assertEquals(reading, forms, generated(reading))
+                assertTrue(reading, generated(reading, disabled).isEmpty())
+            }
+        }
+        assertEquals(generated("はっそく"), generated("はちそく"))
+        for ((reading, surface) in mapOf("いっそく" to "1足", "はっそく" to "8足",
+            "じゅっそく" to "10足", "じっそく" to "10足", "じゅういっそく" to "11足")) {
+            assertTrue(reading, surface in generated(reading))
+        }
+        for (reading in listOf("これはさんぞく", "さんぞくです", "さんぞくさんぞく")) {
+            assertTrue(reading, generated(reading).isEmpty())
+        }
+    }
+
+    @Test fun counterAmountSuffixPreservesOrderSettingsAndFullInput() {
+        val cases = mapOf(
+            "よんそくぶん" to listOf("4足分", "４足分", "四足分"),
+            "さんぞくぶん" to listOf("3足分", "３足分", "三足分"),
+            "じゅうさんぞくぶん" to listOf("13足分", "１３足分", "十三足分"),
+            "にじゅうさんぞくぶん" to listOf("23足分", "２３足分", "二十三足分"),
+            "よにんぶん" to listOf("4人分", "４人分", "四人分"),
+            "にじかんぶん" to listOf("2時間分", "２時間分", "二時間分"),
+            "じゅっぷんぶん" to listOf("10分分", "１０分分", "十分分"),
+        )
+        for ((input, forms) in cases) {
+            for (order in NumberCandidateOrder.entries) {
+                val config = PredictionConfig(numberCandidateOrder = order)
+                val candidates = NumberCandidateGenerator.generate(input, config)
+                assertEquals(input, order.indices.map(forms::get), candidates.map { it.string })
+                assertTrue(input, candidates.all { it.length.toInt() == input.length && it.yomi == input && it.commitText == it.string })
+                assertEquals(input, order.indices.map(forms::get),
+                    NumberCandidateGenerator.order(input, candidates.reversed(), config).map { it.string })
+            }
+        }
+        assertTrue(generated("よんそくぶん", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(disabledCounters = setOf(BuiltInCounter.PAIRS.storageId)))).isEmpty())
+        assertTrue(generated("よにんぶん", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(disabledKinds = setOf(NumberCandidateKind.PEOPLE)))).isEmpty())
+        assertTrue(generated("じゅっぷんぶん", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(disabledKinds = setOf(NumberCandidateKind.TIME)))).isEmpty())
+        assertTrue(generated("よんそくぶん", PredictionConfig(japaneseNumberCandidatesEnabled = false)).isEmpty())
+        val unit = CustomNumberUnit("box", "箱", "はこ")
+        assertEquals(listOf("2箱分", "２箱分", "二箱分"), generated("にはこぶん",
+            PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(unit)))))
+        assertTrue(generated("にはこぶん", PredictionConfig(numberCandidateConfig =
+            NumberCandidateConfig(units = listOf(unit.copy(enabled = false))))).isEmpty())
+        val exact = unit.copy(specialReadings = listOf(SpecialNumberReading(42, "にはこぶん")))
+        assertEquals(listOf("42箱", "４２箱", "四十二箱"), generated("にはこぶん",
+            PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(exact)))))
+        for (input in listOf("ぶん", "よんぶん", "しんぶん", "よんそくぶんぶん", "これはよんそくぶん", "よんそくぶんです")) {
+            assertTrue(input, generated(input).isEmpty())
+        }
+    }
+
     @Test fun builtInCompositionAndExactExceptions() {
         val valid = mapOf("じゅういっこ" to "11個", "にじゅうさんぼん" to "23本", "にじゅうろっぽん" to "26本",
             "にじゅっこ" to "20個", "さんじっこ" to "30個", "ひゃっこ" to "100個", "さんびゃっぽん" to "300本",

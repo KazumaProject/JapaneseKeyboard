@@ -56,7 +56,11 @@ enum class BuiltInCounter(val storageId: String, val output: String, val reading
                 change("まん", "まん$voiced", true)
             }
             when (this@BuiltInCounter) {
-                AGE, BOOKS, HEADS, CLOTHES, PAIRS, POINTS, LETTERS -> contract(eightOptional = this@BuiltInCounter in setOf(HEADS, CLOTHES, PAIRS, POINTS, LETTERS))
+                AGE, BOOKS, HEADS, CLOTHES, POINTS, LETTERS -> contract(eightOptional = this@BuiltInCounter in setOf(HEADS, CLOTHES, POINTS, LETTERS))
+                PAIRS -> {
+                    contract(eightOptional = true)
+                    change("さん", "さんぞく", optional = true)
+                }
                 MONTHS, PIECES, TIMES, FLOORS, CASES, HOUSES -> {
                     contract(six = true, eightOptional = true)
                     for ((base, altered) in listOf("ひゃく" to "ひゃっ", "びゃく" to "びゃっ", "ぴゃく" to "ぴゃっ")) change(base, altered + reading)

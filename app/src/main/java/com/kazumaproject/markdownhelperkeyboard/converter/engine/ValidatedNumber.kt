@@ -15,13 +15,15 @@ class ValidatedNumber private constructor(
     val clock: Pair<Int, Int>? = null,
     val customUnit: CustomNumberUnit? = null,
     val builtInCounter: BuiltInCounter? = null,
+    private val counterSuffix: String = "",
 ) {
     val fullWidth: String by lazy { buildString(digits.length) { digits.forEach { append(it + 0xFEE0) } } }
     val basicForms: List<String> by lazy { clock?.let { (hour, minute) ->
         val half = "${hour}時${minute}分"
         listOf(half, half.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString(""),
             hour.toLong().toKanji() + "時" + minute.toLong().toKanji() + "分")
-    } ?: listOf(digits + counter, fullWidth + counter, value.toKanji() + counter) }
+    } ?: listOf(digits + counter + counterSuffix, fullWidth + counter + counterSuffix,
+        value.toKanji() + counter + counterSuffix) }
 
     val clockText: String? get() = clock?.let { (hour, minute) -> "$hour:${minute.toString().padStart(2, '0')}" }
 
@@ -171,7 +173,26 @@ class ValidatedNumber private constructor(
         fun parseAll(input: String, config: NumberCandidateConfig): List<ValidatedNumber> =
             if (input.length > UByte.MAX_VALUE.toInt()) emptyList() else config.parse(input)
 
-        internal fun parseUncached(input: String, config: NumberCandidateConfig): List<ValidatedNumber> = buildList {
+        internal fun parseUncached(input: String, config: NumberCandidateConfig): List<ValidatedNumber> {
+            val direct = parseWithoutCounterSuffix(input, config)
+            if (!input.endsWith("ぶん")) return direct
+            val directUnitIds = direct.mapNotNull { it.customUnit?.id }.toSet()
+            // Accept a single amount suffix only after a fully parsed counter, never
+            // a standalone number or an arbitrary numeric prefix of ordinary text.
+            return buildList {
+                addAll(direct)
+                for (proof in parseWithoutCounterSuffix(input.dropLast(2), config)) {
+                    if (proof.counter.isEmpty() || proof.clock != null) continue
+                    // A registered reading of the entire input takes precedence for its unit.
+                    if (proof.customUnit?.id in directUnitIds) continue
+                    add(ValidatedNumber(proof.value, input, proof.origin, proof.counter, proof.digits,
+                        customUnit = proof.customUnit, builtInCounter = proof.builtInCounter,
+                        counterSuffix = "分"))
+                }
+            }
+        }
+
+        private fun parseWithoutCounterSuffix(input: String, config: NumberCandidateConfig): List<ValidatedNumber> = buildList {
             parse(input)?.let(::add)
             for (counter in BuiltInCounter.matching(input)) {
                 for (value in counter.parse(input)) add(ValidatedNumber(value, input, NumberInputOrigin.READING,

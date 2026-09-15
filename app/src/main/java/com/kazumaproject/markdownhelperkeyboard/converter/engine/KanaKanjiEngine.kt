@@ -3736,7 +3736,9 @@ class KanaKanjiEngine {
             digitCandidates + (englishDeferred + englishZenkaku).sortedBy { it.score }
         val temporalCandidates = createTemporalDictionaryCandidates(input)
 
-        return listJapaneseCandidates + numbersConverted + temporalCandidates
+        val candidates = (listJapaneseCandidates + numbersConverted + temporalCandidates)
+            .distinctBy { it.string }
+        return NumberCandidateGenerator.order(input, candidates, predictionConfig)
     }
 
     private fun createTemporalDictionaryCandidates(input: String): List<Candidate> = when (input) {

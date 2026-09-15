@@ -41,6 +41,23 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     @Test
+    fun getCandidatesEnglishKana_orders_direct_digits_after_merging_and_deduplication() {
+        val forms = listOf("123", "１２３", "百二十三")
+        for (input in listOf("123", "１２３")) {
+            for (order in NumberCandidateOrder.entries) {
+                val candidates = engine.getCandidatesEnglishKana(
+                    input, PredictionConfig(numberCandidateOrder = order)
+                )
+                val displayed = candidates.distinctBy { it.string }.map { it.string }
+                assertEquals("$input / $order", order.indices.map(forms::get), displayed.filter { it in forms })
+                forms.forEach { form ->
+                    assertEquals("$input / $order / $form", 1, candidates.count { it.string == form })
+                }
+            }
+        }
+    }
+
+    @Test
     fun getCandidatesEnglishKana_returns_numeric_variants_for_hiragana_numbers() {
         val candidateStrings =
             engine.getCandidatesEnglishKana("いちまんにせんさんびゃくよんじゅうご").map { it.string }
