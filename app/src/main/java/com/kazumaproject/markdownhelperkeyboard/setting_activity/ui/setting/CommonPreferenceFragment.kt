@@ -1014,6 +1014,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
     private fun setupRoutePreferences() {
         val routeTargets = mapOf(
+            "setting_route_number_candidates" to R.id.numberCandidateSettingsFragment,
             "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
             "setting_route_input_method" to R.id.inputMethodPreferenceFragment,
             "setting_route_candidate_conversion" to R.id.candidateConversionPreferenceFragment,

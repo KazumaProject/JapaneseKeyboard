@@ -214,6 +214,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiC
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateGenerator
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
@@ -3508,7 +3509,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateTabOrder = preferences.candidateTabOrder
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
-        predictionConfig = preferences.predictionConfig
+        val nextPredictionConfig = preferences.predictionConfig
+        if (predictionConfig.japaneseNumberCandidatesEnabled != nextPredictionConfig.japaneseNumberCandidatesEnabled ||
+            predictionConfig.numberCandidateOrder != nextPredictionConfig.numberCandidateOrder ||
+            predictionConfig.numberCandidateConfig != nextPredictionConfig.numberCandidateConfig
+        ) {
+            // The rerank cache stores the entire list, including numeric additions outside its top K.
+            beginZenzRerankRequest()
+            synchronized(zenzRerankCache) { zenzRerankCache.clear() }
+        }
+        predictionConfig = nextPredictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
         mozcUTWiki = preferences.mozcUTWiki
@@ -19661,13 +19671,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             it.length.toInt() == input.length &&
                 !NgWordMatcher.matchesAny(input, it.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        val numericOrdered = NumberCandidateGenerator.order(input, candidates, predictionConfig)
         val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
             candidateOrderOverrideRepository.applyOrderFromSnapshot(
                 input = input,
-                candidates = candidates,
+                candidates = numericOrdered,
                 candidateSegmentsByString = result.candidateSegmentsByString,
             )
-        } else candidates
+        } else numericOrdered
         return result.copy(candidates = orderedCandidates)
     }
 
@@ -25830,6 +25841,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidates = candidates,
             )
         }
+        val numericOrdered = NumberCandidateGenerator.order(input, promotedCandidates, predictionConfig)
         return if (appPreference.candidate_order_override_enable_preference == true) {
             if (candidateSegmentsByString.isNotEmpty()) {
                 latestCandidateSegmentInput = input
@@ -25838,12 +25850,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
-                    candidates = promotedCandidates,
+                    candidates = numericOrdered,
                     candidateSegmentsByString = candidateSegmentsByString,
                 )
             }
         } else {
-            promotedCandidates
+            numericOrdered
         }
     }
 
