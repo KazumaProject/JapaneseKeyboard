@@ -17,6 +17,8 @@ internal class CompiledNumberUnits(units: List<CustomNumberUnit>) {
 
     val startCharacters: Set<Char>
     val endCharacters: Set<Char>
+    val maximumNonCardinalTail: Int
+    val outputs: Set<String>
     val allValid: Boolean
     private val enabled: List<UnitRules>
     private val byId: Map<String, List<UnitRules>>
@@ -29,6 +31,11 @@ internal class CompiledNumberUnits(units: List<CustomNumberUnit>) {
         allValid = validUnits.size == units.size
         enabled = validUnits.withIndex().filter { it.value.enabled }.map { UnitRules(it.index, it.value) }
         byId = enabled.groupBy { it.unit.id }
+        outputs = enabled.mapTo(HashSet()) { it.unit.output }
+        maximumNonCardinalTail = enabled.maxOfOrNull { owner ->
+            (listOf(owner.unit.reading) + owner.unit.specialReadings.map { it.reading })
+                .maxOf(ValidatedNumber::nonCardinalTailLength)
+        } ?: 0
         startCharacters = enabled.flatMap { it.unit.specialReadings.map { rule -> rule.reading.first() } }.toSet()
         endCharacters = enabled.flatMap { listOf(it.unit.reading.last()) + it.unit.specialReadings.map { rule -> rule.reading.last() } }.toSet()
         val rules = enabled.flatMap { owner -> owner.unit.specialReadings.mapIndexed { i, s -> Rule(owner, i, s) } }
@@ -38,7 +45,9 @@ internal class CompiledNumberUnits(units: List<CustomNumberUnit>) {
 
     fun permits(unit: CustomNumberUnit): Boolean = byId[unit.id]?.any { it.unit == unit } == true
 
-    fun match(input: String): List<Pair<CustomNumberUnit, List<Long>>> {
+    internal data class ParsedReading(val value: Long, val cardinalReading: String?, val source: CardinalSource? = null)
+
+    fun match(input: String): List<Pair<CustomNumberUnit, List<ParsedReading>>> {
         if (enabled.isEmpty()) return emptyList()
         val matches = java.util.TreeMap<Int, Pair<UnitRules, Matches>>()
         fun bucket(owner: UnitRules): Matches = matches.getOrPut(owner.ordinal) { owner to Matches() }.second
@@ -49,19 +58,21 @@ internal class CompiledNumberUnits(units: List<CustomNumberUnit>) {
         ordinary.forEachMatch(input) { bucket(it).ordinary = true }
         return matches.values.mapNotNull { (owner, match) ->
             val values = when {
-                match.exact.isNotEmpty() -> match.exact.map { it.special.value }
+                match.exact.isNotEmpty() -> match.exact.map { ParsedReading(it.special.value, null) }
                 else -> match.composed.sortedBy { it.ordinal }.mapNotNull { rule ->
                     val special = rule.special
                     // Validation and parsing of baseReading have already happened at construction.
-                    ValidatedNumber.parseReading(input.dropLast(special.reading.length) + special.baseReading)?.value
+                    val normalized = input.dropLast(special.reading.length) + special.baseReading
+                    ValidatedNumber.parseReading(normalized)?.let { ParsedReading(it.value, normalized, CardinalSource(input.length, input.length - special.reading.length, true)) }
                 }.ifEmpty {
                     if (!match.ordinary) emptyList() else {
                         val stem = input.dropLast(owner.unit.reading.length)
                         if (owner.blockedBases.any(stem::endsWith)) emptyList() else
-                            listOfNotNull(ValidatedNumber.parseReading(stem)?.value?.takeIf { owner.specialValues.binarySearch(it) < 0 })
+                            listOfNotNull(ValidatedNumber.parseReading(stem)?.value?.takeIf { owner.specialValues.binarySearch(it) < 0 }
+                                ?.let { ParsedReading(it, stem, CardinalSource(stem.length, stem.length)) })
                     }
                 }
-            }.distinct()
+            }.distinctBy { it.value }
             if (values.isEmpty()) null else owner.unit to values
         }
     }

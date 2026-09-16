@@ -102,6 +102,12 @@ enum class BuiltInCounter(val storageId: String, val output: String, val reading
     }
 
     companion object {
+        internal val maximumNonCardinalTail: Int by lazy {
+            entries.maxOf { counter ->
+                (listOf(counter.reading) + counter.endings.map { it.surface } + counter.exact.keys)
+                    .maxOf(ValidatedNumber::nonCardinalTailLength)
+            }
+        }
         // Ordinary suffixes, sound changes and exact exceptions all participate.
         // Preserve enum order when several counters share a reading (e.g. 回 / 階).
         private val byLastCharacter: Map<Char, List<BuiltInCounter>> by lazy {
@@ -125,30 +131,41 @@ enum class BuiltInCounter(val storageId: String, val output: String, val reading
             byLastCharacter[input.lastOrNull()].orEmpty()
     }
 
-    fun parse(input: String): List<Long> {
-        exact[input]?.let { return listOf(it) }
+    internal data class ParsedReading(val value: Long, val cardinalReading: String?, val source: CardinalSource? = null)
+
+    fun parse(input: String): List<Long> = parseWithReading(input).map { it.value }.distinct()
+
+    internal fun parseWithReading(input: String): List<ParsedReading> {
+        fun parsed(value: Long, cardinal: String, end: Int = input.length - reading.length,
+                   prefix: Int = input.take(end).commonPrefixWith(cardinal).length, fused: Boolean = false) =
+            ParsedReading(value, cardinal, CardinalSource(end, prefix, fused))
+        exact[input]?.let { return listOf(ParsedReading(it, null)) }
         if (this == THINGS) return emptyList()
         if (this == DAY && input.endsWith(reading)) {
             val stem = input.dropLast(reading.length)
-            val n = ValidatedNumber.parseCounterReading(stem) ?:
-                (if (stem.endsWith("く")) ValidatedNumber.parseCounterReading(stem.dropLast(1) + "きゅう") else null) ?: return emptyList()
+            val normalized = if (ValidatedNumber.parseCounterReading(stem) != null) stem
+                else if (stem.endsWith("く")) stem.dropLast(1) + "きゅう" else stem
+            val n = ValidatedNumber.parseCounterReading(normalized) ?: return emptyList()
             // 日 also expresses durations, so unlike calendar 月 it is not capped at 31.
             return listOfNotNull(n.takeIf { it > 0 && it !in exact.values &&
-                (it % 10 != 9L || stem.endsWith("く")) })
+                (it % 10 != 9L || stem.endsWith("く")) }?.let { parsed(it, normalized) })
         }
         if (this == MONTH) {
             if (!input.endsWith(reading)) return emptyList()
             return listOfNotNull(ValidatedNumber.parseCounterReading(input.dropLast(reading.length))
-                ?.takeIf { it in 1..12 && it !in exact.values })
+                ?.takeIf { it in 1..12 && it !in exact.values }?.let { parsed(it, input.dropLast(reading.length)) })
         }
         val values = endings.mapNotNull { rule ->
             if (!input.endsWith(rule.surface)) null
-            else ValidatedNumber.parseCounterReading(input.dropLast(rule.surface.length) + rule.base)
+            else {
+                val normalized = input.dropLast(rule.surface.length) + rule.base
+                ValidatedNumber.parseCounterReading(normalized)?.let { parsed(it, normalized, input.length, input.length - rule.surface.length, true) }
+            }
         }
         if (values.isNotEmpty()) return values.distinct()
         if (!input.endsWith(reading)) return emptyList()
         val stem = input.dropLast(reading.length)
         if (endings.any { !it.allowOrdinary && stem.endsWith(it.base) }) return emptyList()
-        return listOfNotNull(ValidatedNumber.parseCounterReading(stem))
+        return listOfNotNull(ValidatedNumber.parseCounterReading(stem)?.let { parsed(it, stem) })
     }
 }
