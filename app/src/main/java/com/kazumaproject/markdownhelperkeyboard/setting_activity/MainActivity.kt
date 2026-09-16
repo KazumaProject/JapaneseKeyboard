@@ -23,6 +23,9 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.NumberUnitEditorFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.UnitEditorExit
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.UnitEditorNavigation
 import com.kazumaproject.core.R as CoreR
 
 @AndroidEntryPoint
@@ -91,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (savedInstanceState == null && !handleIntent(intent)) {
-            navigateToPreferredSettingHome(navController)
+            requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.SETTINGS_HOME))
         }
     }
 
@@ -124,15 +127,14 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?): Boolean {
         val extra = intent?.getStringExtra("openSettingActivity")
         return extra?.let { request ->
-            val navController = currentNavController()
             when (request) {
                 "setting_fragment_request" -> {
-                    navigateToPreferredSettingHome(navController)
+                    requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.SETTINGS_HOME))
                     true
                 }
 
                 "dictionary_fragment_request" -> {
-                    navController.navigate(R.id.navigation_learn_dictionary)
+                    requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.LEARN_DICTIONARY))
                     true
                 }
 
@@ -208,15 +210,14 @@ class MainActivity : AppCompatActivity() {
         navView.setupWithNavController(navController)
         navView.setOnItemSelectedListener { item ->
             if (item.itemId == R.id.navigation_setting) {
-                navigateToPreferredSettingHome(navController)
-                true
+                requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.SETTINGS_HOME))
             } else {
-                NavigationUI.onNavDestinationSelected(item, navController)
+                requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.BOTTOM_TAB, item.itemId))
             }
         }
         navView.setOnItemReselectedListener { item ->
             if (item.itemId == R.id.navigation_setting) {
-                navigateToPreferredSettingHome(navController)
+                requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.SETTINGS_HOME))
             }
         }
     }
@@ -270,7 +271,7 @@ class MainActivity : AppCompatActivity() {
         appPreference.setting_use_new_home_screen_preference =
             !appPreference.setting_use_new_home_screen_preference
         applySettingHomeModeFromPreference()
-        navigateToPreferredSettingHome(navController)
+        requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.SETTINGS_HOME))
         invalidateOptionsMenu()
     }
 
@@ -281,7 +282,31 @@ class MainActivity : AppCompatActivity() {
         ) {
             return false
         }
-        return navigateToPreferredSettingHome(navController)
+        return requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.SETTINGS_HOME))
+    }
+
+    internal fun requestUnitEditorNavigation(request: UnitEditorNavigation): Boolean {
+        val host = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+        val editor = host.childFragmentManager.primaryNavigationFragment as? NumberUnitEditorFragment
+        if (editor != null && !editor.allowLeave(request)) return false
+        return performUnitEditorNavigation(request)
+    }
+
+    internal fun performUnitEditorNavigation(request: UnitEditorNavigation): Boolean {
+        val nav = currentNavController()
+        // Once departure is approved, do not leave the discarded editor in saved tab history.
+        if (nav.currentDestination?.id == R.id.numberUnitEditorFragment &&
+            request.exit in setOf(UnitEditorExit.BOTTOM_TAB, UnitEditorExit.LEARN_DICTIONARY)) nav.popBackStack()
+        return when (request.exit) {
+            UnitEditorExit.BACK -> nav.popBackStack()
+            UnitEditorExit.SETTINGS_HOME -> navigateToPreferredSettingHome(nav)
+            UnitEditorExit.BOTTOM_TAB -> bottomNavigationView?.menu?.findItem(request.itemId)
+                ?.let { NavigationUI.onNavDestinationSelected(it, nav) } ?: false
+            UnitEditorExit.LEARN_DICTIONARY -> {
+                nav.navigate(R.id.navigation_learn_dictionary)
+                true
+            }
+        }
     }
 
     private fun navigateToPreferredSettingHome(navController: NavController): Boolean {
