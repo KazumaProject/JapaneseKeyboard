@@ -22,6 +22,7 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textfield.TextInputEditText
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.*
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import java.util.UUID
 
@@ -223,9 +224,11 @@ class NumberUnitEditorFragment : Fragment() {
     private var renderedSpecials: List<SpecialNumberReading>? = null
     private var renderedOutput: String? = null
     private var initialized = false
+    private var pendingExit: UnitEditorNavigation? = null
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
+        pendingExit = state?.getBundle("pendingExit")?.let(UnitEditorNavigation::fromBundle)
         val id = state?.getString("id") ?: arguments?.getString("unitId") ?: UUID.randomUUID().toString()
         original = AppPreference.number_candidate_config.units.firstOrNull { it.id == id }
             ?: CustomNumberUnit(id, "", "")
@@ -321,23 +324,46 @@ class NumberUnitEditorFragment : Fragment() {
 
     override fun onViewCreated(view: View, state: Bundle?) {
         super.onViewCreated(view, state)
+        childFragmentManager.setFragmentResultListener(NumberUnitDiscardDialog.RESULT, viewLifecycleOwner) { _, result ->
+            val request = UnitEditorNavigation.fromBundle(result)
+            if (pendingExit == request) {
+                pendingExit = null
+                if (result.getBoolean("discard")) (requireActivity() as MainActivity).performUnitEditorNavigation(request)
+            }
+        }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (draft() == original && !specialOpen) { findNavController().popBackStack(); return }
-                AlertDialog.Builder(requireContext()).setMessage(R.string.number_discard)
-                    .setNegativeButton(R.string.number_cancel, null).setPositiveButton(android.R.string.ok) { _, _ -> findNavController().popBackStack() }.show()
+                (requireActivity() as MainActivity).requestUnitEditorNavigation(UnitEditorNavigation(UnitEditorExit.BACK))
             }
         })
+    }
+
+    internal fun allowLeave(request: UnitEditorNavigation): Boolean {
+        if (pendingExit != null) return false
+        if (initialized && draft() == original && !specialOpen) return true
+        pendingExit = request
+        showExitConfirmation()
+        return false
+    }
+
+    private fun showExitConfirmation() {
+        val request = pendingExit ?: return
+        if (!isResumed || childFragmentManager.isStateSaved ||
+            childFragmentManager.findFragmentByTag(NumberUnitDiscardDialog.TAG) != null) return
+        NumberUnitDiscardDialog().apply { arguments = request.toBundle() }
+            .showNow(childFragmentManager, NumberUnitDiscardDialog.TAG)
     }
 
     override fun onResume() {
         super.onResume()
         refreshSpecial()
+        showExitConfirmation()
     }
 
     override fun onSaveInstanceState(out: Bundle) {
         super.onSaveInstanceState(out)
         out.putString("id", original.id)
+        out.putBundle("pendingExit", pendingExit?.toBundle())
         if (!initialized) return
         out.putString("output", output.text.toString()); out.putString("reading", reading.text.toString())
         out.putString("trial", trial.text.toString()); out.putString("specialValue", specialValue.text.toString())
