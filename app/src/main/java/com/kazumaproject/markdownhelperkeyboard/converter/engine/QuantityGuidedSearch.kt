@@ -345,7 +345,8 @@ internal class QuantityGuidedSearch(
         for ((start, finish) in policy.recognizedSpans()) for (at in start + 1 until finish) safe[at] = false
         class Output(val node: Int, val tail: Output?, val cost: Int, val matched: Int = tail?.matched ?: 0) {
             var key: Int = if (node < 0) 0 else -1
-
+            val quantityBeforeBoundary: Boolean = node >= 0 && (policy.startsQuantity(nodes[node]) ||
+                tail?.let { it.node >= 0 && !safe[nodes[it.node].sPos] && it.quantityBeforeBoundary } == true)
         }
         class Choice(val edge: Int, val rank: Int, val output: Output, val ordinal: Int)
         class Stream {
@@ -378,6 +379,13 @@ internal class QuantityGuidedSearch(
         }
         fun key(output: Output): Int {
             if (output.key >= 0) return output.key
+            // Inside an unresolved quantity interval the key is literal. If no
+            // quantity starts before the next safe boundary it is literal too.
+            // Reuse that tail directly even when ordinary words cross many
+            // potential quantity boundaries (e.g. 分散 across 足分 + さん...).
+            if (!safe[nodes[output.node].sPos] || !output.quantityBeforeBoundary) {
+                return intern(nodes[output.node].tango, output.tail?.key ?: 0).also { output.key = it }
+            }
             val block = ArrayList<Node>()
             var cursor: Output? = output
             while (true) {

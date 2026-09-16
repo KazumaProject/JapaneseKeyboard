@@ -1100,6 +1100,24 @@ class FindPath(
         val quantityPolicy = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.numberPolicy
         val unprunedQuantityGraph = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.quantityGraph.orEmpty()
 
+        cancellationCheck()
+        if (quantityPolicy?.usesWeightedScoring == true && quantityPolicy.config.japaneseNumberCandidatesEnabled &&
+            quantityPolicy.hasQuantities && unprunedQuantityGraph.isNotEmpty() && unprunedQuantityGraph.values.all { nodes ->
+                nodes.none { it.candidateSource == CandidateSource.USER_DICTIONARY || it.candidateSource == CandidateSource.LEARNED_DICTIONARY }
+            }) {
+            // The weighted graph already contains ordinary and quantity paths. Running
+            // a second pruned search cannot add a cheaper interpretation to this stream.
+            if (sessionState != null) {
+                sessionState.forwardDpCache = null
+                sessionState.lastForwardDpReused = false
+                sessionState.afterForwardDpForTest?.invoke()
+            } else forwardDpCache = null
+            cancellationCheck()
+            return com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityGuidedSearch(
+                unprunedQuantityGraph, quantityPolicy, connectionMatrix, { _, _ -> true }, currentScorer(), cancellationCheck,
+                sessionState?.quantityWorkspace ?: quantityWorkspace.get(), boundaryClass = { 0 },
+            ).candidates(candidateSegmentCollector, requested = n).toMutableList()
+        }
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
         val incrementalMetadata = graph as? IncrementalGraphMetadata
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache

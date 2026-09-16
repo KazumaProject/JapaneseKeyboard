@@ -32,6 +32,29 @@ class PhysicalCandidateCompositionInstrumentedTest {
     private lateinit var host: ActivityScenario<FastInputHostActivity>
     private var keyboardId = 0
 
+    @Test fun quantityMoneyAndVehicleContextConvertAndCommitThroughTheIme() {
+        for ((romaji, reading, expected) in listOf(
+            Triple("sanbyakugojuuentsukau", "さんびゃくごじゅうえんつかう", "350円使う"),
+            Triple("kurumanidainiwakaretenoru", "くるまにだいにわかれてのる", "車2台に分かれて乗る"),
+            Triple("torakkunonidaininoru", "とらっくのにだいにのる", "トラックの荷台に乗る"),
+        )) withKeyboard {
+            type(romaji)
+            awaitText(reading)
+            // Do not wait for candidates: SPACE must wait for this reading's result,
+            // rather than previewing a candidate from an unfinished romaji prefix.
+            key(KeyEvent.KEYCODE_SPACE)
+            awaitText(expected)
+            await {
+                automation.windows.asSequence().mapNotNull { it.root }
+                    .flatMap { it.findAccessibilityNodeInfosByText(expected).asSequence() }
+                    .any { it.isVisibleToUser && it.text?.toString() == expected && it.className?.toString() != "android.widget.EditText" }
+            }
+            key(KeyEvent.KEYCODE_ENTER)
+            awaitText(expected)
+            host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+        }
+    }
+
     @Test fun quantityDurationConvertsAndCommitsThroughTheIme() = withKeyboard {
         type("yonfunkanmatsu")
         awaitText("よんふんかんまつ")

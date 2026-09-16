@@ -1487,7 +1487,7 @@ class GraphBuilder {
         val updatedCache = CachedGraph(
             input = str,
             signature = signature,
-            graph = if (sessionState != null) graph else graph.deepCopyForGraphBuild(),
+            graph = if (sessionState != null) graph else graph.snapshotForGraphBuild(),
             systemOmissionStates = systemOmissionStates,
             systemUserOmissionStates = systemUserOmissionStates,
             systemTypoProgress = systemTypoProgress,
@@ -1554,10 +1554,13 @@ class GraphBuilder {
         adjustedScore = score,
     )
 
-    private fun MutableMap<Int, MutableList<Node>>.deepCopyForGraphBuild(): MutableMap<Int, MutableList<Node>> =
+    private fun MutableMap<Int, MutableList<Node>>.snapshotForGraphBuild(): MutableMap<Int, MutableList<Node>> =
         LinkedHashMap<Int, MutableList<Node>>(size).also { copy ->
             forEach { (endIndex, nodes) ->
-                copy[endIndex] = nodes.mapTo(mutableListOf()) { it.copyForGraphBuild() }
+                // Search mutates DP fields, never lexical fields. Reuse resets the
+                // DP fields in copyForGraphBuild; only the unpruned lists need
+                // a snapshot now. Avoid copying every node twice per query.
+                copy[endIndex] = nodes.toMutableList()
             }
         }
 
