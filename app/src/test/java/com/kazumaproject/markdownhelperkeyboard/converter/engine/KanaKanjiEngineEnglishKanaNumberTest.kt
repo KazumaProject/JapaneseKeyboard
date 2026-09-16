@@ -41,6 +41,23 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     @Test
+    fun getCandidatesEnglishKana_orders_direct_digits_after_merging_and_deduplication() {
+        val forms = listOf("123", "１２３", "百二十三")
+        for (input in listOf("123", "１２３")) {
+            for (order in NumberCandidateOrder.entries) {
+                val candidates = engine.getCandidatesEnglishKana(
+                    input, PredictionConfig(numberCandidateOrder = order)
+                )
+                val displayed = candidates.distinctBy { it.string }.map { it.string }
+                assertEquals("$input / $order", order.indices.map(forms::get), displayed.filter { it in forms })
+                forms.forEach { form ->
+                    assertEquals("$input / $order / $form", 1, candidates.count { it.string == form })
+                }
+            }
+        }
+    }
+
+    @Test
     fun getCandidatesEnglishKana_returns_numeric_variants_for_hiragana_numbers() {
         val candidateStrings =
             engine.getCandidatesEnglishKana("いちまんにせんさんびゃくよんじゅうご").map { it.string }
@@ -56,15 +73,15 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("さんにん").any { it.string == "3人" })
         assertTrue(engine.getCandidatesEnglishKana("ごえん").any { it.string == "5円" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅっぷん").any { it.string == "20分" })
-        assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
+        assertFalse(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
         assertTrue(engine.getCandidatesEnglishKana("ろくじ").any { it.string == "6時" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ").any { it.string == "24時" })
         assertTrue(engine.getCandidatesEnglishKana("くじ").any { it.string == "9時" })
         assertTrue(engine.getCandidatesEnglishKana("じゅうくじ").any { it.string == "19時" })
         assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
         assertTrue(engine.getCandidatesEnglishKana("よえん").any { it.string == "4円" })
-        assertTrue(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
-        assertTrue(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
+        assertFalse(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
+        assertFalse(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
         assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })
         assertTrue(engine.getCandidatesEnglishKana("ろっぷん").any { it.string == "6分" })
         assertTrue(engine.getCandidatesEnglishKana("はっぷん").any { it.string == "8分" })
