@@ -9,6 +9,21 @@ interface SystemNgramDictionary {
     /** Equal classes must be interchangeable at every position of every rule. */
     fun lexicalClass(node: Node): Any = com.kazumaproject.graph.LexicalPart(node.tango, node.l, node.r)
 
+    /**
+     * Number of trailing lexical nodes needed to detect future matches (at most four).
+     * Unknown implementations conservatively retain the old first-node history.
+     * A completed unigram never needs continuation history.
+     */
+    fun continuationLength(nodes: List<Node>): Int {
+        for (start in maxOf(0, nodes.size - 4) until nodes.size) {
+            if (mayMatchFirstNode(nodes[start])) return nodes.size - start
+        }
+        return 0
+    }
+
+    /** Equal classes must be interchangeable in retained continuation history. */
+    fun historyClass(node: Node): Any = lexicalClass(node)
+
     /** Returns true when a single conversion node matches a unigram rule. */
     fun matchesSingleNode(node: Node): Boolean = false
 
@@ -36,6 +51,7 @@ interface SystemNgramDictionary {
 
 object EmptySystemNgramDictionary : SystemNgramDictionary {
     override fun lexicalClass(node: Node): Any = 0
+    override fun continuationLength(nodes: List<Node>): Int = 0
     override val ruleCount: Int = 0
     override val storageBytes: Int = 0
 

@@ -32,6 +32,8 @@ class PackedSystemNgramDictionary private constructor(
     private val firstPairKindKeys: IntArray
     private val firstNodeValuesByKind: Array<LongHashSet?>
     private val firstNodeKindKeys: IntArray
+    // Proper prefixes only. Hash collisions can retain extra history, never discard a match.
+    private val continuationPrefixes = Array(5) { LinkedHashMap<Int, LongHashSet>() }
 
     init {
         verify()
@@ -185,6 +187,7 @@ class PackedSystemNgramDictionary private constructor(
         repeat(ruleCount) { recordId ->
             val recordLength = decodeRecord(recordId, record)
             indexObservedWords(record, recordLength)
+            indexContinuationPrefixes(record, recordLength)
             val signature = (record[0].toInt() and 0xff) or
                 ((record[1].toInt() and 0xff) shl 8)
             val firstKind = (signature ushr 3) and 0x3
@@ -202,6 +205,48 @@ class PackedSystemNgramDictionary private constructor(
         }
         return result
     }
+
+    private fun indexContinuationPrefixes(record: ByteArray, length: Int) {
+        val signature = (record[0].toInt() and 0xff) or ((record[1].toInt() and 0xff) shl 8)
+        var position = 2
+        var kinds = 0
+        var hash = FNV_OFFSET
+        for (index in 0 until (signature and 7) - 1) {
+            val kind = (signature ushr (3 + index * 2)) and 3
+            val feature = readPrefixFeature(record, position, length, kind)
+            position = feature.nextPosition
+            kinds = kinds or (kind shl (index * 2))
+            hash = (hash xor feature.value.toLong()) * FNV_PRIME
+            continuationPrefixes[index + 1].getOrPut(kinds) { LongHashSet() }.add(hash)
+        }
+    }
+
+    override fun continuationLength(nodes: List<Node>): Int {
+        for (length in minOf(4, nodes.size) downTo 1) {
+            val start = nodes.size - length
+            for ((kinds, hashes) in continuationPrefixes[length]) {
+                var hash = FNV_OFFSET
+                var valid = true
+                for (index in 0 until length) {
+                    val node = nodes[start + index]
+                    if (node.tango == "BOS" || node.tango == "EOS") { valid = false; break }
+                    val value = when ((kinds ushr (index * 2)) and 3) {
+                        KIND_WORD -> node.tango.hashCode()
+                        KIND_POS -> coarsePos(node)
+                        KIND_ANY -> 0
+                        else -> null
+                    }
+                    if (value == null) { valid = false; break }
+                    hash = (hash xor value.toLong()) * FNV_PRIME
+                }
+                if (valid && hashes.contains(hash)) return length
+            }
+        }
+        return 0
+    }
+
+    override fun historyClass(node: Node): Any =
+        if (formatVersion == UNIGRAM_VERSION) 0 else lexicalClass(node)
 
     private fun buildFirstNodeHashes(
         firstNodeValues: Array<LongHashSet?>,

@@ -11,6 +11,23 @@ import org.junit.Test
 class FindPathConnectionMatrixTest {
 
     @Test
+    fun sentenceContextIdsComeFromBothEndsOfTheChosenPath() {
+        fun graph() = mutableMapOf(
+            0 to mutableListOf(createNode("BOS", 0, 0, 0, 0)),
+            1 to mutableListOf(createNode("前", 1, 2, 1, 0)),
+            2 to mutableListOf(createNode("後", 3, 4, 1, 1)),
+            3 to mutableListOf(createNode("EOS", 0, 0, 0, 3)),
+        )
+        val plain = FindPath().backwardAStar(graph(), 2, ShortArray(25), 5, 1).single()
+        val bunsetsu = FindPath().backwardAStarWithBunsetsu(graph(), 2, ShortArray(25), 5, 1).candidates.single()
+        for (candidate in listOf(plain, bunsetsu)) {
+            assertEquals("前後", candidate.string)
+            assertEquals(1.toShort(), candidate.leftId)
+            assertEquals(4.toShort(), candidate.rightId)
+        }
+    }
+
+    @Test
     fun backwardAStar_stopsWhenCancellationIsRequested() {
         assertThrows(TestCancellation::class.java) {
             FindPath().backwardAStar(

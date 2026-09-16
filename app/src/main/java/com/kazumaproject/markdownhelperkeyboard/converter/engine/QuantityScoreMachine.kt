@@ -20,7 +20,12 @@ internal class QuantityScoreMachine(private val scorer: NgramRuleScorer,
             Node(it.left, it.right, 0, 0, tango = it.text, len = 0, yomiUsed = "", sPos = 0)
         }
     }
-    fun systemClass(node: Node): Any = if (dictionary.ruleCount == 0) 0 else parts(node).map(dictionary::lexicalClass)
+    private val systemClasses = java.util.IdentityHashMap<Node, Any>()
+    private val historyClasses = java.util.IdentityHashMap<Node, Any>()
+    fun systemClass(node: Node): Any = if (dictionary.ruleCount == 0) 0 else
+        systemClasses.getOrPut(node) { parts(node).map(dictionary::lexicalClass) }
+    private fun historyClass(node: Node): Any = historyClasses.getOrPut(node) { dictionary.historyClass(node) }
+
     private val transitions = QuantityLongIndex()
     private val steps = QuantityIntRows(3)
 
@@ -48,11 +53,10 @@ internal class QuantityScoreMachine(private val scorer: NgramRuleScorer,
                     if (dictionary.matches(words[start], words[start + 1], word(start + 2), word(start + 3), word(start + 4))) matched = true
                 }
             }
-            val suffix = words.takeLast(4)
-            val first = suffix.indexOfFirst(dictionary::mayMatchFirstNode)
-            if (first < 0) emptyList() else suffix.drop(first)
+            val retained = dictionary.continuationLength(words)
+            if (retained == 0) emptyList() else words.takeLast(retained)
         }
-        val tailKey = History(tail.map(::symbol), systemTail.map(dictionary::lexicalClass))
+        val tailKey = History(tail.map(::symbol), systemTail.map(::historyClass))
         val next = historyIds.getOrPut(tailKey) { histories.add(tail); systemHistories.add(systemTail); histories.lastIndex }
         val id = steps.add()
         steps[id, 0] = next; steps[id, 1] = scorer.scoreEndingAt(context); steps[id, 2] = if (matched) 8 else 0

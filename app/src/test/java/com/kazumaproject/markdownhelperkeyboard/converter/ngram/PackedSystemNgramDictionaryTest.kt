@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.ngram
 
 import com.kazumaproject.graph.Node
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -27,6 +28,33 @@ class PackedSystemNgramDictionaryTest {
             assertTrue("$word must remain observable", dictionary.lexicalClass(node(word)) != dictionary.lexicalClass(node("無関係な語")))
         }
         assertTrue(dictionary.lexicalClass(node("無関係な語")) == dictionary.lexicalClass(node("別の無関係な語")))
+    }
+
+    @Test
+    fun continuationRetainsOnlyProperPrefixesIncludingPosAndWildcardRules() {
+        val dictionary = dictionary()
+        fun retained(vararg words: String) = dictionary.continuationLength(words.map { node(it) })
+        assertEquals(1, retained("無関係", "服"))
+        assertEquals(2, retained("服", "を"))
+        assertEquals(0, retained("服", "を", "着る"))
+        assertEquals(0, retained("服", "不一致"))
+        assertEquals(0, retained("二", "語"))
+        assertEquals(4, retained("一", "二", "三", "四"))
+        assertEquals(0, retained("一", "二", "三", "四", "五"))
+        assertEquals(4, retained("布", "で", "任意の語", "を"))
+        assertEquals(3, dictionary.continuationLength(listOf(node("布"), node("で"), node("机", NOUN_CONTEXT_ID))))
+    }
+
+    @Test
+    fun unigramsDoNotCreateContinuationHistoryInCompositeDictionary() {
+        val unigram = PackedSystemNgramDictionary.read(unigramFixture)
+        val dictionary = CompositeSystemNgramDictionary(listOf(dictionary(), unigram))
+        val word = node("カワボ")
+        assertTrue(dictionary.matchesSingleNode(word))
+        assertEquals(0, unigram.continuationLength(listOf(word)))
+        assertEquals(0, dictionary.continuationLength(listOf(word, node("無関係"))))
+        assertEquals(unigram.historyClass(word), unigram.historyClass(node("別の語")))
+        assertEquals(2, dictionary.continuationLength(listOf(word, node("服"), node("を"))))
     }
 
     @Test

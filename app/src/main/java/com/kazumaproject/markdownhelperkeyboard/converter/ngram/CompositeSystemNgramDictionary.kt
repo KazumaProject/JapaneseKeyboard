@@ -18,6 +18,11 @@ class CompositeSystemNgramDictionary(
 
     override fun lexicalClass(node: Node): Any = dictionaries.map { it.lexicalClass(node) }
 
+    override fun historyClass(node: Node): Any = dictionaries.map { it.historyClass(node) }
+
+    override fun continuationLength(nodes: List<Node>): Int =
+        dictionaries.maxOf { it.continuationLength(nodes) }
+
     override val ruleCount: Int = dictionaries.sumOf { it.ruleCount }
     override val storageBytes: Int = dictionaries.sumOf { it.storageBytes }
 

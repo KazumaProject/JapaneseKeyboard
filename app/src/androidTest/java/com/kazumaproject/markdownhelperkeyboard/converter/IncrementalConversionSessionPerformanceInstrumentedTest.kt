@@ -681,6 +681,8 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
         }
         forceGc()
         val memoryBeforeMeasurements = MemorySnapshot.capture()
+        val gcCountBefore = runtimeStat("art.gc.gc-count")
+        val gcTimeBefore = runtimeStat("art.gc.gc-time")
 
         val legacySessionSamples = ArrayList<Long>(iterations)
         val incrementalSessionSamples = ArrayList<Long>(iterations)
@@ -710,6 +712,8 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
             }
         }
 
+        val measurementGcCount = runtimeStat("art.gc.gc-count") - gcCountBefore
+        val measurementGcTimeMs = runtimeStat("art.gc.gc-time") - gcTimeBefore
         val legacySession = Stats.from(legacySessionSamples)
         val incrementalSession = Stats.from(incrementalSessionSamples)
         val legacyCommand = Stats.from(legacyCommandSamples)
@@ -765,6 +769,8 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
             appendLine("incrementalSessionMs=${incrementalSession.asMilliseconds()}")
             appendLine("legacyCommandMs=${legacyCommand.asMilliseconds()}")
             appendLine("incrementalCommandMs=${incrementalCommand.asMilliseconds()}")
+            appendLine("measurementGcCount=$measurementGcCount")
+            appendLine("measurementGcTimeMs=$measurementGcTimeMs")
             appendLine("allocationIterations=$allocationIterations")
             appendLine("legacyAllocatedBytesPerSession=$legacyAllocatedBytesPerSession")
             appendLine("incrementalAllocatedBytesPerSession=$incrementalAllocatedBytesPerSession")
@@ -1152,10 +1158,11 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
         val p50Ns: Long,
         val p95Ns: Long,
         val p99Ns: Long,
+        val maxNs: Long,
     ) {
         fun asMilliseconds(): String =
             "mean=${meanNs / 1_000_000.0},p50=${p50Ns / 1_000_000.0}," +
-                "p95=${p95Ns / 1_000_000.0},p99=${p99Ns / 1_000_000.0}"
+                "p95=${p95Ns / 1_000_000.0},p99=${p99Ns / 1_000_000.0},max=${maxNs / 1_000_000.0}"
 
         companion object {
             fun from(samples: List<Long>): Stats {
@@ -1169,6 +1176,7 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
                     p50Ns = percentile(0.50),
                     p95Ns = percentile(0.95),
                     p99Ns = percentile(0.99),
+                    maxNs = sorted.last(),
                 )
             }
         }

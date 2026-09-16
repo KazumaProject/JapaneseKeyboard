@@ -1255,7 +1255,7 @@ class FindPath(
                         length = length.toUByte(),
                         score = element.priorityCost,
                         leftId = element.next?.node?.l,
-                        rightId = element.next?.node?.r,
+                        rightId = pathNodes.lastOrNull()?.r,
                     )
                     resultFinal.add(candidate)
                 }
@@ -1998,7 +1998,7 @@ class FindPath(
                         yomi = yomiUsedFromNode,
                         score = totalCost,
                         leftId = element.next?.node?.l,
-                        rightId = element.next?.node?.r,
+                        rightId = pathNodes.lastOrNull()?.r,
                     )
                     resultFinal.add(candidate)
                 }
