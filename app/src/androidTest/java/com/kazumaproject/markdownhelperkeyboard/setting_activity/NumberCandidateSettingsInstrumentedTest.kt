@@ -60,6 +60,122 @@ class NumberCandidateSettingsInstrumentedTest {
         }
     }
 
+    private fun withLegacyEditor(existing: Boolean = false, block: (ActivityScenario<MainActivity>) -> Unit) {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val oldConfig = preferences.getString("number_candidate_config_v1", null)
+        val oldHome = preferences.getBoolean("setting_use_new_home_screen_preference", true)
+        val units = if (existing) listOf(CustomNumberUnit("leave-test", "個", "こ")) else emptyList()
+        preferences.edit().putBoolean("setting_use_new_home_screen_preference", false)
+            .putString("number_candidate_config_v1", NumberCandidateConfig(units = units).encode()).commit()
+        AppPreference.init(context)
+        val scenario = ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java))
+        try {
+            scenario.onActivity {
+                uiContext = it
+                val nav = (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController
+                nav.navigate(R.id.numberCandidateSettingsFragment)
+                nav.navigate(R.id.numberUnitEditorFragment, Bundle().apply { if (existing) putString("unitId", "leave-test") })
+            }
+            block(scenario)
+        } finally {
+            scenario.close()
+            preferences.edit().putBoolean("setting_use_new_home_screen_preference", oldHome)
+                .putString("number_candidate_config_v1", oldConfig).commit()
+            AppPreference.init(context)
+        }
+    }
+
+    private fun bottomTab(id: Int) = onView(allOf(withId(id), isDescendantOfA(withId(R.id.nav_view)))).perform(click())
+    private fun assertDestination(scenario: ActivityScenario<MainActivity>, id: Int) = scenario.onActivity {
+        val nav = (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController
+        assertEquals(id, nav.currentDestination?.id)
+    }
+    private fun discardDialog() = onView(withText(label(R.string.number_discard)))
+        .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).check(matches(isDisplayed()))
+
+    @Test fun legacySettingsReselectionPreservesDraftAcrossRotation() = withLegacyEditor { scenario ->
+        fill(R.string.number_unit_output, "セット")
+        fill(R.string.number_unit_reading, "せっと")
+        bottomTab(R.id.navigation_setting)
+        discardDialog()
+        scenario.onActivity {
+            val bottom = it.findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.nav_view)
+            bottom.selectedItemId = R.id.navigation_setting
+            bottom.selectedItemId = R.id.navigation_user_dictionary
+            assertEquals(R.id.navigation_setting, bottom.selectedItemId)
+        }
+        scenario.recreate()
+        discardDialog()
+        onView(withId(android.R.id.button2)).perform(click())
+        onView(withHint(label(R.string.number_unit_output))).check(matches(withText("セット")))
+        assertDestination(scenario, R.id.numberUnitEditorFragment)
+        assertTrue(AppPreference.number_candidate_config.units.isEmpty())
+        bottomTab(R.id.navigation_setting)
+        onView(withId(android.R.id.button1)).perform(click())
+        assertDestination(scenario, R.id.settingMainFragment)
+        assertTrue(AppPreference.number_candidate_config.units.isEmpty())
+    }
+
+    @Test fun otherBottomTabGuardsUnappliedSpecialReading() = withLegacyEditor(existing = true) { scenario ->
+        click(R.string.number_special_add)
+        onView(withHint(startsWith(label(R.string.number_special_value)))).perform(scrollTo(), replaceText("2"), closeSoftKeyboard())
+        fill(R.string.number_special_reading, "にこ")
+        bottomTab(R.id.navigation_user_dictionary)
+        discardDialog()
+        onView(withId(android.R.id.button2)).perform(click())
+        onView(withHint(label(R.string.number_special_reading))).check(matches(withText("にこ")))
+        assertDestination(scenario, R.id.numberUnitEditorFragment)
+        bottomTab(R.id.navigation_user_dictionary)
+        onView(withId(android.R.id.button1)).perform(click())
+        assertDestination(scenario, R.id.navigation_user_dictionary)
+        assertTrue(AppPreference.number_candidate_config.units.single().specialReadings.isEmpty())
+        scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        scenario.onActivity {
+            val nav = (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController
+            assertNotEquals(R.id.numberUnitEditorFragment, nav.currentDestination?.id)
+        }
+    }
+
+    @Test fun backAndSettingsIntentsUseTheSameDiscardGuard() = withLegacyEditor(existing = true) { scenario ->
+        fill(R.string.number_unit_output, "セット")
+        scenario.onActivity { it.onSupportNavigateUp() }
+        discardDialog()
+        androidx.test.espresso.Espresso.pressBack()
+        androidx.test.espresso.Espresso.pressBack()
+        discardDialog()
+        onView(withId(android.R.id.button2)).perform(click())
+        scenario.onActivity {
+            it.startActivity(Intent(it, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra("openSettingActivity", "setting_fragment_request"))
+        }
+        discardDialog()
+        onView(withId(android.R.id.button2)).perform(click())
+        onView(withHint(label(R.string.number_unit_output))).check(matches(withText("セット")))
+        scenario.onActivity {
+            it.startActivity(Intent(it, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra("openSettingActivity", "dictionary_fragment_request"))
+        }
+        discardDialog()
+        onView(withId(android.R.id.button1)).perform(click())
+        assertDestination(scenario, R.id.navigation_learn_dictionary)
+        assertEquals("個", AppPreference.number_candidate_config.units.single().output)
+        scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        assertDestination(scenario, R.id.numberCandidateSettingsFragment)
+    }
+
+    @Test fun unchangedAndSavedUnitsLeaveWithoutDiscardConfirmation() {
+        withLegacyEditor(existing = true) { scenario ->
+            bottomTab(R.id.navigation_setting)
+            assertDestination(scenario, R.id.settingMainFragment)
+        }
+        withLegacyEditor(existing = true) { scenario ->
+            fill(R.string.number_unit_output, "セット")
+            click(R.string.number_save)
+            assertDestination(scenario, R.id.numberCandidateSettingsFragment)
+            assertEquals("セット", AppPreference.number_candidate_config.units.single().output)
+        }
+    }
+
     @Test fun registerPreviewRotateEditAndDeleteAnOfflineUnit() {
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val original = preferences.getString("number_candidate_config_v1", null)
