@@ -34,6 +34,35 @@ class FindPath(
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
 ) {
 
+    private data class QuantityScorerCache(val base: NgramRuleScorer,
+        val model: com.kazumaproject.quantity.QuantityScoringModel, val scorer: NgramRuleScorer)
+    @Volatile private var quantityScorerCache: QuantityScorerCache? = null
+    private fun currentScorer(quantityContext: Boolean = true): NgramRuleScorer {
+        val base = ngramRuleScorerProvider()
+        val model = com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.scoringModel
+        if (!quantityContext || model == null || model.rules.isEmpty() || !com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime.isEnabled()) return base
+        quantityScorerCache?.let { if (it.base === base && it.model === model) return it.scorer }
+        return synchronized(this) {
+            quantityScorerCache?.takeIf { it.base === base && it.model === model }?.scorer
+                ?: base.withQuantityModel(model).also { quantityScorerCache = QuantityScorerCache(base, model, it) }
+        }
+    }
+
+    internal fun numericPathObserver() = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumericPathObserver(
+        currentScorer(false), systemNgramDictionaryProvider())
+
+    internal fun numberFormCost(form: com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberGraphMatcher.Form,
+                                reading: String, matrix: ConnectionMatrix.CostTable): Int {
+        val node = Node(form.leftId, form.rightId, form.cost, 0, tango = form.text,
+            len = reading.length.toShort(), yomiUsed = reading, sPos = 0, lexicalParts = form.parts)
+        return form.cost + matrix.cost(0, form.leftId.toInt()) + matrix.cost(form.rightId.toInt(), 0) +
+            currentScorer(false).scoreEndingAt(listOf(node))
+    }
+
+    private val quantityWorkspace = ThreadLocal.withInitial {
+        com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantitySearchWorkspace()
+    }
+
     internal data class ForwardDpCache(
         val inputLength: Int,
         val conversionSignature: Int,
@@ -49,6 +78,7 @@ class FindPath(
     )
 
     class SessionState internal constructor() {
+        internal val quantityWorkspace = com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantitySearchWorkspace()
         internal var forwardDpCache: ForwardDpCache? = null
         internal var penaltyCache: PenaltyCache? = null
         internal val backwardSearchScratch = BackwardSearchScratch()
@@ -1020,6 +1050,7 @@ class FindPath(
 
     companion object {
         private const val GENERATED_NUMBER_MASK = 4
+        private const val UNVERIFIED_DIGIT_MASK = 8
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
         private val bosNodes: List<Node> = listOf(BOS)
         private const val MAX_BUNSETSU_SPLIT_PATTERNS = 4
@@ -1069,7 +1100,6 @@ class FindPath(
         val quantityPolicy = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.numberPolicy
         val unprunedQuantityGraph = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.quantityGraph.orEmpty()
 
-        cancellationCheck()
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
         val incrementalMetadata = graph as? IncrementalGraphMetadata
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache
@@ -1127,24 +1157,27 @@ class FindPath(
 
         val numberPolicy = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.numberPolicy
         val quantityEnabled = numberPolicy != null && numberPolicy.config.japaneseNumberCandidatesEnabled && numberPolicy.hasQuantities &&
-            com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.rules.isNotEmpty()
+            (numberPolicy.usesWeightedScoring || com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.rules.isNotEmpty())
         val quantityMatches = HashSet<String>()
         val resultFinal = mutableListOf<Candidate>()
         val guided by lazy {
             if (!quantityEnabled || quantityPolicy == null || unprunedQuantityGraph.isEmpty()) emptyList()
             else com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityGuidedSearch(
-                unprunedQuantityGraph, quantityPolicy, connectionMatrix, { _, _ -> true }, ngramRuleScorerProvider(), cancellationCheck,
-            ).candidates(candidateSegmentCollector)
+                unprunedQuantityGraph, quantityPolicy, connectionMatrix, { _, _ -> true }, currentScorer(), cancellationCheck, sessionState?.quantityWorkspace ?: quantityWorkspace.get(),
+                boundaryClass = { node -> node.mozcNodeType.ordinal * 4 +
+                    (if (node.mozcAttributes and com.kazumaproject.graph.MozcNodeAttributes.STARTS_WITH_PARTICLE != 0) 2 else 0) +
+                    (if (node.yomiUsed.lastOrNull()?.let { it in 'a'..'z' || it in 'A'..'Z' } == true) 1 else 0) },
+            ).candidates(candidateSegmentCollector, requested = n)
         }
         fun rankQuantityResults(candidates: List<Candidate>, matched: Set<String>, requested: Int): List<Candidate> {
             val protected = candidates.filter { it.type == CANDIDATE_TYPE_USER_DICTIONARY || it.type == CANDIDATE_TYPE_LEARNED_DICTIONARY }.associateBy { quantityPolicy?.key(it.string, it.numberSpans) ?: it.string }
-            val combined = (candidates + guided).map { protected[quantityPolicy?.key(it.string, it.numberSpans) ?: it.string] ?: it }.sortedWith(compareByDescending<Candidate> { it.quantityPreference }
-                .thenByDescending { it.string in matched }.thenBy { it.score })
+            val combined = (candidates + guided).map { protected[quantityPolicy?.key(it.string, it.numberSpans) ?: it.string] ?: it }.sortedWith(if (quantityPolicy?.usesWeightedScoring == true) compareBy<Candidate> { it.score }
+                else compareByDescending<Candidate> { it.quantityPreference }.thenByDescending { it.string in matched }.thenBy { it.score })
             return combined.distinctBy { quantityPolicy?.key(it.string, it.numberSpans) ?: it.string }.take(requested)
         }
 
         val foundStrings = HashSet<String>()
-        val ngramRuleScorer = ngramRuleScorerProvider()
+        val ngramRuleScorer = currentScorer(quantityEnabled)
 
         val searchScratch = sessionState?.backwardSearchScratch ?: BackwardSearchScratch()
         searchScratch.begin(
@@ -1186,7 +1219,7 @@ class FindPath(
                 val numberSpans = numberPolicy?.spans(pathNodes).orEmpty()
                 val interpretation = numberPolicy?.key(stringFromNode, numberSpans) ?: stringFromNode
                 if (foundStrings.add(interpretation)) {
-                    val quantityStrength = if (quantityEnabled) numberPolicy?.matchStrength(pathNodes) ?: 0 else 0
+                    val quantityStrength = if (quantityEnabled && numberPolicy?.usesWeightedScoring != true) numberPolicy?.matchStrength(pathNodes) ?: 0 else 0
                     if (quantityStrength > 0) quantityMatches.add(stringFromNode)
                     candidateSegmentCollector?.set(
                         stringFromNode,
@@ -1295,7 +1328,7 @@ class FindPath(
             val traceSink = forwardDpTraceSink
             val beforePruning = traceSink?.let { nodes.toList() }
             if (i <= length && nodes.size > beamWidth) {
-                nodes.sortBy { it.f }
+                nodes.sortWith { a, b -> a.f.compareTo(b.f) }
                 nodes.subList(beamWidth, nodes.size).clear()
             }
             traceSink?.add(
@@ -1348,7 +1381,7 @@ class FindPath(
 
             if (i <= length && nodes.size > beamWidth) {
                 val originalNodeCount = nodes.size
-                nodes.sortBy { it.f }
+                nodes.sortWith { a, b -> a.f.compareTo(b.f) }
                 val prunedNodes = nodes.take(beamWidth).toMutableList()
                 graph[i] = prunedNodes
                 Timber.d("    - forwardDp 枝刈り @位置$i: $originalNodeCount -> ${prunedNodes.size} ノード")
@@ -1489,7 +1522,8 @@ class FindPath(
         // Keep generated and lexical paths distinct during search; apply the same digit
         // surcharge to both. Notation preferences are applied after interpretation selection.
         val sourceMask = element.sourceMask or previousNode.candidateSource.toMask() or
-            (if (previousNode.isGeneratedNumber) GENERATED_NUMBER_MASK else 0)
+            (if (previousNode.isGeneratedNumber) GENERATED_NUMBER_MASK else 0) or
+            (if (!previousNode.isVerifiedQuantity && previousNode.tango.any(Char::isDigit)) UNVERIFIED_DIGIT_MASK else 0)
         val nodeIds = scratch.nodeIds
         if (
             !scratch.bestBackwardCostByState.putIfLower(
@@ -1509,7 +1543,8 @@ class FindPath(
             scratch.queueElement(
                 node = previousNode,
                 priorityCost = backwardCost + previousNode.f +
-                    if (scratch.outputContainsDigit(outputPathId)) 2000 else 0,
+                    if (if (com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.scoringModel != null)
+                        sourceMask and UNVERIFIED_DIGIT_MASK != 0 else scratch.outputContainsDigit(outputPathId)) 2000 else 0,
                 backwardCost = backwardCost,
                 next = element,
                 outputPathId = outputPathId,
@@ -1809,10 +1844,11 @@ class FindPath(
 
         val numberPolicy = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.numberPolicy
         val quantityEnabled = numberPolicy != null && numberPolicy.config.japaneseNumberCandidatesEnabled && numberPolicy.hasQuantities &&
-            com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.rules.isNotEmpty()
+            (numberPolicy.usesWeightedScoring || com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.rules.isNotEmpty())
         val quantityMatches = HashSet<String>()
         val resultFinal = mutableListOf<Candidate>()
         val guidedSplitPatterns = linkedMapOf<String, List<Int>>()
+        val guidedSystemMatches = HashSet<String>()
         val guided by lazy {
             if (!quantityEnabled || quantityPolicy == null || unprunedQuantityGraph.isEmpty()) emptyList()
             else com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityGuidedSearch(
@@ -1820,20 +1856,28 @@ class FindPath(
                     if (mozcSegmenter != null) full.values.forEach { applyMozcPrefixSuffixPenaltyToNodes(it, length, mozcSegmenter, null) }
                 }, quantityPolicy, connectionMatrix, { a, b ->
                     boundaryChecker?.check(a, b, a.mozcNodeType == MozcNodeType.BOS || b.mozcNodeType == MozcNodeType.EOS) != MozcBoundaryCheckResult.INVALID
-                }, ngramRuleScorerProvider(), cancellationCheck,
-            ).candidates(candidateSegmentCollector, guidedSplitPatterns, ::isIndependentWord)
+                }, currentScorer(), cancellationCheck, sessionState?.quantityWorkspace ?: quantityWorkspace.get(),
+                boundaryClass = { node -> node.mozcNodeType.ordinal * 4 +
+                    (if (node.mozcAttributes and com.kazumaproject.graph.MozcNodeAttributes.STARTS_WITH_PARTICLE != 0) 2 else 0) +
+                    (if (node.yomiUsed.lastOrNull()?.let { it in 'a'..'z' || it in 'A'..'Z' } == true) 1 else 0) },
+                systemDictionary = systemNgramDictionaryProvider(),
+                onCandidatePath = { text, nodes ->
+                    if (pathMatchesSystemNgram(nodes, systemNgramDictionaryProvider())) guidedSystemMatches.add(text)
+                },
+            ).candidates(candidateSegmentCollector, guidedSplitPatterns, ::isIndependentWord, requested = n)
         }
         fun rankQuantityResults(candidates: List<Candidate>, matched: Set<String>, requested: Int): List<Candidate> {
             val protected = candidates.filter { it.type == CANDIDATE_TYPE_USER_DICTIONARY || it.type == CANDIDATE_TYPE_LEARNED_DICTIONARY }.associateBy { quantityPolicy?.key(it.string, it.numberSpans) ?: it.string }
-            val combined = (candidates + guided).map { protected[quantityPolicy?.key(it.string, it.numberSpans) ?: it.string] ?: it }.sortedWith(compareByDescending<Candidate> { it.quantityPreference }
-                .thenByDescending { it.string in matched }.thenBy { it.score })
+            val combined = (candidates + guided).map { protected[quantityPolicy?.key(it.string, it.numberSpans) ?: it.string] ?: it }.sortedWith(if (quantityPolicy?.usesWeightedScoring == true)
+                compareByDescending<Candidate> { it.string in matched || it.string in guidedSystemMatches }.thenBy { it.score }
+                else compareByDescending<Candidate> { it.quantityPreference }.thenByDescending { it.string in matched }.thenBy { it.score })
             return combined.distinctBy { quantityPolicy?.key(it.string, it.numberSpans) ?: it.string }.take(requested)
         }
 
         val splitPatterns = mutableListOf<List<Int>>()
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
-        val ngramRuleScorer = ngramRuleScorerProvider()
+        val ngramRuleScorer = currentScorer(quantityEnabled)
         val systemNgramDictionary = systemNgramDictionaryProvider()
         val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
         val systemNgramMayAffectCandidates =
@@ -1906,7 +1950,7 @@ class FindPath(
                 val numberSpans = numberPolicy?.spans(pathNodes).orEmpty()
                 val interpretation = numberPolicy?.key(stringFromNode, numberSpans) ?: stringFromNode
                 if (foundStrings.add(interpretation)) {
-                    val quantityStrength = if (quantityEnabled) numberPolicy?.matchStrength(pathNodes) ?: 0 else 0
+                    val quantityStrength = if (quantityEnabled && numberPolicy?.usesWeightedScoring != true) numberPolicy?.matchStrength(pathNodes) ?: 0 else 0
                     if (quantityStrength > 0) quantityMatches.add(stringFromNode)
                     candidateSegmentCollector?.set(
                         stringFromNode,
@@ -2096,12 +2140,12 @@ class FindPath(
 
         val numberPolicy = (graph as? com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder.IncrementalGraph)?.numberPolicy
         val quantityEnabled = numberPolicy != null && numberPolicy.config.japaneseNumberCandidatesEnabled && numberPolicy.hasQuantities &&
-            com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.rules.isNotEmpty()
+            (numberPolicy.usesWeightedScoring || com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.rules.isNotEmpty())
         val quantityMatches = HashSet<String>()
         val resultFinal = mutableListOf<Candidate>()
         var bestBunsetsuPositions: List<Int> = emptyList()
         val foundStrings = HashSet<String>()
-        val ngramRuleScorer = ngramRuleScorerProvider()
+        val ngramRuleScorer = currentScorer(quantityEnabled)
 
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
@@ -2133,7 +2177,7 @@ class FindPath(
                 val numberSpans = numberPolicy?.spans(pathNodes).orEmpty()
                 val interpretation = numberPolicy?.key(stringFromNode, numberSpans) ?: stringFromNode
                 if (foundStrings.add(interpretation)) {
-                    val quantityStrength = if (quantityEnabled) numberPolicy?.matchStrength(pathNodes) ?: 0 else 0
+                    val quantityStrength = if (quantityEnabled && numberPolicy?.usesWeightedScoring != true) numberPolicy?.matchStrength(pathNodes) ?: 0 else 0
                     if (quantityStrength > 0) quantityMatches.add(stringFromNode)
                     if (resultFinal.isEmpty()) {
                         bestBunsetsuPositions = bunsetsuPositions
@@ -2149,7 +2193,8 @@ class FindPath(
                         ),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
-                        score = if (stringFromNode.any { it.isDigit() }) {
+                        score = if (if (numberPolicy?.usesWeightedScoring == true)
+                            pathNodes.any { !it.isVerifiedQuantity && it.tango.any(Char::isDigit) } else stringFromNode.any(Char::isDigit)) {
                             node.second + 2000
                         } else {
                             node.second
@@ -2300,6 +2345,18 @@ class FindPath(
     ): List<Candidate> = candidates.sortedWith(
         compareByDescending<Candidate> { it.quantityPreference }.thenByDescending { it.string in matched }.thenBy { it.score },
     ).take(requested)
+
+    private fun pathMatchesSystemNgram(nodes: List<Node>, dictionary: SystemNgramDictionary): Boolean {
+        if (dictionary.ruleCount == 0) return false
+        val expanded = if (nodes.none { it.lexicalParts.isNotEmpty() }) nodes else nodes.flatMap { node ->
+            if (node.lexicalParts.isEmpty()) listOf(node) else node.lexicalParts.map {
+                Node(it.left, it.right, 0, 0, tango = it.text, len = 0, yomiUsed = "", sPos = 0)
+            }
+        }
+        return expanded.indices.any { at -> dictionary.matchesSingleNode(expanded[at]) ||
+            expanded.getOrNull(at + 1)?.let { second -> dictionary.matches(expanded[at], second,
+                expanded.getOrNull(at + 2), expanded.getOrNull(at + 3), expanded.getOrNull(at + 4)) } == true }
+    }
 
     private fun pathMatchesSystemNgram(
         path: PathQueueElement,

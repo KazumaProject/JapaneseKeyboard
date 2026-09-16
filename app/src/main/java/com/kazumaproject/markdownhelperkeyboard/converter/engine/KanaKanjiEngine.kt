@@ -414,6 +414,7 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             graphNodeTrace = graphNodeTrace,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         if (graph.isNotEmpty()) {
@@ -1178,6 +1179,7 @@ class KanaKanjiEngine {
             sessionState = incrementalSessionState?.graphState,
             predictionConfig = predictionConfig,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1595,6 +1597,7 @@ class KanaKanjiEngine {
             sessionState = incrementalSessionState?.graphState,
             predictionConfig = predictionConfig,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2042,6 +2045,7 @@ class KanaKanjiEngine {
             sessionState = incrementalSessionState?.graphState,
             predictionConfig = predictionConfig,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2470,6 +2474,7 @@ class KanaKanjiEngine {
             sessionState = incrementalSessionState?.graphState,
             predictionConfig = predictionConfig,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2880,6 +2885,7 @@ class KanaKanjiEngine {
             sessionState = incrementalSessionState?.graphState,
             predictionConfig = predictionConfig,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -3284,6 +3290,7 @@ class KanaKanjiEngine {
             sessionState = incrementalSessionState?.graphState,
             predictionConfig = predictionConfig,
             numberConnectionMatrix = connectionMatrixSnapshot().costTable,
+            numericPathObserver = findPath.numericPathObserver(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -4587,7 +4594,22 @@ class KanaKanjiEngine {
     private fun generateNumberCandidates(
         input: String,
         predictionConfig: PredictionConfig,
-    ): List<Candidate> = NumberCandidateGenerator.generate(input, predictionConfig)
+    ): List<Candidate> {
+        val model = QuantityRuntime.scoringModel ?: return NumberCandidateGenerator.generate(input, predictionConfig)
+        val proofs = ValidatedNumber.parseAll(input, predictionConfig.numberCandidateConfig)
+        if (proofs.isEmpty() || proofs.all { it.origin == NumberInputOrigin.DIGITS })
+            return NumberCandidateGenerator.generate(input, predictionConfig)
+        val matrix = connectionMatrixSnapshot().costTable
+        val lexicon = NumberLexicon({ reading -> model.units(reading)
+            .filter { it.role == com.kazumaproject.quantity.QuantityScoringModel.UnitRole.COUNTER }
+            .map { NumberLexicon.Entry(it.text, it.left.toShort(), it.right.toShort(), it.cost) }
+        }, matrix, findPath.numericPathObserver())
+        return NumberCandidateGenerator.generate(input, predictionConfig) { proof ->
+            lexicon.forms(proof).map { form -> NumberCandidateGenerator.SemanticScore(
+                findPath.numberFormCost(form, input, matrix), form.leftId, form.rightId)
+            }.minByOrNull { it.cost }
+        }
+    }
 
     /**
      * Candidate リストを処理し、

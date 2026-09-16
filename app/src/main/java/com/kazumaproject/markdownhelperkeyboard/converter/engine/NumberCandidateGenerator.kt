@@ -11,7 +11,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createVal
 
 /** Generates numeric additions only. Dictionary candidates are never validated or filtered here. */
 object NumberCandidateGenerator {
-    fun generate(input: String, config: PredictionConfig): List<Candidate> {
+    data class SemanticScore(val cost: Int, val left: Short, val right: Short)
+    fun generate(input: String, config: PredictionConfig, semanticScore: ((ValidatedNumber) -> SemanticScore?)? = null): List<Candidate> {
         if (input.length > UByte.MAX_VALUE.toInt()) return emptyList()
         val proofs = ValidatedNumber.parseAll(input, config.numberCandidateConfig)
             .filter { it.origin == NumberInputOrigin.DIGITS || config.japaneseNumberCandidatesEnabled }
@@ -23,16 +24,19 @@ object NumberCandidateGenerator {
                 Candidate(forms[index], if (index == 0) 18 else 22, input.length.toUByte(), 8000 + rank, yomi = input)
             }
         }
-        return proofs.flatMap { generate(it, config) }.distinctBy { it.string }
+        return proofs.flatMap { proof ->
+            if (semanticScore == null) generate(proof, config)
+            else semanticScore(proof)?.let { generate(proof, config, it) }.orEmpty()
+        }.distinctBy { it.string }
     }
 
-    fun generate(proof: ValidatedNumber, config: PredictionConfig): List<Candidate> {
+    fun generate(proof: ValidatedNumber, config: PredictionConfig, semanticScore: SemanticScore? = null): List<Candidate> {
         if (proof.reading.length > UByte.MAX_VALUE.toInt()) return emptyList()
         fun candidate(text: String, type: Byte, score: Int) = Candidate(
-            string = text, type = type, length = proof.reading.length.toUByte(), score = score,
+            string = text, type = type, length = proof.reading.length.toUByte(), score = semanticScore?.cost ?: score,
             yomi = proof.reading,
-            leftId = if (type.toInt() == 32) 2046 else 2044,
-            rightId = if (proof.counter == "時") 2015 else if (proof.counter.isNotEmpty()) 2011
+            leftId = semanticScore?.left ?: if (type.toInt() == 32) 2046 else 2044,
+            rightId = semanticScore?.right ?: if (proof.counter == "時") 2015 else if (proof.counter.isNotEmpty()) 2011
                 else if (type.toInt() == 32) 2046 else 2044,
         )
         val time = proof.clock != null || proof.counter == "時" || proof.counter == "分"
@@ -72,7 +76,10 @@ object NumberCandidateGenerator {
                 }
                 if (day in 1..days) result += candidate("${month}月${day}日", 40, 8009)
             }
-            if (config.showSymbolCandidates) result += createValueBasedSymbolCandidates(proof.value, proof.reading.length.toUByte())
+            if (config.showSymbolCandidates) result += createValueBasedSymbolCandidates(proof.value, proof.reading.length.toUByte()).map {
+                if (semanticScore == null) it else it.copy(score = semanticScore.cost, leftId = semanticScore.left,
+                    rightId = semanticScore.right, yomi = proof.reading)
+            }
         }
         return result.filter { config.numberCandidateConfig.permits(proof, it.string) }.distinctBy { it.string }
     }

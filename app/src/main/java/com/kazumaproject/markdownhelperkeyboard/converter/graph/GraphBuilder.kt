@@ -66,6 +66,8 @@ class GraphBuilder {
             val previousPositions: Map<Int, MutableList<Node>?>,
             val previousEosIndex: Int,
             val previousEos: MutableList<Node>?,
+            val previousNumberPolicy: com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberPathPolicy?,
+            val previousQuantityGraph: Map<Int, List<Node>>,
         ) {
             fun restore() {
                 graph.keys.removeAll { it > previousInputLength }
@@ -77,6 +79,8 @@ class GraphBuilder {
                 graph.reusedThroughEndIndex = previousReusedThroughEndIndex
                 graph.forwardDpReusableThroughEndIndex =
                     previousForwardDpReusableThroughEndIndex
+                graph.numberPolicy = previousNumberPolicy
+                graph.quantityGraph = previousQuantityGraph
                 check(graph.keys.none { it > previousEosIndex })
             }
         }
@@ -121,6 +125,8 @@ class GraphBuilder {
                 previousPositions = positionsToRestore.associateWith { graph[it] },
                 previousEosIndex = previousEosIndex,
                 previousEos = previousEos,
+                previousNumberPolicy = graph.numberPolicy,
+                previousQuantityGraph = graph.quantityGraph,
             )
         }
 
@@ -263,7 +269,7 @@ class GraphBuilder {
                 val existingNodeIndex = nodes.indexOfFirst {
                     it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r &&
                         it.isGeneratedNumber == newNode.isGeneratedNumber &&
-                        (!newNode.isGeneratedNumber || it.sPos == newNode.sPos && it.len == newNode.len)
+                        (!newNode.isGeneratedNumber || it.sPos == newNode.sPos && it.len == newNode.len && it.lexicalParts == newNode.lexicalParts)
                 }
 
                 if (existingNodeIndex != -1) {
@@ -354,6 +360,7 @@ class GraphBuilder {
         sessionState: SessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         numberConnectionMatrix: com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix.CostTable? = null,
+        numericPathObserver: com.kazumaproject.markdownhelperkeyboard.converter.engine.NumericPathObserver? = null,
     ): MutableMap<Int, MutableList<Node>> {
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
@@ -369,7 +376,7 @@ class GraphBuilder {
         fun mozcAttributesFor(leftId: Short): Int =
             mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
 
-        val signature = conversionSignature(
+        val signature = 31 * conversionSignature(
             yomiTrie = yomiTrie,
             englishReadingYomiTrie = englishReadingYomiTrie,
             wikiYomiTrie = wikiYomiTrie,
@@ -386,7 +393,7 @@ class GraphBuilder {
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
             predictionConfig = predictionConfig,
-        )
+        ) + (numericPathObserver?.configurationSignature ?: 0)
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
@@ -612,22 +619,40 @@ class GraphBuilder {
                 mozcNodeType = MozcNodeType.EOS,
             )
         )
-        (graph as IncrementalGraph).numberPolicy = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberPathPolicy(str, predictionConfig)
+        // Repeated readings share dictionary surfaces while retaining separate
+        // positional nodes. This query-local cache cannot retain an old dictionary.
+        val surfaceDictionaries = java.util.IdentityHashMap<LOUDS, Int>()
+        val surfaceIndex = com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityLongIndex()
+        val surfaces = ArrayList<String>()
+        fun surface(trie: LOUDS, nodeId: Int, succinctBitVector: SuccinctBitVector): String {
+            val dictionary = surfaceDictionaries.getOrPut(trie) { surfaceDictionaries.size }
+            val key = (dictionary.toLong() shl 32) or nodeId.toLong()
+            val old = surfaceIndex[key]
+            if (old >= 0) return surfaces[old]
+            return trie.getLetter(nodeId, succinctBitVector).also {
+                surfaceIndex[key] = surfaces.size
+                surfaces.add(it)
+            }
+        }
+        val reusableHadQuantities = (reusable?.graph as? IncrementalGraph)?.numberPolicy?.hasQuantities == true
+        val numberPolicy = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberPathPolicy(str, predictionConfig, (reusable?.graph as? IncrementalGraph)?.numberPolicy)
+        (graph as IncrementalGraph).numberPolicy = numberPolicy
         val entries = synchronized(lexicalEntries) { lexicalEntries.getOrPut(tokenArray) { java.util.Collections.synchronizedMap(object : LinkedHashMap<String, List<com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry>>(256, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry>>): Boolean = size > 2048
         }) } }
+        val numberGenerationContext = currentCoroutineContext()
         val lexicon = numberConnectionMatrix?.let { matrix -> com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon({ reading ->
             entries.getOrPut(reading) {
                 val node = yomiTrie.getNodeIndex(reading, succinctBitVectorLBSYomi)
                 val term = if (node >= 0) yomiTrie.getTermId(node, succinctBitVectorIsLeafYomi) else -1
                 if (term < 0) emptyList() else tokenArray.getListDictionaryByYomiTermId(term, succinctBitVectorTokenArray).map { token ->
-                    val text = when(token.nodeId) { -2 -> reading; -1 -> reading.hiraToKata(); else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS) }
+                    val text = when(token.nodeId) { -2 -> reading; -1 -> reading.hiraToKata(); else -> surface(tangoTrie, token.nodeId, succinctBitVectorTangoLBS) }
                     val pos = token.posTableIndex.toInt()
                     com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry(text, tokenArray.leftIds[pos], tokenArray.rightIds[pos], token.wordCost.toInt())
                 }
             }
-        }, matrix) }
-        val numberMatcher = NumberGraphMatcher(str, predictionConfig) { proof -> lexicon?.forms(proof).orEmpty() }
+        }, matrix, numericPathObserver) { numberGenerationContext.ensureActive() } }
+        val numberMatcher = NumberGraphMatcher(str, predictionConfig, parseReading = numberPolicy::parse, recognized = numberPolicy::matchesAt) { proof -> lexicon?.forms(proof).orEmpty() }
         for (i in str.indices) {
             currentCoroutineContext().ensureActive()
             var subStrCache: String? = null
@@ -748,7 +773,7 @@ class GraphBuilder {
                         val tango = when (tokenNodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
-                            else -> localSystemUserTangoTrie.getLetter(
+                            else -> surface(localSystemUserTangoTrie,
                                 tokenNodeId,
                                 succinctBitVector = localSystemUserTangoLBS,
                             )
@@ -814,7 +839,7 @@ class GraphBuilder {
                             val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> localSystemUserTangoTrie.getLetter(
+                                else -> surface(localSystemUserTangoTrie,
                                     tokenNodeId,
                                     succinctBitVector = localSystemUserTangoLBS,
                                 )
@@ -880,7 +905,7 @@ class GraphBuilder {
                             val tango = when (token.nodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> localSystemUserTangoTrie.getLetter(
+                                else -> surface(localSystemUserTangoTrie,
                                     token.nodeId,
                                     succinctBitVector = localSystemUserTangoLBS,
                                 )
@@ -936,15 +961,26 @@ class GraphBuilder {
                         val tango = when (tokenNodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
-                            else -> tangoTrie.getLetter(
+                            else -> surface(tangoTrie,
                                 tokenNodeId,
                                 succinctBitVector = succinctBitVectorTangoLBS
                             )
                         }
                         val leftId = tokenArray.leftIds[posTableIndex.toInt()]
+                        val rightId = tokenArray.rightIds[posTableIndex.toInt()]
+                        // Apply the existing deduplication rule before allocating a
+                        // full node. Trace mode still records every dictionary token.
+                        val deduplicate = graphNodeTrace == null &&
+                            graphNodeDedupMode == GraphNodeDedupMode.EXISTING_BY_TANGO_L_R
+                        val existing = if (deduplicate) graph[endIndex] else null
+                        val duplicate = existing?.indexOfFirst {
+                            it.tango == tango && it.l == leftId && it.r == rightId && !it.isGeneratedNumber
+                        } ?: -1
+                        if (duplicate >= 0 && wordCost.toInt() >= existing!![duplicate].score)
+                            return@forEachDictionaryByYomiTermId
                         val node = Node(
                             l = leftId,
-                            r = tokenArray.rightIds[posTableIndex.toInt()],
+                            r = rightId,
                             score = wordCost.toInt(),
                             f = wordCost.toInt(),
                             g = wordCost.toInt(),
@@ -954,7 +990,10 @@ class GraphBuilder {
                             sPos = i,
                             mozcAttributes = mozcAttributesFor(leftId),
                         )
-                        addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
+                        if (deduplicate) {
+                            if (duplicate >= 0) existing!![duplicate] = node
+                            else graph.getOrPut(endIndex) { mutableListOf() }.add(node)
+                        } else addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
                     }
                 }
             }
@@ -1001,7 +1040,7 @@ class GraphBuilder {
                         val tango = when (tokenNodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
-                            else -> localEnglishReadingTangoTrie.getLetter(
+                            else -> surface(localEnglishReadingTangoTrie,
                                 tokenNodeId,
                                 succinctBitVector = localEnglishReadingTangoLBS,
                             )
@@ -1067,7 +1106,7 @@ class GraphBuilder {
                         val tango = when (tokenNodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
-                            else -> tangoTrie.getLetter(tokenNodeId, succinctBitVectorTangoLBS)
+                            else -> surface(tangoTrie, tokenNodeId, succinctBitVectorTangoLBS)
                         }
 
                         val cost = wordCost.toInt() + penalty
@@ -1126,7 +1165,7 @@ class GraphBuilder {
                             val tango = when (token.nodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> tangoTrie.getLetter(
+                                else -> surface(tangoTrie,
                                     token.nodeId,
                                     succinctBitVector = succinctBitVectorTangoLBS
                                 )
@@ -1178,7 +1217,7 @@ class GraphBuilder {
                             val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> wikiTangoTrie.getLetter(
+                                else -> surface(wikiTangoTrie,
                                     tokenNodeId,
                                     succinctBitVector = succinctBitVectorWikiTangoLBS
                                 )
@@ -1230,7 +1269,7 @@ class GraphBuilder {
                             val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> webTangoTrie.getLetter(
+                                else -> surface(webTangoTrie,
                                     tokenNodeId,
                                     succinctBitVector = succinctBitVectorwebTangoLBS
                                 )
@@ -1282,7 +1321,7 @@ class GraphBuilder {
                             val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> personTangoTrie.getLetter(
+                                else -> surface(personTangoTrie,
                                     tokenNodeId,
                                     succinctBitVector = succinctBitVectorpersonTangoLBS
                                 )
@@ -1334,7 +1373,7 @@ class GraphBuilder {
                             val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
-                                else -> neologdTangoTrie.getLetter(
+                                else -> surface(neologdTangoTrie,
                                     tokenNodeId,
                                     succinctBitVector = succinctBitVectorneologdTangoLBS
                                 )
@@ -1424,6 +1463,27 @@ class GraphBuilder {
                 graphNodeTrace?.add(unknownNode.toTrace(str, endIndex, "UNKNOWN", "ADDED"))
             }
         }
+        com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.scoringModel?.let { model ->
+            if (!predictionConfig.japaneseNumberCandidatesEnabled || !numberPolicy.hasQuantities) return@let
+            val recognized = numberPolicy.recognizedSpans().toHashSet()
+            for ((end, nodes) in graph) {
+                if (reusableHadQuantities && end <= reusablePrefixLength) continue
+                for (node in nodes) {
+                    if (node.candidateSource != CandidateSource.SYSTEM && node.candidateSource != CandidateSource.UNKNOWN) continue
+                    node.lexicalClasses = model.classes(node.tango, node.l.toInt(), node.r.toInt())
+                    if ((node.sPos to node.sPos + node.len) !in recognized || !numberPolicy.startsQuantity(node)) continue
+                    val proof = numberPolicy.parse(node.yomiUsed).firstOrNull { proof ->
+                        node.tango in proof.basicForms && proof.basicForms.any { predictionConfig.numberCandidateConfig.permits(proof, it) }
+                    } ?: continue
+                    node.isVerifiedQuantity = true
+                    node.quantityClasses = if (proof.customUnit != null) {
+                        model.quantityClasses["@registered" + proof.counterSuffixes.joinToString("") { it.output }]
+                            ?: model.quantityClasses["@registered"] ?: 0L
+                    } else model.quantityClasses[proof.counter] ?: model.quantityClasses[proof.baseCounter] ?: 0L
+                }
+            }
+        }
+
         val updatedCache = CachedGraph(
             input = str,
             signature = signature,
