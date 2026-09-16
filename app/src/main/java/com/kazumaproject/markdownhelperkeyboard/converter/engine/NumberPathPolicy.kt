@@ -46,8 +46,12 @@ class NumberPathPolicy(val input: String, val config: PredictionConfig) {
                 if (node.candidateSource == CandidateSource.USER_DICTIONARY || node.candidateSource == CandidateSource.LEARNED_DICTIONARY) break
                 if (end > at && nodes[end - 1].sPos + nodes[end - 1].len != node.sPos) break
                 text.append(node.tango); reading.append(node.yomiUsed)
-                val proof = parse(reading.toString()).firstOrNull { it.counter.isNotEmpty() && text.toString() in it.basicForms }
-                if (proof != null && proof.basicForms.any { config.numberCandidateConfig.permits(proof, it) }) {
+                val surface = text.toString()
+                val proof = parse(reading.toString()).firstOrNull { candidate ->
+                    candidate.counter.isNotEmpty() && surface in candidate.basicForms &&
+                        candidate.basicForms.any { config.numberCandidateConfig.permits(candidate, it) }
+                }
+                if (proof != null) {
                     best = NumberCandidateSpan(offset, offset + text.length, nodes[at].sPos,
                         node.sPos + node.len, proof.basicForms, proof.counter,
                         proof.basicForms.indices.filter { config.numberCandidateConfig.permits(proof, proof.basicForms[it]) }.toSet())

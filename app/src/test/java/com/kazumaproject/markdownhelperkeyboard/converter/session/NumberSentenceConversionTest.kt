@@ -192,6 +192,30 @@ class NumberSentenceConversionTest {
         }
     }
 
+    @Test fun customCounterCollisionPreservesSentenceNotationAndSegments() = runBlocking {
+        val input = "えんぴつをにほんください"
+        val forms = listOf("鉛筆を2本ください", "鉛筆を２本ください", "鉛筆を二本ください")
+        val settings = NumberCandidateConfig(disabledCounters = setOf(BuiltInCounter.LONG_OBJECTS.storageId),
+            units = listOf(CustomNumberUnit("custom", "本", "ほん")))
+        for (backend in ConversionBackend.entries) for (bunsetsu in listOf(false, true)) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (order in NumberCandidateOrder.entries) {
+                val result = session.query(request(input, PredictionConfig(numberCandidateOrder = order,
+                    numberCandidateConfig = settings), bunsetsu = bunsetsu))
+                assertEquals("$backend / $bunsetsu / $order", order.indices.map(forms::get),
+                    result.candidates.map { it.string }.filter { it in forms })
+                for (text in forms) {
+                    assertEquals(text, result.candidates.first { it.string == text }.commitText)
+                    val segments = result.candidateSegmentsByString.getValue(text)
+                    assertEquals(text, segments.joinToString("") { it.output })
+                    assertEquals(input.length, segments.last().inputEnd)
+                    val quantity = segments.single { it.inputStart == 5 && it.inputEnd == 8 }
+                    assertTrue(quantity.output in listOf("2本", "２本", "二本"))
+                }
+            }
+        }
+    }
+
     @Test fun numericGraphNodesPreserveExplicitDictionarySources() = runBlocking {
         val userRepository = mock<UserDictionaryRepository>()
         val word = com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord(

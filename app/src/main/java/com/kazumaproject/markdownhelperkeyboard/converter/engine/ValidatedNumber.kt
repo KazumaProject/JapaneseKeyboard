@@ -15,6 +15,8 @@ class ValidatedNumber private constructor(
     val clock: Pair<Int, Int>? = null,
     val customUnit: CustomNumberUnit? = null,
     val builtInCounter: BuiltInCounter? = null,
+    /** Keep category identity when a dictionary suffix extends the displayed counter. */
+    val baseCounter: String = counter,
 ) {
     val fullWidth: String by lazy { buildString(digits.length) { digits.forEach { append(it + 0xFEE0) } } }
     val basicForms: List<String> by lazy { clock?.let { (hour, minute) ->
@@ -179,6 +181,7 @@ class ValidatedNumber private constructor(
                     if ((base.counter == suffix.base || suffix.base == "@registered" && base.customUnit != null && base.counter == base.customUnit.output) && base.clock == null) add(ValidatedNumber(
                         base.value, input, base.origin, base.counter + suffix.output, base.digits,
                         customUnit = base.customUnit, builtInCounter = base.builtInCounter,
+                        baseCounter = base.baseCounter,
                     ))
                 }
             }

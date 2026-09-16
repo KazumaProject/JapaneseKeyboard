@@ -13,9 +13,9 @@ enum class NumberCandidateKind(val storageId: String) {
     companion object {
         fun of(proof: ValidatedNumber, text: String): NumberCandidateKind? = when {
             proof.customUnit != null -> null
-            proof.clock != null || proof.counter == "時" || proof.counter == "分" -> TIME
-            proof.counter == "人" -> PEOPLE
-            proof.counter == "円" -> YEN
+            proof.clock != null || proof.baseCounter == "時" || proof.baseCounter == "分" -> TIME
+            proof.baseCounter == "人" -> PEOPLE
+            proof.baseCounter == "円" -> YEN
             text in proof.basicForms -> null
             text.contains('月') && text.endsWith('日') -> DATE
             text.contains(':') || text.endsWith('分') -> TIME
