@@ -1600,6 +1600,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var physicalCandidateCompositionSession: PhysicalCandidateCompositionSession? = null
     private var physicalCandidateCompositionGeneration: Long = 0L
     private var pendingPhysicalCandidatePreviewGeneration: Long? = null
+    private var pendingPhysicalCandidateCommitGeneration: Long? = null
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
@@ -8542,6 +8543,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         physicalCandidateCompositionSession?.let { stringInTail.set(it.trailingText) }
         physicalCandidateCompositionSession = null
         pendingPhysicalCandidatePreviewGeneration = null
+        pendingPhysicalCandidateCommitGeneration = null
     }
 
     private fun beginPhysicalCandidateCompositionSession(input: String) {
@@ -8745,9 +8747,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidateEnterPressed() {
-        if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty() &&
-            !floatingCandidatesReadyForInput(inputString.value)
-        ) return
+        if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty()) {
+            // SPACE can still be waiting for either the query or the list adapter.
+            // Preserve ENTER, but bind it to that composition generation.
+            val session = physicalCandidateCompositionSession
+            if (session != null && pendingPhysicalCandidatePreviewGeneration == session.generation) {
+                pendingPhysicalCandidateCommitGeneration = session.generation
+                return
+            }
+            if (!floatingCandidatesReadyForInput(inputString.value)) return
+        }
         val selectedSuggestion = listAdapter.getHighlightedItem()
         if (selectedSuggestion != null) {
             if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
@@ -10315,6 +10324,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 displayComposingTextInHardwareKeyboardConnected(physicalSession.queryText)
             }
             listAdapter.updateHighlightPosition(currentHighlightIndex)
+            if (physicalSession != null &&
+                pendingPhysicalCandidateCommitGeneration == physicalSession.generation &&
+                isPhysicalFloatingCandidatePathActive()
+            ) {
+                pendingPhysicalCandidateCommitGeneration = null
+                floatingCandidateEnterPressed()
+            }
             Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()} [$itemsToShow]")
         }
     }

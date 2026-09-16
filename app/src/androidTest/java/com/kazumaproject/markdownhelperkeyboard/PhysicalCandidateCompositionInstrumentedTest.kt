@@ -55,6 +55,19 @@ class PhysicalCandidateCompositionInstrumentedTest {
         }
     }
 
+    @Test fun immediateEnterWaitsForTheCurrentReadingCandidate() = withKeyboard {
+        type("sanbyakugojuuentsukau")
+        awaitText("さんびゃくごじゅうえんつかう")
+        key(KeyEvent.KEYCODE_SPACE, settleMillis = 0)
+        key(KeyEvent.KEYCODE_ENTER, settleMillis = 0)
+        awaitText("350円使う")
+        await {
+            var committed = false
+            host.onActivity { committed = BaseInputConnection.getComposingSpanStart(it.editText.text) == -1 }
+            committed
+        }
+    }
+
     @Test fun quantityDurationConvertsAndCommitsThroughTheIme() = withKeyboard {
         type("yonfunkanmatsu")
         awaitText("よんふんかんまつ")
