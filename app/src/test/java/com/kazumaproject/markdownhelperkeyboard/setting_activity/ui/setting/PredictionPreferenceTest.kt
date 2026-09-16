@@ -31,6 +31,48 @@ class PredictionPreferenceTest {
     }
 
     @Test
+    fun numberSettingsIndexIsReusedUntilStoredJsonChanges() {
+        val first = AppPreference.number_candidate_config
+        org.junit.Assert.assertSame(first, AppPreference.number_candidate_config)
+        val stored = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(
+            units = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("box", "箱", "はこ")))
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        preferences.edit().putString("number_candidate_config_v1", stored.encode()).commit()
+        val changed = AppPreference.number_candidate_config
+        org.junit.Assert.assertNotSame(first, changed)
+        assertEquals(stored, changed)
+        org.junit.Assert.assertSame(changed, AppPreference.number_candidate_config)
+        preferences.edit().putString("number_candidate_config_v1", "invalid backup").commit()
+        assertEquals(com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(), AppPreference.number_candidate_config)
+        val invalid = AppPreference.number_candidate_config
+        org.junit.Assert.assertSame(invalid, AppPreference.number_candidate_config)
+        preferences.edit().remove("number_candidate_config_v1").commit()
+        org.junit.Assert.assertNotSame(invalid, AppPreference.number_candidate_config)
+    }
+
+    @Test
+    fun numberPreferencesPersistAndReachTheImeSnapshot() {
+        val unit = com.kazumaproject.markdownhelperkeyboard.converter.engine.CustomNumberUnit("test", "個", "こ",
+            specialReadings = listOf(com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReading(
+                1, "いっこ", com.kazumaproject.markdownhelperkeyboard.converter.engine.SpecialNumberReadingMode.COMPOSE, "いち")))
+        val config = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateConfig(units = listOf(unit), disabledCounters = setOf("pieces"))
+        AppPreference.japanese_number_candidates_enable_preference = false
+        AppPreference.number_candidate_order_preference = "kanji_full_half"
+        AppPreference.number_candidate_config = config
+        AppPreference.init(context)
+        val snapshot = ImePreferencesSnapshot.from(AppPreference).predictionConfig
+        assertFalse(snapshot.japaneseNumberCandidatesEnabled)
+        assertEquals("kanji_full_half", snapshot.numberCandidateOrder.preferenceValue)
+        assertEquals(config, snapshot.numberCandidateConfig)
+        val backup = AppPreference.exportAllToJson()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        assertEquals(snapshot, ImePreferencesSnapshot.from(AppPreference).predictionConfig)
+        AppPreference.number_candidate_order_preference = "unknown"
+        assertEquals("half_full_kanji", AppPreference.number_candidate_order_preference)
+    }
+
+    @Test
     fun defaultsAreSeparatedFromNBestAndMatchTheSettingsScreen() {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 

@@ -6,6 +6,8 @@ import android.os.Debug
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -22,6 +24,36 @@ import java.util.Locale
 class JapaneseNumberConversionInstrumentedTest {
 
     @Test
+    fun counterAmountSuffixProducesCompleteCandidates() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
+        )
+        val engine = entryPoint.kanaKanjiEngine()
+        val repository = entryPoint.userDictionaryRepository()
+        val cases = mapOf(
+            "よんそくぶん" to listOf("4足分", "４足分", "四足分"),
+            "さんぞくぶん" to listOf("3足分", "３足分", "三足分"),
+            "じゅうさんぞくぶん" to listOf("13足分", "１３足分", "十三足分"),
+            "にじゅうさんぞくぶん" to listOf("23足分", "２３足分", "二十三足分"),
+            "よにんぶん" to listOf("4人分", "４人分", "四人分"),
+        )
+        for ((input, forms) in cases) {
+            val candidates = engine.convertOriginal(input, repository)
+            assertTrue("$input: ${candidates.map { it.string }}", forms.all { form ->
+                candidates.any { it.string == form && it.commitText == form && it.length.toInt() == input.length }
+            })
+            println("COUNTER_SUFFIX $input: ${candidates.take(12).map { it.string }}")
+            for (order in NumberCandidateOrder.entries) {
+                val displayed = engine.getCandidatesEnglishKana(input,
+                    PredictionConfig(numberCandidateOrder = order)).distinctBy { it.string }
+                assertEquals("$input / $order", order.indices.map(forms::get),
+                    displayed.filter { it.string in forms }.map { it.string })
+            }
+        }
+    }
+
+    @Test
     fun verifyCorrectnessAndMeasureProductionPaths() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -32,6 +64,7 @@ class JapaneseNumberConversionInstrumentedTest {
         val repository = entryPoint.userDictionaryRepository()
 
         val forbiddenByInput = linkedMapOf(
+            "230" to setOf("2月30日"),
             "よしよし" to setOf("4444", "４４４４", "8383", "８３８３", "四千四百四十四"),
             "しせん" to setOf("4000", "４０００", "4,000", "四千"),
             "くちょう" to setOf("9000000000000", "９００００００００００００", "九兆", "9兆"),
@@ -59,6 +92,7 @@ class JapaneseNumberConversionInstrumentedTest {
         }
 
         val validInputs = linkedMapOf(
+            "229" to setOf("2月29日"),
             "よんせん" to setOf("4000", "四千"),
             "きゅうちょう" to setOf("9000000000000", "九兆"),
             "さんにん" to setOf("3人"),
@@ -70,9 +104,14 @@ class JapaneseNumberConversionInstrumentedTest {
             "しじゅう" to setOf("40", "四十"),
             "じゅうよ" to setOf("14", "十四"),
             "よにん" to setOf("4人"),
+            "よんえん" to setOf("4円"),
             "よえん" to setOf("4円"),
-            "くえん" to setOf("9円"),
-            "くにん" to setOf("9人"),
+            "じゅういっこ" to setOf("11個"),
+            "にじゅうさんぼん" to setOf("23本"),
+            "いっかい" to setOf("1回", "1階"),
+            "はつか" to setOf("20日"),
+            "きゅうえん" to setOf("9円"),
+            "きゅうにん" to setOf("9人"),
             "いっぷん" to setOf("1分"),
             "ろっぷん" to setOf("6分"),
             "はっぷん" to setOf("8分"),

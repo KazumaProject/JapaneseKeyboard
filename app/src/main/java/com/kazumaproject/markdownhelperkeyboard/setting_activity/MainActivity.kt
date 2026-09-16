@@ -103,6 +103,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSupportNavigateUp(): Boolean {
         val navController = currentNavController()
+        if (navController.currentDestination?.id == R.id.numberUnitEditorFragment) {
+            onBackPressedDispatcher.onBackPressed()
+            return true
+        }
         return navController.navigateUp() || super.onSupportNavigateUp()
     }
 
