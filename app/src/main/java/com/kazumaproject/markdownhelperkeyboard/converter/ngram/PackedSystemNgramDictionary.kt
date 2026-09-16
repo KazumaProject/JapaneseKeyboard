@@ -27,6 +27,7 @@ class PackedSystemNgramDictionary private constructor(
     private val scratch = ThreadLocal.withInitial {
         Scratch(ByteArray(maxKeyBytes.coerceAtLeast(1)), ByteArray(maxKeyBytes.coerceAtLeast(1)))
     }
+    private val observedWordHashes = HashSet<Int>()
     private val firstPairHashesByKinds: Array<LongHashSet?>
     private val firstPairKindKeys: IntArray
     private val firstNodeValuesByKind: Array<LongHashSet?>
@@ -183,6 +184,7 @@ class PackedSystemNgramDictionary private constructor(
         val record = ByteArray(maxKeyBytes.coerceAtLeast(1))
         repeat(ruleCount) { recordId ->
             val recordLength = decodeRecord(recordId, record)
+            indexObservedWords(record, recordLength)
             val signature = (record[0].toInt() and 0xff) or
                 ((record[1].toInt() and 0xff) shl 8)
             val firstKind = (signature ushr 3) and 0x3
@@ -207,6 +209,7 @@ class PackedSystemNgramDictionary private constructor(
         val record = ByteArray(maxKeyBytes.coerceAtLeast(1))
         repeat(ruleCount) { recordId ->
             val recordLength = decodeRecord(recordId, record)
+            indexObservedWords(record, recordLength)
             val signature = (record[0].toInt() and 0xff) or
                 ((record[1].toInt() and 0xff) shl 8)
             val firstKind = (signature ushr 3) and 0x3
@@ -216,6 +219,22 @@ class PackedSystemNgramDictionary private constructor(
             firstNodeSet.add(first.value.toLong())
         }
     }
+
+    private fun indexObservedWords(record: ByteArray, length: Int) {
+        val signature = (record[0].toInt() and 0xff) or ((record[1].toInt() and 0xff) shl 8)
+        var position = 2
+        repeat(signature and 7) { index ->
+            val kind = (signature ushr (3 + index * 2)) and 3
+            val feature = readPrefixFeature(record, position, length, kind)
+            if (kind == KIND_WORD) observedWordHashes.add(feature.value)
+            position = feature.nextPosition
+        }
+    }
+
+    // A hash collision only retains an unnecessary word distinction; distinct
+    // observable words still use their complete text and can never be merged.
+    override fun lexicalClass(node: Node): Any =
+        (if (node.tango.hashCode() in observedWordHashes) node.tango else "") to coarsePos(node)
 
     private fun readPrefixFeature(
         record: ByteArray,

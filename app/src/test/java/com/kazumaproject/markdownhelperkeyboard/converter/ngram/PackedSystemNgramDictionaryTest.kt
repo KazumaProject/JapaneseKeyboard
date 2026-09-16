@@ -21,6 +21,15 @@ class PackedSystemNgramDictionaryTest {
         ).use { it.readBytes() }
 
     @Test
+    fun lexicalClassesPreserveWordsAtEveryRulePosition() {
+        val dictionary = dictionary()
+        for (word in listOf("服", "を", "着る", "一", "二", "三", "四", "五")) {
+            assertTrue("$word must remain observable", dictionary.lexicalClass(node(word)) != dictionary.lexicalClass(node("無関係な語")))
+        }
+        assertTrue(dictionary.lexicalClass(node("無関係な語")) == dictionary.lexicalClass(node("別の無関係な語")))
+    }
+
+    @Test
     fun exactRuleMatchesAndOneCharacterDifferenceDoesNot() {
         val dictionary = dictionary()
         assertTrue(dictionary.matches(node("服"), node("を"), node("着る"), null, null))

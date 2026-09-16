@@ -6,6 +6,9 @@ interface SystemNgramDictionary {
     val ruleCount: Int
     val storageBytes: Int
 
+    /** Equal classes must be interchangeable at every position of every rule. */
+    fun lexicalClass(node: Node): Any = com.kazumaproject.graph.LexicalPart(node.tango, node.l, node.r)
+
     /** Returns true when a single conversion node matches a unigram rule. */
     fun matchesSingleNode(node: Node): Boolean = false
 
@@ -32,6 +35,7 @@ interface SystemNgramDictionary {
 }
 
 object EmptySystemNgramDictionary : SystemNgramDictionary {
+    override fun lexicalClass(node: Node): Any = 0
     override val ruleCount: Int = 0
     override val storageBytes: Int = 0
 

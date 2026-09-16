@@ -40,6 +40,9 @@ data class Node(
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
     val isGeneratedNumber: Boolean = false,
     val lexicalParts: List<LexicalPart> = emptyList(),
+    var quantityClasses: Long = 0,
+    var lexicalClasses: Long = 0,
+    var isVerifiedQuantity: Boolean = false,
 ) {
     override fun toString(): String {
         return this.tango

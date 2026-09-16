@@ -56,6 +56,49 @@ class NumberGraphMatcherTest {
             units = listOf(unit.copy(enabled = false))))).matches(0).isEmpty())
     }
 
+    @Test fun appendedRecognitionMatchesFreshQueriesAndInvalidatesChangedSettings() {
+        val unit = CustomNumberUnit("box", "箱", "はこ")
+        val enabled = PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(unit)))
+        for (input in listOf("さんぼんだけじゅうにほん", "にじゅうにこだけ", "あとにはこください")) {
+            var previous: NumberPathPolicy? = null
+            for (length in 1..input.length) {
+                val reading = input.take(length)
+                val policy = NumberPathPolicy(reading, enabled, previous)
+                assertEquals("append $reading", NumberPathPolicy(reading, enabled).recognizedSpans(), policy.recognizedSpans())
+                previous = policy
+            }
+            val disabled = enabled.copy(japaneseNumberCandidatesEnabled = false)
+            assertTrue(NumberPathPolicy(input + "あ", disabled, previous).recognizedSpans().isEmpty())
+        }
+    }
+
+    @Test fun grammarBoundPreservesEveryAcceptedEndingIncludingLongCustomRulesAndSuffixChains() {
+        val old = QuantityRuntime.dictionary
+        try {
+            val suffixes = listOf(
+                com.kazumaproject.quantity.QuantityDictionary.Suffix("人", "ぶん", "分"),
+                com.kazumaproject.quantity.QuantityDictionary.Suffix("人分", "よう", "用"),
+                com.kazumaproject.quantity.QuantityDictionary.Suffix("人分用", "むけ", "向け"),
+                com.kazumaproject.quantity.QuantityDictionary.Suffix("@registered", "ぶん", "分"))
+            QuantityRuntime.install(com.kazumaproject.quantity.QuantityDictionary(emptyList(), suffixes))
+            val unit = CustomNumberUnit("long", "長い単位", "こ" + "あ".repeat(20), specialReadings = listOf(
+                SpecialNumberReading(42, "か" + "あ".repeat(28))))
+            val config = PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(unit)))
+            val readings = BuiltInCounter.entries.map { it.example.substringBefore(" →") } + listOf(
+                "ふたりぶんようむけ", "さんじよんじゅっぷん", "じゅうに" + unit.reading + "ぶん",
+                unit.specialReadings.single().reading, SpecialNumberReading.suggestBase(9_999_999_999_999_999L) + "えん")
+            for (reading in readings) {
+                val input = (reading + "だけさんぼんだけ".repeat(20)).take(255)
+                val expected = (1..input.length).filter { end ->
+                    ValidatedNumber.parseUncached(input.take(end), config.numberCandidateConfig).any { proof ->
+                        proof.counter.isNotEmpty() && proof.basicForms.any { config.numberCandidateConfig.permits(proof, it) }
+                    }
+                }
+                assertEquals(reading, expected, NumberGraphMatcher(input, config).matches(0).map { it.end })
+            }
+        } finally { QuantityRuntime.install(old) }
+    }
+
     @Test fun wholeInputParserRemainsStrictAndLongInputsStayBounded() {
         for (input in listOf("さんぼんだけ", "ふたりぶんください", "これはいっこ", "よんぶん", "しんぶん", "さんご")) {
             assertTrue(input, NumberCandidateGenerator.generate(input, PredictionConfig()).isEmpty())

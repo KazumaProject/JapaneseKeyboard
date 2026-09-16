@@ -16,6 +16,8 @@ class CompositeSystemNgramDictionary(
         require(dictionaries.isNotEmpty()) { "At least one system n-gram dictionary is required" }
     }
 
+    override fun lexicalClass(node: Node): Any = dictionaries.map { it.lexicalClass(node) }
+
     override val ruleCount: Int = dictionaries.sumOf { it.ruleCount }
     override val storageBytes: Int = dictionaries.sumOf { it.storageBytes }
 

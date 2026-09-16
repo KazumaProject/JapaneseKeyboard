@@ -5,6 +5,11 @@ import java.util.zip.CRC32
 
 /** Versioned, scoreless quantity rules. The host verifies quantity spans against its reading parser. */
 class QuantityDictionary(val rules: List<List<Feature>>, val suffixes: List<Suffix>, val numericContextIds: Set<Int> = emptySet(), val counterContextIds: Set<Int> = emptySet()) {
+    private val numericIds = numericContextIds.sorted().toIntArray()
+    private val counterIds = counterContextIds.sorted().toIntArray()
+    fun isNumericContext(id: Int): Boolean = numericIds.binarySearch(id) >= 0
+    fun isCounterContext(id: Int): Boolean = counterIds.binarySearch(id) >= 0
+
     sealed interface Feature {
         data class Word(val text: String) : Feature
         data class Quantity(val unit: String) : Feature
@@ -12,39 +17,77 @@ class QuantityDictionary(val rules: List<List<Feature>>, val suffixes: List<Suff
     data class Suffix(val base: String, val reading: String, val output: String)
     data class Token(val text: String, val reading: String, val protected: Boolean = false)
     val units: Set<String> = rules.flatten().filterIsInstance<Feature.Quantity>().map { it.unit }.toSet()
-    private val firstWords = rules.filter { it.first() is Feature.Word }
-        .groupBy { (it.first() as Feature.Word).text }
-    private val firstQuantities = rules.filter { it.first() is Feature.Quantity }
+    private class RuleNode(val depth: Int) {
+        val words = HashMap<String, RuleNode>()
+        val quantities = HashMap<String, RuleNode>()
+        val terminals = ArrayList<List<Feature>>()
+    }
+    private val root = RuleNode(0).also { root ->
+        for (rule in rules) {
+            var node = root
+            for (feature in rule) {
+                val children = when (feature) {
+                    is Feature.Word -> node.words
+                    is Feature.Quantity -> node.quantities
+                }
+                val key = when (feature) {
+                    is Feature.Word -> feature.text
+                    is Feature.Quantity -> feature.unit
+                }
+                node = children.getOrPut(key) { RuleNode(node.depth + 1) }
+            }
+            node.terminals.add(rule)
+        }
+    }
+    private data class Span(val end: Int, val reading: String, val text: String) {
+        val verified = HashMap<String, Boolean>()
+    }
 
     /** Each quantity consumes a contiguous, verified span; word conditions retain dictionary boundaries. */
     fun matchStrength(tokens: List<Token>, ruleFilter: (List<Feature>) -> Boolean = { true }, quantityEnds: ((Int) -> List<Int>)? = null, verify: (Int, Int, String, String, String) -> Boolean): Int {
         if (rules.isEmpty()) return 0
-        val memo = HashMap<Triple<Int, Int, String>, Boolean>()
-        fun match(rule: List<Feature>, feature: Int, at: Int): Boolean {
-            if (feature == rule.size) return true
-            if (at == tokens.size) return false
-            return when (val f = rule[feature]) {
-                is Feature.Word -> tokens[at].text == f.text && match(rule, feature + 1, at + 1)
-                is Feature.Quantity -> {
-                    val allowedEnds = quantityEnds?.invoke(at)?.toSet()
-                    val lastEnd = allowedEnds?.maxOrNull() ?: if (allowedEnds == null) tokens.lastIndex else return false
-                    val text = StringBuilder(); val reading = StringBuilder()
-                    for (end in at..lastEnd) {
-                        if (tokens[end].protected) break
-                        text.append(tokens[end].text); reading.append(tokens[end].reading)
-                        if (reading.length > 255) break
-                        if (allowedEnds != null && end !in allowedEnds) continue
-                        if (memo.getOrPut(Triple(at, end, f.unit)) { verify(at, end, reading.toString(), text.toString(), f.unit) } &&
-                            match(rule, feature + 1, end + 1)) return true
-                    }
-                    false
-                }
+        // Materialize each possible span once per candidate path, not once per rule.
+        val spans = arrayOfNulls<List<Span>>(tokens.size)
+        fun spansAt(at: Int): List<Span> {
+            spans[at]?.let { return it }
+            val allowed = quantityEnds?.invoke(at)?.toHashSet()
+            val last = allowed?.maxOrNull() ?: if (allowed == null) tokens.lastIndex else -1
+            val result = ArrayList<Span>()
+            val reading = StringBuilder()
+            val text = StringBuilder()
+            for (end in at..last) {
+                val token = tokens[end]
+                if (token.protected) break
+                reading.append(token.reading)
+                if (reading.length > 255) break
+                text.append(token.text)
+                if (allowed == null || end in allowed) result.add(Span(end, reading.toString(), text.toString()))
+            }
+            spans[at] = result
+            return result
+        }
+        return matchVerified(tokens.map { it.text }, ruleFilter = ruleFilter) { at, unit, _ ->
+            spansAt(at).filter { span ->
+                span.verified.getOrPut(unit) { verify(at, span.end, span.reading, span.text, unit) }
+            }.map { it.end }.toIntArray()
+        }
+    }
+
+    /** The host may supply path-verified spans without rebuilding their text for each rule. */
+    fun matchVerified(words: List<String>, ruleFilter: (List<Feature>) -> Boolean = { true },
+                      quantityEnds: (Int, String, Boolean) -> IntArray): Int {
+        var strength = 0
+        val visited = HashMap<RuleNode, MutableSet<Int>>()
+        fun match(node: RuleNode, at: Int, contextual: Boolean) {
+            if (!visited.getOrPut(node) { HashSet() }.add(at)) return
+            if (node.depth > strength && node.terminals.any(ruleFilter)) strength = node.depth
+            if (at == words.size) return
+            node.words[words[at]]?.let { match(it, at + 1, contextual || node === root) }
+            for ((unit, next) in node.quantities) {
+                for (end in quantityEnds(at, unit, contextual)) match(next, end + 1, contextual)
             }
         }
-        var strength = 0
-        for (start in tokens.indices) for (rule in firstWords[tokens[start].text].orEmpty() + firstQuantities) {
-            if (rule.size > strength && ruleFilter(rule) && match(rule, 0, start)) strength = rule.size
-        }
+        for (start in words.indices) match(root, start, false)
         return strength
     }
 
