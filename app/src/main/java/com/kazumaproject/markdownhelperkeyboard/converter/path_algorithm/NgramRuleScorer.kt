@@ -32,6 +32,7 @@ class NgramRuleScorer(
     private val wildcardRulesByOrder: Array<List<NgramRule>> =
         Array(NgramRule.MAX_NODE_COUNT + 1) { emptyList() }
     private val maxOrderWithRules: Int
+    internal val contextNodeCount: Int get() = (maxOrderWithRules - 1).coerceAtLeast(0)
     internal val requiredSuffixNodeCount: Int
 
     init {
@@ -58,7 +59,23 @@ class NgramRuleScorer(
         },
     )
 
-    fun score(
+    private fun expand(node: Node): List<Node> = if (node.lexicalParts.isEmpty()) listOf(node) else
+        node.lexicalParts.map { Node(it.left, it.right, 0, 0, tango = it.text, len = 0, yomiUsed = "", sPos = 0) }
+
+    fun score(prevNode: Node, currentNode: Node, nextNode1: Node? = currentNode.next,
+              nextNode2: Node? = nextNode1?.next, nextNode3: Node? = nextNode2?.next): Int {
+        if (prevNode.lexicalParts.isEmpty() && currentNode.lexicalParts.isEmpty() &&
+            nextNode1?.lexicalParts.isNullOrEmpty() && nextNode2?.lexicalParts.isNullOrEmpty() && nextNode3?.lexicalParts.isNullOrEmpty())
+            return scoreRaw(prevNode, currentNode, nextNode1, nextNode2, nextNode3)
+        val first = expand(prevNode)
+        val sequence = first + listOfNotNull(currentNode, nextNode1, nextNode2, nextNode3).flatMap(::expand)
+        return first.indices.sumOf { index ->
+            val second = sequence.getOrNull(index + 1) ?: return@sumOf 0
+            scoreRaw(sequence[index], second, sequence.getOrNull(index + 2), sequence.getOrNull(index + 3), sequence.getOrNull(index + 4))
+        }
+    }
+
+    private fun scoreRaw(
         prevNode: Node,
         currentNode: Node,
         nextNode1: Node? = currentNode.next,
@@ -95,8 +112,57 @@ class NgramRuleScorer(
         return total.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
     }
 
+    private val forwardPrefixes = rules.flatMap { rule ->
+        (1 until rule.nodes.size).map { rule.nodes.take(it) }
+    }.distinct().groupBy { it.size to it.first().word }
+    private val forwardContextLengths = object : LinkedHashMap<List<Triple<Int, Int, Int>>, Int>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<List<Triple<Int, Int, Int>>, Int>?) = size > 4096
+    }
+
+    /** Only a suffix matching a rule prefix can affect a future N-gram score. */
+    internal fun futureContext(nodes: List<Node>): List<Node> {
+        if (contextNodeCount == 0) return emptyList()
+        val tail = nodes.flatMap(::expand).takeLast(contextNodeCount)
+        val key = tail.map { Triple(wordClass(it), leftIdClass(it), rightIdClass(it)) }
+        val retained = synchronized(forwardContextLengths) {
+            forwardContextLengths.getOrPut(key) {
+                (tail.size downTo 1).firstOrNull { size ->
+                    val suffix = tail.takeLast(size)
+                    fun matches(prefix: List<NodeFeature>) = prefix.indices.all { prefix[it].matches(suffix[it]) }
+                    forwardPrefixes[size to suffix.first().tango].orEmpty().any(::matches) ||
+                        forwardPrefixes[size to null].orEmpty().any(::matches)
+                } ?: 0
+            }
+        }
+        return tail.takeLast(retained)
+    }
+
+    /** Forward evaluation: charge each rule once, when its last node is appended. */
+    internal fun scoreEndingAt(nodes: List<Node>): Int {
+        if (maxOrderWithRules == 0) return 0
+        val expanded = if (nodes.all { it.lexicalParts.isEmpty() }) nodes else nodes.flatMap(::expand)
+        val added = nodes.lastOrNull()?.let { it.lexicalParts.size.coerceAtLeast(1) } ?: 0
+        var total = 0L
+        for (end in expanded.size - added + 1..expanded.size) for (order in NgramRule.MIN_NODE_COUNT..maxOrderWithRules) {
+            if (end < order) continue
+            val part = expanded.subList(end - order, end)
+            if (part.first().tango == "BOS" || part.last().tango == "EOS") continue
+            total += scoreBucket(rulesByOrderAndCurrentWord[order][part[1].tango],
+                part[0], part[1], part.getOrNull(2), part.getOrNull(3), part.getOrNull(4))
+            total += scoreBucket(wildcardRulesByOrder[order],
+                part[0], part[1], part.getOrNull(2), part.getOrNull(3), part.getOrNull(4))
+        }
+        return total.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+    }
+
     /** Exact equivalence classes for every node feature observable by this scorer. */
-    internal fun wordClass(node: Node): Int = relevantWordClasses[node.tango] ?: 0
+    private val compositeClasses = java.util.concurrent.ConcurrentHashMap<List<Triple<Int, Int, Int>>, Int>()
+    internal fun wordClass(node: Node): Int {
+        if (node.lexicalParts.isEmpty()) return relevantWordClasses[node.tango] ?: 0
+        val signature = node.lexicalParts.map { Triple(relevantWordClasses[it.text] ?: 0,
+            relevantLeftIdClasses[it.left] ?: 0, relevantRightIdClasses[it.right] ?: 0) }
+        return synchronized(compositeClasses) { compositeClasses.getOrPut(signature) { relevantWordClasses.size + compositeClasses.size + 1 } }
+    }
 
     internal fun leftIdClass(node: Node): Int = relevantLeftIdClasses[node.l] ?: 0
 

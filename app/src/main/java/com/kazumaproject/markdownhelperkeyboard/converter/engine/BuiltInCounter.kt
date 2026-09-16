@@ -111,6 +111,16 @@ enum class BuiltInCounter(val storageId: String, val output: String, val reading
             }.groupBy({ it.first }, { it.second })
         }
 
+        private val initialCharacters: Set<Char> by lazy {
+            entries.flatMap { counter ->
+                counter.endings.map { it.surface.first() } + counter.exact.keys.map { it.first() }
+            }.toSet()
+        }
+
+        internal fun canStartWith(char: Char): Boolean = char in initialCharacters
+
+        internal fun canEndWith(char: Char): Boolean = char in byLastCharacter
+
         internal fun matching(input: String): List<BuiltInCounter> =
             byLastCharacter[input.lastOrNull()].orEmpty()
     }

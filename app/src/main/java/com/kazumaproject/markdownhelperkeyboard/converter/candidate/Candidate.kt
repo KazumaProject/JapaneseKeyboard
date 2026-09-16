@@ -19,4 +19,10 @@ data class Candidate(
     val commitText: String = string,
     /** Optional non-text presentation, currently used by formula candidates. */
     val presentation: FormulaCandidatePresentation? = null,
+    val quantityPreference: Int = 0,
+    val numberSpans: List<NumberCandidateSpan> = emptyList(),
 )
+
+/** Verified input/output interval; carries all forms without adding paths to N-best search. */
+data class NumberCandidateSpan(val outputStart: Int, val outputEnd: Int, val inputStart: Int,
+    val inputEnd: Int, val forms: List<String>, val unit: String, val allowedForms: Set<Int> = setOf(0, 1, 2))

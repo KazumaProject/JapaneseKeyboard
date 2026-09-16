@@ -274,7 +274,7 @@ class LOUDSWithTermId {
         val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
         val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
         val y = select0 + 1
-        return if (!LBS[y]) -1 else y
+        return if (y <= pos || !LBS[y]) -1 else y
     }
 
     private fun traverseShortArray(
@@ -295,13 +295,15 @@ class LOUDSWithTermId {
 
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
         val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
-        return if (y < 0 || !LBS[y]) -1 else y
+        return if (y <= pos || !LBS[y]) -1 else y
     }
 
     private fun firstChild(pos: Int, succinctBitVector: SuccinctBitVector): Int {
         val rank1 = succinctBitVector.rank1(pos)
         val select0 = succinctBitVector.select0(rank1) + 1
-        return if (select0 < 0 || !LBS[select0]) -1 else select0
+        // A compact BitSet omits trailing zero words. select0 can return -1 for a leaf;
+        // adding one must not turn that sentinel into the root node and recurse forever.
+        return if (select0 <= pos || !LBS[select0]) -1 else select0
     }
 
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {

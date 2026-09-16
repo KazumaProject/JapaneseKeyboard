@@ -151,6 +151,8 @@ internal object TestEngineFactory {
     fun create(
         connectionMatrix: ConnectionMatrix.CostTable = ConnectionMatrix.fromShortArray(readConnectionIds()),
     ): KanaKanjiEngine {
+        com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.install(
+            com.kazumaproject.quantity.QuantityDictionary.read(File(assetsDir, "quantity/quantity.dat").readBytes()))
         val englishEngine = mock<EnglishEngine>()
         whenever(englishEngine.getCandidates(any(), any())).thenReturn(emptyList<Candidate>())
 

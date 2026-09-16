@@ -32,6 +32,35 @@ class PhysicalCandidateCompositionInstrumentedTest {
     private lateinit var host: ActivityScenario<FastInputHostActivity>
     private var keyboardId = 0
 
+    @Test fun quantityDurationConvertsAndCommitsThroughTheIme() = withKeyboard {
+        type("yonfunkanmatsu")
+        awaitText("よんふんかんまつ")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("4分間待つ")
+        key(KeyEvent.KEYCODE_ENTER)
+        awaitText("4分間待つ")
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
+    @Test fun compoundCounterConvertsAndCommitsThroughTheIme() = withKeyboard {
+        type("honwonijuusansatsukau")
+        awaitText("ほんをにじゅうさんさつかう")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("本を23冊買う")
+        key(KeyEvent.KEYCODE_ENTER)
+        awaitText("本を23冊買う")
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
+    @Test fun ordinaryHomophoneRemainsAWordThroughTheIme() = withKeyboard {
+        type("hakkendake")
+        awaitText("はっけんだけ")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("発見だけ")
+        key(KeyEvent.KEYCODE_ENTER)
+        awaitText("発見だけ")
+    }
+
     @Test fun numericCandidatesSurviveMovingBetweenBunsetsuSegments() = withKeyboard(bunsetsu = true) {
         type("korehayoji")
         awaitText("これはよじ")

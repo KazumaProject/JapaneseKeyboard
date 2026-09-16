@@ -413,6 +413,7 @@ class KanaKanjiEngine {
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             graphNodeTrace = graphNodeTrace,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         if (graph.isNotEmpty()) {
@@ -1175,6 +1176,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1202,7 +1205,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            return resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig)
+            return finishNumberCandidates(input, resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig), predictionConfig, candidateSegmentCollector)
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
@@ -1514,10 +1517,10 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareByDescending<Candidate> { it.quantityPreference }.thenBy { it.score }.thenBy { it.string })
 
         val englishReadingDeferred = deferredEnglishReadingCandidates(input, resultList)
-        return resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return finishNumberCandidates(input, resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred, predictionConfig, candidateSegmentCollector)
 
     }
 
@@ -1590,6 +1593,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1621,7 +1626,7 @@ class KanaKanjiEngine {
         if (input.isDigitsOnly()) {
             val finalList = resultNBestFinalDeferred.candidates + generateNumberCandidates(input, predictionConfig)
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
                 splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
             )
@@ -1634,7 +1639,7 @@ class KanaKanjiEngine {
 
             // 3. Combine and return all generated candidates.
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultWithHankaku.splitPatterns,
                 splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString
             )
@@ -1782,7 +1787,7 @@ class KanaKanjiEngine {
             val finalList =
                 resultNBestFinalDeferred.candidates.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
                 splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
             )
@@ -1952,15 +1957,15 @@ class KanaKanjiEngine {
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
             resultList.sortedWith(
-                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                compareByDescending<Candidate> { it.quantityPreference }.thenByDescending { it.string in systemNgramMatchedCandidates }
                     .thenBy { it.score }
                     .thenBy { it.string },
             ) + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
-            candidates = resultListFinal,
+            candidates = finishNumberCandidates(input, resultListFinal, predictionConfig, candidateSegmentCollector),
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            splitPatternByCandidateString = expandNumberSplits(resultNBestFinalDeferred, predictionConfig),
             systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
 
@@ -2035,6 +2040,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2066,7 +2073,7 @@ class KanaKanjiEngine {
         if (input.isDigitsOnly()) {
             val finalList = resultNBestFinalDeferred.candidates + generateNumberCandidates(input, predictionConfig)
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
                 splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
             )
@@ -2077,7 +2084,7 @@ class KanaKanjiEngine {
             val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultWithHankaku.splitPatterns,
                 splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString
             )
@@ -2375,7 +2382,7 @@ class KanaKanjiEngine {
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal = resultList.sortedWith(
-            compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+            compareByDescending<Candidate> { it.quantityPreference }.thenByDescending { it.string in systemNgramMatchedCandidates }
                 .thenBy { it.score }
                 .thenBy { it.string },
         )
@@ -2384,9 +2391,9 @@ class KanaKanjiEngine {
             resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
-            candidates = finalList,
+            candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            splitPatternByCandidateString = expandNumberSplits(resultNBestFinalDeferred, predictionConfig),
             systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
 
@@ -2461,6 +2468,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2488,7 +2497,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            return resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig)
+            return finishNumberCandidates(input, resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig), predictionConfig, candidateSegmentCollector)
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
@@ -2798,9 +2807,9 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareByDescending<Candidate> { it.quantityPreference }.thenBy { it.score }.thenBy { it.string })
 
-        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+        return finishNumberCandidates(input, resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred, predictionConfig, candidateSegmentCollector)
 
     }
 
@@ -2869,6 +2878,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2896,7 +2907,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            return resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig)
+            return finishNumberCandidates(input, resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig), predictionConfig, candidateSegmentCollector)
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
@@ -3200,9 +3211,9 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareByDescending<Candidate> { it.quantityPreference }.thenBy { it.score }.thenBy { it.string })
 
-        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return finishNumberCandidates(input, resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred, predictionConfig, candidateSegmentCollector)
 
     }
 
@@ -3271,6 +3282,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            predictionConfig = predictionConfig,
+            numberConnectionMatrix = connectionMatrixSnapshot().costTable,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -3302,7 +3315,7 @@ class KanaKanjiEngine {
         if (input.isDigitsOnly()) {
             val finalList = resultNBestFinalDeferred.candidates + generateNumberCandidates(input, predictionConfig)
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
                 splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
             )
@@ -3315,7 +3328,7 @@ class KanaKanjiEngine {
 
             // 3. Combine and return all generated candidates.
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultWithHankaku.splitPatterns,
                 splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString
             )
@@ -3459,7 +3472,7 @@ class KanaKanjiEngine {
             val finalList =
                 resultNBestFinalDeferred.candidates.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
             return BunsetsuCandidateResult(
-                candidates = finalList,
+                candidates = finishNumberCandidates(input, finalList, predictionConfig, candidateSegmentCollector),
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
                 splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
             )
@@ -3626,15 +3639,15 @@ class KanaKanjiEngine {
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
             resultList.sortedWith(
-                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                compareByDescending<Candidate> { it.quantityPreference }.thenByDescending { it.string in systemNgramMatchedCandidates }
                     .thenBy { it.score }
                     .thenBy { it.string },
             ) + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
-            candidates = resultListFinal,
+            candidates = finishNumberCandidates(input, resultListFinal, predictionConfig, candidateSegmentCollector),
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            splitPatternByCandidateString = expandNumberSplits(resultNBestFinalDeferred, predictionConfig),
             systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
 
@@ -4669,5 +4682,17 @@ class KanaKanjiEngine {
         // 6. 新しく作成した候補リストを返す
         return newList
     }
+
+    private fun finishNumberCandidates(input: String, candidates: List<Candidate>, config: PredictionConfig,
+        segments: MutableMap<String, List<CandidateConversionSegment>>?): List<Candidate> =
+        NumberCandidateGenerator.order(input, NumberPathPolicy.expand(candidates, config, segments), config)
+
+    private fun expandNumberSplits(result: BunsetsuCandidateResult, config: PredictionConfig): Map<String, List<Int>> =
+        result.splitPatternByCandidateString.toMutableMap().apply {
+            for (candidate in result.candidates) {
+                val splits = result.splitPatternByCandidateString[candidate.string] ?: continue
+                for (expanded in NumberPathPolicy.expand(listOf(candidate), config)) put(expanded.string, splits)
+            }
+        }
 
 }

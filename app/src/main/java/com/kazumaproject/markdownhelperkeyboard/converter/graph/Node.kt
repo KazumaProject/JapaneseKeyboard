@@ -20,6 +20,8 @@ object MozcNodeAttributes {
     const val STARTS_WITH_PARTICLE = 1
 }
 
+data class LexicalPart(val text: String, val left: Short, val right: Short)
+
 data class Node(
     val l: Short,
     val r: Short,
@@ -36,6 +38,8 @@ data class Node(
     val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
+    val isGeneratedNumber: Boolean = false,
+    val lexicalParts: List<LexicalPart> = emptyList(),
 ) {
     override fun toString(): String {
         return this.tango

@@ -16,6 +16,7 @@ object SystemNgramRuntime {
         if (enabled.get()) dictionary.get() else EmptySystemNgramDictionary
 
     fun initialize(context: Context, value: Boolean) {
+        com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.initialize(context.applicationContext)
         enabled.set(value)
         if (value) ensureLoaded(context.applicationContext)
     }

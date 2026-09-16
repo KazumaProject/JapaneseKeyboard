@@ -8,6 +8,8 @@ import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeAttributes
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberGraphMatcher
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
@@ -21,6 +23,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
 class GraphBuilder {
+    private val lexicalEntries = java.util.WeakHashMap<TokenArray, MutableMap<String, List<com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry>>>()
+
 
     internal data class CachedGraph(
         val input: String,
@@ -162,7 +166,10 @@ class GraphBuilder {
         override var reusedThroughEndIndex: Int,
         override val conversionSignature: Int,
         override var forwardDpReusableThroughEndIndex: Int = reusedThroughEndIndex,
-    ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata
+    ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata {
+        var quantityGraph: Map<Int, List<Node>> = emptyMap()
+        var numberPolicy: com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberPathPolicy? = null
+    }
 
     @Volatile
     private var cachedGraph: CachedGraph? = null
@@ -254,7 +261,9 @@ class GraphBuilder {
             GraphNodeDedupMode.EXISTING_BY_TANGO_L_R -> {
                 // tango, l, r の3つがすべて一致するノードを探す
                 val existingNodeIndex = nodes.indexOfFirst {
-                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r
+                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r &&
+                        it.isGeneratedNumber == newNode.isGeneratedNumber &&
+                        (!newNode.isGeneratedNumber || it.sPos == newNode.sPos && it.len == newNode.len)
                 }
 
                 if (existingNodeIndex != -1) {
@@ -343,6 +352,8 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
         sessionState: SessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        numberConnectionMatrix: com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix.CostTable? = null,
     ): MutableMap<Int, MutableList<Node>> {
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
@@ -374,11 +385,13 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
+            predictionConfig = predictionConfig,
         )
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
                 it.signature == signature &&
+                (it.input.length <= UByte.MAX_VALUE.toInt()) == (str.length <= UByte.MAX_VALUE.toInt()) &&
                 (
                     sessionState != null && str.length > it.input.length ||
                         sessionState == null && str.length == it.input.length + 1
@@ -599,6 +612,22 @@ class GraphBuilder {
                 mozcNodeType = MozcNodeType.EOS,
             )
         )
+        (graph as IncrementalGraph).numberPolicy = com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberPathPolicy(str, predictionConfig)
+        val entries = synchronized(lexicalEntries) { lexicalEntries.getOrPut(tokenArray) { java.util.Collections.synchronizedMap(object : LinkedHashMap<String, List<com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry>>(256, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry>>): Boolean = size > 2048
+        }) } }
+        val lexicon = numberConnectionMatrix?.let { matrix -> com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon({ reading ->
+            entries.getOrPut(reading) {
+                val node = yomiTrie.getNodeIndex(reading, succinctBitVectorLBSYomi)
+                val term = if (node >= 0) yomiTrie.getTermId(node, succinctBitVectorIsLeafYomi) else -1
+                if (term < 0) emptyList() else tokenArray.getListDictionaryByYomiTermId(term, succinctBitVectorTokenArray).map { token ->
+                    val text = when(token.nodeId) { -2 -> reading; -1 -> reading.hiraToKata(); else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS) }
+                    val pos = token.posTableIndex.toInt()
+                    com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberLexicon.Entry(text, tokenArray.leftIds[pos], tokenArray.rightIds[pos], token.wordCost.toInt())
+                }
+            }
+        }, matrix) }
+        val numberMatcher = NumberGraphMatcher(str, predictionConfig) { proof -> lexicon?.forms(proof).orEmpty() }
         for (i in str.indices) {
             currentCoroutineContext().ensureActive()
             var subStrCache: String? = null
@@ -608,6 +637,22 @@ class GraphBuilder {
                 return str.substring(i).also { subStrCache = it }
             }
             var foundInAnyDictionary = false
+
+            for (match in numberMatcher.matches(i, reusablePrefixLength + 1)) {
+                foundInAnyDictionary = true
+                for (form in match.forms) {
+                    val node = Node(
+                        l = form.leftId, r = form.rightId,
+                        score = form.cost, f = form.cost, g = form.cost,
+                        tango = form.text, yomiUsed = match.reading,
+                        len = match.reading.length.toShort(), sPos = i,
+                        mozcAttributes = mozcAttributesFor(form.leftId),
+                        isGeneratedNumber = true,
+                        lexicalParts = form.parts,
+                    )
+                    addOrUpdateNode(graph, match.end, node, graphNodeDedupMode, graphNodeTrace, str, "NUMBER")
+                }
+            }
 
             // 1. ユーザー辞書
             val userWords = userDictionaryRepository?.let { repository ->
@@ -1434,6 +1479,10 @@ class GraphBuilder {
         } else {
             cachedGraph = updatedCache
         }
+        if (graph.numberPolicy?.hasQuantities == true) {
+            graph.quantityGraph = (updatedCache.unprunedPositions ?: graph).mapValues { it.value.toList() } +
+                (str.length + 1 to graph.getValue(str.length + 1).toList())
+        } else graph.quantityGraph = emptyMap()
         return graph
     }
 
@@ -1470,8 +1519,10 @@ class GraphBuilder {
         beamWidth: Int,
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
+        predictionConfig: PredictionConfig,
     ): Int {
         var result = System.identityHashCode(yomiTrie)
+        result = 31 * result + System.identityHashCode(com.kazumaproject.markdownhelperkeyboard.converter.engine.QuantityRuntime.dictionary)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
         result = 31 * result + System.identityHashCode(wikiYomiTrie)
         result = 31 * result + System.identityHashCode(webYomiTrie)
@@ -1489,6 +1540,9 @@ class GraphBuilder {
         result = 31 * result + beamWidth
         result = 31 * result + graphNodeDedupMode.hashCode()
         result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)
+        result = 31 * result + predictionConfig.japaneseNumberCandidatesEnabled.hashCode()
+        result = 31 * result + predictionConfig.numberCandidateOrder.hashCode()
+        result = 31 * result + predictionConfig.numberCandidateConfig.hashCode()
         return result
     }
 

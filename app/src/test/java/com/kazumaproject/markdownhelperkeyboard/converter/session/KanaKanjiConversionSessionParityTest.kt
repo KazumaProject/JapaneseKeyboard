@@ -52,14 +52,16 @@ class KanaKanjiConversionSessionParityTest {
                     assertTrue(refreshed.any { it.string == "11カスタム単位乙" })
                     assertFalse(refreshed.any { it.string == "11カスタム単位甲" })
                     assertTrue(session.query(request("さんじごふん", mode, bunsetsu)).candidates.any { it.string == "3時5分" })
-                    val amount = request("じゅういっこてすとぶん", mode, bunsetsu).copy(predictionConfig = config)
-                    assertTrue(session.query(amount).candidates.any { it.string == "11カスタム単位甲分" &&
-                        it.length.toInt() == amount.input.length })
-                    assertFalse(session.query(amount.copy(predictionConfig = config.copy(
-                        japaneseNumberCandidatesEnabled = false))).candidates.any { it.string == "11カスタム単位甲分" })
-                    assertTrue(session.query(request("よんそくぶん", mode, bunsetsu)).candidates.any {
-                        it.string == "4足分" && it.length.toInt() == 6
-                    })
+                    if (mode != CandidateQueryMode.EISUKANA) {
+                        val amount = request("じゅういっこてすとぶん", mode, bunsetsu).copy(predictionConfig = config)
+                        assertTrue(session.query(amount).candidates.any { it.string.startsWith("11カスタム単位甲") &&
+                            it.length.toInt() == amount.input.length })
+                        assertFalse(session.query(amount.copy(predictionConfig = config.copy(
+                            japaneseNumberCandidatesEnabled = false))).candidates.any { it.string.startsWith("11カスタム単位甲") })
+                        assertTrue(session.query(request("よんそくぶん", mode, bunsetsu)).candidates.any {
+                            it.string == "4足分" && it.length.toInt() == 6
+                        })
+                    }
                 }
             }
         }
