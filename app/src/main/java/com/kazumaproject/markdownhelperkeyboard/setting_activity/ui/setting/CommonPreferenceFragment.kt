@@ -1029,6 +1029,8 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             "setting_route_keyboard_theme" to R.id.keyboardThemeFragment,
             "setting_route_kana_preferences" to R.id.kanaPreferenceFragment,
             "setting_route_qwerty_preferences" to R.id.qwertyPreferenceFragment,
+            "setting_route_qwerty_english_preferences" to R.id.qwertyEnglishPreferenceFragment,
+            "setting_route_qwerty_romaji_preferences" to R.id.qwertyRomajiPreferenceFragment,
             "setting_route_sumire_preferences" to R.id.sumirePreferenceFragment,
             "setting_route_custom_keyboard_preferences" to R.id.customKeyboardPreferenceFragment,
             "setting_route_tablet_preferences" to R.id.tabletPreferenceFragment,

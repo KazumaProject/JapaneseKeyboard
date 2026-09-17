@@ -62,4 +62,12 @@ class AppPreferenceKeyboardOrderTest {
             AppPreference.keyboard_order,
         )
     }
+    @Test
+    fun splitKeyboardRoundTripsInTheUserSelectedPosition() {
+        val order = listOf(KeyboardType.CUSTOM, KeyboardType.SPLIT, KeyboardType.TENKEY)
+        AppPreference.keyboard_order = order
+        AppPreference.init(context)
+        assertEquals(order, AppPreference.keyboard_order)
+    }
+
 }

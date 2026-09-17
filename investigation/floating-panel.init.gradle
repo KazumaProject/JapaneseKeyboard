@@ -1,0 +1,6 @@
+// Isolate verification from the user's installed keyboard and dictionaries.
+gradle.afterProject { project ->
+    if (project.path == ':app') {
+        project.android.defaultConfig.applicationId = 'com.kazumaproject.floatingqa'
+    }
+}

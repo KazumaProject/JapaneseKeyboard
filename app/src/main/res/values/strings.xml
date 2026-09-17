@@ -1807,4 +1807,12 @@
     <string name="custom_romaji_auto_sokuon_summary">On: ppa → っぱ. Off: use registered rules; pp → っ consumes both letters.</string>
     <string name="custom_romaji_auto_n">Convert n before consonants and on confirmation</string>
     <string name="custom_romaji_auto_n_summary">On: kanta → かんた; final n → ん. Off: use registered rules such as nn → ん.</string>
+    <string name="qwerty_common_category_title">QWERTY (Common)</string>
+    <string name="qwerty_english_category_title">QWERTY (English)</string>
+    <string name="qwerty_romaji_category_title">QWERTY (Romaji)</string>
+    <string name="space_flick_preference_title">Space key flick</string>
+    <string name="tenkey_space_flick_summary">Flick left to insert the opposite space width to your current space setting.</string>
+    <string name="qwerty_romaji_space_flick_summary">Flick up to insert the opposite space width to your Romaji space setting. Independent of letter-key up flicks.</string>
+    <string name="qwerty_english_space_flick_summary">Flick up to insert a full-width space. If there is composing text, commit it with a full-width space. Tapping still inserts a half-width space. Independent of letter-key up flicks.</string>
+    <string name="floating_keyboard_hide">Hide keyboard</string>
 </resources>

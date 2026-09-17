@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/qwerty_romaji_category_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_romaji_zenkaku_space_preference"
+            android:summary="@string/qwerty_romaji_zenkaku_space_preference_summary"
+            android:title="@string/qwerty_romaji_zenkaku_space_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_romaji_hankaku_number_preference"
+            android:summary="@string/qwerty_romaji_hankaku_number_preference_summary"
+            android:title="@string/qwerty_romaji_hankaku_number_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_romaji_hankaku_symbol_preference"
+            android:summary="@string/qwerty_romaji_hankaku_symbol_preference_summary"
+            android:title="@string/qwerty_romaji_hankaku_symbol_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_show_keymap_symbols_romaji_preference"
+            android:summaryOff="@string/qwerty_keymap_preference_summary_off"
+            android:summaryOn="@string/qwerty_keymap_preference_summary_on"
+            android:title="@string/qwerty_keymap_symbol_preference" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_romaji_shift_conversion_preference"
+            android:title="@string/pref_romaji_shift_title"
+            app:defaultValue="false"
+            app:summary="@string/pref_romaji_shift_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_romaji_space_flick_preference"
+            android:defaultValue="false"
+            android:title="@string/space_flick_preference_title"
+            android:summary="@string/qwerty_romaji_space_flick_summary" />
+
+    </PreferenceCategory>
+</PreferenceScreen>

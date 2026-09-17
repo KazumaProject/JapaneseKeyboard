@@ -337,6 +337,47 @@ class SuggestionAdapter internal constructor(
     private var currentContent: CandidateStripContent = CandidateStripContent.Empty
     private var lastSubmittedDisplayItems: List<SuggestionDisplayItem> = emptyList()
 
+    /** Independent split strip: share data and commands, never framework-owned inline Views. */
+    fun mirrorSplitContentFrom(source: SuggestionAdapter) {
+        clipboardText = source.clipboardText
+        clipboardBitmap = source.clipboardBitmap
+        undoText = source.undoText
+        redoText = source.redoText
+        isReconvertEnabled = source.isReconvertEnabled
+        isUndoEnabled = source.isUndoEnabled
+        isRedoEnabled = source.isRedoEnabled
+        isPasteEnabled = source.isPasteEnabled
+        isClipboardDescriptionShow = source.isClipboardDescriptionShow
+        shortcutItems = source.shortcutItems
+        showIntegratedShortcutItems = source.showIntegratedShortcutItems
+        showIntegratedShortcutEntry = source.showIntegratedShortcutEntry
+        integratedShortcutEntryExpanded = source.integratedShortcutEntryExpanded
+        shortcutIconColor = source.shortcutIconColor
+        activeShortcutTypes = source.activeShortcutTypes
+        incognitoIconDrawable = source.incognitoIconDrawable
+        candidateTextSize = source.candidateTextSize
+        candidateTextColor = source.candidateTextColor
+        showCandidateYomiForLiveConversion = source.showCandidateYomiForLiveConversion
+        showDictionaryCandidateLabels = source.showDictionaryCandidateLabels
+        candidateEmptyDrawableColor = source.candidateEmptyDrawableColor
+        candidateEmptyDrawableTextColor = source.candidateEmptyDrawableTextColor
+        showCustomTab = false
+        candidateItemColorState.setColors(source.candidateItemColorState.backgroundColor, source.candidateItemColorState.pressedBackgroundColor)
+        onItemClickListener = { a, b -> source.onItemClickListener?.invoke(a, b) }
+        onItemLongClickListener = { a, b -> source.onItemLongClickListener?.invoke(a, b) }
+        onItemHelperIconClickListener = { a -> source.onItemHelperIconClickListener?.invoke(a) }
+        onItemHelperIconLongClickListener = { a -> source.onItemHelperIconLongClickListener?.invoke(a) }
+        onShortcutItemClickListener = { a -> source.onShortcutItemClickListener?.invoke(a) }
+        onShortcutEntryClickListener = { a -> source.onShortcutEntryClickListener?.invoke(a) }
+        onZeroQueryCandidateClickListener = { a -> source.onZeroQueryCandidateClickListener?.invoke(a) }
+        onZeroQueryCloseClickListener = { source.onZeroQueryCloseClickListener?.invoke() }
+        onShowSoftKeyboardClick = { source.onShowSoftKeyboardClick?.invoke() }
+        val content = if (source.currentContent is CandidateStripContent.CustomLayoutPicker)
+            CandidateStripContent.Empty else source.currentContent
+        submitContent(content, InlineSuggestionStripState())
+        updateHighlightPosition(source.highlightedPosition)
+    }
+
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
     }

@@ -223,7 +223,17 @@
     <fragment
         android:id="@+id/qwertyPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.QwertyPreferenceFragment"
-        android:label="QWERTY" />
+        android:label="@string/qwerty_common_category_title" />
+
+    <fragment
+        android:id="@+id/qwertyEnglishPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.QwertyEnglishPreferenceFragment"
+        android:label="@string/qwerty_english_category_title" />
+
+    <fragment
+        android:id="@+id/qwertyRomajiPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.QwertyRomajiPreferenceFragment"
+        android:label="@string/qwerty_romaji_category_title" />
 
     <fragment
         android:id="@+id/sumirePreferenceFragment"
@@ -565,4 +575,7 @@
             app:argType="long" />
     </fragment>
 
+    <fragment android:id="@+id/splitKeyboardPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SplitKeyboardPreferenceFragment"
+        android:label="@string/split_keyboard_title" />
 </navigation>

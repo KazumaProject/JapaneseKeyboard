@@ -67,6 +67,12 @@
             android:title="@string/keymap_guide_number_title"
             app:defaultValue="false"
             app:summary="@string/tenkey_keymap_guide_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="tenkey_space_flick_preference"
+            android:defaultValue="true"
+            android:title="@string/space_flick_preference_title"
+            android:summary="@string/tenkey_space_flick_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>

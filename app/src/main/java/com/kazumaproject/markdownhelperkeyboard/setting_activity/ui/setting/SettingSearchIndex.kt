@@ -78,6 +78,7 @@ object SettingSearchIndex {
     )
 
     private val highlightableDestinations = setOf(
+        R.id.splitKeyboardPreferenceFragment,
         R.id.keyboardDisplayPreferenceFragment,
         R.id.inputMethodPreferenceFragment,
         R.id.candidateConversionPreferenceFragment,
@@ -338,6 +339,7 @@ object SettingSearchIndex {
     private fun sources(): List<PreferenceXmlSource> = buildList {
         add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
+        add(PreferenceXmlSource(R.xml.pref_split_keyboard, R.id.splitKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
@@ -356,6 +358,8 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_advanced, R.id.advancedPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_kana, R.id.kanaPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty, R.id.qwertyPreferenceFragment, SettingCategory.INPUT_METHOD))
+        add(PreferenceXmlSource(R.xml.pref_qwerty_english, R.id.qwertyEnglishPreferenceFragment, SettingCategory.INPUT_METHOD))
+        add(PreferenceXmlSource(R.xml.pref_qwerty_romaji, R.id.qwertyRomajiPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_sumire, R.id.sumirePreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_custom, R.id.customKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_tablet, R.id.tabletPreferenceFragment, SettingCategory.INPUT_METHOD))
