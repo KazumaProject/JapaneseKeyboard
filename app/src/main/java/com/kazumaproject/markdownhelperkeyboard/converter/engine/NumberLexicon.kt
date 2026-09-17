@@ -96,10 +96,17 @@ internal class NumberLexicon(
         val value = proof.value
         val acceptedReading = proof.cardinalReading
         val model = scoringModel ?: return@getOrPut emptyList()
-        val expression = proof.cardinalExpression ?: if (acceptedReading == null)
-            com.kazumaproject.quantity.CardinalGrammar.parse(com.kazumaproject.quantity.CardinalGrammar.reading(value)) else null
+        val canonicalReading = com.kazumaproject.quantity.CardinalGrammar.reading(value)
+        val acceptedExpression = proof.cardinalExpression
+        // Standalone cardinal aliases (e.g. じゅうよ / じゅうく) are validated by
+        // ValidatedNumber, but are intentionally not accepted by the strict
+        // counter grammar. Score those proofs through their canonical cardinal
+        // while keeping counter readings on the strict path. This must remain
+        // counterless-only so readings such as じゅうよふん are not broadened.
+        val expression = acceptedExpression ?: if (acceptedReading == null || proof.counter.isEmpty())
+            com.kazumaproject.quantity.CardinalGrammar.parse(canonicalReading) else null
         if (expression == null || expression.value != value) return@getOrPut emptyList()
-        val accepted = acceptedReading ?: com.kazumaproject.quantity.CardinalGrammar.reading(value)
+        val accepted = if (acceptedExpression != null) acceptedReading!! else canonicalReading
         val grammar = com.kazumaproject.quantity.NumericGrammarGraph(accepted, expression, model)
         val numeric = NumericLattice(observer)
         val rows = Array(grammar.size + 1) { numeric.row() }

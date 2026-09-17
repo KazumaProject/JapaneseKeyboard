@@ -72,6 +72,31 @@ class QuantityScoringModelIntegrationTest {
         }
     }
 
+    @Test fun standaloneTerminalAliasesUseCanonicalScoringWithoutEnablingCounterAliases() {
+        val previous = QuantityRuntime.scoringModel
+        val dictionary = QuantityRuntime.dictionary
+        try {
+            val model = QuantityScoringModel("a".repeat(64), "b".repeat(64), listOf(
+                QuantityScoringModel.Lexeme("じゅう", "十", 10, 1, 1, 10),
+                QuantityScoringModel.Lexeme("よん", "四", 4, 1, 1, 20),
+                QuantityScoringModel.Lexeme("きゅう", "九", 9, 1, 1, 30)), emptyList(),
+                intArrayOf(0, 0, 0), emptyMap(), emptyList(), emptyList())
+            QuantityRuntime.installScoringModel(model, model.posFingerprint, model.connectionFingerprint)
+            QuantityRuntime.install(QuantityDictionary(emptyList(), emptyList(), setOf(1), setOf(1)))
+            val lexicon = NumberLexicon({ emptyList() }, ConnectionMatrix.fromShortArray(ShortArray(4), 2))
+
+            for ((reading, value) in mapOf("じゅうし" to 14L, "じゅうよ" to 14L, "じゅうく" to 19L)) {
+                val proof = ValidatedNumber.parseAll(reading, NumberCandidateConfig()).single()
+                assertEquals(reading, value, proof.value)
+                assertEquals(reading, "", proof.counter)
+                assertTrue("$reading: ${lexicon.forms(proof)}", lexicon.forms(proof).isNotEmpty())
+            }
+        } finally {
+            QuantityRuntime.install(dictionary)
+            QuantityRuntime.installScoringModel(previous, previous?.posFingerprint.orEmpty(), previous?.connectionFingerprint.orEmpty())
+        }
+    }
+
     @Test fun clockKeepsBothParsedQuantitiesAndTheirInternalConnections() {
         val previous = QuantityRuntime.scoringModel
         val dictionary = QuantityRuntime.dictionary

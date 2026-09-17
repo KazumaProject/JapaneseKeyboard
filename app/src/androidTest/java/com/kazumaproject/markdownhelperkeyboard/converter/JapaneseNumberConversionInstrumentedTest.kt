@@ -80,6 +80,10 @@ class JapaneseNumberConversionInstrumentedTest {
             "ろくろく" to setOf("66", "６６", "六十六"),
             "よせん" to setOf("4000", "４０００", "4,000", "四千"),
             "くせん" to setOf("9000", "９０００", "9,000", "九千"),
+            "じゅうよふん" to setOf("14分", "１４分", "十四分"),
+            "じゅうくふん" to setOf("19分", "１９分", "十九分"),
+            "じゅうよぷん" to setOf("14分", "１４分", "十四分"),
+            "じゅうくぷん" to setOf("19分", "１９分", "十九分"),
         )
 
         val englishKanaResults = linkedMapOf<String, List<Candidate>>()
@@ -102,9 +106,11 @@ class JapaneseNumberConversionInstrumentedTest {
             "ろくじ" to setOf("6時"),
             "にじゅうよじ" to setOf("24時"),
             "くじ" to setOf("9時"),
+            "じゅうし" to setOf("14", "十四"),
             "いっちょう" to setOf("1000000000000", "一兆"),
             "しじゅう" to setOf("40", "四十"),
             "じゅうよ" to setOf("14", "十四"),
+            "じゅうく" to setOf("19", "十九"),
             "よにん" to setOf("4人"),
             "よんえん" to setOf("4円"),
             "よえん" to setOf("4円"),

@@ -20,7 +20,8 @@ class NumberCandidateGeneratorTest {
         )
         cases.forEach { (reading, expected) -> assertEquals(reading, expected, generated(reading)) }
         listOf("これはよじ", "ごぜん", "しじ", "さんじゅうじ", "さんじろくじゅっぷん", "いちじいちふん",
-            "いちじごふんご", "いちじご", "ぜん", "さんひゃく", "いっ", "びゃく").forEach {
+            "いちじごふんご", "いちじご", "ぜん", "さんひゃく", "いっ", "びゃく",
+            "じゅうよふん", "じゅうくふん", "じゅうよぷん", "じゅうくぷん").forEach {
             assertTrue("$it: ${generated(it)}", generated(it).isEmpty())
         }
         assertTrue(generated("229").contains("2月29日"))
