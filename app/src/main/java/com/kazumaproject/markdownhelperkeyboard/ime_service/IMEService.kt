@@ -1464,9 +1464,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString, token)) return@withContext
             updateSuggestionsForFloatingCandidate(
                 suggestions = candidates,
-                highlightedAbsoluteIndex = highlightedAbsoluteIndex,
-                sourceInput = insertString,
-                sourceToken = token
+                highlightedAbsoluteIndex = highlightedAbsoluteIndex
             )
         }
     }
@@ -1600,7 +1598,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var physicalCandidateCompositionSession: PhysicalCandidateCompositionSession? = null
     private var physicalCandidateCompositionGeneration: Long = 0L
     private var pendingPhysicalCandidatePreviewGeneration: Long? = null
-    private var pendingPhysicalCandidateCommitGeneration: Long? = null
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
@@ -2099,10 +2096,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentPage: Int = 0
     private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
     private var fullSuggestionsList: List<CandidateItem> = emptyList()
-    private var floatingCandidateSourceInput: String? = null
-    private var floatingCandidateSourceToken: CandidateRequestToken? = null
-    private var floatingCandidateRevision = 0L
-    private var displayedFloatingCandidateRevision = -1L
 
     private var initialCursorDetectInFloatingCandidateView = false
     private var initialCursorXPosition: Int = 0
@@ -2898,9 +2891,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             pageSize = PAGE_SIZE,
         )
         listAdapter.onSuggestionClicked = suggestionClick@ { suggestion: CandidateItem ->
-            if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty() &&
-                !floatingCandidatesReadyForInput(inputString.value)
-            ) return@suggestionClick
             if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
                 suggestion.sourceId?.let(::executeTextMacro)
                 return@suggestionClick
@@ -8495,8 +8485,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun navigatePhysicalCandidate(insertString: String, delta: Int) {
         val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return
-        if (fullSuggestionsList.isEmpty() || !floatingCandidatesMatchInput(insertString)) {
-            currentHighlightIndex = RecyclerView.NO_POSITION
+        if (fullSuggestionsList.isEmpty()) {
             pendingPhysicalCandidatePreviewGeneration = session.generation
             requestCandidateRefresh(CandidateShowFlag.Updating, insertString)
             return
@@ -8511,19 +8500,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         pendingPhysicalCandidatePreviewGeneration = session.generation
         displayCurrentPage()
     }
-
-    // A nonempty list can still belong to an earlier romaji prefix or request.
-    // Its candidate lengths describe that reading, not the current composition.
-    private fun floatingCandidatesMatchInput(input: String): Boolean {
-        if (fullSuggestionsList.isEmpty()) return false
-        // Glide and focused-bunsetsu lists are published directly by their own sessions.
-        val source = floatingCandidateSourceInput ?: return true
-        return source == input && shouldApplyCandidateResult(input, floatingCandidateSourceToken)
-    }
-
-    private fun floatingCandidatesReadyForInput(input: String): Boolean =
-        floatingCandidatesMatchInput(input) &&
-            displayedFloatingCandidateRevision == floatingCandidateRevision
 
     private fun isPhysicalFloatingCandidatePathActive(): Boolean {
         return physicalKeyboardEnable.replayCache.firstOrNull() == true &&
@@ -8543,7 +8519,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         physicalCandidateCompositionSession?.let { stringInTail.set(it.trailingText) }
         physicalCandidateCompositionSession = null
         pendingPhysicalCandidatePreviewGeneration = null
-        pendingPhysicalCandidateCommitGeneration = null
     }
 
     private fun beginPhysicalCandidateCompositionSession(input: String) {
@@ -8573,7 +8548,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         reason: String,
     ): FloatingCandidateComposition? {
-        if (!floatingCandidatesReadyForInput(insertString)) return null
         val session = ensurePhysicalCandidateCompositionSession(insertString) ?: return null
         val composition = session.resolve(
             suggestion.formulaFallbackText ?: suggestion.word,
@@ -8747,16 +8721,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidateEnterPressed() {
-        if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty()) {
-            // SPACE can still be waiting for either the query or the list adapter.
-            // Preserve ENTER, but bind it to that composition generation.
-            val session = physicalCandidateCompositionSession
-            if (session != null && pendingPhysicalCandidatePreviewGeneration == session.generation) {
-                pendingPhysicalCandidateCommitGeneration = session.generation
-                return
-            }
-            if (!floatingCandidatesReadyForInput(inputString.value)) return
-        }
         val selectedSuggestion = listAdapter.getHighlightedItem()
         if (selectedSuggestion != null) {
             if (selectedSuggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
@@ -10246,27 +10210,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun updateSuggestionsForFloatingCandidate(
         suggestions: List<CandidateItem>,
-        highlightedAbsoluteIndex: Int? = null,
-        sourceInput: String? = null,
-        sourceToken: CandidateRequestToken? = null,
+        highlightedAbsoluteIndex: Int? = null
     ) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             mainHandler.post {
                 updateSuggestionsForFloatingCandidate(
                     suggestions = suggestions,
-                    highlightedAbsoluteIndex = highlightedAbsoluteIndex,
-                    sourceInput = sourceInput,
-                    sourceToken = sourceToken
+                    highlightedAbsoluteIndex = highlightedAbsoluteIndex
                 )
             }
             return
         }
         Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
-        if (sourceInput != null && !shouldApplyCandidateResult(sourceInput, sourceToken)) return
         fullSuggestionsList = suggestions
-        floatingCandidateSourceInput = sourceInput
-        floatingCandidateSourceToken = sourceToken
-        floatingCandidateRevision += 1L
         highlightedAbsoluteIndex?.let { absoluteIndex ->
             if (suggestions.isNotEmpty() && absoluteIndex != RecyclerView.NO_POSITION) {
                 val safeIndex = absoluteIndex.coerceIn(0, suggestions.lastIndex)
@@ -10304,17 +10260,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val physicalSession = physicalCandidateCompositionSession
         val requestedPage = currentPage
-        val requestedRevision = floatingCandidateRevision
         listAdapter.submitList(itemsToShow) {
-            if (floatingCandidateRevision != requestedRevision || currentPage != requestedPage) return@submitList
             if (physicalSession != null && (
                     physicalCandidateCompositionSession?.generation != physicalSession.generation ||
                         inputString.value != physicalSession.queryText || currentPage != requestedPage
                     )) return@submitList
-            if (physicalSession != null && isPhysicalFloatingCandidatePathActive() &&
-                !floatingCandidatesMatchInput(physicalSession.queryText)
-            ) return@submitList
-            displayedFloatingCandidateRevision = requestedRevision
             if (physicalSession != null &&
                 pendingPhysicalCandidatePreviewGeneration == physicalSession.generation &&
                 isPhysicalFloatingCandidatePathActive()
@@ -10324,13 +10274,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 displayComposingTextInHardwareKeyboardConnected(physicalSession.queryText)
             }
             listAdapter.updateHighlightPosition(currentHighlightIndex)
-            if (physicalSession != null &&
-                pendingPhysicalCandidateCommitGeneration == physicalSession.generation &&
-                isPhysicalFloatingCandidatePathActive()
-            ) {
-                pendingPhysicalCandidateCommitGeneration = null
-                floatingCandidateEnterPressed()
-            }
             Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()} [$itemsToShow]")
         }
     }
