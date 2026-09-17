@@ -18,3 +18,7 @@ fun resolveEmptySpaceForCurrentMode(
         " "
     }
 }
+
+/** Returns the opposite of the width chosen for a normal space. */
+internal fun oppositeSpace(normalSpaceIsFullWidth: Boolean): String =
+    if (normalSpaceIsFullWidth) " " else "　"

@@ -7,6 +7,13 @@ import org.junit.Test
 class SpaceKeyResolverTest {
 
     @Test
+    fun flickReversesTheExistingSpaceWidth() {
+        assertEquals(" ", oppositeSpace(normalSpaceIsFullWidth = true))
+        assertEquals("　", oppositeSpace(normalSpaceIsFullWidth = false))
+    }
+
+
+    @Test
     fun directModeUsesHalfWidthSpaceWhenPreferenceIsEnabled() {
         val space = resolveEmptySpaceForCurrentMode(
             isCustomLayoutDirectMode = true,

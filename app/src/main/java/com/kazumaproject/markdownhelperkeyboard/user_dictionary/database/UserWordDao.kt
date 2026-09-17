@@ -9,6 +9,13 @@ import androidx.room.Update
 
 @Dao
 interface UserWordDao {
+    @Update
+    suspend fun editEntry(entry: UserWord): Int
+
+    // Interactive addition must report duplicates, never silently ignore them.
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertStrict(entry: UserWord)
+
     @Query("SELECT * FROM user_word ORDER BY reading ASC")
     fun getAll(): LiveData<List<UserWord>>
 
