@@ -370,7 +370,7 @@ object AppPreference {
         Pair("qwerty_keyboard_position_landscape_preference", true)
 
     private val CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE =
-        Pair("candidate_view_height_dp_landscape_preference", 60)
+        Pair("candidate_view_height_dp_landscape_preference", 110)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE =
         Pair("candidate_view_empty_height_dp_landscape_preference", 110)
 
