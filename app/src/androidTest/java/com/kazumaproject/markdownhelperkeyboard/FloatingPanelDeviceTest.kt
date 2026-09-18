@@ -156,8 +156,8 @@ class FloatingPanelDeviceTest {
                     val keys = if (keyboard == "SUMIRE" || keyboard == "CUSTOM") description("あ") else id(keyId)
                     keys.forEach { gesture(bounds(it)) }
                     if (split && skin.startsWith("cupertino_")) {
-                        // SkinPopupPlacement must use the IME window as the PopupWindow
-                        // host while the split pane key remains the geometry anchor.
+                        // Skin popups must remain in the same anchored window as the
+                        // split-pane key while the Cupertino surface changes in place.
                         keys.forEach { gesture(bounds(it), dx = 90f) }
                     }
                     check(text(scenario).isNotEmpty()) { "Key touches did not reach editor" }

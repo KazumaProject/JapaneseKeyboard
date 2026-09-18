@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.content.Intent
 import android.graphics.Point
-import android.graphics.Rect
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
@@ -23,7 +22,7 @@ import org.junit.runner.RunWith
 /** Checks real WindowManager placement with a non-zero window origin, including Android 7. */
 @RunWith(AndroidJUnit4::class)
 class SkinPopupCompatibilityInstrumentedTest {
-    @Test fun offsetWindowKeepsFlickAndOverflowGuideAtTheirScreenAnchors() {
+    @Test fun offsetWindowKeepsAnchoredFlickAndOverflowGuideWorking() {
         val ins = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)).use { scenario ->
             lateinit var anchor: View
@@ -57,15 +56,14 @@ class SkinPopupCompatibilityInstrumentedTest {
                     bubble.addView(TextView(host).apply { text = "く" }, FrameLayout.LayoutParams(-1, -1))
                     popup = PopupWindow(bubble, 150, 100, false)
                     cleanup.add { popup.dismiss() }
-                    val union = Rect()
-                    PopupDirection.entries.forEach { union.union(SkinPopupGeometry.resolve(150, 100, it, true).bounds) }
-                    expected = Point(screen[0] + union.left, screen[1] + union.top)
+                    val top = SkinPopupGeometry.resolve(150, 100, PopupDirection.TOP, true).bounds
+                    expected = Point(screen[0] + top.left, screen[1] + top.top)
                     SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.TOP, true)
                 }
                 ins.waitForIdleSync()
                 scenario.onActivity {
                     assertEquals(expected, Point().also { point ->
-                        val p = IntArray(2).also(popup.contentView::getLocationOnScreen)
+                        val p = IntArray(2).also(bubble::getLocationOnScreen)
                         point.set(p[0], p[1])
                     })
                     assertFalse(popup.isTouchable)
@@ -73,20 +71,22 @@ class SkinPopupCompatibilityInstrumentedTest {
                 }
                 ins.waitForIdleSync()
                 scenario.onActivity { host ->
-                    val p = IntArray(2).also(popup.contentView::getLocationOnScreen)
-                    assertEquals(expected, Point(p[0], p[1]))
+                    val screen = IntArray(2).also(anchor::getLocationOnScreen)
+                    val right = SkinPopupGeometry.resolve(150, 100, PopupDirection.RIGHT, true).bounds
+                    val p = IntArray(2).also(bubble::getLocationOnScreen)
+                    assertEquals(Point(screen[0] + right.left, screen[1] + right.top), Point(p[0], p[1]))
                     popup.dismiss()
                     bubble.skinId = KeyboardSkinId.DEFAULT
                     assertSame(bubble, popup.contentView)
                     assertTrue(popup.isTouchable)
                     guide = SkinGuidePopup(host)
                     cleanup.add { guide.dismiss() }
-                    val screen = IntArray(2).also(anchor::getLocationOnScreen)
+                    val guideScreen = IntArray(2).also(anchor::getLocationOnScreen)
                     val size = Point().also { anchor.display.getRealSize(it) }
                     val bars = ViewCompat.getRootWindowInsets(anchor)!!.getInsetsIgnoringVisibility(
                         WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                    expected = Point((screen[0] - 150).coerceIn(bars.left, size.x - bars.right - 450),
-                        (screen[1] - 100).coerceIn(bars.top, size.y - bars.bottom - 300))
+                    expected = Point((guideScreen[0] - 150).coerceIn(bars.left, size.x - bars.right - 450),
+                        (guideScreen[1] - 100).coerceIn(bars.top, size.y - bars.bottom - 300))
                     guide.show(anchor, requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_DARK)),
                         listOf(PopupDirection.CENTER, PopupDirection.LEFT, PopupDirection.TOP,
                             PopupDirection.RIGHT, PopupDirection.BOTTOM).associateWith { "か" })

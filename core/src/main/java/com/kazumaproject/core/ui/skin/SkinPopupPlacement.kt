@@ -3,9 +3,6 @@ package com.kazumaproject.core.ui.skin
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
-import android.widget.FrameLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -18,10 +15,7 @@ object SkinPopupPlacement {
                                    val labels: List<LabelState>,
                                    val window: java.lang.ref.WeakReference<PopupWindow>,
                                    val windowElevation: Float, val animationStyle: Int,
-                                   val clipping: Boolean, val touchable: Boolean, val laidOutInScreen: Boolean?,
-                                   val contentLayout: ViewGroup.LayoutParams?)
-    /** A direction change is one child layout transaction inside a stationary window. */
-    private class FlickFrame(context: android.content.Context) : FrameLayout(context)
+                                   val clipping: Boolean, val touchable: Boolean)
 
     private val legacyStates = java.util.WeakHashMap<KeyWindowLayout, LegacyState>()
 
@@ -34,13 +28,6 @@ object SkinPopupPlacement {
                 window.animationStyle=saved.animationStyle
                 window.isClippingEnabled=saved.clipping
                 window.isTouchable=saved.touchable
-                SkinPopupWindowCompat.restoreScreenLayout(window, saved.laidOutInScreen)
-                (window.contentView as? FlickFrame)?.let { frame ->
-                    window.dismiss()
-                    frame.removeView(bubble)
-                    bubble.layoutParams = saved.contentLayout ?: FrameLayout.LayoutParams(-2, -2)
-                    window.contentView = bubble
-                }
             }
             saved.labels.forEach { label ->
                 (bubble.getChildAt(label.index) as? TextView)?.let { text ->
@@ -60,7 +47,6 @@ object SkinPopupPlacement {
         val w = anchor.width
         val h = anchor.height
         if (w <= 0 || h <= 0) return true
-        val windowAnchor = bubble.popupWindowAnchor ?: anchor
         if (!legacyStates.containsKey(bubble)) {
             legacyStates[bubble] = LegacyState(bubble.elevation, intArrayOf(bubble.paddingLeft,bubble.paddingTop,bubble.paddingRight,bubble.paddingBottom),
                 (0 until bubble.childCount).mapNotNull {
@@ -68,7 +54,7 @@ object SkinPopupPlacement {
                     LabelState(it, text.gravity, text.includeFontPadding, text.translationY, text.textSize)
                 }
             }, java.lang.ref.WeakReference(window), window.elevation, window.animationStyle,
-                window.isClippingEnabled, window.isTouchable, SkinPopupWindowCompat.savedScreenLayout(window), bubble.layoutParams)
+                window.isClippingEnabled, window.isTouchable)
         }
         val layout = SkinPopupGeometry.resolve(w, h, direction, flick)
         bubble.skinDirection = direction
@@ -87,90 +73,17 @@ object SkinPopupPlacement {
         window.elevation = 0f
         window.animationStyle = 0
         skin.showPopup(bubble)
-        if (flick) {
-            // iOS changes directional surfaces in place. Resizing/repositioning a native
-            // PopupWindow on every MOVE lets its compositor interpolate unrelated bounds.
-            val union = android.graphics.Rect()
-            PopupDirection.entries.forEach { union.union(SkinPopupGeometry.resolve(w, h, it, true).bounds) }
-            if (window.contentView !is FlickFrame) {
-                val frame = FlickFrame(anchor.context)
-                window.dismiss()
-                (bubble.parent as? ViewGroup)?.removeView(bubble)
-                window.contentView = frame
-                frame.addView(bubble)
-            }
-            val position = IntArray(2)
-            anchor.getLocationOnScreen(position)
-            val screenBounds = android.graphics.Rect(layout.bounds).apply { offset(position[0], position[1]) }
-            val fitted = SkinPopupViewport.fit(screenBounds, SkinPopupViewport.bounds(anchor))
-            bubble.layoutParams = FrameLayout.LayoutParams(layout.bounds.width(), layout.bounds.height()).apply {
-                leftMargin = fitted.left - position[0] - union.left
-                topMargin = fitted.top - position[1] - union.top
-            }
-            val resized = window.width != union.width() || window.height != union.height()
-            window.width = union.width()
-            window.height = union.height()
-            window.isTouchable = false
-            window.isClippingEnabled = false
-            val windowPosition = SkinPopupWindowCompat.position(
-                window, windowAnchor, position[0] + union.left, position[1] + union.top)
-            val x = windowPosition.x
-            val y = windowPosition.y
-            // Drop-down placement also fits the transparent frame to the visible screen;
-            // that silently displaces the actual balloon on bottom/edge keys.
-            try {
-                if (!window.isShowing) window.showAtLocation(windowAnchor, android.view.Gravity.NO_GRAVITY, x, y)
-                else if (resized) window.update(x, y, window.width, window.height)
-            } catch (_: WindowManager.BadTokenException) {
-                window.dismiss()
-                restoreLegacy(bubble)
-                return false
-            }
-        } else {
-            (window.contentView as? FlickFrame)?.let { frame ->
-                window.dismiss()
-                frame.removeView(bubble)
-                bubble.layoutParams = legacyStates[bubble]?.contentLayout ?: FrameLayout.LayoutParams(-2, -2)
-                window.contentView = bubble
-            }
-            legacyStates[bubble]?.let { saved ->
-                SkinPopupWindowCompat.restoreScreenLayout(window, saved.laidOutInScreen)
-                window.isClippingEnabled = saved.clipping
-                window.isTouchable = saved.touchable
-            }
-            window.width = layout.bounds.width()
-            window.height = layout.bounds.height()
-            if (windowAnchor !== anchor) {
-                val position = IntArray(2)
-                anchor.getLocationOnScreen(position)
-                val windowPosition = SkinPopupWindowCompat.position(
-                    window,
-                    windowAnchor,
-                    position[0] + layout.bounds.left,
-                    position[1] + layout.bounds.top - h,
-                )
-                try {
-                    if (window.isShowing) {
-                        window.update(windowPosition.x, windowPosition.y, window.width, window.height)
-                    } else {
-                        window.showAtLocation(
-                            windowAnchor,
-                            android.view.Gravity.NO_GRAVITY,
-                            windowPosition.x,
-                            windowPosition.y,
-                        )
-                    }
-                } catch (_: WindowManager.BadTokenException) {
-                    window.dismiss()
-                    restoreLegacy(bubble)
-                    return false
-                }
-            } else if (window.isShowing) {
-                window.update(anchor, layout.bounds.left, layout.bounds.top - h, window.width, window.height)
-            } else {
-                window.showAsDropDown(anchor, layout.bounds.left, layout.bounds.top - h)
-            }
-        }
+        window.width = layout.bounds.width()
+        window.height = layout.bounds.height()
+        window.isTouchable = false
+        window.isClippingEnabled = false
+        // Use the same anchored PopupWindow contract as the default skin. A split IME
+        // key belongs to an application-panel window; showAtLocation() cannot safely
+        // promote that panel token to a top-level popup window.
+        val xOffset = layout.bounds.left
+        val yOffset = layout.bounds.top - h
+        if (window.isShowing) window.update(anchor, xOffset, yOffset, window.width, window.height)
+        else window.showAsDropDown(anchor, xOffset, yOffset)
         return true
     }
 }

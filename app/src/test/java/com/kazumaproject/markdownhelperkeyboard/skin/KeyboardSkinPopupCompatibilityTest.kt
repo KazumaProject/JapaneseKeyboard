@@ -27,9 +27,32 @@ class KeyboardSkinPopupCompatibilityTest {
         var shown = false
         var position = Point()
         var updates = 0
+        var showAtLocationCalls = 0
+
+        private fun recordAnchoredPosition(anchor: View, xOffset: Int, yOffset: Int) {
+            val screen = IntArray(2)
+            val inWindow = IntArray(2)
+            anchor.getLocationOnScreen(screen)
+            anchor.getLocationInWindow(inWindow)
+            val windowOrigin = Point(screen[0] - inWindow[0], screen[1] - inWindow[1])
+            position = Point(
+                screen[0] + xOffset - windowOrigin.x,
+                screen[1] + anchor.height + yOffset - windowOrigin.y,
+            )
+        }
+
         override fun isShowing() = shown
         override fun dismiss() { shown = false }
+        override fun showAsDropDown(anchor: View, xoff: Int, yoff: Int) {
+            recordAnchoredPosition(anchor, xoff, yoff)
+            shown = true
+        }
+        override fun update(anchor: View, xoff: Int, yoff: Int, width: Int, height: Int) {
+            recordAnchoredPosition(anchor, xoff, yoff)
+            updates++
+        }
         override fun showAtLocation(parent: View, gravity: Int, x: Int, y: Int) {
+            showAtLocationCalls++
             position = Point(x, y)
             shown = true
         }
@@ -55,23 +78,39 @@ class KeyboardSkinPopupCompatibilityTest {
         try { block(activity, anchor) } finally { controller.pause().stop().destroy() }
     }
 
+    private fun expectedPosition(anchor: View, direction: PopupDirection, flick: Boolean): Point {
+        val bounds = com.kazumaproject.core.ui.skin.SkinPopupGeometry.resolve(
+            anchor.width, anchor.height, direction, flick).bounds
+        val screen = IntArray(2)
+        val inWindow = IntArray(2)
+        anchor.getLocationOnScreen(screen)
+        anchor.getLocationInWindow(inWindow)
+        return Point(
+            screen[0] + bounds.left - (screen[0] - inWindow[0]),
+            screen[1] + bounds.top - (screen[1] - inWindow[1]),
+        )
+    }
+
     @Test fun flickUsesCorrectCoordinatesForShowAndResizeWithoutTakingInput() = withHost { activity, anchor ->
         val bubble = KeyWindowLayout(activity).apply { skinId = KeyboardSkinId.CUPERTINO_LIGHT }
         bubble.addView(TextView(activity), FrameLayout.LayoutParams(-1, -1))
         val popup = RecordingPopup(bubble)
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.TOP, true)
-        // The union frame extends one key left and one key plus the measured vertical shift up.
-        val expected = if (Build.VERSION.SDK_INT >= 29) Point(40, 429) else Point(0, 229)
-        assertEquals(expected, popup.position)
+        // Each skin surface uses the same key-anchored coordinate contract as the
+        // default popup. No screen-space or top-level window placement is involved.
+        assertEquals(expectedPosition(anchor, PopupDirection.TOP, true), popup.position)
+        assertEquals(0, popup.showAtLocationCalls)
         assertFalse(popup.isTouchable)
         assertFalse(popup.isClippingEnabled)
         assertTrue(popup.isShowing)
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.LEFT, true)
-        assertEquals(0, popup.updates) // Direction changes stay inside the stationary frame.
+        assertEquals(1, popup.updates)
+        assertEquals(expectedPosition(anchor, PopupDirection.LEFT, true), popup.position)
         anchor.layout(100, 300, 220, 380)
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.RIGHT, true)
-        assertEquals(1, popup.updates)
-        assertEquals(if (Build.VERSION.SDK_INT >= 29) Point(20, 406) else Point(-20, 206), popup.position)
+        assertEquals(2, popup.updates)
+        assertEquals(expectedPosition(anchor, PopupDirection.RIGHT, true), popup.position)
+        assertEquals(0, popup.showAtLocationCalls)
         popup.dismiss()
         bubble.skinId = KeyboardSkinId.DEFAULT
         assertSame(bubble, popup.contentView)

@@ -34,12 +34,7 @@ class SkinGuidePopup(context: Context) {
     private var skin: KeyboardSkin? = null
     val isShowing: Boolean get() = (owner != null && content.isAttachedToWindow) || overflowWindow?.isShowing == true
 
-    fun show(
-        anchor: View,
-        skin: KeyboardSkin,
-        labels: Map<PopupDirection, CharSequence>,
-        windowAnchor: View? = null,
-    ): View {
+    fun show(anchor: View, skin: KeyboardSkin, labels: Map<PopupDirection, CharSequence>): View {
         val root = anchor.rootView as? ViewGroup ?: error("Keyboard must have a window root")
         dismiss()
         val width = anchor.width
@@ -87,9 +82,9 @@ class SkinGuidePopup(context: Context) {
             }.also { overflowWindow = it }
             popup.width = 3 * width
             popup.height = 3 * height
-            val popupAnchor = windowAnchor ?: anchor
-            val position = SkinPopupWindowCompat.position(popup, popupAnchor, screenLeft, screenTop)
-            popup.showAtLocation(popupAnchor, Gravity.NO_GRAVITY, position.x, position.y)
+            val xOffset = screenLeft - anchorPosition[0]
+            val yOffset = screenTop - anchorPosition[1] - height
+            popup.showAsDropDown(anchor, xOffset, yOffset)
         }
         return content
     }
