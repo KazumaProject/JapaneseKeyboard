@@ -155,6 +155,11 @@ class FloatingPanelDeviceTest {
                 if (keyboard in listOf("TENKEY", "QWERTY", "ROMAJI", "GOJUON", "SUMIRE", "CUSTOM")) {
                     val keys = if (keyboard == "SUMIRE" || keyboard == "CUSTOM") description("あ") else id(keyId)
                     keys.forEach { gesture(bounds(it)) }
+                    if (split && skin.startsWith("cupertino_")) {
+                        // SkinPopupPlacement must use the IME window as the PopupWindow
+                        // host while the split pane key remains the geometry anchor.
+                        keys.forEach { gesture(bounds(it), dx = 90f) }
+                    }
                     check(text(scenario).isNotEmpty()) { "Key touches did not reach editor" }
                     if (!split && keyboard == "TENKEY") check(text(scenario) == "あ") { "Wrong key hit: ${text(scenario)}" }
                     capture("$label-input")

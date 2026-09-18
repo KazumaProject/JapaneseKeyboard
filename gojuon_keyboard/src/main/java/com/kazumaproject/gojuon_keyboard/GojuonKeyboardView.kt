@@ -331,6 +331,24 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
     private val skinLongPress = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
+    private var popupWindowAnchor: View? = null
+
+    /**
+     * Floating/split keyboards live in an application-panel window. Skin popups must
+     * be added through the IME window, while the pressed key remains the geometry anchor.
+     */
+    fun setPopupWindowAnchor(anchor: View?) {
+        popupWindowAnchor = anchor
+        if (!::bubbleViewActive.isInitialized) return
+        listOf(
+            bubbleViewActive,
+            bubbleViewLeft,
+            bubbleViewTop,
+            bubbleViewRight,
+            bubbleViewBottom,
+            bubbleViewCenter,
+        ).forEach { it.popupWindowAnchor = anchor }
+    }
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
@@ -1282,6 +1300,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        setPopupWindowAnchor(null)
         super.onDetachedFromWindow()
         release()
         uiScope.cancel()

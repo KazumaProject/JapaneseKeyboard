@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import com.kazumaproject.core.R;
@@ -21,6 +22,9 @@ public class KeyWindowLayout extends FrameLayout {
     private com.kazumaproject.core.ui.skin.PopupDirection skinDirection = com.kazumaproject.core.ui.skin.PopupDirection.CENTER;
     private boolean skinSelected;
     private boolean skinGuide;
+    private View popupWindowAnchor;
+    public View getPopupWindowAnchor() { return popupWindowAnchor; }
+    public void setPopupWindowAnchor(View value) { popupWindowAnchor = value; }
     public boolean getSkinGuide() { return skinGuide; }
     public void setSkinGuide(boolean value) { if (skinGuide != value) { skinGuide = value; skinDrawable = null; invalidate(); } }
     private android.graphics.drawable.Drawable skinDrawable;

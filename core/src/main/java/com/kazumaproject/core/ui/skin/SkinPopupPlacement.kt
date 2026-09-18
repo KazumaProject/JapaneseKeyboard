@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.PopupWindow
 import android.widget.TextView
@@ -59,6 +60,7 @@ object SkinPopupPlacement {
         val w = anchor.width
         val h = anchor.height
         if (w <= 0 || h <= 0) return true
+        val windowAnchor = bubble.popupWindowAnchor ?: anchor
         if (!legacyStates.containsKey(bubble)) {
             legacyStates[bubble] = LegacyState(bubble.elevation, intArrayOf(bubble.paddingLeft,bubble.paddingTop,bubble.paddingRight,bubble.paddingBottom),
                 (0 until bubble.childCount).mapNotNull {
@@ -111,13 +113,19 @@ object SkinPopupPlacement {
             window.isTouchable = false
             window.isClippingEnabled = false
             val windowPosition = SkinPopupWindowCompat.position(
-                window, anchor, position[0] + union.left, position[1] + union.top)
+                window, windowAnchor, position[0] + union.left, position[1] + union.top)
             val x = windowPosition.x
             val y = windowPosition.y
             // Drop-down placement also fits the transparent frame to the visible screen;
             // that silently displaces the actual balloon on bottom/edge keys.
-            if (!window.isShowing) window.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY, x, y)
-            else if (resized) window.update(x, y, window.width, window.height)
+            try {
+                if (!window.isShowing) window.showAtLocation(windowAnchor, android.view.Gravity.NO_GRAVITY, x, y)
+                else if (resized) window.update(x, y, window.width, window.height)
+            } catch (_: WindowManager.BadTokenException) {
+                window.dismiss()
+                restoreLegacy(bubble)
+                return false
+            }
         } else {
             (window.contentView as? FlickFrame)?.let { frame ->
                 window.dismiss()
@@ -132,8 +140,36 @@ object SkinPopupPlacement {
             }
             window.width = layout.bounds.width()
             window.height = layout.bounds.height()
-            if (window.isShowing) window.update(anchor, layout.bounds.left, layout.bounds.top - h, window.width, window.height)
-            else window.showAsDropDown(anchor, layout.bounds.left, layout.bounds.top - h)
+            if (windowAnchor !== anchor) {
+                val position = IntArray(2)
+                anchor.getLocationOnScreen(position)
+                val windowPosition = SkinPopupWindowCompat.position(
+                    window,
+                    windowAnchor,
+                    position[0] + layout.bounds.left,
+                    position[1] + layout.bounds.top - h,
+                )
+                try {
+                    if (window.isShowing) {
+                        window.update(windowPosition.x, windowPosition.y, window.width, window.height)
+                    } else {
+                        window.showAtLocation(
+                            windowAnchor,
+                            android.view.Gravity.NO_GRAVITY,
+                            windowPosition.x,
+                            windowPosition.y,
+                        )
+                    }
+                } catch (_: WindowManager.BadTokenException) {
+                    window.dismiss()
+                    restoreLegacy(bubble)
+                    return false
+                }
+            } else if (window.isShowing) {
+                window.update(anchor, layout.bounds.left, layout.bounds.top - h, window.width, window.height)
+            } else {
+                window.showAsDropDown(anchor, layout.bounds.left, layout.bounds.top - h)
+            }
         }
         return true
     }

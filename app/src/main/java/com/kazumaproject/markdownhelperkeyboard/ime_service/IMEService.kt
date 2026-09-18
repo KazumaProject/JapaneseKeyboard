@@ -9906,6 +9906,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun configureFloatingTenKeyView(
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setPopupWindowAnchor(
+            window.window?.decorView
+        )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setOnFlickTextPreviewListener(
             tenKeyFlickTextPreviewListener
         )
@@ -10278,6 +10281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView: FloatingKeyboardLayoutBinding,
         mainView: MainLayoutBinding,
     ) {
+        floatingView.gojuonViewFloating.setPopupWindowAnchor(window.window?.decorView)
         configureGojuonKeyView(floatingView.gojuonViewFloating, mainView, floatingView)
     }
 

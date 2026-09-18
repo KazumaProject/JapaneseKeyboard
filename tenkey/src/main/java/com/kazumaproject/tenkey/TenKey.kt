@@ -328,6 +328,24 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private val skinLongPress = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
     private var skinGuide: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
+    private var popupWindowAnchor: View? = null
+
+    /**
+     * Floating/split keyboards live in an application-panel window. Skin popups must
+     * be added through the IME window, while the pressed key remains the geometry anchor.
+     */
+    fun setPopupWindowAnchor(anchor: View?) {
+        popupWindowAnchor = anchor
+        if (!::bubbleViewActive.isInitialized) return
+        listOf(
+            bubbleViewActive,
+            bubbleViewLeft,
+            bubbleViewTop,
+            bubbleViewRight,
+            bubbleViewBottom,
+            bubbleViewCenter,
+        ).forEach { it.popupWindowAnchor = anchor }
+    }
 
     init {
         // Inflate the keyboard layout with ViewBinding (root is <merge>, so attachToParent = true)
@@ -1449,6 +1467,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        setPopupWindowAnchor(null)
         release()
     }
 
@@ -2260,7 +2279,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             com.kazumaproject.core.ui.skin.PopupDirection.TOP to popTextTop.text,
             com.kazumaproject.core.ui.skin.PopupDirection.RIGHT to popTextRight.text,
             com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM to popTextBottom.text
-        ))
+        ), popupWindowAnchor)
         skinLongPress.show(this, keyboardSkinId, guide)
         return true
     }
