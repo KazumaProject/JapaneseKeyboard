@@ -89,7 +89,7 @@ internal fun createJapaneseNumberValueBasedCandidates(
 ): List<Candidate> {
     if (!showSymbolCandidates) return emptyList()
     val numberValue = ValidatedNumber.parseReading(input)?.value ?: return emptyList()
-    return createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+    return createValueBasedSymbolCandidates(numberValue, input.length)
 }
 
 class KanaKanjiEngine {
@@ -1182,7 +1182,7 @@ class KanaKanjiEngine {
                 Candidate(
                     string = input,
                     type = (1).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 4000
                 )
             )
@@ -1202,7 +1202,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            return resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig)
+            return resultNBestFinalDeferred
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
@@ -1213,9 +1213,9 @@ class KanaKanjiEngine {
         }
 
         val hirakanaAndKana = listOf(
-            Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            Candidate(input, 3, input.length, 6000),
+            Candidate(input.hiraToKata(), 4, input.length, 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length, 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1337,12 +1337,12 @@ class KanaKanjiEngine {
                 Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -1404,7 +1404,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
@@ -1431,7 +1431,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = 15,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = if (yomi.length == input.length) {
                             it.wordCost.toInt() + 4000
                         } else {
@@ -1466,7 +1466,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 16,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = if (yomi.length == input.length) {
                         it.wordCost.toInt()
                     } else {
@@ -1494,11 +1494,6 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numbersDeferred = generateNumberCandidates(
-            input = input,
-            predictionConfig = predictionConfig,
-        )
-
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input, predictionConfig) else emptyList()
         val mozcUTPlacesList =
@@ -1511,7 +1506,7 @@ class KanaKanjiEngine {
             if (mozcUTWeb == true) getMozcUTWeb(input, predictionConfig) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + convertYearToEra
 
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
@@ -1598,7 +1593,7 @@ class KanaKanjiEngine {
                     Candidate(
                         string = input,
                         type = (1).toByte(),
-                        length = input.length.toUByte(),
+                        length = input.length,
                         score = 4000
                     )
                 ), splitPatterns = emptyList()
@@ -1619,7 +1614,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            val finalList = resultNBestFinalDeferred.candidates + generateNumberCandidates(input, predictionConfig)
+            val finalList = resultNBestFinalDeferred.candidates
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
@@ -1641,9 +1636,9 @@ class KanaKanjiEngine {
         }
 
         val hirakanaAndKana = listOf(
-            Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            Candidate(input, 3, input.length, 6000),
+            Candidate(input.hiraToKata(), 4, input.length, 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length, 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1765,12 +1760,12 @@ class KanaKanjiEngine {
                 Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -1840,7 +1835,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
@@ -1867,7 +1862,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = 15,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = if (yomi.length == input.length) {
                             it.wordCost.toInt() + 4000
                         } else {
@@ -1902,7 +1897,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 16,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = if (yomi.length == input.length) {
                         it.wordCost.toInt()
                     } else {
@@ -1930,11 +1925,6 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numbersDeferred = generateNumberCandidates(
-            input = input,
-            predictionConfig = predictionConfig,
-        )
-
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input, predictionConfig) else emptyList()
         val mozcUTPlacesList =
@@ -1947,7 +1937,7 @@ class KanaKanjiEngine {
             if (mozcUTWeb == true) getMozcUTWeb(input, predictionConfig) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + convertYearToEra
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
@@ -2043,7 +2033,7 @@ class KanaKanjiEngine {
                     Candidate(
                         string = input,
                         type = (1).toByte(),
-                        length = input.length.toUByte(),
+                        length = input.length,
                         score = 4000
                     )
                 ), splitPatterns = emptyList()
@@ -2064,7 +2054,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            val finalList = resultNBestFinalDeferred.candidates + generateNumberCandidates(input, predictionConfig)
+            val finalList = resultNBestFinalDeferred.candidates
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
@@ -2084,9 +2074,9 @@ class KanaKanjiEngine {
         }
 
         val hirakanaAndKana = listOf(
-            Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            Candidate(input, 3, input.length, 6000),
+            Candidate(input.hiraToKata(), 4, input.length, 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length, 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2123,12 +2113,12 @@ class KanaKanjiEngine {
                 Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -2264,7 +2254,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
@@ -2291,7 +2281,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = 15,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = if (yomi.length == input.length) {
                             it.wordCost.toInt() + 4000
                         } else {
@@ -2326,7 +2316,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 16,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = if (yomi.length == input.length) {
                         it.wordCost.toInt()
                     } else {
@@ -2354,11 +2344,6 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numbersDeferred = generateNumberCandidates(
-            input = input,
-            predictionConfig = predictionConfig,
-        )
-
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input, predictionConfig) else emptyList()
         val mozcUTPlacesList =
@@ -2371,7 +2356,7 @@ class KanaKanjiEngine {
             if (mozcUTWeb == true) getMozcUTWeb(input, predictionConfig) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + convertYearToEra
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal = resultList.sortedWith(
@@ -2468,7 +2453,7 @@ class KanaKanjiEngine {
                 Candidate(
                     string = input,
                     type = (1).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 4000
                 )
             )
@@ -2488,7 +2473,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            return resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig)
+            return resultNBestFinalDeferred
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
@@ -2501,9 +2486,9 @@ class KanaKanjiEngine {
         }
 
         val hirakanaAndKana = listOf(
-            Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            Candidate(input, 3, input.length, 6000),
+            Candidate(input.hiraToKata(), 4, input.length, 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length, 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2540,27 +2525,27 @@ class KanaKanjiEngine {
                 Candidate(
                     string = input,
                     type = (1).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 4000
                 ), Candidate(
                     string = input.replaceFirstChar { it.uppercaseChar() },
                     type = (1).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 4001
                 ), Candidate(
                     string = input.uppercase(),
                     type = (1).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 4002
                 ), Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -2688,7 +2673,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
@@ -2715,7 +2700,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = 15,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = if (yomi.length == input.length) {
                             it.wordCost.toInt() + 4000
                         } else {
@@ -2750,7 +2735,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 16,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = if (yomi.length == input.length) {
                         it.wordCost.toInt()
                     } else {
@@ -2778,11 +2763,6 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numbersDeferred = generateNumberCandidates(
-            input = input,
-            predictionConfig = predictionConfig,
-        )
-
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input, predictionConfig) else emptyList()
         val mozcUTPlacesList =
@@ -2795,7 +2775,7 @@ class KanaKanjiEngine {
             if (mozcUTWeb == true) getMozcUTWeb(input, predictionConfig) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + convertYearToEra
 
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
@@ -2876,7 +2856,7 @@ class KanaKanjiEngine {
                 Candidate(
                     string = input,
                     type = (1).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 4000
                 )
             )
@@ -2896,7 +2876,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            return resultNBestFinalDeferred + generateNumberCandidates(input, predictionConfig)
+            return resultNBestFinalDeferred
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
@@ -2906,9 +2886,9 @@ class KanaKanjiEngine {
         }
 
         val hirakanaAndKana = listOf(
-            Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            Candidate(input, 3, input.length, 6000),
+            Candidate(input.hiraToKata(), 4, input.length, 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length, 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3026,12 +3006,12 @@ class KanaKanjiEngine {
                 Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -3090,7 +3070,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
@@ -3117,7 +3097,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = 15,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = if (yomi.length == input.length) {
                             it.wordCost.toInt() + 4000
                         } else {
@@ -3152,7 +3132,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 16,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = if (yomi.length == input.length) {
                         it.wordCost.toInt()
                     } else {
@@ -3180,11 +3160,6 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numbersDeferred = generateNumberCandidates(
-            input = input,
-            predictionConfig = predictionConfig,
-        )
-
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input, predictionConfig) else emptyList()
         val mozcUTPlacesList =
@@ -3197,7 +3172,7 @@ class KanaKanjiEngine {
             if (mozcUTWeb == true) getMozcUTWeb(input, predictionConfig) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + convertYearToEra
 
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
@@ -3279,7 +3254,7 @@ class KanaKanjiEngine {
                     Candidate(
                         string = input,
                         type = (1).toByte(),
-                        length = input.length.toUByte(),
+                        length = input.length,
                         score = 4000
                     )
                 ), splitPatterns = emptyList()
@@ -3300,7 +3275,7 @@ class KanaKanjiEngine {
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
-            val finalList = resultNBestFinalDeferred.candidates + generateNumberCandidates(input, predictionConfig)
+            val finalList = resultNBestFinalDeferred.candidates
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
@@ -3322,9 +3297,9 @@ class KanaKanjiEngine {
         }
 
         val hirakanaAndKana = listOf(
-            Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            Candidate(input, 3, input.length, 6000),
+            Candidate(input.hiraToKata(), 4, input.length, 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length, 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3442,12 +3417,12 @@ class KanaKanjiEngine {
                 Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -3514,7 +3489,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = it.wordCost.toInt(),
                     leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                     rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
@@ -3541,7 +3516,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = 15,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = if (yomi.length == input.length) {
                             it.wordCost.toInt() + 4000
                         } else {
@@ -3576,7 +3551,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 16,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = if (yomi.length == input.length) {
                         it.wordCost.toInt()
                     } else {
@@ -3604,11 +3579,6 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numbersDeferred = generateNumberCandidates(
-            input = input,
-            predictionConfig = predictionConfig,
-        )
-
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input, predictionConfig) else emptyList()
         val mozcUTPlacesList =
@@ -3621,7 +3591,7 @@ class KanaKanjiEngine {
             if (mozcUTWeb == true) getMozcUTWeb(input, predictionConfig) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + convertYearToEra
 
         val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
@@ -3662,39 +3632,38 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
     ): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
-        val digitCandidates = generateNumberCandidates(input, predictionConfig)
         val listJapaneseCandidates = buildList {
             add(Candidate(
-                string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
+                string = input, type = (1).toByte(), length = input.length, score = 3000
             ))
             add(Candidate(
                 string = input.hiraToKata(),
                 type = (1).toByte(),
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 3000
             ))
             add(Candidate(
                 string = input.toHankakuKatakana(),
                 type = (31).toByte(),
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 3000
             ))
             add(Candidate(
                 string = inputToEnglish,
                 type = (1).toByte(),
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 3000
             ))
             add(Candidate(
                 string = inputToEnglish.replaceFirstChar { it.uppercaseChar() },
                 type = (1).toByte(),
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 3000
             ))
             add(Candidate(
                 string = inputToEnglish.uppercase(),
                 type = (1).toByte(),
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 3000
             ))
         }
@@ -3719,12 +3688,12 @@ class KanaKanjiEngine {
                 Candidate(
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 30000
                 )
             )
@@ -3732,13 +3701,12 @@ class KanaKanjiEngine {
             emptyList()
         }
 
-        val numbersConverted =
-            digitCandidates + (englishDeferred + englishZenkaku).sortedBy { it.score }
+        val numbersConverted = (englishDeferred + englishZenkaku).sortedBy { it.score }
         val temporalCandidates = createTemporalDictionaryCandidates(input)
 
         val candidates = (listJapaneseCandidates + numbersConverted + temporalCandidates)
             .distinctBy { it.string }
-        return NumberCandidateGenerator.order(input, candidates, predictionConfig)
+        return NumberCandidateAssembler.assemble(input, candidates, predictionConfig)
     }
 
     private fun createTemporalDictionaryCandidates(input: String): List<Candidate> = when (input) {
@@ -3775,7 +3743,7 @@ class KanaKanjiEngine {
         val zodiac = listOf(
             "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"
         )[Math.floorMod(year - 4, 12)]
-        val length = input.length.toUByte()
+        val length = input.length
 
         val baseCandidates = mutableListOf(
             Candidate(
@@ -3892,42 +3860,42 @@ class KanaKanjiEngine {
             Candidate(
                 string = formatter1.format(calendar.time),  // M/d format
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatter2.format(calendar.time),  // yyyy/MM/dd format
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatter3.format(calendar.time),  // M月d日(曜日) format
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatterReiwa,  // 令和 format
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatterR06,  // Rxx/MM/dd format
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = dayOfWeek,  // 曜日 format
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
@@ -3947,7 +3915,7 @@ class KanaKanjiEngine {
             Era("明治", 1868, 1912)     // 明治は1868～1912
         )
 
-        val length = input.length.toUByte()
+        val length = input.length
 
         fun formatEra(eraName: String, eraYear: Int) =
             eraName + if (eraYear == 1) "元年" else "${eraYear}年"
@@ -3985,7 +3953,7 @@ class KanaKanjiEngine {
             Candidate(
                 string = "${hour24}時${minute}分",
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7000,
                 leftId = 1851,
                 rightId = 1851
@@ -3996,7 +3964,7 @@ class KanaKanjiEngine {
                     hour24.toString().padStart(2, '0')
                 }:$minutePadded",
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7001,
                 leftId = 1851,
                 rightId = 1851
@@ -4005,7 +3973,7 @@ class KanaKanjiEngine {
             Candidate(
                 string = "$meridiem${hour12}時${minute}分",
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7003,
                 leftId = 1851,
                 rightId = 1851
@@ -4013,7 +3981,7 @@ class KanaKanjiEngine {
             Candidate(
                 string = "${hour12}時${minute}分",
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7004,
                 leftId = 1851,
                 rightId = 1851
@@ -4023,7 +3991,7 @@ class KanaKanjiEngine {
                     hour12.toString().padStart(2, '0')
                 }:$minutePadded",
                 type = 14,
-                length = input.length.toUByte(),
+                length = input.length,
                 score = 7002,
                 leftId = 1851,
                 rightId = 1851
@@ -4063,7 +4031,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = type,
-                    length = yomi.length.toUByte(),
+                    length = yomi.length,
                     score = entry.wordCost.toInt() + predictionConfig.completionPenalty(
                         inputLength = input.length,
                         readingLength = yomi.length,
@@ -4116,7 +4084,7 @@ class KanaKanjiEngine {
                     )
                 },
                 type = type,
-                length = yomi.length.toUByte(),
+                length = yomi.length,
                 score = it.wordCost.toInt() + predictionConfig.completionPenalty(
                     inputLength = input.length,
                     readingLength = yomi.length,
@@ -4159,7 +4127,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = type,
-                        length = yomi.length.toUByte(),
+                        length = yomi.length,
                         score = wordCost.toInt(),
                         leftId = tokenArray.leftIds[posTableIndex.toInt()],
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
@@ -4227,7 +4195,7 @@ class KanaKanjiEngine {
                         )
                     },
                     type = 2,
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = wordCost.toInt(),
                     leftId = dictionary.tokenArray.leftIds[posTableIndex.toInt()],
                     rightId = dictionary.tokenArray.rightIds[posTableIndex.toInt()],
@@ -4265,7 +4233,7 @@ class KanaKanjiEngine {
                             )
                         },
                         type = type,
-                        length = input.length.toUByte(),
+                        length = input.length,
                         score = wordCost.toInt(),
                         leftId = tokenArray.leftIds[posTableIndex.toInt()],
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
@@ -4380,7 +4348,7 @@ class KanaKanjiEngine {
                                 else -> tangoTrie.getLetter(nodeId, succinctBitVectorTangoLBS)
                             },
                             type = 9,
-                            length = yomi.length.toUByte(),
+                            length = yomi.length,
                             score = score,
                             leftId = tokenArray.leftIds[posTableIndex.toInt()],
                             rightId = tokenArray.rightIds[posTableIndex.toInt()],
@@ -4570,11 +4538,6 @@ class KanaKanjiEngine {
             predictionConfig = predictionConfig,
         )
     }
-
-    private fun generateNumberCandidates(
-        input: String,
-        predictionConfig: PredictionConfig,
-    ): List<Candidate> = NumberCandidateGenerator.generate(input, predictionConfig)
 
     /**
      * Candidate リストを処理し、

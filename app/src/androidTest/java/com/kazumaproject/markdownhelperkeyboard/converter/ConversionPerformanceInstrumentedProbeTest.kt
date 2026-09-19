@@ -271,9 +271,9 @@ class ConversionPerformanceInstrumentedProbeTest {
         }
 
         val memoryProbeCandidates = listOf(
-            Candidate("日を", 1, 2u, 0),
-            Candidate("火を", 1, 2u, 1),
-            Candidate("陽を", 1, 2u, 2),
+            Candidate("日を", 1, 2, 0),
+            Candidate("火を", 1, 2, 1),
+            Candidate("陽を", 1, 2, 2),
         )
         val memoryProbeSegments = mapOf(
             "日を" to listOf(
@@ -351,8 +351,8 @@ class ConversionPerformanceInstrumentedProbeTest {
             assertEquals("火を", firstOrdered.first().string)
 
             val ambiguousLongInputCandidates = listOf(
-                Candidate("人多すぎ", 1, 6u, 0),
-                Candidate("火と多すぎ", 1, 6u, 1),
+                Candidate("人多すぎ", 1, 6, 0),
+                Candidate("火と多すぎ", 1, 6, 1),
             )
             val ambiguousLongInputSegments = mapOf(
                 "人多すぎ" to listOf(

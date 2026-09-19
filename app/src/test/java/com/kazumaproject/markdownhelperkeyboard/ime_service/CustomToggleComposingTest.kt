@@ -193,7 +193,7 @@ class CustomToggleComposingTest {
     @Test fun appliedCandidate_cannotBeOverwrittenByPendingToggleTimer() {
         toggle()
         ReflectionHelpers.callInstanceMethod<Unit>(service, "applyFirstSuggestion",
-            ClassParameter.from(Candidate::class.java, Candidate("亜", 1, 1u, 0)))
+            ClassParameter.from(Candidate::class.java, Candidate("亜", 1, 1, 0)))
         assertEquals("亜", editor.editable.toString())
         assertNull(ReflectionHelpers.getField<Any?>(service, "customToggleFinalizeJob"))
         waitMillis(250)

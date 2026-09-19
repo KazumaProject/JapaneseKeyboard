@@ -546,19 +546,19 @@ class EnglishEngine : QwertyGlideCandidateProvider {
             string = input,
             score = 500,
             type = defaultType,
-            length = input.length.toUByte()
+            length = input.length
         )
         predictions += Candidate(
             string = input.replaceFirstChar { it.uppercaseChar() },
             score = if (input.length <= 3) 9000 else if (input.length <= 4) 12000 else 57000,
             type = defaultType,
-            length = input.length.toUByte()
+            length = input.length
         )
         predictions += Candidate(
             string = input.uppercase(),
             score = if (input.length <= 3) 9001 else if (input.length <= 4) 22001 else 57001,
             type = defaultType,
-            length = input.length.toUByte()
+            length = input.length
         )
 
         // ★ fallback は predictive も (typo有効時のtypoも) 空のときだけ
@@ -567,19 +567,19 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 Candidate(
                     string = input,
                     type = defaultType,
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 10000
                 ),
                 Candidate(
                     string = input.replaceFirstChar { it.uppercaseChar() },
                     type = defaultType,
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = if (input.first().isUpperCase()) 8500 else 10001
                 ),
                 Candidate(
                     string = input.uppercase(),
                     type = defaultType,
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 10002
                 )
             ).sortedBy { it.score }
@@ -616,7 +616,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     Candidate(
                         string = surface,
                         type = defaultType,
-                        length = surface.length.toUByte(),
+                        length = surface.length,
                         score = entry.wordCost.toInt() + casePenalty
                     )
                 }
@@ -674,7 +674,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                         Candidate(
                             surface,
                             typoType,
-                            surface.length.toUByte(),
+                            surface.length,
                             entry.wordCost.toInt() + casePenalty + penalty
                         )
                     }

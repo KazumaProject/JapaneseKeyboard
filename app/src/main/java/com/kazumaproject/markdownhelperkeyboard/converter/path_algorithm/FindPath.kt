@@ -1161,9 +1161,10 @@ class FindPath(
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
 
                 if (foundStrings.add(stringFromNode)) {
+                    val conversionSegments = getConversionSegmentsFromPath(element)
                     candidateSegmentCollector?.set(
                         stringFromNode,
-                        getConversionSegmentsFromPath(element),
+                        conversionSegments,
                     )
                     val candidate = Candidate(
                         string = stringFromNode,
@@ -1172,10 +1173,11 @@ class FindPath(
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
                         yomi = yomiUsedFromNode,
-                        length = length.toUByte(),
+                        length = length,
                         score = element.priorityCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
+                        conversionSegments = conversionSegments,
                     )
                     resultFinal.add(candidate)
                 }
@@ -1845,9 +1847,10 @@ class FindPath(
                 )
 
                 if (foundStrings.add(stringFromNode)) {
+                    val conversionSegments = getConversionSegmentsFromPath(element)
                     candidateSegmentCollector?.set(
                         stringFromNode,
-                        getConversionSegmentsFromPath(element),
+                        conversionSegments,
                     )
                     if (pathMatchesSystemNgram(element, systemNgramDictionary)) {
                         systemNgramMatchedCandidates.add(stringFromNode)
@@ -1867,11 +1870,12 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
-                        length = length.toUByte(),
+                        length = length,
                         yomi = yomiUsedFromNode,
                         score = totalCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
+                        conversionSegments = conversionSegments,
                     )
                     resultFinal.add(candidate)
                 }
@@ -2071,7 +2075,7 @@ class FindPath(
                             sources = candidateSourcesFromNode(node.first),
                         ),
                         yomi = yomiUsedFromNode,
-                        length = length.toUByte(),
+                        length = length,
                         score = if (stringFromNode.any { it.isDigit() }) {
                             node.second + 2000
                         } else {

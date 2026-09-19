@@ -34,7 +34,7 @@ private fun CustomZeroQueryEntry.toCandidate(): Candidate =
     Candidate(
         string = candidate,
         type = ZERO_QUERY_CANDIDATE_TYPE,
-        length = candidate.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+        length = candidate.length,
         score = 0,
         yomi = candidate,
     )

@@ -115,7 +115,7 @@ class QwertyGlideDecoder(
                 Candidate(
                     string = scoredWord.entry.word,
                     type = QWERTY_GLIDE_CANDIDATE_TYPE,
-                    length = scoredWord.entry.word.length.toUByte(),
+                    length = scoredWord.entry.word.length,
                     score = (scoredWord.totalCost * 1000f).toInt().coerceAtLeast(1)
                 )
             }

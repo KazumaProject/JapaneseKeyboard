@@ -288,16 +288,16 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
             Candidate(
                 string = "プレビュー",
                 type = 1.toByte(),
-                length = (5).toUByte(),
+                length = (5),
                 score = 4000
             ),
             Candidate(
                 string = "文字サイズ",
                 type = 1.toByte(),
-                length = (5).toUByte(),
+                length = (5),
                 score = 4001
             ),
-            Candidate(string = "設定", type = 1.toByte(), length = (2).toUByte(), score = 4002)
+            Candidate(string = "設定", type = 1.toByte(), length = (2), score = 4002)
         )
         suggestionAdapter.suggestions = previewCandidates
     }

@@ -212,7 +212,7 @@ class CandidateOrderOverrideSorterTest {
             Candidate(
                 string = it,
                 type = 1,
-                length = it.length.toUByte(),
+                length = it.length,
                 score = 0
             )
         }

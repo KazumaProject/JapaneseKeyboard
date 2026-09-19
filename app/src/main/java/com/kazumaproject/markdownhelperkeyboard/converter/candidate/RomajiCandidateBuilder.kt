@@ -18,37 +18,37 @@ internal fun buildRomajiCandidates(
         Candidate(
             string = fullWidth,
             type = 30,
-            length = readingLength.toUByte(),
+            length = readingLength,
             score = 29000
         ),
         Candidate(
             string = halfWidth,
             type = 31,
-            length = readingLength.toUByte(),
+            length = readingLength,
             score = 29001
         ),
         Candidate(
             string = fullWidthCapitalized,
             type = 30,
-            length = readingLength.toUByte(),
+            length = readingLength,
             score = 29002
         ),
         Candidate(
             string = halfWidthCapitalized,
             type = 31,
-            length = readingLength.toUByte(),
+            length = readingLength,
             score = 29003
         ),
         Candidate(
             string = fullWidthUppercase,
             type = 30,
-            length = readingLength.toUByte(),
+            length = readingLength,
             score = 29004
         ),
         Candidate(
             string = halfWidthUppercase,
             type = 31,
-            length = readingLength.toUByte(),
+            length = readingLength,
             score = 29005
         )
     )

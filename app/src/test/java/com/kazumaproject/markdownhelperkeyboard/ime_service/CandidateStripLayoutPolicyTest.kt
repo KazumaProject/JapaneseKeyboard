@@ -70,7 +70,7 @@ class CandidateStripLayoutPolicyTest {
         return Candidate(
             string = string,
             type = 1.toByte(),
-            length = string.length.toUByte(),
+            length = string.length,
             score = 0,
             yomi = string
         )

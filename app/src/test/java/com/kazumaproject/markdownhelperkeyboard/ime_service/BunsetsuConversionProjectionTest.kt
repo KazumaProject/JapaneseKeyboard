@@ -16,7 +16,7 @@ class BunsetsuConversionProjectionTest {
         CandidateConversionSegment(12, 14, "ます"),
     )
     private fun candidate(text: String, length: Int = reading.length) = Candidate(
-        string = text, type = 1, length = length.toUByte(), score = 1000,
+        string = text, type = 1, length = length, score = 1000,
     )
     private fun snapshot(nodes: List<CandidateConversionSegment> = path) = BunsetsuConversionSnapshot(
         reading, listOf(candidate("明日は東京に行きます")), mapOf("明日は東京に行きます" to nodes),

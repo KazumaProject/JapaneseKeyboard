@@ -381,7 +381,7 @@ class SuggestionAdapterShortcutEntryClickTest {
         Candidate(
             string = text,
             type = 9.toByte(),
-            length = text.length.toUByte(),
+            length = text.length,
             score = 0,
             yomi = text
         )

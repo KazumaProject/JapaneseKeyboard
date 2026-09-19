@@ -4,6 +4,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateAssembler
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -85,7 +86,7 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
-            val result = when (request.mode) {
+            val rawResult = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
@@ -97,6 +98,26 @@ class KanaKanjiConversionSession(
                 CandidateQueryMode.PREDICTION -> queryPrediction(request)
                 CandidateQueryMode.CONVERSION -> queryConversion(request)
             }
+            val assembledCandidates = if (rawResult.candidates.any { it.interpretationId != null }) {
+                rawResult.candidates
+            } else {
+                NumberCandidateAssembler.assemble(
+                    input = request.input,
+                    candidates = rawResult.candidates,
+                    config = request.predictionConfig,
+                )
+            }
+            val projectedSegments = LinkedHashMap(rawResult.candidateSegmentsByString)
+            assembledCandidates.forEach { candidate ->
+                if (candidate.conversionSegments.isNotEmpty()) {
+                    projectedSegments[candidate.string] = candidate.conversionSegments
+                }
+            }
+            val result = rawResult.copy(
+                candidates = assembledCandidates,
+                bunsetsuResult = rawResult.bunsetsuResult?.copy(candidates = assembledCandidates),
+                candidateSegmentsByString = projectedSegments,
+            )
             incrementalState?.commitQueryTransaction()
             result
         } catch (cancellation: CancellationException) {

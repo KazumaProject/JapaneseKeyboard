@@ -7,7 +7,8 @@ enum class NumberInputOrigin { READING, DIGITS }
 
 /** A fully parsed numeric reading used only to generate numeric candidates. */
 class ValidatedNumber private constructor(
-    val value: Long,
+    /** Parsed machine value when it fits in Long; the normalized digit spelling is always kept. */
+    val value: Long?,
     val reading: String,
     val origin: NumberInputOrigin,
     val counter: String,
@@ -23,14 +24,15 @@ class ValidatedNumber private constructor(
         listOf(half, half.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString(""),
             hour.toLong().toKanji() + "時" + minute.toLong().toKanji() + "分")
     } ?: listOf(digits + counter + counterSuffix, fullWidth + counter + counterSuffix,
-        value.toKanji() + counter + counterSuffix) }
+        (value?.toKanji() ?: digits.map { "〇一二三四五六七八九"[it - '0'] }.joinToString("")) + counter + counterSuffix) }
 
     val clockText: String? get() = clock?.let { (hour, minute) -> "$hour:${minute.toString().padStart(2, '0')}" }
 
 
     fun exponent(): String? {
-        if (counter.isNotEmpty() || value < 100_000_000L) return null
-        val decimal = value.toString()
+        val numericValue = value ?: return null
+        if (counter.isNotEmpty() || numericValue < 100_000_000L) return null
+        val decimal = numericValue.toString()
         return if (decimal.first() == '1' && decimal.drop(1).all { it == '0' })
             displayExponent(10, decimal.length - 1) else null
     }
@@ -110,7 +112,7 @@ class ValidatedNumber private constructor(
         fun parseDigits(input: String): ValidatedNumber? {
             if (input.isEmpty() || input.any { it !in '0'..'9' && it !in '０'..'９' }) return null
             val digits = input.map { if (it in '０'..'９') it - 0xFEE0 else it }.joinToString("")
-            val value = digits.toLongOrNull() ?: return null
+            val value = digits.toLongOrNull()
             return ValidatedNumber(value, input, NumberInputOrigin.DIGITS, "", digits)
         }
 
@@ -120,9 +122,11 @@ class ValidatedNumber private constructor(
             if (input.endsWith("ふん") || input.endsWith("ぷん")) {
                 for (split in input.indices.filter { input[it] == 'じ' }) {
                     val hour = parse(input.substring(0, split + 1))?.takeIf { it.counter == "時" } ?: continue
-                    val minute = parse(input.substring(split + 1))?.takeIf { it.counter == "分" && it.value in 0..59 } ?: continue
-                    return ValidatedNumber(hour.value * 60 + minute.value, input, NumberInputOrigin.READING,
-                        "時分", "", hour.value.toInt() to minute.value.toInt())
+                    val minute = parse(input.substring(split + 1))?.takeIf { it.counter == "分" && it.value in 0L..59L } ?: continue
+                    val hourValue = hour.value ?: continue
+                    val minuteValue = minute.value ?: continue
+                    return ValidatedNumber(hourValue * 60 + minuteValue, input, NumberInputOrigin.READING,
+                        "時分", "", hourValue.toInt() to minuteValue.toInt())
                 }
             }
             if (input == "ひとり") return make(input, "人", 1)
@@ -171,7 +175,7 @@ class ValidatedNumber private constructor(
         }
 
         fun parseAll(input: String, config: NumberCandidateConfig): List<ValidatedNumber> =
-            if (input.length > UByte.MAX_VALUE.toInt()) emptyList() else config.parse(input)
+            config.parse(input)
 
         internal fun parseUncached(input: String, config: NumberCandidateConfig): List<ValidatedNumber> {
             val direct = parseWithoutCounterSuffix(input, config)

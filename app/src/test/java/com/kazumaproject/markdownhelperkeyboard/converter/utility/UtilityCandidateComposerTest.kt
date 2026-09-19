@@ -102,7 +102,7 @@ class UtilityCandidateComposerTest {
     private fun candidate(text: String, type: Byte = 1) = Candidate(
         string = text,
         type = type,
-        length = text.length.toUByte(),
+        length = text.length,
         score = 0,
     )
 }

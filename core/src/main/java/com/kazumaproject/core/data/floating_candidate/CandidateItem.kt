@@ -2,7 +2,7 @@ package com.kazumaproject.core.data.floating_candidate
 
 data class CandidateItem(
     val word: String,
-    val length: UByte,
+    val length: Int,
     val candidateType: Byte = 0,
     val sourceId: Long? = null,
     /** Normalized bare TeX used by the app-side Canvas renderer, when this is a formula item. */

@@ -156,7 +156,7 @@ class QwertyGlideCommitPolicyTest {
         return Candidate(
             string = string,
             type = type,
-            length = length.toUByte(),
+            length = length,
             score = 1000
         )
     }

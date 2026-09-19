@@ -261,7 +261,7 @@ class QwertyGlideInputCoordinatorTest {
         return Candidate(
             string = string,
             type = 36.toByte(),
-            length = string.length.toUByte(),
+            length = string.length,
             score = score
         )
     }

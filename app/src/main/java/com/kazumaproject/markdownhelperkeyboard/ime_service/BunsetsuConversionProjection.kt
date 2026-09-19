@@ -76,7 +76,7 @@ internal fun mergeBunsetsuCandidates(
         ?: Candidate(
             string = initialText,
             type = if (initialText == segment.reading) 3 else 1,
-            length = segment.reading.length.toUByte(),
+            length = segment.reading.length,
             score = 3000,
             yomi = segment.reading,
         )

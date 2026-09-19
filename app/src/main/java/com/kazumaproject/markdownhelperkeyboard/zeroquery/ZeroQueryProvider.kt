@@ -122,7 +122,7 @@ fun ZeroQuerySuggestion.toCandidate(): Candidate =
     Candidate(
         string = value,
         type = ZERO_QUERY_CANDIDATE_TYPE,
-        length = value.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+        length = value.length,
         score = 0,
         yomi = value,
     )

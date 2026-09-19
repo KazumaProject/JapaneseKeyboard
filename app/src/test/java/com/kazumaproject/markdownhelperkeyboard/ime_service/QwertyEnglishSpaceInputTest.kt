@@ -63,7 +63,7 @@ class QwertyEnglishSpaceInputTest {
         val remaining = ReflectionHelpers.getField<AtomicReference<String>>(service, "stringInTail")
         input.value = left
         remaining.set(tail)
-        val candidates = if (hasCandidates) listOf(Candidate("different candidate", 1, 5u, 0)) else emptyList()
+        val candidates = if (hasCandidates) listOf(Candidate("different candidate", 1, 5, 0)) else emptyList()
         ReflectionHelpers.callInstanceMethod<Unit>(service, "handleSpaceKeyClickInQWERTY",
             ClassParameter.from(String::class.java, left),
             ClassParameter.from(MainLayoutBinding::class.java, mock(MainLayoutBinding::class.java)),

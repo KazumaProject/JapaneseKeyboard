@@ -34,7 +34,7 @@ import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 class BunsetsuRomajiCandidatesTest {
     private val service = IMEService()
     private val session = mock<KanaKanjiConversionSession>()
-    private val school = Candidate(string = "学校", type = 1, length = 4u, score = 1000)
+    private val school = Candidate(string = "学校", type = 1, length = 4, score = 1000)
     private val romaji = listOf("ｇａｋｋｏｕ", "gakkou", "Ｇａｋｋｏｕ", "Gakkou", "ＧＡＫＫＯＵ", "GAKKOU")
 
     @Before fun setUp() = runBlocking {
@@ -137,7 +137,7 @@ class BunsetsuRomajiCandidatesTest {
         assertTrue(segments[0].hasConvertedDisplay)
         assertEquals("いく", segments[1].displayText)
         assertFalse(segments[1].hasConvertedDisplay)
-        val loaded = mergeBunsetsuCandidates(segments[1], listOf(school.copy(string = "往く", length = 2u)))
+        val loaded = mergeBunsetsuCandidates(segments[1], listOf(school.copy(string = "往く", length = 2)))
         assertEquals("往く", loaded.displayText)
         assertFalse(loaded.candidates.any { it.string == "行く" })
         val fallback = mergeBunsetsuCandidates(segments[1], emptyList())
@@ -170,7 +170,7 @@ class BunsetsuRomajiCandidatesTest {
     @Suppress("UNCHECKED_CAST")
     private fun projectSchoolSentence(): List<BunsetsuSegmentState> {
         val input = "がっこうにいく"
-        val full = school.copy(string = "学校に行く", length = input.length.toUByte())
+        val full = school.copy(string = "学校に行く", length = input.length)
         val snapshot = BunsetsuConversionSnapshot(input, listOf(full), mapOf(full.string to listOf(
             CandidateConversionSegment(0, 4, "学校"),
             CandidateConversionSegment(4, 5, "に"),

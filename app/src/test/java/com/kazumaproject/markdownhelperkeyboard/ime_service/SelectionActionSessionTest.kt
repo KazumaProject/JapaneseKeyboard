@@ -17,7 +17,7 @@ class SelectionActionSessionTest {
             candidate = Candidate(
                 string = "Translate",
                 type = GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte(),
-                length = 4u,
+                length = 4,
                 score = 1,
             ),
             action = SelectionAction.Translate,
@@ -44,7 +44,7 @@ class SelectionActionSessionTest {
         candidate = Candidate(
             string = name,
             type = CANDIDATE_TYPE_TEXT_MACRO,
-            length = 4u,
+            length = 4,
             score = 1,
             sourceId = id,
         ),

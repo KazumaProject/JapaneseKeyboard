@@ -334,7 +334,7 @@ fun String.toSubscriptDigits(): String {
  * (例: 1 -> "①", "❶", "Ⅰ", "ⅰ", "⒈", "⑴", 0 -> "⓪")
  * 0から50までの、Unicodeに存在する主要な記号に対応します。
  */
-fun createValueBasedSymbolCandidates(numberValue: Long, inputLength: UByte): List<Candidate> {
+fun createValueBasedSymbolCandidates(numberValue: Long, inputLength: Int): List<Candidate> {
     val num = numberValue.toInt() // 範囲チェックのためIntに
     // 0から50の範囲外の場合は空リストを返す
     if (num < 0 || num > 50) {

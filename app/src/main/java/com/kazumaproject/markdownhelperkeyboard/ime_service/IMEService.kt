@@ -214,7 +214,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiC
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateGenerator
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
@@ -2200,8 +2199,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Volatile
     private var latestCandidateSegmentsByString:
         Map<String, List<CandidateConversionSegment>> = emptyMap()
-    private val zenzRerankCache = object : LinkedHashMap<String, List<Candidate>>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Candidate>>?): Boolean {
+    private val zenzRerankCache = object : LinkedHashMap<String, List<Long>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Long>>?): Boolean {
             return size > 24
         }
     }
@@ -7974,7 +7973,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Candidate(
                         string = it.word,
                         type = (1).toByte(),
-                        length = insertString.length.toUByte(),
+                        length = insertString.length,
                         score = 0
                     )
                 }, mainView, fromPhysicalKeyboard = true)
@@ -8079,7 +8078,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Candidate(
                         string = it.word,
                         type = (1).toByte(),
-                        length = insertString.length.toUByte(),
+                        length = insertString.length,
                         score = 0
                     )
                 }, mainView, insertString, fromPhysicalKeyboard = true)
@@ -10256,7 +10255,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val totalPages = (fullSuggestionsList.size + PAGE_SIZE - 1) / PAGE_SIZE
         if (totalPages > 1) {
             val pagerLabel = "▶ (${currentPage + 1}/$totalPages)"
-            itemsToShow.add(CandidateItem(word = pagerLabel, length = (1).toUByte()))
+            itemsToShow.add(CandidateItem(word = pagerLabel, length = (1)))
         }
         val physicalSession = physicalCandidateCompositionSession
         val requestedPage = currentPage
@@ -11307,9 +11306,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         candidate = Candidate(
                             string = macro.name,
                             type = CANDIDATE_TYPE_TEXT_MACRO,
-                            length = selectedText.length
-                                .coerceAtMost(UByte.MAX_VALUE.toInt())
-                                .toUByte(),
+                            length = selectedText.length,
                             score = Int.MAX_VALUE,
                             sourceId = macro.id,
                         ),
@@ -11368,8 +11365,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         actions: List<SelectionAction>
     ): List<SelectionActionEntry> {
         val candidateLength = selectedText.length
-            .coerceIn(0, UByte.MAX_VALUE.toInt())
-            .toUByte()
         return actions.mapIndexed { index, action ->
             val candidate = when (action) {
                 is SelectionAction.TextMacro -> error("Text macros are built from repository rows")
@@ -12312,7 +12307,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         Candidate(
                                             string = insertString.hiraganaToKatakana(),
                                             type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
+                                            length = insertString.length,
                                             score = 4000
                                         )
                                     )
@@ -12321,7 +12316,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         Candidate(
                                             string = insertString,
                                             type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
+                                            length = insertString.length,
                                             score = 4000
                                         )
                                     )
@@ -12332,7 +12327,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         Candidate(
                                             string = insertString,
                                             type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
+                                            length = insertString.length,
                                             score = 4000
                                         )
                                     )
@@ -12341,7 +12336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         Candidate(
                                             string = insertString.hiraganaToKatakana(),
                                             type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
+                                            length = insertString.length,
                                             score = 4000
                                         )
                                     )
@@ -12377,7 +12372,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12386,7 +12381,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString,
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12397,7 +12392,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString,
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12406,7 +12401,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12441,7 +12436,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12450,7 +12445,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString,
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12461,7 +12456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString,
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -12470,7 +12465,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
                                     type = (3).toByte(),
-                                    length = insertString.length.toUByte(),
+                                    length = insertString.length,
                                     score = 4000
                                 )
                             )
@@ -16307,7 +16302,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return Candidate(
             string = ZENZ_LIVE_SLOT_EMPTY_TEXT,
             type = ZENZ_LIVE_SLOT_TYPE,
-            length = displayInput.length.toUByte(),
+            length = displayInput.length,
             score = Int.MAX_VALUE,
             yomi = displayInput
         )
@@ -16317,7 +16312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return Candidate(
             string = string,
             type = type,
-            length = displayInput.length.toUByte(),
+            length = displayInput.length,
             score = score,
             yomi = displayInput,
             leftId = leftId,
@@ -17675,7 +17670,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return ZenzCandidate(
             string = acceptedText,
             type = type,
-            length = insertString.length.toUByte(),
+            length = insertString.length,
             score = score,
             originalString = insertString,
         )
@@ -17880,16 +17875,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return zenzRerankRequestToken
     }
 
-    private fun getCachedZenzRerank(cacheKey: String): List<Candidate>? {
-        return synchronized(zenzRerankCache) {
-            zenzRerankCache[cacheKey]
-        }
+    private fun getCachedZenzRerank(cacheKey: String, candidates: List<Candidate>): List<Candidate>? {
+        val interpretationOrder = synchronized(zenzRerankCache) { zenzRerankCache[cacheKey] }
+            ?: return null
+        return applyCachedInterpretationOrder(candidates, interpretationOrder)
     }
 
     private fun putCachedZenzRerank(cacheKey: String, candidates: List<Candidate>) {
+        val interpretationOrder = candidates.asSequence()
+            .filter { it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT &&
+                it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT }
+            .mapNotNull { it.interpretationId }
+            .toList()
         synchronized(zenzRerankCache) {
-            zenzRerankCache[cacheKey] = candidates
+            zenzRerankCache[cacheKey] = interpretationOrder
         }
+    }
+
+    /** Re-expands the cached representative order against the current notation settings. */
+    private fun applyCachedInterpretationOrder(
+        candidates: List<Candidate>,
+        interpretationOrder: List<Long>,
+    ): List<Candidate> {
+        val order = interpretationOrder.withIndex().associate { it.value to it.index }
+        val representatives = candidates.filter {
+            it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT &&
+                it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT
+        }.sortedBy { order[it.interpretationId] ?: Int.MAX_VALUE }
+        val representativeOrder = representatives.mapIndexedNotNull { index, candidate ->
+            candidate.interpretationId?.let { it to index }
+        }.toMap()
+        val variants = candidates.filter {
+            it.numericRole == com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT
+        }.sortedBy { representativeOrder[it.derivedFromInterpretationId] ?: Int.MAX_VALUE }
+        val supplements = candidates.filter {
+            it.numericRole == com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT
+        }
+        return representatives + variants + supplements
     }
 
     private suspend fun prepareZenzRerankPlan(
@@ -17905,6 +17927,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rerankTargets = candidates.withIndex()
             .filter {
                 it.value.type != CANDIDATE_TYPE_TEXT_MACRO &&
+                    it.value.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT &&
+                    it.value.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT &&
                     it.value.length.toInt() == insertString.length
             }
             .take(ZENZ_RERANK_TOP_K)
@@ -18002,11 +18026,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             rawScores.toList()
         )
 
-        applyMergedCandidateOrder(
+        val merged = applyMergedCandidateOrder(
             input = insertString,
             candidates = reranked,
             candidateSegmentsByString = plan.candidateSegmentsByString,
         )
+        val representativeOrder = merged.asSequence()
+            .filter { it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT &&
+                it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT }
+            .mapNotNull { it.interpretationId }
+            .toList()
+        applyCachedInterpretationOrder(merged, representativeOrder)
     }
 
     private suspend fun getZenzContext(
@@ -19671,14 +19701,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             it.length.toInt() == input.length &&
                 !NgWordMatcher.matchesAny(input, it.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
-        val numericOrdered = NumberCandidateGenerator.order(input, candidates, predictionConfig)
         val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
             candidateOrderOverrideRepository.applyOrderFromSnapshot(
                 input = input,
-                candidates = numericOrdered,
+                candidates = candidates,
                 candidateSegmentsByString = result.candidateSegmentsByString,
             )
-        } else numericOrdered
+        } else candidates
         return result.copy(candidates = orderedCandidates)
     }
 
@@ -25157,7 +25186,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidates
         }
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
-        val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
+        val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey, filtered) }
         val displayedCandidates = cachedReranked ?: filtered
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
@@ -25258,7 +25287,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidates
         }
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
-        val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
+        val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey, filtered) }
         val displayedCandidates = cachedReranked ?: filtered
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
@@ -25478,7 +25507,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Candidate(
                         string = it.word,
                         type = CANDIDATE_TYPE_USER_DICTIONARY,
-                        length = (it.reading.length).toUByte(),
+                        length = (it.reading.length),
                         score = it.posScore
                     )
                 }.sortedBy { it.score }
@@ -25503,7 +25532,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Candidate(
                             string = it.out,
                             type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
-                            length = (it.input.length).toUByte(),
+                            length = (it.input.length),
                             score = it.score,
                             yomi = it.input,
                         )
@@ -25592,7 +25621,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             Candidate(
                                 string = it.word,
                                 type = CANDIDATE_TYPE_USER_DICTIONARY,
-                                length = it.reading.length.toUByte(),
+                                length = it.reading.length,
                                 score = it.posScore,
                             )
                         }.sortedBy { it.score }
@@ -25626,7 +25655,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             Candidate(
                                 string = it.out,
                                 type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
-                                length = (it.input.length).toUByte(),
+                                length = (it.input.length),
                                 score = it.score,
                                 yomi = it.input,
                             )
@@ -25752,7 +25781,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Candidate(
                         string = it.word,
                         type = CANDIDATE_TYPE_USER_DICTIONARY,
-                        length = (it.reading.length).toUByte(),
+                        length = (it.reading.length),
                         score = it.posScore
                     )
                 }.sortedBy { it.score }
@@ -25777,7 +25806,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Candidate(
                             string = it.out,
                             type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
-                            length = (it.input.length).toUByte(),
+                            length = (it.input.length),
                             score = it.score,
                             yomi = it.input,
                         )
@@ -25841,7 +25870,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidates = candidates,
             )
         }
-        val numericOrdered = NumberCandidateGenerator.order(input, promotedCandidates, predictionConfig)
         return if (appPreference.candidate_order_override_enable_preference == true) {
             if (candidateSegmentsByString.isNotEmpty()) {
                 latestCandidateSegmentInput = input
@@ -25850,12 +25878,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
-                    candidates = numericOrdered,
+                    candidates = promotedCandidates,
                     candidateSegmentsByString = candidateSegmentsByString,
                 )
             }
         } else {
-            numericOrdered
+            promotedCandidates
         }
     }
 
@@ -25869,7 +25897,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
                 "text-macro:${candidate.sourceId}"
             } else {
-                "text:${candidate.string}"
+                "text:${candidate.string}:${candidate.interpretationId}:${candidate.derivedFromInterpretationId}:" +
+                    candidate.numberSpans.joinToString { "${it.inputStart}-${it.inputEnd}:${it.unitId}" }
             }
         }
 
@@ -25977,7 +26006,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Candidate(
                             string = macro.name,
                             type = CANDIDATE_TYPE_TEXT_MACRO,
-                            length = insertString.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+                            length = insertString.length,
                             score = Int.MIN_VALUE + 52,
                             yomi = macro.reading,
                             sourceId = macro.id,

@@ -88,7 +88,7 @@ class NumberCandidateGeneratorTest {
         val reading = "いちじごふん"
         val forms = listOf("1時5分", "１時５分", "一時五分")
         val candidates = listOf("1時5分", "1:05", "通常語", "１時５分", "一時五分").map {
-            Candidate(it, 1, reading.length.toUByte(), 1000)
+            Candidate(it, 1, reading.length, 1000)
         }
         for (order in NumberCandidateOrder.entries) {
             val sorted = NumberCandidateGenerator.order(reading, candidates, PredictionConfig(numberCandidateOrder = order))

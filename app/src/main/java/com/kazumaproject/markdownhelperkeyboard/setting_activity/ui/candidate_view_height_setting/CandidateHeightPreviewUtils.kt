@@ -71,7 +71,7 @@ internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
         Candidate(
             string = text,
             type = if (index == 0) 9.toByte() else 1.toByte(),
-            length = text.length.toUByte(),
+            length = text.length,
             score = 4000 - index,
             yomi = yomi,
             leftId = 0.toShort(),

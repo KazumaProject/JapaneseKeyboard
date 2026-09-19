@@ -12,18 +12,12 @@ class NumberCandidateSafetyTest {
             for (digit in listOf("9", "９", "0", "０")) {
                 val input = digit.repeat(length)
                 val candidates = NumberCandidateGenerator.generate(input, PredictionConfig())
-                if (length == 255) {
-                    assertTrue(candidates.isNotEmpty())
-                    assertTrue(candidates.all { it.length.toInt() == length })
-                } else {
-                    assertTrue(candidates.isEmpty())
-                    val existing = listOf(Candidate("dictionary", 1, 12u, 100))
-                    assertSame(existing, NumberCandidateGenerator.order(input, existing, PredictionConfig()))
-                }
+                assertTrue(candidates.isNotEmpty())
+                assertTrue(candidates.all { it.length == length })
             }
-            // Exercise the proof overload independently of parseAll's guard.
+            // Exercise the proof overload independently as well.
             val proof = requireNotNull(ValidatedNumber.parseDigits("0".repeat(length)))
-            assertEquals(length == 255, NumberCandidateGenerator.generate(proof, PredictionConfig()).isNotEmpty())
+            assertTrue(NumberCandidateGenerator.generate(proof, PredictionConfig()).isNotEmpty())
         }
     }
 
@@ -34,10 +28,10 @@ class NumberCandidateSafetyTest {
             val input = prefix + unit.reading
             val config = PredictionConfig(numberCandidateConfig = NumberCandidateConfig(units = listOf(unit)))
             val candidates = NumberCandidateGenerator.generate(input, config)
-            if (input.length == 255) {
-                assertEquals(listOf("2箱", "２箱", "二箱"), candidates.map { it.string })
-                assertTrue(candidates.all { it.length.toInt() == 255 })
-            } else assertTrue("length=${input.length}", candidates.isEmpty())
+            val expected = if (prefix == "に") listOf("2箱", "２箱", "二箱")
+                else listOf("10箱", "１０箱", "十箱")
+            assertEquals(expected, candidates.map { it.string })
+            assertTrue(candidates.all { it.length == input.length })
         }
     }
 

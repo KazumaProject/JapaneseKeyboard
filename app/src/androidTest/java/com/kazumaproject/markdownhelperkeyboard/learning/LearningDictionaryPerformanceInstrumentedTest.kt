@@ -207,7 +207,7 @@ class LearningDictionaryPerformanceInstrumentedTest {
             Candidate(
                 string = entry.out,
                 type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
-                length = entry.input.length.toUByte(),
+                length = entry.input.length,
                 score = entry.score,
                 yomi = entry.input,
                 leftId = entry.leftId,

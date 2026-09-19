@@ -12,11 +12,11 @@ class CandidateOrderOverrideEditableCandidateFilterTest {
         val result = filterCandidateOrderEditableCandidates(
             reading = "きょう",
             candidates = listOf(
-                candidate(string = "今日", length = 3u.toUByte()),
-                candidate(string = "きょ", length = 2u.toUByte()),
-                candidate(string = "今日", length = 2u.toUByte()),
-                candidate(string = "", length = 3u.toUByte()),
-                candidate(string = "京", length = 3u.toUByte()),
+                candidate(string = "今日", length = 3),
+                candidate(string = "きょ", length = 2),
+                candidate(string = "今日", length = 2),
+                candidate(string = "", length = 3),
+                candidate(string = "京", length = 3),
             )
         )
 
@@ -28,9 +28,9 @@ class CandidateOrderOverrideEditableCandidateFilterTest {
         val result = filterCandidateOrderEditableCandidates(
             reading = "きょう",
             candidates = listOf(
-                candidate(string = "今日", length = 2u.toUByte(), score = 100),
-                candidate(string = "今日", length = 3u.toUByte(), score = 200),
-                candidate(string = "今日", length = 3u.toUByte(), score = 300),
+                candidate(string = "今日", length = 2, score = 100),
+                candidate(string = "今日", length = 3, score = 200),
+                candidate(string = "今日", length = 3, score = 300),
             )
         )
 
@@ -40,7 +40,7 @@ class CandidateOrderOverrideEditableCandidateFilterTest {
 
     private fun candidate(
         string: String,
-        length: UByte,
+        length: Int,
         score: Int = 0
     ): Candidate {
         return Candidate(

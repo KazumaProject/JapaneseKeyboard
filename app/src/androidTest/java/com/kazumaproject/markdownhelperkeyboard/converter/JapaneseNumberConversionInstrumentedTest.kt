@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateOrder
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateAssembler
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import dagger.hilt.android.EntryPointAccessors
@@ -178,22 +179,26 @@ class JapaneseNumberConversionInstrumentedTest {
     private suspend fun KanaKanjiEngine.convertOriginal(
         input: String,
         repository: UserDictionaryRepository,
-    ): List<Candidate> = getCandidatesOriginal(
-        input = input,
-        n = 8,
-        mozcUtPersonName = false,
-        mozcUTPlaces = false,
-        mozcUTWiki = false,
-        mozcUTNeologd = false,
-        mozcUTWeb = false,
-        userDictionaryRepository = repository,
-        learnRepository = null,
-        isOmissionSearchEnable = false,
-        enableTypoCorrectionJapaneseFlick = false,
-        enableTypoCorrectionQwertyEnglish = false,
-        typoCorrectionOffsetScore = 3_000,
-        omissionSearchOffsetScore = 3_000,
-        beamWidth = 20,
+    ): List<Candidate> = NumberCandidateAssembler.assemble(
+        input,
+        getCandidatesOriginal(
+            input = input,
+            n = 8,
+            mozcUtPersonName = false,
+            mozcUTPlaces = false,
+            mozcUTWiki = false,
+            mozcUTNeologd = false,
+            mozcUTWeb = false,
+            userDictionaryRepository = repository,
+            learnRepository = null,
+            isOmissionSearchEnable = false,
+            enableTypoCorrectionJapaneseFlick = false,
+            enableTypoCorrectionQwertyEnglish = false,
+            typoCorrectionOffsetScore = 3_000,
+            omissionSearchOffsetScore = 3_000,
+            beamWidth = 20,
+        ),
+        PredictionConfig(),
     )
 
     private suspend fun measureConversions(

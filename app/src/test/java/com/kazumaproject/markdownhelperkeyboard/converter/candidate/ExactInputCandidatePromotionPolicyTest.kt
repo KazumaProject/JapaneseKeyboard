@@ -104,7 +104,7 @@ class ExactInputCandidatePromotionPolicyTest {
     ): Candidate = Candidate(
         string = string,
         type = type,
-        length = string.length.toUByte(),
+        length = string.length,
         score = 0,
     )
 

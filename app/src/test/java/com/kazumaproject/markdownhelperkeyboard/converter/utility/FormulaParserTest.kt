@@ -221,7 +221,7 @@ class FormulaParserTest {
     private fun candidate(text: String, type: Int = 1) = Candidate(
         string = text,
         type = type.toByte(),
-        length = text.length.toUByte(),
+        length = text.length,
         score = 0,
     )
 }

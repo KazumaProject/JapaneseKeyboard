@@ -28,7 +28,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
                 Candidate(
                     string = input,
                     type = 29,
-                    length = input.length.toUByte(),
+                    length = input.length,
                     score = 100
                 )
             )

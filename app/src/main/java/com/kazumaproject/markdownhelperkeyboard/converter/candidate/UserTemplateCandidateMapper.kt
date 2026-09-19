@@ -6,7 +6,7 @@ internal fun UserTemplate.toUserTemplateCandidate(): Candidate {
     return Candidate(
         string = word,
         type = CANDIDATE_TYPE_USER_TEMPLATE,
-        length = reading.length.toUByte(),
+        length = reading.length,
         score = posScore
     )
 }

@@ -51,7 +51,7 @@ class ZenzContextPolicyTest {
                 value = Candidate(
                     string = "候補",
                     type = 1.toByte(),
-                    length = 2.toUByte(),
+                    length = 2,
                     score = -100
                 )
             )

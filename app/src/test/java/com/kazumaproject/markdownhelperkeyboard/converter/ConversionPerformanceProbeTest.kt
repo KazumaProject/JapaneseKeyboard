@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.converter
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.NumberCandidateAssembler
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
@@ -50,6 +52,10 @@ class ConversionPerformanceProbeTest {
             "けいたいでにほんごをへんかんする",
             "わたしはきのうともだちとえきまえであいました",
             "このあぷりのへんかんこうほをこうそくにしたい",
+            "さんにん",
+            "きょうはさんにんでとうきょうにいきます",
+            "にえんさんにんごほん",
+            "000000000000000000009223372036854775808",
         )
 
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -86,13 +92,14 @@ class ConversionPerformanceProbeTest {
         val allocatedBefore = allocationMeter?.currentAllocatedBytes() ?: -1L
         val usedHeapBefore = usedHeapBytes()
         val results = LinkedHashMap<String, List<Candidate>>()
-        val warmConversionNs = inputs.associateWith { input ->
-            measureNanoTime {
-                repeat(iterations) {
+        val warmSamplesNs = inputs.associateWith { input ->
+            LongArray(iterations) {
+                measureNanoTime {
                     results[input] = engine.convertForProbe(input, userDictionaryRepository)
                 }
             }
         }
+        val warmConversionNs = warmSamplesNs.mapValues { (_, samples) -> samples.sum() }
         val continuousInput = "このあぷりのへんかんこうほをこうそくにしたい"
         var continuousResult: List<Candidate> = emptyList()
         val continuousElapsedNs = measureNanoTime {
@@ -108,6 +115,20 @@ class ConversionPerformanceProbeTest {
         } else {
             -1L
         }
+        suspend fun exerciseRetainedHeapScenario() = repeat(300) { index ->
+            engine.convertForProbe(if (index % 2 == 0) "さんにん" else "このあぷりのへんかんこうほをこうそくにしたい", userDictionaryRepository)
+        }
+        repeat(3) { exerciseRetainedHeapScenario() }
+        org.mockito.Mockito.clearInvocations(userDictionaryRepository)
+        System.gc()
+        Thread.sleep(100)
+        val retainedBefore = usedHeapBytes()
+        exerciseRetainedHeapScenario()
+        org.mockito.Mockito.clearInvocations(userDictionaryRepository)
+        System.gc()
+        Thread.sleep(100)
+        val retainedHeapGrowthBytes = usedHeapBytes() - retainedBefore
+        val (gcCount, gcTimeMs) = gcTotals()
 
         val report = buildString {
             appendLine("label=$label")
@@ -123,6 +144,9 @@ class ConversionPerformanceProbeTest {
             appendLine("totalAllocatedBytes=$allocatedBytes")
             appendLine("avgAllocatedBytes=${if (allocatedBytes >= 0) allocatedBytes / conversions else -1}")
             appendLine("heapGrowthBytes=${usedHeapAfter - usedHeapBefore}")
+            appendLine("retainedHeapGrowthBytes=$retainedHeapGrowthBytes")
+            appendLine("gcCount=$gcCount")
+            appendLine("gcTimeMs=$gcTimeMs")
             appendLine("fingerprint=${results.fingerprint()}")
             appendLine("firstConversionUs")
             firstConversionNs.forEach { (input, elapsedNs) ->
@@ -131,6 +155,13 @@ class ConversionPerformanceProbeTest {
             appendLine("warmAvgConversionUs")
             warmConversionNs.forEach { (input, elapsedNs) ->
                 appendLine("$input\t${elapsedNs / iterations / 1_000.0}")
+            }
+            appendLine("warmDistributionUs")
+            warmSamplesNs.forEach { (input, samples) ->
+                val sorted = samples.sorted()
+                fun percentile(fraction: Double): Double =
+                    sorted[((sorted.size - 1) * fraction).toInt()] / 1_000.0
+                appendLine("$input\tp50=${percentile(0.50)}\tp95=${percentile(0.95)}\tmax=${sorted.last() / 1_000.0}")
             }
             appendLine("sameInputContinuousAvgUs")
             appendLine("$continuousInput\t${continuousElapsedNs / iterations / 1_000.0}")
@@ -155,7 +186,7 @@ class ConversionPerformanceProbeTest {
             appendLine()
         }
 
-        val reportDir = File("build/reports/conversion-perf").apply { mkdirs() }
+        val reportDir = File("build/reports/number-candidate-performance").apply { mkdirs() }
         File(reportDir, "$label.txt").writeText(report)
     }
 
@@ -170,7 +201,8 @@ class ConversionPerformanceProbeTest {
     private suspend fun com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine.convertForProbe(
         input: String,
         userDictionaryRepository: UserDictionaryRepository,
-    ): List<Candidate> =
+    ): List<Candidate> = NumberCandidateAssembler.assemble(
+        input,
         getCandidatesWithBunsetsuSeparation(
             input = input,
             n = 4,
@@ -187,7 +219,9 @@ class ConversionPerformanceProbeTest {
             typoCorrectionOffsetScore = 3000,
             omissionSearchOffsetScore = 1900,
             beamWidth = 20,
-        ).candidates
+        ).candidates,
+        PredictionConfig(),
+    )
 
     private class AllocationMeter(
         private val bean: Any,
@@ -224,6 +258,19 @@ class ConversionPerformanceProbeTest {
         val runtime = Runtime.getRuntime()
         return runtime.totalMemory() - runtime.freeMemory()
     }
+
+    private fun gcTotals(): Pair<Long, Long> = runCatching {
+        val factory = Class.forName("java.lang.management.ManagementFactory")
+        val beans = factory.getMethod("getGarbageCollectorMXBeans").invoke(null) as List<*>
+        beans.fold(0L to 0L) { total, bean ->
+            if (bean == null) total else {
+                val type = Class.forName("java.lang.management.GarbageCollectorMXBean")
+                val count = (type.getMethod("getCollectionCount").invoke(bean) as Long).coerceAtLeast(0)
+                val time = (type.getMethod("getCollectionTime").invoke(bean) as Long).coerceAtLeast(0)
+                total.first + count to total.second + time
+            }
+        }
+    }.getOrDefault(-1L to -1L)
 
     private fun Map<String, List<Candidate>>.fingerprint(): String {
         val payload = entries.joinToString("\n") { (input, candidates) ->

@@ -28,7 +28,7 @@ class QwertyGlideCandidateCaseExpander {
             add(
                 candidate.copy(
                     string = capitalized,
-                    length = capitalized.length.toUByte(),
+                    length = capitalized.length,
                     score = candidate.score + CAPITALIZED_SCORE_OFFSET
                 )
             )
@@ -37,7 +37,7 @@ class QwertyGlideCandidateCaseExpander {
             add(
                 candidate.copy(
                     string = uppercase,
-                    length = uppercase.length.toUByte(),
+                    length = uppercase.length,
                     score = candidate.score + UPPERCASE_SCORE_OFFSET
                 )
             )

@@ -25,7 +25,7 @@ object UtilityCandidateComposer {
                     UtilityCandidateKind.FORMULA_UNICODE -> CANDIDATE_TYPE_FORMULA_UNICODE
                     UtilityCandidateKind.FORMULA_TEX -> CANDIDATE_TYPE_FORMULA_TEX
                 },
-                length = input.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+                length = input.length,
                 score = 0,
                 yomi = input,
                 commitText = candidate.text,
@@ -145,7 +145,7 @@ object UtilityCandidateComposer {
     private fun utilityLiteral(text: String, input: String) = Candidate(
         string = text,
         type = CANDIDATE_TYPE_UTILITY_LITERAL,
-        length = input.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+        length = input.length,
         score = 0,
         yomi = input,
     )
