@@ -66,6 +66,42 @@ class KanaKanjiConversionSessionParityTest {
     }
 
     @Test
+    fun alternateClockReadingKujiGofunProducesNumericCandidates() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in CandidateQueryMode.entries) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(request("くじごふん", mode, bunsetsu))
+                    assertTrue(
+                        "$backend/$mode/$bunsetsu: ${result.candidates.map { it.string }}",
+                        result.candidates.any { it.string == "9時5分" },
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun embeddedClockReadingKeepsNumericSupplementWithFollowingText() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(
+                CandidateQueryMode.NO_TAB_DEFAULT,
+                CandidateQueryMode.PREDICTION,
+                CandidateQueryMode.CONVERSION,
+            )) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(request("くじごふんとか", mode, bunsetsu))
+                    assertTrue(
+                        "$backend/$mode/$bunsetsu: ${result.candidates.map { it.string }}",
+                        result.candidates.any { it.string == "9時5分とか" },
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun bunsetsuDisplayPreservesFullLatticeResultAcrossBackendsAndCandidateLoading() = runBlocking {
         val input = "あしたはとうきょうにいきます"
         for (backend in ConversionBackend.entries) {
