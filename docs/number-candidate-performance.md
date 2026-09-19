@@ -43,7 +43,7 @@
 
 ## 成果物SHA-256
 
-- Full Standard Debug APK: `8821916bf3cf2d24940f4ae1827eafc3a8eb45aef0b08351ab1dd8db135da10f`
+- Full Standard Debug APK: `3895a251d0b69087fb01da48a535213ca3a4483b5972b28e3fa552a1eb6fc914`
 - Lite F-Droid Debug APK: `0c0af07e8def5d43498cd558b92c475483f1d080df5289d8f87e4f8b5a25a547`
 - Lite Standard Debug APK: `a54a02387d9793f417e4e64144c2d59e5004ce9d7e35297daccd1c08f65d5f35`
 - System compact dictionary: `71a2d8ece0f8b9af815dcc1fd62a974d8369acc86784bf99d5c845e95cbeada3`
