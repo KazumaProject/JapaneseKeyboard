@@ -2,9 +2,10 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.content.Intent
 import android.graphics.Point
-import android.graphics.Rect
+import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.View
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.PopupWindow
 import android.widget.TextView
@@ -23,7 +24,117 @@ import org.junit.runner.RunWith
 /** Checks real WindowManager placement with a non-zero window origin, including Android 7. */
 @RunWith(AndroidJUnit4::class)
 class SkinPopupCompatibilityInstrumentedTest {
-    @Test fun offsetWindowKeepsFlickAndOverflowGuideAtTheirScreenAnchors() {
+    @Test fun splitPanelUsesApplicationTokenWithoutHiddenPopupApi() {
+        val ins = InstrumentationRegistry.getInstrumentation()
+        ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)).use { scenario ->
+            lateinit var manager: WindowManager
+            lateinit var panel: FrameLayout
+            lateinit var anchor: TextView
+            lateinit var popup: PopupWindow
+            lateinit var bubble: KeyWindowLayout
+            var panelAdded = false
+            var popupCreated = false
+            val laidOut = java.util.concurrent.CountDownLatch(1)
+            try {
+                scenario.onActivity { host ->
+                    manager = host.getSystemService(WindowManager::class.java)
+                    panel = FrameLayout(host)
+                    anchor = TextView(host).apply { text = "か" }
+                    panel.addView(anchor, FrameLayout.LayoutParams(150, 100).apply {
+                        leftMargin = 35
+                        topMargin = 40
+                    })
+                    val params = WindowManager.LayoutParams(
+                        220,
+                        180,
+                        WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                        PixelFormat.TRANSLUCENT,
+                    ).apply {
+                        token = host.window.decorView.windowToken
+                        gravity = Gravity.TOP or Gravity.LEFT
+                        x = 260
+                        y = 700
+                    }
+                    manager.addView(panel, params)
+                    panelAdded = true
+                    panel.viewTreeObserver.addOnGlobalLayoutListener {
+                        if (panel.width == 220 && anchor.width == 150) laidOut.countDown()
+                    }
+                }
+                assertTrue("Panel did not finish layout", laidOut.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                ins.waitForIdleSync()
+                scenario.onActivity { host ->
+                    assertNotNull(anchor.windowToken)
+                    assertNotNull(anchor.applicationWindowToken)
+                    assertNotSame(anchor.windowToken, anchor.applicationWindowToken)
+                    bubble = KeyWindowLayout(host).apply { skinId = KeyboardSkinId.CUPERTINO_LIGHT }
+                    bubble.addView(TextView(host).apply { text = "く" }, FrameLayout.LayoutParams(-1, -1))
+                    popup = PopupWindow(bubble, 150, 100, false)
+                    popupCreated = true
+                }
+
+                val union = android.graphics.Rect()
+                PopupDirection.entries.forEach {
+                    union.union(SkinPopupGeometry.resolve(150, 100, it, true).bounds)
+                }
+                var expectedFrame = Point()
+                for (direction in PopupDirection.entries) {
+                    scenario.onActivity {
+                        val screen = IntArray(2).also(anchor::getLocationOnScreen)
+                        expectedFrame = Point(screen[0] + union.left, screen[1] + union.top)
+                        SkinPopupPlacement.show(popup, bubble, anchor, direction, true)
+                    }
+                    ins.waitForIdleSync()
+                    scenario.onActivity {
+                        assertTrue("Popup was not shown for $direction", popup.isShowing)
+                        assertEquals(direction, bubble.skinDirection)
+                        assertEquals(expectedFrame, Point().also { point ->
+                            val location = IntArray(2).also(popup.contentView::getLocationOnScreen)
+                            point.set(location[0], location[1])
+                        })
+                        assertEquals(union.width(), popup.contentView.width)
+                        assertEquals(union.height(), popup.contentView.height)
+                        assertFalse(popup.isTouchable)
+                    }
+                }
+                scenario.onActivity {
+                    popup.dismiss()
+                    assertFalse(popup.isShowing)
+                }
+                lateinit var guide: SkinGuidePopup
+                scenario.onActivity { host ->
+                    guide = SkinGuidePopup(host)
+                    guide.show(
+                        anchor,
+                        requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_DARK)),
+                        PopupDirection.entries.associateWith { "か" },
+                    )
+                }
+                ins.waitForIdleSync()
+                scenario.onActivity {
+                    assertTrue(guide.isShowing)
+                    val field = guide.javaClass.getDeclaredField("overflowWindow").apply { isAccessible = true }
+                    val overflow = field.get(guide) as PopupWindow
+                    assertTrue(overflow.isShowing)
+                    guide.dismiss()
+                    assertFalse(guide.isShowing)
+                }
+            } finally {
+                scenario.onActivity {
+                    if (popupCreated) popup.dismiss()
+                    if (panelAdded && panel.parent != null) {
+                        manager.removeViewImmediate(panel)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test fun offsetWindowKeepsAnchoredFlickAndOverflowGuideWorking() {
         val ins = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)).use { scenario ->
             lateinit var anchor: View
@@ -57,15 +168,14 @@ class SkinPopupCompatibilityInstrumentedTest {
                     bubble.addView(TextView(host).apply { text = "く" }, FrameLayout.LayoutParams(-1, -1))
                     popup = PopupWindow(bubble, 150, 100, false)
                     cleanup.add { popup.dismiss() }
-                    val union = Rect()
-                    PopupDirection.entries.forEach { union.union(SkinPopupGeometry.resolve(150, 100, it, true).bounds) }
-                    expected = Point(screen[0] + union.left, screen[1] + union.top)
+                    val top = SkinPopupGeometry.resolve(150, 100, PopupDirection.TOP, true).bounds
+                    expected = Point(screen[0] + top.left, screen[1] + top.top)
                     SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.TOP, true)
                 }
                 ins.waitForIdleSync()
                 scenario.onActivity {
                     assertEquals(expected, Point().also { point ->
-                        val p = IntArray(2).also(popup.contentView::getLocationOnScreen)
+                        val p = IntArray(2).also(bubble::getLocationOnScreen)
                         point.set(p[0], p[1])
                     })
                     assertFalse(popup.isTouchable)
@@ -73,20 +183,22 @@ class SkinPopupCompatibilityInstrumentedTest {
                 }
                 ins.waitForIdleSync()
                 scenario.onActivity { host ->
-                    val p = IntArray(2).also(popup.contentView::getLocationOnScreen)
-                    assertEquals(expected, Point(p[0], p[1]))
+                    val screen = IntArray(2).also(anchor::getLocationOnScreen)
+                    val right = SkinPopupGeometry.resolve(150, 100, PopupDirection.RIGHT, true).bounds
+                    val p = IntArray(2).also(bubble::getLocationOnScreen)
+                    assertEquals(Point(screen[0] + right.left, screen[1] + right.top), Point(p[0], p[1]))
                     popup.dismiss()
                     bubble.skinId = KeyboardSkinId.DEFAULT
                     assertSame(bubble, popup.contentView)
                     assertTrue(popup.isTouchable)
                     guide = SkinGuidePopup(host)
                     cleanup.add { guide.dismiss() }
-                    val screen = IntArray(2).also(anchor::getLocationOnScreen)
+                    val guideScreen = IntArray(2).also(anchor::getLocationOnScreen)
                     val size = Point().also { anchor.display.getRealSize(it) }
                     val bars = ViewCompat.getRootWindowInsets(anchor)!!.getInsetsIgnoringVisibility(
                         WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                    expected = Point((screen[0] - 150).coerceIn(bars.left, size.x - bars.right - 450),
-                        (screen[1] - 100).coerceIn(bars.top, size.y - bars.bottom - 300))
+                    expected = Point((guideScreen[0] - 150).coerceIn(bars.left, size.x - bars.right - 450),
+                        (guideScreen[1] - 100).coerceIn(bars.top, size.y - bars.bottom - 300))
                     guide.show(anchor, requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_DARK)),
                         listOf(PopupDirection.CENTER, PopupDirection.LEFT, PopupDirection.TOP,
                             PopupDirection.RIGHT, PopupDirection.BOTTOM).associateWith { "か" })
