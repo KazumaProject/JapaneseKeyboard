@@ -23,15 +23,16 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [24, 28, 29, 35])
+@Config(sdk = [24, 25, 26, 27, 28, 29, 35])
 class KeyboardSkinPopupCompatibilityTest {
     private class RecordingPopup(content: View) : PopupWindow(content, 100, 60, false) {
         var shown = false
         var position = Point()
         var updates = 0
         var anchoredCalls = 0
-        var tokenCalls = 0
         var regularShowAtLocationCalls = 0
+        var suppliedParentToken: IBinder? = null
+        var suppliedParentRoot: View? = null
 
         private fun recordAnchoredPosition(anchor: View, xOffset: Int, yOffset: Int) {
             val screen = IntArray(2)
@@ -62,11 +63,8 @@ class KeyboardSkinPopupCompatibilityTest {
         }
         override fun showAtLocation(parent: View, gravity: Int, x: Int, y: Int) {
             regularShowAtLocationCalls++
-            position = Point(x, y)
-            shown = true
-        }
-        fun showAtLocation(_token: IBinder, _gravity: Int, x: Int, y: Int) {
-            tokenCalls++
+            suppliedParentToken = parent.windowToken
+            suppliedParentRoot = parent.rootView
             position = Point(x, y)
             shown = true
         }
@@ -92,7 +90,7 @@ class KeyboardSkinPopupCompatibilityTest {
         try { block(activity, anchor) } finally { controller.pause().stop().destroy() }
     }
 
-    private fun expectedUnionPosition(anchor: View): Point {
+    private fun expectedUnionPosition(anchor: View, applicationWindow: Boolean = false): Point {
         val bounds = android.graphics.Rect()
         PopupDirection.entries.forEach {
             bounds.union(com.kazumaproject.core.ui.skin.SkinPopupGeometry.resolve(
@@ -102,10 +100,16 @@ class KeyboardSkinPopupCompatibilityTest {
         val inWindow = IntArray(2)
         anchor.getLocationOnScreen(screen)
         anchor.getLocationInWindow(inWindow)
-        return Point(
-            screen[0] + bounds.left - (screen[0] - inWindow[0]),
-            screen[1] + bounds.top - (screen[1] - inWindow[1]),
-        )
+        return if (applicationWindow && Build.VERSION.SDK_INT < 29) {
+            // The public showAtLocation(View, ...) overload receives application-window
+            // coordinates when the supplied view exposes the application token.
+            Point(screen[0] + bounds.left, screen[1] + bounds.top)
+        } else {
+            Point(
+                screen[0] + bounds.left - (screen[0] - inWindow[0]),
+                screen[1] + bounds.top - (screen[1] - inWindow[1]),
+            )
+        }
     }
 
     @Test fun flickKeepsOneAnchoredSurfaceAcrossDirectionsAndKeepsInputDisabled() = withHost(panel = true) { activity, anchor ->
@@ -113,7 +117,7 @@ class KeyboardSkinPopupCompatibilityTest {
         bubble.addView(TextView(activity), FrameLayout.LayoutParams(-1, -1))
         val popup = RecordingPopup(bubble)
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.TOP, true)
-        val initialPosition = expectedUnionPosition(anchor)
+        val initialPosition = expectedUnionPosition(anchor, applicationWindow = true)
         assertEquals(initialPosition, popup.position)
         assertEquals(0, popup.updates)
         assertSame(popup.contentView, bubble.parent)
@@ -122,14 +126,20 @@ class KeyboardSkinPopupCompatibilityTest {
         assertEquals(0, popup.updates)
         anchor.layout(100, 300, 220, 380)
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.RIGHT, true)
-        assertEquals(expectedUnionPosition(anchor), popup.position)
+        assertEquals(expectedUnionPosition(anchor, applicationWindow = true), popup.position)
         assertEquals(1, popup.updates)
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.BOTTOM, true)
-        assertEquals(expectedUnionPosition(anchor), popup.position)
+        assertEquals(expectedUnionPosition(anchor, applicationWindow = true), popup.position)
         assertEquals(1, popup.updates)
-        assertEquals(0, popup.regularShowAtLocationCalls)
-        if (Build.VERSION.SDK_INT >= 29) assertTrue(popup.anchoredCalls > 0)
-        else assertTrue(popup.tokenCalls > 0)
+        if (Build.VERSION.SDK_INT >= 29) {
+            assertTrue(popup.anchoredCalls > 0)
+            assertEquals(0, popup.regularShowAtLocationCalls)
+        } else {
+            assertEquals(0, popup.anchoredCalls)
+            assertEquals(1, popup.regularShowAtLocationCalls)
+            assertEquals(anchor.applicationWindowToken, popup.suppliedParentToken)
+            assertSame(anchor.rootView, popup.suppliedParentRoot)
+        }
         assertFalse(popup.isTouchable)
         assertFalse(popup.isClippingEnabled)
         assertTrue(popup.isShowing)
@@ -138,6 +148,19 @@ class KeyboardSkinPopupCompatibilityTest {
         assertSame(bubble, popup.contentView)
         assertTrue(popup.isTouchable)
         assertTrue(popup.isClippingEnabled)
+    }
+
+    @Test fun topLevelFlickKeepsTheExistingAbsolutePopupPath() = withHost { activity, anchor ->
+        val bubble = KeyWindowLayout(activity).apply { skinId = KeyboardSkinId.CUPERTINO_DARK }
+        bubble.addView(TextView(activity), FrameLayout.LayoutParams(-1, -1))
+        val popup = RecordingPopup(bubble)
+        SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.TOP, true)
+        assertEquals(1, popup.regularShowAtLocationCalls)
+        assertEquals(0, popup.anchoredCalls)
+        assertEquals(anchor.windowToken, popup.suppliedParentToken)
+        assertSame(anchor.rootView, popup.suppliedParentRoot)
+        assertTrue(popup.isShowing)
+        popup.dismiss()
     }
 
     @Test fun overflowGuideCanBeDismissedAndShownAgainOnEverySupportedApi() = withHost { activity, anchor ->

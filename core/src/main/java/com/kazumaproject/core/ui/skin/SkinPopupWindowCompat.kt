@@ -6,7 +6,6 @@ import android.os.IBinder
 import android.view.Gravity
 import android.view.View
 import android.widget.PopupWindow
-import java.lang.reflect.InvocationTargetException
 
 /** PopupWindow gained public screen-layout accessors in Android 10. */
 internal object SkinPopupWindowCompat {
@@ -33,8 +32,8 @@ internal object SkinPopupWindowCompat {
     /**
      * Android 7/8 resolve PopupWindow.showAsDropDown() against the panel token itself.
      * That token is not accepted for a popup attached to an IME application window.
-     * Use PopupWindow's hidden token overload on those releases so the popup is still
-     * attached to the same top-level window without changing the normal popup path.
+     * Pass a view whose public window-token contract points at the application window
+     * so PopupWindow.showAtLocation(View, ...) creates the popup in that window.
      */
     fun showInApplicationWindow(window: PopupWindow, anchor: View, screenX: Int, screenY: Int) {
         if (Build.VERSION.SDK_INT >= 29) {
@@ -42,25 +41,27 @@ internal object SkinPopupWindowCompat {
         }
         val token = anchor.applicationWindowToken
             ?: error("Cannot show popup without an application window token")
-        val point = position(window, anchor, screenX, screenY)
-        try {
-            showAtLocationWithToken.invoke(window, token, Gravity.NO_GRAVITY, point.x, point.y)
-        } catch (error: InvocationTargetException) {
-            throw (error.targetException as? RuntimeException) ?: error
-        }
+        window.showAtLocation(ApplicationWindowTokenView(anchor, token),
+            Gravity.NO_GRAVITY, screenX, screenY)
     }
 
-    fun updateInApplicationWindow(window: PopupWindow, anchor: View,
+    fun updateInApplicationWindow(window: PopupWindow,
                                   screenX: Int, screenY: Int, width: Int, height: Int) {
-        val point = position(window, anchor, screenX, screenY)
-        window.update(point.x, point.y, width, height)
+        window.update(screenX, screenY, width, height)
     }
 
-    private val showAtLocationWithToken by lazy {
-        PopupWindow::class.java.getDeclaredMethod(
-            "showAtLocation", IBinder::class.java, Int::class.javaPrimitiveType,
-            Int::class.javaPrimitiveType, Int::class.javaPrimitiveType).apply {
-            isAccessible = true
-        }
+    /**
+     * PopupWindow's public showAtLocation(View, ...) obtains its token from the
+     * supplied view. On pre-29 Android a split pane has a panel token, while the
+     * popup must use the parent IME/application token. Keep the real root view so
+     * framework versions that retain it for popup bookkeeping still see the pane's
+     * root, while exposing the application token through the documented View API.
+     */
+    private class ApplicationWindowTokenView(anchor: View, private val token: IBinder) : View(anchor.context) {
+        private val root = anchor.rootView
+
+        override fun getWindowToken(): IBinder = token
+        override fun getApplicationWindowToken(): IBinder = token
+        override fun getRootView(): View = root
     }
 }

@@ -126,7 +126,7 @@ object SkinPopupPlacement {
                     SkinPopupWindowCompat.showInApplicationWindow(window, anchor, screenX, screenY)
                 } else if (resized) {
                     SkinPopupWindowCompat.updateInApplicationWindow(
-                        window, anchor, screenX, screenY, window.width, window.height)
+                        window, screenX, screenY, window.width, window.height)
                 }
             } else {
                 // Keep the existing top-level IME placement. In particular, do not let
