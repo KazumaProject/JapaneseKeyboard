@@ -25,6 +25,21 @@ class NumberCandidateAssemblerTest {
         assertEquals(listOf(1, 2, 3), result.take(3).map { it.score })
     }
 
+    @Test fun notationVariantsFollowConfiguredNBestBeforeLowerRankedRepresentatives() {
+        val ranked = listOf(
+            Candidate("二円", 1, 3, 1, conversionSegments = listOf(CandidateConversionSegment(0, 3, "二円"))),
+            Candidate("荷縁", 1, 3, 2, conversionSegments = listOf(CandidateConversionSegment(0, 3, "荷縁"))),
+            Candidate("別解", 1, 3, 3),
+        )
+
+        val result = NumberCandidateAssembler.assemble("にえん", ranked, PredictionConfig(), nBest = 1)
+
+        assertEquals("2円", result[0].string)
+        assertEquals(listOf("２円", "二円"), result.drop(1).take(2).map { it.string })
+        assertTrue(result.drop(1).take(2).all { it.numericRole == NumericCandidateRole.VARIANT })
+        assertEquals(listOf("荷縁", "別解"), result.drop(3).take(2).map { it.string })
+    }
+
     @Test fun settingChangesNotationOrderButNotInterpretationOrder() {
         val ranked = listOf(
             Candidate("二円", 1, 3, 10, conversionSegments = listOf(CandidateConversionSegment(0, 3, "二円"))),

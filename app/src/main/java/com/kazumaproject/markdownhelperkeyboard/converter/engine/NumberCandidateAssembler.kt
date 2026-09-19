@@ -13,7 +13,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandi
  * Adds notation variants after linguistic ranking has completed.
  *
  * This class deliberately has no score comparator. Existing candidates retain their list position;
- * display-only variants and parser-only supplements are appended in separate phases.
+ * display-only variants and parser-only supplements are inserted only at the boundary requested by
+ * the caller, after the already selected N-best representatives.
  */
 object NumberCandidateAssembler {
     private val protectedTypes = setOf(
@@ -27,6 +28,7 @@ object NumberCandidateAssembler {
         input: String,
         candidates: List<Candidate>,
         config: PredictionConfig,
+        nBest: Int? = null,
     ): List<Candidate> {
         if (input.isEmpty() || candidates.isEmpty()) return candidates
         val wholeProofs = ValidatedNumber.parseAll(input, config.numberCandidateConfig)
@@ -125,9 +127,14 @@ object NumberCandidateAssembler {
                 )
                 if (seen.add(key)) add(candidate)
             }
-            representatives.forEach(::append)
+            val insertionIndex = nBest?.coerceIn(0, representatives.size) ?: representatives.size
+            // Keep the configured N-best interpretations exactly where the normal ranker placed
+            // them. Numeric notation is a post-ranking expansion, so it starts immediately after
+            // that prefix and cannot displace any of the N-best representatives.
+            representatives.take(insertionIndex).forEach(::append)
             variants.forEach(::append)
             tail.forEach(::append)
+            representatives.drop(insertionIndex).forEach(::append)
         }
     }
 

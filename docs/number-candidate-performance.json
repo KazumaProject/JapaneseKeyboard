@@ -17,8 +17,64 @@
       "longDigits": 70.042
     }
   },
+  "nBestAfterBoundary": {
+    "runs": 1,
+    "warmup": 5,
+    "timedIterations": 30,
+    "inputCount": 10,
+    "reports": [
+      "app/build/reports/number-candidate-performance/before-nbest-boundary.txt",
+      "app/build/reports/number-candidate-performance/after-nbest-boundary.txt"
+    ],
+    "before": {
+      "avgAllocatedBytes": 805191,
+      "heapGrowthBytes": 16816792,
+      "retainedHeapGrowthBytes": 11472,
+      "gcCount": 37,
+      "gcTimeMs": 151,
+      "p50Us": {
+        "ordinaryShort": 3367.834,
+        "ordinary": 1137.792,
+        "numberOnly": 289.542,
+        "numberInSentence": 1188.417,
+        "multipleQuantities": 766.0,
+        "longDigits": 27.541
+      },
+      "p95Us": {
+        "ordinaryShort": 4417.541,
+        "ordinary": 3093.458,
+        "numberOnly": 519.708,
+        "numberInSentence": 1541.042,
+        "multipleQuantities": 1334.333,
+        "longDigits": 35.75
+      }
+    },
+    "after": {
+      "avgAllocatedBytes": 813799,
+      "heapGrowthBytes": 69059312,
+      "retainedHeapGrowthBytes": 984,
+      "gcCount": 40,
+      "gcTimeMs": 155,
+      "p50Us": {
+        "ordinaryShort": 3397.959,
+        "ordinary": 1169.667,
+        "numberOnly": 316.708,
+        "numberInSentence": 1143.708,
+        "multipleQuantities": 758.25,
+        "longDigits": 31.667
+      },
+      "p95Us": {
+        "ordinaryShort": 4861.625,
+        "ordinary": 4589.708,
+        "numberOnly": 778.042,
+        "numberInSentence": 1580.0,
+        "multipleQuantities": 958.792,
+        "longDigits": 74.209
+      }
+    }
+  },
   "sha256": {
-    "fullStandardDebugApk": "3895a251d0b69087fb01da48a535213ca3a4483b5972b28e3fa552a1eb6fc914",
+    "fullStandardDebugApk": "f5cbc0b65d4ee6cd3ce45b42b85560e98d985b11d851d142022fae3f3f99e73a",
     "liteFdroidDebugApk": "0c0af07e8def5d43498cd558b92c475483f1d080df5289d8f87e4f8b5a25a547",
     "liteStandardDebugApk": "a54a02387d9793f417e4e64144c2d59e5004ce9d7e35297daccd1c08f65d5f35",
     "systemDictionary": "71a2d8ece0f8b9af815dcc1fd62a974d8369acc86784bf99d5c845e95cbeada3",

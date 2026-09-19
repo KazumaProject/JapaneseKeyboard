@@ -17902,6 +17902,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT &&
                 it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT
         }.sortedBy { order[it.interpretationId] ?: Int.MAX_VALUE }
+        // Number notation is expanded after the configured N-best prefix. Keep that boundary when
+        // a cached Zenz order is reapplied; otherwise cache hits would move all notation variants
+        // back behind every representative and make the visible order depend on cache state.
+        val firstDerivedIndex = candidates.indexOfFirst {
+            it.numericRole == com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT ||
+                it.numericRole == com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT
+        }
+        val representativePrefixCount = if (firstDerivedIndex < 0) {
+            representatives.size
+        } else {
+            candidates.take(firstDerivedIndex).count {
+                it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.VARIANT &&
+                    it.numericRole != com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT
+            }.coerceAtMost(representatives.size)
+        }
         val representativeOrder = representatives.mapIndexedNotNull { index, candidate ->
             candidate.interpretationId?.let { it to index }
         }.toMap()
@@ -17911,7 +17926,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val supplements = candidates.filter {
             it.numericRole == com.kazumaproject.markdownhelperkeyboard.converter.candidate.NumericCandidateRole.SUPPLEMENT
         }
-        return representatives + variants + supplements
+        return representatives.take(representativePrefixCount) + variants + supplements +
+            representatives.drop(representativePrefixCount)
     }
 
     private suspend fun prepareZenzRerankPlan(

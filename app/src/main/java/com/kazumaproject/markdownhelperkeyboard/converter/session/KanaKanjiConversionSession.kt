@@ -105,6 +105,7 @@ class KanaKanjiConversionSession(
                     input = request.input,
                     candidates = rawResult.candidates,
                     config = request.predictionConfig,
+                    nBest = request.n,
                 )
             }
             val projectedSegments = LinkedHashMap(rawResult.candidateSegmentsByString)

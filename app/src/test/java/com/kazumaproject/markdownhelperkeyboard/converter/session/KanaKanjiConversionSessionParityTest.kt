@@ -71,10 +71,12 @@ class KanaKanjiConversionSessionParityTest {
             val session = KanaKanjiConversionSession(engine, backend)
             for (mode in CandidateQueryMode.entries) {
                 for (bunsetsu in listOf(false, true)) {
-                    val result = session.query(request("くじごふん", mode, bunsetsu))
+                    val query = request("くじごふん", mode, bunsetsu)
+                    val result = session.query(query)
+                    val numericIndex = result.candidates.indexOfFirst { it.string == "9時5分" }
                     assertTrue(
                         "$backend/$mode/$bunsetsu: ${result.candidates.map { it.string }}",
-                        result.candidates.any { it.string == "9時5分" },
+                        numericIndex >= query.n,
                     )
                 }
             }
@@ -91,10 +93,12 @@ class KanaKanjiConversionSessionParityTest {
                 CandidateQueryMode.CONVERSION,
             )) {
                 for (bunsetsu in listOf(false, true)) {
-                    val result = session.query(request("くじごふんとか", mode, bunsetsu))
+                    val query = request("くじごふんとか", mode, bunsetsu)
+                    val result = session.query(query)
+                    val numericIndex = result.candidates.indexOfFirst { it.string == "9時5分とか" }
                     assertTrue(
                         "$backend/$mode/$bunsetsu: ${result.candidates.map { it.string }}",
-                        result.candidates.any { it.string == "9時5分とか" },
+                        numericIndex >= query.n,
                     )
                 }
             }

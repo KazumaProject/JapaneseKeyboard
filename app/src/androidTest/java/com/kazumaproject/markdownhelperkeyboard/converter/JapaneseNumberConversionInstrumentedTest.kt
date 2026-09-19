@@ -199,6 +199,7 @@ class JapaneseNumberConversionInstrumentedTest {
             beamWidth = 20,
         ),
         PredictionConfig(),
+        nBest = 8,
     )
 
     private suspend fun measureConversions(

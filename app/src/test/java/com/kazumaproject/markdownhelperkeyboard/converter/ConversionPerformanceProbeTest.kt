@@ -221,6 +221,7 @@ class ConversionPerformanceProbeTest {
             beamWidth = 20,
         ).candidates,
         PredictionConfig(),
+        nBest = 4,
     )
 
     private class AllocationMeter(
