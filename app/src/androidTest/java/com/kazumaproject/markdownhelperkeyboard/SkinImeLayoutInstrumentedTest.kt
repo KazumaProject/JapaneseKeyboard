@@ -38,9 +38,9 @@ class SkinImeLayoutInstrumentedTest {
             check(it == "portrait" || it == "landscape") { "Unsupported rotation: $it" }
         } ?: "unspecified"
 
-    private fun outputDirectory(): File = File(
+    private fun outputDirectory(fixtureName: String = "standard"): File = File(
         ins.targetContext.getExternalFilesDir(null),
-        "ime-layout/${rotationName()}"
+        "ime-layout/${rotationName()}/$fixtureName"
     ).apply { mkdirs() }
 
     private fun nodes(): List<AccessibilityNodeInfo> {
@@ -53,14 +53,14 @@ class SkinImeLayoutInstrumentedTest {
         return result
     }
 
-    private fun awaitKey(): AccessibilityNodeInfo {
+    private fun awaitKey(fixtureName: String = "standard"): AccessibilityNodeInfo {
         val deadline = SystemClock.uptimeMillis() + 60000
         while (SystemClock.uptimeMillis() < deadline) {
             nodes().firstOrNull { it.isVisibleToUser && it.text?.toString() == "あ" &&
                 it.viewIdResourceName?.startsWith(ins.targetContext.packageName + ":id/") == true }?.let { return it }
             SystemClock.sleep(100)
         }
-        val out = outputDirectory()
+        val out = outputDirectory(fixtureName)
         automation.takeScreenshot()?.let { bitmap ->
             File(out, "missing-key.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
@@ -89,7 +89,29 @@ class SkinImeLayoutInstrumentedTest {
         error("IME layout did not settle")
     }
 
-    @Test fun captureActualImeWithEmptyAndComposingCandidates() {
+    @Test
+    fun captureActualImeWithEmptyAndComposingCandidates() {
+        captureActualImeWithConfiguredCandidates(
+            fixtureName = "standard",
+            candidateHeightDp = 60,
+            emptyHeightDp = 60
+        )
+    }
+
+    @Test
+    fun captureActualImeWithExplicitAsymmetricCandidates() {
+        captureActualImeWithConfiguredCandidates(
+            fixtureName = "asymmetric",
+            candidateHeightDp = 80,
+            emptyHeightDp = 60
+        )
+    }
+
+    private fun captureActualImeWithConfiguredCandidates(
+        fixtureName: String,
+        candidateHeightDp: Int,
+        emptyHeightDp: Int
+    ) {
         val context = ins.targetContext
         check(context.packageName.startsWith("com.kazumaproject.skinfidelity")) {
             "Run with the isolated fidelity application ID"
@@ -108,7 +130,7 @@ class SkinImeLayoutInstrumentedTest {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         }
         val rotation = rotationName()
-        val out = outputDirectory()
+        val out = outputDirectory(fixtureName)
         val measurements = JSONArray()
         try {
             when (rotation) {
@@ -124,20 +146,21 @@ class SkinImeLayoutInstrumentedTest {
                     .putBoolean("save_last_used_keyboard", false).putBoolean("keyboard_floating_preference", false)
                     .putString("candidate_column_preference", "2")
                     .putString("candidate_column_landscape_preference", "2")
-                    .putInt("candidate_view_height_dp_landscape_preference",110)
-                    .putInt("candidate_view_empty_height_dp_landscape_preference",60)
-                    .putInt("candidate_view_height_dp_preference",110).putInt("candidate_view_empty_height_dp_preference",60)
+                    .putInt("candidate_view_height_dp_landscape_preference",candidateHeightDp)
+                    .putInt("candidate_view_empty_height_dp_landscape_preference",emptyHeightDp)
+                    .putInt("candidate_view_height_dp_preference",candidateHeightDp)
+                    .putInt("candidate_view_empty_height_dp_preference",emptyHeightDp)
                     .putBoolean("shortcut_toolbar_visibility_preference",true)
                     .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",true)
                     .putBoolean("clipboard_preview_enable_preference",false).putBoolean("clipboard_history_preference",false)
                     .putBoolean("live_conversion_preference",false).putBoolean("enable_ai_conversion_zenz_preference",false)
                     .commit())
                 ActivityScenario.launch<FastInputHostActivity>(Intent(context,FastInputHostActivity::class.java)).use { scenario ->
-                    awaitKey(); SystemClock.sleep(1000)
+                    awaitKey(fixtureName); SystemClock.sleep(1000)
                     for (phase in listOf("empty", "composing", "committed")) {
                         val composing = phase == "composing"
                         if(composing) {
-                            val bounds=Rect();awaitKey().getBoundsInScreen(bounds)
+                            val bounds=Rect();awaitKey(fixtureName).getBoundsInScreen(bounds)
                             val down=SystemClock.uptimeMillis()
                             for(action in listOf(MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP)) {
                                 val event=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,bounds.exactCenterX(),bounds.exactCenterY(),0)
@@ -160,7 +183,7 @@ class SkinImeLayoutInstrumentedTest {
                             SystemClock.sleep(800)
                         }
                         awaitStableLayout()
-                        val name="$index-${skin.preferenceValue}-$phase"
+                        val name="$fixtureName-$index-${skin.preferenceValue}-$phase"
                         val snapshot=JSONArray()
                         val currentNodes = nodes()
                         fun boundsOf(id: String): Rect {
@@ -194,7 +217,8 @@ class SkinImeLayoutInstrumentedTest {
                         // The configured candidate height is content space. The navigation
                         // inset is added outside that budget by the IME root window.
                         val expectedCandidateHeight =
-                            ((if (composing) 110 else 60) * context.resources.displayMetrics.density).toInt()
+                            ((if (composing) candidateHeightDp else emptyHeightDp) *
+                                context.resources.displayMetrics.density).toInt()
                         check(kotlin.math.abs(keyboardBounds.top - inputBounds.top - expectedCandidateHeight) <= 1) {
                             "Candidate reserved space clipped: input=$inputBounds, keyboard=$keyboardBounds, expected height $expectedCandidateHeight"
                         }

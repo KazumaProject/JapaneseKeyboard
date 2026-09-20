@@ -162,7 +162,7 @@ if ! skin_ime_configure_navigation; then
 fi
 
 skin_ime_test_method=\
-"com.kazumaproject.markdownhelperkeyboard.SkinImeLayoutInstrumentedTest#captureActualImeWithEmptyAndComposingCandidates"
+"com.kazumaproject.markdownhelperkeyboard.SkinImeLayoutInstrumentedTest"
 skin_ime_overall_status=0
 
 for rotation in portrait landscape; do
