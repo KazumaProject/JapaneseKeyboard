@@ -19,7 +19,7 @@ object SkinPopupPlacement {
                                    val windowElevation: Float, val animationStyle: Int,
                                    val clipping: Boolean, val touchable: Boolean, val laidOutInScreen: Boolean?,
                                    val contentLayout: ViewGroup.LayoutParams?)
-    /** A direction change is one child layout transaction inside a stationary window. */
+    /** Keeps the native popup surface stationary while the directional bubble changes. */
     private class FlickFrame(context: android.content.Context) : FrameLayout(context)
 
     private val legacyStates = java.util.WeakHashMap<KeyWindowLayout, LegacyState>()
@@ -86,8 +86,9 @@ object SkinPopupPlacement {
         window.animationStyle = 0
         skin.showPopup(bubble)
         if (flick) {
-            // iOS changes directional surfaces in place. Resizing/repositioning a native
-            // PopupWindow on every MOVE lets its compositor interpolate unrelated bounds.
+            // Keep the same fixed surface used by the normal Cupertino flick path. Only
+            // the child bubble changes direction, so ordinary flick rendering does not
+            // move or resize while the finger crosses the key.
             val union = android.graphics.Rect()
             PopupDirection.entries.forEach { union.union(SkinPopupGeometry.resolve(w, h, it, true).bounds) }
             if (window.contentView !is FlickFrame) {
@@ -110,14 +111,31 @@ object SkinPopupPlacement {
             window.height = union.height()
             window.isTouchable = false
             window.isClippingEnabled = false
-            val windowPosition = SkinPopupWindowCompat.position(
-                window, anchor, position[0] + union.left, position[1] + union.top)
-            val x = windowPosition.x
-            val y = windowPosition.y
-            // Drop-down placement also fits the transparent frame to the visible screen;
-            // that silently displaces the actual balloon on bottom/edge keys.
-            if (!window.isShowing) window.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY, x, y)
-            else if (resized) window.update(x, y, window.width, window.height)
+            if (usesAnchoredWindow(anchor)) {
+                // A split IME key belongs to an application-panel window. Anchoring the
+                // popup uses the parent application token. Keep the entire transparent
+                // frame in screen coordinates: showAsDropDown() may move that frame to
+                // fit the display, while the child bubble margins were calculated from
+                // its intended (possibly off-screen) origin.
+                val screenX = position[0] + union.left
+                val screenY = position[1] + union.top
+                val parentWindowView = applicationWindowView(anchor)
+                if (!window.isShowing) {
+                    SkinPopupWindowCompat.showInApplicationWindow(
+                        window, anchor, parentWindowView, screenX, screenY)
+                } else if (resized) {
+                    SkinPopupWindowCompat.updateInApplicationWindow(
+                        window, parentWindowView, screenX, screenY, window.width, window.height)
+                }
+            } else {
+                // Keep the existing top-level IME placement. In particular, do not let
+                // PopupWindow's drop-down fitting move the stationary Cupertino frame.
+                val windowPosition = SkinPopupWindowCompat.position(
+                    window, anchor, position[0] + union.left, position[1] + union.top)
+                if (!window.isShowing) window.showAtLocation(
+                    anchor, android.view.Gravity.NO_GRAVITY, windowPosition.x, windowPosition.y)
+                else if (resized) window.update(windowPosition.x, windowPosition.y, window.width, window.height)
+            }
         } else {
             (window.contentView as? FlickFrame)?.let { frame ->
                 window.dismiss()
@@ -136,5 +154,22 @@ object SkinPopupPlacement {
             else window.showAsDropDown(anchor, layout.bounds.left, layout.bounds.top - h)
         }
         return true
+    }
+
+    /** Panel views have a child-window token distinct from their application token. */
+    internal fun usesAnchoredWindow(anchor: View): Boolean {
+        val windowToken = anchor.windowToken ?: return false
+        val applicationToken = anchor.applicationWindowToken ?: return false
+        return windowToken != applicationToken
+    }
+
+    /** Resolve the actual parent window, not the panel window containing the anchor. */
+    internal fun applicationWindowView(anchor: View): View {
+        var current: View? = anchor
+        while (current != null) {
+            (current as? SkinPopupWindowHost)?.applicationWindowView?.let { return it }
+            current = current.parent as? View
+        }
+        error("Anchored popup requires a SkinPopupWindowHost ancestor")
     }
 }
