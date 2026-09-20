@@ -113,16 +113,13 @@ object SkinPopupPlacement {
             window.isClippingEnabled = false
             if (usesAnchoredWindow(anchor)) {
                 // A split IME key belongs to an application-panel window. Anchoring the
-                // popup uses the parent application token; showAtLocation(anchor, ...)
-                // would use the panel token and can fail when WindowManager adds it.
-                val xOffset = union.left
-                val yOffset = union.top - h
+                // popup uses the parent application token. Keep the entire transparent
+                // frame in screen coordinates: showAsDropDown() may move that frame to
+                // fit the display, while the child bubble margins were calculated from
+                // its intended (possibly off-screen) origin.
                 val screenX = position[0] + union.left
                 val screenY = position[1] + union.top
-                if (android.os.Build.VERSION.SDK_INT >= 29) {
-                    if (!window.isShowing) window.showAsDropDown(anchor, xOffset, yOffset)
-                    else if (resized) window.update(anchor, xOffset, yOffset, window.width, window.height)
-                } else if (!window.isShowing) {
+                if (!window.isShowing) {
                     SkinPopupWindowCompat.showInApplicationWindow(window, anchor, screenX, screenY)
                 } else if (resized) {
                     SkinPopupWindowCompat.updateInApplicationWindow(

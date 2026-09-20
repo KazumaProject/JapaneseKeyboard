@@ -3,7 +3,6 @@ package com.kazumaproject.markdownhelperkeyboard.skin
 import android.app.Activity
 import android.graphics.Point
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.view.View
 import android.widget.FrameLayout
@@ -100,9 +99,9 @@ class KeyboardSkinPopupCompatibilityTest {
         val inWindow = IntArray(2)
         anchor.getLocationOnScreen(screen)
         anchor.getLocationInWindow(inWindow)
-        return if (applicationWindow && Build.VERSION.SDK_INT < 29) {
-            // The public showAtLocation(View, ...) overload receives application-window
-            // coordinates when the supplied view exposes the application token.
+        return if (applicationWindow) {
+            // Application-window placement now uses a fixed screen-coordinate surface
+            // on every supported API. The supplied proxy view only changes the token.
             Point(screen[0] + bounds.left, screen[1] + bounds.top)
         } else {
             Point(
@@ -131,15 +130,10 @@ class KeyboardSkinPopupCompatibilityTest {
         SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.BOTTOM, true)
         assertEquals(expectedUnionPosition(anchor, applicationWindow = true), popup.position)
         assertEquals(1, popup.updates)
-        if (Build.VERSION.SDK_INT >= 29) {
-            assertTrue(popup.anchoredCalls > 0)
-            assertEquals(0, popup.regularShowAtLocationCalls)
-        } else {
-            assertEquals(0, popup.anchoredCalls)
-            assertEquals(1, popup.regularShowAtLocationCalls)
-            assertEquals(anchor.applicationWindowToken, popup.suppliedParentToken)
-            assertSame(anchor.rootView, popup.suppliedParentRoot)
-        }
+        assertEquals(0, popup.anchoredCalls)
+        assertEquals(1, popup.regularShowAtLocationCalls)
+        assertEquals(anchor.applicationWindowToken, popup.suppliedParentToken)
+        assertSame(anchor.rootView, popup.suppliedParentRoot)
         assertFalse(popup.isTouchable)
         assertFalse(popup.isClippingEnabled)
         assertTrue(popup.isShowing)

@@ -82,14 +82,8 @@ class SkinGuidePopup(context: Context) {
             }.also { overflowWindow = it }
             popup.width = 3 * width
             popup.height = 3 * height
-            val xOffset = screenLeft - anchorPosition[0]
-            val yOffset = screenTop - anchorPosition[1] - height
             if (SkinPopupPlacement.usesAnchoredWindow(anchor)) {
-                if (android.os.Build.VERSION.SDK_INT >= 29) {
-                    popup.showAsDropDown(anchor, xOffset, yOffset)
-                } else {
-                    SkinPopupWindowCompat.showInApplicationWindow(popup, anchor, screenLeft, screenTop)
-                }
+                SkinPopupWindowCompat.showInApplicationWindow(popup, anchor, screenLeft, screenTop)
             } else {
                 val position = SkinPopupWindowCompat.position(popup, anchor, screenLeft, screenTop)
                 popup.showAtLocation(anchor, Gravity.NO_GRAVITY, position.x, position.y)
