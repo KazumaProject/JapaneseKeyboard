@@ -548,9 +548,9 @@ data class ImePreferencesSnapshot(
                 tenkeyWidthPreferenceValue = appPreference.keyboard_width ?: 100,
                 qwertyHeightPreferenceValue = appPreference.qwerty_keyboard_height ?: 280,
                 qwertyWidthPreferenceValue = appPreference.qwerty_keyboard_width ?: 100,
-                candidateViewHeightPreferenceValue = appPreference.candidate_view_height_dp ?: 110,
+                candidateViewHeightPreferenceValue = appPreference.candidate_view_height_dp ?: 60,
                 candidateViewHeightEmptyPreferenceValue =
-                    appPreference.candidate_view_empty_height_dp ?: 110,
+                    appPreference.candidate_view_empty_height_dp ?: 60,
                 tenkeyPositionPreferenceValue = appPreference.keyboard_position ?: true,
                 tenkeyBottomMarginPreferenceValue =
                     appPreference.keyboard_vertical_margin_bottom ?: 0,
@@ -586,9 +586,9 @@ data class ImePreferencesSnapshot(
                 qwertyWidthLandscapePreferenceValue =
                     appPreference.qwerty_keyboard_width_landscape ?: 100,
                 candidateViewLandscapeHeightPreferenceValue =
-                    appPreference.candidate_view_height_dp_landscape ?: 110,
+                    appPreference.candidate_view_height_dp_landscape ?: 60,
                 candidateViewLandscapeHeightEmptyPreferenceValue =
-                    appPreference.candidate_view_empty_height_dp_landscape ?: 110,
+                    appPreference.candidate_view_empty_height_dp_landscape ?: 60,
                 tenkeyLandscapePositionPreferenceValue =
                     appPreference.keyboard_position_landscape ?: true,
                 tenkeyLandscapeBottomMarginPreferenceValue =

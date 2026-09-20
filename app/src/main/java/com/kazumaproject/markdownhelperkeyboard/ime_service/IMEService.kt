@@ -1757,8 +1757,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyWidthPreferenceValue: Int? = 100
     private var qwertyHeightPreferenceValue: Int? = 280
     private var qwertyWidthPreferenceValue: Int? = 100
-    private var candidateViewHeightPreferenceValue: Int? = 110
-    private var candidateViewHeightEmptyPreferenceValue: Int? = 110
+    private var candidateViewHeightPreferenceValue: Int? = 60
+    private var candidateViewHeightEmptyPreferenceValue: Int? = 60
     private var tenkeyPositionPreferenceValue: Boolean? = true
     private var tenkeyBottomMarginPreferenceValue: Int? = 0
     private var qwertyPositionPreferenceValue: Boolean? = true
@@ -1768,8 +1768,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyWidthLandScapePreferenceValue: Int? = 100
     private var qwertyHeightLandScapePreferenceValue: Int? = 280
     private var qwertyWidthLandScapePreferenceValue: Int? = 100
-    private var candidateViewLandScapeHeightPreferenceValue: Int? = 110
-    private var candidateViewLandScapeHeightEmptyPreferenceValue: Int? = 110
+    private var candidateViewLandScapeHeightPreferenceValue: Int? = 60
+    private var candidateViewLandScapeHeightEmptyPreferenceValue: Int? = 60
     private var tenkeyLandScapePositionPreferenceValue: Boolean? = true
     private var tenkeyLandScapeBottomMarginPreferenceValue: Int? = 0
     private var qwertyLandScapePositionPreferenceValue: Boolean? = true
@@ -18340,8 +18340,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPref = tenkeyWidthPreferenceValue ?: 100,
                 bottomMargin = tenkeyBottomMarginPreferenceValue ?: 0,
                 positionIsEnd = tenkeyPositionPreferenceValue ?: true,
-                candidateHeight = candidateViewHeightPreferenceValue ?: 110,
-                candidateEmptyHeight = candidateViewHeightEmptyPreferenceValue ?: 110,
+                candidateHeight = candidateViewHeightPreferenceValue ?: 60,
+                candidateEmptyHeight = candidateViewHeightEmptyPreferenceValue ?: 60,
                 qwertyHeightPref = qwertyHeightPreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthPreferenceValue ?: 100,
                 qwertyBottomMargin = qwertyBottomMarginPreferenceValue ?: 0,
@@ -18357,8 +18357,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPref = tenkeyWidthLandScapePreferenceValue ?: 100,
                 bottomMargin = tenkeyLandScapeBottomMarginPreferenceValue ?: 0,
                 positionIsEnd = tenkeyLandScapePositionPreferenceValue ?: true,
-                candidateHeight = candidateViewLandScapeHeightPreferenceValue ?: 110,
-                candidateEmptyHeight = candidateViewLandScapeHeightEmptyPreferenceValue ?: 110,
+                candidateHeight = candidateViewLandScapeHeightPreferenceValue ?: 60,
+                candidateEmptyHeight = candidateViewLandScapeHeightEmptyPreferenceValue ?: 60,
                 qwertyHeightPref = qwertyHeightLandScapePreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthLandScapePreferenceValue ?: 100,
                 qwertyBottomMargin = qwertyLandScapeBottomMarginPreferenceValue ?: 0,
@@ -18801,9 +18801,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val suggestionHeightInDp = if (isPortrait) {
-            candidateViewHeightPreferenceValue ?: 110
+            candidateViewHeightPreferenceValue ?: 60
         } else {
-            candidateViewLandScapeHeightPreferenceValue ?: 110
+            candidateViewLandScapeHeightPreferenceValue ?: 60
         }
 
         val keyboardHeight = if (isPortrait) {

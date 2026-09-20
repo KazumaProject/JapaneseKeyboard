@@ -372,7 +372,7 @@ object AppPreference {
     private val CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE =
         Pair("candidate_view_height_dp_landscape_preference", 60)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE =
-        Pair("candidate_view_empty_height_dp_landscape_preference", 110)
+        Pair("candidate_view_empty_height_dp_landscape_preference", 60)
 
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val FLICK_EDITOR_PREVIEW = Pair(FLICK_EDITOR_PREVIEW_KEY, false)
@@ -561,33 +561,33 @@ object AppPreference {
 
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
 
-    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 110)
+    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 60)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP =
-        Pair("candidate_view_empty_height_dp_preference", 110)
+        Pair("candidate_view_empty_height_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP =
-        Pair("candidate_view_height_portrait_column_1_dp_preference", 110)
+        Pair("candidate_view_height_portrait_column_1_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_2_DP =
-        Pair("candidate_view_height_portrait_column_2_dp_preference", 120)
+        Pair("candidate_view_height_portrait_column_2_dp_preference", 80)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_3_DP =
-        Pair("candidate_view_height_portrait_column_3_dp_preference", 160)
+        Pair("candidate_view_height_portrait_column_3_dp_preference", 100)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP =
         Pair("candidate_view_height_landscape_column_1_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_2_DP =
-        Pair("candidate_view_height_landscape_column_2_dp_preference", 90)
+        Pair("candidate_view_height_landscape_column_2_dp_preference", 80)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_3_DP =
-        Pair("candidate_view_height_landscape_column_3_dp_preference", 120)
+        Pair("candidate_view_height_landscape_column_3_dp_preference", 100)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP =
-        Pair("candidate_default_height_portrait_column_1_dp_preference", 110)
+        Pair("candidate_default_height_portrait_column_1_dp_preference", 60)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_2_DP =
-        Pair("candidate_default_height_portrait_column_2_dp_preference", 120)
+        Pair("candidate_default_height_portrait_column_2_dp_preference", 80)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_3_DP =
-        Pair("candidate_default_height_portrait_column_3_dp_preference", 160)
+        Pair("candidate_default_height_portrait_column_3_dp_preference", 100)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP =
         Pair("candidate_default_height_landscape_column_1_dp_preference", 60)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_2_DP =
-        Pair("candidate_default_height_landscape_column_2_dp_preference", 90)
+        Pair("candidate_default_height_landscape_column_2_dp_preference", 80)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP =
-        Pair("candidate_default_height_landscape_column_3_dp_preference", 120)
+        Pair("candidate_default_height_landscape_column_3_dp_preference", 100)
     private val CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP =
         Pair(
             "candidate_default_empty_height_dp_preference",

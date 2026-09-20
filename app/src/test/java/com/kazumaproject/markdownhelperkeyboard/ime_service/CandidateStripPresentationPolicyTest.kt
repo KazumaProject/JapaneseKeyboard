@@ -271,6 +271,46 @@ class CandidateStripPresentationPolicyTest {
     }
 
     @Test
+    fun standardSixtyDpHeightIsUsedForBothCandidateStates() {
+        assertEquals(
+            60,
+            resolveCandidateStripHeightDp(
+                candidatesShown = true,
+                candidateHeightDp = 60,
+                emptyHeightDp = 60
+            )
+        )
+        assertEquals(
+            60,
+            resolveCandidateStripHeightDp(
+                candidatesShown = false,
+                candidateHeightDp = 60,
+                emptyHeightDp = 60
+            )
+        )
+    }
+
+    @Test
+    fun explicitAsymmetricHeightsRemainDistinct() {
+        assertEquals(
+            80,
+            resolveCandidateStripHeightDp(
+                candidatesShown = true,
+                candidateHeightDp = 80,
+                emptyHeightDp = 60
+            )
+        )
+        assertEquals(
+            60,
+            resolveCandidateStripHeightDp(
+                candidatesShown = false,
+                candidateHeightDp = 80,
+                emptyHeightDp = 60
+            )
+        )
+    }
+
+    @Test
     fun idleReturnRequestsCandidateTabSelectionReset() {
         val presentation = CandidateStripPresentationPolicy.resolve(
             baseState(
