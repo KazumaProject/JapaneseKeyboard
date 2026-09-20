@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard
 import android.content.Intent
 import android.graphics.Point
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -24,6 +25,98 @@ import org.junit.runner.RunWith
 /** Checks real WindowManager placement with a non-zero window origin, including Android 7. */
 @RunWith(AndroidJUnit4::class)
 class SkinPopupCompatibilityInstrumentedTest {
+    private fun fittedBubbleLocation(anchor: View, direction: PopupDirection): Point {
+        val screen = IntArray(2).also(anchor::getLocationOnScreen)
+        val surface = Rect(SkinPopupGeometry.resolve(150, 100, direction, true).bounds)
+            .apply { offset(screen[0], screen[1]) }
+        val size = Point().also { anchor.display.getRealSize(it) }
+        val bars = ViewCompat.getRootWindowInsets(anchor)!!.getInsetsIgnoringVisibility(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+        val viewport = Rect(bars.left, bars.top, size.x - bars.right, size.y - bars.bottom)
+        val dx = if (surface.width() <= viewport.width()) {
+            surface.left.coerceIn(viewport.left, viewport.right - surface.width()) - surface.left
+        } else viewport.left - surface.left
+        val dy = if (surface.height() <= viewport.height()) {
+            surface.top.coerceIn(viewport.top, viewport.bottom - surface.height()) - surface.top
+        } else viewport.top - surface.top
+        surface.offset(dx, dy)
+        return Point(surface.left, surface.top)
+    }
+
+    @Test fun splitPanelBottomKeyKeepsBottomFlickBubbleAtFittedScreenPosition() {
+        val ins = InstrumentationRegistry.getInstrumentation()
+        ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)).use { scenario ->
+            lateinit var manager: WindowManager
+            lateinit var panel: FrameLayout
+            lateinit var anchor: TextView
+            lateinit var popup: PopupWindow
+            lateinit var bubble: KeyWindowLayout
+            var panelAdded = false
+            var popupCreated = false
+            var expectedBubble = Point()
+            val laidOut = java.util.concurrent.CountDownLatch(1)
+            try {
+                scenario.onActivity { host ->
+                    manager = host.getSystemService(WindowManager::class.java)
+                    panel = FrameLayout(host)
+                    anchor = TextView(host).apply { text = "か" }
+                    panel.addView(anchor, FrameLayout.LayoutParams(150, 100).apply {
+                        leftMargin = 35
+                        topMargin = 40
+                    })
+                    val display = Point().also { host.windowManager.defaultDisplay.getRealSize(it) }
+                    val params = WindowManager.LayoutParams(
+                        220,
+                        180,
+                        WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                        PixelFormat.TRANSLUCENT,
+                    ).apply {
+                        token = host.window.decorView.windowToken
+                        gravity = Gravity.TOP or Gravity.LEFT
+                        x = 0
+                        y = display.y - height - 8
+                    }
+                    manager.addView(panel, params)
+                    panelAdded = true
+                    panel.viewTreeObserver.addOnGlobalLayoutListener {
+                        if (panel.width == 220 && anchor.width == 150) laidOut.countDown()
+                    }
+                }
+                assertTrue("Bottom panel did not finish layout", laidOut.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                ins.waitForIdleSync()
+                scenario.onActivity { host ->
+                    assertNotNull(anchor.windowToken)
+                    assertNotNull(anchor.applicationWindowToken)
+                    assertNotSame(anchor.windowToken, anchor.applicationWindowToken)
+                    bubble = KeyWindowLayout(host).apply { skinId = KeyboardSkinId.CUPERTINO_LIGHT }
+                    bubble.addView(TextView(host).apply { text = "く" }, FrameLayout.LayoutParams(-1, -1))
+                    popup = PopupWindow(bubble, 150, 100, false)
+                    popupCreated = true
+                    expectedBubble = fittedBubbleLocation(anchor, PopupDirection.BOTTOM)
+                    SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.BOTTOM, true)
+                }
+                ins.waitForIdleSync()
+                scenario.onActivity {
+                    assertTrue(popup.isShowing)
+                    assertEquals(expectedBubble, Point().also { point ->
+                        val location = IntArray(2).also(bubble::getLocationOnScreen)
+                        point.set(location[0], location[1])
+                    })
+                    assertFalse(popup.isTouchable)
+                }
+            } finally {
+                scenario.onActivity {
+                    if (popupCreated) popup.dismiss()
+                    if (panelAdded && panel.parent != null) manager.removeViewImmediate(panel)
+                }
+            }
+        }
+    }
+
     @Test fun splitPanelUsesApplicationTokenWithoutHiddenPopupApi() {
         val ins = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)).use { scenario ->
@@ -56,7 +149,7 @@ class SkinPopupCompatibilityInstrumentedTest {
                     ).apply {
                         token = host.window.decorView.windowToken
                         gravity = Gravity.TOP or Gravity.LEFT
-                        x = 260
+                        x = 0
                         y = 700
                     }
                     manager.addView(panel, params)
@@ -83,9 +176,11 @@ class SkinPopupCompatibilityInstrumentedTest {
                 }
                 var expectedFrame = Point()
                 for (direction in PopupDirection.entries) {
+                    var expectedBubble = Point()
                     scenario.onActivity {
                         val screen = IntArray(2).also(anchor::getLocationOnScreen)
                         expectedFrame = Point(screen[0] + union.left, screen[1] + union.top)
+                        expectedBubble = fittedBubbleLocation(anchor, direction)
                         SkinPopupPlacement.show(popup, bubble, anchor, direction, true)
                     }
                     ins.waitForIdleSync()
@@ -94,6 +189,10 @@ class SkinPopupCompatibilityInstrumentedTest {
                         assertEquals(direction, bubble.skinDirection)
                         assertEquals(expectedFrame, Point().also { point ->
                             val location = IntArray(2).also(popup.contentView::getLocationOnScreen)
+                            point.set(location[0], location[1])
+                        })
+                        assertEquals(expectedBubble, Point().also { point ->
+                            val location = IntArray(2).also(bubble::getLocationOnScreen)
                             point.set(location[0], location[1])
                         })
                         assertEquals(union.width(), popup.contentView.width)

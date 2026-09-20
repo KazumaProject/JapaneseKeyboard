@@ -30,17 +30,15 @@ internal object SkinPopupWindowCompat {
     }
 
     /**
-     * Android 7/8 resolve PopupWindow.showAsDropDown() against the panel token itself.
-     * That token is not accepted for a popup attached to an IME application window.
-     * Pass a view whose public window-token contract points at the application window
-     * so PopupWindow.showAtLocation(View, ...) creates the popup in that window.
+     * Use the application token while placing the popup at an absolute screen position.
+     * A split IME key has a panel token, but the popup must be attached to the parent
+     * application window. showAsDropDown() is deliberately avoided here because the
+     * framework may move the complete transparent popup surface to fit the display.
      */
     fun showInApplicationWindow(window: PopupWindow, anchor: View, screenX: Int, screenY: Int) {
-        if (Build.VERSION.SDK_INT >= 29) {
-            error("Application-window popup fallback is only for pre-29 Android")
-        }
         val token = anchor.applicationWindowToken
             ?: error("Cannot show popup without an application window token")
+        if (Build.VERSION.SDK_INT >= 29) window.setIsLaidOutInScreen(true)
         window.showAtLocation(ApplicationWindowTokenView(anchor, token),
             Gravity.NO_GRAVITY, screenX, screenY)
     }
