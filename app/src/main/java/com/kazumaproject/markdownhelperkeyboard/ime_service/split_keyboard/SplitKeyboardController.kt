@@ -86,6 +86,7 @@ internal class SplitKeyboardController(
         val minWidth = 120
         val minHeight = 80
         val root = FloatingPanelFrame(context, { setEditing(!editing) }, { gesture(this, it) }).apply {
+            applicationWindowView = anchor
             contentDescription = context.getString(if (slot == SplitSlot.MAIN) R.string.split_keyboard_main else R.string.split_keyboard_sub)
         }
         val input = InputFrame(slot)
@@ -258,6 +259,7 @@ internal class SplitKeyboardController(
         panes.values.forEach { pane ->
             pane.gesture = null
             pane.gestureStart = null
+            pane.root.applicationWindowView = null
             if (pane.root.parent != null) manager.removeViewImmediate(pane.root)
             pane.candidates.adapter = null
         }
