@@ -36,6 +36,7 @@ internal class FloatingKeyboardWindow(private val panel: FloatingKeyboardPanel, 
         if (isShowing) return
         require(gravity and Gravity.LEFT == Gravity.LEFT && gravity and Gravity.TOP == Gravity.TOP)
         anchor = parent
+        panel.applicationWindowView = parent
         screenX = x
         screenY = y
         val next = WindowManager.LayoutParams(1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
@@ -54,6 +55,7 @@ internal class FloatingKeyboardWindow(private val panel: FloatingKeyboardPanel, 
             panel.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
         } catch (error: RuntimeException) {
             params = null
+            panel.applicationWindowView = null
             throw error
         }
     }
@@ -106,6 +108,7 @@ internal class FloatingKeyboardWindow(private val panel: FloatingKeyboardPanel, 
         panel.viewTreeObserver.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(layoutListener)
         params = null
         if (panel.parent != null) manager.removeViewImmediate(panel)
+        panel.applicationWindowView = null
         dismissListener?.onDismiss()
     }
 }
