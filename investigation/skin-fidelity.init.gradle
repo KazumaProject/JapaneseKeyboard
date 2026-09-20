@@ -1,0 +1,6 @@
+// Keep IME layout regression APKs and preferences separate from any installed build.
+gradle.afterProject { project ->
+    if (project.path == ':app') {
+        project.android.defaultConfig.applicationId = 'com.kazumaproject.skinfidelity.imeheight'
+    }
+}

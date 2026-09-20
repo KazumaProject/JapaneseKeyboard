@@ -125,7 +125,12 @@ android {
     }
 
     testOptions {
-        unitTests.includeAndroidResources = true
+        unitTests {
+            includeAndroidResources = true
+            all {
+                maxHeapSize = '2g'
+            }
+        }
     }
 
     androidResources {
