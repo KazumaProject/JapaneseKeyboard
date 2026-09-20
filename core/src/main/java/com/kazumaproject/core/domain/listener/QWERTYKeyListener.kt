@@ -13,6 +13,18 @@ interface QWERTYKeyListener {
         variations: List<Char>?
     )
 
+    /**
+     * ソフトウェア QWERTY の Shift キー操作後の状態を通知します。
+     *
+     * 通常の文字入力で one-shot Shift が自動解除される場合は通知しません。
+     * そのため、入力側は Shift キーを明示的に解除したときだけ、ソフトウェア
+     * Shift に由来する一時的なローマ字入力状態を解除できます。
+     */
+    fun onQWERTYShiftStateChanged(
+        capsLockOn: Boolean,
+        shiftOn: Boolean
+    ) = Unit
+
     fun onLongPressQWERTYKey(qwertyKey: QWERTYKey)
 
     /**
