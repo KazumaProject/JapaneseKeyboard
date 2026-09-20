@@ -17,6 +17,7 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
+import com.kazumaproject.core.ui.skin.SkinPopupWindowHost
 import com.kazumaproject.markdownhelperkeyboard.R
 import kotlin.math.roundToInt
 
@@ -27,7 +28,9 @@ internal open class FloatingPanelFrame(
     private val onHandleEvent: (MotionEvent) -> Unit = {},
     title: CharSequence? = null,
     onHide: (() -> Unit)? = null,
-) : FrameLayout(context) {
+) : FrameLayout(context), SkinPopupWindowHost {
+    override var applicationWindowView: View? = null
+
     protected fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
     protected var colors = CandidatePanelColors.resolve(context)
         private set
