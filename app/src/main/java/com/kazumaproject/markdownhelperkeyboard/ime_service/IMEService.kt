@@ -22960,10 +22960,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     shiftOn: Boolean
                 ) {
                     activateSplitView(qwertyView)
-                    if (isKeyboardLayoutEditModeActive()) return
                     if (!capsLockOn && !shiftOn) {
                         softwareQwertyShiftPressed = false
                     }
+                    if (isKeyboardLayoutEditModeActive()) return
                 }
 
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {

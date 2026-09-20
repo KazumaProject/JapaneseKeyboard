@@ -406,6 +406,26 @@ class QwertyMultiTouchInstrumentedTest {
         }
     }
 
+    @Test
+    fun qwertyModeSwitch_reportsTheClearedShiftState() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder)
+            val shift = keyboard.keyCenter(R.id.key_shift)
+            val switchMode = keyboard.keyCenter(R.id.key_123)
+
+            keyboard.sendEvent(300L, 300L, MotionEvent.ACTION_DOWN, 0, pointer(3, shift))
+            keyboard.sendEvent(300L, 320L, MotionEvent.ACTION_UP, 0, pointer(3, shift))
+            keyboard.sendEvent(400L, 400L, MotionEvent.ACTION_DOWN, 0, pointer(4, switchMode))
+            keyboard.sendEvent(400L, 420L, MotionEvent.ACTION_UP, 0, pointer(4, switchMode))
+
+            assertEquals(
+                listOf(false to true, false to false),
+                recorder.shiftStateChanges
+            )
+        }
+    }
+
     private fun createKeyboard(listener: RecordingQwertyKeyListener): QWERTYKeyboardView {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
         val themedContext: Context = ContextThemeWrapper(
