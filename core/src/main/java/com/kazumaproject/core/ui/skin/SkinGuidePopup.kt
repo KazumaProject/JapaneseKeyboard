@@ -83,7 +83,13 @@ class SkinGuidePopup(context: Context) {
             popup.width = 3 * width
             popup.height = 3 * height
             if (SkinPopupPlacement.usesAnchoredWindow(anchor)) {
-                SkinPopupWindowCompat.showInApplicationWindow(popup, anchor, screenLeft, screenTop)
+                SkinPopupWindowCompat.showInApplicationWindow(
+                    popup,
+                    anchor,
+                    SkinPopupPlacement.applicationWindowView(anchor),
+                    screenLeft,
+                    screenTop,
+                )
             } else {
                 val position = SkinPopupWindowCompat.position(popup, anchor, screenLeft, screenTop)
                 popup.showAtLocation(anchor, Gravity.NO_GRAVITY, position.x, position.y)

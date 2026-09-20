@@ -119,11 +119,13 @@ object SkinPopupPlacement {
                 // its intended (possibly off-screen) origin.
                 val screenX = position[0] + union.left
                 val screenY = position[1] + union.top
+                val parentWindowView = applicationWindowView(anchor)
                 if (!window.isShowing) {
-                    SkinPopupWindowCompat.showInApplicationWindow(window, anchor, screenX, screenY)
+                    SkinPopupWindowCompat.showInApplicationWindow(
+                        window, anchor, parentWindowView, screenX, screenY)
                 } else if (resized) {
                     SkinPopupWindowCompat.updateInApplicationWindow(
-                        window, screenX, screenY, window.width, window.height)
+                        window, parentWindowView, screenX, screenY, window.width, window.height)
                 }
             } else {
                 // Keep the existing top-level IME placement. In particular, do not let
@@ -159,5 +161,15 @@ object SkinPopupPlacement {
         val windowToken = anchor.windowToken ?: return false
         val applicationToken = anchor.applicationWindowToken ?: return false
         return windowToken != applicationToken
+    }
+
+    /** Resolve the actual parent window, not the panel window containing the anchor. */
+    internal fun applicationWindowView(anchor: View): View {
+        var current: View? = anchor
+        while (current != null) {
+            (current as? SkinPopupWindowHost)?.applicationWindowView?.let { return it }
+            current = current.parent as? View
+        }
+        error("Anchored popup requires a SkinPopupWindowHost ancestor")
     }
 }

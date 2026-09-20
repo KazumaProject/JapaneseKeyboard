@@ -25,9 +25,14 @@ import org.junit.runner.RunWith
 /** Checks real WindowManager placement with a non-zero window origin, including Android 7. */
 @RunWith(AndroidJUnit4::class)
 class SkinPopupCompatibilityInstrumentedTest {
-    private fun fittedBubbleLocation(anchor: View, direction: PopupDirection): Point {
+    private fun fittedBubbleLocation(
+        anchor: View,
+        direction: PopupDirection,
+        width: Int = 150,
+        height: Int = 100,
+    ): Point {
         val screen = IntArray(2).also(anchor::getLocationOnScreen)
-        val surface = Rect(SkinPopupGeometry.resolve(150, 100, direction, true).bounds)
+        val surface = Rect(SkinPopupGeometry.resolve(width, height, direction, true).bounds)
             .apply { offset(screen[0], screen[1]) }
         val size = Point().also { anchor.display.getRealSize(it) }
         val bars = ViewCompat.getRootWindowInsets(anchor)!!.getInsetsIgnoringVisibility(
@@ -58,7 +63,9 @@ class SkinPopupCompatibilityInstrumentedTest {
             try {
                 scenario.onActivity { host ->
                     manager = host.getSystemService(WindowManager::class.java)
-                    panel = FrameLayout(host)
+                    panel = object : FrameLayout(host), SkinPopupWindowHost {
+                        override var applicationWindowView: View? = host.window.decorView
+                    }
                     anchor = TextView(host).apply { text = "か" }
                     panel.addView(anchor, FrameLayout.LayoutParams(150, 100).apply {
                         leftMargin = 35
@@ -131,7 +138,16 @@ class SkinPopupCompatibilityInstrumentedTest {
             try {
                 scenario.onActivity { host ->
                     manager = host.getSystemService(WindowManager::class.java)
-                    panel = FrameLayout(host)
+                    host.window.attributes = host.window.attributes.apply {
+                        gravity = Gravity.TOP or Gravity.LEFT
+                        x = 80
+                        y = 180
+                        width = 240
+                        height = 900
+                    }
+                    panel = object : FrameLayout(host), SkinPopupWindowHost {
+                        override var applicationWindowView: View? = host.window.decorView
+                    }
                     anchor = TextView(host).apply { text = "か" }
                     panel.addView(anchor, FrameLayout.LayoutParams(150, 100).apply {
                         leftMargin = 35
@@ -200,13 +216,50 @@ class SkinPopupCompatibilityInstrumentedTest {
                         assertFalse(popup.isTouchable)
                     }
                 }
+                val resizedUnion = android.graphics.Rect()
+                PopupDirection.entries.forEach {
+                    resizedUnion.union(SkinPopupGeometry.resolve(190, 120, it, true).bounds)
+                }
+                var resizedFrame = Point()
+                var resizedBubble = Point()
+                scenario.onActivity {
+                    anchor.layout(35, 40, 225, 160)
+                    val screen = IntArray(2).also(anchor::getLocationOnScreen)
+                    resizedFrame = Point(screen[0] + resizedUnion.left, screen[1] + resizedUnion.top)
+                    resizedBubble = fittedBubbleLocation(anchor, PopupDirection.RIGHT, 190, 120)
+                    SkinPopupPlacement.show(popup, bubble, anchor, PopupDirection.RIGHT, true)
+                }
+                ins.waitForIdleSync()
+                scenario.onActivity {
+                    assertEquals(resizedFrame, Point().also { point ->
+                        val location = IntArray(2).also(popup.contentView::getLocationOnScreen)
+                        point.set(location[0], location[1])
+                    })
+                    assertEquals(resizedBubble, Point().also { point ->
+                        val location = IntArray(2).also(bubble::getLocationOnScreen)
+                        point.set(location[0], location[1])
+                    })
+                    assertEquals(resizedUnion.width(), popup.contentView.width)
+                    assertEquals(resizedUnion.height(), popup.contentView.height)
+                }
                 scenario.onActivity {
                     popup.dismiss()
                     assertFalse(popup.isShowing)
                 }
                 lateinit var guide: SkinGuidePopup
+                var expectedGuide = Point()
                 scenario.onActivity { host ->
                     guide = SkinGuidePopup(host)
+                    val guideScreen = IntArray(2).also(anchor::getLocationOnScreen)
+                    val size = Point().also { anchor.display.getRealSize(it) }
+                    val bars = ViewCompat.getRootWindowInsets(anchor)!!.getInsetsIgnoringVisibility(
+                        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                    expectedGuide = Point(
+                        (guideScreen[0] - anchor.width).coerceIn(
+                            bars.left, size.x - bars.right - 3 * anchor.width),
+                        (guideScreen[1] - anchor.height).coerceIn(
+                            bars.top, size.y - bars.bottom - 3 * anchor.height),
+                    )
                     guide.show(
                         anchor,
                         requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_DARK)),
@@ -219,6 +272,10 @@ class SkinPopupCompatibilityInstrumentedTest {
                     val field = guide.javaClass.getDeclaredField("overflowWindow").apply { isAccessible = true }
                     val overflow = field.get(guide) as PopupWindow
                     assertTrue(overflow.isShowing)
+                    assertEquals(expectedGuide, Point().also { point ->
+                        val location = IntArray(2).also(overflow.contentView::getLocationOnScreen)
+                        point.set(location[0], location[1])
+                    })
                     guide.dismiss()
                     assertFalse(guide.isShowing)
                 }
