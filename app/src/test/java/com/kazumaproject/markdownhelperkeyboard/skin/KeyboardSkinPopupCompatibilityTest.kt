@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.skin
 import android.app.Activity
 import android.graphics.Point
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.view.View
 import android.widget.FrameLayout
@@ -14,6 +15,7 @@ import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.skin.PopupDirection
 import com.kazumaproject.core.ui.skin.SkinGuidePopup
 import com.kazumaproject.core.ui.skin.SkinPopupPlacement
+import com.kazumaproject.core.ui.skin.SkinPopupWindowHost
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -75,7 +77,12 @@ class KeyboardSkinPopupCompatibilityTest {
         activity.setTheme(com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
         controller.setup()
         // Model an IME/floating host whose window origin is (40, 200) on screen.
-        val anchor = object : View(activity) {
+        val applicationWindowRoot = object : View(activity) {
+            override fun getLocationOnScreen(out: IntArray) { out[0] = 40; out[1] = 200 }
+            override fun getLocationInWindow(out: IntArray) { out[0] = 0; out[1] = 0 }
+        }
+        val anchor = object : View(activity), SkinPopupWindowHost {
+            override var applicationWindowView: View? = if (panel) applicationWindowRoot else null
             private val panelToken = Binder()
             private val applicationToken = Binder()
             override fun getLocationOnScreen(out: IntArray) { out[0] = 140; out[1] = 500 }
@@ -100,9 +107,19 @@ class KeyboardSkinPopupCompatibilityTest {
         anchor.getLocationOnScreen(screen)
         anchor.getLocationInWindow(inWindow)
         return if (applicationWindow) {
-            // Application-window placement now uses a fixed screen-coordinate surface
-            // on every supported API. The supplied proxy view only changes the token.
-            Point(screen[0] + bounds.left, screen[1] + bounds.top)
+            val applicationView = requireNotNull((anchor as SkinPopupWindowHost).applicationWindowView)
+            val applicationScreen = IntArray(2)
+            val applicationInWindow = IntArray(2)
+            applicationView.getLocationOnScreen(applicationScreen)
+            applicationView.getLocationInWindow(applicationInWindow)
+            val origin = Point(
+                applicationScreen[0] - applicationInWindow[0],
+                applicationScreen[1] - applicationInWindow[1],
+            )
+            val x = screen[0] + bounds.left
+            val y = screen[1] + bounds.top
+            if (Build.VERSION.SDK_INT >= 29) Point(x, y)
+            else Point(x - origin.x, y - origin.y)
         } else {
             Point(
                 screen[0] + bounds.left - (screen[0] - inWindow[0]),

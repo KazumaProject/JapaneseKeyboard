@@ -35,17 +35,42 @@ internal object SkinPopupWindowCompat {
      * application window. showAsDropDown() is deliberately avoided here because the
      * framework may move the complete transparent popup surface to fit the display.
      */
-    fun showInApplicationWindow(window: PopupWindow, anchor: View, screenX: Int, screenY: Int) {
+    fun showInApplicationWindow(
+        window: PopupWindow,
+        anchor: View,
+        applicationWindowView: View,
+        screenX: Int,
+        screenY: Int,
+    ) {
         val token = anchor.applicationWindowToken
             ?: error("Cannot show popup without an application window token")
         if (Build.VERSION.SDK_INT >= 29) window.setIsLaidOutInScreen(true)
+        // API 29+ accepts screen coordinates once FLAG_LAYOUT_IN_SCREEN is enabled;
+        // older releases interpret the same values relative to the parent frame.
+        val position = applicationWindowPosition(applicationWindowView, screenX, screenY)
         window.showAtLocation(ApplicationWindowTokenView(anchor, token),
-            Gravity.NO_GRAVITY, screenX, screenY)
+            Gravity.NO_GRAVITY, position.x, position.y)
     }
 
-    fun updateInApplicationWindow(window: PopupWindow,
-                                  screenX: Int, screenY: Int, width: Int, height: Int) {
-        window.update(screenX, screenY, width, height)
+    fun updateInApplicationWindow(
+        window: PopupWindow,
+        applicationWindowView: View,
+        screenX: Int,
+        screenY: Int,
+        width: Int,
+        height: Int,
+    ) {
+        val position = applicationWindowPosition(applicationWindowView, screenX, screenY)
+        window.update(position.x, position.y, width, height)
+    }
+
+    private fun applicationWindowPosition(applicationWindowView: View, screenX: Int, screenY: Int): Point {
+        if (Build.VERSION.SDK_INT >= 29) return Point(screenX, screenY)
+        val screen = IntArray(2)
+        val inWindow = IntArray(2)
+        applicationWindowView.getLocationOnScreen(screen)
+        applicationWindowView.getLocationInWindow(inWindow)
+        return Point(screenX - (screen[0] - inWindow[0]), screenY - (screen[1] - inWindow[1]))
     }
 
     /**
