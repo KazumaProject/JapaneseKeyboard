@@ -116,11 +116,11 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
 
         val keyboardHeight = if (isPortrait) {
             heightPx + requireContext().dpToPx(
-                appPreference.candidate_view_empty_height_dp ?: 110
+                appPreference.candidate_view_empty_height_dp ?: 60
             )
         } else {
             heightPx + requireContext().dpToPx(
-                appPreference.candidate_view_empty_height_dp ?: 110
+                appPreference.candidate_view_empty_height_dp ?: 60
             )
         }
 
