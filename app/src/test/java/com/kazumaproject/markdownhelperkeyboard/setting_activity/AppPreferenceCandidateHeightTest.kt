@@ -129,10 +129,12 @@ class AppPreferenceCandidateHeightTest {
     }
 
     @Test
-    fun legacyMigrationPreservesCustomHeights() {
+    fun migrationStandardizesAllSavedHeights() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         preferences.edit()
+            .putString("candidate_column_preference", "2")
+            .putString("candidate_column_landscape_preference", "3")
             .putInt("candidate_view_height_dp_preference", 215)
             .putInt("candidate_view_empty_height_dp_preference", 145)
             .putInt("candidate_view_height_dp_landscape_preference", 225)
@@ -157,40 +159,50 @@ class AppPreferenceCandidateHeightTest {
 
         AppPreference.init(context)
 
-        assertEquals(215, AppPreference.candidate_view_height_dp)
-        assertEquals(145, AppPreference.candidate_view_empty_height_dp)
-        assertEquals(225, AppPreference.candidate_view_height_dp_landscape)
-        assertEquals(155, AppPreference.candidate_view_empty_height_dp_landscape)
+        assertEquals("2", AppPreference.getCandidateColumn(isLandscape = false))
+        assertEquals("3", AppPreference.getCandidateColumn(isLandscape = true))
+        assertEquals(80, AppPreference.candidate_view_height_dp)
+        assertEquals(60, AppPreference.candidate_view_empty_height_dp)
+        assertEquals(100, AppPreference.candidate_view_height_dp_landscape)
+        assertEquals(60, AppPreference.candidate_view_empty_height_dp_landscape)
         assertEquals(
-            listOf(71, 81, 91),
+            listOf(60, 80, 100),
             listOf("1", "2", "3").map {
                 AppPreference.getCandidateVisibleHeightDp(false, it)
             }
         )
         assertEquals(
-            listOf(101, 111, 121),
+            listOf(60, 80, 100),
             listOf("1", "2", "3").map {
                 AppPreference.getCandidateVisibleHeightDp(true, it)
             }
         )
         assertEquals(
-            listOf(131, 141, 151),
+            listOf(60, 80, 100),
             listOf("1", "2", "3").map {
                 AppPreference.getCandidateDefaultVisibleHeightDp(false, it)
             }
         )
         assertEquals(
-            listOf(161, 171, 181),
+            listOf(60, 80, 100),
             listOf("1", "2", "3").map {
                 AppPreference.getCandidateDefaultVisibleHeightDp(true, it)
             }
         )
-        assertEquals(135, AppPreference.getCandidateDefaultEmptyHeightDp(false))
-        assertEquals(145, AppPreference.getCandidateDefaultEmptyHeightDp(true))
+        assertEquals(60, AppPreference.getCandidateDefaultEmptyHeightDp(false))
+        assertEquals(60, AppPreference.getCandidateDefaultEmptyHeightDp(true))
+        assertEquals(
+            true,
+            preferences.getBoolean("candidate_height_per_column_migrated_preference", false)
+        )
+        assertEquals(
+            1,
+            preferences.getInt(AppPreference.CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION_KEY, 0)
+        )
     }
 
     @Test
-    fun legacyMigrationRunsOnlyOnce() {
+    fun migrationRunsOnlyOnce() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         preferences.edit()
@@ -214,7 +226,7 @@ class AppPreferenceCandidateHeightTest {
     }
 
     @Test
-    fun firstColumnMigrationUsesStandardActiveHeights() {
+    fun perColumnValuesUseStandardHeightsAfterInitialization() {
         assertEquals(60, AppPreference.getCandidateVisibleHeightDp(false, "1"))
         assertEquals(80, AppPreference.getCandidateVisibleHeightDp(false, "2"))
         assertEquals(100, AppPreference.getCandidateVisibleHeightDp(false, "3"))
@@ -224,9 +236,9 @@ class AppPreferenceCandidateHeightTest {
     }
 
     @Test
-    fun firstColumnMigrationUsesSelectedColumnDefaultsWhenActiveHeightIsUnset() {
-        AppPreference.candidate_column_preference = "2"
-        AppPreference.candidate_column_landscape_preference = "3"
+    fun changingColumnsUsesTheirStandardHeights() {
+        AppPreference.setCandidateColumnAndSyncHeight(isLandscape = false, column = "2")
+        AppPreference.setCandidateColumnAndSyncHeight(isLandscape = true, column = "3")
 
         assertEquals(80, AppPreference.getCandidateVisibleHeightDp(false, "2"))
         assertEquals(100, AppPreference.getCandidateVisibleHeightDp(true, "3"))
@@ -235,12 +247,16 @@ class AppPreferenceCandidateHeightTest {
     }
 
     @Test
-    fun firstColumnMigrationPreservesSavedActiveHeights() {
-        AppPreference.candidate_view_height_dp = 215
-        AppPreference.candidate_view_height_dp_landscape = 225
+    fun editingSelectedColumnHeightUpdatesActiveHeight() {
+        AppPreference.setCandidateColumnAndSyncHeight(isLandscape = false, column = "1")
+        AppPreference.setCandidateColumnAndSyncHeight(isLandscape = true, column = "1")
+        AppPreference.setCandidateVisibleHeightDp(isLandscape = false, column = "1", heightDp = 215)
+        AppPreference.setCandidateVisibleHeightDp(isLandscape = true, column = "1", heightDp = 225)
 
         assertEquals(215, AppPreference.getCandidateVisibleHeightDp(false, "1"))
         assertEquals(225, AppPreference.getCandidateVisibleHeightDp(true, "1"))
+        assertEquals(215, AppPreference.candidate_view_height_dp)
+        assertEquals(225, AppPreference.candidate_view_height_dp_landscape)
         assertEquals(80, AppPreference.getCandidateVisibleHeightDp(false, "2"))
         assertEquals(80, AppPreference.getCandidateVisibleHeightDp(true, "2"))
     }
