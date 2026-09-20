@@ -1992,7 +1992,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun resetQWERTYKeyboard() {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
@@ -2003,7 +2003,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun resetQWERTYKeyboard(enterKyeText: String) {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
@@ -2015,7 +2015,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setNumberView() {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Number }
         _romajiModeState.update { false }
         binding.apply {
@@ -2026,7 +2026,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setRomajiKeyboard(enterKeyText: String) {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { true }
         binding.apply {
@@ -2771,7 +2771,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (key == QWERTYKey.QWERTYKeySwitchMode) {
             when (qwertyMode.value) {
                 QWERTYMode.Default -> {
-                    clearShiftCaps()
+                    clearShiftCaps(notifyListener = true)
                     _qwertyMode.update { QWERTYMode.Number }
                 }
 
@@ -2947,8 +2947,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         _capsLockState.update { it.copy(capsLockOn = true, shiftOn = false) }
     }
 
-    private fun clearShiftCaps() {
+    private fun clearShiftCaps(notifyListener: Boolean = false) {
         _capsLockState.value = CapsLockState()
+        if (notifyListener) {
+            notifyQwertyShiftStateChanged()
+        }
     }
 
     fun getRomajiMode(): Boolean {
