@@ -1783,6 +1783,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun notifyQwertyShiftStateChanged() {
+        val state = capsLockState.value
+        qwertyKeyListener?.onQWERTYShiftStateChanged(
+            capsLockOn = state.capsLockOn,
+            shiftOn = state.shiftOn
+        )
+    }
+
     private fun beginQwertyGlideCandidateIfPossible(event: MotionEvent, pointerIndex: Int) {
         val pointerId = event.getPointerId(pointerIndex)
         val x = event.getX(pointerIndex)
@@ -2250,6 +2258,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             else -> {
                 logVariationIfNeeded(qwertyKey)
                 setToggleShiftState(view)
+                if (qwertyKey == QWERTYKey.QWERTYKeyShift) {
+                    notifyQwertyShiftStateChanged()
+                }
             }
         }
     }

@@ -65,6 +65,44 @@ class FastInputMatrixInstrumentedTest {
         get() = instrumentation.uiAutomation
 
     @Test
+    fun qwertyRomajiCapsLockOffResumesRomajiConversionOnPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-romaji-caps-lock-off") { session ->
+            check(
+                session.preferences.edit()
+                    .putString("keyboard_order_preference", "[\"ROMAJI\"]")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("keyboard_floating_preference", false)
+                    .putBoolean("live_conversion_preference", false)
+                    .putBoolean("qwerty_romaji_shift_conversion_preference", false)
+                    .commit()
+            )
+            val scenario = launchHost(session.context)
+            try {
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+
+                fun tap(id: String) {
+                    assertTrue("Failed to tap $id", injectTap(awaitVisibleNodeBounds(id).center))
+                }
+
+                val shift = awaitVisibleNodeBounds("key_shift").center
+                assertTrue(injectTap(shift))
+                assertTrue(injectTap(shift))
+                "abc".forEach { tap("key_$it") }
+                tap("key_return")
+                assertEquals("ABC", awaitTextSettled(scenario))
+
+                assertTrue(injectTap(shift))
+                "aiueo".forEach { tap("key_$it") }
+                assertEquals("ABCあいうえお", awaitTextSettled(scenario))
+            } finally {
+                scenario.close()
+            }
+        }
+    }
+
+    @Test
     fun englishSpaceFlickCommitsExpectedWidthOnNormalAndFloatingPhysicalKeyboard() {
         runPhysicalDeviceSession("english-space-flick") { session ->
             rotateAndVerify(TestOrientation.PORTRAIT)
