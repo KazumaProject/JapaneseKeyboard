@@ -1667,6 +1667,65 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun symbolKeyboardHasNoTopGapOnPhysicalDevice() {
+        runPhysicalDeviceSession("symbol-keyboard-top-gap") { session ->
+            val keyboardLayoutDao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext,
+                KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val customFixture = installKeyboardSizeCustomFixture(keyboardLayoutDao)
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+
+            try {
+                applyKeyboardSizeBasePreferences(
+                    preferences = session.preferences,
+                    customFixtureStableId = customFixture.stableId,
+                )
+                ensureTargetImeSelected(session)
+                scenario = launchHost(session.context)
+                val activeScenario = requireNotNull(scenario)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+
+                KeyboardSizeSymbolCase.entries.forEach { symbolCase ->
+                    applyKeyboardSizeCasePreferences(
+                        preferences = session.preferences,
+                        keyboard = symbolCase.source,
+                        floating = false,
+                    )
+                    restartInput(activeScenario)
+                    val normalImeBounds = awaitImeWindowBounds()
+                    val sourceKey = awaitVisibleNodeBounds(symbolCase.openKeyId)
+                    check(injectTap(sourceKey.center)) {
+                        "Unable to open symbols from ${symbolCase.source}"
+                    }
+                    try {
+                        assertKeyboardSizeCase(
+                            keyboard = symbolCase.source,
+                            orientation = TestOrientation.PORTRAIT,
+                            floating = false,
+                            session = session,
+                            symbol = true,
+                            expectedImeBounds = normalImeBounds,
+                        )
+                    } finally {
+                        val returnKey = awaitVisibleNodeBounds("return_jp_keyboard_button")
+                        check(injectTap(returnKey.center)) {
+                            "Unable to return from symbols to ${symbolCase.source}"
+                        }
+                        awaitVisibleNodeBounds(symbolCase.source.rootViewId)
+                        check(awaitImeWindowBounds() == normalImeBounds) {
+                            "IME bounds changed after returning from symbols"
+                        }
+                    }
+                }
+            } finally {
+                scenario?.close()
+                runBlocking { keyboardLayoutDao.deleteLayout(customFixture.id) }
+            }
+        }
+    }
+
+    @Test
     fun rapidInputFullMatrixOnPhysicalDevice() {
         val arguments = InstrumentationRegistry.getArguments()
         val startCase = arguments.getString("startCase")?.toIntOrNull() ?: 1
@@ -2657,6 +2716,11 @@ class FastInputMatrixInstrumentedTest {
                 }
                 check(expectedImeBounds == null || imeBounds == expectedImeBounds) {
                     "IME bounds changed: actual=$imeBounds expected=$expectedImeBounds"
+                }
+                if (symbol) {
+                    check(imeBounds?.top == rootBounds.top) {
+                        "Symbol keyboard has a top gap: symbol=$rootBounds ime=$imeBounds"
+                    }
                 }
                 check(symbol || kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
                     "Height mismatch for $keyboard: actual=${rootBounds.height} " +

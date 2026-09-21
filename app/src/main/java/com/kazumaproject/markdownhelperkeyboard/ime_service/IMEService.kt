@@ -18537,8 +18537,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (isSymbol) {
             (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                val bottomSpace = if (isPortrait) applicationContext.dpToPx(50) else 0
-                param.height = (contentKeyboardHeight - bottomSpace).coerceAtLeast(0)
+                // The root reserves the navigation-bar inset as bottom padding, so the
+                // symbol surface should consume the complete content budget. Shrinking
+                // it by a fixed portrait-only amount leaves an empty strip above the
+                // bottom-aligned view.
+                param.height = contentKeyboardHeight.coerceAtLeast(0)
                 param.width = finalKeyboardWidth
                 mainView.keyboardSymbolView.layoutParams = param
             }
