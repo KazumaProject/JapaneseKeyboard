@@ -31,6 +31,7 @@ class SharedActionBarNavigationContractTest {
         assertTrue(source.contains("private val destinationsWithOwnToolbar = setOf("))
         assertTrue(source.contains("R.id.candidateViewHeightSettingFragment"))
         assertTrue(source.contains("R.id.candidateHeightLandscapeSettingFragment"))
+        assertTrue(source.contains("R.id.candidateHeightDefaultsFragment"))
         assertTrue(source.contains("R.id.shortcutToolbarSizeSettingFragment"))
         assertTrue(source.contains("private val destinationsWithoutSharedActionBar"))
         assertTrue(source.contains("destinationsWithOwnToolbar + R.id.enableKeyboardFragment"))
@@ -83,6 +84,7 @@ class SharedActionBarNavigationContractTest {
         listOf(
             "ui/candidate_view_height_setting/CandidateViewHeightSettingFragment.kt",
             "ui/candidate_view_height_landscape_setting/CandidateHeightLandscapeSettingFragment.kt",
+            "ui/candidate_view_height_setting/CandidateHeightDefaultsFragment.kt",
             "ui/shortcut_toolbar_size/ShortcutToolbarSizeSettingFragment.kt",
         ).forEach { relativePath ->
             val source = mainFile(relativePath).readText()
