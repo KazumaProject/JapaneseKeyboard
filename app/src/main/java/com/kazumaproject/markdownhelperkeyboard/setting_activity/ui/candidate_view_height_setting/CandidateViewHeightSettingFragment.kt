@@ -342,7 +342,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
                 column = appPreference.getCandidateColumn(isLandscape = false)
             )
         } else {
-            appPreference.candidate_view_empty_height_dp ?: 110
+            appPreference.candidate_view_empty_height_dp ?: 60
         }
     }
 
