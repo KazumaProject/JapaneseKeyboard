@@ -12,18 +12,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
 import androidx.appcompat.widget.AppCompatImageView
+import androidx.core.os.bundleOf
+import androidx.core.view.doOnLayout
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.R as MaterialR
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCandidateViewHeightSettingBinding
@@ -61,8 +65,9 @@ class CandidateViewHeightSettingFragment : Fragment() {
     private var isSyncingHeightControls = false
     private var isSyncingLetterSizeControls = false
     private var isSyncingColumnControls = false
-    private var isSyncingDefaultHeightControls = false
+    private var isSyncingPreviewModeControls = false
     private var previousNavigationContainerVisibility: Int? = null
+    private lateinit var inspectorBehavior: BottomSheetBehavior<MaterialCardView>
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -100,26 +105,19 @@ class CandidateViewHeightSettingFragment : Fragment() {
             appPreference.show_dictionary_candidate_labels_preference
         )
         setupInspectorBottomSheet()
-        setupInspectorTabs()
+        setupPreviewModeControls()
         setupColumnControls()
         setupResizeHandle()
         setupHeightSeekBar()
         setupHeightEditText()
         setupCandidateLetterSizeSeekBar()
         setupCandidateLetterSizeEditText()
-        setupDefaultHeightControls()
         setupKeyboardPreview()
         setSuggestionView()
-
-        binding.toggleCandidateListButton.setOnClickListener {
-            isCandidateListVisible = !isCandidateListVisible
-            updateCandidateListAndHeight()
-        }
 
         applyCandidateTextSize(appPreference.candidate_letter_size ?: defaultCandidateTextSize, persist = false)
         updateCandidateListAndHeight()
         applyHeightDp(selectedHeightDp(), persist = false)
-        syncDefaultHeightControls()
         updateInspectorSummary()
     }
 
@@ -154,7 +152,10 @@ class CandidateViewHeightSettingFragment : Fragment() {
         binding.toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_candidate_default_height -> {
-                    openDefaultHeightInspector()
+                    findNavController().navigate(
+                        R.id.candidateHeightDefaultsFragment,
+                        bundleOf(CandidateHeightDefaultsFragment.ARG_IS_LANDSCAPE to false)
+                    )
                     true
                 }
 
@@ -169,47 +170,81 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     private fun setupInspectorBottomSheet() {
-        binding.showInspectorButton.setOnClickListener {
-            showInspectorPanel()
+        inspectorBehavior = BottomSheetBehavior.from(binding.inspectorBottomSheet)
+        inspectorBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+        binding.toggleInspectorButton.setOnClickListener {
+            inspectorBehavior.state = if (
+                inspectorBehavior.state == BottomSheetBehavior.STATE_COLLAPSED
+            ) {
+                BottomSheetBehavior.STATE_HALF_EXPANDED
+            } else {
+                BottomSheetBehavior.STATE_COLLAPSED
+            }
         }
-        binding.closeInspectorButton.setOnClickListener {
-            hideInspectorPanel()
+        inspectorBehavior.addBottomSheetCallback(
+            object : BottomSheetBehavior.BottomSheetCallback() {
+                override fun onStateChanged(bottomSheet: View, newState: Int) {
+                    updateInspectorToggleLabel(newState)
+                    updatePreviewBottomMargin()
+                }
+
+                override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                    updatePreviewBottomMargin()
+                }
+            }
+        )
+        binding.root.doOnLayout {
+            updatePreviewBottomMargin()
         }
-        showInspectorPanel()
+        updateInspectorToggleLabel(inspectorBehavior.state)
     }
 
-    private fun setupInspectorTabs() {
-        binding.candidateInspectorTabGroup.check(R.id.candidate_tab_height_button)
-        binding.candidateInspectorTabGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            showInspectorTab(checkedId)
+    /** Keep the preview above the visible Bottom Sheet instead of underneath it. */
+    private fun updatePreviewBottomMargin() {
+        if (!::inspectorBehavior.isInitialized || binding.previewCanvas.height <= 0) return
+
+        val bottomMargin = (binding.previewCanvas.bottom - binding.inspectorBottomSheet.top)
+            .coerceAtLeast(0)
+        val layoutParams = binding.candidateHeightSettingContent.layoutParams
+            as? FrameLayout.LayoutParams ?: return
+        if (layoutParams.bottomMargin == bottomMargin) return
+
+        layoutParams.bottomMargin = bottomMargin
+        binding.candidateHeightSettingContent.layoutParams = layoutParams
+    }
+
+    private fun updateInspectorToggleLabel(state: Int) {
+        binding.toggleInspectorButton.setText(
+            if (state == BottomSheetBehavior.STATE_COLLAPSED) {
+                R.string.candidate_height_inspector_expand
+            } else {
+                R.string.candidate_height_inspector_collapse
+            }
+        )
+    }
+
+    private fun setupPreviewModeControls() {
+        binding.candidatePreviewModeToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || isSyncingPreviewModeControls) return@addOnButtonCheckedListener
+            isCandidateListVisible = checkedId == R.id.candidate_preview_candidates_button
+            updateCandidateListAndHeight()
         }
-        showInspectorTab(R.id.candidate_tab_height_button)
+        syncPreviewModeControls()
     }
 
-    private fun openDefaultHeightInspector() {
-        binding.candidateInspectorTabGroup.check(R.id.candidate_tab_default_button)
-        syncDefaultHeightControls()
-        showInspectorPanel()
-    }
-
-    private fun showInspectorPanel() {
-        binding.inspectorBottomSheet.isVisible = true
-        binding.showInspectorButton.isVisible = false
-    }
-
-    private fun hideInspectorPanel() {
-        binding.inspectorBottomSheet.isVisible = false
-        binding.showInspectorButton.isVisible = true
-    }
-
-    private fun showInspectorTab(checkedId: Int) {
-        binding.heightControlsContainer.isVisible = checkedId == R.id.candidate_tab_height_button
-        binding.textControlsContainer.isVisible = checkedId == R.id.candidate_tab_text_button
-        binding.defaultControlsContainer.isVisible =
-            checkedId == R.id.candidate_tab_default_button
-        if (checkedId == R.id.candidate_tab_default_button) {
-            syncDefaultHeightControls()
+    private fun syncPreviewModeControls() {
+        if (isSyncingPreviewModeControls) return
+        isSyncingPreviewModeControls = true
+        try {
+            binding.candidatePreviewModeToggleGroup.check(
+                if (isCandidateListVisible) {
+                    R.id.candidate_preview_candidates_button
+                } else {
+                    R.id.candidate_preview_empty_button
+                }
+            )
+        } finally {
+            isSyncingPreviewModeControls = false
         }
     }
 
@@ -276,11 +311,10 @@ class CandidateViewHeightSettingFragment : Fragment() {
     private fun updateCandidateListAndHeight() {
         if (isCandidateListVisible) {
             suggestionAdapter.suggestions = previewCandidates
-            binding.toggleCandidateListButton.text = getString(R.string.candidate_preview_input_mode)
         } else {
             suggestionAdapter.suggestions = emptyList()
-            binding.toggleCandidateListButton.text = getString(R.string.candidate_preview_empty_mode)
         }
+        syncPreviewModeControls()
         binding.candidatePreviewVisibilityButton.isVisible = isCandidateListVisible
         updateCandidateTabPreview()
         updateShortcutToolbarPreview()
@@ -416,36 +450,39 @@ class CandidateViewHeightSettingFragment : Fragment() {
         isSyncingHeightControls = true
         try {
             val clamped = heightDp.coerceIn(minHeightDp, maxHeightDp)
-            binding.candidateHeightSeekbar.progress = clamped - minHeightDp
+            binding.candidateHeightSeekbar.value = clamped.toFloat()
             val text = clamped.toString()
             if (binding.candidateHeightEditText.text?.toString() != text) {
                 binding.candidateHeightEditText.setText(text)
                 binding.candidateHeightEditText.setSelection(text.length)
             }
             binding.candidateHeightInputLayout.error = null
+            binding.candidateHeightValueText.text = getString(
+                R.string.candidate_height_current_value,
+                clamped
+            )
         } finally {
             isSyncingHeightControls = false
         }
     }
 
     private fun setupHeightSeekBar() {
-        binding.candidateHeightSeekbar.max = maxHeightDp - minHeightDp
-        binding.candidateHeightSeekbar.progress =
-            selectedHeightDp().coerceIn(minHeightDp, maxHeightDp) - minHeightDp
-        binding.candidateHeightSeekbar.setOnSeekBarChangeListener(
-            object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    if (!fromUser || isSyncingHeightControls) return
-                    applyHeightDp(minHeightDp + progress, persist = true)
+        binding.candidateHeightSeekbar.valueFrom = minHeightDp.toFloat()
+        binding.candidateHeightSeekbar.valueTo = maxHeightDp.toFloat()
+        binding.candidateHeightSeekbar.stepSize = 1f
+        binding.candidateHeightSeekbar.value = selectedHeightDp()
+            .coerceIn(minHeightDp, maxHeightDp).toFloat()
+        binding.candidateHeightSeekbar.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser || isSyncingHeightControls) return@addOnChangeListener
+            applyHeightDp(value.roundToInt(), persist = false)
+        }
+        binding.candidateHeightSeekbar.addOnSliderTouchListener(
+            object : Slider.OnSliderTouchListener {
+                override fun onStartTrackingTouch(slider: Slider) = Unit
+
+                override fun onStopTrackingTouch(slider: Slider) {
+                    applyHeightDp(slider.value.roundToInt(), persist = true)
                 }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
             }
         )
     }
@@ -474,23 +511,23 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     private fun setupCandidateLetterSizeSeekBar() {
-        binding.candidateLetterSizeSeekbar.max =
-            ((maxCandidateTextSize - minCandidateTextSize) * 10).roundToInt()
-        binding.candidateLetterSizeSeekbar.setOnSeekBarChangeListener(
-            object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    if (!fromUser || isSyncingLetterSizeControls) return
-                    val newSize = minCandidateTextSize + progress / 10f
-                    applyCandidateTextSize(newSize, persist = true)
+        binding.candidateLetterSizeSeekbar.valueFrom = minCandidateTextSize
+        binding.candidateLetterSizeSeekbar.valueTo = maxCandidateTextSize
+        binding.candidateLetterSizeSeekbar.stepSize = 0.1f
+        binding.candidateLetterSizeSeekbar.value =
+            (appPreference.candidate_letter_size ?: defaultCandidateTextSize)
+                .coerceIn(minCandidateTextSize, maxCandidateTextSize)
+        binding.candidateLetterSizeSeekbar.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser || isSyncingLetterSizeControls) return@addOnChangeListener
+            applyCandidateTextSize(value, persist = false)
+        }
+        binding.candidateLetterSizeSeekbar.addOnSliderTouchListener(
+            object : Slider.OnSliderTouchListener {
+                override fun onStartTrackingTouch(slider: Slider) = Unit
+
+                override fun onStopTrackingTouch(slider: Slider) {
+                    applyCandidateTextSize(slider.value, persist = true)
                 }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
             }
         )
     }
@@ -525,7 +562,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
             appPreference.candidate_letter_size = clamped
         }
         syncCandidateLetterSizeControls(clamped)
-        updateInspectorSummary()
+        updateInspectorSummary(textSize = clamped)
     }
 
     private fun syncCandidateLetterSizeControls(size: Float) {
@@ -533,148 +570,50 @@ class CandidateViewHeightSettingFragment : Fragment() {
         isSyncingLetterSizeControls = true
         try {
             val clamped = size.coerceIn(minCandidateTextSize, maxCandidateTextSize)
-            binding.candidateLetterSizeSeekbar.progress =
-                ((clamped - minCandidateTextSize) * 10).roundToInt()
+            binding.candidateLetterSizeSeekbar.value = clamped
             val text = String.format(Locale.US, "%.1f", clamped)
             if (binding.candidateLetterSizeEditText.text?.toString() != text) {
                 binding.candidateLetterSizeEditText.setText(text)
                 binding.candidateLetterSizeEditText.setSelection(text.length)
             }
             binding.candidateLetterSizeInputLayout.error = null
+            binding.candidateLetterSizeValueText.text = getString(
+                R.string.candidate_letter_size_current_value,
+                clamped
+            )
         } finally {
             isSyncingLetterSizeControls = false
         }
     }
 
-    private fun setupDefaultHeightControls() {
-        binding.saveDefaultsButton.setOnClickListener {
-            saveDefaultHeightsFromInputs()
-        }
-        binding.useCurrentDefaultsButton.setOnClickListener {
-            appPreference.copyCandidateHeightSettingsToUserDefaults(isLandscape = false)
-            syncDefaultHeightControls()
-        }
-        binding.restoreFactoryDefaultsButton.setOnClickListener {
-            appPreference.resetCandidateHeightDefaultsToFactoryDefaults(isLandscape = false)
-            syncDefaultHeightControls()
-        }
-        listOf(
-            binding.defaultHeightOneEditText,
-            binding.defaultHeightTwoEditText,
-            binding.defaultHeightThreeEditText,
-            binding.defaultEmptyHeightEditText
-        ).forEach { editText ->
-            editText.setOnEditorActionListener { _, _, _ ->
-                saveDefaultHeightsFromInputs()
-                false
-            }
-        }
-    }
-
-    private fun saveDefaultHeightsFromInputs(): Boolean {
-        if (isSyncingDefaultHeightControls) return false
-        val one = readDefaultHeightInput(
-            binding.defaultHeightOneInputLayout,
-            binding.defaultHeightOneEditText
-        ) ?: return false
-        val two = readDefaultHeightInput(
-            binding.defaultHeightTwoInputLayout,
-            binding.defaultHeightTwoEditText
-        ) ?: return false
-        val three = readDefaultHeightInput(
-            binding.defaultHeightThreeInputLayout,
-            binding.defaultHeightThreeEditText
-        ) ?: return false
-        val empty = readDefaultHeightInput(
-            binding.defaultEmptyHeightInputLayout,
-            binding.defaultEmptyHeightEditText
-        ) ?: return false
-
-        appPreference.setCandidateDefaultVisibleHeightDp(
-            isLandscape = false,
-            column = "1",
-            heightDp = one
-        )
-        appPreference.setCandidateDefaultVisibleHeightDp(
-            isLandscape = false,
-            column = "2",
-            heightDp = two
-        )
-        appPreference.setCandidateDefaultVisibleHeightDp(
-            isLandscape = false,
-            column = "3",
-            heightDp = three
-        )
-        appPreference.setCandidateDefaultEmptyHeightDp(
-            isLandscape = false,
-            heightDp = empty
-        )
-        syncDefaultHeightControls()
-        return true
-    }
-
-    private fun readDefaultHeightInput(
-        inputLayout: TextInputLayout,
-        editText: TextInputEditText
-    ): Int? {
-        val value = editText.text?.toString()?.trim()?.toIntOrNull()
-        if (value == null) {
-            inputLayout.error = getString(R.string.candidate_height_invalid_value)
-            return null
-        }
-        inputLayout.error = null
-        return value.coerceIn(minHeightDp, maxHeightDp)
-    }
-
-    private fun syncDefaultHeightControls() {
-        if (isSyncingDefaultHeightControls) return
-        isSyncingDefaultHeightControls = true
-        try {
-            setDefaultHeightText(
-                binding.defaultHeightOneInputLayout,
-                binding.defaultHeightOneEditText,
-                appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = false, column = "1")
-            )
-            setDefaultHeightText(
-                binding.defaultHeightTwoInputLayout,
-                binding.defaultHeightTwoEditText,
-                appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = false, column = "2")
-            )
-            setDefaultHeightText(
-                binding.defaultHeightThreeInputLayout,
-                binding.defaultHeightThreeEditText,
-                appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = false, column = "3")
-            )
-            setDefaultHeightText(
-                binding.defaultEmptyHeightInputLayout,
-                binding.defaultEmptyHeightEditText,
-                appPreference.getCandidateDefaultEmptyHeightDp(isLandscape = false)
-            )
-        } finally {
-            isSyncingDefaultHeightControls = false
-        }
-    }
-
-    private fun setDefaultHeightText(
-        inputLayout: TextInputLayout,
-        editText: TextInputEditText,
-        heightDp: Int
+    private fun updateInspectorSummary(
+        heightDp: Int = selectedHeightDp(),
+        textSize: Float = appPreference.candidate_letter_size ?: defaultCandidateTextSize
     ) {
-        val text = heightDp.coerceIn(minHeightDp, maxHeightDp).toString()
-        if (editText.text?.toString() != text) {
-            editText.setText(text)
-            editText.setSelection(text.length)
-        }
-        inputLayout.error = null
-    }
-
-    private fun updateInspectorSummary(heightDp: Int = selectedHeightDp()) {
-        val textSize = appPreference.candidate_letter_size ?: defaultCandidateTextSize
+        val clampedTextSize = (textSize
+            .coerceIn(minCandidateTextSize, maxCandidateTextSize) * 10)
+            .roundToInt() / 10f
+        val previewMode = getString(
+            if (isCandidateListVisible) {
+                R.string.candidate_height_preview_candidates
+            } else {
+                R.string.candidate_height_preview_empty
+            }
+        )
+        val clampedHeight = heightDp.coerceIn(minHeightDp, maxHeightDp)
         binding.inspectorSummaryText.text = getString(
             R.string.candidate_height_sheet_summary_format,
+            previewMode,
             appPreference.getCandidateColumn(isLandscape = false),
-            heightDp.coerceIn(minHeightDp, maxHeightDp).toString(),
-            String.format(Locale.US, "%.1f", textSize)
+            clampedHeight.toString()
+        )
+        binding.candidateHeightValueText.text = getString(
+            R.string.candidate_height_current_value,
+            clampedHeight
+        )
+        binding.candidateLetterSizeValueText.text = getString(
+            R.string.candidate_letter_size_current_value,
+            clampedTextSize
         )
     }
 
