@@ -2135,6 +2135,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var countToggleKatakana = 0
 
     private var hardKeyboardShiftPressd = false
+    private var softwareQwertyShiftPressed = false
+    private val isRomajiShiftPressed: Boolean
+        get() = hardKeyboardShiftPressd || softwareQwertyShiftPressed
     private var physicalKeyboardInputMode: PhysicalKeyboardInputMode =
         PhysicalKeyboardInputMode.ROMAJI
     private var physicalKeyboardShortcuts: List<PhysicalKeyboardShortcutItem> = emptyList()
@@ -2355,6 +2358,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         var numberReturn: RestartInputModeQwertyReturnSource = RestartInputModeQwertyReturnSource.None,
         var numberFromTenkey: Boolean = false,
         var hardShift: Boolean = false,
+        var softwareQwertyShift: Boolean = false,
         var symbolState: SymbolKeyboardState = SymbolKeyboardState(),
         var symbolRequest: SymbolKeyboardState? = null,
         var symbolJob: Job? = null,
@@ -2393,6 +2397,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         splitInputs[slot]?.apply {
             mode = qwertyMode.value
             hardShift = hardKeyboardShiftPressd
+            softwareQwertyShift = softwareQwertyShiftPressed
             symbolState = keyboardSymbolViewState.value
             inputMode = currentInputModeForSession
             romaji = currentQwertyRomajiModeForSession
@@ -2432,6 +2437,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         activeSplitSlot = slot
         floatingKeyboardBinding = state.binding
         hardKeyboardShiftPressd = state.hardShift
+        softwareQwertyShiftPressed = state.softwareQwertyShift
         currentInputModeForSession = state.inputMode
         currentQwertyRomajiModeForSession = state.romaji
         customKeyboardMode = state.customMode
@@ -10865,7 +10871,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun Char.shouldUseRomajiQwertyOutputCharAfterShift(): Boolean {
-        return !hardKeyboardShiftPressd || shouldApplyRomajiQwertyWidthPreference()
+        return !isRomajiShiftPressed || shouldApplyRomajiQwertyWidthPreference()
     }
 
     private fun Char.toRomajiQwertyFlickOutputChar(): Char {
@@ -19218,6 +19224,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resetInputString()
             lastCandidate = ""
             hardKeyboardShiftPressd = false
+            softwareQwertyShiftPressed = false
             initialCursorDetectInFloatingCandidateView = false
             initialCursorXPosition = 0
             if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
@@ -22660,7 +22667,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyNotSelect -> {}
                         QWERTYKey.QWERTYKeyShift -> {
-                            hardKeyboardShiftPressd = true
+                            softwareQwertyShiftPressed = true
                         }
 
                         QWERTYKey.QWERTYKeyDelete -> {
@@ -22670,6 +22677,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             stopDeleteLongPress()
                             if (isDefaultRomajiHenkanMap) {
                                 hardKeyboardShiftPressd = false
+                                softwareQwertyShiftPressed = false
                             }
                         }
 
@@ -22879,10 +22887,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             if (currentInputModeForSession == InputMode.ModeJapanese) {
                                 if (inputForAppend.isNotEmpty()) {
-                                    Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
+                                    Timber.d("QWERTY romaji not empty: $isRomajiShiftPressed $qwertyRomajiShiftConversionPreference")
                                     if (qwertyRomajiShiftConversionPreference == true) {
-                                        if (hardKeyboardShiftPressd) {
-                                            Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
+                                        if (isRomajiShiftPressed) {
+                                            Timber.d("QWERTY romaji shift pressed: $tap")
                                             tap?.let { c ->
                                                 val charToAppend =
                                                     if (isDefaultRomajiHenkanMap &&
@@ -22919,8 +22927,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             }
                                         }
                                     } else {
-                                        if (hardKeyboardShiftPressd) {
-                                            Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
+                                        if (isRomajiShiftPressed) {
+                                            Timber.d("QWERTY romaji shift pressed: $tap")
                                             handleTap(tap, inputForAppend, sb, mainView)
                                         } else {
                                             tap?.let { c ->
@@ -22968,6 +22976,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             lastFlickConvertedNextHiragana.set(true)
                         }
                     }
+                }
+
+                override fun onQWERTYShiftStateChanged(
+                    capsLockOn: Boolean,
+                    shiftOn: Boolean
+                ) {
+                    activateSplitView(qwertyView)
+                    if (!capsLockOn && !shiftOn) {
+                        softwareQwertyShiftPressed = false
+                    }
+                    if (isKeyboardLayoutEditModeActive()) return
                 }
 
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
@@ -24402,6 +24421,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hasConvertedKatakana = false
         romajiConverter?.clear()
         hardKeyboardShiftPressd = false
+        softwareQwertyShiftPressed = false
         resetSumireKeyboardDakutenMode()
         initialCursorDetectInFloatingCandidateView = false
         initialCursorXPosition = 0

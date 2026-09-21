@@ -380,6 +380,52 @@ class QwertyMultiTouchInstrumentedTest {
         }
     }
 
+    @Test
+    fun capsLockOff_reportsTheExplicitShiftStateChange() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder)
+            val shift = keyboard.keyCenter(R.id.key_shift)
+
+            // First tap enables one-shot Shift.
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, shift))
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_UP, 0, pointer(0, shift))
+
+            // Second tap within the double-tap window enables Caps Lock.
+            keyboard.sendEvent(200L, 200L, MotionEvent.ACTION_DOWN, 0, pointer(1, shift))
+            keyboard.sendEvent(200L, 220L, MotionEvent.ACTION_UP, 0, pointer(1, shift))
+
+            // A later Shift tap turns Caps Lock off and must report the cleared state.
+            keyboard.sendEvent(1_000L, 1_000L, MotionEvent.ACTION_DOWN, 0, pointer(2, shift))
+            keyboard.sendEvent(1_000L, 1_020L, MotionEvent.ACTION_UP, 0, pointer(2, shift))
+
+            assertEquals(
+                listOf(false to true, false to false),
+                recorder.shiftStateChanges
+            )
+        }
+    }
+
+    @Test
+    fun qwertyModeSwitch_reportsTheClearedShiftState() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder)
+            val shift = keyboard.keyCenter(R.id.key_shift)
+            val switchMode = keyboard.keyCenter(R.id.key_123)
+
+            keyboard.sendEvent(300L, 300L, MotionEvent.ACTION_DOWN, 0, pointer(3, shift))
+            keyboard.sendEvent(300L, 320L, MotionEvent.ACTION_UP, 0, pointer(3, shift))
+            keyboard.sendEvent(400L, 400L, MotionEvent.ACTION_DOWN, 0, pointer(4, switchMode))
+            keyboard.sendEvent(400L, 420L, MotionEvent.ACTION_UP, 0, pointer(4, switchMode))
+
+            assertEquals(
+                listOf(false to true, false to false),
+                recorder.shiftStateChanges
+            )
+        }
+    }
+
     private fun createKeyboard(listener: RecordingQwertyKeyListener): QWERTYKeyboardView {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
         val themedContext: Context = ContextThemeWrapper(
@@ -469,6 +515,7 @@ class QwertyMultiTouchInstrumentedTest {
         val taps = mutableListOf<Char>()
         val upFlicks = mutableListOf<QWERTYKey>()
         val releasedKeys = mutableListOf<QWERTYKey>()
+        val shiftStateChanges = mutableListOf<Pair<Boolean, Boolean>>()
 
         override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) = Unit
 
@@ -479,6 +526,10 @@ class QwertyMultiTouchInstrumentedTest {
         ) {
             releasedKeys += qwertyKey
             tap?.let(taps::add)
+        }
+
+        override fun onQWERTYShiftStateChanged(capsLockOn: Boolean, shiftOn: Boolean) {
+            shiftStateChanges += capsLockOn to shiftOn
         }
 
         override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) = Unit
