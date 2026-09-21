@@ -3,12 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_select_keyboard_layouts"
-        android:icon="@drawable/keyboard_24px"
-        android:title="@string/keyboard_selection_preference_title"
-        app:showAsAction="ifRoom" />
-
-    <item
         android:id="@+id/action_export_layouts"
         android:title="@string/custom_keyboard_export_title" />
 
