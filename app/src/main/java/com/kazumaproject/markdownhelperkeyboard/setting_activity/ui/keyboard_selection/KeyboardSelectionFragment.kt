@@ -217,5 +217,6 @@ fun Context.getKeyboardDisplayName(keyboardType: KeyboardType): String {
         KeyboardType.ROMAJI -> getString(R.string.keyboard_type_romaji)
         KeyboardType.SUMIRE -> getString(R.string.keyboard_type_sumire)
         KeyboardType.CUSTOM -> getString(R.string.keyboard_type_custom)
+        KeyboardType.SPLIT -> getString(R.string.split_keyboard_title)
     }
 }

@@ -25,7 +25,10 @@ object SettingTabRegistry {
     const val TAB_TEXT_MACRO = "text_macro"
     const val TAB_KANA = "kana"
     const val TAB_QWERTY = "qwerty"
+    const val TAB_QWERTY_ENGLISH = "qwerty_english"
+    const val TAB_QWERTY_ROMAJI = "qwerty_romaji"
     const val TAB_SUMIRE = "sumire"
+    const val TAB_SPLIT = "split_keyboard"
     const val TAB_CUSTOM = "custom"
     const val TAB_TABLET = "tablet"
     const val TAB_HARDWARE_KEYBOARD = "hardware_keyboard"
@@ -101,10 +104,24 @@ object SettingTabRegistry {
             ),
             SettingTabSpec(
                 key = TAB_QWERTY,
-                title = { "QWERTY" },
+                title = { it.getString(R.string.qwerty_common_category_title) },
                 xmlRes = R.xml.pref_qwerty,
                 destinationId = R.id.qwertyPreferenceFragment,
                 fragmentFactory = { QwertyPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_QWERTY_ENGLISH,
+                title = { it.getString(R.string.qwerty_english_category_title) },
+                xmlRes = R.xml.pref_qwerty_english,
+                destinationId = R.id.qwertyEnglishPreferenceFragment,
+                fragmentFactory = { QwertyEnglishPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_QWERTY_ROMAJI,
+                title = { it.getString(R.string.qwerty_romaji_category_title) },
+                xmlRes = R.xml.pref_qwerty_romaji,
+                destinationId = R.id.qwertyRomajiPreferenceFragment,
+                fragmentFactory = { QwertyRomajiPreferenceFragment() },
             ),
             SettingTabSpec(
                 key = TAB_SUMIRE,
@@ -119,6 +136,13 @@ object SettingTabRegistry {
                 xmlRes = R.xml.pref_custom,
                 destinationId = R.id.customKeyboardPreferenceFragment,
                 fragmentFactory = { CustomKeyboardPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_SPLIT,
+                title = { it.getString(R.string.split_keyboard_title) },
+                xmlRes = R.xml.pref_split_keyboard,
+                destinationId = R.id.splitKeyboardPreferenceFragment,
+                fragmentFactory = { SplitKeyboardPreferenceFragment() },
             ),
             SettingTabSpec(
                 key = TAB_TABLET,

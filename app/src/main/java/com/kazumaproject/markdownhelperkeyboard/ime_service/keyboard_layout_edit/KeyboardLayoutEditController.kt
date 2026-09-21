@@ -26,6 +26,7 @@ class KeyboardLayoutEditController(
         activeSurface = surfaceAdapter
         _state.value = state
         surfaceAdapter.setEditing(true)
+        if (surfaceAdapter.startChromeEdit(state.values, callbacks)) return
         val overlay = KeyboardLayoutEditOverlayView(context).apply {
             configure(
                 mode = when (state.surface) {
@@ -71,4 +72,5 @@ interface KeyboardLayoutEditSurfaceAdapter {
     fun currentBoundsInParent(): Rect
     fun availableWidthPx(): Int
     fun setEditing(isEditing: Boolean)
+    fun startChromeEdit(values: KeyboardLayoutEditValues, callbacks: KeyboardLayoutEditOverlayView.Callbacks): Boolean = false
 }

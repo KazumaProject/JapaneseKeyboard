@@ -65,6 +65,125 @@ class FastInputMatrixInstrumentedTest {
         get() = instrumentation.uiAutomation
 
     @Test
+    fun qwertyRomajiCapsLockOffResumesRomajiConversionOnPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-romaji-caps-lock-off") { session ->
+            check(
+                session.preferences.edit()
+                    .putString("keyboard_order_preference", "[\"ROMAJI\"]")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("keyboard_floating_preference", false)
+                    .putBoolean("live_conversion_preference", false)
+                    .putBoolean("qwerty_romaji_shift_conversion_preference", false)
+                    .commit()
+            )
+            val scenario = launchHost(session.context)
+            try {
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+
+                fun tap(id: String) {
+                    assertTrue("Failed to tap $id", injectTap(awaitVisibleNodeBounds(id).center))
+                }
+
+                val shift = awaitVisibleNodeBounds("key_shift").center
+                assertTrue(injectTap(shift))
+                assertTrue(injectTap(shift))
+                "abc".forEach { tap("key_$it") }
+                tap("key_return")
+                assertEquals("ABC", awaitTextSettled(scenario))
+
+                assertTrue(injectTap(shift))
+                "aiueo".forEach { tap("key_$it") }
+                assertEquals("ABCあいうえお", awaitTextSettled(scenario))
+            } finally {
+                scenario.close()
+            }
+        }
+    }
+
+    @Test
+    fun englishSpaceFlickCommitsExpectedWidthOnNormalAndFloatingPhysicalKeyboard() {
+        runPhysicalDeviceSession("english-space-flick") { session ->
+            rotateAndVerify(TestOrientation.PORTRAIT)
+            applyCasePreferences(session.preferences, TestCase(
+                keyboard = TestKeyboard.QWERTY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.PORTRAIT,
+            ))
+            for (floating in listOf(false, true)) {
+                for (direct in listOf(false, true)) {
+                    check(session.preferences.edit()
+                        .putBoolean("keyboard_floating_preference", floating)
+                        .putBoolean("qwerty_english_space_flick_preference", true)
+                        .putBoolean("qwerty_romaji_space_flick_preference", false)
+                        .putBoolean("qwerty_romaji_zenkaku_space_preference", true)
+                        .putBoolean("qwerty_english_direct_input_preference", direct)
+                        .putBoolean("qwerty_enable_flick_up_preference", false)
+                        .putInt("long_press_timeout_preference", 1000)
+                        .commit())
+                    val scenario = launchHost(session.context)
+                    try {
+                        ensureTargetImeSelected(session)
+                        restartInput(scenario)
+                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                        fun tap(id: String) {
+                            assertTrue(injectTap(awaitVisibleNodeBounds(id).center))
+                        }
+                        fun flickSpace() {
+                            val bounds = awaitVisibleNodeBounds("key_space")
+                            assertTrue(injectFlick(bounds.center,
+                                PointF(bounds.center.x, bounds.center.y - bounds.height * 1.5f)))
+                        }
+                        fun assertCommitted(expected: String) {
+                            assertEquals(expected, awaitTextSettled(scenario))
+                            scenario.onActivity {
+                                assertEquals(-1, android.view.inputmethod.BaseInputConnection
+                                    .getComposingSpanStart(it.editText.text))
+                                assertEquals(expected.length, it.editText.selectionStart)
+                            }
+                        }
+                        val token = "floating-$floating-direct-$direct"
+                        assertEquals("", awaitTextSettled(scenario))
+                        scenario.onActivity {
+                            assertEquals(-1, android.view.inputmethod.BaseInputConnection
+                                .getComposingSpanStart(it.editText.text))
+                        }
+                        assertTrue("Expected no candidates before empty-space test", findCandidateState().texts.isEmpty())
+                        flickSpace()
+                        assertCommitted("\u3000")
+                        saveScreenshot(session, "$token-empty-full-width")
+                        tap("key_space")
+                        assertCommitted("\u3000 ")
+                        sendProgress("SPACE_VERIFIED $token empty flick=U+3000 tap=U+0020 no-composition no-candidates\n")
+
+                        restartInput(scenario)
+                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                        "hello".forEach { tap("key_$it") }
+                        val before = awaitTextSettled(scenario)
+                        assertEquals("hello", before.lowercase())
+                        scenario.onActivity {
+                            val start = android.view.inputmethod.BaseInputConnection
+                                .getComposingSpanStart(it.editText.text)
+                            if (direct) assertEquals(-1, start) else assertTrue(start >= 0)
+                        }
+                        val candidates = findCandidateState().texts
+                        flickSpace()
+                        assertCommitted(before + "\u3000")
+                        saveScreenshot(session, "$token-text-full-width")
+                        sendProgress("SPACE_VERIFIED $token text=$before flick=U+3000 composing-before=${!direct} candidates=$candidates committed=true\n")
+                    } finally {
+                        scenario.close()
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun bunsetsuConversionOnNormalAndFloatingSoftwareKeyboards() {
         runPhysicalDeviceSession("bunsetsu-software") { session ->
             for (floating in listOf(false, true)) {
@@ -1548,6 +1667,65 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun symbolKeyboardHasNoTopGapOnPhysicalDevice() {
+        runPhysicalDeviceSession("symbol-keyboard-top-gap") { session ->
+            val keyboardLayoutDao = EntryPointAccessors.fromApplication(
+                session.context.applicationContext,
+                KanaKanjiEngineEntryPoint::class.java,
+            ).keyboardLayoutDao()
+            val customFixture = installKeyboardSizeCustomFixture(keyboardLayoutDao)
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+
+            try {
+                applyKeyboardSizeBasePreferences(
+                    preferences = session.preferences,
+                    customFixtureStableId = customFixture.stableId,
+                )
+                ensureTargetImeSelected(session)
+                scenario = launchHost(session.context)
+                val activeScenario = requireNotNull(scenario)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+
+                KeyboardSizeSymbolCase.entries.forEach { symbolCase ->
+                    applyKeyboardSizeCasePreferences(
+                        preferences = session.preferences,
+                        keyboard = symbolCase.source,
+                        floating = false,
+                    )
+                    restartInput(activeScenario)
+                    val normalImeBounds = awaitImeWindowBounds()
+                    val sourceKey = awaitVisibleNodeBounds(symbolCase.openKeyId)
+                    check(injectTap(sourceKey.center)) {
+                        "Unable to open symbols from ${symbolCase.source}"
+                    }
+                    try {
+                        assertKeyboardSizeCase(
+                            keyboard = symbolCase.source,
+                            orientation = TestOrientation.PORTRAIT,
+                            floating = false,
+                            session = session,
+                            symbol = true,
+                            expectedImeBounds = normalImeBounds,
+                        )
+                    } finally {
+                        val returnKey = awaitVisibleNodeBounds("return_jp_keyboard_button")
+                        check(injectTap(returnKey.center)) {
+                            "Unable to return from symbols to ${symbolCase.source}"
+                        }
+                        awaitVisibleNodeBounds(symbolCase.source.rootViewId)
+                        check(awaitImeWindowBounds() == normalImeBounds) {
+                            "IME bounds changed after returning from symbols"
+                        }
+                    }
+                }
+            } finally {
+                scenario?.close()
+                runBlocking { keyboardLayoutDao.deleteLayout(customFixture.id) }
+            }
+        }
+    }
+
+    @Test
     fun rapidInputFullMatrixOnPhysicalDevice() {
         val arguments = InstrumentationRegistry.getArguments()
         val startCase = arguments.getString("startCase")?.toIntOrNull() ?: 1
@@ -2539,6 +2717,11 @@ class FastInputMatrixInstrumentedTest {
                 check(expectedImeBounds == null || imeBounds == expectedImeBounds) {
                     "IME bounds changed: actual=$imeBounds expected=$expectedImeBounds"
                 }
+                if (symbol) {
+                    check(imeBounds?.top == rootBounds.top) {
+                        "Symbol keyboard has a top gap: symbol=$rootBounds ime=$imeBounds"
+                    }
+                }
                 check(symbol || kotlin.math.abs(rootBounds.height - expectedHeightPx) <= 2) {
                     "Height mismatch for $keyboard: actual=${rootBounds.height} " +
                         "expected=$expectedHeightPx dp=$expectedHeightDp"
@@ -2603,16 +2786,16 @@ class FastInputMatrixInstrumentedTest {
         val portraitCandidateHeight = preferences.getInt(
             "candidate_view_height_portrait_column_${case.columns}_dp_preference",
             when (case.columns) {
-                2 -> 120
-                3 -> 160
-                else -> 110
+                2 -> 80
+                3 -> 100
+                else -> 60
             }
         )
         val landscapeCandidateHeight = preferences.getInt(
             "candidate_view_height_landscape_column_${case.columns}_dp_preference",
             when (case.columns) {
-                2 -> 90
-                3 -> 120
+                2 -> 80
+                3 -> 100
                 else -> 60
             }
         )
@@ -2723,20 +2906,12 @@ class FastInputMatrixInstrumentedTest {
         } else {
             "candidate_view_height_portrait_column_${case.columns}_dp_preference"
         }
-        val activeDefault = if (landscape) 60 else 110
-        val emptyDefault = if (landscape) 110 else 110
-        val columnDefault = if (landscape) {
-            when (case.columns) {
-                2 -> 90
-                3 -> 120
-                else -> 60
-            }
-        } else {
-            when (case.columns) {
-                2 -> 120
-                3 -> 160
-                else -> 110
-            }
+        val activeDefault = 60
+        val emptyDefault = 60
+        val columnDefault = when (case.columns) {
+            2 -> 80
+            3 -> 100
+            else -> 60
         }
         return "candidateHeightDp(active=${preferences.getInt(activeKey, activeDefault)}," +
             "empty=${preferences.getInt(emptyKey, emptyDefault)}," +

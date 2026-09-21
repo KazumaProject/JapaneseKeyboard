@@ -33,8 +33,17 @@
         <Preference
             android:icon="@drawable/input_mode_english_select"
             android:key="setting_route_qwerty_preferences"
-            android:summary="@string/setting_route_qwerty_summary"
-            android:title="QWERTY" />
+            android:title="@string/qwerty_common_category_title" />
+
+        <Preference
+            android:icon="@drawable/input_mode_english_select"
+            android:key="setting_route_qwerty_english_preferences"
+            android:title="@string/qwerty_english_category_title" />
+
+        <Preference
+            android:icon="@drawable/input_mode_english_select"
+            android:key="setting_route_qwerty_romaji_preferences"
+            android:title="@string/qwerty_romaji_category_title" />
 
         <Preference
             android:icon="@drawable/ic_custom_icon"

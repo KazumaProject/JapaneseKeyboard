@@ -221,8 +221,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         QWERTYKey.QWERTYKeyCursorRight
     )
 
+    private var onSpaceUpFlickListener: (() -> Unit)? = null
+    private var spaceUpFlickEnabled = false
+    private var englishSpaceUpFlickEnabled = false
+
     /**
-     * 上フリック検知を有効にするかどうかのフラグ
+     * 文字キーの上フリック検知を有効にするかどうかのフラグ
      */
     private var enableFlickUpDetection = false
 
@@ -1091,6 +1095,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.showPopupView = state
     }
 
+    fun setOnSpaceUpFlickListener(listener: (() -> Unit)?) {
+        onSpaceUpFlickListener = listener
+    }
+
+    fun setSpaceUpFlickEnabled(enabled: Boolean) {
+        spaceUpFlickEnabled = enabled
+    }
+
+    fun setEnglishSpaceUpFlickEnabled(enabled: Boolean) {
+        englishSpaceUpFlickEnabled = enabled
+    }
+
     fun setFlickUpDetectionEnabled(enabled: Boolean) {
         this.enableFlickUpDetection = enabled
         updateNumberKeyFlickGuides()
@@ -1767,6 +1783,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun notifyQwertyShiftStateChanged() {
+        val state = capsLockState.value
+        qwertyKeyListener?.onQWERTYShiftStateChanged(
+            capsLockOn = state.capsLockOn,
+            shiftOn = state.shiftOn
+        )
+    }
+
     private fun beginQwertyGlideCandidateIfPossible(event: MotionEvent, pointerIndex: Int) {
         val pointerId = event.getPointerId(pointerIndex)
         val x = event.getX(pointerIndex)
@@ -1968,7 +1992,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun resetQWERTYKeyboard() {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
@@ -1979,7 +2003,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun resetQWERTYKeyboard(enterKyeText: String) {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
@@ -1991,7 +2015,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setNumberView() {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Number }
         _romajiModeState.update { false }
         binding.apply {
@@ -2002,7 +2026,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setRomajiKeyboard(enterKeyText: String) {
         cancelQwertyGlideCandidate(notify = glideStarted)
-        clearShiftCaps()
+        clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { true }
         binding.apply {
@@ -2234,6 +2258,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             else -> {
                 logVariationIfNeeded(qwertyKey)
                 setToggleShiftState(view)
+                if (qwertyKey == QWERTYKey.QWERTYKeyShift) {
+                    notifyQwertyShiftStateChanged()
+                }
             }
         }
     }
@@ -2396,6 +2423,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         previousView.id == binding.keyDelete.id -> {
                         applyCommonFlickEffects(pointerId, previousView)
                         onDeleteUpFlickListener?.invoke()
+                        true
+                    }
+
+                    previousView?.id == binding.keySpace.id &&
+                        (romajiModeState.value || englishSpaceUpFlickEnabled) -> {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        if (if (romajiModeState.value) spaceUpFlickEnabled else englishSpaceUpFlickEnabled) {
+                            onSpaceUpFlickListener?.invoke()
+                        } else {
+                            qwertyKeyListener?.onReleasedQWERTYKey(
+                                QWERTYKey.QWERTYKeySpace, null, null
+                            )
+                        }
                         true
                     }
 
@@ -2731,7 +2771,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (key == QWERTYKey.QWERTYKeySwitchMode) {
             when (qwertyMode.value) {
                 QWERTYMode.Default -> {
-                    clearShiftCaps()
+                    clearShiftCaps(notifyListener = true)
                     _qwertyMode.update { QWERTYMode.Number }
                 }
 
@@ -2907,8 +2947,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         _capsLockState.update { it.copy(capsLockOn = true, shiftOn = false) }
     }
 
-    private fun clearShiftCaps() {
+    private fun clearShiftCaps(notifyListener: Boolean = false) {
         _capsLockState.value = CapsLockState()
+        if (notifyListener) {
+            notifyQwertyShiftStateChanged()
+        }
     }
 
     fun getRomajiMode(): Boolean {

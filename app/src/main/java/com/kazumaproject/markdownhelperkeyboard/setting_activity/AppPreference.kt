@@ -109,8 +109,11 @@ object AppPreference {
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
     const val INLINE_SUGGESTION_ENABLED_KEY = "inline_suggestion_enabled_preference"
+    internal const val CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION_KEY =
+        "candidate_height_defaults_migration_version_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
+    private const val CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION = 1
 
     private lateinit var preferences: SharedPreferences
     private lateinit var appContext: Context
@@ -372,7 +375,7 @@ object AppPreference {
     private val CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE =
         Pair("candidate_view_height_dp_landscape_preference", 60)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE =
-        Pair("candidate_view_empty_height_dp_landscape_preference", 110)
+        Pair("candidate_view_empty_height_dp_landscape_preference", 60)
 
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val FLICK_EDITOR_PREVIEW = Pair(FLICK_EDITOR_PREVIEW_KEY, false)
@@ -561,33 +564,33 @@ object AppPreference {
 
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
 
-    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 110)
+    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 60)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP =
-        Pair("candidate_view_empty_height_dp_preference", 110)
+        Pair("candidate_view_empty_height_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP =
-        Pair("candidate_view_height_portrait_column_1_dp_preference", 110)
+        Pair("candidate_view_height_portrait_column_1_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_2_DP =
-        Pair("candidate_view_height_portrait_column_2_dp_preference", 120)
+        Pair("candidate_view_height_portrait_column_2_dp_preference", 80)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_3_DP =
-        Pair("candidate_view_height_portrait_column_3_dp_preference", 160)
+        Pair("candidate_view_height_portrait_column_3_dp_preference", 100)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP =
         Pair("candidate_view_height_landscape_column_1_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_2_DP =
-        Pair("candidate_view_height_landscape_column_2_dp_preference", 90)
+        Pair("candidate_view_height_landscape_column_2_dp_preference", 80)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_3_DP =
-        Pair("candidate_view_height_landscape_column_3_dp_preference", 120)
+        Pair("candidate_view_height_landscape_column_3_dp_preference", 100)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP =
-        Pair("candidate_default_height_portrait_column_1_dp_preference", 110)
+        Pair("candidate_default_height_portrait_column_1_dp_preference", 60)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_2_DP =
-        Pair("candidate_default_height_portrait_column_2_dp_preference", 120)
+        Pair("candidate_default_height_portrait_column_2_dp_preference", 80)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_3_DP =
-        Pair("candidate_default_height_portrait_column_3_dp_preference", 160)
+        Pair("candidate_default_height_portrait_column_3_dp_preference", 100)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP =
         Pair("candidate_default_height_landscape_column_1_dp_preference", 60)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_2_DP =
-        Pair("candidate_default_height_landscape_column_2_dp_preference", 90)
+        Pair("candidate_default_height_landscape_column_2_dp_preference", 80)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP =
-        Pair("candidate_default_height_landscape_column_3_dp_preference", 120)
+        Pair("candidate_default_height_landscape_column_3_dp_preference", 100)
     private val CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP =
         Pair(
             "candidate_default_empty_height_dp_preference",
@@ -909,6 +912,7 @@ object AppPreference {
         appContext = context.applicationContext
         isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        migrateCandidateHeightDefaultsIfNeeded()
         removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
         migrateSymbolEmojiCandidatePreferenceIfNeeded()
@@ -2472,6 +2476,24 @@ object AppPreference {
             it.putBoolean(OMISSION_SEARCH.first, value ?: false)
         }
 
+    var tenkey_space_flick_preference: Boolean
+        get() = preferences.getBoolean("tenkey_space_flick_preference", true)
+        set(value) = preferences.edit {
+            it.putBoolean("tenkey_space_flick_preference", value)
+        }
+
+    var qwerty_english_space_flick_preference: Boolean
+        get() = preferences.getBoolean("qwerty_english_space_flick_preference", false)
+        set(value) = preferences.edit {
+            it.putBoolean("qwerty_english_space_flick_preference", value)
+        }
+
+    var qwerty_romaji_space_flick_preference: Boolean
+        get() = preferences.getBoolean("qwerty_romaji_space_flick_preference", false)
+        set(value) = preferences.edit {
+            it.putBoolean("qwerty_romaji_space_flick_preference", value)
+        }
+
     var space_hankaku_preference: Boolean?
         get() = preferences.getBoolean(SPACE_HANKAKU_ENABLE.first, SPACE_HANKAKU_ENABLE.second)
         set(value) = preferences.edit {
@@ -2668,6 +2690,53 @@ object AppPreference {
             it.putString(CANDIDATE_COLUMN_LANDSCAPE_PREFERENCE.first, value)
         }
 
+    internal fun migrateCandidateHeightDefaultsIfNeeded() {
+        if (preferences.getInt(
+                CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION_KEY,
+                0
+            ) >= CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION
+        ) {
+            return
+        }
+
+        preferences.edit { editor ->
+            listOf(false, true).forEach { isLandscape ->
+                listOf("1", "2", "3").forEach { column ->
+                    val heightPreference = candidateHeightPreferenceFor(isLandscape, column)
+                    editor.putInt(heightPreference.first, heightPreference.second)
+
+                    val defaultPreference = candidateDefaultHeightPreferenceFor(isLandscape, column)
+                    editor.putInt(defaultPreference.first, defaultPreference.second)
+                }
+
+                val activeColumn = getCandidateColumn(isLandscape)
+                val activeHeight = candidateHeightPreferenceFor(isLandscape, activeColumn).second
+                editor.putInt(
+                    if (isLandscape) {
+                        CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.first
+                    } else {
+                        CANDIDATE_VIEW_HEIGHT_DP.first
+                    },
+                    activeHeight
+                )
+
+                val emptyPreference = candidateEmptyHeightPreferenceFor(isLandscape)
+                editor.putInt(emptyPreference.first, emptyPreference.second)
+
+                val defaultEmptyPreference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
+                editor.putInt(defaultEmptyPreference.first, defaultEmptyPreference.second)
+            }
+
+            // The per-column values have been initialized above, so the older lazy migration
+            // must not copy the active value over them later.
+            editor.putBoolean(CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED.first, true)
+            editor.putInt(
+                CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION_KEY,
+                CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION
+            )
+        }
+    }
+
     fun migrateCandidateHeightPerColumnPreferencesIfNeeded() {
         if (preferences.getBoolean(
                 CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED.first,
@@ -2679,10 +2748,8 @@ object AppPreference {
 
         val portraitColumn = normalizeCandidateColumn(candidate_column_preference)
         val landscapeColumn = normalizeCandidateColumn(candidate_column_landscape_preference)
-        val portraitHeight = (candidate_view_height_dp
-            ?: CANDIDATE_VIEW_HEIGHT_DP.second).coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
-        val landscapeHeight = (candidate_view_height_dp_landscape
-            ?: CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.second).coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
+        val portraitHeight = candidateHeightForPerColumnMigration(false, portraitColumn)
+        val landscapeHeight = candidateHeightForPerColumnMigration(true, landscapeColumn)
 
         preferences.edit { editor ->
             candidateHeightPreferenceFor(isLandscape = false, column = "1").let { editor.putInt(it.first, it.second) }
@@ -2693,8 +2760,27 @@ object AppPreference {
             candidateHeightPreferenceFor(isLandscape = true, column = "3").let { editor.putInt(it.first, it.second) }
             editor.putInt(candidateHeightPreferenceFor(false, portraitColumn).first, portraitHeight)
             editor.putInt(candidateHeightPreferenceFor(true, landscapeColumn).first, landscapeHeight)
+            editor.putInt(CANDIDATE_VIEW_HEIGHT_DP.first, portraitHeight)
+            editor.putInt(CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.first, landscapeHeight)
             editor.putBoolean(CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED.first, true)
         }
+    }
+
+    private fun candidateHeightForPerColumnMigration(
+        isLandscape: Boolean,
+        column: String
+    ): Int {
+        val activePreference = if (isLandscape) {
+            CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE
+        } else {
+            CANDIDATE_VIEW_HEIGHT_DP
+        }
+        val heightDp = if (preferences.contains(activePreference.first)) {
+            readIntPreference(activePreference.first, activePreference.second)
+        } else {
+            candidateHeightPreferenceFor(isLandscape, column).second
+        }
+        return heightDp.coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
     }
 
     fun getCandidateVisibleHeightDp(

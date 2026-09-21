@@ -1,0 +1,18 @@
+<resources>
+    <string name="floating_dictionary_summary">フロート内で一覧表示・追加・編集・削除</string>
+    <string name="floating_dictionary_learn">学習辞書</string>
+    <string name="floating_dictionary_user">ユーザー辞書</string>
+    <string name="floating_dictionary_template">定型文</string>
+    <string name="floating_dictionary_search">読み・単語で検索</string>
+    <string name="floating_dictionary_add">追加</string>
+    <string name="floating_dictionary_hide">フロートを非表示</string>
+    <string name="floating_dictionary_empty">項目がありません</string>
+    <string name="floating_dictionary_reading">読み</string>
+    <string name="floating_dictionary_word">単語・本文</string>
+    <string name="floating_dictionary_score">スコア</string>
+    <string name="floating_dictionary_pos">品詞</string>
+    <string name="floating_dictionary_invalid">読み・単語と整数のスコアを入力してください。</string>
+    <string name="floating_dictionary_delete_confirm">この項目を削除しますか？</string>
+    <string name="floating_dictionary_unavailable">フロートを表示するスペースがありません。</string>
+    <string name="floating_dictionary_details">品詞・スコアの設定</string>
+</resources>

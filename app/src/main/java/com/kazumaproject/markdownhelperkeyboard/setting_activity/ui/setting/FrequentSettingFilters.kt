@@ -74,6 +74,8 @@ internal object FrequentSettingFilters {
             R.id.keyboardSelectionFragment,
             R.id.kanaPreferenceFragment,
             R.id.qwertyPreferenceFragment,
+            R.id.qwertyEnglishPreferenceFragment,
+            R.id.qwertyRomajiPreferenceFragment,
             R.id.sumirePreferenceFragment,
             R.id.customKeyboardPreferenceFragment,
             R.id.tabletPreferenceFragment,

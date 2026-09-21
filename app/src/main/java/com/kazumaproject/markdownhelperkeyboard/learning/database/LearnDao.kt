@@ -12,6 +12,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LearnDao {
+    @Query("UPDATE learn_table SET input = :input, out = :output, score = :score WHERE id = :id")
+    suspend fun editEntry(id: Int, input: String, output: String, score: Int): Int
+
+    @Query("DELETE FROM learn_table WHERE id = :id")
+    suspend fun deleteById(id: Int)
+
+    // Interactive addition must report duplicates, never silently ignore them.
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertStrict(entry: LearnEntity)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(learnData: LearnEntity)
 
