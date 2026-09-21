@@ -16,6 +16,7 @@ import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.os.bundleOf
+import androidx.core.view.doOnLayout
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -193,12 +194,32 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             object : BottomSheetBehavior.BottomSheetCallback() {
                 override fun onStateChanged(bottomSheet: View, newState: Int) {
                     updateInspectorToggleLabel(newState)
+                    updatePreviewBottomMargin()
                 }
 
-                override fun onSlide(bottomSheet: View, slideOffset: Float) = Unit
+                override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                    updatePreviewBottomMargin()
+                }
             }
         )
+        binding.root.doOnLayout {
+            updatePreviewBottomMargin()
+        }
         updateInspectorToggleLabel(inspectorBehavior.state)
+    }
+
+    /** Keep the preview above the visible Bottom Sheet instead of underneath it. */
+    private fun updatePreviewBottomMargin() {
+        if (!::inspectorBehavior.isInitialized || binding.previewCanvas.height <= 0) return
+
+        val bottomMargin = (binding.previewCanvas.bottom - binding.inspectorBottomSheet.top)
+            .coerceAtLeast(0)
+        val layoutParams = binding.candidateHeightSettingContent.layoutParams
+            as? FrameLayout.LayoutParams ?: return
+        if (layoutParams.bottomMargin == bottomMargin) return
+
+        layoutParams.bottomMargin = bottomMargin
+        binding.candidateHeightSettingContent.layoutParams = layoutParams
     }
 
     private fun updateInspectorToggleLabel(state: Int) {
