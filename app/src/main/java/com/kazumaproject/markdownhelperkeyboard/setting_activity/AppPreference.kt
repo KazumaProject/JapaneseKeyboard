@@ -2700,111 +2700,40 @@ object AppPreference {
         }
 
         preferences.edit { editor ->
-            migrateActiveCandidateHeightPreference(
-                editor,
-                isLandscape = false,
-                legacyDefault = 110
-            )
-            migrateActiveCandidateHeightPreference(
-                editor,
-                isLandscape = true,
-                legacyDefault = 60
-            )
-            migrateCandidateHeightPreference(
-                editor,
-                CANDIDATE_VIEW_EMPTY_HEIGHT_DP,
-                legacyDefault = 110
-            )
-            migrateCandidateHeightPreference(
-                editor,
-                CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE,
-                legacyDefault = 110
-            )
+            listOf(false, true).forEach { isLandscape ->
+                listOf("1", "2", "3").forEach { column ->
+                    val heightPreference = candidateHeightPreferenceFor(isLandscape, column)
+                    editor.putInt(heightPreference.first, heightPreference.second)
 
-            listOf(
-                CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP to 110,
-                CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_2_DP to 120,
-                CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_3_DP to 160,
-                CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP to 60,
-                CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_2_DP to 90,
-                CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_3_DP to 120,
-                CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP to 110,
-                CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_2_DP to 120,
-                CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_3_DP to 160,
-                CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP to 60,
-                CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_2_DP to 90,
-                CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP to 120,
-            ).forEach { (preference, legacyDefault) ->
-                migrateCandidateHeightPreference(editor, preference, legacyDefault)
+                    val defaultPreference = candidateDefaultHeightPreferenceFor(isLandscape, column)
+                    editor.putInt(defaultPreference.first, defaultPreference.second)
+                }
+
+                val activeColumn = getCandidateColumn(isLandscape)
+                val activeHeight = candidateHeightPreferenceFor(isLandscape, activeColumn).second
+                editor.putInt(
+                    if (isLandscape) {
+                        CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.first
+                    } else {
+                        CANDIDATE_VIEW_HEIGHT_DP.first
+                    },
+                    activeHeight
+                )
+
+                val emptyPreference = candidateEmptyHeightPreferenceFor(isLandscape)
+                editor.putInt(emptyPreference.first, emptyPreference.second)
+
+                val defaultEmptyPreference = candidateDefaultEmptyHeightPreferenceFor(isLandscape)
+                editor.putInt(defaultEmptyPreference.first, defaultEmptyPreference.second)
             }
 
-            migrateCandidateHeightPreference(
-                editor,
-                CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP,
-                legacyDefault = 110
-            )
-            migrateCandidateHeightPreference(
-                editor,
-                CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP_LANDSCAPE,
-                legacyDefault = 110
-            )
+            // The per-column values have been initialized above, so the older lazy migration
+            // must not copy the active value over them later.
+            editor.putBoolean(CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED.first, true)
             editor.putInt(
                 CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION_KEY,
                 CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION
             )
-        }
-    }
-
-    private fun migrateActiveCandidateHeightPreference(
-        editor: SharedPreferences.Editor,
-        isLandscape: Boolean,
-        legacyDefault: Int
-    ) {
-        val preference = if (isLandscape) {
-            CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE
-        } else {
-            CANDIDATE_VIEW_HEIGHT_DP
-        }
-        if (!preferences.contains(preference.first)) {
-            return
-        }
-        val storedValue = runCatching {
-            preferences.getInt(preference.first, legacyDefault)
-        }.getOrNull()
-        if (storedValue != legacyDefault) {
-            return
-        }
-
-        val column = getCandidateColumn(isLandscape)
-        val columnPreference = candidateHeightPreferenceFor(isLandscape, column)
-        val migratedColumnValue = if (preferences.contains(columnPreference.first)) {
-            val storedColumnValue = runCatching {
-                preferences.getInt(columnPreference.first, columnPreference.second)
-            }.getOrNull()
-            if (storedColumnValue == legacyCandidateHeightDefault(isLandscape, column)) {
-                columnPreference.second
-            } else {
-                storedColumnValue ?: columnPreference.second
-            }
-        } else {
-            columnPreference.second
-        }
-        editor.putInt(preference.first, migratedColumnValue)
-    }
-
-    private fun migrateCandidateHeightPreference(
-        editor: SharedPreferences.Editor,
-        preference: Pair<String, Int>,
-        legacyDefault: Int
-    ) {
-        if (!preferences.contains(preference.first)) {
-            return
-        }
-        val storedValue = runCatching {
-            preferences.getInt(preference.first, legacyDefault)
-        }.getOrNull()
-        if (storedValue == legacyDefault && preference.second != legacyDefault) {
-            editor.putInt(preference.first, preference.second)
         }
     }
 
@@ -2853,13 +2782,6 @@ object AppPreference {
         }
         return heightDp.coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
     }
-
-    private fun legacyCandidateHeightDefault(isLandscape: Boolean, column: String): Int =
-        when (normalizeCandidateColumn(column)) {
-            "2" -> if (isLandscape) 90 else 120
-            "3" -> if (isLandscape) 120 else 160
-            else -> if (isLandscape) 60 else 110
-        }
 
     fun getCandidateVisibleHeightDp(
         isLandscape: Boolean,
