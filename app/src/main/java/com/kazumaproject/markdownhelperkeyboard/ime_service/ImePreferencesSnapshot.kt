@@ -61,6 +61,9 @@ data class ImePreferencesSnapshot(
     val qwertyGlideCommitPreviousCandidateOnNewGlidePreference: Boolean,
     val qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference: Boolean,
     val qwertyShowPopupWindowPreference: Boolean,
+    val tenkeySpaceFlickPreference: Boolean,
+    val qwertyRomajiSpaceFlickPreference: Boolean,
+    val qwertyEnglishSpaceFlickPreference: Boolean,
     val qwertyEnableFlickUpPreference: Boolean,
     val qwertyEnableFlickDownPreference: Boolean,
     val qwertyNumberKeyFlickUpChars: Map<String, String>,
@@ -412,6 +415,9 @@ data class ImePreferencesSnapshot(
                 qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference =
                     appPreference.qwerty_glide_insert_space_after_committing_previous_candidate_preference,
                 qwertyShowPopupWindowPreference = appPreference.qwerty_show_popup_window ?: true,
+                tenkeySpaceFlickPreference = appPreference.tenkey_space_flick_preference,
+                qwertyRomajiSpaceFlickPreference = appPreference.qwerty_romaji_space_flick_preference,
+                qwertyEnglishSpaceFlickPreference = appPreference.qwerty_english_space_flick_preference,
                 qwertyEnableFlickUpPreference =
                     appPreference.qwerty_enable_flick_up_preference ?: false,
                 qwertyEnableFlickDownPreference =
@@ -542,9 +548,9 @@ data class ImePreferencesSnapshot(
                 tenkeyWidthPreferenceValue = appPreference.keyboard_width ?: 100,
                 qwertyHeightPreferenceValue = appPreference.qwerty_keyboard_height ?: 280,
                 qwertyWidthPreferenceValue = appPreference.qwerty_keyboard_width ?: 100,
-                candidateViewHeightPreferenceValue = appPreference.candidate_view_height_dp ?: 110,
+                candidateViewHeightPreferenceValue = appPreference.candidate_view_height_dp ?: 60,
                 candidateViewHeightEmptyPreferenceValue =
-                    appPreference.candidate_view_empty_height_dp ?: 110,
+                    appPreference.candidate_view_empty_height_dp ?: 60,
                 tenkeyPositionPreferenceValue = appPreference.keyboard_position ?: true,
                 tenkeyBottomMarginPreferenceValue =
                     appPreference.keyboard_vertical_margin_bottom ?: 0,
@@ -580,9 +586,9 @@ data class ImePreferencesSnapshot(
                 qwertyWidthLandscapePreferenceValue =
                     appPreference.qwerty_keyboard_width_landscape ?: 100,
                 candidateViewLandscapeHeightPreferenceValue =
-                    appPreference.candidate_view_height_dp_landscape ?: 110,
+                    appPreference.candidate_view_height_dp_landscape ?: 60,
                 candidateViewLandscapeHeightEmptyPreferenceValue =
-                    appPreference.candidate_view_empty_height_dp_landscape ?: 110,
+                    appPreference.candidate_view_empty_height_dp_landscape ?: 60,
                 tenkeyLandscapePositionPreferenceValue =
                     appPreference.keyboard_position_landscape ?: true,
                 tenkeyLandscapeBottomMarginPreferenceValue =

@@ -25,12 +25,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutBackupImporter
-import com.kazumaproject.markdownhelperkeyboard.repository.CustomKeyboardDeleteImpact
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportError
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonExporter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.KeyboardLayoutAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardListBinding
+import com.kazumaproject.markdownhelperkeyboard.repository.CustomKeyboardDeleteImpact
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -185,10 +185,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
-                    R.id.action_select_keyboard_layouts -> {
-                        findNavController().navigate(R.id.action_select_keyboard_layouts)
-                        true
-                    }
 
                     R.id.action_export_layouts -> {
                         launchExportPicker()
