@@ -155,6 +155,19 @@ class FloatingPanelDeviceTest {
                 if (keyboard in listOf("TENKEY", "QWERTY", "ROMAJI", "GOJUON", "SUMIRE", "CUSTOM")) {
                     val keys = if (keyboard == "SUMIRE" || keyboard == "CUSTOM") description("あ") else id(keyId)
                     keys.forEach { gesture(bounds(it)) }
+                    if (split && skin.startsWith("cupertino_")) {
+                        // Exercise every direction. Skin popups must remain in the same
+                        // token-routed window as the split-pane key while the Cupertino
+                        // surface changes in place.
+                        listOf(
+                            -90f to 0f,
+                            0f to -90f,
+                            90f to 0f,
+                            0f to 90f,
+                        ).forEach { (dx, dy) ->
+                            keys.forEach { gesture(bounds(it), dx = dx, dy = dy) }
+                        }
+                    }
                     check(text(scenario).isNotEmpty()) { "Key touches did not reach editor" }
                     if (!split && keyboard == "TENKEY") check(text(scenario) == "あ") { "Wrong key hit: ${text(scenario)}" }
                     capture("$label-input")

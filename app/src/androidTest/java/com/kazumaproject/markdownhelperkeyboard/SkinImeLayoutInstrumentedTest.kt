@@ -4,11 +4,15 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,12 +26,22 @@ import java.io.File
 
 /** Uses the actual InputMethodService, candidate adapters and window insets. */
 @RunWith(AndroidJUnit4::class)
-@androidx.test.filters.SdkSuppress(minSdkVersion = 30)
+@androidx.test.filters.SdkSuppress(minSdkVersion = 24)
 class SkinImeLayoutInstrumentedTest {
     private val ins = InstrumentationRegistry.getInstrumentation()
     private val automation get() = ins.uiAutomation
     private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
         automation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+
+    private fun rotationName(): String = InstrumentationRegistry.getArguments()
+        .getString("rotation")?.also {
+            check(it == "portrait" || it == "landscape") { "Unsupported rotation: $it" }
+        } ?: "unspecified"
+
+    private fun outputDirectory(fixtureName: String = "standard"): File = File(
+        ins.targetContext.getExternalFilesDir(null),
+        "ime-layout/${rotationName()}/$fixtureName"
+    ).apply { mkdirs() }
 
     private fun nodes(): List<AccessibilityNodeInfo> {
         val result = mutableListOf<AccessibilityNodeInfo>()
@@ -39,14 +53,14 @@ class SkinImeLayoutInstrumentedTest {
         return result
     }
 
-    private fun awaitKey(): AccessibilityNodeInfo {
+    private fun awaitKey(fixtureName: String = "standard"): AccessibilityNodeInfo {
         val deadline = SystemClock.uptimeMillis() + 60000
         while (SystemClock.uptimeMillis() < deadline) {
             nodes().firstOrNull { it.isVisibleToUser && it.text?.toString() == "あ" &&
                 it.viewIdResourceName?.startsWith(ins.targetContext.packageName + ":id/") == true }?.let { return it }
             SystemClock.sleep(100)
         }
-        val out = File(ins.targetContext.getExternalFilesDir(null), "ime-layout").apply { mkdirs() }
+        val out = outputDirectory(fixtureName)
         automation.takeScreenshot()?.let { bitmap ->
             File(out, "missing-key.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
@@ -75,7 +89,29 @@ class SkinImeLayoutInstrumentedTest {
         error("IME layout did not settle")
     }
 
-    @Test fun captureActualImeWithEmptyAndComposingCandidates() {
+    @Test
+    fun captureActualImeWithEmptyAndComposingCandidates() {
+        captureActualImeWithConfiguredCandidates(
+            fixtureName = "standard",
+            candidateHeightDp = 60,
+            emptyHeightDp = 60
+        )
+    }
+
+    @Test
+    fun captureActualImeWithExplicitAsymmetricCandidates() {
+        captureActualImeWithConfiguredCandidates(
+            fixtureName = "asymmetric",
+            candidateHeightDp = 80,
+            emptyHeightDp = 60
+        )
+    }
+
+    private fun captureActualImeWithConfiguredCandidates(
+        fixtureName: String,
+        candidateHeightDp: Int,
+        emptyHeightDp: Int
+    ) {
         val context = ins.targetContext
         check(context.packageName.startsWith("com.kazumaproject.skinfidelity")) {
             "Run with the isolated fidelity application ID"
@@ -83,6 +119,8 @@ class SkinImeLayoutInstrumentedTest {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val saved = prefs.all.toMap()
         val oldIme = shell("settings get secure default_input_method").trim()
+        val oldRotation = shell("settings get system user_rotation").trim()
+        val oldAutoRotation = shell("settings get system accelerometer_rotation").trim()
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         check(oldIme != target) {
             "Select another IME before starting instrumentation, which restarts the target process"
@@ -91,10 +129,11 @@ class SkinImeLayoutInstrumentedTest {
         automation.serviceInfo = automation.serviceInfo.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         }
-        val out = File(context.getExternalFilesDir(null), "ime-layout").apply { mkdirs() }
+        val rotation = rotationName()
+        val out = outputDirectory(fixtureName)
         val measurements = JSONArray()
         try {
-            when (InstrumentationRegistry.getArguments().getString("rotation")) {
+            when (rotation) {
                 "landscape" -> check(automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90))
                 "portrait" -> check(automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0))
             }
@@ -107,20 +146,21 @@ class SkinImeLayoutInstrumentedTest {
                     .putBoolean("save_last_used_keyboard", false).putBoolean("keyboard_floating_preference", false)
                     .putString("candidate_column_preference", "2")
                     .putString("candidate_column_landscape_preference", "2")
-                    .putInt("candidate_view_height_dp_landscape_preference",110)
-                    .putInt("candidate_view_empty_height_dp_landscape_preference",60)
-                    .putInt("candidate_view_height_dp_preference",110).putInt("candidate_view_empty_height_dp_preference",60)
+                    .putInt("candidate_view_height_dp_landscape_preference",candidateHeightDp)
+                    .putInt("candidate_view_empty_height_dp_landscape_preference",emptyHeightDp)
+                    .putInt("candidate_view_height_dp_preference",candidateHeightDp)
+                    .putInt("candidate_view_empty_height_dp_preference",emptyHeightDp)
                     .putBoolean("shortcut_toolbar_visibility_preference",true)
                     .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",true)
                     .putBoolean("clipboard_preview_enable_preference",false).putBoolean("clipboard_history_preference",false)
                     .putBoolean("live_conversion_preference",false).putBoolean("enable_ai_conversion_zenz_preference",false)
                     .commit())
                 ActivityScenario.launch<FastInputHostActivity>(Intent(context,FastInputHostActivity::class.java)).use { scenario ->
-                    awaitKey(); SystemClock.sleep(1000)
+                    awaitKey(fixtureName); SystemClock.sleep(1000)
                     for (phase in listOf("empty", "composing", "committed")) {
                         val composing = phase == "composing"
                         if(composing) {
-                            val bounds=Rect();awaitKey().getBoundsInScreen(bounds)
+                            val bounds=Rect();awaitKey(fixtureName).getBoundsInScreen(bounds)
                             val down=SystemClock.uptimeMillis()
                             for(action in listOf(MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP)) {
                                 val event=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,bounds.exactCenterX(),bounds.exactCenterY(),0)
@@ -143,7 +183,7 @@ class SkinImeLayoutInstrumentedTest {
                             SystemClock.sleep(800)
                         }
                         awaitStableLayout()
-                        val name="$index-${skin.preferenceValue}-$phase"
+                        val name="$fixtureName-$index-${skin.preferenceValue}-$phase"
                         val snapshot=JSONArray()
                         val currentNodes = nodes()
                         fun boundsOf(id: String): Rect {
@@ -163,19 +203,22 @@ class SkinImeLayoutInstrumentedTest {
                         val inputBounds = boundsOf("android:id/inputArea")
                         val candidateBounds = currentNodes.first { it.viewIdResourceName == "${context.packageName}:id/suggestionView_parent" }
                             .let { Rect().also(it::getBoundsInScreen) }
-                        var navigationInsets = android.graphics.Insets.NONE
+                        var navigationInsets = Insets.NONE
                         scenario.onActivity { activity ->
-                            navigationInsets = activity.window.decorView.rootWindowInsets
-                                .getInsets(android.view.WindowInsets.Type.navigationBars())
+                            navigationInsets = requireNotNull(ViewCompat.getRootWindowInsets(activity.window.decorView)) {
+                                "Root window insets were unavailable"
+                            }.getInsets(WindowInsetsCompat.Type.navigationBars())
                         }
                         val navigationInset = navigationInsets.bottom
                         val navigationBounds = Rect(0, screenshot.height - navigationInset, screenshot.width, screenshot.height)
                         check(keyboardBounds.left >= navigationInsets.left && keyboardBounds.right <= screenshot.width - navigationInsets.right) { "Keyboard overlaps side navigation: $keyboardBounds / $navigationInsets" }
                         check(keyboardBounds.bottom <= navigationBounds.top) { "Keyboard overlaps navigation: $keyboardBounds / $navigationBounds" }
                         check(candidateBounds.bottom <= keyboardBounds.top) { "Candidates overlap keys" }
-                        // Default keeps the pre-PR budget, including its existing inset accounting.
-                        val expectedCandidateHeight = ((if (composing) 110 else 60) * context.resources.displayMetrics.density).toInt() -
-                            if (skin == KeyboardSkinId.DEFAULT) navigationInset else 0
+                        // The configured candidate height is content space. The navigation
+                        // inset is added outside that budget by the IME root window.
+                        val expectedCandidateHeight =
+                            ((if (composing) candidateHeightDp else emptyHeightDp) *
+                                context.resources.displayMetrics.density).toInt()
                         check(kotlin.math.abs(keyboardBounds.top - inputBounds.top - expectedCandidateHeight) <= 1) {
                             "Candidate reserved space clipped: input=$inputBounds, keyboard=$keyboardBounds, expected height $expectedCandidateHeight"
                         }
@@ -204,27 +247,45 @@ class SkinImeLayoutInstrumentedTest {
                         scenario.onActivity { editorText=it.editText.text.toString() }
                         check(editorText.isNotEmpty() == (phase != "empty")){"Unexpected editor state: $editorText"}
                         measurements.put(JSONObject().put("name",name).put("editorText",editorText)
+                            .put("sdkInt", Build.VERSION.SDK_INT).put("rotation", rotation)
                             .put("columns",prefs.getString("candidate_column_preference",null))
                             .put("reservedCandidateHeightPx", keyboardBounds.top - inputBounds.top)
                             .put("navigationInsetPx",navigationInset).put("keyboardBottomPx",keyboardBounds.bottom)
-                            .put("navigationRightInsetPx",navigationInsets.right).put("keyboardRightPx",keyboardBounds.right))
+                            .put("navigationLeftInsetPx",navigationInsets.left)
+                            .put("navigationRightInsetPx",navigationInsets.right)
+                            .put("keyboardRightPx",keyboardBounds.right)
+                            .put("expectedCandidateHeightPx", expectedCandidateHeight))
+                        File(out,"measurements.json").writeText(measurements.toString(2))
                         check(prefs.getString("candidate_column_preference",null)=="2")
                     }
                 }
             }
         } finally {
-            val editor=prefs.edit().clear()
-            saved.forEach { (key,value) -> when(value) {
-                is String -> editor.putString(key,value);is Boolean -> editor.putBoolean(key,value)
-                is Int -> editor.putInt(key,value);is Long -> editor.putLong(key,value);is Float -> editor.putFloat(key,value)
-                is Set<*> -> @Suppress("UNCHECKED_CAST") editor.putStringSet(key,value as Set<String>)
-            } };check(editor.commit())
-            if(oldIme.isNotBlank() && oldIme != "null") {
-                shell("ime set $oldIme")
-                check(shell("settings get secure default_input_method").trim() == oldIme) { "Could not restore original IME" }
+            try {
+                val editor=prefs.edit().clear()
+                saved.forEach { (key,value) -> when(value) {
+                    is String -> editor.putString(key,value);is Boolean -> editor.putBoolean(key,value)
+                    is Int -> editor.putInt(key,value);is Long -> editor.putLong(key,value);is Float -> editor.putFloat(key,value)
+                    is Set<*> -> @Suppress("UNCHECKED_CAST") editor.putStringSet(key,value as Set<String>)
+                } };check(editor.commit())
+            } finally {
+                try {
+                    if(oldIme.isNotBlank() && oldIme != "null") {
+                        shell("ime set $oldIme")
+                        check(shell("settings get secure default_input_method").trim() == oldIme) { "Could not restore original IME" }
+                    }
+                } finally {
+                    if(!wasEnabled)shell("ime disable $target")
+                    automation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+                    if (oldRotation.isNotBlank() && oldRotation != "null") {
+                        shell("settings put system user_rotation $oldRotation")
+                    }
+                    if (oldAutoRotation.isNotBlank() && oldAutoRotation != "null") {
+                        shell("settings put system accelerometer_rotation $oldAutoRotation")
+                    }
+                    File(out,"measurements.json").writeText(measurements.toString(2))
+                }
             }
-            if(!wasEnabled)shell("ime disable $target")
-            File(out,"measurements.json").writeText(measurements.toString(2))
         }
     }
 }

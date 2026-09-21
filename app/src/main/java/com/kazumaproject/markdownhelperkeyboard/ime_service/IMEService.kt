@@ -87,6 +87,7 @@ import androidx.core.content.FileProvider
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
@@ -1756,8 +1757,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyWidthPreferenceValue: Int? = 100
     private var qwertyHeightPreferenceValue: Int? = 280
     private var qwertyWidthPreferenceValue: Int? = 100
-    private var candidateViewHeightPreferenceValue: Int? = 110
-    private var candidateViewHeightEmptyPreferenceValue: Int? = 110
+    private var candidateViewHeightPreferenceValue: Int? = 60
+    private var candidateViewHeightEmptyPreferenceValue: Int? = 60
     private var tenkeyPositionPreferenceValue: Boolean? = true
     private var tenkeyBottomMarginPreferenceValue: Int? = 0
     private var qwertyPositionPreferenceValue: Boolean? = true
@@ -1767,8 +1768,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyWidthLandScapePreferenceValue: Int? = 100
     private var qwertyHeightLandScapePreferenceValue: Int? = 280
     private var qwertyWidthLandScapePreferenceValue: Int? = 100
-    private var candidateViewLandScapeHeightPreferenceValue: Int? = 110
-    private var candidateViewLandScapeHeightEmptyPreferenceValue: Int? = 110
+    private var candidateViewLandScapeHeightPreferenceValue: Int? = 60
+    private var candidateViewLandScapeHeightEmptyPreferenceValue: Int? = 60
     private var tenkeyLandScapePositionPreferenceValue: Boolean? = true
     private var tenkeyLandScapeBottomMarginPreferenceValue: Int? = 0
     private var qwertyLandScapePositionPreferenceValue: Boolean? = true
@@ -2119,6 +2120,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var systemBottomInset = 0
+
+    /**
+     * Android 9 introduced the IME navigation-bar extension behavior that lets the
+     * keyboard window draw into the navigation-bar area. Older releases keep the
+     * legacy IME window bounds, so adding a navigation inset there would double-count
+     * space that is already excluded from the window.
+     */
+    private val supportsNavbarExtension: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
 
     private var suppressSuggestions: Boolean = false
 
@@ -2819,6 +2829,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onCreate() {
         super.onCreate()
         window.window?.let { imeWindow ->
+            if (supportsNavbarExtension) {
+                WindowCompat.setDecorFitsSystemWindows(imeWindow, false)
+            }
             val callback = imeWindow.callback ?: return@let
             imeWindow.callback = object : android.view.Window.Callback by callback {
                 override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -7166,8 +7179,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-                        var updated = systemBottomInset != insets.bottom
-                        systemBottomInset = insets.bottom
+                        val normalizedBottomInset = if (supportsNavbarExtension) {
+                            insets.bottom
+                        } else {
+                            0
+                        }
+                        val updated = systemBottomInset != normalizedBottomInset
+                        systemBottomInset = normalizedBottomInset
 
                         if (updated && isKeyboardFloatingMode != true) {
                             mainLayoutBinding?.let { mainView ->
@@ -18328,8 +18346,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPref = tenkeyWidthPreferenceValue ?: 100,
                 bottomMargin = tenkeyBottomMarginPreferenceValue ?: 0,
                 positionIsEnd = tenkeyPositionPreferenceValue ?: true,
-                candidateHeight = candidateViewHeightPreferenceValue ?: 110,
-                candidateEmptyHeight = candidateViewHeightEmptyPreferenceValue ?: 110,
+                candidateHeight = candidateViewHeightPreferenceValue ?: 60,
+                candidateEmptyHeight = candidateViewHeightEmptyPreferenceValue ?: 60,
                 qwertyHeightPref = qwertyHeightPreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthPreferenceValue ?: 100,
                 qwertyBottomMargin = qwertyBottomMarginPreferenceValue ?: 0,
@@ -18345,8 +18363,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPref = tenkeyWidthLandScapePreferenceValue ?: 100,
                 bottomMargin = tenkeyLandScapeBottomMarginPreferenceValue ?: 0,
                 positionIsEnd = tenkeyLandScapePositionPreferenceValue ?: true,
-                candidateHeight = candidateViewLandScapeHeightPreferenceValue ?: 110,
-                candidateEmptyHeight = candidateViewLandScapeHeightEmptyPreferenceValue ?: 110,
+                candidateHeight = candidateViewLandScapeHeightPreferenceValue ?: 60,
+                candidateEmptyHeight = candidateViewLandScapeHeightEmptyPreferenceValue ?: 60,
                 qwertyHeightPref = qwertyHeightLandScapePreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthLandScapePreferenceValue ?: 100,
                 qwertyBottomMargin = qwertyLandScapeBottomMarginPreferenceValue ?: 0,
@@ -18446,8 +18464,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             presentation = presentation,
             candidateTabHeightPx = candidateTabHeightPx(mainView)
         )
-        val finalKeyboardHeight = when {
-            floatingCandidateSurfaceActive -> heightPx + systemBottomInset
+        val contentKeyboardHeight = when {
+            floatingCandidateSurfaceActive -> heightPx
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
 
@@ -18456,7 +18474,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             else -> baseKeyboardHeight
         }
-        val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) heightPx else finalKeyboardHeight - candidateTabOffset
+        // Keep the candidate/body budget independent from the navigation-bar safe area.
+        // The root window includes the safe area, while its bottom padding keeps content
+        // above it. This prevents the inset from shrinking the configured candidate view.
+        val windowHeight = contentKeyboardHeight + systemBottomInset
+        val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) {
+            heightPx
+        } else {
+            contentKeyboardHeight - candidateTabOffset
+        }
 
         val finalKeyboardWidth =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -18499,7 +18525,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyKeyboardLayoutParameters(
             mainView = mainView,
             heightPx = heightPx,
-            finalKeyboardHeight = finalKeyboardHeight,
+            finalKeyboardHeight = windowHeight,
             backgroundSurfaceHeight = backgroundSurfaceHeight,
             finalKeyboardWidth = finalKeyboardWidth,
             gravity = gravity,
@@ -18511,11 +18537,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (isSymbol) {
             (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                val bottomSpace = maxOf(
-                    if (keyboardSkinId == KeyboardSkinId.DEFAULT) systemBottomInset else 0,
-                    if (isPortrait) applicationContext.dpToPx(50) else 0,
-                )
-                param.height = (finalKeyboardHeight - bottomSpace).coerceAtLeast(0)
+                val bottomSpace = if (isPortrait) applicationContext.dpToPx(50) else 0
+                param.height = (contentKeyboardHeight - bottomSpace).coerceAtLeast(0)
                 param.width = finalKeyboardWidth
                 mainView.keyboardSymbolView.layoutParams = param
             }
@@ -18784,9 +18807,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val suggestionHeightInDp = if (isPortrait) {
-            candidateViewHeightPreferenceValue ?: 110
+            candidateViewHeightPreferenceValue ?: 60
         } else {
-            candidateViewLandScapeHeightPreferenceValue ?: 110
+            candidateViewLandScapeHeightPreferenceValue ?: 60
         }
 
         val keyboardHeight = if (isPortrait) {

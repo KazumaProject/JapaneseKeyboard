@@ -2722,16 +2722,16 @@ class FastInputMatrixInstrumentedTest {
         val portraitCandidateHeight = preferences.getInt(
             "candidate_view_height_portrait_column_${case.columns}_dp_preference",
             when (case.columns) {
-                2 -> 120
-                3 -> 160
-                else -> 110
+                2 -> 80
+                3 -> 100
+                else -> 60
             }
         )
         val landscapeCandidateHeight = preferences.getInt(
             "candidate_view_height_landscape_column_${case.columns}_dp_preference",
             when (case.columns) {
-                2 -> 90
-                3 -> 120
+                2 -> 80
+                3 -> 100
                 else -> 60
             }
         )
@@ -2842,20 +2842,12 @@ class FastInputMatrixInstrumentedTest {
         } else {
             "candidate_view_height_portrait_column_${case.columns}_dp_preference"
         }
-        val activeDefault = if (landscape) 60 else 110
-        val emptyDefault = if (landscape) 110 else 110
-        val columnDefault = if (landscape) {
-            when (case.columns) {
-                2 -> 90
-                3 -> 120
-                else -> 60
-            }
-        } else {
-            when (case.columns) {
-                2 -> 120
-                3 -> 160
-                else -> 110
-            }
+        val activeDefault = 60
+        val emptyDefault = 60
+        val columnDefault = when (case.columns) {
+            2 -> 80
+            3 -> 100
+            else -> 60
         }
         return "candidateHeightDp(active=${preferences.getInt(activeKey, activeDefault)}," +
             "empty=${preferences.getInt(emptyKey, emptyDefault)}," +
