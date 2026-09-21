@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private val destinationsWithOwnToolbar = setOf(
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
+        R.id.candidateHeightDefaultsFragment,
         R.id.shortcutToolbarSizeSettingFragment,
     )
     private val destinationsWithoutSharedActionBar =

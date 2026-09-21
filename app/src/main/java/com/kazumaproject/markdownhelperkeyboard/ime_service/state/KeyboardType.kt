@@ -1,7 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.state
 
 enum class KeyboardType {
-    TENKEY, GOJUON, SUMIRE, QWERTY, ROMAJI, CUSTOM
+    TENKEY, GOJUON, SUMIRE, QWERTY, ROMAJI, CUSTOM, SPLIT
 }
 
 val KeyboardType.isTenKeyFamily: Boolean
@@ -12,5 +12,6 @@ val KeyboardType.isTenKeyFamily: Boolean
         KeyboardType.CUSTOM -> true
 
         KeyboardType.QWERTY,
-        KeyboardType.ROMAJI -> false
+        KeyboardType.ROMAJI,
+        KeyboardType.SPLIT -> false
     }

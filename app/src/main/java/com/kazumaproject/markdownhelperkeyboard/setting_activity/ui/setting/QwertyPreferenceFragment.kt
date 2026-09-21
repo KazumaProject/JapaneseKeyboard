@@ -8,9 +8,11 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class QwertyPreferenceFragment : PreferenceFragmentCompat() {
+open class QwertyPreferenceFragment : PreferenceFragmentCompat() {
+    protected open val preferenceResource: Int = R.xml.pref_qwerty
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_qwerty, rootKey)
+        setPreferencesFromResource(preferenceResource, rootKey)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -48,4 +50,14 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
         private const val QWERTY_NUMBER_KEY_FLICK_SETTING_PREFERENCE =
             "qwerty_number_key_flick_setting_preference"
     }
+}
+
+@AndroidEntryPoint
+class QwertyEnglishPreferenceFragment : QwertyPreferenceFragment() {
+    override val preferenceResource: Int = R.xml.pref_qwerty_english
+}
+
+@AndroidEntryPoint
+class QwertyRomajiPreferenceFragment : QwertyPreferenceFragment() {
+    override val preferenceResource: Int = R.xml.pref_qwerty_romaji
 }

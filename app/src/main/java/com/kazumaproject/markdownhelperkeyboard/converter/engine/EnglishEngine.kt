@@ -28,6 +28,28 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+internal fun resolveCandidateCase(input: String, candidate: String): String {
+    val inputLetters = input.filter(Char::isLetter)
+    val candidateLetters = candidate.filter(Char::isLetter)
+
+    return when {
+        inputLetters.isNotEmpty() && inputLetters.all(Char::isUpperCase) -> candidate.uppercase()
+        candidate.drop(1).any(Char::isUpperCase) ||
+            candidateLetters.isNotEmpty() && candidateLetters.all(Char::isUpperCase) -> candidate
+        input.any(Char::isUpperCase) && candidate.startsWith(input, ignoreCase = true) ->
+            input + candidate.drop(input.length)
+        else -> candidate
+    }
+}
+
+internal fun candidateCaseVariants(input: String, candidate: String): List<Pair<String, Int>> =
+    listOf(
+        resolveCandidateCase(input, candidate) to 0,
+        candidate to 500,
+        candidate.replaceFirstChar { it.uppercaseChar() } to 500,
+        candidate.uppercase() to 2000
+    ).distinctBy { (surface, _) -> surface }
+
 class EnglishEngine : QwertyGlideCandidateProvider {
     private lateinit var readingLOUDS: LOUDSWithTermId
     private lateinit var wordLOUDS: LOUDS
@@ -52,10 +74,6 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     private var qwertyGlideInputEnabled: Boolean = false
     private val qwertyGlideCandidateCaseExpander = QwertyGlideCandidateCaseExpander()
     private val qwertyGlideWarmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    companion object {
-        const val LENGTH_MULTIPLY = 2000
-    }
 
     fun buildEngine(
         englishReadingLOUDS: LOUDSWithTermId,
@@ -594,34 +612,14 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     )
                 }
 
-                listOf(
+                candidateCaseVariants(input, base).map { (surface, casePenalty) ->
                     Candidate(
-                        string = base,
+                        string = surface,
                         type = defaultType,
-                        length = base.length.toUByte(),
-                        score = entry.wordCost.toInt()
-                    ),
-                    Candidate(
-                        string = base.replaceFirstChar { it.uppercaseChar() },
-                        type = defaultType,
-                        length = base.length.toUByte(),
-                        score = if (input.first().isUpperCase())
-                            (entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY - 8000).coerceAtLeast(
-                                0
-                            )
-                        else
-                            entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY
-                    ),
-                    Candidate(
-                        string = base.uppercase(),
-                        type = defaultType,
-                        length = base.length.toUByte(),
-                        score = if (input.first().isUpperCase())
-                            entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY
-                        else
-                            entry.wordCost.toInt() + 2000 + base.length * LENGTH_MULTIPLY
+                        length = surface.length.toUByte(),
+                        score = entry.wordCost.toInt() + casePenalty
                     )
-                )
+                }
             }
 
             predictions += variants
@@ -672,26 +670,14 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                         return@flatMap emptyList<Candidate>()
                     }
 
-                    listOf(
+                    candidateCaseVariants(input, base).map { (surface, casePenalty) ->
                         Candidate(
-                            base,
+                            surface,
                             typoType,
-                            base.length.toUByte(),
-                            entry.wordCost.toInt() + penalty
-                        ),
-                        Candidate(
-                            base.replaceFirstChar { it.uppercaseChar() },
-                            typoType,
-                            base.length.toUByte(),
-                            entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY + penalty
-                        ),
-                        Candidate(
-                            base.uppercase(),
-                            typoType,
-                            base.length.toUByte(),
-                            entry.wordCost.toInt() + 2000 + base.length * LENGTH_MULTIPLY + penalty
+                            surface.length.toUByte(),
+                            entry.wordCost.toInt() + casePenalty + penalty
                         )
-                    )
+                    }
                 }
 
                 predictions += variants

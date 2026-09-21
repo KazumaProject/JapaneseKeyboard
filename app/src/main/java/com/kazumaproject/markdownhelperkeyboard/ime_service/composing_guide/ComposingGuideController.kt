@@ -31,10 +31,13 @@ internal class ComposingGuideController(
         GuideProfile.entries.forEach { profile ->
             windows[profile] = ComposingGuideWindow(context, eligible,
                 onSurfaceChanged, colors, minimumCandidateHeight, profile,
-                candidateBounds = { windows[GuideProfile.CANDIDATES]?.currentBounds() })
+                candidateBounds = { windows[GuideProfile.CANDIDATES]?.currentBounds() },
+                profileAllowed = { it in allowedProfiles() })
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
     }
+
+    private fun allowedProfiles(): List<GuideProfile> = settings.profiles
 
     fun start(view: View) { stop(); anchor = view; refresh() }
 
@@ -48,7 +51,7 @@ internal class ComposingGuideController(
         if (refreshing) return
         refreshing = true
         try {
-            val next = settings.profiles
+            val next = allowedProfiles()
             // All outgoing candidate hosts detach before an incoming host can attach.
             (activeProfiles - next.toSet()).forEach { windows.getValue(it).stop() }
             (next - activeProfiles.toSet()).forEach { windows.getValue(it).start(host, content) }

@@ -21,6 +21,153 @@ import org.junit.runner.RunWith
 class QwertyMultiTouchInstrumentedTest {
 
     @Test
+    fun englishSpaceFlickIsIndependentAndNeverAddsATap() {
+        runOnMain {
+            for (romajiEnabled in listOf(false, true)) {
+                for (letterFlick in listOf(false, true)) {
+                    for (glide in listOf(false, true)) {
+                        val recorder = RecordingQwertyKeyListener()
+                        val keyboard = createKeyboard(recorder).apply {
+                            setOnSpaceUpFlickListener { recorder.spaceFlicks++ }
+                            setSpaceUpFlickEnabled(romajiEnabled)
+                            setEnglishSpaceUpFlickEnabled(true)
+                            setRomajiMode(true)
+                            setRomajiMode(false)
+                            setFlickUpDetectionEnabled(letterFlick)
+                            setQwertyGlideInputMode(glide)
+                        }
+                        val space = keyboard.keyCenter(R.id.key_space)
+                        val end = space.copy(y = space.y - keyboard.findViewById<View>(R.id.key_space).height)
+                        keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, space))
+                        keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_MOVE, 0, pointer(0, end))
+                        keyboard.sendEvent(100L, 140L, MotionEvent.ACTION_UP, 0, pointer(0, end))
+                        assertEquals(1, recorder.spaceFlicks)
+                        assertTrue(recorder.upFlicks.isEmpty())
+                        assertTrue(recorder.releasedKeys.isEmpty())
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun disablingEnglishSpaceFlickRestoresDefaultEventPath() {
+        runOnMain {
+            for (letterFlick in listOf(false, true)) {
+                for (outsideKey in listOf(false, true)) {
+                    fun record(toggle: Boolean): RecordingQwertyKeyListener {
+                        val recorder = RecordingQwertyKeyListener()
+                        val keyboard = createKeyboard(recorder).apply {
+                            setOnSpaceUpFlickListener { recorder.spaceFlicks++ }
+                            setRomajiMode(false)
+                            setFlickUpDetectionEnabled(letterFlick)
+                            if (toggle) {
+                                setEnglishSpaceUpFlickEnabled(true)
+                                setEnglishSpaceUpFlickEnabled(false)
+                            }
+                        }
+                        val space = keyboard.keyCenter(R.id.key_space)
+                        val offset = if (outsideKey) keyboard.findViewById<View>(R.id.key_space).height.toFloat() else 2f
+                        val end = space.copy(y = space.y - offset)
+                        keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, space))
+                        keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_MOVE, 0, pointer(0, end))
+                        keyboard.sendEvent(100L, 140L, MotionEvent.ACTION_UP, 0, pointer(0, end))
+                        return recorder
+                    }
+                    val baseline = record(false)
+                    val disabled = record(true)
+                    assertEquals(0, disabled.spaceFlicks)
+                    assertEquals(baseline.releasedKeys, disabled.releasedKeys)
+                    assertEquals(baseline.upFlicks, disabled.upFlicks)
+                    assertEquals(baseline.taps, disabled.taps)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun spaceUpFlickOnlyFiresInEnabledRomajiAndNeverAddsATap() {
+        runOnMain {
+            for (romaji in listOf(false, true)) {
+                for (enabled in listOf(false, true)) {
+                    for (letterFlick in listOf(false, true)) {
+                        val recorder = RecordingQwertyKeyListener()
+                        val keyboard = createKeyboard(recorder).apply {
+                            setOnSpaceUpFlickListener { recorder.spaceFlicks++ }
+                            setRomajiMode(romaji)
+                            setSpaceUpFlickEnabled(enabled)
+                            setFlickUpDetectionEnabled(letterFlick)
+                        }
+                        val space = keyboard.keyCenter(R.id.key_space)
+                        val end = space.copy(y = space.y - keyboard.findViewById<View>(R.id.key_space).height)
+                        keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, space))
+                        keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_MOVE, 0, pointer(0, end))
+                        keyboard.sendEvent(100L, 140L, MotionEvent.ACTION_UP, 0, pointer(0, end))
+                        if (romaji && enabled) {
+                            assertEquals(1, recorder.spaceFlicks)
+                            assertTrue(recorder.upFlicks.isEmpty())
+                            assertTrue(recorder.releasedKeys.isEmpty())
+                        } else {
+                            assertEquals(0, recorder.spaceFlicks)
+                            if (romaji) {
+                                assertEquals(listOf(QWERTYKey.QWERTYKeySpace), recorder.releasedKeys)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun switchingToEnglishDisablesSpaceFlickWithoutChangingPreference() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder).apply {
+                setOnSpaceUpFlickListener { recorder.spaceFlicks++ }
+                setSpaceUpFlickEnabled(true)
+                setRomajiMode(true)
+                setRomajiMode(false)
+            }
+            val space = keyboard.keyCenter(R.id.key_space)
+            val end = space.copy(y = space.y - keyboard.findViewById<View>(R.id.key_space).height)
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, space))
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_MOVE, 0, pointer(0, end))
+            keyboard.sendEvent(100L, 140L, MotionEvent.ACTION_UP, 0, pointer(0, end))
+            assertTrue(recorder.upFlicks.isEmpty())
+        }
+    }
+
+
+    @Test
+    fun enabledSpaceFlickPreservesTapAndCursorMovement() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder).apply {
+                setOnSpaceUpFlickListener { recorder.spaceFlicks++ }
+                setRomajiMode(true)
+                setSpaceUpFlickEnabled(true)
+            }
+            keyboard.setRomajiMode(false)
+            keyboard.setEnglishSpaceUpFlickEnabled(true)
+            val space = keyboard.keyCenter(R.id.key_space)
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, space))
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_UP, 0, pointer(0, space))
+            assertEquals(listOf(QWERTYKey.QWERTYKeySpace), recorder.releasedKeys)
+            assertEquals(0, recorder.spaceFlicks)
+
+            // Space long press enters this mode; movement must not insert a space.
+            keyboard.setCursorMode(true)
+            val end = space.copy(y = space.y - 100f)
+            keyboard.sendEvent(200L, 200L, MotionEvent.ACTION_DOWN, 0, pointer(0, space))
+            keyboard.sendEvent(200L, 220L, MotionEvent.ACTION_MOVE, 0, pointer(0, end))
+            keyboard.sendEvent(200L, 240L, MotionEvent.ACTION_UP, 0, pointer(0, end))
+            assertEquals(0, recorder.spaceFlicks)
+            assertEquals(1, recorder.releasedKeys.count { it == QWERTYKey.QWERTYKeySpace })
+        }
+    }
+
+    @Test
     fun overlappingLetterTaps_commitBothKeysWhenOlderPointerLiftsFirst() {
         runOnMain {
             val recorder = RecordingQwertyKeyListener()
@@ -233,6 +380,52 @@ class QwertyMultiTouchInstrumentedTest {
         }
     }
 
+    @Test
+    fun capsLockOff_reportsTheExplicitShiftStateChange() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder)
+            val shift = keyboard.keyCenter(R.id.key_shift)
+
+            // First tap enables one-shot Shift.
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, shift))
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_UP, 0, pointer(0, shift))
+
+            // Second tap within the double-tap window enables Caps Lock.
+            keyboard.sendEvent(200L, 200L, MotionEvent.ACTION_DOWN, 0, pointer(1, shift))
+            keyboard.sendEvent(200L, 220L, MotionEvent.ACTION_UP, 0, pointer(1, shift))
+
+            // A later Shift tap turns Caps Lock off and must report the cleared state.
+            keyboard.sendEvent(1_000L, 1_000L, MotionEvent.ACTION_DOWN, 0, pointer(2, shift))
+            keyboard.sendEvent(1_000L, 1_020L, MotionEvent.ACTION_UP, 0, pointer(2, shift))
+
+            assertEquals(
+                listOf(false to true, false to false),
+                recorder.shiftStateChanges
+            )
+        }
+    }
+
+    @Test
+    fun qwertyModeSwitch_reportsTheClearedShiftState() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder)
+            val shift = keyboard.keyCenter(R.id.key_shift)
+            val switchMode = keyboard.keyCenter(R.id.key_123)
+
+            keyboard.sendEvent(300L, 300L, MotionEvent.ACTION_DOWN, 0, pointer(3, shift))
+            keyboard.sendEvent(300L, 320L, MotionEvent.ACTION_UP, 0, pointer(3, shift))
+            keyboard.sendEvent(400L, 400L, MotionEvent.ACTION_DOWN, 0, pointer(4, switchMode))
+            keyboard.sendEvent(400L, 420L, MotionEvent.ACTION_UP, 0, pointer(4, switchMode))
+
+            assertEquals(
+                listOf(false to true, false to false),
+                recorder.shiftStateChanges
+            )
+        }
+    }
+
     private fun createKeyboard(listener: RecordingQwertyKeyListener): QWERTYKeyboardView {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
         val themedContext: Context = ContextThemeWrapper(
@@ -318,9 +511,11 @@ class QwertyMultiTouchInstrumentedTest {
     private class RecordingQwertyKeyListener :
         com.kazumaproject.core.domain.listener.QWERTYKeyListener {
 
+        var spaceFlicks = 0
         val taps = mutableListOf<Char>()
         val upFlicks = mutableListOf<QWERTYKey>()
         val releasedKeys = mutableListOf<QWERTYKey>()
+        val shiftStateChanges = mutableListOf<Pair<Boolean, Boolean>>()
 
         override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) = Unit
 
@@ -331,6 +526,10 @@ class QwertyMultiTouchInstrumentedTest {
         ) {
             releasedKeys += qwertyKey
             tap?.let(taps::add)
+        }
+
+        override fun onQWERTYShiftStateChanged(capsLockOn: Boolean, shiftOn: Boolean) {
+            shiftStateChanges += capsLockOn to shiftOn
         }
 
         override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) = Unit

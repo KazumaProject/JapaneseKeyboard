@@ -4,8 +4,9 @@ import android.graphics.Rect
 import android.widget.FrameLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 
-class FloatingKeyboardLayoutEditSurface(
+internal class FloatingKeyboardLayoutEditSurface(
     private val binding: FloatingKeyboardLayoutBinding,
+    private val panel: com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel? = null,
     private val availableWidthProvider: () -> Int,
 ) : KeyboardLayoutEditSurfaceAdapter {
 
@@ -20,7 +21,14 @@ class FloatingKeyboardLayoutEditSurface(
         return availableWidthProvider()
     }
 
+    override fun startChromeEdit(values: KeyboardLayoutEditValues, callbacks: KeyboardLayoutEditOverlayView.Callbacks): Boolean {
+        val chrome = panel ?: return false
+        chrome.editCallbacks = callbacks
+        return true
+    }
+
     override fun setEditing(isEditing: Boolean) {
+        panel?.setEditing(isEditing)
         binding.dragHandle.isEnabled = !isEditing
         binding.dragHandle.alpha = if (isEditing) 0.35f else 1f
     }

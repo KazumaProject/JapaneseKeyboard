@@ -134,6 +134,27 @@ class FlickKeyboardViewTouchDispatchTest {
         )
     }
 
+    @Test
+    fun scaledKeyboardRejectsTouchesPastVisibleKeyAndAcceptsItsCenter() {
+        val listener = RecordingKeyboardActionListener()
+        val keyboard = keyboardView(listener)
+        keyboard.setKeyboard(pasteKeyLayout())
+        layoutKeyboard(keyboard)
+        keyboard.pivotX = 0f; keyboard.pivotY = 0f
+        keyboard.scaleX = .5f; keyboard.scaleY = .4f
+        val key = keyboard.getChildAt(0)
+        val location = IntArray(2).also(key::getLocationOnScreen)
+        val y = location[1] + key.height * .2f
+        val outsideX = location[0] + key.width * .75f
+        keyboard.dispatchTouch(MotionEvent.ACTION_DOWN, outsideX, y, 100L, 100L)
+        keyboard.dispatchTouch(MotionEvent.ACTION_UP, outsideX, y, 100L, 120L)
+        assertTrue(listener.actions.isEmpty())
+        val insideX = location[0] + key.width * .25f
+        keyboard.dispatchTouch(MotionEvent.ACTION_DOWN, insideX, y, 200L, 200L)
+        keyboard.dispatchTouch(MotionEvent.ACTION_UP, insideX, y, 200L, 220L)
+        assertTrue(listener.actions == listOf(KeyAction.Paste))
+    }
+
     private fun keyboardView(
         listener: FlickKeyboardView.OnKeyboardActionListener
     ): FlickKeyboardView {

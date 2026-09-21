@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/qwerty_english_category_title">
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_glide_input_preference"
+            android:title="@string/qwerty_glide_input_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/qwerty_glide_input_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_glide_commit_previous_candidate_on_new_glide_preference"
+            android:title="@string/qwerty_glide_commit_previous_candidate_on_new_glide_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/qwerty_glide_commit_previous_candidate_on_new_glide_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_glide_insert_space_after_committing_previous_candidate_preference"
+            android:title="@string/qwerty_glide_insert_space_after_committing_previous_candidate_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/qwerty_glide_insert_space_after_committing_previous_candidate_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_english_direct_input_preference"
+            android:title="@string/qwerty_english_direct_input_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/qwerty_english_direct_input_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_english_space_flick_preference"
+            app:defaultValue="false"
+            android:title="@string/space_flick_preference_title"
+            android:summary="@string/qwerty_english_space_flick_summary" />
+
+    </PreferenceCategory>
+</PreferenceScreen>

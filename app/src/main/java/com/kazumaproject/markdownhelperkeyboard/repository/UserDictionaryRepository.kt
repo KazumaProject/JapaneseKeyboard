@@ -18,6 +18,16 @@ import javax.inject.Singleton
 class UserDictionaryRepository @Inject constructor(
     private val userWordDao: UserWordDao
 ) {
+
+    suspend fun editEntry(entry: UserWord) {
+        check(userWordDao.editEntry(entry) == 1)
+        invalidateConversionSnapshot()
+    }
+
+    suspend fun insertStrict(entry: UserWord) {
+        userWordDao.insertStrict(entry)
+        invalidateConversionSnapshot()
+    }
     @Volatile
     private var conversionSnapshot: Map<Char, List<UserWord>>? = null
     @Volatile
