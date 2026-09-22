@@ -2826,6 +2826,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun onShiftDoubleTapped() {
         if (qwertyMode.value == QWERTYMode.Default) {
             enableCapsLock()
+            // The second tap enables Caps Lock on ACTION_DOWN and its ACTION_UP is
+            // intentionally suppressed. Notify the input side here so it can keep
+            // Caps Lock across a committed composition.
+            notifyQwertyShiftStateChanged()
         }
     }
 
