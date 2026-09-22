@@ -45,11 +45,14 @@ data class PredictionConfig(
         )
 
     fun acceptsJapaneseCompletion(inputLength: Int, readingLength: Int): Boolean {
-        if (!japanesePredictionEnabled) return false
-        if (inputLength !in normalizedMinimumInputLength..MAX_PREDICTION_INPUT_LENGTH) return false
+        if (!canPredictJapanese(inputLength)) return false
         if (readingLength <= inputLength) return false
         return readingLength <= inputLength + normalizedLookaheadCharacterCount
     }
+
+    internal fun canPredictJapanese(inputLength: Int): Boolean =
+        japanesePredictionEnabled &&
+            inputLength in normalizedMinimumInputLength..MAX_PREDICTION_INPUT_LENGTH
 
     fun completionPenalty(
         inputLength: Int,
@@ -96,7 +99,9 @@ internal fun dictionaryCandidateReadings(
     } else {
         emptyList()
     }
-    if (!completionEnabled) return exactReading
+    if (!completionEnabled || !predictionConfig.canPredictJapanese(input.length)) {
+        return exactReading
+    }
 
     val completions = yomiTrie.predictiveSearch(
         prefix = input,
