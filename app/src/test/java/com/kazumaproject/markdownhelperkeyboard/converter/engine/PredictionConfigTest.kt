@@ -11,14 +11,14 @@ class PredictionConfigTest {
     fun defaultLookaheadAcceptsExactlyThreeAdditionalCharacters() {
         val config = PredictionConfig()
 
-        assertFalse(config.acceptsJapaneseReading(inputLength = 2, readingLength = 3))
-        assertTrue(config.acceptsJapaneseReading(inputLength = 3, readingLength = 6))
-        assertFalse(config.acceptsJapaneseReading(inputLength = 3, readingLength = 7))
-        assertTrue(config.acceptsJapaneseReading(inputLength = 5, readingLength = 8))
-        assertFalse(config.acceptsJapaneseReading(inputLength = 5, readingLength = 9))
-        assertTrue(config.acceptsJapaneseReading(inputLength = 7, readingLength = 10))
-        assertFalse(config.acceptsJapaneseReading(inputLength = 7, readingLength = 11))
-        assertFalse(config.acceptsJapaneseReading(inputLength = 17, readingLength = 18))
+        assertFalse(config.acceptsJapaneseCompletion(inputLength = 2, readingLength = 3))
+        assertTrue(config.acceptsJapaneseCompletion(inputLength = 3, readingLength = 6))
+        assertFalse(config.acceptsJapaneseCompletion(inputLength = 3, readingLength = 7))
+        assertTrue(config.acceptsJapaneseCompletion(inputLength = 5, readingLength = 8))
+        assertFalse(config.acceptsJapaneseCompletion(inputLength = 5, readingLength = 9))
+        assertTrue(config.acceptsJapaneseCompletion(inputLength = 7, readingLength = 10))
+        assertFalse(config.acceptsJapaneseCompletion(inputLength = 7, readingLength = 11))
+        assertFalse(config.acceptsJapaneseCompletion(inputLength = 17, readingLength = 18))
     }
 
     @Test
@@ -26,17 +26,17 @@ class PredictionConfigTest {
         val oneCharacter = PredictionConfig(lookaheadCharacterCount = 1)
         val sixCharacters = PredictionConfig(lookaheadCharacterCount = 6)
 
-        assertTrue(oneCharacter.acceptsJapaneseReading(inputLength = 4, readingLength = 5))
-        assertFalse(oneCharacter.acceptsJapaneseReading(inputLength = 4, readingLength = 6))
-        assertTrue(sixCharacters.acceptsJapaneseReading(inputLength = 4, readingLength = 10))
-        assertFalse(sixCharacters.acceptsJapaneseReading(inputLength = 4, readingLength = 11))
+        assertTrue(oneCharacter.acceptsJapaneseCompletion(inputLength = 4, readingLength = 5))
+        assertFalse(oneCharacter.acceptsJapaneseCompletion(inputLength = 4, readingLength = 6))
+        assertTrue(sixCharacters.acceptsJapaneseCompletion(inputLength = 4, readingLength = 10))
+        assertFalse(sixCharacters.acceptsJapaneseCompletion(inputLength = 4, readingLength = 11))
     }
 
     @Test
     fun disabledJapanesePredictionRejectsCompletions() {
         val config = PredictionConfig(japanesePredictionEnabled = false)
 
-        assertFalse(config.acceptsJapaneseReading(inputLength = 3, readingLength = 4))
+        assertFalse(config.acceptsJapaneseCompletion(inputLength = 3, readingLength = 4))
     }
 
     @Test

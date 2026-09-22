@@ -93,7 +93,7 @@ internal fun shouldIncludeSymbolEmojiReading(
 ): Boolean = readingLength == inputLength || (
     predictionConfig.japanesePredictionEnabled &&
         predictionConfig.symbolEmojiEnabled &&
-        predictionConfig.acceptsJapaneseReading(inputLength, readingLength)
+        predictionConfig.acceptsJapaneseCompletion(inputLength, readingLength)
     )
 
 internal fun createJapaneseNumberValueBasedCandidates(
@@ -1471,23 +1471,29 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val readingCorrectionCommonPrefixDeferred = if (readingCorrectionDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.readingCorrectionEnabled) {
-            deferredPrediction(
+        val readingCorrectionCommonPrefixDeferred = if (
+            readingCorrectionDictionaryEnabled && predictionConfig.readingCorrectionEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = readingCorrectionYomiTrie,
                 succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
         }
 
-        val kotowazaCommonPrefixDeferred = if (kotowazaDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.proverbEnabled) {
-            deferredPrediction(
+        val kotowazaCommonPrefixDeferred = if (
+            kotowazaDictionaryEnabled && predictionConfig.proverbEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = kotowazaYomiTrie,
                 succinctBitVector = kotowazaSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
@@ -2005,23 +2011,29 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val readingCorrectionCommonPrefixDeferred = if (readingCorrectionDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.readingCorrectionEnabled) {
-            deferredPrediction(
+        val readingCorrectionCommonPrefixDeferred = if (
+            readingCorrectionDictionaryEnabled && predictionConfig.readingCorrectionEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = readingCorrectionYomiTrie,
                 succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
         }
 
-        val kotowazaCommonPrefixDeferred = if (kotowazaDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.proverbEnabled) {
-            deferredPrediction(
+        val kotowazaCommonPrefixDeferred = if (
+            kotowazaDictionaryEnabled && predictionConfig.proverbEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = kotowazaYomiTrie,
                 succinctBitVector = kotowazaSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
@@ -2529,23 +2541,29 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val readingCorrectionCommonPrefixDeferred = if (readingCorrectionDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.readingCorrectionEnabled) {
-            deferredPrediction(
+        val readingCorrectionCommonPrefixDeferred = if (
+            readingCorrectionDictionaryEnabled && predictionConfig.readingCorrectionEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = readingCorrectionYomiTrie,
                 succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
         }
 
-        val kotowazaCommonPrefixDeferred = if (kotowazaDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.proverbEnabled) {
-            deferredPrediction(
+        val kotowazaCommonPrefixDeferred = if (
+            kotowazaDictionaryEnabled && predictionConfig.proverbEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = kotowazaYomiTrie,
                 succinctBitVector = kotowazaSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
@@ -3051,23 +3069,29 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val readingCorrectionCommonPrefixDeferred = if (readingCorrectionDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.readingCorrectionEnabled) {
-            deferredPrediction(
+        val readingCorrectionCommonPrefixDeferred = if (
+            readingCorrectionDictionaryEnabled && predictionConfig.readingCorrectionEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = readingCorrectionYomiTrie,
                 succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
         }
 
-        val kotowazaCommonPrefixDeferred = if (kotowazaDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.proverbEnabled) {
-            deferredPrediction(
+        val kotowazaCommonPrefixDeferred = if (
+            kotowazaDictionaryEnabled && predictionConfig.proverbEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = kotowazaYomiTrie,
                 succinctBitVector = kotowazaSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
@@ -3554,23 +3578,29 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val readingCorrectionCommonPrefixDeferred = if (readingCorrectionDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.readingCorrectionEnabled) {
-            deferredPrediction(
+        val readingCorrectionCommonPrefixDeferred = if (
+            readingCorrectionDictionaryEnabled && predictionConfig.readingCorrectionEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = readingCorrectionYomiTrie,
                 succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
         }
 
-        val kotowazaCommonPrefixDeferred = if (kotowazaDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.proverbEnabled) {
-            deferredPrediction(
+        val kotowazaCommonPrefixDeferred = if (
+            kotowazaDictionaryEnabled && predictionConfig.proverbEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = kotowazaYomiTrie,
                 succinctBitVector = kotowazaSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
@@ -4076,23 +4106,29 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val readingCorrectionCommonPrefixDeferred = if (readingCorrectionDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.readingCorrectionEnabled) {
-            deferredPrediction(
+        val readingCorrectionCommonPrefixDeferred = if (
+            readingCorrectionDictionaryEnabled && predictionConfig.readingCorrectionEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = readingCorrectionYomiTrie,
                 succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
         }
 
-        val kotowazaCommonPrefixDeferred = if (kotowazaDictionaryEnabled && predictionConfig.japanesePredictionEnabled && predictionConfig.proverbEnabled) {
-            deferredPrediction(
+        val kotowazaCommonPrefixDeferred = if (
+            kotowazaDictionaryEnabled && predictionConfig.proverbEnabled
+        ) {
+            dictionaryCandidateReadings(
                 input = input,
                 yomiTrie = kotowazaYomiTrie,
                 succinctBitVector = kotowazaSuccinctBitVectorLBSYomi,
                 predictionConfig = predictionConfig,
+                completionEnabled = predictionConfig.japanesePredictionEnabled,
             )
         } else {
             emptyList()
@@ -4959,44 +4995,52 @@ class KanaKanjiEngine {
         type: Byte,
         n: Int,
         predictionConfig: PredictionConfig,
-    ): List<Candidate> = commonPrefixListString.flatMap { yomi ->
-        if (yomiTrie == null) return emptyList()
-        if (tokenArray == null) return emptyList()
-        if (tangoTrie == null) return emptyList()
-        if (succinctBitVectorLBSYomi == null) return emptyList()
-        if (succinctBitVectorIsLeafYomi == null) return emptyList()
-        if (succinctBitVectorTokenArray == null) return emptyList()
-        if (succinctBitVectorTangoLBS == null) return emptyList()
-        if (input.length > yomi.length) return emptyList()
-        val termId = yomiTrie.getTermId(
-            yomiTrie.getNodeIndex(
-                yomi, succinctBitVectorLBSYomi
-            ), succinctBitVectorIsLeafYomi
-        )
-        tokenArray.getListDictionaryByYomiTermId(
-            termId, succinctBitVectorTokenArray
-        ).map {
-            Candidate(
-                string = when (it.nodeId) {
-                    -2 -> yomi
-                    -1 -> yomi.hiraToKata()
-                    else -> tangoTrie.getLetter(
-                        it.nodeId, succinctBitVectorTangoLBS
+    ): List<Candidate> {
+        if (
+            yomiTrie == null || tokenArray == null || tangoTrie == null ||
+            succinctBitVectorLBSYomi == null || succinctBitVectorIsLeafYomi == null ||
+            succinctBitVectorTokenArray == null || succinctBitVectorTangoLBS == null
+        ) return emptyList()
+
+        val candidates = commonPrefixListString.flatMap { yomi ->
+            if (input.length > yomi.length) {
+                emptyList()
+            } else {
+                val termId = yomiTrie.getTermId(
+                    yomiTrie.getNodeIndex(yomi, succinctBitVectorLBSYomi),
+                    succinctBitVectorIsLeafYomi,
+                )
+                tokenArray.getListDictionaryByYomiTermId(
+                    termId,
+                    succinctBitVectorTokenArray,
+                ).map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> tangoTrie.getLetter(it.nodeId, succinctBitVectorTangoLBS)
+                        },
+                        type = type,
+                        length = yomi.length.toUByte(),
+                        score = it.wordCost.toInt() + predictionConfig.completionPenalty(
+                            inputLength = input.length,
+                            readingLength = yomi.length,
+                            penaltyPerCharacter = 1_500,
+                            longInputFlatPenalty = null,
+                        ),
+                        leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = tokenArray.rightIds[it.posTableIndex.toInt()],
                     )
-                },
-                type = type,
-                length = yomi.length.toUByte(),
-                score = it.wordCost.toInt() + predictionConfig.completionPenalty(
-                    inputLength = input.length,
-                    readingLength = yomi.length,
-                    penaltyPerCharacter = 1_500,
-                    longInputFlatPenalty = null,
-                ),
-                leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
-                rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
-            )
-        }
-    }.sortedBy { it.score }.take(n)
+                }
+            }
+        }.sortedBy { it.score }
+        val exactCandidates = candidates.filter { it.length.toInt() == input.length }
+        val completionCandidates = candidates.filter { it.length.toInt() > input.length }
+        val selectedExactCandidates = exactCandidates.take(n)
+        return selectedExactCandidates + completionCandidates.take(
+            (n - selectedExactCandidates.size).coerceAtLeast(0),
+        )
+    }
 
     private fun deferredFromDictionary(
         commonPrefixListString: List<String>,
@@ -5152,7 +5196,7 @@ class KanaKanjiEngine {
     ): List<String> {
         return yomiTrie.predictiveSearch(
             prefix = input, succinctBitVector = succinctBitVector
-        ).filter { predictionConfig.acceptsJapaneseReading(input.length, it.length) }
+        ).filter { predictionConfig.acceptsJapaneseCompletion(input.length, it.length) }
     }
 
     private fun buildPredictiveCandidatesIncludingSystemUser(
@@ -5286,13 +5330,15 @@ class KanaKanjiEngine {
         succinctBitVector: SuccinctBitVector?,
         predictionConfig: PredictionConfig,
     ): List<String> {
-        if (yomiTrie == null) return emptyList()
-        if (succinctBitVector == null) return emptyList()
-        if (!predictionConfig.japanesePredictionEnabled || !predictionConfig.externalMozcEnabled) return emptyList()
-        if (input.length < predictionConfig.normalizedMinimumInputLength) return emptyList()
-        return yomiTrie.predictiveSearch(
-            prefix = input, succinctBitVector = succinctBitVector
-        ).filter { predictionConfig.acceptsJapaneseReading(input.length, it.length) }.asReversed()
+        if (!predictionConfig.externalMozcEnabled) return emptyList()
+        if (yomiTrie == null || succinctBitVector == null) return emptyList()
+        return dictionaryCandidateReadings(
+            input = input,
+            yomiTrie = yomiTrie,
+            succinctBitVector = succinctBitVector,
+            predictionConfig = predictionConfig,
+            completionEnabled = predictionConfig.japanesePredictionEnabled,
+        )
     }
 
     private fun commonPrefixMozcUTWeb(
@@ -5301,13 +5347,15 @@ class KanaKanjiEngine {
         succinctBitVector: SuccinctBitVector?,
         predictionConfig: PredictionConfig,
     ): List<String> {
-        if (!predictionConfig.japanesePredictionEnabled || !predictionConfig.externalMozcEnabled) return emptyList()
-        if (input.length < predictionConfig.normalizedMinimumInputLength) return emptyList()
-        if (yomiTrie == null) return emptyList()
-        if (succinctBitVector == null) return emptyList()
-        return yomiTrie.predictiveSearch(
-            prefix = input, succinctBitVector = succinctBitVector
-        ).filter { predictionConfig.acceptsJapaneseReading(input.length, it.length) }.asReversed()
+        if (!predictionConfig.externalMozcEnabled) return emptyList()
+        if (yomiTrie == null || succinctBitVector == null) return emptyList()
+        return dictionaryCandidateReadings(
+            input = input,
+            yomiTrie = yomiTrie,
+            succinctBitVector = succinctBitVector,
+            predictionConfig = predictionConfig,
+            completionEnabled = predictionConfig.japanesePredictionEnabled,
+        )
     }
 
     fun getMozcUTPersonNames(

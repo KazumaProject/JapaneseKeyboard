@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+
 enum class PredictionAggressiveness(val preferenceValue: String) {
     CONSERVATIVE("conservative"),
     STANDARD("standard"),
@@ -41,7 +44,7 @@ data class PredictionConfig(
             MAX_LOOKAHEAD_CHARACTER_COUNT,
         )
 
-    fun acceptsJapaneseReading(inputLength: Int, readingLength: Int): Boolean {
+    fun acceptsJapaneseCompletion(inputLength: Int, readingLength: Int): Boolean {
         if (!japanesePredictionEnabled) return false
         if (inputLength !in normalizedMinimumInputLength..MAX_PREDICTION_INPUT_LENGTH) return false
         if (readingLength <= inputLength) return false
@@ -78,4 +81,27 @@ data class PredictionConfig(
         const val MAX_LOOKAHEAD_CHARACTER_COUNT = 6
         const val DEFAULT_LOOKAHEAD_CHARACTER_COUNT = 3
     }
+}
+
+internal fun dictionaryCandidateReadings(
+    input: String,
+    yomiTrie: LOUDSWithTermId,
+    succinctBitVector: SuccinctBitVector,
+    predictionConfig: PredictionConfig,
+    completionEnabled: Boolean = true,
+): List<String> {
+    val exactNodeIndex = yomiTrie.getNodeIndex(input, succinctBitVector)
+    val exactReading = if (exactNodeIndex >= 0 && yomiTrie.isLeaf[exactNodeIndex]) {
+        listOf(input)
+    } else {
+        emptyList()
+    }
+    if (!completionEnabled) return exactReading
+
+    val completions = yomiTrie.predictiveSearch(
+        prefix = input,
+        succinctBitVector = succinctBitVector,
+    ).filter { predictionConfig.acceptsJapaneseCompletion(input.length, it.length) }
+
+    return (exactReading + completions.asReversed()).distinct()
 }
