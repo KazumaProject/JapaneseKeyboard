@@ -14,12 +14,12 @@ interface QWERTYKeyListener {
     )
 
     /**
-     * ソフトウェア QWERTY の Shift 状態が明示的に変化したときに通知します。
+     * ソフトウェア QWERTY の Shift / Caps Lock 状態が明示的に変化したときに通知します。
      *
      * 通常の文字入力で one-shot Shift が自動解除される場合は通知しません。
-     * モード切替やキーボード再初期化によって状態が明示的にクリアされた場合は通知します。
-     * そのため、入力側は Shift キーを明示的に解除したときだけ、ソフトウェア
-     * Shift に由来する一時的なローマ字入力状態を解除できます。
+     * Caps Lock の有効化・解除、モード切替、キーボード再初期化による明示的な
+     * クリアは通知します。そのため、入力側は Shift キーを明示的に解除したときだけ、
+     * ソフトウェア Shift に由来する一時的なローマ字入力状態を解除できます。
      */
     fun onQWERTYShiftStateChanged(
         capsLockOn: Boolean,
