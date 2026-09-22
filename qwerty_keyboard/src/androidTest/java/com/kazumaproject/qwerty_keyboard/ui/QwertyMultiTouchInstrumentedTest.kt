@@ -386,6 +386,7 @@ class QwertyMultiTouchInstrumentedTest {
             val recorder = RecordingQwertyKeyListener()
             val keyboard = createKeyboard(recorder)
             val shift = keyboard.keyCenter(R.id.key_shift)
+            val b = keyboard.keyCenter(R.id.key_b)
 
             // First tap enables one-shot Shift.
             keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, shift))
@@ -395,14 +396,37 @@ class QwertyMultiTouchInstrumentedTest {
             keyboard.sendEvent(200L, 200L, MotionEvent.ACTION_DOWN, 0, pointer(1, shift))
             keyboard.sendEvent(200L, 220L, MotionEvent.ACTION_UP, 0, pointer(1, shift))
 
+            // Caps Lock remains active while ordinary letters are released.
+            keyboard.sendEvent(500L, 500L, MotionEvent.ACTION_DOWN, 0, pointer(2, b))
+            keyboard.sendEvent(500L, 520L, MotionEvent.ACTION_UP, 0, pointer(2, b))
+
             // A later Shift tap turns Caps Lock off and must report the cleared state.
-            keyboard.sendEvent(1_000L, 1_000L, MotionEvent.ACTION_DOWN, 0, pointer(2, shift))
-            keyboard.sendEvent(1_000L, 1_020L, MotionEvent.ACTION_UP, 0, pointer(2, shift))
+            keyboard.sendEvent(1_000L, 1_000L, MotionEvent.ACTION_DOWN, 0, pointer(3, shift))
+            keyboard.sendEvent(1_000L, 1_020L, MotionEvent.ACTION_UP, 0, pointer(3, shift))
 
             assertEquals(
-                listOf(false to true, false to false),
+                listOf(false to true, true to false, false to false),
                 recorder.shiftStateChanges
             )
+        }
+    }
+
+    @Test
+    fun oneShotShift_doesNotReportAutomaticReleaseAfterLetter() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder)
+            val shift = keyboard.keyCenter(R.id.key_shift)
+            val b = keyboard.keyCenter(R.id.key_b)
+
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, pointer(0, shift))
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_UP, 0, pointer(0, shift))
+            keyboard.sendEvent(300L, 300L, MotionEvent.ACTION_DOWN, 0, pointer(1, b))
+            keyboard.sendEvent(300L, 320L, MotionEvent.ACTION_UP, 0, pointer(1, b))
+
+            // The input-side one-shot latch intentionally outlives the View's
+            // automatic visual Shift release until the composition boundary.
+            assertEquals(listOf(false to true), recorder.shiftStateChanges)
         }
     }
 
