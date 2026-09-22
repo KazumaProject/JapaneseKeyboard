@@ -103,6 +103,108 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun qwertyRomajiCapsLockPersistsAcrossCommitOnNormalAndFloatingPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-romaji-caps-lock-commit") { session ->
+            for (floating in listOf(false, true)) {
+                for (shiftConversion in listOf(false, true)) {
+                    check(
+                        session.preferences.edit()
+                            .putString("keyboard_order_preference", "[\"ROMAJI\"]")
+                            .putBoolean("save_last_used_keyboard", false)
+                            .putBoolean("keyboard_floating_preference", floating)
+                            .putBoolean("live_conversion_preference", false)
+                            .putBoolean(
+                                "qwerty_romaji_shift_conversion_preference",
+                                shiftConversion
+                            )
+                            .commit()
+                    )
+                    val scenario = launchHost(session.context)
+                    try {
+                        ensureTargetImeSelected(session)
+                        restartInput(scenario)
+                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+
+                        fun tap(id: String) {
+                            assertTrue("Failed to tap $id", injectTap(awaitVisibleNodeBounds(id).center))
+                        }
+
+                        val shift = awaitVisibleNodeBounds("key_shift").center
+                        assertTrue(injectTap(shift))
+                        assertTrue(injectTap(shift))
+                        "qwe".forEach { tap("key_$it") }
+                        tap("key_return")
+                        assertEquals("QWE", awaitTextSettled(scenario))
+
+                        // Keep Caps Lock enabled while starting a new composition.
+                        "rty".forEach { tap("key_$it") }
+                        tap("key_return")
+                        assertEquals("QWERTY", awaitTextSettled(scenario))
+
+                        // Delete must not clear Caps Lock while a new uppercase
+                        // composition is being edited.
+                        tap("key_a")
+                        assertTrue(
+                            "Caps Lock did not produce a deletable input",
+                            awaitTextSettled(scenario).length > "QWERTY".length,
+                        )
+                        tap("key_delete")
+                        assertEquals("QWERTY", awaitTextSettled(scenario))
+                        tap("key_b")
+                        assertEquals("QWERTYB", awaitTextSettled(scenario))
+
+                        // Turn Caps Lock off and verify normal Japanese romaji resumes.
+                        assertTrue(injectTap(shift))
+                        "aiueo".forEach { tap("key_$it") }
+                        assertEquals("QWERTYBあいうえお", awaitTextSettled(scenario))
+                    } finally {
+                        scenario.close()
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun qwertyRomajiOneShotShiftDeleteRestoresRomajiOnPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-romaji-one-shot-delete") { session ->
+            check(
+                session.preferences.edit()
+                    .putString("keyboard_order_preference", "[\"ROMAJI\"]")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("keyboard_floating_preference", false)
+                    .putBoolean("live_conversion_preference", false)
+                    .putBoolean("qwerty_romaji_shift_conversion_preference", false)
+                    .commit()
+            )
+            val scenario = launchHost(session.context)
+            try {
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+
+                fun tap(id: String) {
+                    assertTrue("Failed to tap $id", injectTap(awaitVisibleNodeBounds(id).center))
+                }
+
+                tap("key_shift")
+                tap("key_a")
+                assertTrue(
+                    "One-shot Shift did not produce a deletable input",
+                    awaitTextSettled(scenario).isNotEmpty(),
+                )
+                tap("key_delete")
+                assertEquals("", awaitTextSettled(scenario))
+
+                "kaki".forEach { tap("key_$it") }
+                assertEquals("かき", awaitTextSettled(scenario))
+            } finally {
+                scenario.close()
+            }
+        }
+    }
+
+    @Test
     fun englishSpaceFlickCommitsExpectedWidthOnNormalAndFloatingPhysicalKeyboard() {
         runPhysicalDeviceSession("english-space-flick") { session ->
             rotateAndVerify(TestOrientation.PORTRAIT)
