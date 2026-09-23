@@ -1589,8 +1589,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var gemmaInputSessionId: Long = 0L
     private var restoreFloatingModeAfterGemmaPanel: Boolean = false
     private var consumeGemmaBackKeyUp: Boolean = false
+    private var consumeKeyboardSelectionPopupBackKeyUp: Boolean = false
     private var gemmaBackInvokedCallback: OnBackInvokedCallback? = null
     private var isGemmaBackInvokedCallbackRegistered: Boolean = false
+    private var keyboardSelectionPopupBackInvokedCallback: OnBackInvokedCallback? = null
+    private var isKeyboardSelectionPopupBackInvokedCallbackRegistered: Boolean = false
     private val suggestionProgressReasons = mutableSetOf<SuggestionProgressReason>()
     private var isInputViewActive: Boolean = false
     private val _inputString = MutableStateFlow("")
@@ -5960,6 +5963,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             runtimeInputPreferenceListenerRegistered = false
         }
         updateGemmaBackInvokedCallback(registered = false)
+        updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
         gemmaMediaPanelController?.destroy()
         gemmaMediaPanelController = null
         gemmaHandwritingController?.destroy()
@@ -7384,6 +7388,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            consumeKeyboardSelectionPopupBackKeyUp
+        ) {
+            return true
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            keyboardSelectionPopupWindow?.isShowing == true
+        ) {
+            keyboardSelectionPopupWindow?.dismiss()
+            consumeKeyboardSelectionPopupBackKeyUp = true
+            return true
+        }
         dictionaryInputEditor?.let { editor ->
             if (event != null && keyCode != KeyEvent.KEYCODE_BACK) {
                 switchDictionaryInputTarget(editor)
@@ -8394,6 +8410,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (keyCode == KeyEvent.KEYCODE_BACK && consumeGemmaBackKeyUp) {
             consumeGemmaBackKeyUp = false
+            return true
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK && consumeKeyboardSelectionPopupBackKeyUp) {
+            consumeKeyboardSelectionPopupBackKeyUp = false
             return true
         }
         when (keyCode) {
@@ -11027,6 +11047,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var keyboardSelectionPopupWindow: PopupWindow? = null
 
+    private fun updateKeyboardSelectionPopupBackInvokedCallback(registered: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val dispatcher = window.window?.onBackInvokedDispatcher ?: return
+        if (registered) {
+            if (isKeyboardSelectionPopupBackInvokedCallbackRegistered) return
+            val callback = keyboardSelectionPopupBackInvokedCallback ?: OnBackInvokedCallback {
+                keyboardSelectionPopupWindow?.takeIf { it.isShowing }?.dismiss()
+            }.also { keyboardSelectionPopupBackInvokedCallback = it }
+            dispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_OVERLAY,
+                callback,
+            )
+            isKeyboardSelectionPopupBackInvokedCallbackRegistered = true
+        } else {
+            if (!isKeyboardSelectionPopupBackInvokedCallbackRegistered) return
+            keyboardSelectionPopupBackInvokedCallback?.let(dispatcher::unregisterOnBackInvokedCallback)
+            isKeyboardSelectionPopupBackInvokedCallbackRegistered = false
+        }
+    }
+
     private fun shouldShowCandidateLongPressActions(candidate: Candidate): Boolean {
         if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) return false
         return candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY ||
@@ -11985,11 +12025,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             limitListViewVisibleItems(listView, maxVisible = 5)
 
             // --- 3) PopupWindow ---
+            // This popup belongs to the IME window. Taking focus can make the editor
+            // hide the IME, which also removes this popup on some apps and OEMs.
+            // A non-focusable popup still receives taps in its ListView.
             keyboardSelectionPopupWindow = PopupWindow(
                 popupView,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                true
+                false
             )
 
             // 既存の「内部キーボードの選択状態」を復元（範囲チェック必須）
@@ -12058,6 +12101,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             keyboardSelectionPopupWindow?.setOnDismissListener {
                 onKeyboardSwitchLongPressUp = false
+                updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
             }
 
             keyboardSelectionPopupWindow?.let { popupWindow ->
@@ -12069,6 +12113,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     y = 0,
                     source = "showListPopup"
                 )
+                if (popupWindow.isShowing) {
+                    updateKeyboardSelectionPopupBackInvokedCallback(registered = true)
+                }
             }
         }
     }
