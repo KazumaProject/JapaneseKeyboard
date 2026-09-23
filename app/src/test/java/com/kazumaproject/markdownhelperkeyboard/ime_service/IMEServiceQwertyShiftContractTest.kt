@@ -27,9 +27,43 @@ class IMEServiceQwertyShiftContractTest {
             end = "override fun onLongPressQWERTYKey("
         )
 
+        assertTrue(callback.contains("softwareQwertyCapsLockOn = capsLockOn"))
         assertTrue(callback.contains("if (!capsLockOn && !shiftOn)"))
         assertTrue(callback.contains("softwareQwertyShiftPressed = false"))
         assertFalse(callback.contains("hardKeyboardShiftPressd = false"))
+    }
+
+    @Test
+    fun compositionAndDeleteBoundariesPreserveCapsLockButClearOneShotLatch() {
+        val source = imeServiceSource()
+
+        assertTrue(source.contains("private var softwareQwertyCapsLockOn = false"))
+        assertTrue(source.contains("private fun resetSoftwareQwertyShiftAfterCompositionBoundary()"))
+        assertTrue(source.contains("softwareQwertyShiftPressed = if (isDefaultRomajiHenkanMap)"))
+        assertTrue(source.contains("resetSoftwareQwertyShiftAfterCompositionBoundary()"))
+
+        val qwertyReleaseHandler = source.functionBody(
+            start = "override fun onReleasedQWERTYKey(",
+            end = "override fun onQWERTYShiftStateChanged("
+        )
+        val deleteStart = qwertyReleaseHandler.indexOf("QWERTYKey.QWERTYKeyDelete ->")
+        val deleteEnd = qwertyReleaseHandler.indexOf(
+            "QWERTYKey.QWERTYKeySwitchDefaultLayout ->",
+            deleteStart
+        )
+        require(deleteStart >= 0 && deleteEnd > deleteStart)
+        val deleteHandler = qwertyReleaseHandler.substring(deleteStart, deleteEnd)
+        assertTrue(deleteHandler.contains("resetSoftwareQwertyShiftAfterCompositionBoundary()"))
+        assertFalse(deleteHandler.contains("softwareQwertyShiftPressed = false"))
+    }
+
+    @Test
+    fun splitStateStoresCapsLockAlongsideSoftwareShiftState() {
+        val source = imeServiceSource()
+
+        assertTrue(source.contains("var softwareQwertyCapsLock: Boolean = false"))
+        assertTrue(source.contains("softwareQwertyCapsLock = softwareQwertyCapsLockOn"))
+        assertTrue(source.contains("softwareQwertyCapsLockOn = state.softwareQwertyCapsLock"))
     }
 
     @Test
