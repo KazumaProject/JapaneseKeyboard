@@ -5887,6 +5887,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         composingGuide?.stop()
@@ -5929,6 +5930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         composingGuide?.stop()
@@ -5943,6 +5945,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        keyboardSelectionPopupWindow?.dismiss()
         stopSplitKeyboard()
         dictionaryFloats?.destroy()
         dictionaryFloats = null
@@ -11046,14 +11049,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var keyboardSelectionPopupWindow: PopupWindow? = null
+    private var imeSwitchPopupWindow: PopupWindow? = null
 
-    private fun updateKeyboardSelectionPopupBackInvokedCallback(registered: Boolean) {
+    private fun replaceKeyboardSelectionPopupWindow(popupWindow: PopupWindow) {
+        // These popups share one slot. Dismiss the old window before replacing its reference.
+        keyboardSelectionPopupWindow?.dismiss()
+        imeSwitchPopupWindow = null
+        updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+        keyboardSelectionPopupWindow = popupWindow
+    }
+
+    private fun updateKeyboardSelectionPopupBackInvokedCallback(
+        registered: Boolean,
+        popupWindow: PopupWindow? = null,
+    ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val dispatcher = window.window?.onBackInvokedDispatcher ?: return
         if (registered) {
             if (isKeyboardSelectionPopupBackInvokedCallbackRegistered) return
-            val callback = keyboardSelectionPopupBackInvokedCallback ?: OnBackInvokedCallback {
-                keyboardSelectionPopupWindow?.takeIf { it.isShowing }?.dismiss()
+            val targetPopupWindow = requireNotNull(popupWindow)
+            val callback = OnBackInvokedCallback {
+                targetPopupWindow.takeIf { it.isShowing }?.dismiss()
             }.also { keyboardSelectionPopupBackInvokedCallback = it }
             dispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_OVERLAY,
@@ -11063,6 +11079,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (!isKeyboardSelectionPopupBackInvokedCallbackRegistered) return
             keyboardSelectionPopupBackInvokedCallback?.let(dispatcher::unregisterOnBackInvokedCallback)
+            keyboardSelectionPopupBackInvokedCallback = null
             isKeyboardSelectionPopupBackInvokedCallbackRegistered = false
         }
     }
@@ -11138,12 +11155,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val adapter = ArrayAdapter(this, R.layout.list_item_layout, items)
             listView.adapter = adapter
 
-            keyboardSelectionPopupWindow = PopupWindow(
+            replaceKeyboardSelectionPopupWindow(PopupWindow(
                 popupView,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 true
-            )
+            ))
             listView.setOnItemClickListener { _, _, position, _ ->
                 Timber.d("candidate long click: $candidate $candidatePosition")
                 val selectedAction = actions.getOrNull(position)
@@ -11232,7 +11249,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         matchModeSpinner.setSelection(matchModes.indexOf(NgWordMatchMode.PARTIAL))
 
-        keyboardSelectionPopupWindow?.dismiss()
         val popupWindow = PopupWindow(
             popupView,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -11244,7 +11260,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputMethodMode = PopupWindow.INPUT_METHOD_NEEDED
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         }
-        keyboardSelectionPopupWindow = popupWindow
+        replaceKeyboardSelectionPopupWindow(popupWindow)
         popupWindow.setOnDismissListener {
             if (keyboardSelectionPopupWindow === popupWindow) {
                 keyboardSelectionPopupWindow = null
@@ -12028,12 +12044,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // This popup belongs to the IME window. Taking focus can make the editor
             // hide the IME, which also removes this popup on some apps and OEMs.
             // A non-focusable popup still receives taps in its ListView.
-            keyboardSelectionPopupWindow = PopupWindow(
+            val popupWindow = PopupWindow(
                 popupView,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 false
-            )
+            ).apply {
+                // Keep editor focus while still closing the list when the user taps elsewhere.
+                isOutsideTouchable = true
+            }
+            replaceKeyboardSelectionPopupWindow(popupWindow)
+            imeSwitchPopupWindow = popupWindow
+            onKeyboardSwitchLongPressUp = true
 
             // 既存の「内部キーボードの選択状態」を復元（範囲チェック必須）
             if (currentKeyboardOrder in 0 until internalCount) {
@@ -12043,7 +12065,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // --- 4) クリック処理（内部→今まで通り / 外部→IME切替） ---
             listView.setOnItemClickListener { _, _, position, _ ->
                 onKeyboardSwitchLongPressUp = false
-                keyboardSelectionPopupWindow?.dismiss()
+                popupWindow.dismiss()
 
                 when (val row = rows[position]) {
                     is RowItem.Internal -> {
@@ -12099,22 +12121,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            keyboardSelectionPopupWindow?.setOnDismissListener {
+            popupWindow.setOnDismissListener {
                 onKeyboardSwitchLongPressUp = false
                 updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+                if (keyboardSelectionPopupWindow === popupWindow) {
+                    keyboardSelectionPopupWindow = null
+                }
+                if (imeSwitchPopupWindow === popupWindow) {
+                    imeSwitchPopupWindow = null
+                }
             }
 
-            keyboardSelectionPopupWindow?.let { popupWindow ->
-                showPopupWindowSafely(
+            val shown = showPopupWindowSafely(
+                popupWindow = popupWindow,
+                anchorView = resolveShowListPopupAnchor(mainView),
+                gravity = Gravity.CENTER,
+                x = 0,
+                y = 0,
+                source = "showListPopup"
+            )
+            if (shown && popupWindow.isShowing) {
+                updateKeyboardSelectionPopupBackInvokedCallback(
+                    registered = true,
                     popupWindow = popupWindow,
-                    anchorView = resolveShowListPopupAnchor(mainView),
-                    gravity = Gravity.CENTER,
-                    x = 0,
-                    y = 0,
-                    source = "showListPopup"
                 )
+            } else {
                 if (popupWindow.isShowing) {
-                    updateKeyboardSelectionPopupBackInvokedCallback(registered = true)
+                    runCatching { popupWindow.dismiss() }
+                }
+                onKeyboardSwitchLongPressUp = false
+                if (keyboardSelectionPopupWindow === popupWindow) {
+                    keyboardSelectionPopupWindow = null
+                }
+                if (imeSwitchPopupWindow === popupWindow) {
+                    imeSwitchPopupWindow = null
                 }
             }
         }
@@ -12208,12 +12248,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                     listView.adapter = adapter
 
-                    keyboardSelectionPopupWindow = PopupWindow(
+                    replaceKeyboardSelectionPopupWindow(PopupWindow(
                         popupView,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         true // Focusable
-                    )
+                    ))
+                    onKeyboardSwitchLongPressUp = true
 
                     listView.setOnItemClickListener { _, _, position, _ ->
                         val selectedTemplate = templates[position]
@@ -12255,12 +12296,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                     listView.adapter = adapter
 
-                    keyboardSelectionPopupWindow = PopupWindow(
+                    replaceKeyboardSelectionPopupWindow(PopupWindow(
                         popupView,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         true // Focusable
-                    )
+                    ))
+                    onKeyboardSwitchLongPressUp = true
 
                     listView.setOnItemClickListener { _, _, position, _ ->
                         val selectedDates = currentDates[position]
@@ -26121,14 +26163,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                 }
                 limitListViewVisibleItems(listView, maxVisible = 8)
-                keyboardSelectionPopupWindow = PopupWindow(
+                replaceKeyboardSelectionPopupWindow(PopupWindow(
                     popupView,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     true,
                 ).apply {
                     setOnDismissListener { onKeyboardSwitchLongPressUp = false }
-                }
+                })
+                onKeyboardSwitchLongPressUp = true
                 listView.setOnItemClickListener { _, _, position, _ ->
                     keyboardSelectionPopupWindow?.dismiss()
                     macros.getOrNull(position)?.let { executeTextMacro(it.id) }
