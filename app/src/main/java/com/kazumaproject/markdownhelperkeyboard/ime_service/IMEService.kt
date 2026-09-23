@@ -321,6 +321,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEval
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SymbolKeyboardState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.CustomRomajiScreenConverter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.PhysicalRomajiPunctuationMapper
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -2136,8 +2137,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var hardKeyboardShiftPressd = false
     private var softwareQwertyShiftPressed = false
+    /**
+     * Software Caps Lock is kept separately from the one-shot/romaji Shift latch.
+     * The latter intentionally lives until the current composition boundary, while
+     * Caps Lock must survive committing that composition.
+     */
+    private var softwareQwertyCapsLockOn = false
     private val isRomajiShiftPressed: Boolean
         get() = hardKeyboardShiftPressd || softwareQwertyShiftPressed
+
+    private fun resetSoftwareQwertyShiftAfterCompositionBoundary() {
+        softwareQwertyShiftPressed = if (isDefaultRomajiHenkanMap) {
+            softwareQwertyCapsLockOn
+        } else {
+            false
+        }
+    }
     private var physicalKeyboardInputMode: PhysicalKeyboardInputMode =
         PhysicalKeyboardInputMode.ROMAJI
     private var physicalKeyboardShortcuts: List<PhysicalKeyboardShortcutItem> = emptyList()
@@ -2359,6 +2374,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         var numberFromTenkey: Boolean = false,
         var hardShift: Boolean = false,
         var softwareQwertyShift: Boolean = false,
+        var softwareQwertyCapsLock: Boolean = false,
         var symbolState: SymbolKeyboardState = SymbolKeyboardState(),
         var symbolRequest: SymbolKeyboardState? = null,
         var symbolJob: Job? = null,
@@ -2398,6 +2414,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mode = qwertyMode.value
             hardShift = hardKeyboardShiftPressd
             softwareQwertyShift = softwareQwertyShiftPressed
+            softwareQwertyCapsLock = softwareQwertyCapsLockOn
             symbolState = keyboardSymbolViewState.value
             inputMode = currentInputModeForSession
             romaji = currentQwertyRomajiModeForSession
@@ -2438,6 +2455,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardBinding = state.binding
         hardKeyboardShiftPressd = state.hardShift
         softwareQwertyShiftPressed = state.softwareQwertyShift
+        softwareQwertyCapsLockOn = state.softwareQwertyCapsLock
         currentInputModeForSession = state.inputMode
         currentQwertyRomajiModeForSession = state.romaji
         customKeyboardMode = state.customMode
@@ -8251,10 +8269,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 romajiConverter?.handleKeyEvent(event)
             }
         } else {
+            val resolvedUnicode = PhysicalRomajiPunctuationMapper.map(
+                keyCode, unicode, event.isShiftPressed
+            )
             if (isDefaultRomajiHenkanMap) {
-                romajiConverter?.handleUnicodeCharZenkaku(unicode)
+                romajiConverter?.handleUnicodeCharZenkaku(resolvedUnicode)
             } else {
-                romajiConverter?.handleUnicodeChar(unicode)
+                romajiConverter?.handleUnicodeChar(resolvedUnicode)
             }
         }
     }
@@ -19227,7 +19248,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resetInputString()
             lastCandidate = ""
             hardKeyboardShiftPressd = false
-            softwareQwertyShiftPressed = false
+            resetSoftwareQwertyShiftAfterCompositionBoundary()
             initialCursorDetectInFloatingCandidateView = false
             initialCursorXPosition = 0
             if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
@@ -22680,7 +22701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             stopDeleteLongPress()
                             if (isDefaultRomajiHenkanMap) {
                                 hardKeyboardShiftPressd = false
-                                softwareQwertyShiftPressed = false
+                                resetSoftwareQwertyShiftAfterCompositionBoundary()
                             }
                         }
 
@@ -22986,6 +23007,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     shiftOn: Boolean
                 ) {
                     activateSplitView(qwertyView)
+                    softwareQwertyCapsLockOn = capsLockOn
                     if (!capsLockOn && !shiftOn) {
                         softwareQwertyShiftPressed = false
                     }
@@ -24425,6 +24447,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         romajiConverter?.clear()
         hardKeyboardShiftPressd = false
         softwareQwertyShiftPressed = false
+        softwareQwertyCapsLockOn = false
         resetSumireKeyboardDakutenMode()
         initialCursorDetectInFloatingCandidateView = false
         initialCursorXPosition = 0
