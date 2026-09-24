@@ -3,10 +3,12 @@ package com.kazumaproject.markdownhelperkeyboard.diagnostics
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.awaitSettingsContentReady
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +17,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** Must run alone in a fresh process. Gate the real framework loader before Hilt initializes prefs. */
+/** Must run alone in a fresh process. Gate a framework reload while MainActivity resolves Hilt prefs. */
 @RunWith(AndroidJUnit4::class)
 class ColdSettingsReadProbeTest {
     @Test fun coldLaunchWithControlledPreferenceLoader() {
@@ -27,7 +29,7 @@ class ColdSettingsReadProbeTest {
         val newHome = InstrumentationRegistry.getArguments().getString("homeMode") == "new"
         val held = InstrumentationRegistry.getArguments().getString("coldMode") != "drained"
         val output = File(context.filesDir, "contention-probe").apply { mkdirs() }
-        // Only the isolated probe's synthetic settings. Do not call getSharedPreferences before gate.
+        // Only the isolated probe's synthetic settings.
         val prefsDir = File(context.applicationInfo.dataDir, "shared_prefs").apply { mkdirs() }
         File(prefsDir, "${context.packageName}_preferences.xml.bak").delete()
         File(prefsDir, "${context.packageName}_preferences.xml").writeText(
@@ -35,6 +37,8 @@ class ColdSettingsReadProbeTest {
                 "<boolean name='setting_use_new_home_screen_preference' value='$newHome' />" +
                 "<int name='romaji_map_data_version' value='1' /></map>"
         )
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        preferences.all // Wait for Application's initial preload before installing the controlled reload.
         val framework = Class.forName("android.app.SharedPreferencesImpl")
         val loaderField = framework.getDeclaredField("sLoadExecutor").apply { isAccessible = true }
         val loader = loaderField.get(null) as java.util.concurrent.Executor
@@ -45,24 +49,46 @@ class ColdSettingsReadProbeTest {
         var scenario: ActivityScenario<MainActivity>? = null
         try {
             assertTrue(ready.await(3, TimeUnit.SECONDS))
+            framework.getDeclaredMethod("startLoadFromDisk").apply { isAccessible = true }
+                .invoke(preferences)
             if (!held) release.countDown()
             val launched = executor.submit<ActivityScenario<MainActivity>> {
                 ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java))
             }
             if (held) {
                 val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
-                var frames = ""
+                var frames = emptyMap<Thread, Array<StackTraceElement>>()
                 while (System.nanoTime() < deadline) {
-                    frames = Looper.getMainLooper().thread.stackTrace.joinToString("\n")
-                    if (frames.contains("awaitLoadedLocked")) break
+                    frames = Thread.getAllStackTraces()
+                    if (frames.any { (thread, stack) ->
+                            thread !== Looper.getMainLooper().thread &&
+                                stack.any { it.methodName == "awaitLoadedLocked" }
+                        }
+                    ) break
                     Thread.sleep(20)
                 }
-                assertTrue("Expected cold preference load wait: $frames", frames.contains("awaitLoadedLocked"))
+                assertTrue(
+                    "Expected background preference load wait: $frames",
+                    frames.any { (thread, stack) ->
+                        thread !== Looper.getMainLooper().thread &&
+                            stack.any { it.methodName == "awaitLoadedLocked" }
+                    },
+                )
+                assertFalse(
+                    "Preference loading must not block main: ${frames[Looper.getMainLooper().thread]?.toList()}",
+                    frames[Looper.getMainLooper().thread].orEmpty()
+                        .any { it.methodName == "awaitLoadedLocked" },
+                )
                 repeat(3) { sample ->
                     val stacks = Thread.getAllStackTraces()
-                    assertTrue(stacks[Looper.getMainLooper().thread].orEmpty().any { it.methodName == "awaitLoadedLocked" })
+                    assertTrue(stacks.any { (thread, stack) ->
+                        thread !== Looper.getMainLooper().thread &&
+                            stack.any { it.methodName == "awaitLoadedLocked" }
+                    })
+                    assertFalse(stacks[Looper.getMainLooper().thread].orEmpty()
+                        .any { it.methodName == "awaitLoadedLocked" })
                     File(output, "cold-$sample.txt").writeText(buildString {
-                        appendLine("newHome=$newHome loaderHeld=true uptime_ms=${android.os.SystemClock.uptimeMillis()}")
+                        appendLine("newHome=$newHome loaderHeld=true mainResponsive=true uptime_ms=${android.os.SystemClock.uptimeMillis()}")
                         stacks.entries.sortedBy { it.key.id }.forEach { (thread, stack) ->
                             appendLine("id=${thread.id} main=${thread === Looper.getMainLooper().thread} state=${thread.state}")
                             stack.forEach { appendLine("  at $it") }
@@ -72,11 +98,11 @@ class ColdSettingsReadProbeTest {
                 }
                 val ping = CountDownLatch(1)
                 Handler(Looper.getMainLooper()).post { ping.countDown() }
-                assertFalse(ping.await(300, TimeUnit.MILLISECONDS))
+                assertTrue("Main must remain responsive while preferences load", ping.await(2, TimeUnit.SECONDS))
                 release.countDown()
-                assertTrue("Cold launch must recover when loader progresses", ping.await(5, TimeUnit.SECONDS))
             }
             scenario = launched.get(10, TimeUnit.SECONDS)
+            scenario.awaitSettingsContentReady()
             scenario.onActivity { activity ->
                 assertFalse(activity.isFinishing)
                 val host = activity.supportFragmentManager.findFragmentById(

@@ -2,13 +2,17 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.ProgressBar
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
@@ -22,18 +26,26 @@ import com.google.android.material.color.DynamicColorsOptions
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Provider
 import com.kazumaproject.core.R as CoreR
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     @Inject
-    lateinit var appPreference: AppPreference
+    lateinit var appPreferenceProvider: Provider<AppPreference>
+    private lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
     private var bottomNavigationView: BottomNavigationView? = null
     private var currentDestinationId: Int? = null
+    private var intentReceivedDuringInitialization: Intent? = null
+    internal var isSettingsContentReady = false
+        private set
     private val destinationsWithOwnToolbar = setOf(
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
@@ -45,6 +57,31 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        showPreferencesLoading()
+        lifecycleScope.launch {
+            appPreference = withContext(Dispatchers.IO) {
+                appPreferenceProvider.get()
+            }
+            initializeSettingsContent(savedInstanceState)
+        }
+    }
+
+    private fun showPreferencesLoading() {
+        val progress = ProgressBar(this)
+        setContentView(FrameLayout(this).apply {
+            addView(
+                progress,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.CENTER,
+                ),
+            )
+        })
+    }
+
+    private fun initializeSettingsContent(savedInstanceState: Bundle?) {
         val seedColor = appPreference.seedColor
 
         if (seedColor == 0x00000000) {
@@ -58,8 +95,6 @@ class MainActivity : AppCompatActivity() {
                 options
             )
         }
-        enableEdgeToEdge()
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -91,18 +126,28 @@ class MainActivity : AppCompatActivity() {
             invalidateOptionsMenu()
         }
 
-        if (savedInstanceState == null && !handleIntent(intent)) {
+        val pendingIntent = intentReceivedDuringInitialization
+        if (pendingIntent != null) {
+            handleIntent(pendingIntent)
+            intentReceivedDuringInitialization = null
+        } else if (savedInstanceState == null && !handleIntent(intent)) {
             navigateToPreferredSettingHome(navController)
         }
+        isSettingsContentReady = true
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleIntent(intent)
+        if (isSettingsContentReady) {
+            handleIntent(intent)
+        } else {
+            intentReceivedDuringInitialization = intent
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
+        if (!isSettingsContentReady) return super.onSupportNavigateUp()
         val navController = currentNavController()
         return navController.navigateUp() || super.onSupportNavigateUp()
     }
