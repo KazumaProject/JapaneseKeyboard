@@ -74,7 +74,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     private var isSyncingLetterSizeControls = false
     private var isSyncingColumnControls = false
     private var isSyncingPreviewModeControls = false
-    private var previousNavigationContainerVisibility: Int? = null
     private lateinit var inspectorBehavior: BottomSheetBehavior<MaterialCardView>
 
     private val minHeightDp = 30
@@ -104,7 +103,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        hideNavigationContainerForPreview()
         appPreference.migrateCandidateHeightPerColumnPreferencesIfNeeded()
         appPreference.syncActiveCandidateVisibleHeightToImePreference(isLandscape = true)
 
@@ -131,25 +129,10 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        restoreNavigationContainerVisibility()
         super.onDestroyView()
         binding.candidateHeightSettingRecyclerview.adapter = null
         suggestionAdapter.release()
         _binding = null
-    }
-
-    private fun hideNavigationContainerForPreview() {
-        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container) ?: return
-        if (previousNavigationContainerVisibility == null) {
-            previousNavigationContainerVisibility = navigationContainer.visibility
-        }
-        navigationContainer.visibility = View.GONE
-    }
-
-    private fun restoreNavigationContainerVisibility() {
-        val visibility = previousNavigationContainerVisibility ?: return
-        activity?.findViewById<View>(R.id.nav_view_container)?.visibility = visibility
-        previousNavigationContainerVisibility = null
     }
 
     private fun setupMenu() {

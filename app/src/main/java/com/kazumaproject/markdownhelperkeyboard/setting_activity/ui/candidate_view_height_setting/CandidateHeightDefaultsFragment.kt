@@ -24,7 +24,6 @@ class CandidateHeightDefaultsFragment : Fragment() {
     private var _binding: FragmentCandidateHeightDefaultsBinding? = null
     private val binding get() = _binding!!
 
-    private var previousNavigationContainerVisibility: Int? = null
 
     private val isLandscape: Boolean
         get() = requireArguments().getBoolean(ARG_IS_LANDSCAPE)
@@ -44,7 +43,6 @@ class CandidateHeightDefaultsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        hideNavigationContainer()
         appPreference.migrateCandidateHeightPerColumnPreferencesIfNeeded()
         binding.toolbar.title = getString(
             if (isLandscape) {
@@ -84,23 +82,8 @@ class CandidateHeightDefaultsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        restoreNavigationContainer()
         super.onDestroyView()
         _binding = null
-    }
-
-    private fun hideNavigationContainer() {
-        val navigationContainer = activity?.findViewById<View>(R.id.nav_view_container) ?: return
-        if (previousNavigationContainerVisibility == null) {
-            previousNavigationContainerVisibility = navigationContainer.visibility
-        }
-        navigationContainer.visibility = View.GONE
-    }
-
-    private fun restoreNavigationContainer() {
-        val visibility = previousNavigationContainerVisibility ?: return
-        activity?.findViewById<View>(R.id.nav_view_container)?.visibility = visibility
-        previousNavigationContainerVisibility = null
     }
 
     private fun saveDefaultHeightsFromInputs(): Boolean {
