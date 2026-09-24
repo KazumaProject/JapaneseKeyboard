@@ -111,6 +111,7 @@ class SettingsNavigationLayoutInstrumentedTest {
                 }
                 instrumentation.waitForIdleSync()
                 scenario.recreate()
+                scenario.awaitSettingsContentReady()
                 scenario.onActivity { activity ->
                     assertEquals(R.id.navigation_learn_dictionary, navController(activity).currentDestination?.id)
                 }
@@ -162,6 +163,7 @@ class SettingsNavigationLayoutInstrumentedTest {
                     scenario.onActivity { navController(it).navigate(destination) }
                     instrumentation.waitForIdleSync()
                     scenario.recreate()
+                    scenario.awaitSettingsContentReady()
                     assertLayout(scenario, View.GONE, if (useNewHome) 0 else 1)
                     scenario.onActivity { assertTrue(navController(it).popBackStack()) }
                     instrumentation.waitForIdleSync()
@@ -223,6 +225,7 @@ class SettingsNavigationLayoutInstrumentedTest {
                 Intent(context, MainActivity::class.java),
             )
             scenario = launchedScenario
+            launchedScenario.awaitSettingsContentReady()
             instrumentation.waitForIdleSync()
             block(launchedScenario)
         } finally {
@@ -254,6 +257,7 @@ class SettingsNavigationLayoutInstrumentedTest {
         val relaunchedScenario = ActivityScenario.launch<MainActivity>(
             Intent(context, MainActivity::class.java),
         )
+        relaunchedScenario.awaitSettingsContentReady()
         instrumentation.waitForIdleSync()
         return relaunchedScenario
     }
