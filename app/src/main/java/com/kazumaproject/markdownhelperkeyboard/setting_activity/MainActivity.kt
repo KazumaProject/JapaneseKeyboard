@@ -46,7 +46,11 @@ class MainActivity : AppCompatActivity() {
     private var bottomNavigationView: BottomNavigationView? = null
     private var currentDestinationId: Int? = null
     private var restoredNavHost: NavHostFragment? = null
-    private var intentReceivedDuringInitialization: Intent? = null
+    private var deferredFragmentManagerState: Bundle? = null
+    private var initialIntentHandled = false
+    private var pendingIntentReceivedDuringInitialization = false
+    private var pendingIntentRequest: String? = null
+    internal var initializationGateForTest: (() -> Unit)? = null
     internal var isSettingsContentReady = false
         private set
 
@@ -76,24 +80,57 @@ class MainActivity : AppCompatActivity() {
         destinationsWithOwnToolbar + R.id.enableKeyboardFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // ComponentActivity consumes the nested saved-state bundle while restoring
+        // FragmentManager. Keep the original fragment state for saves made before
+        // the restored NavHost is allowed to create its child fragments.
+        deferredFragmentManagerState = savedInstanceState
+            ?.getBundle(SAVED_STATE_REGISTRY_KEY)
+            ?.getBundle(FRAGMENT_MANAGER_STATE_KEY)
+            ?.let(::Bundle)
+        initialIntentHandled = savedInstanceState?.getBoolean(
+            INITIAL_INTENT_HANDLED_KEY,
+            true,
+        ) ?: false
+        pendingIntentReceivedDuringInitialization = savedInstanceState
+            ?.getBoolean(PENDING_INTENT_RECEIVED_KEY) ?: false
+        pendingIntentRequest = savedInstanceState?.getString(PENDING_INTENT_REQUEST_KEY)
+
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
             appPreference = withContext(Dispatchers.IO) {
+                initializationGateForTest?.invoke()
                 appPreferenceProvider.get().also { it.awaitInitialization() }
             }
             lifecycle.withResumed {
                 if (isFinishing || isDestroyed) return@withResumed
-                initializeSettingsContent(savedInstanceState)
+                initializeSettingsContent()
                 restoredNavHost?.let { host ->
                     supportFragmentManager.beginTransaction()
                         .setMaxLifecycle(host, Lifecycle.State.RESUMED)
                         .commitNow()
                 }
+                deferredFragmentManagerState = null
             }
         }
     }
 
-    private fun initializeSettingsContent(savedInstanceState: Bundle?) {
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(INITIAL_INTENT_HANDLED_KEY, initialIntentHandled)
+        outState.putBoolean(
+            PENDING_INTENT_RECEIVED_KEY,
+            pendingIntentReceivedDuringInitialization,
+        )
+        outState.putString(PENDING_INTENT_REQUEST_KEY, pendingIntentRequest)
+
+        deferredFragmentManagerState?.let { deferredState ->
+            val registryState = outState.getBundle(SAVED_STATE_REGISTRY_KEY) ?: Bundle()
+            registryState.putBundle(FRAGMENT_MANAGER_STATE_KEY, Bundle(deferredState))
+            outState.putBundle(SAVED_STATE_REGISTRY_KEY, registryState)
+        }
+    }
+
+    private fun initializeSettingsContent() {
         val seedColor = appPreference.seedColor
         val dynamicColorsAvailable = DynamicColors.isDynamicColorAvailable()
 
@@ -160,12 +197,16 @@ class MainActivity : AppCompatActivity() {
             invalidateOptionsMenu()
         }
 
-        val pendingIntent = intentReceivedDuringInitialization
-        if (pendingIntent != null) {
-            handleIntent(pendingIntent)
-            intentReceivedDuringInitialization = null
-        } else if (savedInstanceState == null && !handleIntent(intent)) {
-            navigateToPreferredSettingHome(navController)
+        if (pendingIntentReceivedDuringInitialization) {
+            handleSettingRequest(pendingIntentRequest)
+            pendingIntentReceivedDuringInitialization = false
+            pendingIntentRequest = null
+            initialIntentHandled = true
+        } else if (!initialIntentHandled) {
+            if (!handleIntent(intent)) {
+                navigateToPreferredSettingHome(navController)
+            }
+            initialIntentHandled = true
         }
         isSettingsContentReady = true
     }
@@ -184,8 +225,10 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         if (isSettingsContentReady) {
             handleIntent(intent)
+            initialIntentHandled = true
         } else {
-            intentReceivedDuringInitialization = intent
+            pendingIntentReceivedDuringInitialization = true
+            pendingIntentRequest = intent?.getStringExtra(OPEN_SETTING_ACTIVITY_EXTRA)
         }
     }
 
@@ -207,23 +250,23 @@ class MainActivity : AppCompatActivity() {
      * Intentを処理して適切な画面に遷移する
      */
     private fun handleIntent(intent: Intent?): Boolean {
-        val extra = intent?.getStringExtra("openSettingActivity")
-        return extra?.let { request ->
-            val navController = currentNavController()
-            when (request) {
-                "setting_fragment_request" -> {
-                    navigateToPreferredSettingHome(navController)
-                    true
-                }
+        return handleSettingRequest(intent?.getStringExtra(OPEN_SETTING_ACTIVITY_EXTRA))
+    }
 
-                "dictionary_fragment_request" -> {
-                    navController.navigate(R.id.navigation_learn_dictionary)
-                    true
-                }
-
-                else -> false
+    private fun handleSettingRequest(request: String?): Boolean {
+        return when (request) {
+            "setting_fragment_request" -> {
+                navigateToPreferredSettingHome(currentNavController())
+                true
             }
-        } ?: false
+
+            "dictionary_fragment_request" -> {
+                currentNavController().navigate(R.id.navigation_learn_dictionary)
+                true
+            }
+
+            else -> false
+        }
     }
 
     private fun currentNavController(): NavController {
@@ -386,5 +429,16 @@ class MainActivity : AppCompatActivity() {
             .build()
         navController.navigate(targetDestinationId, null, options)
         return true
+    }
+
+    internal companion object {
+        private const val OPEN_SETTING_ACTIVITY_EXTRA = "openSettingActivity"
+        private const val SAVED_STATE_REGISTRY_KEY =
+            "androidx.lifecycle.BundlableSavedStateRegistry.key"
+        private const val FRAGMENT_MANAGER_STATE_KEY = "android:support:fragments"
+        private const val INITIAL_INTENT_HANDLED_KEY = "main.initialIntentHandled"
+        private const val PENDING_INTENT_RECEIVED_KEY =
+            "main.pendingIntentReceivedDuringInitialization"
+        private const val PENDING_INTENT_REQUEST_KEY = "main.pendingIntentRequest"
     }
 }

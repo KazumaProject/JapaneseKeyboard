@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -29,6 +30,7 @@ import org.junit.Assume.assumeTrue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import androidx.navigation.NavController
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -129,6 +131,112 @@ class SettingsNavigationLayoutInstrumentedTest {
     }
 
     @Test
+    fun restoredDetailAndBackStackSurviveRepeatedRecreationWhileInitializationWaits() {
+        for (useNewHome in listOf(false, true)) {
+            withHomeMode(useNewHome) { scenario ->
+                var previousDestination = 0
+                scenario.onActivity { activity ->
+                    val nav = navController(activity)
+                    previousDestination = checkNotNull(nav.currentDestination).id
+                    nav.navigate(R.id.keyboardThemeFragment)
+                }
+                instrumentation.waitForIdleSync()
+
+                val gate = InitializationGate(expectedEntries = 2)
+                gate.install()
+                try {
+                    scenario.recreate()
+                    gate.awaitEntries(1)
+                    scenario.recreate()
+                    gate.awaitEntries(2)
+                    scenario.onActivity { activity ->
+                        val host = activity.supportFragmentManager
+                            .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                        assertEquals(Lifecycle.State.INITIALIZED, host.lifecycle.currentState)
+                    }
+
+                    gate.release()
+                    scenario.awaitSettingsContentReady()
+                    scenario.onActivity { activity ->
+                        val nav = navController(activity)
+                        assertEquals(R.id.keyboardThemeFragment, nav.currentDestination?.id)
+                        val returnedToPrevious = CountDownLatch(1)
+                        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+                            if (destination.id == previousDestination) returnedToPrevious.countDown()
+                        }
+                        nav.addOnDestinationChangedListener(listener)
+                        try {
+                            assertTrue("Restored detail should retain its previous entry", nav.popBackStack())
+                            assertTrue(
+                                "Back stack did not return to $previousDestination",
+                                returnedToPrevious.await(2, TimeUnit.SECONDS),
+                            )
+                        } finally {
+                            nav.removeOnDestinationChangedListener(listener)
+                        }
+                    }
+                } finally {
+                    gate.release()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun coldDictionaryIntentSurvivesRecreationDuringInitializationAndRunsOnlyOnce() {
+        for (useNewHome in listOf(false, true)) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val gate = InitializationGate(expectedEntries = 2)
+            gate.install()
+            try {
+                withHomeMode(
+                    useNewHome = useNewHome,
+                    launchIntent = Intent(context, MainActivity::class.java).putExtra(
+                        OPEN_SETTING_ACTIVITY_EXTRA,
+                        DICTIONARY_FRAGMENT_REQUEST,
+                    ),
+                    awaitContentReady = false,
+                ) { scenario ->
+                    gate.awaitEntries(1)
+                    scenario.recreate()
+                    gate.awaitEntries(2)
+                    gate.release()
+                    assertDictionaryRequestWasHandledOnce(scenario, useNewHome)
+                }
+            } finally {
+                gate.release()
+            }
+        }
+    }
+
+    @Test
+    fun newIntentReceivedDuringInitializationSurvivesRecreationAndRunsOnlyOnce() {
+        for (useNewHome in listOf(false, true)) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val gate = InitializationGate(expectedEntries = 2)
+            gate.install()
+            try {
+                withHomeMode(useNewHome, awaitContentReady = false) { scenario ->
+                    gate.awaitEntries(1)
+                    instrumentation.runOnMainSync {
+                        context.startActivity(Intent(context, MainActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                            putExtra(OPEN_SETTING_ACTIVITY_EXTRA, DICTIONARY_FRAGMENT_REQUEST)
+                        })
+                    }
+                    awaitIntentRequest(scenario, DICTIONARY_FRAGMENT_REQUEST)
+                    scenario.recreate()
+                    gate.awaitEntries(2)
+                    gate.release()
+                    assertDictionaryRequestWasHandledOnce(scenario, useNewHome)
+                }
+            } finally {
+                gate.release()
+            }
+        }
+    }
+
+    @Test
     fun recreationRestoresThemePreferencesInBothHomeModes() {
         for (useNewHome in listOf(false, true)) {
             withHomeMode(useNewHome) { scenario ->
@@ -208,7 +316,9 @@ class SettingsNavigationLayoutInstrumentedTest {
                 val context = ApplicationProvider.getApplicationContext<Context>()
                 val expectedHome = if (useNewHome) R.id.navigation_setting else R.id.settingMainFragment
                 val returnedHome = CountDownLatch(1)
+                val destinations = CopyOnWriteArrayList<Int>()
                 val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+                    destinations += destination.id
                     if (destination.id == expectedHome) returnedHome.countDown()
                 }
                 scenario.onActivity { navController(it).addOnDestinationChangedListener(listener) }
@@ -223,8 +333,17 @@ class SettingsNavigationLayoutInstrumentedTest {
                     assertTrue("Home intent was not delivered", returnedHome.await(5, TimeUnit.SECONDS))
                     scenario.onActivity { activity ->
                         val nav = navController(activity)
-                        assertEquals(expectedHome, nav.currentDestination?.id)
-                        assertFalse(nav.popBackStack())
+                        val currentDestination = nav.currentDestination?.id
+                        assertTrue(
+                            "Expected home or first-run keyboard setup, got $currentDestination; history was $destinations",
+                            currentDestination == expectedHome ||
+                                currentDestination == R.id.enableKeyboardFragment,
+                        )
+                        assertTrue("Home request did not visit the selected home", destinations.contains(expectedHome))
+                        assertFalse(
+                            "Dictionary history remained after returning home: $destinations",
+                            nav.popBackStack(R.id.navigation_learn_dictionary, true),
+                        )
                     }
                 } finally {
                     scenario.onActivity { navController(it).removeOnDestinationChangedListener(listener) }
@@ -283,8 +402,49 @@ class SettingsNavigationLayoutInstrumentedTest {
     private fun navController(activity: MainActivity) =
         (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController
 
+    private fun assertDictionaryRequestWasHandledOnce(
+        scenario: ActivityScenario<MainActivity>,
+        useNewHome: Boolean,
+    ) {
+        scenario.awaitSettingsContentReady()
+        scenario.onActivity { activity ->
+            val nav = navController(activity)
+            assertEquals(R.id.navigation_learn_dictionary, nav.currentDestination?.id)
+        }
+
+        scenario.recreate()
+        scenario.awaitSettingsContentReady()
+        scenario.onActivity { activity ->
+            val nav = navController(activity)
+            assertEquals(R.id.navigation_learn_dictionary, nav.currentDestination?.id)
+            assertTrue("Dictionary should have one home entry", nav.popBackStack())
+            assertEquals(
+                if (useNewHome) R.id.navigation_setting else R.id.settingMainFragment,
+                nav.currentDestination?.id,
+            )
+            assertFalse("Dictionary request should not be replayed", nav.popBackStack())
+        }
+    }
+
+    private fun awaitIntentRequest(
+        scenario: ActivityScenario<MainActivity>,
+        request: String,
+    ) {
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        var received = false
+        while (!received && SystemClock.uptimeMillis() < deadline) {
+            scenario.onActivity { activity ->
+                received = activity.intent?.getStringExtra(OPEN_SETTING_ACTIVITY_EXTRA) == request
+            }
+            if (!received) SystemClock.sleep(20)
+        }
+        assertTrue("Expected onNewIntent request was not delivered", received)
+    }
+
     private fun withHomeMode(
         useNewHome: Boolean,
+        launchIntent: Intent? = null,
+        awaitContentReady: Boolean = true,
         block: (ActivityScenario<MainActivity>) -> Unit,
     ) {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -300,10 +460,10 @@ class SettingsNavigationLayoutInstrumentedTest {
             AppPreference.init(context)
 
             val launchedScenario = ActivityScenario.launch<MainActivity>(
-                Intent(context, MainActivity::class.java),
+                launchIntent ?: Intent(context, MainActivity::class.java),
             )
             scenario = launchedScenario
-            launchedScenario.awaitSettingsContentReady()
+            if (awaitContentReady) launchedScenario.awaitSettingsContentReady()
             instrumentation.waitForIdleSync()
             block(launchedScenario)
         } finally {
@@ -377,5 +537,59 @@ class SettingsNavigationLayoutInstrumentedTest {
 
     private companion object {
         const val SETTING_USE_NEW_HOME_SCREEN = "setting_use_new_home_screen_preference"
+        const val OPEN_SETTING_ACTIVITY_EXTRA = "openSettingActivity"
+        const val DICTIONARY_FRAGMENT_REQUEST = "dictionary_fragment_request"
+    }
+
+    private class InitializationGate(private val expectedEntries: Int) {
+        private val application = InstrumentationRegistry.getInstrumentation()
+            .targetContext.applicationContext as Application
+        private val entered = AtomicInteger()
+        private val release = CountDownLatch(1)
+        private var installed = false
+        private val callbacks = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) {
+                if (activity !is MainActivity) return
+                activity.initializationGateForTest = {
+                    entered.incrementAndGet()
+                    check(release.await(20, TimeUnit.SECONDS)) {
+                        "Timed out waiting for the test to release settings initialization"
+                    }
+                }
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityStarted(activity: Activity) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityStopped(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        }
+
+        fun install() {
+            assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            application.registerActivityLifecycleCallbacks(callbacks)
+            installed = true
+        }
+
+        fun awaitEntries(expected: Int = expectedEntries) {
+            val deadline = SystemClock.uptimeMillis() + 10_000
+            while (entered.get() < expected && SystemClock.uptimeMillis() < deadline) {
+                SystemClock.sleep(20)
+            }
+            assertTrue(
+                "Settings initialization did not reach the test gate",
+                entered.get() >= expected,
+            )
+        }
+
+        fun release() {
+            release.countDown()
+            if (installed) {
+                application.unregisterActivityLifecycleCallbacks(callbacks)
+                installed = false
+            }
+        }
     }
 }
