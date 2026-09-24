@@ -21,3 +21,11 @@
 2026-09-24、Pixel 6（Android 17）で `SettingsNavigationLayoutInstrumentedTest` を実行し、12件すべて成功した。初期化ゲートを閉じた状態で、詳細画面を復元してから2回再作成し、解放後も同じ詳細画面と直前のバックスタック項目へ戻れることを新旧ホームで確認した。
 
 辞書画面指定のコールド起動と、初期化待ち中の `onNewIntent()` の両方で、再作成後に辞書画面へ一度だけ遷移することも確認した。読み込み完了後の通常再作成では遷移要求を再実行しない。Lite Standard Debug APK / AndroidTest APK と Full Standard Debug APK のビルドも成功した。
+
+## 表示中の `STARTED` 状態での初期化
+
+2026-09-25、API 28 エミュレータで `SettingsNavigationLayoutInstrumentedTest` を実行し、13件中12件成功、Android 10 以降専用の復元順序テスト1件をスキップした。新しい `settingsContentInitializesWhileActivityIsStartedWithoutResuming` テストでは初期化ゲートを解放した後も Activity を `STARTED` に保ち、設定初期化完了、NavHost の生成・接続・表示、ナビゲーショングラフの設定を確認した。
+
+同日、Pixel 6（Android 17）で同クラスを実行し、12件すべて成功した。最初の実行では端末が Dozing 状態だったため ActivityScenario が Activity を `STOPPED` と扱い失敗したが、端末を起こした後の再実行は成功した。API 28 と Pixel 6 で状態保持、バックスタック、辞書画面要求の既存テストも成功した。
+
+Lite Standard Debug APK / AndroidTest APK と Full Standard Debug APK のビルドに成功した。
