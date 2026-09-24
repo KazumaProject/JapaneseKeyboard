@@ -46,12 +46,9 @@ fullの新しいworktreeでは、ビルド前に `git submodule update --init --
 
 ```sh
 python3 investigation/run_contention_probe.py --edition full
-python3 investigation/run_contention_probe.py --edition full \
-  --test com.kazumaproject.markdownhelperkeyboard.diagnostics.ColdSettingsReadProbeTest \
-  --home legacy --cold-mode held
 ```
 
-`--home new`、`--cold-mode drained` が対照条件。コールドロードは各回新しいプロセスで実行し、ケース間のメモリキャッシュを持ち越さない。DB実験も対象2行の合成データをケースごとに初期状態へ戻す。
+このPRでは `Application.onCreate()` がテスト開始前に設定ファイルの読み込みを始めるため、旧 `ColdSettingsReadProbeTest` は初回ロードを制御できない。旧実験とその `--home` / `--cold-mode` 対照は改善前コミットの記録として残し、現行の `run_matrix.py` から除いた。復元時のFragment生成順序と詳細画面の保持は `SettingsNavigationLayoutInstrumentedTest` で検証する。DB実験は対象2行の合成データをケースごとに初期状態へ戻す。
 
 実行器は180秒でタイムアウトし、レポート・ANR情報・トレースを採取して専用アプリを停止する。ゲート自体にも15秒（動画は10秒）の解除上限がある。Android内部のロックアクセス用にエミュレーターのhidden_api_policyを一時変更し、最後に元へ戻す。専用IMEの有効化も元へ戻し、既定IMEは変更しない。
 

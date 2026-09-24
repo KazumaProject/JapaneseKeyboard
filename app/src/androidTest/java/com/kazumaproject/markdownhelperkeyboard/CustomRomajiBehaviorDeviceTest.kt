@@ -23,6 +23,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.AppModule
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.awaitSettingsContentReady
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -73,6 +74,7 @@ class CustomRomajiBehaviorDeviceTest {
     }
     private fun setSettings(sokuon: Boolean, n: Boolean) {
         ActivityScenario.launch<MainActivity>(Intent(ins.targetContext, MainActivity::class.java)).use { activity ->
+            activity.awaitSettingsContentReady()
             activity.onActivity {
                 val nav = it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                 nav.navController.navigate(R.id.romajiMapDetailFragment, Bundle().apply { putLong("mapId", 991L) })
