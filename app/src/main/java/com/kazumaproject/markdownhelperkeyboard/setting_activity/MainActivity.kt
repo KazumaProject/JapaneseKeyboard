@@ -49,6 +49,22 @@ class MainActivity : AppCompatActivity() {
     private var intentReceivedDuringInitialization: Intent? = null
     internal var isSettingsContentReady = false
         private set
+
+    init {
+        // FragmentActivity restores fragments when ComponentActivity creates its context,
+        // before super.onCreate() returns. Cap the restored host before dispatchCreate()
+        // so its child preference fragments cannot read preferences on the UI thread.
+        addOnContextAvailableListener {
+            restoredNavHost = supportFragmentManager
+                .findFragmentById(R.id.nav_host_fragment_activity_main) as? NavHostFragment
+            restoredNavHost?.let { host ->
+                supportFragmentManager.beginTransaction()
+                    .setMaxLifecycle(host, Lifecycle.State.INITIALIZED)
+                    .commitNow()
+            }
+        }
+    }
+
     private val destinationsWithoutBottomNavigation = setOf(
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
@@ -61,15 +77,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Restored fragments are attached during super.onCreate(). Keep their views from
-        // starting until AppPreference has finished loading on the I/O thread.
-        restoredNavHost = supportFragmentManager
-            .findFragmentById(R.id.nav_host_fragment_activity_main) as? NavHostFragment
-        restoredNavHost?.let { host ->
-            supportFragmentManager.beginTransaction()
-                .setMaxLifecycle(host, Lifecycle.State.CREATED)
-                .commitNow()
-        }
         lifecycleScope.launch {
             appPreference = withContext(Dispatchers.IO) {
                 appPreferenceProvider.get().also { it.awaitInitialization() }
@@ -104,6 +111,13 @@ class MainActivity : AppCompatActivity() {
         if (dynamicColorsAvailable) {
             // AppCompat may have created decor while preferences loaded.
             themedBackground(android.R.attr.windowBackground)?.let(window::setBackgroundDrawable)
+        }
+        // Creating the restored host now also creates its child preference fragments.
+        // AppPreference is ready, and the activity theme has already been applied.
+        restoredNavHost?.let { host ->
+            supportFragmentManager.beginTransaction()
+                .setMaxLifecycle(host, Lifecycle.State.CREATED)
+                .commitNow()
         }
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
