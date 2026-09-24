@@ -14,6 +14,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.awaitSettingsContentReady
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardSkinSelectionFragment
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeCatalog
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
@@ -72,6 +73,7 @@ class KeyboardThemeSelectionDeviceTest {
                 .putBoolean("save_last_used_keyboard", false).commit()
             shell("ime enable $target"); shell("ime set $target")
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.awaitSettingsContentReady()
                 scenario.onActivity { activity ->
                     val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                     host.navController.navigate(R.id.settingMainFragment)
