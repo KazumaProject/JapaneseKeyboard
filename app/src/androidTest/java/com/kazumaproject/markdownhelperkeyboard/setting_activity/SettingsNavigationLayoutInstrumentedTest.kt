@@ -20,11 +20,14 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import java.util.concurrent.CountDownLatch
@@ -49,6 +52,46 @@ class SettingsNavigationLayoutInstrumentedTest {
                 expectedContainerVisibility = View.GONE,
                 expectedChildCount = 0,
             )
+        }
+    }
+
+    @Test
+    @SdkSuppress(maxSdkVersion = Build.VERSION_CODES.P)
+    fun settingsContentInitializesWhileActivityIsStartedWithoutResuming() {
+        val gate = InitializationGate(expectedEntries = 1)
+        gate.install()
+        try {
+            withHomeMode(useNewHome = true, awaitContentReady = false) { scenario ->
+                gate.awaitEntries()
+                scenario.moveToState(Lifecycle.State.STARTED)
+                assertEquals(Lifecycle.State.STARTED, scenario.state)
+                scenario.onActivity { activity ->
+                    assertFalse(activity.isSettingsContentReady)
+                    assertNull(activity.findViewById<View>(R.id.nav_host_fragment_activity_main))
+                }
+
+                gate.release()
+                scenario.awaitSettingsContentReady()
+                assertEquals(Lifecycle.State.STARTED, scenario.state)
+                scenario.onActivity { activity ->
+                    assertTrue(activity.isSettingsContentReady)
+                    val navHostView = activity.findViewById<View>(
+                        R.id.nav_host_fragment_activity_main,
+                    )
+                    assertNotNull("Settings NavHost should be inflated", navHostView)
+                    assertTrue(
+                        "Settings NavHost should be attached",
+                        navHostView.isAttachedToWindow,
+                    )
+                    assertEquals(View.VISIBLE, navHostView.visibility)
+                    assertNotNull(
+                        "Settings navigation graph should be installed",
+                        navController(activity).currentDestination,
+                    )
+                }
+            }
+        } finally {
+            gate.release()
         }
     }
 
@@ -542,34 +585,18 @@ class SettingsNavigationLayoutInstrumentedTest {
     }
 
     private class InitializationGate(private val expectedEntries: Int) {
-        private val application = InstrumentationRegistry.getInstrumentation()
-            .targetContext.applicationContext as Application
         private val entered = AtomicInteger()
         private val release = CountDownLatch(1)
         private var installed = false
-        private val callbacks = object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) {
-                if (activity !is MainActivity) return
-                activity.initializationGateForTest = {
-                    entered.incrementAndGet()
-                    check(release.await(20, TimeUnit.SECONDS)) {
-                        "Timed out waiting for the test to release settings initialization"
-                    }
-                }
-            }
-
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-            override fun onActivityStarted(activity: Activity) = Unit
-            override fun onActivityResumed(activity: Activity) = Unit
-            override fun onActivityPaused(activity: Activity) = Unit
-            override fun onActivityStopped(activity: Activity) = Unit
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-            override fun onActivityDestroyed(activity: Activity) = Unit
-        }
 
         fun install() {
-            assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            application.registerActivityLifecycleCallbacks(callbacks)
+            check(MainActivity.initializationGateForTest == null)
+            MainActivity.initializationGateForTest = {
+                entered.incrementAndGet()
+                check(release.await(20, TimeUnit.SECONDS)) {
+                    "Timed out waiting for the test to release settings initialization"
+                }
+            }
             installed = true
         }
 
@@ -587,7 +614,7 @@ class SettingsNavigationLayoutInstrumentedTest {
         fun release() {
             release.countDown()
             if (installed) {
-                application.unregisterActivityLifecycleCallbacks(callbacks)
+                MainActivity.initializationGateForTest = null
                 installed = false
             }
         }

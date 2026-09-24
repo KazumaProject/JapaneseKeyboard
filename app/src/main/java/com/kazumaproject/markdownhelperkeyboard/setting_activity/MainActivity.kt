@@ -15,6 +15,7 @@ import androidx.core.view.doOnAttach
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withResumed
+import androidx.lifecycle.withStarted
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
@@ -50,7 +51,6 @@ class MainActivity : AppCompatActivity() {
     private var initialIntentHandled = false
     private var pendingIntentReceivedDuringInitialization = false
     private var pendingIntentRequest: String? = null
-    internal var initializationGateForTest: (() -> Unit)? = null
     internal var isSettingsContentReady = false
         private set
 
@@ -101,15 +101,13 @@ class MainActivity : AppCompatActivity() {
                 initializationGateForTest?.invoke()
                 appPreferenceProvider.get().also { it.awaitInitialization() }
             }
-            lifecycle.withResumed {
-                if (isFinishing || isDestroyed) return@withResumed
-                initializeSettingsContent()
-                restoredNavHost?.let { host ->
-                    supportFragmentManager.beginTransaction()
-                        .setMaxLifecycle(host, Lifecycle.State.RESUMED)
-                        .commitNow()
+            val initializedWhileStarted = lifecycle.withStarted {
+                initializeSettingsContentIfSafe()
+            }
+            if (!initializedWhileStarted) {
+                lifecycle.withResumed {
+                    initializeSettingsContentIfSafe()
                 }
-                deferredFragmentManagerState = null
             }
         }
     }
@@ -209,6 +207,19 @@ class MainActivity : AppCompatActivity() {
             initialIntentHandled = true
         }
         isSettingsContentReady = true
+    }
+
+    private fun initializeSettingsContentIfSafe(): Boolean {
+        if (isFinishing || isDestroyed || supportFragmentManager.isStateSaved) return false
+
+        initializeSettingsContent()
+        restoredNavHost?.let { host ->
+            supportFragmentManager.beginTransaction()
+                .setMaxLifecycle(host, Lifecycle.State.RESUMED)
+                .commitNow()
+        }
+        deferredFragmentManagerState = null
+        return true
     }
 
     private fun themedBackground(attribute: Int): Drawable? {
@@ -432,6 +443,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     internal companion object {
+        @Volatile
+        internal var initializationGateForTest: (() -> Unit)? = null
+
         private const val OPEN_SETTING_ACTIVITY_EXTRA = "openSettingActivity"
         private const val SAVED_STATE_REGISTRY_KEY =
             "androidx.lifecycle.BundlableSavedStateRegistry.key"
