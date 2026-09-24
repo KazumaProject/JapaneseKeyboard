@@ -14,6 +14,7 @@ class Application : Application() {
         // Start SharedPreferences' asynchronous disk load while the process is starting.
         // MainActivity resolves AppPreference on an I/O dispatcher before building its UI.
         preloadSharedPreferences()
+        AppPreference.startInitialization(this)
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }

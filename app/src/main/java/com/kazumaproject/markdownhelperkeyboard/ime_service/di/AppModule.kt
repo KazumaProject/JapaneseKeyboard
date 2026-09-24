@@ -268,10 +268,7 @@ object AppModule {
     @Singleton
     @Provides
     fun providesPreference(@ApplicationContext context: Context): AppPreference {
-        return AppPreference.apply {
-            init(context)
-            migrateSumirePreferenceIfNeeded()
-        }
+        return AppPreference.also { it.startInitialization(context) }
     }
 
     @Singleton
