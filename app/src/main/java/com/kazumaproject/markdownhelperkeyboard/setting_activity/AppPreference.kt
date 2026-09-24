@@ -33,6 +33,8 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwriti
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 import com.kazumaproject.core.R as CoreR
 
 internal object CustomThemeColorPreferenceKeys {
@@ -115,7 +117,20 @@ object AppPreference {
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
     private const val CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION = 1
 
-    private lateinit var preferences: SharedPreferences
+    private val initializationLock = Any()
+    private val initialization = CompletableFuture<Unit>()
+    private val initializationStarted = AtomicBoolean(false)
+    @Volatile private var initialized = false
+    @Volatile private var initializingThread: Thread? = null
+    private lateinit var loadedPreferences: SharedPreferences
+    private val preferences: SharedPreferences
+        get() {
+            if (!initialized && Thread.currentThread() !== initializingThread) {
+                check(initializationStarted.get()) { "AppPreference has not been initialized" }
+                initialization.join()
+            }
+            return loadedPreferences
+        }
     private lateinit var appContext: Context
     private var isTabletDevice: Boolean = false
     private val gson = Gson()
@@ -908,16 +923,45 @@ object AppPreference {
     private val TYPO_CORRECTION_JA_FLICK_OFFSET_SCORE_PREFERENCE =
         Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
 
+    fun startInitialization(context: Context) {
+        if (!initializationStarted.compareAndSet(false, true)) return
+        Thread({
+            try {
+                init(context)
+            } catch (failure: Throwable) {
+                initialization.completeExceptionally(failure)
+            }
+        }, "AppPreferenceInit").start()
+    }
+
+    fun awaitInitialization() {
+        initialization.join()
+    }
+
     fun init(context: Context) {
-        appContext = context.applicationContext
-        isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
-        preferences = PreferenceManager.getDefaultSharedPreferences(context)
-        migrateCandidateHeightDefaultsIfNeeded()
-        removeUnsafeLegacyGemmaHandwritingPrompt()
-        migratePredictionLookaheadPreferenceIfNeeded()
-        migrateSymbolEmojiCandidatePreferenceIfNeeded()
-        migrateSumireKeymapGuideModesIfNeeded()
-        migrateGojuonKeyboardTypeIfNeeded(context)
+        synchronized(initializationLock) {
+            initializationStarted.set(true)
+            initializingThread = Thread.currentThread()
+            try {
+                appContext = context.applicationContext
+                isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
+                loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                migrateCandidateHeightDefaultsIfNeeded()
+                removeUnsafeLegacyGemmaHandwritingPrompt()
+                migratePredictionLookaheadPreferenceIfNeeded()
+                migrateSymbolEmojiCandidatePreferenceIfNeeded()
+                migrateSumireKeymapGuideModesIfNeeded()
+                migrateGojuonKeyboardTypeIfNeeded(context)
+                migrateSumirePreferenceIfNeeded()
+                initialized = true
+                initialization.complete(Unit)
+            } catch (failure: Throwable) {
+                initialization.completeExceptionally(failure)
+                throw failure
+            } finally {
+                initializingThread = null
+            }
+        }
     }
 
     fun migrateGojuonKeyboardTypeIfNeeded(context: Context = appContext) {
