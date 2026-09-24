@@ -12,7 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.doOnAttach
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.withResumed
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
@@ -43,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainNavController: NavController
     private var bottomNavigationView: BottomNavigationView? = null
     private var currentDestinationId: Int? = null
+    private var restoredNavHost: NavHostFragment? = null
     private var intentReceivedDuringInitialization: Intent? = null
     internal var isSettingsContentReady = false
         private set
@@ -58,11 +61,28 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Restored fragments are attached during super.onCreate(). Keep their views from
+        // starting until AppPreference has finished loading on the I/O thread.
+        restoredNavHost = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment_activity_main) as? NavHostFragment
+        restoredNavHost?.let { host ->
+            supportFragmentManager.beginTransaction()
+                .setMaxLifecycle(host, Lifecycle.State.CREATED)
+                .commitNow()
+        }
         lifecycleScope.launch {
             appPreference = withContext(Dispatchers.IO) {
-                appPreferenceProvider.get()
+                appPreferenceProvider.get().also { it.awaitInitialization() }
             }
-            initializeSettingsContent(savedInstanceState)
+            lifecycle.withResumed {
+                if (isFinishing || isDestroyed) return@withResumed
+                initializeSettingsContent(savedInstanceState)
+                restoredNavHost?.let { host ->
+                    supportFragmentManager.beginTransaction()
+                        .setMaxLifecycle(host, Lifecycle.State.RESUMED)
+                        .commitNow()
+                }
+            }
         }
     }
 
