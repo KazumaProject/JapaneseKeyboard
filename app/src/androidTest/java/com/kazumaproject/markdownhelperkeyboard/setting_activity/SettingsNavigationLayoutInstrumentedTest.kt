@@ -1,10 +1,16 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.Preference
@@ -15,10 +21,13 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import androidx.navigation.NavController
 import org.junit.Test
@@ -116,6 +125,75 @@ class SettingsNavigationLayoutInstrumentedTest {
                     assertEquals(R.id.navigation_learn_dictionary, navController(activity).currentDestination?.id)
                 }
             }
+        }
+    }
+
+    @Test
+    fun recreationRestoresThemePreferencesInBothHomeModes() {
+        for (useNewHome in listOf(false, true)) {
+            withHomeMode(useNewHome) { scenario ->
+                scenario.onActivity { activity ->
+                    navController(activity).navigate(R.id.keyboardThemeFragment)
+                }
+                instrumentation.waitForIdleSync()
+                scenario.recreate()
+                scenario.awaitSettingsContentReady()
+                scenario.onActivity { activity ->
+                    assertEquals(R.id.keyboardThemeFragment, navController(activity).currentDestination?.id)
+                    val host = activity.supportFragmentManager
+                        .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                    val theme = host.childFragmentManager.primaryNavigationFragment as PreferenceFragmentCompat
+                    assertTrue(theme.findPreference<Preference>("theme_default") != null)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun restoredThemeIsCreatedAfterActivityOnCreate() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val events = CopyOnWriteArrayList<String>()
+        val callbacks = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) {
+                if (activity !is MainActivity || savedInstanceState == null) return
+                activity.supportFragmentManager.registerFragmentLifecycleCallbacks(
+                    object : FragmentManager.FragmentLifecycleCallbacks() {
+                        override fun onFragmentPreCreated(
+                            fm: FragmentManager,
+                            fragment: Fragment,
+                            savedInstanceState: Bundle?,
+                        ) {
+                            if (fragment is KeyboardThemeFragment) {
+                                events += "theme"
+                            }
+                        }
+                    },
+                    true,
+                )
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                if (activity is MainActivity && savedInstanceState != null) events += "activity"
+            }
+            override fun onActivityStarted(activity: Activity) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityStopped(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        }
+        application.registerActivityLifecycleCallbacks(callbacks)
+        try {
+            withHomeMode(useNewHome = true) { scenario ->
+                scenario.onActivity { navController(it).navigate(R.id.keyboardThemeFragment) }
+                instrumentation.waitForIdleSync()
+                scenario.recreate()
+                scenario.awaitSettingsContentReady()
+                assertEquals(listOf("activity", "theme"), events)
+            }
+        } finally {
+            application.unregisterActivityLifecycleCallbacks(callbacks)
         }
     }
 
