@@ -1,17 +1,17 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.Gravity
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
-import android.widget.FrameLayout
-import android.widget.ProgressBar
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.doOnAttach
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
@@ -46,19 +46,18 @@ class MainActivity : AppCompatActivity() {
     private var intentReceivedDuringInitialization: Intent? = null
     internal var isSettingsContentReady = false
         private set
-    private val destinationsWithOwnToolbar = setOf(
+    private val destinationsWithoutBottomNavigation = setOf(
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
         R.id.candidateHeightDefaultsFragment,
-        R.id.shortcutToolbarSizeSettingFragment,
     )
+    private val destinationsWithOwnToolbar =
+        destinationsWithoutBottomNavigation + R.id.shortcutToolbarSizeSettingFragment
     private val destinationsWithoutSharedActionBar =
         destinationsWithOwnToolbar + R.id.enableKeyboardFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        showPreferencesLoading()
         lifecycleScope.launch {
             appPreference = withContext(Dispatchers.IO) {
                 appPreferenceProvider.get()
@@ -67,22 +66,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPreferencesLoading() {
-        val progress = ProgressBar(this)
-        setContentView(FrameLayout(this).apply {
-            addView(
-                progress,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.CENTER,
-                ),
-            )
-        })
-    }
-
     private fun initializeSettingsContent(savedInstanceState: Bundle?) {
         val seedColor = appPreference.seedColor
+        val dynamicColorsAvailable = DynamicColors.isDynamicColorAvailable()
 
         if (seedColor == 0x00000000) {
             DynamicColors.applyToActivityIfAvailable(this)
@@ -95,8 +81,14 @@ class MainActivity : AppCompatActivity() {
                 options
             )
         }
+        if (dynamicColorsAvailable) {
+            // AppCompat may have created decor while preferences loaded.
+            themedBackground(android.R.attr.windowBackground)?.let(window::setBackgroundDrawable)
+        }
+        enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.doOnAttach { ViewCompat.requestApplyInsets(it) }
 
         mainNavController = findMainNavController()
         val navController = mainNavController
@@ -110,6 +102,10 @@ class MainActivity : AppCompatActivity() {
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
+        if (dynamicColorsAvailable) {
+            themedBackground(com.google.android.material.R.attr.colorSurfaceContainer)
+                ?.let { supportActionBar?.setBackgroundDrawable(it) }
+        }
         setupSettingHomeSwitchMenu(navController)
         applySettingHomeModeFromPreference(navController)
         navController.addOnDestinationChangedListener { _, destination, _ ->
@@ -122,6 +118,10 @@ class MainActivity : AppCompatActivity() {
                     ?.findItem(R.id.navigation_setting)
                     ?.isChecked = true
             }
+            updateBottomNavigationVisibility(
+                appPreference.setting_use_new_home_screen_preference,
+                navController,
+            )
             updateSharedActionBarVisibility(destination.id)
             invalidateOptionsMenu()
         }
@@ -134,6 +134,15 @@ class MainActivity : AppCompatActivity() {
             navigateToPreferredSettingHome(navController)
         }
         isSettingsContentReady = true
+    }
+
+    private fun themedBackground(attribute: Int): Drawable? {
+        val attrs = theme.obtainStyledAttributes(intArrayOf(attribute))
+        return try {
+            attrs.getDrawable(0)
+        } finally {
+            attrs.recycle()
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -226,8 +235,13 @@ class MainActivity : AppCompatActivity() {
             binding.navViewContainer.visibility = View.GONE
             return
         }
-        binding.navViewContainer.visibility = View.VISIBLE
         ensureBottomNavigation(navController)
+        binding.navViewContainer.visibility =
+            if (navController.currentDestination?.id in destinationsWithoutBottomNavigation) {
+                View.GONE
+            } else {
+                View.VISIBLE
+            }
     }
 
     private fun ensureBottomNavigation(navController: NavController): BottomNavigationView {
