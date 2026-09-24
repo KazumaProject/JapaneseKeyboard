@@ -11,8 +11,8 @@ import java.io.File
 class Application : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Start SharedPreferences' asynchronous disk load before Activity Hilt injection.
-        // AppPreference migrations read values synchronously during MainActivity.onCreate.
+        // Start SharedPreferences' asynchronous disk load while the process is starting.
+        // MainActivity resolves AppPreference on an I/O dispatcher before building its UI.
         preloadSharedPreferences()
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())

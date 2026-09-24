@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.awaitSettingsContentReady
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,6 +86,7 @@ class SettingsContentionProbeTest {
         prepare(newHome)
         val label = "preferences-${if (newHome) "new" else "legacy"}-${if (pending) "pending" else "drained"}"
         val scenario = ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java))
+        scenario.awaitSettingsContentReady()
         lateinit var testedActivity: MainActivity
         scenario.onActivity { testedActivity = it }
         instrumentation.waitForIdleSync()

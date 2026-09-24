@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.awaitSettingsContentReady
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -59,6 +60,7 @@ class CandidateOrderOverrideImeInstrumentedTest {
         val scenario = ActivityScenario.launch<MainActivity>(
             Intent(context, MainActivity::class.java),
         )
+        scenario.awaitSettingsContentReady()
         try {
             scenario.onActivity { activity ->
                 Navigation.findNavController(
