@@ -16,6 +16,7 @@ import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.controller.TfbiGuidePopupHost
+import com.kazumaproject.custom_keyboard.controller.guardTfbiSecondStageDiagonal
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
 import com.kazumaproject.custom_keyboard.controller.isTfbiGuideTapCell
 import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideFingerPosition
@@ -294,7 +295,7 @@ class TfbiInputController(
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
 
             var highlightTargetDirection =
-                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
+                resolveSecondDirection(dx, dy, enabledSecondDirections)
 
             if (highlightTargetDirection == TfbiFlickDirection.TAP) {
                 highlightTargetDirection = firstFlickDirection
@@ -324,7 +325,7 @@ class TfbiInputController(
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
-                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
+                resolveSecondDirection(dx, dy, enabledSecondDirections)
 
             if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
                 finalSecondDirection = currentSecondFlickDirection
@@ -360,6 +361,19 @@ class TfbiInputController(
 
     private fun currentGestureConfig(): GestureSessionConfig {
         return activeGestureConfig ?: gestureConfigSource.snapshot()
+    }
+
+    private fun resolveSecondDirection(
+        dx: Float,
+        dy: Float,
+        enabledDirections: Set<TfbiFlickDirection>,
+    ): TfbiFlickDirection {
+        val config = currentGestureConfig()
+        val candidate = calculateDirection(dx, dy, config.flickThresholdPx, enabledDirections)
+        return guardTfbiSecondStageDiagonal(
+            candidate, firstFlickDirection, dx, dy, config.flickThresholdPx,
+            enabledDirections, config.tfbiDiagonalRecognitionMode
+        )
     }
 
     private fun isFlickThresholdCrossed(dx: Float, dy: Float): Boolean {
