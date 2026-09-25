@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -24,6 +26,8 @@ import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.FlickPopupStylePreviewView
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.PopupStylePreviewView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -125,6 +129,84 @@ class SettingsNavigationLayoutInstrumentedTest {
                 expectedChildCount = 1,
             )
         }
+    }
+
+    @Test
+    fun legacyBottomNavigationStaysAboveSystemNavigation() {
+        withHomeMode(useNewHome = false) { scenario ->
+            assertBottomNavigationAboveSystemNavigation(scenario)
+            scenario.recreate()
+            scenario.awaitSettingsContentReady()
+            instrumentation.waitForIdleSync()
+            assertBottomNavigationAboveSystemNavigation(scenario)
+        }
+    }
+
+    @Test
+    fun popupPreviewStartsBelowSharedActionBar() {
+        withHomeMode(useNewHome = false) { scenario ->
+            for (destination in listOf(
+                R.id.tenKeyPopupStyleSettingFragment,
+                R.id.qwertyPopupStyleSettingFragment,
+                R.id.flickKeyboardPopupStyleEditFragment,
+            )) {
+                scenario.onActivity { navController(it).navigate(destination) }
+                instrumentation.waitForIdleSync()
+                assertPopupPreviewBelowActionBar(scenario)
+                scenario.recreate()
+                scenario.awaitSettingsContentReady()
+                instrumentation.waitForIdleSync()
+                assertPopupPreviewBelowActionBar(scenario)
+                scenario.onActivity { assertTrue(navController(it).popBackStack()) }
+            }
+        }
+    }
+
+    private fun assertBottomNavigationAboveSystemNavigation(scenario: ActivityScenario<MainActivity>) {
+        scenario.onActivity { activity ->
+            val nav = activity.findViewById<View>(R.id.nav_view)
+            val insets = ViewCompat.getRootWindowInsets(nav)
+            assertNotNull("System insets should be available", insets)
+            val bottomInset = insets!!.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            val navLocation = IntArray(2).also(nav::getLocationOnScreen)
+            val decor = activity.window.decorView
+            val decorLocation = IntArray(2).also(decor::getLocationOnScreen)
+            val systemNavigationTop = decorLocation[1] + decor.height - bottomInset
+            val root = activity.findViewById<View>(R.id.container)
+            val rootLocation = IntArray(2).also(root::getLocationOnScreen)
+            assertTrue(
+                "Bottom navigation ends at ${navLocation[1] + nav.height}, system navigation begins at $systemNavigationTop; root y=${rootLocation[1]}, padding=${root.paddingTop}/${root.paddingBottom}",
+                navLocation[1] + nav.height <= systemNavigationTop,
+            )
+        }
+    }
+
+    private fun assertPopupPreviewBelowActionBar(scenario: ActivityScenario<MainActivity>) {
+        scenario.onActivity { activity ->
+            val actionBar = activity.findViewById<View>(androidx.appcompat.R.id.action_bar_container)
+            val host = activity.findViewById<View>(R.id.nav_host_fragment_activity_main)
+            val preview = findPopupPreview(host)
+            assertNotNull("Popup preview should be attached", preview)
+            val barLocation = IntArray(2).also(actionBar::getLocationOnScreen)
+            val previewLocation = IntArray(2).also(preview!!::getLocationOnScreen)
+            val hostLocation = IntArray(2).also(host::getLocationOnScreen)
+            val root = activity.findViewById<View>(R.id.container)
+            val rootLocation = IntArray(2).also(root::getLocationOnScreen)
+            assertTrue(
+                "Popup preview begins at ${previewLocation[1]}, action bar ends at ${barLocation[1] + actionBar.height}; host y=${hostLocation[1]}, root y=${rootLocation[1]}, padding=${root.paddingTop}/${root.paddingBottom}",
+                previewLocation[1] >= barLocation[1] + actionBar.height,
+            )
+        }
+    }
+
+    private fun findPopupPreview(view: View): View? {
+        if (view is PopupStylePreviewView || view is FlickPopupStylePreviewView) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                findPopupPreview(view.getChildAt(index))?.let { return it }
+            }
+        }
+        return null
     }
 
     @Test
