@@ -143,6 +143,7 @@ import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
+import com.kazumaproject.core.domain.flick.TfbiDiagonalRecognitionMode
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
@@ -900,6 +901,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
+        AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
@@ -1700,6 +1702,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var flickSensitivityPreferenceValue: Int? = 100
     private var flickThresholdShapePreferenceValue: FlickThresholdShape =
         FlickThresholdShape.Radial
+    private var tfbiDiagonalRecognitionMode = TfbiDiagonalRecognitionMode.LEGACY
     private var longPressTimeoutPreferenceValue: Int? = 300
     private var deleteLongPressConversionBehavior =
         DeleteLongPressConversionBehavior.Default
@@ -3460,6 +3463,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val thresholdShape = FlickThresholdShape.fromPreferenceValue(
             appPreference.flick_threshold_shape_preference
         )
+        val diagonalMode = appPreference.tfbi_diagonal_recognition_mode_preference
         val longPressTimeout =
             (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
         val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
@@ -3467,6 +3471,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
+        tfbiDiagonalRecognitionMode = diagonalMode
         longPressTimeoutPreferenceValue = longPressTimeout
         flickEditorPreviewPreference = appPreference.flick_editor_preview_preference
         deleteLongPressConversionBehavior =
@@ -3492,6 +3497,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         runtimeGestureSettingsSource.update(
             flickSensitivity = sensitivity,
             flickThresholdShape = thresholdShape,
+            tfbiDiagonalRecognitionMode = diagonalMode,
             longPressTimeoutMillis = longPressTimeout.toLong()
         )
 
@@ -3592,6 +3598,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         flickThresholdShapePreferenceValue = FlickThresholdShape.fromPreferenceValue(
             preferences.flickThresholdShapePreferenceValue
+        )
+        tfbiDiagonalRecognitionMode = TfbiDiagonalRecognitionMode.fromPreferenceValue(
+            preferences.tfbiDiagonalRecognitionModePreferenceValue
         )
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
