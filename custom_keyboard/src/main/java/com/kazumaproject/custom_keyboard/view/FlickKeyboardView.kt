@@ -168,7 +168,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             flickSensitivity = settings.flickSensitivity,
             flickThresholdPx = resolvedFlickThresholdPx(settings.flickSensitivity),
             longPressTimeoutMillis = settings.longPressTimeoutMillis,
-            flickThresholdShape = settings.flickThresholdShape
+            flickThresholdShape = settings.flickThresholdShape,
+            tfbiDiagonalRecognitionMode = settings.tfbiDiagonalRecognitionMode
         )
     }
     private var defaultTextSize = 14f

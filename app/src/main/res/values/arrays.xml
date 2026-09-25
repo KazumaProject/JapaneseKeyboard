@@ -380,4 +380,14 @@
         <item>radial</item>
         <item>rectangular</item>
     </string-array>
+
+    <string-array name="tfbi_diagonal_recognition_mode_entries">
+        <item>@string/tfbi_diagonal_recognition_mode_legacy</item>
+        <item>@string/tfbi_diagonal_recognition_mode_stable</item>
+    </string-array>
+
+    <string-array name="tfbi_diagonal_recognition_mode_values">
+        <item>legacy</item>
+        <item>stable</item>
+    </string-array>
 </resources>

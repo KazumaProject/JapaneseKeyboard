@@ -233,7 +233,7 @@ class TfbiStickyFlickController(
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
 
             var highlightTargetDirection =
-                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
+                resolveSecondDirection(dx, dy, enabledSecondDirections)
 
             if (highlightTargetDirection == TfbiFlickDirection.TAP) {
                 // ===== ★ 変更点 2 =====
@@ -268,7 +268,7 @@ class TfbiStickyFlickController(
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
-                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
+                resolveSecondDirection(dx, dy, enabledSecondDirections)
 
             Log.d(
                 "TfbStickyInput", // ★ ログタグ
@@ -464,6 +464,19 @@ class TfbiStickyFlickController(
 
     private fun currentGestureConfig(): GestureSessionConfig {
         return activeGestureConfig ?: gestureConfigSource.snapshot()
+    }
+
+    private fun resolveSecondDirection(
+        dx: Float,
+        dy: Float,
+        enabledDirections: Set<TfbiFlickDirection>,
+    ): TfbiFlickDirection {
+        val config = currentGestureConfig()
+        val candidate = calculateDirection(dx, dy, config.flickThresholdPx, enabledDirections)
+        return guardTfbiSecondStageDiagonal(
+            candidate, firstFlickDirection, dx, dy, config.flickThresholdPx,
+            enabledDirections, config.tfbiDiagonalRecognitionMode
+        )
     }
 
     private fun isFlickThresholdCrossed(dx: Float, dy: Float): Boolean {

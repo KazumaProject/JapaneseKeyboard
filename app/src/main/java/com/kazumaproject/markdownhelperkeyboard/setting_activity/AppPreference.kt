@@ -10,6 +10,7 @@ import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.domain.flick.TfbiDiagonalRecognitionMode
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -91,6 +92,7 @@ object AppPreference {
         "gemma_handwriting_pen_color_preference"
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
+    const val TFBI_DIAGONAL_RECOGNITION_MODE_KEY = "tfbi_diagonal_recognition_mode_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
@@ -149,6 +151,10 @@ object AppPreference {
     private val FLICK_THRESHOLD_SHAPE = Pair(
         FLICK_THRESHOLD_SHAPE_KEY,
         FlickThresholdShape.Radial.preferenceValue
+    )
+    private val TFBI_DIAGONAL_RECOGNITION_MODE = Pair(
+        TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
+        TfbiDiagonalRecognitionMode.LEGACY.preferenceValue
     )
     private val LONG_PRESS_TIMEOUT = Pair(LONG_PRESS_TIMEOUT_KEY, 300)
     private val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR =
@@ -1830,6 +1836,17 @@ object AppPreference {
                 FLICK_THRESHOLD_SHAPE.first,
                 FlickThresholdShape.fromPreferenceValue(value).preferenceValue
             )
+        }
+
+    var tfbi_diagonal_recognition_mode_preference: TfbiDiagonalRecognitionMode
+        get() = TfbiDiagonalRecognitionMode.fromPreferenceValue(
+            preferences.getString(
+                TFBI_DIAGONAL_RECOGNITION_MODE.first,
+                TFBI_DIAGONAL_RECOGNITION_MODE.second
+            )
+        )
+        set(value) = preferences.edit {
+            it.putString(TFBI_DIAGONAL_RECOGNITION_MODE.first, value.preferenceValue)
         }
 
     var hierarchical_flick_mode_switch_angle_margin_preference: Int
