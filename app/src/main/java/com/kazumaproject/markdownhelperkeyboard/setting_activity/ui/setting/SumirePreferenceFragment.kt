@@ -27,6 +27,8 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
             findPreference<ListPreference>("sumire_keyboard_style_preference")
         val tfbiFlickStartPositionPreference =
             findPreference<ListPreference>("flick_tfbi_flick_start_position_preference")
+        val tfbiDiagonalRecognitionPreference =
+            findPreference<ListPreference>("tfbi_diagonal_recognition_mode_preference")
 
         fun isTfbiStyle(value: String?): Boolean {
             return value == "second-flick"
@@ -40,6 +42,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
             // 【追加】初期表示状態の設定
             tfbiFlickStartPositionPreference?.isVisible = isTfbiStyle(value)
+            tfbiDiagonalRecognitionPreference?.isVisible = isTfbiStyle(value)
             sumireCustomAnglePreference?.isVisible = (value == "sumire")
             circularSlotActionSettingPreference?.isVisible = (value == "sumire")
 
@@ -55,6 +58,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
                 // 【追加】変更時の表示切り替え
                 tfbiFlickStartPositionPreference?.isVisible = isTfbiStyle(stringValue)
+                tfbiDiagonalRecognitionPreference?.isVisible = isTfbiStyle(stringValue)
                 sumireCustomAnglePreference?.isVisible = (stringValue == "sumire")
                 circularSlotActionSettingPreference?.isVisible = (stringValue == "sumire")
 

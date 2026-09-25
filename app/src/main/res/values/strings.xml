@@ -261,9 +261,12 @@
     <string name="omission_search_summary_on">Omit modifier key input is enabled\ne.g., "かつこう" → "がっこう"</string>
     <string name="omission_search_summary_off">Omit modifier key input is disabled</string>
     <string name="flick_sensitivity_title">Flick Input Sensitivity</string>
-    <string name="flick_threshold_shape_title">Flick Detection Area</string>
+    <string name="flick_threshold_shape_title">Flick Start Detection Area</string>
     <string name="flick_threshold_shape_radial">Uniform in every direction (circular, recommended)</string>
-    <string name="flick_threshold_shape_rectangular">Stabilize diagonal movement (rectangular)</string>
+    <string name="flick_threshold_shape_rectangular">Horizontal and vertical threshold (rectangular)</string>
+    <string name="tfbi_diagonal_recognition_mode_title">Two/three-step diagonal detection</string>
+    <string name="tfbi_diagonal_recognition_mode_legacy">Legacy</string>
+    <string name="tfbi_diagonal_recognition_mode_stable">Stable (require a clear turn)</string>
     <string name="long_press_timeout_preference_title">Long-press Time</string>
     <string name="long_press_timeout_preference_summary">Adjust how long a key must be held before long-press is triggered.</string>
     <string name="long_press_timeout_preference_value">%1$d ms</string>
