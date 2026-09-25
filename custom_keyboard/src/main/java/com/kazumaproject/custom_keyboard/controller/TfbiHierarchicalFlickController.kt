@@ -93,6 +93,8 @@ class TfbiHierarchicalFlickController(
 
     // フリックの中心座標 (x, y) を保持するスタック
     private val centerStack = ArrayDeque<Pair<Float, Float>>()
+    // One anchor per map: the point where that stage was entered.
+    private val stageAnchorStack = ArrayDeque<Pair<Float, Float>>()
 
     // 表示するマップ (TfbiFlickNode) を保持するスタック
     private val mapStack = ArrayDeque<Map<TfbiFlickDirection, TfbiFlickNode>>()
@@ -254,6 +256,7 @@ class TfbiHierarchicalFlickController(
 
         // スタックにプッシュ
         centerStack.push(event.x to event.y)
+        stageAnchorStack.push(event.x to event.y)
         mapStack.push(rMap)
         highlightStack.push(TfbiFlickDirection.TAP)
         activeTfbiFlickStartPositionMode = tfbiFlickStartPositionMode
@@ -289,11 +292,21 @@ class TfbiHierarchicalFlickController(
         val enabledDirections = effectiveStageMap(currentM).keys
 
         // 現在のフリック方向を計算
-        val direction = calculateDirection(
+        val candidate = calculateDirection(
             dx,
             dy,
             currentFlickThreshold(),
             enabledDirections
+        )
+        val stageAnchor = stageAnchorStack.peek() ?: (centerX to centerY)
+        val direction = guardTfbiSecondStageDiagonal(
+            candidate = candidate,
+            entry = highlightStack.peek() ?: TfbiFlickDirection.TAP,
+            deltaX = event.x - stageAnchor.first,
+            deltaY = event.y - stageAnchor.second,
+            thresholdPx = currentFlickThreshold(),
+            enabledDirections = enabledDirections,
+            mode = currentGestureConfig().tfbiDiagonalRecognitionMode,
         )
 
         if (direction == TfbiFlickDirection.TAP) {
@@ -320,6 +333,7 @@ class TfbiHierarchicalFlickController(
                     // スタックを1段戻す
                     mapStack.pop()
                     highlightStack.pop()
+                    stageAnchorStack.pop()
 
                     // 親のマップとハイライト状態を復元
                     currentMap = mapStack.peek()
@@ -411,6 +425,7 @@ class TfbiHierarchicalFlickController(
 
                 mapStack.push(currentMap!!)
                 highlightStack.push(direction) // どの方向から来たかを記録
+                stageAnchorStack.push(event.x to event.y)
 
                 // ハイライトは開いた方向 (currentHighlight) を維持
                 // ただし、ジッターガードを有効にする
@@ -532,6 +547,7 @@ class TfbiHierarchicalFlickController(
         if (mapStack.size <= 1) return
         mapStack.pop()
         highlightStack.pop()
+        stageAnchorStack.pop()
         currentMap = mapStack.peek()
     }
 
@@ -567,6 +583,7 @@ class TfbiHierarchicalFlickController(
 
         // 4. 現在のスタック（パス）の情報をバックアップ
         val highlightPath = highlightStack.toList().reversed() // 例: [TAP, LEFT] (Size N)
+        val anchorPath = stageAnchorStack.toList().reversed()
         // [修正点] centerStack は DOWN 時の座標 1つだけ
         val originalCenter = centerStack.peek() ?: (event.x to event.y)
 
@@ -574,6 +591,7 @@ class TfbiHierarchicalFlickController(
         mapStack.clear()
         centerStack.clear()
         highlightStack.clear()
+        stageAnchorStack.clear()
 
         // 6. バックアップしたパスを使い、新しいルートマップでスタックを再構築
         var tempMap = newRootMap
@@ -589,6 +607,7 @@ class TfbiHierarchicalFlickController(
             // スタックにプッシュ
             mapStack.push(tempMap)
             highlightStack.push(highlight)
+            stageAnchorStack.push(anchorPath.getOrElse(i) { event.x to event.y })
 
             // 次の階層があるか？ (i < highlightPath.size - 1)
             if (i < highlightPath.size - 1) {
@@ -615,8 +634,12 @@ class TfbiHierarchicalFlickController(
         } else {
             // 失敗したらルートに戻す
             this.currentMap = newRootMap
+            mapStack.clear()
+            highlightStack.clear()
+            stageAnchorStack.clear()
             mapStack.push(newRootMap)
             highlightStack.push(highlightPath.firstOrNull() ?: TfbiFlickDirection.TAP)
+            stageAnchorStack.push(originalCenter)
         }
 
         // 9. ★ UI（ポップアップ）を即座に更新
@@ -875,6 +898,7 @@ class TfbiHierarchicalFlickController(
         centerStack.clear()
         mapStack.clear()
         highlightStack.clear()
+        stageAnchorStack.clear()
         currentMap = null
         currentHighlight = TfbiFlickDirection.TAP
         guideRootDirection = TfbiFlickDirection.TAP

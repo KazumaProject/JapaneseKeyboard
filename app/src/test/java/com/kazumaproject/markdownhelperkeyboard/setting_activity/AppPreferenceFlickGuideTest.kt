@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.domain.flick.TfbiDiagonalRecognitionMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -107,6 +108,30 @@ class AppPreferenceFlickGuideTest {
         assertEquals(
             FlickThresholdShape.Radial.preferenceValue,
             AppPreference.flick_threshold_shape_preference
+        )
+    }
+
+    @Test
+    fun tfbiDiagonalMode_defaultsToLegacyAndPersistsStable() {
+        assertEquals(
+            TfbiDiagonalRecognitionMode.LEGACY,
+            AppPreference.tfbi_diagonal_recognition_mode_preference
+        )
+
+        AppPreference.tfbi_diagonal_recognition_mode_preference =
+            TfbiDiagonalRecognitionMode.STABLE
+        assertEquals(
+            "stable",
+            preferences.getString(AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY, null)
+        )
+
+        preferences.edit().putString(
+            AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
+            "unknown"
+        ).commit()
+        assertEquals(
+            TfbiDiagonalRecognitionMode.LEGACY,
+            AppPreference.tfbi_diagonal_recognition_mode_preference
         )
     }
 }
