@@ -1143,7 +1143,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             // 3. 特殊キーへの適用 (specialKeyColorを使用)
             val specialDrawableState =
-                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+                getDynamicNeumorphDrawable(specialKeyColor, radius,
+                    com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER).constantState
 
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
@@ -1167,6 +1168,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 setKeyTint(specialColorStateList)
                 setKeyDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
+            KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+                keySpace.background = skin.keyDrawable(resources,
+                    role = com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE)
+                ImageViewCompat.setImageTintList(keySpace,
+                    ColorStateList.valueOf(skin.palette.spaceText))
+            }
         }
     }
 
@@ -1175,8 +1182,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * @param baseColor キーのメインカラー
      * @param radius キーの角丸の半径 (px)
      */
-    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float,
+            role: com.kazumaproject.core.ui.skin.SkinKeyRole =
+                com.kazumaproject.core.ui.skin.SkinKeyRole.CHARACTER): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, role = role) }
         // 1. 色の計算
         // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
         val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
