@@ -29001,9 +29001,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun checkForPhysicalKeyboard(
         hasPhysicalKeyboard: Boolean
     ) {
+        hasHardwareKeyboardConnected = hasPhysicalKeyboard
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
-            hasHardwareKeyboardConnected = true
             floatingDockWindow?.dismiss()
             floatingModeSwitchWindow?.dismiss()
             floatingCandidateWindow?.dismiss()
@@ -29023,6 +29023,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             isKeyboardFloatingMode = appPreference.is_floating_mode ?: false
         }
+    }
+
+    private fun refreshPhysicalKeyboardConnectionState() {
+        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
+            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        val currentImeState = physicalKeyboardEnable.replayCache.firstOrNull()
+        if (hasHardwareKeyboardConnected == hasPhysicalKeyboard &&
+            currentImeState == hasPhysicalKeyboard
+        ) {
+            return
+        }
+        checkForPhysicalKeyboard(hasPhysicalKeyboard)
     }
 
     /**
@@ -29299,29 +29312,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val device = inputManager.getInputDevice(p0)
         if (isDevicePhysicalKeyboard(device)) {
             Timber.d("Physical keyboard connected: ${device?.name}")
-            hasHardwareKeyboardConnected = true
-            scope.launch {
-                _physicalKeyboardEnable.emit(true)
-            }
-            isKeyboardFloatingMode = false
-            updateShortcutActiveStates()
         }
+        refreshPhysicalKeyboardConnectionState()
     }
 
     override fun onInputDeviceChanged(p0: Int) {
-        Timber.d("Input device removed: ID $p0")
-        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
-            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
-        }
-        checkForPhysicalKeyboard(hasPhysicalKeyboard)
+        Timber.d("Input device changed: ID $p0")
+        refreshPhysicalKeyboardConnectionState()
     }
 
     override fun onInputDeviceRemoved(p0: Int) {
-        val device = inputManager.getInputDevice(p0)
-        Timber.d("Input device changed: ${device?.name}")
-        hasHardwareKeyboardConnected = false
-        scope.launch {
-            _physicalKeyboardEnable.emit(false)
-        }
+        Timber.d("Input device removed: ID $p0")
+        refreshPhysicalKeyboardConnectionState()
     }
 }
