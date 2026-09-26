@@ -9,9 +9,12 @@ import android.view.MenuItem
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.Insets
 import androidx.core.view.MenuProvider
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnAttach
+import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withResumed
@@ -96,6 +99,10 @@ class MainActivity : AppCompatActivity() {
         pendingIntentRequest = savedInstanceState?.getString(PENDING_INTENT_REQUEST_KEY)
 
         super.onCreate(savedInstanceState)
+        // Window fitting must be configured before the delayed preferences load.
+        // Configuring it after the Activity has started can leave AppCompat's
+        // ActionBar and content with different system-bar insets.
+        enableEdgeToEdge()
         lifecycleScope.launch {
             appPreference = withContext(Dispatchers.IO) {
                 initializationGateForTest?.invoke()
@@ -154,10 +161,36 @@ class MainActivity : AppCompatActivity() {
                 .setMaxLifecycle(host, Lifecycle.State.CREATED)
                 .commitNow()
         }
-        enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
+        // The ActionBar is outside this root. Reserve its height along with the
+        // system bars, then remove those insets before dispatching to children.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout(),
+            )
+            val actionBarHeight = supportActionBar
+                ?.takeIf { it.isShowing }
+                ?.height ?: 0
+            view.updatePadding(
+                left = bars.left,
+                top = bars.top + actionBarHeight,
+                right = bars.right,
+                bottom = bars.bottom,
+            )
+            WindowInsetsCompat.Builder(insets)
+                .setInsets(
+                    WindowInsetsCompat.Type.systemBars() or
+                        WindowInsetsCompat.Type.displayCutout(),
+                    Insets.NONE,
+                )
+                .build()
+        }
         setContentView(binding.root)
-        binding.root.doOnAttach { ViewCompat.requestApplyInsets(it) }
+        // The content can be attached after the decor's first inset dispatch.
+        binding.root.doOnAttach { root ->
+            root.post { applyCurrentWindowInsets() }
+        }
 
         mainNavController = findMainNavController()
         val navController = mainNavController
@@ -254,6 +287,14 @@ class MainActivity : AppCompatActivity() {
             supportActionBar?.hide()
         } else {
             supportActionBar?.show()
+        }
+        applyCurrentWindowInsets()
+    }
+
+    private fun applyCurrentWindowInsets() {
+        if (!::binding.isInitialized) return
+        ViewCompat.getRootWindowInsets(binding.root)?.let { insets ->
+            ViewCompat.dispatchApplyWindowInsets(binding.root, insets)
         }
     }
 
