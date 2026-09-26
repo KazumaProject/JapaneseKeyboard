@@ -75,7 +75,7 @@ class SkinRegressionDeviceTest {
         var navigationInsets = android.graphics.Insets.NONE
         val defaultPixels = mutableMapOf<String, Pair<Rect, IntArray>>()
         val defaultCandidateGeometry = mutableMapOf<String, String>()
-        val skins = (args.getString("skins") ?: "default,cupertino_light,cupertino_dark,default").split(',')
+        val skins = (args.getString("skins") ?: "default,cupertino_light,cupertino_dark,cupertino_classic,default").split(',')
         val floating = args.getString("floating") == "true"
         val symbolRootId = if (floating) "floating_symbol_keyboard" else "keyboard_symbol_view"
         val landscape = args.getString("rotation") == "landscape"
@@ -126,7 +126,11 @@ class SkinRegressionDeviceTest {
                 check((tab != null) == tabs) { "Candidate tab visibility differs from preference" }
                 if (tab != null && name.contains("cupertino")) {
                     val area = bounds(tab)
-                    val selected = if (name.contains("cupertino_dark")) 0xff0091ff.toInt() else 0xff0088ff.toInt()
+                    val selected = when {
+                        name.contains("cupertino_dark") -> 0xff0091ff.toInt()
+                        name.contains("cupertino_classic") -> 0xff2878cf.toInt()
+                        else -> 0xff0088ff.toInt()
+                    }
                     val unselected = if (name.contains("cupertino_dark")) android.graphics.Color.WHITE else android.graphics.Color.BLACK
                     var selectedPixels=0; var unselectedPixels=0
                     for (y in area.top until area.bottom) for (x in area.left until area.right) {
