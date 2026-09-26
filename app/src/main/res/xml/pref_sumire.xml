@@ -44,6 +44,15 @@
             android:summary="%s"
             android:title="@string/sumire_keyboard_style_title" />
 
+        <ListPreference
+            android:defaultValue="legacy"
+            android:dialogTitle="@string/tfbi_diagonal_recognition_mode_title"
+            android:entries="@array/tfbi_diagonal_recognition_mode_entries"
+            android:entryValues="@array/tfbi_diagonal_recognition_mode_values"
+            android:key="tfbi_diagonal_recognition_mode_preference"
+            android:summary="%s"
+            android:title="@string/tfbi_diagonal_recognition_mode_title" />
+
         <SwitchPreferenceCompat
             android:key="sumire_english_qwerty_preference"
             android:title="@string/kana_input_qwerty_preference_title"
