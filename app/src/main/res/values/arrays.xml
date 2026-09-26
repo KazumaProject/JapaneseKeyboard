@@ -43,6 +43,15 @@
         <item>kana</item>
     </string-array>
 
+    <string-array name="physical_toolbar_style_entries">
+        <item>@string/physical_toolbar_style_bottom</item>
+        <item>@string/physical_toolbar_style_floating</item>
+    </string-array>
+    <string-array name="physical_toolbar_style_values">
+        <item>bottom</item>
+        <item>floating</item>
+    </string-array>
+
     <string-array name="type_null_input_behavior_entries">
         <item>@string/type_null_input_behavior_default</item>
         <item>@string/type_null_input_behavior_direct_commit</item>
