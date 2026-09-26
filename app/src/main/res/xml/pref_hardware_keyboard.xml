@@ -12,6 +12,27 @@
             android:title="@string/physical_keyboard_input_mode_title"
             app:useSimpleSummaryProvider="true" />
 
+        <ListPreference
+            android:defaultValue="bottom"
+            android:entries="@array/physical_toolbar_style_entries"
+            android:entryValues="@array/physical_toolbar_style_values"
+            android:key="physical_toolbar_style"
+            android:title="@string/physical_toolbar_style_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="physical_toolbar_show_mode"
+            android:title="@string/physical_toolbar_mode_title" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="physical_toolbar_show_keyboard"
+            android:title="@string/physical_toolbar_keyboard_title" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="physical_toolbar_show_voice"
+            android:title="@string/physical_toolbar_voice_title" />
+
         <Preference
             android:key="physical_keyboard_shortcut_setting_preference"
             android:summary="@string/physical_keyboard_shortcut_setting_summary"

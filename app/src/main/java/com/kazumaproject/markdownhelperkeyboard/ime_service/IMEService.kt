@@ -5,15 +5,19 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryStore
 import android.annotation.SuppressLint
+import android.Manifest
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Point
+import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.hardware.input.InputManager
@@ -281,6 +285,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.FloatingPhysicalToolbarView
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.PhysicalToolbarSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.FloatingWindowCoordinates
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.canShowComposingGuide
@@ -686,6 +692,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var floatingDockWindow: PopupWindow? = null
     private lateinit var floatingDockView: FloatingDockView
+    private var floatingPhysicalToolbarWindow: PopupWindow? = null
+    private lateinit var floatingPhysicalToolbarView: FloatingPhysicalToolbarView
+    private var physicalToolbarDragStartX = 0
+    private var physicalToolbarDragStartY = 0
+    private var physicalToolbarPopupX = 0
+    private var physicalToolbarPopupY = 0
+    private var physicalToolbarDragPopupStartX = 0
+    private var physicalToolbarDragPopupStartY = 0
+    private var physicalToolbarPositionGeneration = 0
 
     private var floatingModeSwitchWindow: PopupWindow? = null
     private lateinit var floatingModeSwitchView: BubbleTextView
@@ -934,6 +949,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 runOnMainThread {
                     syncRuntimeInputPreferences()
                 }
+            }
+            if (key != null && key in PhysicalToolbarSettings.keys) {
+                runOnMainThread { refreshPhysicalToolbar() }
             }
         }
 
@@ -5874,6 +5892,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onWindowShown() {
         super.onWindowShown()
         window.window?.decorView?.post {
+            refreshPhysicalToolbar()
             if (isInputViewShown && isKeyboardFloatingMode == true && splitController == null && floatingKeyboardView?.isShowing != true) {
                 applyFloatingModeState(true)
             }
@@ -5935,15 +5954,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         shortcutToolbarHiddenForCandidates = false
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
+        floatingPhysicalToolbarWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
         floatingKeyboardView?.dismiss()
         floatingCandidateWindow = null
         floatingDockWindow = null
+        floatingPhysicalToolbarWindow = null
         floatingModeSwitchWindow = null
         floatingKeyboardView = null
     }
 
     override fun onWindowHidden() {
+        floatingPhysicalToolbarWindow?.dismiss()
         imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
@@ -6027,6 +6049,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearSymbols()
         floatingCandidateWindow = null
         floatingDockWindow = null
+        floatingPhysicalToolbarWindow?.dismiss()
+        floatingPhysicalToolbarWindow = null
         floatingKeyboardView = null
         floatingModeSwitchWindow = null
         keyboardSelectionPopupWindow = null
@@ -6407,6 +6431,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        floatingPhysicalToolbarWindow?.dismiss()
+        floatingPhysicalToolbarWindow = null
         dictionaryConfigurationChanging = true
         dictionaryFloats?.detach()
         try {
@@ -6415,6 +6441,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             dictionaryConfigurationChanging = false
         }
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
+        mainLayoutBinding?.root?.post { refreshPhysicalToolbar() }
+        mainLayoutBinding?.root?.postDelayed({
+            floatingPhysicalToolbarWindow?.dismiss()
+            floatingPhysicalToolbarWindow = null
+            refreshPhysicalToolbar()
+        }, 350L)
         clearZeroQueryAllState(refresh = false)
         collapseShortcutEntryExpansion()
         when (newConfig.orientation) {
@@ -6497,6 +6529,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * FloatingDockViewを非表示にします。
      */
     private fun dismissFloatingDock() {
+        floatingPhysicalToolbarWindow?.dismiss()
         if (floatingDockWindow?.isShowing == true) {
             floatingDockWindow?.dismiss()
             floatingDockWindow = null
@@ -6577,6 +6610,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
+        if (floatingPhysicalToolbarWindow == null && ::floatingPhysicalToolbarView.isInitialized) {
+            floatingPhysicalToolbarWindow = PopupWindow(
+                floatingPhysicalToolbarView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                isFocusable = false
+                isOutsideTouchable = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    setIsLaidOutInScreen(true)
+                    setIsClippedToScreen(true)
+                } else {
+                    setAttachedInDecor(false)
+                    isClippingEnabled = false
+                }
+            }
+        }
+
         if (floatingModeSwitchWindow == null) {
             floatingModeSwitchWindow = PopupWindow(
                 floatingModeSwitchView,
@@ -6590,6 +6641,135 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setIsClippedToScreen(true)
                 }
             }
+        }
+    }
+
+    private fun showKeyboardFromPhysicalToolbar() {
+        modeSwitchAwaitingCursorPosition = false
+        floatingDockWindow?.dismiss()
+        floatingPhysicalToolbarWindow?.dismiss()
+        floatingModeSwitchWindow?.dismiss()
+        scope.launch { _physicalKeyboardEnable.emit(false) }
+    }
+
+    private fun physicalToolbarDisplaySize(): Point = Point().also { size ->
+        (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getSize(size)
+    }
+
+    private fun physicalToolbarVisibleBounds(): Rect = Rect().also { bounds ->
+        window.window?.decorView?.getWindowVisibleDisplayFrame(bounds)
+        if (bounds.isEmpty) {
+            val size = physicalToolbarDisplaySize()
+            bounds.set(0, 0, size.x, size.y)
+        }
+    }
+
+    private fun clampPhysicalToolbarPosition(x: Int, y: Int): Pair<Int, Int> {
+        val bounds = physicalToolbarVisibleBounds()
+        val width = floatingPhysicalToolbarView.measuredWidth
+        val height = floatingPhysicalToolbarView.measuredHeight
+        return x.coerceIn(bounds.left, (bounds.right - width).coerceAtLeast(bounds.left)) to
+            y.coerceIn(bounds.top, (bounds.bottom - height).coerceAtLeast(bounds.top))
+    }
+
+    private fun physicalToolbarPopupCoordinates(x: Int, y: Int): Pair<Int, Int> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return x to y
+        val bounds = physicalToolbarVisibleBounds()
+        return x - bounds.left to y - bounds.top
+    }
+
+    private fun alignPhysicalToolbarToScreen(
+        popup: PopupWindow,
+        screenX: Int,
+        screenY: Int,
+        generation: Int,
+    ) {
+        popup.contentView.postOnAnimation {
+            if (floatingPhysicalToolbarWindow !== popup ||
+                !popup.isShowing ||
+                physicalToolbarPositionGeneration != generation
+            ) return@postOnAnimation
+
+            val actual = IntArray(2)
+            popup.contentView.getLocationOnScreen(actual)
+            val dx = screenX - actual[0]
+            val dy = screenY - actual[1]
+            if (dx != 0 || dy != 0) {
+                physicalToolbarPopupX += dx
+                physicalToolbarPopupY += dy
+                updatePopupWindowPositionSafely(
+                    popup, physicalToolbarPopupX, physicalToolbarPopupY,
+                )
+            }
+        }
+    }
+
+    private fun refreshPhysicalToolbar() {
+        if (!::floatingPhysicalToolbarView.isInitialized ||
+            physicalKeyboardEnable.replayCache.firstOrNull() != true ||
+            !isInputViewActive
+        ) return
+
+        val settings = PhysicalToolbarSettings.read(runtimeInputSharedPreferences)
+        if (!settings.floating) {
+            floatingPhysicalToolbarWindow?.dismiss()
+            floatingDockWindow?.let { popup ->
+                if (!popup.isShowing) {
+                    showPopupWindowSafely(
+                        popupWindow = popup,
+                        anchorView = mainLayoutBinding?.root,
+                        gravity = Gravity.BOTTOM,
+                        x = 0,
+                        y = 0,
+                        source = "refreshPhysicalToolbar.bottom",
+                    )
+                }
+            }
+            return
+        }
+
+        floatingDockWindow?.dismiss()
+        modeSwitchAwaitingCursorPosition = false
+        floatingModeSwitchWindow?.dismiss()
+        ensurePhysicalKeyboardPopupWindows()
+        val modeText = when (currentInputModeForSession) {
+            InputMode.ModeJapanese -> "あ"
+            InputMode.ModeEnglish, InputMode.ModeNumber -> "A"
+        }
+        floatingPhysicalToolbarView.render(settings, modeText)
+        floatingPhysicalToolbarView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        )
+        val popup = floatingPhysicalToolbarWindow ?: return
+        popup.width = floatingPhysicalToolbarView.measuredWidth
+        popup.height = floatingPhysicalToolbarView.measuredHeight
+        val bounds = physicalToolbarVisibleBounds()
+        val margin = applicationContext.dpToPx(16)
+        val savedX = runtimeInputSharedPreferences.getInt(PhysicalToolbarSettings.X_KEY, -1)
+        val savedY = runtimeInputSharedPreferences.getInt(PhysicalToolbarSettings.Y_KEY, -1)
+        val (x, y) = clampPhysicalToolbarPosition(
+            if (savedX >= 0) savedX else bounds.right - popup.width - margin,
+            if (savedY >= 0) savedY else bounds.bottom - popup.height - margin,
+        )
+        val (popupX, popupY) = physicalToolbarPopupCoordinates(x, y)
+        physicalToolbarPopupX = popupX
+        physicalToolbarPopupY = popupY
+        val generation = ++physicalToolbarPositionGeneration
+        if (popup.isShowing) {
+            popup.update(popupX, popupY, popup.width, popup.height)
+        } else {
+            showPopupWindowSafely(
+                popupWindow = popup,
+                anchorView = window.window?.decorView,
+                gravity = Gravity.NO_GRAVITY,
+                x = popupX,
+                y = popupY,
+                source = "refreshPhysicalToolbar.floating",
+            )
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            alignPhysicalToolbarToScreen(popup, x, y, generation)
         }
     }
 
@@ -6791,6 +6971,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (speechRecognizer == null) return
 
         val languageValue: String = when {
+            physicalKeyboardEnable.replayCache.firstOrNull() == true -> {
+                if (currentInputModeForSession == InputMode.ModeEnglish) "en-CA" else "ja-JP"
+            }
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
                 "en-CA"
             }
@@ -7060,14 +7243,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 override fun onIconClick() {
                     Timber.d("setOnFloatingDockListener: Iconがクリックされました")
-                    modeSwitchAwaitingCursorPosition = false
-                    scope.launch {
-                        _physicalKeyboardEnable.emit(false)
-                    }
-                    floatingDockWindow?.dismiss()
-                    floatingModeSwitchWindow?.dismiss()
+                    showKeyboardFromPhysicalToolbar()
                 }
             })
+        }
+
+        floatingPhysicalToolbarView = FloatingPhysicalToolbarView(ctx).apply {
+            onModeClick = {
+                mainLayoutBinding?.let(::toggleJapaneseEnglishMode)
+            }
+            onKeyboardClick = ::showKeyboardFromPhysicalToolbar
+            onVoiceClick = {
+                if (ContextCompat.checkSelfPermission(
+                        this@IMEService,
+                        Manifest.permission.RECORD_AUDIO,
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    mainLayoutBinding?.let(::startVoiceInput)
+                } else {
+                    Toast.makeText(
+                        this@IMEService,
+                        R.string.physical_toolbar_voice_permission_denied,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+            onDragStart = {
+                physicalToolbarPositionGeneration++
+                physicalToolbarDragPopupStartX = physicalToolbarPopupX
+                physicalToolbarDragPopupStartY = physicalToolbarPopupY
+                floatingPhysicalToolbarWindow?.contentView?.let { content ->
+                    val location = IntArray(2)
+                    content.getLocationOnScreen(location)
+                    physicalToolbarDragStartX = location[0]
+                    physicalToolbarDragStartY = location[1]
+                }
+            }
+            onDrag = { dx, dy, finished ->
+                val (x, y) = clampPhysicalToolbarPosition(
+                    physicalToolbarDragStartX + dx.toInt(),
+                    physicalToolbarDragStartY + dy.toInt(),
+                )
+                physicalToolbarPopupX = physicalToolbarDragPopupStartX + x - physicalToolbarDragStartX
+                physicalToolbarPopupY = physicalToolbarDragPopupStartY + y - physicalToolbarDragStartY
+                updatePopupWindowPositionSafely(
+                    floatingPhysicalToolbarWindow,
+                    physicalToolbarPopupX,
+                    physicalToolbarPopupY,
+                )
+                if (finished) {
+                    runtimeInputSharedPreferences.edit()
+                        .putInt(PhysicalToolbarSettings.X_KEY, x)
+                        .putInt(PhysicalToolbarSettings.Y_KEY, y)
+                        .apply()
+                }
+            }
         }
 
         floatingModeSwitchView = BubbleTextView(ctx).apply {
@@ -8476,6 +8706,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun showFloatingModeSwitchView(showInputModeText: String) {
+        if (::floatingPhysicalToolbarView.isInitialized) {
+            floatingPhysicalToolbarView.render(
+                PhysicalToolbarSettings.read(runtimeInputSharedPreferences),
+                showInputModeText,
+            )
+        }
+        if (physicalKeyboardEnable.replayCache.firstOrNull() == true &&
+            PhysicalToolbarSettings.read(runtimeInputSharedPreferences).floating
+        ) {
+            modeSwitchAwaitingCursorPosition = false
+            dismissJob?.cancel()
+            floatingModeSwitchWindow?.dismiss()
+            return
+        }
+        // 以前のdismiss処理がスケジュールされていればキャンセルする
         dismissJob?.cancel()
 
         ensurePhysicalKeyboardPopupWindows()
@@ -17744,18 +17989,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     requestCursorUpdates(
                         InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
                     )
-                    floatingDockWindow?.apply {
-                        if (!this.isShowing) {
-                            showPopupWindowSafely(
-                                popupWindow = this,
-                                anchorView = mainView.root,
-                                gravity = Gravity.BOTTOM,
-                                x = 0,
-                                y = 0,
-                                source = "physicalKeyboardEnable.collect"
-                            )
-                        }
-                    }
+                    refreshPhysicalToolbar()
 
                     listAdapter.updateHighlightPosition(-1)
                     currentHighlightIndex = -1
@@ -17768,6 +18002,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     requestCursorUpdates(0)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
+                    floatingPhysicalToolbarWindow?.dismiss()
                     updateImeWindowBlurForCurrentMode()
 
                     if (isKeyboardFloatingMode == true) {
@@ -29026,6 +29261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
             floatingDockWindow?.dismiss()
+            floatingPhysicalToolbarWindow?.dismiss()
             floatingModeSwitchWindow?.dismiss()
             floatingCandidateWindow?.dismiss()
             scope.launch {
@@ -29037,6 +29273,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             Timber.d("No physical keyboard is connected.")
             floatingDockWindow?.dismiss()
+            floatingPhysicalToolbarWindow?.dismiss()
             floatingCandidateWindow?.dismiss()
             floatingModeSwitchWindow?.dismiss()
             scope.launch {
