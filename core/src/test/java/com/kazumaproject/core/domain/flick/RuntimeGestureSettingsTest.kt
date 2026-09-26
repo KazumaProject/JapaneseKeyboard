@@ -54,4 +54,15 @@ class RuntimeGestureSettingsTest {
         assertEquals(1L, updated.revision)
         assertEquals(FlickThresholdShape.Rectangular, source.snapshot().flickThresholdShape)
     }
+
+    @Test
+    fun diagonalModeDefaultsToLegacyAndUpdatesAtomically() {
+        val source = MutableRuntimeGestureSettingsSource()
+        assertEquals(TfbiDiagonalRecognitionMode.LEGACY, source.snapshot().tfbiDiagonalRecognitionMode)
+
+        val updated = source.update(tfbiDiagonalRecognitionMode = TfbiDiagonalRecognitionMode.STABLE)
+        assertEquals(TfbiDiagonalRecognitionMode.STABLE, updated.tfbiDiagonalRecognitionMode)
+        assertEquals(1L, updated.revision)
+        assertSame(updated, source.update())
+    }
 }
