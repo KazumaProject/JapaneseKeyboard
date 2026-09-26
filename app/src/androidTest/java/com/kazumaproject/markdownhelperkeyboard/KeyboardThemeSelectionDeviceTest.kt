@@ -115,7 +115,7 @@ class KeyboardThemeSelectionDeviceTest {
                 }
                 scenario.recreate()
                 SystemClock.sleep(500)
-                check(prefs.getString("keyboard_skin_preference", null) == "cupertino_dark")
+                check(prefs.getString("keyboard_skin_preference", null) == "cupertino_classic")
                 scenario.onActivity { activity ->
                     val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                     check(host.navController.popBackStack())
@@ -124,7 +124,7 @@ class KeyboardThemeSelectionDeviceTest {
                 scenario.onActivity { activity ->
                     val theme = activity.supportFragmentManager.fragments.flatMap(::descendants)
                         .filterIsInstance<KeyboardThemeFragment>().first { it.isResumed }
-                    check(theme.findPreference<Preference>("keyboard_skin_preference")!!.summary == ctx.getString(R.string.keyboard_skin_cupertino_dark))
+                    check(theme.findPreference<Preference>("keyboard_skin_preference")!!.summary == ctx.getString(R.string.keyboard_skin_cupertino_classic))
                     val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                     host.navController.navigate(R.id.keyboardThemeFragment)
                 }

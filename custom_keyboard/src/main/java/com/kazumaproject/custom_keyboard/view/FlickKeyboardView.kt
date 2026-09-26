@@ -544,6 +544,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun resolveKeyVisualPalette(keyData: KeyData): KeyVisualPalette {
+        val skin = KeyboardSkinRegistry.find(keyboardSkinId)
+        if (skin != null && skinKeyRole(keyData) == com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE) {
+            return KeyVisualPalette(false, skin.palette.spaceKey, skin.palette.spaceText, skin.palette.pressed)
+        }
         val usesSpecialSurface = KeyVisualStyleResolver.usesSpecialSurface(keyData)
         return if (usesSpecialSurface) {
             KeyVisualPalette(
@@ -560,6 +564,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                 highlightColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.pressed ?: customSpecialKeyColor
             )
         }
+    }
+
+    private fun skinKeyRole(keyData: KeyData): com.kazumaproject.core.ui.skin.SkinKeyRole = when (keyData.action) {
+        KeyAction.Space, KeyAction.ForceHalfWidthSpace, KeyAction.ForceFullWidthSpace ->
+            com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE
+        else -> if (KeyVisualStyleResolver.usesSpecialSurface(keyData))
+            com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER
+        else com.kazumaproject.core.ui.skin.SkinKeyRole.CHARACTER
     }
 
     private fun defaultKeyBackgroundDrawable(keyData: KeyData, isDarkTheme: Boolean): Drawable? {
@@ -1321,7 +1333,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         } else {
                             val neumorphDrawable = getDynamicNeumorphDrawable(
                                 baseColor = visualPalette.baseColor,
-                                radius = commonCornerRadius
+                                radius = commonCornerRadius,
+                                role = skinKeyRole(keyData)
                             )
 
                             val segmentedDrawable = SegmentedBackgroundDrawable(
@@ -1383,7 +1396,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         } else {
                             val neumorphDrawable = getDynamicNeumorphDrawable(
                                 baseColor = visualPalette.baseColor,
-                                radius = commonCornerRadius
+                                radius = commonCornerRadius,
+                                role = skinKeyRole(keyData)
                             )
 
                             val segmentedDrawable = SegmentedBackgroundDrawable(
@@ -1414,8 +1428,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         return keyView
     }
 
-    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float,
+            role: com.kazumaproject.core.ui.skin.SkinKeyRole =
+                com.kazumaproject.core.ui.skin.SkinKeyRole.CHARACTER): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, role = role) }
         val highlightColor = manipulateColor(baseColor, 1.2f)
         val shadowColor = manipulateColor(baseColor, 0.8f)
 

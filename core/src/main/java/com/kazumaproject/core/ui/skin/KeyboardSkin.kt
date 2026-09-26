@@ -10,7 +10,8 @@ interface KeyboardSkin {
     val id: KeyboardSkinId
     val palette: SkinPalette
     fun keyboardDrawable(resources: Resources, floating: Boolean = false): Drawable
-    fun keyDrawable(resources: Resources, qwerty: Boolean = false): Drawable
+    fun keyDrawable(resources: Resources, qwerty: Boolean = false,
+                    role: SkinKeyRole = SkinKeyRole.CHARACTER): Drawable
     fun popupDrawable(resources: Resources, direction: PopupDirection, selected: Boolean = false): Drawable
     fun configurePopupText(view: android.widget.TextView, flick: Boolean) {}
     fun configurePreviewText(view: android.widget.TextView) {}
@@ -42,7 +43,13 @@ data class SkinPalette(
     val pressed: Int,
     val selection: Int,
     val selectionText: Int,
+    val specialKey: Int = key,
+    val specialText: Int = text,
+    val spaceKey: Int = key,
+    val spaceText: Int = text,
 )
+
+enum class SkinKeyRole { CHARACTER, MODIFIER, SPACE }
 
 enum class PopupDirection { CENTER, LEFT, TOP, RIGHT, BOTTOM, PREVIEW }
 
@@ -51,6 +58,7 @@ object KeyboardSkinRegistry {
     private val skins: Map<KeyboardSkinId, KeyboardSkin> = listOf(
         CupertinoSkin(KeyboardSkinId.CUPERTINO_LIGHT),
         CupertinoSkin(KeyboardSkinId.CUPERTINO_DARK),
+        CupertinoClassicSkin(),
     ).associateBy { it.id }
 
     @JvmStatic fun find(id: KeyboardSkinId): KeyboardSkin? = skins[id]
