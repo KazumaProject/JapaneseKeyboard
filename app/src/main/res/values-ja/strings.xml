@@ -75,6 +75,14 @@
     <string name="physical_keyboard_input_mode_title">日本語入力方式</string>
     <string name="physical_keyboard_input_mode_romaji">ローマ字入力</string>
     <string name="physical_keyboard_input_mode_kana">かな入力</string>
+    <string name="physical_toolbar_style_title">物理キーボード接続時の操作バー</string>
+    <string name="physical_toolbar_style_bottom">下部バー</string>
+    <string name="physical_toolbar_style_floating">フローティング</string>
+    <string name="physical_toolbar_mode_title">モード切替を表示</string>
+    <string name="physical_toolbar_keyboard_title">キーボード表示を追加</string>
+    <string name="physical_toolbar_voice_title">音声入力を追加</string>
+    <string name="physical_toolbar_keep_one">フローティングには少なくとも1項目が必要です。</string>
+    <string name="physical_toolbar_voice_permission_denied">音声入力にはマイクの許可が必要です。</string>
     <string name="physical_keyboard_shortcut_setting_title">物理キーボードショートカット</string>
     <string name="physical_keyboard_shortcut_setting_summary">Ctrl+C、変換キー、無変換キー、Fキーなどにアクションを割り当てます。</string>
     <string name="physical_keyboard_shortcut_list_title">物理キーボードショートカット</string>
