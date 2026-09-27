@@ -38,6 +38,9 @@ import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
@@ -66,7 +69,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ConstraintLayout(context, attrs, defStyleAttr) {
+) : ConstraintLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
@@ -100,6 +103,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var symbolsHistory: List<ClickedSymbol> = emptyList()
     private var clipBoardItems: List<ClipboardItem> = emptyList()
     private var currentMode: SymbolMode = SymbolMode.EMOJI
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(modeTab, snapshot) { true }
+        KeyboardFontApplicator.applyToTextViews(categoryTab, snapshot) { true }
+        symbolAdapter.setKeyboardFont(snapshot, currentMode != SymbolMode.EMOJI)
+        clipboardAdapter.setKeyboardFont(snapshot)
+    }
 
     private var pagingJob: Job? = null
     private var lifecycleOwner: LifecycleOwner? = null
@@ -237,6 +250,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 currentMode = SymbolMode.entries[tab?.position ?: 0]
+                symbolAdapter.setKeyboardFont(keyboardFontSnapshot, currentMode != SymbolMode.EMOJI)
                 buildCategoryTabs()
                 categoryTab.getTabAt(0)?.select()
                 updateSymbolsForCategory(0)
@@ -852,6 +866,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateSymbolsForCategory(index: Int) {
+        KeyboardFontApplicator.applyToTextViews(modeTab, keyboardFontSnapshot) { true }
+        KeyboardFontApplicator.applyToTextViews(categoryTab, keyboardFontSnapshot) { true }
+        symbolAdapter.setKeyboardFont(keyboardFontSnapshot, currentMode != SymbolMode.EMOJI)
+        clipboardAdapter.setKeyboardFont(keyboardFontSnapshot)
         skinTonePopup?.dismiss()
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
