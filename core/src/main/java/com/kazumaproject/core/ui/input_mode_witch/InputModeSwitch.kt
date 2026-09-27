@@ -1,17 +1,29 @@
 package com.kazumaproject.core.ui.input_mode_witch
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.util.AttributeSet
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.content.ContextCompat
 import com.kazumaproject.core.R
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class InputModeSwitch(context: Context, attrs: AttributeSet) :
-    AppCompatImageButton(context, attrs) {
+    AppCompatImageButton(context, attrs), KeyboardFontAware {
 
     private var currentInputMode: InputMode = InputMode.ModeJapanese
+    private var isGojuonMode = false
+    private var useThreeStateKeyboard = true
+    private var numberReturnTarget = TwoStateNumberReturnTarget.Japanese
+    private var fontSnapshot = KeyboardFontSnapshot()
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
     fun setInputMode(inputMode: InputMode, isGojuon: Boolean) {
         setInputMode(inputMode, isGojuon, useThreeStateKeyboard = true)
@@ -24,14 +36,75 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
         twoStateNumberReturnTarget: TwoStateNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
     ) {
         currentInputMode = inputMode
+        this.isGojuonMode = isGojuon
+        this.useThreeStateKeyboard = useThreeStateKeyboard
+        this.numberReturnTarget = twoStateNumberReturnTarget
+        renderModeIcon()
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        if (fontSnapshot == snapshot) return
+        fontSnapshot = snapshot
+        labelPaint.typeface = snapshot.typeface?.let { Typeface.create(it, Typeface.NORMAL) }
+        renderModeIcon()
+    }
+
+    private fun renderModeIcon() {
+        if (fontSnapshot.typeface != null) {
+            setImageDrawable(null)
+            invalidate()
+            return
+        }
         val resId = resolveInputModeSwitchIconResId(
-            inputMode = inputMode,
-            isGojuon = isGojuon,
+            inputMode = currentInputMode,
+            isGojuon = isGojuonMode,
             useThreeStateKeyboard = useThreeStateKeyboard,
-            twoStateNumberReturnTarget = twoStateNumberReturnTarget
+            twoStateNumberReturnTarget = numberReturnTarget,
         )
-        val drawable = AppCompatResources.getDrawable(context, resId)
-        setImageDrawable(drawable)
+        setImageDrawable(AppCompatResources.getDrawable(context, resId))
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        if (fontSnapshot.typeface == null) {
+            super.onDraw(canvas)
+            return
+        }
+        // Existing mode icons outline letters as paths. Render their semantic labels
+        // with the selected typeface while keeping the same three-state control.
+        super.onDraw(canvas)
+        val iconWidth = width - paddingLeft - paddingRight
+        val iconHeight = height - paddingTop - paddingBottom
+        if (iconWidth <= 0 || iconHeight <= 0) return
+        val fallbackColor = ContextCompat.getColor(context, R.color.keyboard_icon_color)
+        val tint = imageTintList?.getColorForState(drawableState, fallbackColor)
+        val selectedColor = tint ?: ContextCompat.getColor(context, R.color.keyboard_icon_color)
+        val idleColor = tint ?: 0xff839096.toInt()
+        labelPaint.textSize = iconHeight * 0.29f
+        labelPaint.alpha = imageAlpha
+        val (labels, positions, selectedIndex) = when {
+            useThreeStateKeyboard -> {
+                val selected = when (currentInputMode) {
+                    InputMode.ModeJapanese -> 0
+                    InputMode.ModeEnglish -> 1
+                    InputMode.ModeNumber -> 2
+                }
+                Triple(listOf("あ", "a", "1"), floatArrayOf(.28f, .5f, .72f), selected)
+            }
+            currentInputMode == InputMode.ModeNumber -> {
+                val returnLabel = if (numberReturnTarget == TwoStateNumberReturnTarget.Japanese) "あ" else "a"
+                Triple(listOf(returnLabel, "1"), floatArrayOf(.38f, .62f), 1)
+            }
+            else -> {
+                val selected = if (currentInputMode == InputMode.ModeJapanese) 0 else 1
+                Triple(listOf("あ", "a"), floatArrayOf(.38f, .62f), selected)
+            }
+        }
+        val baseline = paddingTop + iconHeight / 2f - (labelPaint.ascent() + labelPaint.descent()) / 2f
+        labels.forEachIndexed { index, label ->
+            labelPaint.color = if (index == selectedIndex) selectedColor else idleColor
+            canvas.drawText(label, paddingLeft + iconWidth * positions[index], baseline, labelPaint)
+        }
     }
 }
 

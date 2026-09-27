@@ -18,6 +18,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.ui.skin.SkinPopupWindowHost
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.R
 import kotlin.math.roundToInt
 
@@ -28,7 +31,7 @@ internal open class FloatingPanelFrame(
     private val onHandleEvent: (MotionEvent) -> Unit = {},
     title: CharSequence? = null,
     onHide: (() -> Unit)? = null,
-) : FrameLayout(context), SkinPopupWindowHost {
+) : FrameLayout(context), SkinPopupWindowHost, KeyboardFontAware {
     override var applicationWindowView: View? = null
 
     protected fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
@@ -78,6 +81,14 @@ internal open class FloatingPanelFrame(
         addView(moveGrip, LayoutParams(-1, dp(MOVE_BAND_DP), Gravity.BOTTOM))
         edges.values.forEach(::addView)
         renderChrome()
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        // This frame owns only its chrome typography. Content is owned by the specific
+        // composing/dictionary renderer or adapter. Traversing the whole tree here can
+        // overwrite renderer-specific exclusions such as icon-only candidate actions.
+        panelTitle?.let { KeyboardFontApplicator.apply(it, snapshot) }
     }
 
     fun setEditing(value: Boolean) {

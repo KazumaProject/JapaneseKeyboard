@@ -13,9 +13,12 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.core.R as CoreR
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 /** A touch slop separates button clicks from dragging the popup. */
-class FloatingPhysicalToolbarView(context: Context) : LinearLayout(context) {
+class FloatingPhysicalToolbarView(context: Context) : LinearLayout(context), KeyboardFontAware {
     var onModeClick: (() -> Unit)? = null
     var onKeyboardClick: (() -> Unit)? = null
     var onVoiceClick: (() -> Unit)? = null
@@ -23,6 +26,7 @@ class FloatingPhysicalToolbarView(context: Context) : LinearLayout(context) {
     var onDrag: ((Float, Float, Boolean) -> Unit)? = null
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var fontSnapshot = KeyboardFontApplicator.processSnapshot
     private var downX = 0f
     private var downY = 0f
     private var dragging = false
@@ -50,6 +54,7 @@ class FloatingPhysicalToolbarView(context: Context) : LinearLayout(context) {
     }
 
     init {
+        setKeyboardFont(fontSnapshot)
         orientation = HORIZONTAL
         gravity = Gravity.CENTER
         isClickable = true
@@ -67,6 +72,12 @@ class FloatingPhysicalToolbarView(context: Context) : LinearLayout(context) {
         addView(modeButton, LayoutParams(buttonSize, buttonSize))
         addView(keyboardButton, LayoutParams(buttonSize, buttonSize))
         addView(voiceButton, LayoutParams(buttonSize, buttonSize))
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        fontSnapshot = snapshot
+        KeyboardFontApplicator.apply(modeButton, snapshot)
     }
 
     fun render(settings: PhysicalToolbarSettings, modeText: String) {

@@ -17,6 +17,9 @@ import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.ShapeType
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import java.util.EnumSet
 import kotlin.math.cos
 import kotlin.math.sin
@@ -25,7 +28,7 @@ class FlickCirclePopupView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), KeyboardFontAware {
 
     // --- Paint Objects ---
     private val targetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -55,7 +58,14 @@ class FlickCirclePopupView @JvmOverloads constructor(
     )
 
     init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
         applyThemeToPaints()
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(textPaint, snapshot)
+        invalidate()
     }
 
     // --- State and Properties ---

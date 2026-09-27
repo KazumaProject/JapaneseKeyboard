@@ -4,13 +4,16 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.databinding.LayoutFloatingDockBinding
 
 class FloatingDockView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ConstraintLayout(context, attrs, defStyleAttr) {
+) : ConstraintLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
     // View Bindingを使ってレイアウトをインフレートし、このViewにアタッチする
     private val binding: LayoutFloatingDockBinding =
@@ -18,7 +21,13 @@ class FloatingDockView @JvmOverloads constructor(
     private var listener: FloatingDockListener? = null
 
     init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
         setupClickListeners()
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(binding.dockText, snapshot)
     }
 
     /**

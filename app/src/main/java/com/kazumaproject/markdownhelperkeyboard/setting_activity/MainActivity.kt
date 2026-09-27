@@ -76,9 +76,15 @@ class MainActivity : AppCompatActivity() {
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
         R.id.candidateHeightDefaultsFragment,
+        R.id.localFontSettingsFragment,
     )
-    private val destinationsWithOwnToolbar =
-        destinationsWithoutBottomNavigation + R.id.shortcutToolbarSizeSettingFragment
+    private val destinationsWithOwnToolbar = setOf(
+        R.id.candidateViewHeightSettingFragment,
+        R.id.candidateHeightLandscapeSettingFragment,
+        R.id.candidateHeightDefaultsFragment,
+        R.id.shortcutToolbarSizeSettingFragment,
+        R.id.localFontSettingsFragment,
+    )
     private val destinationsWithoutSharedActionBar =
         destinationsWithOwnToolbar + R.id.enableKeyboardFragment
 
