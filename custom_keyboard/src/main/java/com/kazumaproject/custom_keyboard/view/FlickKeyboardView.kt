@@ -32,6 +32,9 @@ import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -99,7 +102,22 @@ import kotlin.math.roundToInt
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : GridLayout(context, attrs, defStyleAttr) {
+) : GridLayout(context, attrs, defStyleAttr), KeyboardFontAware {
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        for (index in 0 until childCount) {
+            KeyboardFontApplicator.applyToKeyboardViews(getChildAt(index), snapshot)
+        }
+    }
+
+    override fun onViewAdded(child: View) {
+        super.onViewAdded(child)
+        KeyboardFontApplicator.applyToKeyboardViews(child, keyboardFontSnapshot)
+    }
 
     interface OnKeyboardActionListener {
         fun onPress(action: KeyAction)

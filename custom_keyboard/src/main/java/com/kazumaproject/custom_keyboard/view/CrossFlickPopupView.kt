@@ -16,6 +16,9 @@ import androidx.appcompat.widget.AppCompatTextView
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -53,7 +56,24 @@ private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
     }
 }
 
-class CrossFlickPopupView(context: Context) : FrameLayout(context) {
+class CrossFlickPopupView(context: Context) : FrameLayout(context), KeyboardFontAware {
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    init {
+        setKeyboardFont(keyboardFontSnapshot)
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
+    }
+
+    override fun onViewAdded(child: View) {
+        super.onViewAdded(child)
+        KeyboardFontApplicator.applyToKeyboardViews(child, keyboardFontSnapshot)
+    }
 
     private class CellView(context: Context) : FrameLayout(context) {
         val textView: TextView = AppCompatTextView(context).apply {

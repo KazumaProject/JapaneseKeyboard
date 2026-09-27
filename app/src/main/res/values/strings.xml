@@ -1830,4 +1830,27 @@
     <string name="qwerty_romaji_space_flick_summary">Flick up to insert the opposite space width to your Romaji space setting. Independent of letter-key up flicks.</string>
     <string name="qwerty_english_space_flick_summary">Flick up to insert a full-width space. If there is composing text, commit it with a full-width space. Tapping still inserts a half-width space. Independent of letter-key up flicks.</string>
     <string name="floating_keyboard_hide">Hide keyboard</string>
+    <string name="local_font_title">Local font</string>
+    <string name="local_font_settings_summary">Choose a font for keyboard labels and IME text</string>
+    <string name="local_font_current">Current: %1$s</string>
+    <string name="local_font_standard">Standard (existing appearance)</string>
+    <string name="local_font_choose">Choose a font on this device</string>
+    <string name="local_font_help">Supported: static TTF or OTF, up to 32 MiB. The selected font is copied to this app’s private storage and stays on this device. Characters missing from the font may use another font.</string>
+    <string name="local_font_loading">Loading and checking font…</string>
+    <string name="local_font_previewing">Preview: %1$s</string>
+    <string name="local_font_preview_small_label">Small guide and candidate sample</string>
+    <string name="local_font_apply">Apply</string>
+    <string name="local_font_cancel_selection">Cancel selection</string>
+    <string name="local_font_restore_standard">Restore standard</string>
+    <string name="local_font_restore_warning">The saved font could not be restored. Choose it again or restore the standard appearance.</string>
+    <string name="local_font_error_unsupported">This font format is not supported. Choose a static TTF or OTF file.</string>
+    <string name="local_font_error_too_large">The font is larger than the 32 MiB limit.</string>
+    <string name="local_font_error_invalid">This file is empty, damaged, or is not a supported font.</string>
+    <string name="local_font_error_storage">The font could not be read or saved. Your current font is still active.</string>
+    <string name="local_font_preview_sample">あいうえお　がぎぐげご　ぱぴぷぺぽ　ぁぃぅぇぉっゃゅょ
+アイウエオ　日本語　漢字変換　𠮷
+ABC abc 0123456789　ＡＢＣ　１２３４５
+！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
+空白　変換　確定　検索　return</string>
+    <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
 </resources>

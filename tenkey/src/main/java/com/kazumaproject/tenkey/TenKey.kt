@@ -59,6 +59,9 @@ import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
 import com.kazumaproject.core.domain.flick.FlickTextSelection
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.ui.effect.Blur
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.databinding.KeyboardLayoutBinding
@@ -115,7 +118,7 @@ import kotlin.math.roundToInt
 
 @SuppressLint("ClickableViewAccessibility")
 class TenKey(context: Context, attributeSet: AttributeSet) :
-    ConstraintLayout(context, attributeSet), View.OnTouchListener {
+    ConstraintLayout(context, attributeSet), View.OnTouchListener, KeyboardFontAware {
 
     private data class BaseMargins(
         val start: Int,
@@ -192,6 +195,24 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var isEnglishFlickGuideEnabled: Boolean = false
     private var isNumberFlickGuideEnabled: Boolean = false
     private var popupViewStyle = PopupViewStyle(100, 28f)
+    private var keyboardFontSnapshot = KeyboardFontSnapshot()
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
+        binding.keySwitchKeyMode.setKeyboardFont(snapshot)
+        applyPopupKeyboardFont()
+        skinGuide?.setKeyboardFont(snapshot)
+    }
+
+    private fun applyPopupKeyboardFont() {
+        if (!::popTextActive.isInitialized) return
+        val popups = listOf(
+            popTextActive, popTextLeft, popTextTop, popTextRight, popTextBottom, popTextCenter
+        )
+        popups.forEach { KeyboardFontApplicator.apply(it, keyboardFontSnapshot) }
+    }
 
     private val cachedArrowRightDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -624,6 +645,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
         applyPopupTextSize()
         applyPopupColors()
+        applyPopupKeyboardFont()
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -1073,6 +1095,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 setMaterialYouTheme(this.isNightMode, true)
             }
         }
+        applyPopupKeyboardFont()
     }
 
     /**
@@ -2253,7 +2276,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun showSkinGuide(anchor: View): Boolean {
         val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(keyboardSkinId) ?: return false
         hideAllPopWindow()
-        val presenter = skinGuide ?: com.kazumaproject.core.ui.skin.SkinGuidePopup(context).also { skinGuide = it }
+        val presenter = skinGuide ?: com.kazumaproject.core.ui.skin.SkinGuidePopup(context).also {
+            skinGuide = it
+            it.setKeyboardFont(keyboardFontSnapshot)
+        }
         val guide = presenter.show(anchor, skin, mapOf(
             com.kazumaproject.core.ui.skin.PopupDirection.CENTER to popTextActive.text,
             com.kazumaproject.core.ui.skin.PopupDirection.LEFT to popTextLeft.text,

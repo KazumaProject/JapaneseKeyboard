@@ -247,6 +247,9 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwriti
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActivity
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
+import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.InlineSuggestionStripState
@@ -551,6 +554,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var appPreference: AppPreference
+
+    @Inject
+    lateinit var localFontRepository: LocalFontRepository
 
     @Inject
     lateinit var inputMethodManager: InputMethodManager
@@ -869,6 +875,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var kanaKanjiEngineActivationJob: Job? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val localFontScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val forwardDeleteCoordinator by lazy {
         ForwardDeleteCoordinator(
@@ -2551,6 +2558,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (selection != configured) splitSettings.saveSelection(slot, selection)
                     val binding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(main.root.context))
                     val adapter = SuggestionAdapter()
+                    val fontSnapshot = localFontRepository.state.value.snapshot
+                    KeyboardFontApplicator.applyToKeyboardViews(binding.keyboardViewFloating, fontSnapshot)
+                    KeyboardFontApplicator.applyToKeyboardViews(binding.gojuonViewFloating, fontSnapshot)
+                    KeyboardFontApplicator.applyToKeyboardViews(binding.qwertyViewFloating, fontSnapshot)
+                    KeyboardFontApplicator.applyToKeyboardViews(binding.customLayoutFloating, fontSnapshot)
+                    KeyboardFontApplicator.applyToKeyboardViews(binding.floatingSymbolKeyboard, fontSnapshot)
+                    adapter.setKeyboardFont(fontSnapshot)
                     var minimumWidthDp = when (selection.type) {
                         KeyboardType.GOJUON -> 360
                         KeyboardType.SUMIRE -> 200
@@ -2869,6 +2883,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onCreate() {
         super.onCreate()
+        localFontScope.launch {
+            runCatching { localFontRepository.loadIfNeeded() }
+                .onFailure { Timber.w(it, "Unable to restore the saved local keyboard font") }
+            localFontRepository.state.collect { state -> applyLocalKeyboardFont(state.snapshot) }
+        }
         window.window?.let { imeWindow ->
             if (supportsNavbarExtension) {
                 WindowCompat.setDecorFitsSystemWindows(imeWindow, false)
@@ -3133,7 +3152,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateSurfaceHost = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost(
                 binding.shortcutToolbarRecyclerview, binding.candidateTabLayout,
                 binding.suggestionViewParent, binding.suggestionRecyclerView, binding.candidatesRowView,
-            ).also { it.attach(target) }
+            ).also {
+                it.setKeyboardFont(KeyboardFontApplicator.processSnapshot)
+                it.attach(target)
+            }
             binding.suggestionRecyclerView.addOnLayoutChangeListener(floatingCandidateSizeListener)
         }
         splitController?.setCandidatesDetached(floatingCandidateSurfaceActive)
@@ -5981,6 +6003,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        localFontScope.cancel()
         keyboardSelectionPopupWindow?.dismiss()
         stopSplitKeyboard()
         dictionaryFloats?.destroy()
@@ -6575,7 +6598,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return false
         }
         return runCatching {
+            applyLocalFontToPopupContent(popupWindow.contentView)
             popupWindow.showAtLocation(anchorView, gravity, x, y)
+            popupWindow.contentView.post { applyLocalFontToPopupContent(popupWindow.contentView) }
             true
         }.onFailure { throwable ->
             Timber.w(throwable, "$source: showAtLocation failed")
@@ -7186,6 +7211,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun applyLocalKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        mainLayoutBinding?.let { binding ->
+            KeyboardFontApplicator.applyToKeyboardViews(binding.keyboardView, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.gojuonView, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.qwertyView, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.customLayoutDefault, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.keyboardSymbolView, snapshot)
+            listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setKeyboardFont(snapshot) }
+        }
+        floatingKeyboardBinding?.let { binding ->
+            KeyboardFontApplicator.applyToKeyboardViews(binding.keyboardViewFloating, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.gojuonViewFloating, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.qwertyViewFloating, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.customLayoutFloating, snapshot)
+            KeyboardFontApplicator.applyToKeyboardViews(binding.floatingSymbolKeyboard, snapshot)
+            binding.candidatesRowView.adapter?.let {
+                if (it is SuggestionAdapter) it.setKeyboardFont(snapshot)
+            }
+        }
+        if (this::listAdapter.isInitialized) listAdapter.setKeyboardFont(snapshot)
+        listOfNotNull(keyboardSelectionPopupWindow, imeSwitchPopupWindow)
+            .distinct()
+            .forEach { applyLocalFontToPopupContent(it.contentView) }
+        candidateSurfaceHost?.setKeyboardFont(snapshot)
+        if (::floatingDockView.isInitialized) floatingDockView.setKeyboardFont(snapshot)
+        if (::floatingPhysicalToolbarView.isInitialized) floatingPhysicalToolbarView.setKeyboardFont(snapshot)
+        if (::floatingModeSwitchView.isInitialized) floatingModeSwitchView.setKeyboardFont(snapshot)
+        composingGuide?.setKeyboardFont(snapshot)
+        dictionaryFloats?.setKeyboardFont(snapshot)
+        splitController?.setKeyboardFont(snapshot)
+    }
+
     private fun setupKeyboardView() {
         stopSplitKeyboard()
         Timber.d("setupKeyboardView: Called")
@@ -7322,6 +7379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         releaseFloatingKeyboardBackgroundVideoPlayer()
         floatingKeyboardPanel = null
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
+        applyLocalKeyboardFont(localFontRepository.state.value.snapshot)
         // floatingKeyboardBinding を作り直したので configureQwertyView guard をリセット。
         isFloatingQwertyConfigured = false
         lastAppliedFloatingEditWidthPx = -1
@@ -11377,6 +11435,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         imeSwitchPopupWindow = null
         updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
         keyboardSelectionPopupWindow = popupWindow
+        applyLocalFontToPopupContent(popupWindow.contentView)
+    }
+
+    private fun applyLocalFontToPopupContent(root: View) {
+        KeyboardFontApplicator.applyToKeyboardViews(root, KeyboardFontApplicator.processSnapshot)
+    }
+
+    /** ArrayAdapter creates rows lazily, so style each row when ListView/Spinner asks for it. */
+    private fun <T> createKeyboardFontArrayAdapter(
+        context: Context,
+        layout: Int,
+        items: List<T>,
+    ): ArrayAdapter<T> = object : ArrayAdapter<T>(context, layout, items) {
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+            super.getView(position, convertView, parent).also(::applyLocalFontToPopupContent)
+
+        override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
+            super.getDropDownView(position, convertView, parent).also(::applyLocalFontToPopupContent)
     }
 
     private fun updateKeyboardSelectionPopupBackInvokedCallback(
@@ -11472,7 +11548,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items)
+            val adapter = createKeyboardFontArrayAdapter(
+                this@IMEService,
+                R.layout.list_item_layout,
+                items,
+            )
             listView.adapter = adapter
 
             replaceKeyboardSelectionPopupWindow(PopupWindow(
@@ -11560,10 +11640,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         yomiEditText.setText(insertString)
         tangoEditText.setText(candidate.string)
-        matchModeSpinner.adapter = ArrayAdapter.createFromResource(
+        matchModeSpinner.adapter = createKeyboardFontArrayAdapter(
             context,
-            R.array.ng_word_match_mode_entries,
             android.R.layout.simple_spinner_item,
+            context.resources.getStringArray(R.array.ng_word_match_mode_entries).toList(),
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
@@ -12353,6 +12433,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
+                    applyLocalFontToPopupContent(view)
                     return view
                 }
             }
@@ -12573,7 +12654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
-                    val adapter = ArrayAdapter(
+                    val adapter = createKeyboardFontArrayAdapter(
                         this@IMEService, R.layout.list_item_layout, templateNames
                     )
                     listView.adapter = adapter
@@ -12621,7 +12702,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
-                    val adapter = ArrayAdapter(
+                    val adapter = createKeyboardFontArrayAdapter(
                         this@IMEService, R.layout.list_item_layout, currentDates
                     )
                     listView.adapter = adapter
@@ -26476,7 +26557,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
                 val listView = popupView.findViewById<ListView>(R.id.popup_listview).apply {
                     choiceMode = ListView.CHOICE_MODE_SINGLE
-                    adapter = ArrayAdapter(
+                    adapter = createKeyboardFontArrayAdapter(
                         this@IMEService,
                         R.layout.list_item_layout,
                         macros.map { it.name },

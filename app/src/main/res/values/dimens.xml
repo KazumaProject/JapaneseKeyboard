@@ -1,0 +1,5 @@
+<resources>
+    <dimen name="local_font_screen_padding">20dp</dimen>
+    <dimen name="local_font_section_spacing">12dp</dimen>
+    <dimen name="local_font_sample_padding">12dp</dimen>
+</resources>

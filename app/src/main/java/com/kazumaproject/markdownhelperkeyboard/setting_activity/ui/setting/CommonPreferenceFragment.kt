@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -30,6 +31,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Cinemat
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
+import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
@@ -37,6 +39,9 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal data class KeyboardTouchEffectPreferenceVisibility(
     val showQuality: Boolean,
@@ -89,6 +94,9 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     @Inject
     lateinit var appPreference: AppPreference
 
+    @Inject
+    lateinit var localFontRepository: LocalFontRepository
+
     private var count = 0
 
     private val exportLauncher =
@@ -107,18 +115,21 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     private val importLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@registerForActivityResult
-            runCatching {
-                val json = readTextFromUri(uri)
-                AppPreference.importAllFromJson(json, replaceAll = true)
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val json = withContext(Dispatchers.IO) { readTextFromUri(uri) }
+                    AppPreference.importAllFromJson(json, replaceAll = true)
 
-                // 旧→新キー移行などがあるなら復元後に実行
-                AppPreference.migrateSumirePreferenceIfNeeded()
-                AppPreference.migratePredictionLookaheadPreferenceIfNeeded()
-            }.onSuccess {
-                toast("Backup imported")
-                requireActivity().recreate()
-            }.onFailure {
-                toast("Import failed: ${it.message}")
+                    // Reset device-local display assets only after the JSON has been applied.
+                    localFontRepository.restoreStandard()
+                    AppPreference.migrateSumirePreferenceIfNeeded()
+                    AppPreference.migratePredictionLookaheadPreferenceIfNeeded()
+                    toast("Backup imported")
+                    requireActivity().recreate()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    toast("Import failed: ${e.message}")
+                }
             }
         }
 
@@ -542,6 +553,11 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             navigateSafely(
                 R.id.keyCandidateLetterSizeFragment
             )
+            true
+        }
+
+        findPreference<Preference>("local_font_settings_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.localFontSettingsFragment)
             true
         }
 

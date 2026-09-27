@@ -13,6 +13,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
@@ -27,7 +30,7 @@ import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
  * direction. It paints a light guide card, a blue current-output pill, and only the available
  * next labels, matching the guide figures used by TFBi documentation.
  */
-class TfbiGuidePopupView(context: Context) : View(context) {
+class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
 
     private val defaultPanelColor = if (context.isDarkThemeOn()) {
         context.getThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
@@ -72,6 +75,17 @@ class TfbiGuidePopupView(context: Context) : View(context) {
     private var popupTextColor: Int = defaultTextColor
     private var activeTextColor: Int = Color.WHITE
     private var inputTextTransform: (String) -> String = { it }
+
+    init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(textPaint, snapshot)
+        KeyboardFontApplicator.apply(activeTextPaint, snapshot)
+        invalidate()
+    }
 
     fun setState(state: TfbiGuidePopupState) {
         this.state = state
