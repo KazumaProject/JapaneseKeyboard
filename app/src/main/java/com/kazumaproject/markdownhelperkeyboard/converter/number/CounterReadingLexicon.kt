@@ -13,9 +13,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
  * - https://www.kyozai.jpf.go.jp/kyozai/material/BTS00010/ja/render.do
  * - https://www.jpf.go.jp/j/urawa/j_rsorcs/textbook/dl/setsumei/setsumei_all.pdf (pp. 268–270)
  * - https://laits.utexas.edu/japanese/joshu/counters/counters_category.php
+ * - https://ncu.repo.nii.ac.jp/record/1536/files/B421-19980331-41.pdf (documented 三足 reading variation)
  * - https://www.kyozai.jpf.go.jp/kyozai/material/DNE00012/ja/render.do
  * - https://marugoto.jpf.go.jp/assets/docs/download/elementary1_c/MarugotoElementary1CompetencesVocabularyIndex_EN.pdf
- * - https://www.bunka.go.jp/seisaku/kokugo_nihongo/kyoiku/seikatsusha/h25_nihongo_program_a/pdf/program_a_23.pdf
  * - https://www.bunka.go.jp/seisaku/kokugo_nihongo/kyoiku/seikatsusha/h25_nihongo_program_a/pdf/a_35.pdf
  * - https://www.coelang.tufs.ac.jp/ja/zt/gmod/contents/exercises/019.html
  * - https://www.kyozai.jpf.go.jp/kyozai/material/BTS00020/ja/render.do
@@ -50,7 +50,7 @@ object CounterReadingLexicon {
         "頭" to listOf("いっとう", "にとう", "さんとう", "よんとう", "ごとう", "ろくとう", "ななとう", "はっとう", "きゅうとう", "じゅっとう"),
         "台" to listOf("いちだい", "にだい", "さんだい", "よんだい", "ごだい", "ろくだい", "ななだい", "はちだい", "きゅうだい", "じゅうだい"),
         "着" to listOf("いっちゃく", "にちゃく", "さんちゃく", "よんちゃく", "ごちゃく", "ろくちゃく", "ななちゃく", "はっちゃく", "きゅうちゃく", "じゅっちゃく"),
-        "足" to listOf("いっそく", "にそく", "さんぞく", "よんそく", "ごそく", "ろくそく", "ななそく", "はっそく", "きゅうそく", "じゅっそく"),
+        "足" to listOf("いっそく", "にそく", "さんそく", "よんそく", "ごそく", "ろくそく", "ななそく", "はっそく", "きゅうそく", "じゅっそく"),
         "回" to listOf("いっかい", "にかい", "さんかい", "よんかい", "ごかい", "ろっかい", "ななかい", "はっかい", "きゅうかい", "じゅっかい"),
         "階" to listOf("いっかい", "にかい", "さんかい", "よんかい", "ごかい", "ろっかい", "ななかい", "はっかい", "きゅうかい", "じゅっかい"),
         "番" to listOf("いちばん", "にばん", "さんばん", "よんばん", "ごばん", "ろくばん", "ななばん", "はちばん", "きゅうばん", "じゅうばん"),
@@ -125,6 +125,9 @@ object CounterReadingLexicon {
         (listOf("いちにち", "ふつか", "みっか", "よっか", "いつか", "むいか", "なのか", "ようか", "ここのか", "とおか"))
             .forEachIndexed { index, reading -> add(Reading(index + 1, "日", reading, "日数")) }
         add(Reading(3, "階", "さんがい"))
+        // Japan Foundation material lists さんそく for 3足; a phonology study documents the
+        // voiced さんぞく variant as well. Both map to the same counter meaning.
+        add(Reading(3, "足", "さんぞく"))
         add(Reading(7, "人", "しちにん"))
         add(Reading(9, "人", "くにん"))
         add(Reading(14, "日", "じゅうよっか", "日数"))

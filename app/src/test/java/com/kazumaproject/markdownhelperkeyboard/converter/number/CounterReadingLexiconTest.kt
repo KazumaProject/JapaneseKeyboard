@@ -34,6 +34,7 @@ class CounterReadingLexiconTest {
             "ろっぽん" to setOf(6 to "本"),
             "はっぽん" to setOf(8 to "本"),
             "じゅっぽん" to setOf(10 to "本"),
+            "さんそく" to setOf(3 to "足"),
             "さんぞく" to setOf(3 to "足"),
             "さんがい" to setOf(3 to "階"),
             "はっかい" to setOf(8 to "回", 8 to "階"),
@@ -49,7 +50,6 @@ class CounterReadingLexiconTest {
                 CounterReadingLexicon.matchAll(reading).map { it.value to it.counter }.toSet(),
             )
         }
-        assertFalse(CounterReadingLexicon.matchAll("さんそく").any { it.counter == "足" })
         assertEquals(setOf("日"), CounterReadingLexicon.matchAll("ついたち").map { it.counter }.toSet())
         assertEquals("日数", CounterReadingLexicon.matchAll("いちにち").single().interpretation)
         assertTrue(CounterReadingLexicon.matchAll("ごかい").map { it.counter }.containsAll(setOf("回", "階")))
@@ -82,7 +82,7 @@ class CounterReadingLexiconTest {
 
         assertTrue(surfaces("ごかい").containsAll(setOf("5回", "5階")))
         assertTrue(surfaces("さんぞく").contains("3足"))
-        assertFalse(surfaces("さんそく").contains("3足"))
+        assertTrue(surfaces("さんそく").contains("3足"))
         assertTrue(surfaces("さんじゅうにまい").contains("32枚"))
         assertTrue(surfaces("さんじゅうにほん").contains("32本"))
         assertTrue(surfaces("にじゅうにほん").contains("22本"))
