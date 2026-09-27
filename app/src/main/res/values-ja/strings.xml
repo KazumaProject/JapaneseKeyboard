@@ -1624,6 +1624,15 @@
     <string name="incremental_conversion_session_title">セッション型変換エンジン</string>
     <string name="incremental_conversion_session_summary_on">変換状態を保持し、差分更新で候補を生成します。次の入力セッションから反映されます。</string>
     <string name="incremental_conversion_session_summary_off">従来の変換エンジンを使用します。</string>
+    <string name="number_candidate_additions_title">数字の候補を追加</string>
+    <string name="number_candidate_additions_summary">数字の別表記や助数詞の候補を自動で追加します。辞書・学習済みの候補は保持されます。</string>
+    <string name="number_style_order_title">数字の表記優先順</string>
+    <string name="number_style_order_half_full_kanji">半角 → 全角 → 漢数字</string>
+    <string name="number_style_order_half_kanji_full">半角 → 漢数字 → 全角</string>
+    <string name="number_style_order_full_half_kanji">全角 → 半角 → 漢数字</string>
+    <string name="number_style_order_full_kanji_half">全角 → 漢数字 → 半角</string>
+    <string name="number_style_order_kanji_half_full">漢数字 → 半角 → 全角</string>
+    <string name="number_style_order_kanji_full_half">漢数字 → 全角 → 半角</string>
     <string name="prediction_behavior_category_title">予測変換</string>
     <string name="prediction_language_category_title">対象言語</string>
     <string name="prediction_source_category_title">候補ソース</string>

@@ -221,7 +221,32 @@ fun Long.convertToKanjiNotation(): String {
     return parts.joinToString("")
 }
 
+/**
+ * Renders a numeric input as kanji without collapsing a leading-zero digit sequence into a
+ * quantity. A value such as `0012` is an identifier/digit sequence, so its kanji form is
+ * `〇〇一二`, not `十二`.
+ */
+fun String.toKanjiPreservingLeadingZeroes(): String? {
+    if (isEmpty() || any { it !in '0'..'9' }) return null
+    if (length > 1 && startsWith('0')) {
+        return map { "〇一二三四五六七八九"[it - '0'] }.joinToString("")
+    }
+    return toLongOrNull()?.toKanji()
+}
+
+/** See [toKanjiPreservingLeadingZeroes]. */
+fun String.convertToKanjiNotationPreservingLeadingZeroes(): String? {
+    if (isEmpty() || any { it !in '0'..'9' }) return null
+    if (length > 1 && startsWith('0')) {
+        return map { "〇一二三四五六七八九"[it - '0'] }.joinToString("")
+    }
+    return toLongOrNull()?.convertToKanjiNotation()
+}
+
 fun String.addCommasToNumber(): String {
+    // Keep numeric identifiers and other digit strings with leading zeroes verbatim. Parsing
+    // them as a Long would silently turn e.g. "0012" into "12".
+    if (length > 1 && first() == '0' && all(Char::isDigit)) return this
     return try {
         val number = if (this.contains(".")) {
             this.toDouble() // Parse as Double for decimal numbers

@@ -12,6 +12,21 @@
             android:title="@string/incremental_conversion_session_title"
             app:iconSpaceReserved="false" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="number_candidate_additions_preference"
+            android:summary="@string/number_candidate_additions_summary"
+            android:title="@string/number_candidate_additions_title"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="half_full_kanji"
+            android:entries="@array/number_style_order_entries"
+            android:entryValues="@array/number_style_order_values"
+            android:key="number_style_order_preference"
+            android:title="@string/number_style_order_title"
+            app:useSimpleSummaryProvider="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/prediction_language_category_title">

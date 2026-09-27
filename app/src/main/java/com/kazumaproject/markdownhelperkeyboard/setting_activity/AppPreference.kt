@@ -187,6 +187,10 @@ object AppPreference {
         Pair("zero_query_suggestion_preference", false)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
+    private val NUMBER_CANDIDATE_ADDITIONS_PREFERENCE =
+        Pair("number_candidate_additions_preference", true)
+    private val NUMBER_STYLE_ORDER_PREFERENCE =
+        Pair("number_style_order_preference", "half_full_kanji")
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
     private val INCREMENTAL_CONVERSION_SESSION_PREFERENCE =
         Pair("incremental_conversion_session_preference", false)
@@ -1884,6 +1888,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var number_candidate_additions_preference: Boolean
+        get() = preferences.getBoolean(
+            NUMBER_CANDIDATE_ADDITIONS_PREFERENCE.first,
+            NUMBER_CANDIDATE_ADDITIONS_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(NUMBER_CANDIDATE_ADDITIONS_PREFERENCE.first, value)
+        }
+
+    var number_style_order_preference: String
+        get() = preferences.getString(
+            NUMBER_STYLE_ORDER_PREFERENCE.first,
+            NUMBER_STYLE_ORDER_PREFERENCE.second,
+        ) ?: NUMBER_STYLE_ORDER_PREFERENCE.second
+        set(value) = preferences.edit {
+            val normalized = value.takeIf {
+                it in setOf(
+                    "half_full_kanji", "half_kanji_full", "full_half_kanji",
+                    "full_kanji_half", "kanji_half_full", "kanji_full_half",
+                )
+            } ?: NUMBER_STYLE_ORDER_PREFERENCE.second
+            it.putString(NUMBER_STYLE_ORDER_PREFERENCE.first, normalized)
         }
 
     var conversion_beam_width_preference: Int

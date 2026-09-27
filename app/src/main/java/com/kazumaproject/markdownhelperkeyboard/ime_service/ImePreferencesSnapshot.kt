@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBack
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberPresentationConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -256,6 +257,7 @@ data class ImePreferencesSnapshot(
     val enableGemmaTranslationPreference: Boolean,
     val utilityCandidateConfig: UtilityCandidateConfig,
     val keyboardSkin: KeyboardSkinId = KeyboardSkinId.DEFAULT,
+    val numberPresentationConfig: NumberPresentationConfig = NumberPresentationConfig(),
 ) {
     /** Presentation overrides only: saved values and all input/layout fields remain intact. */
     fun withKeyboardSkinAppearance(): ImePreferencesSnapshot {
@@ -732,6 +734,12 @@ data class ImePreferencesSnapshot(
                 enableGemmaTranslationPreference =
                     AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference,
                 utilityCandidateConfig = appPreference.utility_candidate_config,
+                numberPresentationConfig = NumberPresentationConfig(
+                    additionsEnabled = appPreference.number_candidate_additions_preference,
+                    styleOrder = NumberPresentationConfig.parseStyleOrder(
+                        appPreference.number_style_order_preference,
+                    ),
+                ),
             )
         }
     }

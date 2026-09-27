@@ -1664,6 +1664,15 @@
     <string name="incremental_conversion_session_title">Session-based conversion engine</string>
     <string name="incremental_conversion_session_summary_on">Keep conversion state and update candidates incrementally. Applies from the next input session.</string>
     <string name="incremental_conversion_session_summary_off">Use the conventional conversion engine.</string>
+    <string name="number_candidate_additions_title">Add numeric conversion candidates</string>
+    <string name="number_candidate_additions_summary">Add generated number spellings and counter candidates. Existing dictionary and learned candidates are kept.</string>
+    <string name="number_style_order_title">Number spelling priority</string>
+    <string name="number_style_order_half_full_kanji">Half-width → full-width → kanji</string>
+    <string name="number_style_order_half_kanji_full">Half-width → kanji → full-width</string>
+    <string name="number_style_order_full_half_kanji">Full-width → half-width → kanji</string>
+    <string name="number_style_order_full_kanji_half">Full-width → kanji → half-width</string>
+    <string name="number_style_order_kanji_half_full">Kanji → half-width → full-width</string>
+    <string name="number_style_order_kanji_full_half">Kanji → full-width → half-width</string>
     <string name="prediction_behavior_category_title">Prediction behavior</string>
     <string name="prediction_language_category_title">Prediction languages</string>
     <string name="prediction_source_category_title">Prediction sources</string>

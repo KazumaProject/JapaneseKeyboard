@@ -2591,6 +2591,9 @@ class FindPath(
                         inputStart = currentPosition,
                         inputEnd = nextPosition,
                         output = node.tango,
+                        reading = node.yomiUsed,
+                        leftId = node.l,
+                        rightId = node.r,
                     ),
                 )
                 currentPosition = nextPosition
@@ -2653,7 +2656,7 @@ class FindPath(
             in 12..28, in 2590..2670 -> true
             in 577..856 -> true
             in 2390..2471 -> true
-            in 1842..2195 -> idInt !in 1937..2040
+            in 1842..2195 -> idInt !in 1937..2040 && idInt !in 2044..2046
             else -> false
         }
     }

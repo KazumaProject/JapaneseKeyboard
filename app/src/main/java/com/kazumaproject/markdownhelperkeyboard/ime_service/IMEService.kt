@@ -212,6 +212,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidatePresenter
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateMetadataInheritance
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberPresentationConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
@@ -530,6 +533,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val cacheKey: String,
         val rerankTargets: List<IndexedValue<Candidate>>,
         val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>>,
+        val numberPresentationConfig: NumberPresentationConfig,
     )
 
     private data class ZenzContext(
@@ -1717,6 +1721,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var liveConversionStartLength: Int = 1
     private var showLiveConversionCandidateYomi: Boolean = false
     private var nBest: Int? = 4
+    private var numberPresentationConfig: NumberPresentationConfig = NumberPresentationConfig()
+    private var latestNumberPresentationInput: String? = null
+    private var latestNumberPresentationConfig: NumberPresentationConfig = NumberPresentationConfig()
     private var conversionBeamWidth: Int = 20
     private var flickSensitivityPreferenceValue: Int? = 100
     private var flickThresholdShapePreferenceValue: FlickThresholdShape =
@@ -3610,6 +3617,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setShowCandidateYomiForLiveConversion(shouldShowLiveConversionCandidateYomi)
         }
         nBest = preferences.nBest
+        numberPresentationConfig = preferences.numberPresentationConfig.normalized()
         conversionBeamWidth = preferences.conversionBeamWidth
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         flickThresholdShapePreferenceValue = FlickThresholdShape.fromPreferenceValue(
@@ -6081,6 +6089,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customDirectModeSpaceHankakuPreference = true
         isLiveConversionEnable = null
         nBest = null
+        numberPresentationConfig = NumberPresentationConfig()
+        latestNumberPresentationInput = null
+        latestNumberPresentationConfig = NumberPresentationConfig()
         conversionBeamWidth = 20
         predictionConfig = PredictionConfig()
         lastCandidate = null
@@ -18348,10 +18359,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.length <= 1 || !insertString.isAllHiraganaWithSymbols()) return null
         if (candidates.size < 2) return null
 
+        val seenNumberFamilies = hashSetOf<String>()
         val rerankTargets = candidates.withIndex()
-            .filter {
-                it.value.type != CANDIDATE_TYPE_TEXT_MACRO &&
-                    it.value.length.toInt() == insertString.length
+            .filter { indexed ->
+                val numberMetadata = indexed.value.numberMetadata
+                val isFirstNumberRepresentative = numberMetadata?.familyKey?.let(seenNumberFamilies::add)
+                    ?: true
+                indexed.value.type != CANDIDATE_TYPE_TEXT_MACRO &&
+                    indexed.value.length.toInt() == insertString.length &&
+                    numberMetadata?.isFallback != true &&
+                    isFirstNumberRepresentative
             }
             .take(ZENZ_RERANK_TOP_K)
 
@@ -18375,6 +18392,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 latestCandidateSegmentsByString
             } else {
                 emptyMap()
+            },
+            numberPresentationConfig = if (latestNumberPresentationInput == insertString) {
+                latestNumberPresentationConfig
+            } else {
+                numberPresentationConfig.normalized()
             },
         )
     }
@@ -18452,6 +18474,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             input = insertString,
             candidates = reranked,
             candidateSegmentsByString = plan.candidateSegmentsByString,
+            numberConfig = plan.numberPresentationConfig,
         )
     }
 
@@ -20033,22 +20056,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun resolveInitialBunsetsuSplitPositions(
         input: String,
         mergedCandidates: List<Candidate>,
-        engineResult: BunsetsuCandidateResult?
+        engineResult: BunsetsuCandidateResult?,
+        candidateSegments: Map<String, List<CandidateConversionSegment>>,
     ): List<Int> {
         val firstCandidate = mergedCandidates.firstOrNull() ?: return emptyList()
         val result = engineResult ?: return emptyList()
-        if (!result.candidates.contains(firstCandidate)) {
-            return emptyList()
+        val candidatePattern = if (result.candidates.contains(firstCandidate)) {
+            result.splitPatternByCandidateString[firstCandidate.string]
+                ?: if (result.candidates.firstOrNull() == firstCandidate) {
+                    result.primarySplitPositions
+                } else {
+                    emptyList()
+                }
+        } else {
+            candidateSegments[firstCandidate.string]?.let { segments ->
+                splitPositionsFromCandidateSegments(segments)
+            }.orEmpty()
         }
 
-        val candidatePattern = result.splitPatternByCandidateString[firstCandidate.string]
-            ?: if (result.candidates.firstOrNull() == firstCandidate) {
-                result.primarySplitPositions
-            } else {
-                emptyList()
-            }
-
-        return sanitizeSplitPositions(input, candidatePattern)
+        val numericSpans = recognizedNumericInputSpans(mergedCandidates, candidateSegments)
+        return sanitizeSplitPositions(
+            input,
+            NumberCandidatePresenter.filterSplitPositionsInsideNumericSpans(
+                candidatePattern,
+                numericSpans,
+            ),
+        )
     }
 
     private fun updateBunsetsuStateAfterCandidateMerge(
@@ -20064,18 +20097,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        bunsetsuSplitPatterns = engineResult.splitPatterns
+        val effectiveCandidateSegments = if (latestCandidateSegmentInput == input) {
+            latestCandidateSegmentsByString
+        } else {
+            candidateSegments
+        }
+        val segmentPatterns = mergedCandidates.mapNotNull { candidate ->
+            effectiveCandidateSegments[candidate.string]?.let(::splitPositionsFromCandidateSegments)
+        }
+        val numericSpans = recognizedNumericInputSpans(mergedCandidates, effectiveCandidateSegments)
+        val safeEnginePatterns = engineResult.splitPatterns.map { pattern ->
+            NumberCandidatePresenter.filterSplitPositionsInsideNumericSpans(pattern, numericSpans)
+        }
+        bunsetsuSplitPatterns = (safeEnginePatterns + segmentPatterns)
             .map { sanitizeSplitPositions(input, it) }
             .distinct()
         bunsetsuPositionList = resolveInitialBunsetsuSplitPositions(
             input = input,
             mergedCandidates = mergedCandidates,
-            engineResult = engineResult
+            engineResult = engineResult,
+            candidateSegments = effectiveCandidateSegments,
         )
         latestBunsetsuConversionSnapshot = BunsetsuConversionSnapshot(
-            input, mergedCandidates, candidateSegments, bunsetsuSplitPatterns,
+            input, mergedCandidates, effectiveCandidateSegments, bunsetsuSplitPatterns,
             bunsetsuPositionList.orEmpty(),
         )
+    }
+
+    private fun splitPositionsFromCandidateSegments(
+        segments: List<CandidateConversionSegment>,
+    ): List<Int> = NumberCandidatePresenter.splitPositionsFromSegments(
+        segments = segments,
+        isIndependentWordPos = ::isIndependentWordPos,
+    )
+
+    private fun recognizedNumericInputSpans(
+        candidates: List<Candidate>,
+        candidateSegments: Map<String, List<CandidateConversionSegment>>,
+    ): List<Pair<Int, Int>> = candidates.flatMap { candidate ->
+        val metadataSpans = candidate.numberMetadata?.numericSpans
+            ?.map { it.inputStart to it.inputEnd }
+            .orEmpty()
+        val pathSpans = candidateSegments[candidate.string]
+            ?.let(NumberCandidatePresenter::numericInputSpans)
+            .orEmpty()
+        metadataSpans + pathSpans
+    }.filter { (start, end) -> start >= 0 && end > start }.distinct()
+
+    private fun isIndependentWordPos(id: Short): Boolean = when (val value = id.toInt()) {
+        in 12..28, in 2590..2670, in 577..856, in 2390..2471 -> true
+        in 1842..2195 -> value !in 1937..2040 && value !in 2044..2046
+        else -> false
     }
 
     private fun buildBunsetsuSegments(
@@ -20120,19 +20192,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
         val templateCandidates = getLegacyUserTemplateCandidates(input)
-        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
         val candidates = (templateCandidates + result.candidates + romajiCandidates).filter {
-            it.length.toInt() == input.length &&
-                !NgWordMatcher.matchesAny(input, it.string, ngWords)
+            it.length.toInt() == input.length
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
-        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
-            candidateOrderOverrideRepository.applyOrderFromSnapshot(
-                input = input,
-                candidates = candidates,
-                candidateSegmentsByString = result.candidateSegmentsByString,
-            )
-        } else candidates
-        return result.copy(candidates = orderedCandidates)
+        val orderedCandidates = applyMergedCandidateOrder(
+            input = input,
+            candidates = candidates,
+            candidateSegmentsByString = result.candidateSegmentsByString,
+            numberConfig = result.numberPresentationConfig,
+        )
+        val segments = if (latestCandidateSegmentInput == input) {
+            latestCandidateSegmentsByString
+        } else {
+            result.candidateSegmentsByString
+        }
+        return result.copy(
+            candidates = orderedCandidates,
+            candidateSegmentsByString = segments,
+        )
     }
 
     private suspend fun loadCandidatesForBunsetsuSegment(
@@ -20199,7 +20276,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         paths = result.candidateSegmentsByString,
                         splitPatterns = result.bunsetsuResult?.splitPatterns.orEmpty(),
                         initialSplitPositions = resolveInitialBunsetsuSplitPositions(
-                            input, result.candidates, result.bunsetsuResult,
+                            input,
+                            result.candidates,
+                            result.bunsetsuResult,
+                            result.candidateSegmentsByString,
                         ),
                     )
                 }
@@ -25980,9 +26060,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 emptyList()
             }
 
-        val ngWords: List<NgWord> =
-            if (isNgWordEnable == true) ngWordsList.value else emptyList()
-
         val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
         val enableTypoCorrectionJapaneseFlick =
             enableFlickPref && qwertyMode.value in setOf(
@@ -26016,14 +26093,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
-        val filteredCandidates = result.filter { candidate ->
-            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
-        }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
+        val filteredCandidates = result.withoutHentaiganaCandidatesIfNeeded()
+            .distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
             candidates = filteredCandidates,
             candidateSegmentsByString = coreResult.candidateSegmentsByString,
+            numberConfig = coreResult.numberPresentationConfig,
         )
 
         if (candidateRequestTracker.isCurrent(token)) {
@@ -26150,15 +26227,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
         val filteredCandidates = measureDebugStage("IMEService.getSuggestionList.ngWordFilterDistinct") {
-            result.filter { candidate ->
-                !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
-            }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
+            result.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
         }
 
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
             candidates = filteredCandidates,
             candidateSegmentsByString = coreResult.candidateSegmentsByString,
+            numberConfig = coreResult.numberPresentationConfig,
         )
 
         if (token == null || candidateRequestTracker.isCurrent(token)) {
@@ -26254,8 +26330,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 emptyList()
             }
 
-        val ngWords: List<NgWord> =
-            if (isNgWordEnable == true) ngWordsList.value else emptyList()
         val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
@@ -26275,14 +26349,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
-        val filteredCandidates = result.filter { candidate ->
-            !NgWordMatcher.matchesAny(insertString, candidate.string, ngWords)
-        }.withoutHentaiganaCandidatesIfNeeded().distinctIncludingTextMacroActions()
+        val filteredCandidates = result.withoutHentaiganaCandidatesIfNeeded()
+            .distinctIncludingTextMacroActions()
 
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
             candidates = filteredCandidates,
             candidateSegmentsByString = coreResult.candidateSegmentsByString,
+            numberConfig = coreResult.numberPresentationConfig,
         )
 
         if (candidateRequestTracker.isCurrent(token)) {
@@ -26301,6 +26375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         candidates: List<Candidate>,
         candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
+        numberConfig: NumberPresentationConfig = numberPresentationConfig.normalized(),
     ): List<Candidate> {
         val promotedCandidates = measureDebugStage("IMEService.exactInputPromotion") {
             ExactInputCandidatePromotionPolicy.promote(
@@ -26308,21 +26383,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidates = candidates,
             )
         }
-        return if (appPreference.candidate_order_override_enable_preference == true) {
-            if (candidateSegmentsByString.isNotEmpty()) {
-                latestCandidateSegmentInput = input
-                latestCandidateSegmentsByString = candidateSegmentsByString
-            }
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        val presentation = measureDebugStage("IMEService.numberCandidatePresentation") {
+            NumberCandidatePresenter.present(
+                candidates = promotedCandidates,
+                segmentsByCandidateString = candidateSegmentsByString,
+                config = numberConfig,
+                isNgWord = { candidate ->
+                    NgWordMatcher.matchesAny(input, candidate.string, ngWords)
+                },
+            )
+        }
+        latestCandidateSegmentInput = input
+        latestCandidateSegmentsByString = presentation.segmentsByCandidateString
+        latestNumberPresentationInput = input
+        latestNumberPresentationConfig = numberConfig
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
-                    candidates = promotedCandidates,
-                    candidateSegmentsByString = candidateSegmentsByString,
+                    candidates = presentation.candidates,
+                    candidateSegmentsByString = presentation.segmentsByCandidateString,
                 )
             }
         } else {
-            promotedCandidates
+            presentation.candidates
         }
+        return NumberCandidatePresenter.limitForDisplay(
+            candidates = orderedCandidates,
+            config = numberConfig,
+            requestedMeanings = nBest ?: 4,
+            hasNumericFamilies = presentation.hasNumericFamilies,
+        )
     }
 
     /**
@@ -26331,7 +26423,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * behavior for ordinary conversion candidates.
      */
     private fun List<Candidate>.distinctIncludingTextMacroActions(): List<Candidate> =
-        distinctBy { candidate ->
+        NumberCandidateMetadataInheritance.attachToLearnedDuplicates(this).distinctBy { candidate ->
             if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
                 "text-macro:${candidate.sourceId}"
             } else {
@@ -26342,14 +26434,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun getSuggestionListEnglishKana(
         insertString: String,
     ): List<Candidate> {
-        val engineCandidates = withContext(kanaKanjiConversionDispatcher) {
+        val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
                 mode = CandidateQueryMode.EISUKANA,
                 learnRepository = null,
-            ).candidates
+            )
         }
-        return engineCandidates.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        val candidates = coreResult.candidates.withoutHentaiganaCandidatesIfNeeded()
+            .distinctIncludingTextMacroActions()
+        return applyMergedCandidateOrder(
+            input = insertString,
+            candidates = candidates,
+            candidateSegmentsByString = coreResult.candidateSegmentsByString,
+            numberConfig = coreResult.numberPresentationConfig,
+        )
     }
 
     private suspend fun queryKanaKanjiCore(
@@ -26360,6 +26459,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         typoCorrectionJapaneseFlickEnabled: Boolean = false,
         typoCorrectionQwertyEnglishEnabled: Boolean = false,
     ): KanaKanjiQueryResult {
+        val numberConfigSnapshot = numberPresentationConfig.normalized()
         val engine = awaitKanaKanjiEngineOrNull()
             ?: return KanaKanjiQueryResult(candidates = emptyList())
         awaitSystemUserDictionaryLoad()
@@ -26392,7 +26492,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 predictionConfig = predictionConfig,
                 collectCandidateSegments =
                     appPreference.candidate_order_override_enable_preference == true ||
-                        shouldUseBunsetsuCursorMoveSession(),
+                        shouldUseBunsetsuCursorMoveSession() ||
+                        NumberCandidatePresenter.shouldCollectSegments(
+                            input = input,
+                        ),
+                numberPresentationConfig = numberConfigSnapshot,
             )
         )
         if (BuildConfig.DEBUG) {

@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidatePresenter
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberPresentationConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -56,14 +58,14 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("さんにん").any { it.string == "3人" })
         assertTrue(engine.getCandidatesEnglishKana("ごえん").any { it.string == "5円" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅっぷん").any { it.string == "20分" })
-        assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
+        assertFalse(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
         assertTrue(engine.getCandidatesEnglishKana("ろくじ").any { it.string == "6時" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ").any { it.string == "24時" })
         assertTrue(engine.getCandidatesEnglishKana("くじ").any { it.string == "9時" })
         assertTrue(engine.getCandidatesEnglishKana("じゅうくじ").any { it.string == "19時" })
         assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
         assertTrue(engine.getCandidatesEnglishKana("よえん").any { it.string == "4円" })
-        assertTrue(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
+        assertFalse(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
         assertTrue(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
         assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })
         assertTrue(engine.getCandidatesEnglishKana("ろっぷん").any { it.string == "6分" })
@@ -80,6 +82,7 @@ class KanaKanjiEngineEnglishKanaNumberTest {
             "ごご" to setOf("55", "５５", "五十五"),
             "さんご" to setOf("35", "３５", "三十五"),
             "しえん" to setOf("4円", "４円"),
+            "くえん" to setOf("9円"),
             "しじ" to setOf("4時", "４時"),
             "いちいち" to setOf("11", "１１", "十一"),
             "さんさん" to setOf("33", "３３", "三十三"),
@@ -138,12 +141,17 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     @Test
-    fun halfWidthTimeUnitUsesTimeTypeAndFullWidthVariantKeepsFullWidthType() {
+    fun timeCounterVariantsAreRenderedByTheSharedPresenterAndKeepTheirSemanticType() {
         val candidates = engine.getCandidatesEnglishKana("にじゅっぷん")
 
         assertTrue(candidates.any { it.string == "20分" && it.type == CANDIDATE_TYPE_TIME })
-        assertFalse(candidates.any { it.string == "20分" && it.type == 30.toByte() })
-        assertTrue(candidates.any { it.string == "２０分" && it.type == 30.toByte() })
+        val presented = NumberCandidatePresenter.present(
+            candidates = candidates,
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(),
+        )
+        assertTrue(presented.candidates.any { it.string == "２０分" && it.type == CANDIDATE_TYPE_TIME })
+        assertEquals("２０分", presented.candidates.first { it.string == "２０分" }.commitText)
     }
 
     @Test
@@ -175,6 +183,26 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("きょねん").any { it.string == "きょねん" })
         assertTrue(engine.getCandidatesEnglishKana("らいねん").any { it.string == "らいねん" })
         assertTrue(engine.getCandidatesEnglishKana("2025/04/01").any { it.string == "2025/04/01" })
+    }
+
+    @Test
+    fun directDigitSequencesKeepLeadingZeroesInEveryNumberStyle() {
+        val engineCandidates = engine.getCandidatesEnglishKana("0012")
+        assertTrue(engineCandidates.any { it.string == "0012" })
+        assertTrue(engineCandidates.any { it.string == "００１２" })
+        assertTrue(engineCandidates.any { it.string == "〇〇一二" })
+        assertFalse(
+            engineCandidates.joinToString { "${it.string}(type=${it.type}, family=${it.numberMetadata?.familyKey})" },
+            engineCandidates.any { it.string == "12" || it.string == "十二" },
+        )
+
+        val presented = NumberCandidatePresenter.present(
+            candidates = engineCandidates,
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(),
+        )
+        assertTrue(presented.candidates.any { it.string == "〇〇一二" && it.commitText == "〇〇一二" })
+        assertFalse(presented.candidates.any { it.string == "十二" })
     }
 
     @Test

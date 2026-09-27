@@ -5,6 +5,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidatePresenter
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberPresentationConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.CancellationException
@@ -43,12 +45,14 @@ data class KanaKanjiQueryRequest(
     val beamWidth: Int,
     val predictionConfig: PredictionConfig = PredictionConfig(),
     val collectCandidateSegments: Boolean = false,
+    val numberPresentationConfig: NumberPresentationConfig = NumberPresentationConfig(),
 )
 
 data class KanaKanjiQueryResult(
     val candidates: List<Candidate>,
     val bunsetsuResult: BunsetsuCandidateResult? = null,
     val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
+    val numberPresentationConfig: NumberPresentationConfig = NumberPresentationConfig(),
 )
 
 /**
@@ -85,20 +89,33 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
-            val result = when (request.mode) {
+            val numberPresentationConfig = request.numberPresentationConfig.normalized()
+            val effectiveRequest = request.copy(
+                n = NumberCandidatePresenter.expandedSearchCount(
+                    input = request.input,
+                    requested = request.n,
+                    additionsEnabled = numberPresentationConfig.additionsEnabled,
+                ),
+                collectCandidateSegments = request.collectCandidateSegments ||
+                    NumberCandidatePresenter.shouldCollectSegments(
+                        input = request.input,
+                    ),
+                numberPresentationConfig = numberPresentationConfig,
+            )
+            val result = when (effectiveRequest.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
-                        input = request.input,
-                        predictionConfig = request.predictionConfig,
+                        input = effectiveRequest.input,
+                        predictionConfig = effectiveRequest.predictionConfig,
                     ),
                 )
 
-                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
-                CandidateQueryMode.PREDICTION -> queryPrediction(request)
-                CandidateQueryMode.CONVERSION -> queryConversion(request)
+                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(effectiveRequest)
+                CandidateQueryMode.PREDICTION -> queryPrediction(effectiveRequest)
+                CandidateQueryMode.CONVERSION -> queryConversion(effectiveRequest)
             }
             incrementalState?.commitQueryTransaction()
-            result
+            result.copy(numberPresentationConfig = numberPresentationConfig)
         } catch (cancellation: CancellationException) {
             // A completed graph has its own staged commit. Keep that newest frontier when only the
             // later path search was cancelled; an incomplete append still rolls back entirely.

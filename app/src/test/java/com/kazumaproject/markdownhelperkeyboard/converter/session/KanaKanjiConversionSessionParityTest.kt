@@ -6,6 +6,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandida
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidatePresenter
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberPresentationConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberStyle
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import kotlinx.coroutines.runBlocking
@@ -120,6 +123,149 @@ class KanaKanjiConversionSessionParityTest {
     }
 
     @Test
+    fun counterPhraseAutomaticallyCollectsPathSegmentsForNumberPresentation() = runBlocking {
+        val input = "さんまいとにまいをかう"
+        val result = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(
+            request(input, CandidateQueryMode.CONVERSION, bunsetsu = false).copy(
+                n = 1,
+                collectCandidateSegments = false,
+            ),
+        )
+
+        assertTrue(NumberCandidatePresenter.shouldCollectSegments(input))
+        assertTrue(NumberCandidatePresenter.shouldCollectSegments("さんじゅうにとねこ"))
+        assertTrue(result.candidateSegmentsByString.isNotEmpty())
+        assertEquals(32, NumberCandidatePresenter.expandedSearchCount(input, requested = 1))
+        assertEquals(
+            1,
+            NumberCandidatePresenter.expandedSearchCount(
+                input,
+                requested = 1,
+                additionsEnabled = false,
+            ),
+        )
+    }
+
+    @Test
+    fun dictionaryBackedCounterPhraseProducesConsistentWholeSentenceStyles() = runBlocking {
+        val input = "さんまいとにまいをかう"
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val result = session.query(
+                request(input, CandidateQueryMode.CONVERSION, bunsetsu = false).copy(n = 1),
+            )
+            val presented = NumberCandidatePresenter.present(
+                candidates = result.candidates,
+                segmentsByCandidateString = result.candidateSegmentsByString,
+                config = NumberPresentationConfig(),
+            )
+
+            val strings = presented.candidates.map(Candidate::string)
+            assertTrue("$backend has no ordinary candidate: $strings", strings.isNotEmpty())
+            assertTrue("$backend has no half-width whole-sentence style: $strings", strings.any {
+                it.contains("3枚") && it.contains("2枚")
+            })
+            assertTrue("$backend has no full-width whole-sentence style: $strings", strings.any {
+                it.contains("３枚") && it.contains("２枚")
+            })
+            assertTrue("$backend has no kanji whole-sentence style: $strings", strings.any {
+                it.contains("三枚") && it.contains("二枚")
+            })
+            val renderedPathDetails = presented.segmentsByCandidateString
+                .filterKeys { it.contains("3枚") || it.contains("三枚") }
+                .mapValues { (_, segments) -> segments.map { Triple(it.inputStart, it.inputEnd, it.output) } }
+            assertTrue("$backend generated mixed styles: $strings; segments=$renderedPathDetails", strings.none {
+                it.contains("3枚") && (it.contains("２枚") || it.contains("二枚")) ||
+                    it.contains("３枚") && (it.contains("2枚") || it.contains("二枚"))
+            })
+            presented.candidates.forEach { candidate ->
+                assertEquals(candidate.string, candidate.commitText)
+                presented.segmentsByCandidateString[candidate.string]?.let { segments ->
+                    assertEquals(candidate.string, segments.joinToString("") { it.output })
+                    assertEquals(input, segments.joinToString("") { it.reading })
+                }
+            }
+
+            val kanjiFirst = NumberCandidatePresenter.present(
+                candidates = result.candidates,
+                segmentsByCandidateString = result.candidateSegmentsByString,
+                config = NumberPresentationConfig(
+                    styleOrder = listOf(NumberStyle.KANJI, NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH),
+                ),
+            )
+            assertEquals(
+                strings.firstOrNull { it.contains("三枚") && it.contains("二枚") },
+                kanjiFirst.candidates.firstOrNull { it.string.contains("三枚") && it.string.contains("二枚") }
+                    ?.string,
+            )
+        }
+    }
+
+    @Test
+    fun dictionaryBackedHomophoneCountersRemainSeparateFamilies() = runBlocking {
+        val result = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(
+            request("ごかい", CandidateQueryMode.CONVERSION, bunsetsu = false).copy(n = 1),
+        )
+        val shown = NumberCandidatePresenter.present(
+            candidates = result.candidates,
+            segmentsByCandidateString = result.candidateSegmentsByString,
+            config = NumberPresentationConfig(),
+        )
+        val counterSurfaces = shown.candidates.map(Candidate::string).filter {
+            it in setOf("5回", "５回", "五回", "5階", "５階", "五階")
+        }
+
+        assertEquals(
+            listOf("5回", "5階", "５回", "５階", "五回", "五階"),
+            counterSurfaces,
+        )
+    }
+
+    @Test
+    fun directDigitStyleAdditionsRespectTheCapturedSettingAndPreserveLeadingZeroes() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in CandidateQueryMode.entries) {
+                val enabled = session.query(
+                    request("0012", mode, bunsetsu = false).copy(
+                        n = 1,
+                        numberPresentationConfig = NumberPresentationConfig(),
+                    ),
+                )
+                val enabledPresentation = NumberCandidatePresenter.present(
+                    candidates = enabled.candidates,
+                    segmentsByCandidateString = enabled.candidateSegmentsByString,
+                    config = enabled.numberPresentationConfig,
+                )
+                val enabledStrings = enabledPresentation.candidates.map(Candidate::string)
+                assertTrue("$backend/$mode omitted half-width input: $enabledStrings", enabledStrings.contains("0012"))
+                assertTrue("$backend/$mode omitted full-width digits: $enabledStrings", enabledStrings.contains("００１２"))
+                assertTrue("$backend/$mode lost digit sequence in kanji: $enabledStrings", enabledStrings.contains("〇〇一二"))
+                assertFalse("$backend/$mode collapsed leading zeroes: $enabledStrings", enabledStrings.contains("十二"))
+
+                val disabled = session.query(
+                    request("0012", mode, bunsetsu = false).copy(
+                        n = 1,
+                        collectCandidateSegments = false,
+                        numberPresentationConfig = NumberPresentationConfig(additionsEnabled = false),
+                    ),
+                )
+                assertFalse(disabled.numberPresentationConfig.additionsEnabled)
+                val disabledPresentation = NumberCandidatePresenter.present(
+                    candidates = disabled.candidates,
+                    segmentsByCandidateString = disabled.candidateSegmentsByString,
+                    config = disabled.numberPresentationConfig,
+                )
+                val disabledStrings = disabledPresentation.candidates.map(Candidate::string)
+                assertTrue("$backend/$mode removed original digits: $disabledStrings", disabledStrings.contains("0012"))
+                assertFalse("$backend/$mode retained generated forms: $disabledStrings", disabledStrings.any {
+                    it == "００１２" || it == "〇〇一二" || it == "十二"
+                })
+            }
+        }
+    }
+
+    @Test
     fun conversionKeepsExactSymbolEmojiEmoticonAndValueBasedNumberCandidates() = runBlocking {
         val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
 
@@ -130,7 +276,10 @@ class KanaKanjiConversionSessionParityTest {
         assertTrue(niko.candidates.map { it.string }.contains("(^o^)"))
 
         val ichi = session.query(request("いち", CandidateQueryMode.CONVERSION, bunsetsu = false))
-        assertTrue(ichi.candidates.map { it.string }.contains("①"))
+        assertTrue(
+            "Expected value-based number candidate in ${ichi.candidates.map { it.string }}",
+            ichi.candidates.map { it.string }.contains("①"),
+        )
     }
 
     @Test

@@ -315,4 +315,22 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <string-array name="number_style_order_entries">
+        <item>@string/number_style_order_half_full_kanji</item>
+        <item>@string/number_style_order_half_kanji_full</item>
+        <item>@string/number_style_order_full_half_kanji</item>
+        <item>@string/number_style_order_full_kanji_half</item>
+        <item>@string/number_style_order_kanji_half_full</item>
+        <item>@string/number_style_order_kanji_full_half</item>
+    </string-array>
+
+    <string-array name="number_style_order_values">
+        <item>half_full_kanji</item>
+        <item>half_kanji_full</item>
+        <item>full_half_kanji</item>
+        <item>full_kanji_half</item>
+        <item>kanji_half_full</item>
+        <item>kanji_full_half</item>
+    </string-array>
 </resources>

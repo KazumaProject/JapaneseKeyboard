@@ -11,5 +11,7 @@ data class CandidateConversionSegment(
     val inputStart: Int,
     val inputEnd: Int,
     val output: String,
+    val reading: String = "",
+    val leftId: Short? = null,
+    val rightId: Short? = null,
 )
-
