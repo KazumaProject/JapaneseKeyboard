@@ -98,7 +98,11 @@ object CounterReadingLexicon {
         Suffix("通", "つう", blockedCompoundLastDigits = setOf(1, 8, 0)),
         Suffix("発", "はつ", blockedCompoundLastDigits = setOf(1, 3, 6, 8, 0)),
         Suffix("泊", "はく", blockedCompoundLastDigits = setOf(1, 3, 6, 8, 0)),
-        Suffix("時", "じ", "時刻"),
+        // Extended transport/broadcast notation reaches 25:20 and 29:00 in official schedules;
+        // values past that are not treated as clock hours by the numeric fallback.
+        // https://www.tokyu.co.jp/company/news/pdf/131118-2.pdf
+        // https://www.tv-tokyo.co.jp/broad_tvtokyo/program/detail/202203/10706_202203052715.html
+        Suffix("時", "じ", "時刻", maximumCompoundValue = 29),
         Suffix("分", "ふん", "時間", blockedCompoundLastDigits = setOf(1, 3, 4, 6, 8, 0)),
         Suffix("秒", "びょう", "時間"),
         Suffix("時間", "じかん", "時間"),
@@ -180,6 +184,7 @@ object CounterReadingLexicon {
      * numeric input and trigger unnecessary N-best expansion.
      */
     fun hasCounterReadingWithin(input: String): Boolean {
+        if (NumberFallbackCandidateFactory.hasComposedTimeReading(input)) return true
         for (reading in readings) {
             var start = input.indexOf(reading.reading)
             while (start >= 0) {

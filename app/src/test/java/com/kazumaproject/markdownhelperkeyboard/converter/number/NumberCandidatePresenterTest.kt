@@ -150,6 +150,40 @@ class NumberCandidatePresenterTest {
     }
 
     @Test
+    fun displayCapAppendsPreferredRepresentativesForNumericFamiliesHiddenByHomophones() {
+        val familyKey = "time:時刻:時:9|分:分:5"
+        val numbers = listOf(
+            NumberStyle.KANJI to "九時五分",
+            NumberStyle.HALF_WIDTH to "9時5分",
+            NumberStyle.FULL_WIDTH to "９時５分",
+        ).map { (style, surface) ->
+            candidate(surface, "くじごふん").copy(
+                numberMetadata = NumberCandidateMetadata(
+                    familyKey = familyKey,
+                    origin = NumberCandidateOrigin.PRESENTATION_VARIANT,
+                    style = style,
+                    numericSpans = listOf(
+                        NumberSpan(0, 2, 0, 1, "9", false),
+                        NumberSpan(2, 5, 2, 3, "5", false),
+                    ),
+                ),
+            )
+        }
+        val candidates = (0 until 12).map { candidate("同音候補$it", "くじごふん") } + numbers
+
+        val limited = NumberCandidatePresenter.limitForDisplay(
+            candidates = candidates,
+            config = NumberPresentationConfig(),
+            requestedMeanings = 1,
+            hasNumericFamilies = true,
+        )
+
+        assertEquals(4, limited.size)
+        assertEquals((0 until 3).map { "同音候補$it" }, limited.take(3).map(Candidate::string))
+        assertEquals("九時五分", limited.last().string)
+    }
+
+    @Test
     fun semanticKeysMergeOnlySameCounterMeaningAcrossDigitStyles() {
         val halfWidth = NumberCandidatePresenter.semanticFamilyKey(counterPath("5", "回"))
         val fullWidth = NumberCandidatePresenter.semanticFamilyKey(counterPath("５", "回"))

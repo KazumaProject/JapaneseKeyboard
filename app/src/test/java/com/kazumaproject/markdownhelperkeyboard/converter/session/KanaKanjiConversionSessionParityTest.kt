@@ -151,53 +151,172 @@ class KanaKanjiConversionSessionParityTest {
         val input = "さんまいとにまいをかう"
         for (backend in ConversionBackend.entries) {
             val session = KanaKanjiConversionSession(engine, backend)
-            val result = session.query(
-                request(input, CandidateQueryMode.CONVERSION, bunsetsu = false).copy(n = 1),
-            )
-            val presented = NumberCandidatePresenter.present(
-                candidates = result.candidates,
-                segmentsByCandidateString = result.candidateSegmentsByString,
-                config = NumberPresentationConfig(),
-            )
+            for (mode in listOf(
+                CandidateQueryMode.NO_TAB_DEFAULT,
+                CandidateQueryMode.PREDICTION,
+                CandidateQueryMode.CONVERSION,
+            )) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(
+                        request(input, mode, bunsetsu).copy(n = 1),
+                    )
+                    val presented = NumberCandidatePresenter.present(
+                        candidates = result.candidates,
+                        segmentsByCandidateString = result.candidateSegmentsByString,
+                        config = result.numberPresentationConfig,
+                    )
+                    val context = "$backend/$mode/bunsetsu=$bunsetsu"
+                    val strings = presented.candidates.map(Candidate::string)
+                    assertTrue("$context has no ordinary candidate: $strings", strings.isNotEmpty())
+                    assertTrue("$context has no half-width whole-sentence style: $strings", strings.any {
+                        it.contains("3枚") && it.contains("2枚")
+                    })
+                    assertTrue("$context has no full-width whole-sentence style: $strings", strings.any {
+                        it.contains("３枚") && it.contains("２枚")
+                    })
+                    assertTrue("$context has no kanji whole-sentence style: $strings", strings.any {
+                        it.contains("三枚") && it.contains("二枚")
+                    })
+                    val renderedPathDetails = presented.segmentsByCandidateString
+                        .filterKeys { it.contains("3枚") || it.contains("三枚") }
+                        .mapValues { (_, segments) -> segments.map { Triple(it.inputStart, it.inputEnd, it.output) } }
+                    assertTrue("$context generated mixed styles: $strings; segments=$renderedPathDetails", strings.none {
+                        it.contains("3枚") && (it.contains("２枚") || it.contains("二枚")) ||
+                            it.contains("３枚") && (it.contains("2枚") || it.contains("二枚"))
+                    })
+                    presented.candidates.forEach { candidate ->
+                        assertEquals(candidate.string, candidate.commitText)
+                        presented.segmentsByCandidateString[candidate.string]?.let { segments ->
+                            assertEquals(candidate.string, segments.joinToString("") { it.output })
+                            assertEquals(input, segments.joinToString("") { it.reading })
+                        }
+                    }
 
-            val strings = presented.candidates.map(Candidate::string)
-            assertTrue("$backend has no ordinary candidate: $strings", strings.isNotEmpty())
-            assertTrue("$backend has no half-width whole-sentence style: $strings", strings.any {
-                it.contains("3枚") && it.contains("2枚")
-            })
-            assertTrue("$backend has no full-width whole-sentence style: $strings", strings.any {
-                it.contains("３枚") && it.contains("２枚")
-            })
-            assertTrue("$backend has no kanji whole-sentence style: $strings", strings.any {
-                it.contains("三枚") && it.contains("二枚")
-            })
-            val renderedPathDetails = presented.segmentsByCandidateString
-                .filterKeys { it.contains("3枚") || it.contains("三枚") }
-                .mapValues { (_, segments) -> segments.map { Triple(it.inputStart, it.inputEnd, it.output) } }
-            assertTrue("$backend generated mixed styles: $strings; segments=$renderedPathDetails", strings.none {
-                it.contains("3枚") && (it.contains("２枚") || it.contains("二枚")) ||
-                    it.contains("３枚") && (it.contains("2枚") || it.contains("二枚"))
-            })
-            presented.candidates.forEach { candidate ->
-                assertEquals(candidate.string, candidate.commitText)
-                presented.segmentsByCandidateString[candidate.string]?.let { segments ->
-                    assertEquals(candidate.string, segments.joinToString("") { it.output })
-                    assertEquals(input, segments.joinToString("") { it.reading })
+                    val kanjiFirst = NumberCandidatePresenter.present(
+                        candidates = result.candidates,
+                        segmentsByCandidateString = result.candidateSegmentsByString,
+                        config = NumberPresentationConfig(
+                            styleOrder = listOf(NumberStyle.KANJI, NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH),
+                        ),
+                    )
+                    assertEquals(
+                        strings.firstOrNull { it.contains("三枚") && it.contains("二枚") },
+                        kanjiFirst.candidates.firstOrNull { it.string.contains("三枚") && it.string.contains("二枚") }
+                            ?.string,
+                    )
                 }
             }
+        }
+    }
 
-            val kanjiFirst = NumberCandidatePresenter.present(
-                candidates = result.candidates,
-                segmentsByCandidateString = result.candidateSegmentsByString,
-                config = NumberPresentationConfig(
-                    styleOrder = listOf(NumberStyle.KANJI, NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH),
+    @Test
+    fun dictionaryBackedClockTimeRendersHourAndMinuteTogetherInEveryConversionMode() = runBlocking {
+        val input = "くじごふん"
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(
+                CandidateQueryMode.NO_TAB_DEFAULT,
+                CandidateQueryMode.PREDICTION,
+                CandidateQueryMode.CONVERSION,
+                CandidateQueryMode.EISUKANA,
+            )) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(
+                        request(input, mode, bunsetsu).copy(n = 1),
+                    )
+                    val presented = NumberCandidatePresenter.present(
+                        candidates = result.candidates,
+                        segmentsByCandidateString = result.candidateSegmentsByString,
+                        config = result.numberPresentationConfig,
+                    )
+                    val surfaces = presented.candidates.map(Candidate::string).toSet()
+                    assertTrue(
+                        "$backend/$mode/bunsetsu=$bunsetsu did not preserve the 9:05 reading: " +
+                            "raw=${result.candidates.take(20).map { it.string to it.numberMetadata }} " +
+                            "segments=${result.candidateSegmentsByString} presented=$surfaces",
+                        surfaces.containsAll(setOf("9時5分", "９時５分", "九時五分")),
+                    )
+                    val displayCapped = NumberCandidatePresenter.limitForDisplay(
+                        candidates = presented.candidates,
+                        config = result.numberPresentationConfig,
+                        requestedMeanings = 4,
+                        hasNumericFamilies = presented.hasNumericFamilies,
+                    )
+                    assertTrue(
+                        "$backend/$mode/bunsetsu=$bunsetsu hid the preferred 9:05 candidate: " +
+                            displayCapped.map(Candidate::string),
+                        displayCapped.any { it.string == "9時5分" },
+                    )
+                    assertTrue(displayCapped.size <= 16)
+                    for (candidate in presented.candidates.filter { it.string in setOf("9時5分", "９時５分", "九時五分") }) {
+                        assertEquals(candidate.string, candidate.commitText)
+                        presented.segmentsByCandidateString[candidate.string]?.let { segments ->
+                            assertEquals(candidate.string, segments.joinToString("") { it.output })
+                            assertEquals(input, segments.joinToString("") { it.reading })
+                        }
+                    }
+                }
+            }
+        }
+        for (backend in ConversionBackend.entries) {
+            val disabledResult = KanaKanjiConversionSession(engine, backend).query(
+                request(input, CandidateQueryMode.CONVERSION, bunsetsu = false).copy(
+                    n = 1,
+                    numberPresentationConfig = NumberPresentationConfig(additionsEnabled = false),
                 ),
             )
-            assertEquals(
-                strings.firstOrNull { it.contains("三枚") && it.contains("二枚") },
-                kanjiFirst.candidates.firstOrNull { it.string.contains("三枚") && it.string.contains("二枚") }
-                    ?.string,
+            assertTrue(
+                "$backend did not exercise the generated time fallback",
+                disabledResult.candidates.any { it.string == "9時5分" && it.numberMetadata?.isFallback == true },
             )
+            val disabled = NumberCandidatePresenter.present(
+                candidates = disabledResult.candidates,
+                segmentsByCandidateString = disabledResult.candidateSegmentsByString,
+                config = disabledResult.numberPresentationConfig,
+            )
+            assertTrue(
+                "$backend retained generated time variants while additions were disabled: " +
+                    disabled.candidates.map { it.string to it.numberMetadata },
+                disabled.candidates.none { it.numberMetadata?.isFallback == true },
+            )
+        }
+    }
+
+    @Test
+    fun dictionaryBackedClockTimeWithFollowingParticleKeepsSentenceStylesTogether() = runBlocking {
+        val input = "くじごふんから"
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(
+                CandidateQueryMode.NO_TAB_DEFAULT,
+                CandidateQueryMode.PREDICTION,
+                CandidateQueryMode.CONVERSION,
+                CandidateQueryMode.EISUKANA,
+            )) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(request(input, mode, bunsetsu).copy(n = 1))
+                    assertTrue(NumberCandidatePresenter.shouldCollectSegments(input))
+                    val presented = NumberCandidatePresenter.present(
+                        candidates = result.candidates,
+                        segmentsByCandidateString = result.candidateSegmentsByString,
+                        config = result.numberPresentationConfig,
+                    )
+                    val timeCandidates = presented.candidates.map(Candidate::string).filter { it.endsWith("から") }
+                    assertTrue(
+                        "$backend/$mode/bunsetsu=$bunsetsu lost the dictionary-backed time reading: " +
+                            "raw=${result.candidates.take(32).map { it.string to it.numberMetadata }} " +
+                            "segments=${result.candidateSegmentsByString} presented=$timeCandidates",
+                        timeCandidates.containsAll(setOf("9時5分から", "９時５分から", "九時五分から")),
+                    )
+                    presented.candidates.filter { it.string in timeCandidates }.forEach { candidate ->
+                        assertEquals(candidate.string, candidate.commitText)
+                        presented.segmentsByCandidateString[candidate.string]?.let { segments ->
+                            assertEquals(candidate.string, segments.joinToString("") { it.output })
+                            assertEquals(input, segments.joinToString("") { it.reading })
+                        }
+                    }
+                }
+            }
         }
     }
 

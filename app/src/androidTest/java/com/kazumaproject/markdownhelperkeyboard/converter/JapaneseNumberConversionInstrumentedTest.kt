@@ -67,6 +67,7 @@ class JapaneseNumberConversionInstrumentedTest {
             "ろくじ" to setOf("6時"),
             "にじゅうよじ" to setOf("24時"),
             "くじ" to setOf("9時"),
+            "くじごふん" to setOf("9時5分"),
             "いっちょう" to setOf("1000000000000", "一兆"),
             "しじゅう" to setOf("40", "四十"),
             "じゅうよ" to setOf("14", "十四"),
@@ -91,6 +92,24 @@ class JapaneseNumberConversionInstrumentedTest {
             assertTrue(
                 "$input unexpectedly generated ${candidates.map { it.string }}",
                 candidates.none { it.string in forbidden },
+            )
+        }
+
+        val standardValidInputs = linkedMapOf(
+            "くじごふん" to setOf("9時5分"),
+            "くじごふんから" to setOf("9時5分から"),
+            "にじゅうごじごふん" to setOf("25時5分"),
+            "さんにん" to setOf("3人"),
+            "ごかい" to setOf("5回", "5階"),
+            "さんじゅうにまい" to setOf("32枚"),
+        )
+        standardValidInputs.forEach { (input, required) ->
+            val candidates = engine.convertOriginal(input, repository)
+            standardResults[input] = candidates
+            val values = candidates.mapTo(hashSetOf()) { it.string }
+            assertTrue(
+                "standard $input missing $required from ${candidates.take(32).map { it.string to it.numberMetadata }}",
+                values.containsAll(required),
             )
         }
 
@@ -119,6 +138,7 @@ class JapaneseNumberConversionInstrumentedTest {
             appendLine("correctness=PASS")
             appendLine("forbiddenCaseCount=${forbiddenByInput.size}")
             appendLine("validCaseCount=${validInputs.size}")
+            appendLine("standardValidCaseCount=${standardValidInputs.size}")
             appendLine(englishKanaBenchmark.asReportLine())
             appendLine(standardBenchmark.asReportLine())
             appendLine("englishKanaCandidates")

@@ -382,7 +382,18 @@ object NumberCandidatePresenter {
     ): List<Candidate> {
         if (!config.additionsEnabled || !hasNumericFamilies) return candidates
         val maximum = requestedMeanings.coerceAtLeast(1) * NumberPresentationConfig.DEFAULT_STYLE_ORDER.size
-        return candidates.take(maximum)
+        val visible = candidates.take(maximum)
+        val visibleFamilyKeys = visible.mapNotNullTo(hashSetOf()) { it.numberMetadata?.familyKey }
+        val additionalNumericRepresentatives = candidates.asSequence()
+            .filter { it.numberMetadata != null }
+            .distinctBy { it.numberMetadata?.familyKey ?: candidateIdentity(it) }
+            .filter { it.numberMetadata?.familyKey !in visibleFamilyKeys }
+            .take(requestedMeanings.coerceAtLeast(1))
+            .toList()
+        // Keep the normal N-best surface budget, then append one preferred spelling for numeric
+        // families that would otherwise be hidden behind unrelated homophones. This list is
+        // bounded to one extra representative per requested meaning.
+        return (visible + additionalNumericRepresentatives).distinctBy(::candidateIdentity)
     }
 
     private fun renderFamily(family: Family, style: NumberStyle): Candidate? {

@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.number
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -59,11 +60,25 @@ class CounterReadingLexiconTest {
     fun everyExplicitCounterReadingProducesItsReviewedValueAndCounterSurface() {
         CounterReadingLexicon.readings.forEach { reading ->
             val candidates = NumberFallbackCandidateFactory.candidatesForReading(reading.reading)
+            val halfWidth = "${reading.value}${reading.counter}"
+            val fullWidth = "${reading.value.toString().map { char -> (char.code + 0xFEE0).toChar() }.joinToString("")}${reading.counter}"
+            val kanji = "${reading.value.toLong().toKanji()}${reading.counter}"
+            val source = candidates.firstOrNull { it.string == halfWidth }
             assertTrue(
                 "${reading.reading} should produce ${reading.value}${reading.counter}: " +
                     candidates.map { it.string },
-                candidates.any { it.string == "${reading.value}${reading.counter}" },
+                source != null,
             )
+            val presented = NumberCandidatePresenter.present(
+                candidates = listOf(source!!),
+                segmentsByCandidateString = emptyMap(),
+                config = NumberPresentationConfig(),
+            )
+            val surfaces = presented.candidates.mapTo(hashSetOf()) { it.string }
+            assertTrue("${reading.reading} did not render $halfWidth: $surfaces", halfWidth in surfaces)
+            assertTrue("${reading.reading} did not render $fullWidth: $surfaces", fullWidth in surfaces)
+            assertTrue("${reading.reading} did not render $kanji: $surfaces", kanji in surfaces)
+            presented.candidates.forEach { assertEquals(it.string, it.commitText) }
         }
 
         val floorsAndBuildings = CounterReadingLexicon.matchAll("はっかい")
@@ -113,5 +128,141 @@ class CounterReadingLexiconTest {
         assertFalse(surfaces("いちひき").contains("1匹"))
         assertFalse(surfaces("さんじゅうさんぼん").contains("33本"))
         assertFalse(surfaces("さんじゅうしにん").contains("44人"))
+        assertTrue(surfaces("にじゅうごじ").contains("25時"))
+        assertFalse(surfaces("さんじゅういちじ").contains("31時"))
+    }
+
+    @Test
+    fun adjacentClockAndDurationUnitsProduceOnlyValidatedCompositeFallbacks() {
+        fun surfaces(reading: String) = NumberFallbackCandidateFactory.candidatesForReading(reading)
+            .map { it.string }
+            .toSet()
+
+        assertTrue(surfaces("くじごふん").contains("9時5分"))
+        assertTrue(surfaces("にじゅうごじごふん").contains("25時5分"))
+        assertTrue(surfaces("にじゅうきゅうじごふん").contains("29時5分"))
+        assertFalse(surfaces("さんじゅういちじごふん").contains("31時5分"))
+        assertTrue(surfaces("じゅうじじゅうごふん").contains("10時15分"))
+        assertTrue(surfaces("じゅうにじごふん").contains("12時5分"))
+        assertTrue(surfaces("いちじかんにじゅうごふん").contains("1時間25分"))
+        assertTrue(surfaces("くじごふんごびょう").contains("9時5分5秒"))
+        assertTrue(surfaces("にじゅうごふんさんびょう").contains("25分3秒"))
+
+        assertFalse(surfaces("くじよんふん").contains("9時4分"))
+        assertFalse(surfaces("ごふんくじ").contains("5分9時"))
+        assertFalse(surfaces("くじごふんじ").contains("9時5分1秒"))
+    }
+
+    @Test
+    fun composedClockFallbackHasBothDigitSpansAndRendersEveryConfiguredStyle() {
+        val input = "くじごふん"
+        val fallback = NumberFallbackCandidateFactory.candidatesForReading(input)
+            .single { it.string == "9時5分" }
+        val spans = fallback.numberMetadata!!.numericSpans
+
+        assertEquals(listOf("9", "5"), spans.map { it.valueDigits })
+        assertEquals(listOf(0 to 1, 2 to 3), spans.map { it.outputStart to it.outputEnd })
+        assertTrue(NumberFallbackCandidateFactory.hasComposedTimeReading(input))
+        assertTrue(NumberFallbackCandidateFactory.hasComposedTimeReading("くじごふんから"))
+        assertFalse(NumberFallbackCandidateFactory.hasComposedTimeReading("おくじごふんから"))
+        assertTrue(CounterReadingLexicon.hasCounterReadingWithin(input))
+        assertTrue(CounterReadingLexicon.hasCounterReadingWithin("くじごふんから"))
+        assertEquals(32, NumberCandidatePresenter.expandedSearchCount(input, requested = 1))
+        assertEquals(32, NumberCandidatePresenter.expandedSearchCount("くじごふんから", requested = 1))
+        assertTrue(NumberCandidatePresenter.shouldCollectSegments(input))
+        assertTrue(NumberCandidatePresenter.shouldCollectSegments("くじごふんから"))
+
+        val presented = NumberCandidatePresenter.present(
+            candidates = listOf(fallback),
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(),
+        )
+        val timeStyles = setOf("9時5分", "９時５分", "九時五分")
+        assertTrue(presented.candidates.map { it.string }.toSet().containsAll(timeStyles))
+        presented.candidates.forEach { candidate ->
+            assertEquals(candidate.string, candidate.commitText)
+        }
+
+        val embedded = NumberFallbackCandidateFactory.candidatesForReading("くじごふんから")
+            .single { it.string == "9時5分から" }
+        val embeddedPresentation = NumberCandidatePresenter.present(
+            candidates = listOf(embedded),
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(),
+        )
+        assertTrue(
+            embeddedPresentation.candidates.map { it.string }.toSet().toString(),
+            embeddedPresentation.candidates.map { it.string }.toSet().containsAll(
+                setOf("9時5分から", "９時５分から", "九時五分から"),
+            ),
+        )
+
+        val allOrders = listOf(
+            listOf(NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH, NumberStyle.KANJI),
+            listOf(NumberStyle.HALF_WIDTH, NumberStyle.KANJI, NumberStyle.FULL_WIDTH),
+            listOf(NumberStyle.FULL_WIDTH, NumberStyle.HALF_WIDTH, NumberStyle.KANJI),
+            listOf(NumberStyle.FULL_WIDTH, NumberStyle.KANJI, NumberStyle.HALF_WIDTH),
+            listOf(NumberStyle.KANJI, NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH),
+            listOf(NumberStyle.KANJI, NumberStyle.FULL_WIDTH, NumberStyle.HALF_WIDTH),
+        )
+        val surfaceByStyle = mapOf(
+            NumberStyle.HALF_WIDTH to "9時5分",
+            NumberStyle.FULL_WIDTH to "９時５分",
+            NumberStyle.KANJI to "九時五分",
+        )
+        allOrders.forEach { order ->
+            val ordered = NumberCandidatePresenter.present(
+                candidates = listOf(fallback),
+                segmentsByCandidateString = emptyMap(),
+                config = NumberPresentationConfig(styleOrder = order),
+            )
+            assertEquals(
+                order.map(surfaceByStyle::getValue),
+                ordered.candidates.map { it.string }.filter(timeStyles::contains),
+            )
+        }
+
+        val disabled = NumberCandidatePresenter.present(
+            candidates = listOf(fallback),
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(additionsEnabled = false),
+        )
+        assertTrue(disabled.candidates.isEmpty())
+    }
+
+    @Test
+    fun separatedTimeFallbackRendersEveryRecognizedTimeInOneSentenceStyle() {
+        val input = "くじごふんとにじゅうごじじゅっぷんから"
+        val halfWidth = "9時5分と25時10分から"
+        val fallback = NumberFallbackCandidateFactory.candidatesForReading(input)
+            .single { it.string == halfWidth }
+        val spans = fallback.numberMetadata!!.numericSpans
+        assertEquals(
+            listOf(
+                listOf(0, 2, 0, 1),
+                listOf(2, 5, 2, 3),
+                listOf(6, 12, 5, 7),
+                listOf(12, 17, 8, 10),
+            ),
+            spans.map { listOf(it.inputStart, it.inputEnd, it.outputStart, it.outputEnd) },
+        )
+
+        val presented = NumberCandidatePresenter.present(
+            candidates = listOf(fallback),
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(),
+        )
+        val styles = presented.candidates.map { it.string }.toSet()
+        assertTrue(
+            styles.toString(),
+            styles.containsAll(
+                setOf(
+                    halfWidth,
+                    "９時５分と２５時１０分から",
+                    "九時五分と二十五時十分から",
+                ),
+            ),
+        )
+        presented.candidates.forEach { assertEquals(it.string, it.commitText) }
     }
 }
