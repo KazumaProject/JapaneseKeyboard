@@ -9,11 +9,18 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
+import android.system.ErrnoException
+import android.system.Os
+import android.system.OsConstants
+import android.system.StructPollfd
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +32,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.Closeable
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,6 +63,7 @@ class LocalFontRepository @Inject constructor(
     private val operationMutex = Mutex()
     private val generation = AtomicLong(0L)
     private val generationGate = Any()
+    private val stagingFiles = ConcurrentHashMap.newKeySet<String>()
     private var loaded = false
     private var activeRecord: LocalFontRecord? = null
     private var preview: LocalFontPreview? = null
@@ -67,7 +77,7 @@ class LocalFontRepository @Inject constructor(
             when (val readResult = store.readState()) {
                 LocalFontReadResult.Missing -> {
                     publishStandardState()
-                    store.collectGarbage(activeId = null, previewId = null)
+                    collectGarbage(activeId = null, previewId = null)
                     _state.value
                 }
                 LocalFontReadResult.Failed -> {
@@ -79,7 +89,7 @@ class LocalFontRepository @Inject constructor(
                     val record = readResult.state.record
                     if (record == null) {
                         publishStandardState()
-                        store.collectGarbage(activeId = null, previewId = null)
+                        collectGarbage(activeId = null, previewId = null)
                         _state.value
                     } else {
                         try {
@@ -102,7 +112,7 @@ class LocalFontRepository @Inject constructor(
                             publishStandardState(LocalFontWarning.RESTORE_FAILED)
                             return@withLock _state.value
                         }
-                        store.collectGarbage(activeRecord?.id, preview?.record?.id)
+                        collectGarbage(activeRecord?.id, preview?.record?.id)
                         _state.value
                     }
                 }
@@ -121,38 +131,53 @@ class LocalFontRepository @Inject constructor(
 
     suspend fun prepare(uri: Uri): LocalFontPreview = withContext(Dispatchers.IO) {
         val token = synchronized(generationGate) { generation.incrementAndGet() }
-        operationMutex.withLock {
-            val oldPreview = preview
-            preview = null
-            store.delete(oldPreview?.let { store.fileFor(it.record) })
-            val temp = store.newStagingFile()
-            var publishedFile: File? = null
-            try {
-                val displayName = queryDisplayName(uri)
-                val copied = copyUriToFile(uri, temp, token)
-                SfntFontValidator.validate(temp)
-                val signature = readSignature(temp)
-                val extension = if (signature == "OTTO") "otf" else "ttf"
-                val record = store.newRecord(displayName, extension, copied.first, copied.second)
+        val temp = store.newStagingFile()
+        stagingFiles += temp.name
+        var publishedFile: File? = null
+        var keepPublishedFile = false
+        try {
+            // Keep the lock around local state and file mutations only. Provider I/O below may
+            // block for an arbitrary time and must not prevent restore or another selection.
+            operationMutex.withLock {
+                currentCoroutineContext().ensureActive()
+                checkCurrent(token)
+                val oldPreview = preview
+                preview = null
+                store.delete(oldPreview?.let { store.fileFor(it.record) })
+                collectGarbage(activeRecord?.id, null)
+            }
+
+            val displayName = queryDisplayName(uri)
+            currentCoroutineContext().ensureActive()
+            checkCurrent(token)
+            val copied = copyUriToFile(uri, temp, token)
+            SfntFontValidator.validate(temp)
+            val signature = readSignature(temp)
+            val extension = if (signature == "OTTO") "otf" else "ttf"
+            val record = store.newRecord(displayName, extension, copied.first, copied.second)
+
+            val prepared = operationMutex.withLock {
+                currentCoroutineContext().ensureActive()
                 checkCurrent(token)
                 val file = store.publish(temp, record).also { publishedFile = it }
                 val typeface = createTypeface(file)
+                currentCoroutineContext().ensureActive()
                 checkCurrent(token)
                 val prepared = LocalFontPreview(token, record, typeface, displayName)
                 preview = prepared
-                store.collectGarbage(activeRecord?.id, record.id)
-                publishedFile = null
+                collectGarbage(activeRecord?.id, record.id)
                 prepared
-            } catch (e: CancellationException) {
-                if (preview?.generation == token) preview = null
+            }
+            keepPublishedFile = true
+            prepared
+        } finally {
+            withContext(NonCancellable) {
+                operationMutex.withLock {
+                    if (!keepPublishedFile && preview?.generation == token) preview = null
+                    if (!keepPublishedFile) store.delete(publishedFile)
+                }
                 store.delete(temp)
-                store.delete(publishedFile)
-                throw e
-            } catch (e: Exception) {
-                if (preview?.generation == token) preview = null
-                store.delete(temp)
-                store.delete(publishedFile)
-                throw e
+                stagingFiles.remove(temp.name)
             }
         }
     }
@@ -178,11 +203,14 @@ class LocalFontRepository @Inject constructor(
                 )
                 KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
             }
-            store.collectGarbage(activeRecord?.id, null)
+            collectGarbage(activeRecord?.id, null)
         }
     }
 
     suspend fun cancelPreview(prepared: LocalFontPreview?) = withContext(Dispatchers.IO) {
+        if (prepared == null) {
+            synchronized(generationGate) { generation.incrementAndGet() }
+        }
         operationMutex.withLock {
             if (prepared == null || preview === prepared) {
                 if (prepared != null) {
@@ -193,7 +221,7 @@ class LocalFontRepository @Inject constructor(
                 }
                 preview = null
             }
-            store.collectGarbage(activeRecord?.id, preview?.record?.id)
+            collectGarbage(activeRecord?.id, preview?.record?.id)
         }
     }
 
@@ -209,19 +237,33 @@ class LocalFontRepository @Inject constructor(
                 _state.value = LocalFontState(snapshot = KeyboardFontSnapshot(revision = revision))
                 KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
             }
-            store.collectGarbage(activeId = null, previewId = null)
+            collectGarbage(activeId = null, previewId = null)
         }
     }
 
     private suspend fun queryDisplayName(uri: Uri): String {
         var cursor: Cursor? = null
         return try {
-            cursor = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-            val name = if (cursor?.moveToFirst() == true) {
-                cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME).takeIf { it >= 0 } ?: -1)
-            } else null
-            LocalFontStore.sanitizeDisplayName(name.orEmpty())
+            withProviderCancellation { signal, register ->
+                cursor = resolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                    signal,
+                )
+                cursor?.let(register)
+                val result = cursor
+                val name = if (result?.moveToFirst() == true) {
+                    result.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        .takeIf { it >= 0 }
+                        ?.let(result::getString)
+                } else null
+                LocalFontStore.sanitizeDisplayName(name.orEmpty())
+            }
         } catch (_: Exception) {
+            currentCoroutineContext().ensureActive()
             "Local font"
         } finally {
             cursor?.close()
@@ -230,29 +272,118 @@ class LocalFontRepository @Inject constructor(
 
     private suspend fun copyUriToFile(uri: Uri, target: File, token: Long): Pair<Long, String> {
         val digest = MessageDigest.getInstance("SHA-256")
-        val signal = CancellationSignal()
-        val descriptor = resolver.openFileDescriptor(uri, "r", signal)
-            ?: throw IOException("Unable to open selected font")
-        var total = 0L
-        ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
-            FileOutputStream(target).use { output ->
-                val buffer = ByteArray(16 * 1024)
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    checkCurrent(token)
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    if (count == 0) continue
-                    total += count.toLong()
-                    if (total > MAX_LOCAL_FONT_BYTES) throw FontValidationException(FontFormatIssue.TOO_LARGE)
-                    output.write(buffer, 0, count)
-                    digest.update(buffer, 0, count)
+        return withProviderCancellation { signal, register ->
+            val descriptor = resolver.openFileDescriptor(uri, "r", signal)
+                ?: throw IOException("Unable to open selected font")
+            register(descriptor)
+            var total = 0L
+            descriptor.use {
+                FileOutputStream(target).use { output ->
+                    val buffer = ByteArray(16 * 1024)
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        checkCurrent(token)
+                        val count = readProviderChunk(descriptor, buffer, token)
+                        if (count == 0) break
+                        total += count.toLong()
+                        if (total > MAX_LOCAL_FONT_BYTES) throw FontValidationException(FontFormatIssue.TOO_LARGE)
+                        output.write(buffer, 0, count)
+                        digest.update(buffer, 0, count)
+                    }
+                    output.fd.sync()
                 }
-                output.fd.sync()
+            }
+            if (total == 0L) throw FontValidationException(FontFormatIssue.EMPTY)
+            total to digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        }
+    }
+
+    /**
+     * Poll the provider descriptor in short intervals so a provider that leaves a pipe open but
+     * stops writing cannot pin this coroutine in FileInputStream.read().
+     */
+    private suspend fun readProviderChunk(
+        descriptor: ParcelFileDescriptor,
+        buffer: ByteArray,
+        token: Long,
+    ): Int {
+        val context = currentCoroutineContext()
+        val pollFd = StructPollfd().apply {
+            fd = descriptor.fileDescriptor
+            events = (OsConstants.POLLIN or OsConstants.POLLERR or OsConstants.POLLHUP).toShort()
+        }
+        while (true) {
+            context.ensureActive()
+            checkCurrent(token)
+            val ready = try {
+                Os.poll(arrayOf(pollFd), PROVIDER_READ_POLL_MS)
+            } catch (e: ErrnoException) {
+                context.ensureActive()
+                throw IOException("Unable to read selected font", e)
+            }
+            context.ensureActive()
+            checkCurrent(token)
+            if (ready == 0) continue
+
+            val events = pollFd.revents.toInt()
+            if (events and OsConstants.POLLNVAL != 0) {
+                throw IOException("Selected font stream was closed")
+            }
+            if (events and (OsConstants.POLLIN or OsConstants.POLLERR or OsConstants.POLLHUP) == 0) {
+                continue
+            }
+            try {
+                return Os.read(descriptor.fileDescriptor, buffer, 0, buffer.size)
+            } catch (e: ErrnoException) {
+                context.ensureActive()
+                if (e.errno == OsConstants.EAGAIN) continue
+                throw IOException("Unable to read selected font", e)
             }
         }
-        if (total == 0L) throw FontValidationException(FontFormatIssue.EMPTY)
-        return total to digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
+
+    @OptIn(InternalCoroutinesApi::class)
+    private suspend fun <T> withProviderCancellation(
+        block: suspend (CancellationSignal, (Closeable) -> Unit) -> T,
+    ): T {
+        val context = currentCoroutineContext()
+        val job = context[Job] ?: throw IllegalStateException("Provider call has no coroutine job")
+        val signal = CancellationSignal()
+        val resourceLock = Any()
+        var cancelled = false
+        var resource: Closeable? = null
+        val cancellation = job.invokeOnCompletion(
+            onCancelling = true,
+            invokeImmediately = true,
+        ) { cause ->
+            if (cause != null) {
+                runCatching { signal.cancel() }
+                val toClose = synchronized(resourceLock) {
+                    cancelled = true
+                    resource.also { resource = null }
+                }
+                runCatching { toClose?.close() }
+            }
+        }
+        try {
+            context.ensureActive()
+            return block(signal) { closeable ->
+                val closeNow = synchronized(resourceLock) {
+                    if (cancelled) true else {
+                        resource = closeable
+                        false
+                    }
+                }
+                if (closeNow) runCatching { closeable.close() }
+            }
+        } finally {
+            cancellation.dispose()
+            synchronized(resourceLock) { resource = null }
+        }
+    }
+
+    private fun collectGarbage(activeId: String?, previewId: String?) {
+        store.collectGarbage(activeId, previewId, stagingFiles.toSet())
     }
 
     private fun createTypeface(file: File): Typeface {
@@ -291,5 +422,9 @@ class LocalFontRepository @Inject constructor(
 
     private fun checkCurrent(token: Long) {
         if (generation.get() != token) throw CancellationException("Font selection was superseded")
+    }
+
+    private companion object {
+        const val PROVIDER_READ_POLL_MS = 200
     }
 }

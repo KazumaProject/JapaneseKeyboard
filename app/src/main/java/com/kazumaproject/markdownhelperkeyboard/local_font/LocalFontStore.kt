@@ -133,8 +133,14 @@ internal class LocalFontStore(noBackupFilesDir: File) {
         }
     }
 
-    fun collectGarbage(activeId: String?, previewId: String?) {
-        staging.listFiles().orEmpty().forEach(::delete)
+    fun collectGarbage(
+        activeId: String?,
+        previewId: String?,
+        preservedStagingFiles: Set<String> = emptySet(),
+    ) {
+        staging.listFiles().orEmpty()
+            .filterNot { it.name in preservedStagingFiles }
+            .forEach(::delete)
         root.listFiles().orEmpty().forEach { file ->
             if (file == staging || file.name == "state.json") return@forEach
             if (file.extension !in setOf("ttf", "otf")) return@forEach
