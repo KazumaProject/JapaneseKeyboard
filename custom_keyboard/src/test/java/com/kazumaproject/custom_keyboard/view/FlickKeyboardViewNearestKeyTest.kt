@@ -196,6 +196,27 @@ class FlickKeyboardViewNearestKeyTest {
         view.setKeyboard(layout)
         tap(view, 450f, 100f)
         assertTrue(actions.isEmpty())
+
+        view.setKeyboard(layout, KeyHitTestMode.NEAREST_KEY_IN_KEY_CELLS)
+        tap(view, 450f, 100f)
+        assertTrue("Explicit spacers remain untouchable in gap-only mode", actions.isEmpty())
+
+        val key = view.getChildAt(0)
+        tap(view, (key.right + 300f) / 2f, key.cy())
+        assertEquals("The margin between a key and spacer still belongs to the key", listOf(KeyAction.Text("a")), actions)
+    }
+
+    @Test fun changingHitTestModeCancelsActiveGestureWithoutRebuildingLayout() {
+        val view = keyboard()
+        val key = view.getChildAt(0)
+        event(view, MotionEvent.ACTION_DOWN, key.cx(), key.cy())
+
+        view.setKeyHitTestMode(KeyHitTestMode.NEAREST_KEY_IN_KEY_CELLS)
+        event(view, MotionEvent.ACTION_UP, key.cx(), key.cy())
+
+        assertTrue(actions.isEmpty())
+        assertSame(key, view.getChildAt(0))
+        assertFalse(key.isPressed)
     }
 
     @Test fun layoutResizeAndScreenOffset_useFreshBounds_withoutLosingPolicy() {
