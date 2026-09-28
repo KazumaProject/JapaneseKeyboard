@@ -37,13 +37,20 @@ class KeyboardSkinAppearanceTest {
             "customThemeCandidateEmptyPopupTextColor", "customThemeShortcutIconColor",
             "liquidGlassThemePreference", "liquidGlassKeyBlurRadiousPreference",
             "keyboardTouchEffectTypePreference", "customKeyBorderEnablePreference")
-        for (id in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK)) {
+        for (id in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK,
+                KeyboardSkinId.CUPERTINO_CLASSIC)) {
             AppPreference.keyboardSkin = id
             val saved = ImePreferencesSnapshot.from(AppPreference)
             val effective = saved.withKeyboardSkinAppearance()
             assertEquals("custom", effective.keyboardThemeMode)
             assertFalse(effective.liquidGlassThemePreference)
             assertFalse(effective.customKeyBorderEnablePreference)
+            val palette = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(id)!!.palette
+            assertEquals(palette.specialKey, effective.customThemeSpecialKeyColor)
+            assertEquals(palette.specialText, effective.customThemeSpecialKeyTextColor)
+            if (id == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                assertEquals(palette.specialText, effective.customThemeShortcutIconColor)
+            }
             ImePreferencesSnapshot::class.java.declaredFields.filter {
                 !java.lang.reflect.Modifier.isStatic(it.modifiers) && it.name !in appearanceFields
             }.forEach { field ->

@@ -37,8 +37,8 @@ class KeyboardSkinViewLifecycleTest {
         view.javaClass.methods.single { it.name == "applyKeyboardTheme" }.invoke(view,
             "custom", Configuration.UI_MODE_NIGHT_NO, false,
             palette?.background ?: 0xffabcdef.toInt(), palette?.key ?: 0xffededed.toInt(),
-            palette?.key ?: 0xffcccccc.toInt(), palette?.text ?: 0xff123456.toInt(),
-            palette?.text ?: 0xff234567.toInt(), false, false, 0xff000000.toInt(), 255, 1, id)
+            palette?.specialKey ?: 0xffcccccc.toInt(), palette?.text ?: 0xff123456.toInt(),
+            palette?.specialText ?: 0xff234567.toInt(), false, false, 0xff000000.toInt(), 255, 1, id)
         view.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.EXACTLY))
         view.layout(0, 0, 1080, 640)
@@ -61,6 +61,8 @@ class KeyboardSkinViewLifecycleTest {
             assertEquals(view.javaClass.simpleName, bounds, geometry(view))
             apply(view, KeyboardSkinId.CUPERTINO_DARK)
             assertEquals(view.javaClass.simpleName, bounds, geometry(view))
+            apply(view, KeyboardSkinId.CUPERTINO_CLASSIC)
+            assertEquals(view.javaClass.simpleName, bounds, geometry(view))
             apply(view, KeyboardSkinId.DEFAULT)
             assertTrue("Legacy pixels differ: ${view.javaClass.simpleName}", before.sameAs(pixels(view)))
         }
@@ -80,6 +82,7 @@ class KeyboardSkinViewLifecycleTest {
             if (!cold) theme(KeyboardSkinId.DEFAULT)
             theme(KeyboardSkinId.CUPERTINO_LIGHT)
             theme(KeyboardSkinId.CUPERTINO_DARK)
+            theme(KeyboardSkinId.CUPERTINO_CLASSIC)
             theme(KeyboardSkinId.DEFAULT)
             assertEquals(original, androidx.core.widget.ImageViewCompat.getImageTintList(button))
         }
@@ -101,6 +104,7 @@ class KeyboardSkinViewLifecycleTest {
             val before = pixels(view)
             theme(KeyboardSkinId.CUPERTINO_LIGHT)
             theme(KeyboardSkinId.CUPERTINO_DARK)
+            theme(KeyboardSkinId.CUPERTINO_CLASSIC)
             theme(KeyboardSkinId.DEFAULT)
             val after = pixels(view)
             assertTrue("Material Default pixels differ: ${view.javaClass.simpleName}", before.sameAs(after))
