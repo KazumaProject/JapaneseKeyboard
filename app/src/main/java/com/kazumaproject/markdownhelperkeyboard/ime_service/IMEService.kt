@@ -724,6 +724,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * actionInDestroy 等でこのフラグを false に戻すこと。
      */
     private var isFloatingQwertyConfigured: Boolean = false
+    private var floatingQwertyAppliedSkinId: KeyboardSkinId? = null
     private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundPlayer: ExoPlayer? = null
     private val keyboardBackgroundImageRequestId = AtomicLong(0L)
@@ -2826,6 +2827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         savedSingleFloatingBinding = null
         isKeyboardFloatingMode = savedSingleFloatingMode
         isFloatingQwertyConfigured = false
+        floatingQwertyAppliedSkinId = null
         if (restoreSurface) applyFloatingModeState(isKeyboardFloatingMode == true)
         composingGuide?.refresh()
     }
@@ -7085,10 +7087,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 view.setKeyboardTheme(
                     skinId = keyboardSkinId,
                     backgroundColor = palette?.background ?: manipulateColor(keyColor, 1.2f),
-                    iconColor = customThemeKeyTextColor ?: Color.BLACK,
+                    iconColor = palette?.specialText ?: customThemeKeyTextColor ?: Color.BLACK,
                     selectedIconColor = palette?.selectionText
                         ?: manipulateColor(customThemeKeyTextColor ?: Color.BLACK, 0.6f),
-                    keyBackgroundColor = keyColor,
+                    keyBackgroundColor = palette?.specialKey ?: keyColor,
                     liquidGlassEnable = liquidGlassThemePreference ?: false,
                 )
             } else {
@@ -7103,8 +7105,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFloatingSymbolKeyboardAppearance(view: CustomSymbolKeyboardView) {
         val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
         if (palette != null) {
-            view.setKeyboardTheme(palette.background, palette.text, palette.selectionText,
-                palette.key, false, keyboardSkinId)
+            view.setKeyboardTheme(palette.background, palette.specialText, palette.selectionText,
+                palette.specialKey, false, keyboardSkinId)
         } else {
             // Preserve the existing floating-symbol theme policy.
             view.restoreDefaultKeyboardTheme()
@@ -7392,6 +7394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyLocalKeyboardFont(localFontRepository.state.value.snapshot)
         // floatingKeyboardBinding を作り直したので configureQwertyView guard をリセット。
         isFloatingQwertyConfigured = false
+        floatingQwertyAppliedSkinId = null
         lastAppliedFloatingEditWidthPx = -1
         lastAppliedFloatingEditHeightPx = -1
 
@@ -10254,9 +10257,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyView: QWERTYKeyboardView,
         mainView: MainLayoutBinding,
     ) {
-        if (isFloatingQwertyConfigured) return
+        if (isFloatingQwertyConfigured) {
+            if (floatingQwertyAppliedSkinId != keyboardSkinId) {
+                applyCurrentQwertyTheme(qwertyView)
+                floatingQwertyAppliedSkinId = keyboardSkinId
+            }
+            return
+        }
         configureQwertyView(qwertyView, mainView)
         isFloatingQwertyConfigured = true
+        floatingQwertyAppliedSkinId = keyboardSkinId
     }
 
     /**
@@ -23051,27 +23061,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         configureQwertyView(mainView.qwertyView, mainView)
     }
 
+    private fun applyCurrentQwertyTheme(qwertyView: QWERTYKeyboardView) {
+        qwertyView.applyKeyboardTheme(
+            skinId = keyboardSkinId,
+            themeMode = keyboardThemeMode ?: "default",
+            currentNightMode = currentNightMode,
+            isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+            customBgColor = customThemeBgColor ?: Color.WHITE,
+            customKeyColor = customThemeKeyColor ?: Color.WHITE,
+            customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+            customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+            customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+            liquidGlassEnable = liquidGlassThemePreference ?: false,
+            customBorderEnable = customKeyBorderEnablePreference ?: false,
+            customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
+            liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
+            borderWidth = customKeyBorderWidth ?: 1
+        )
+    }
+
     private fun configureQwertyView(
         qwertyView: QWERTYKeyboardView,
         mainView: MainLayoutBinding,
     ) {
+        applyCurrentQwertyTheme(qwertyView)
         qwertyView.apply {
-            applyKeyboardTheme(
-                skinId = keyboardSkinId,
-                themeMode = keyboardThemeMode ?: "default",
-                currentNightMode = currentNightMode,
-                isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
-                customBgColor = customThemeBgColor ?: Color.WHITE,
-                customKeyColor = customThemeKeyColor ?: Color.WHITE,
-                customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
-                customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
-                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                liquidGlassEnable = liquidGlassThemePreference ?: false,
-                customBorderEnable = customKeyBorderEnablePreference ?: false,
-                customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
-                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
-                borderWidth = customKeyBorderWidth ?: 1
-            )
             setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
             setFlickThresholdShape(flickThresholdShapePreferenceValue)
             setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
@@ -25061,6 +25075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding = null
         floatingKeyboardBinding = null
         isFloatingQwertyConfigured = false
+        floatingQwertyAppliedSkinId = null
         closeConnection()
         scope.cancel()
         ioScope.cancel()
