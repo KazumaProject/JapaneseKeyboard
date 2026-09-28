@@ -3161,7 +3161,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customThemeShortcutIconColor ?: Color.BLACK,
         ) else null
         return com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(
-            context, KeyboardSkinRegistry.find(keyboardSkinId)?.palette, custom)
+            context,
+            KeyboardSkinRegistry.find(keyboardSkinId)?.palette,
+            custom,
+            cupertinoClassic = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC,
+        )
     }
 
     private fun configureFloatingCandidates(binding: MainLayoutBinding) {
@@ -5362,10 +5366,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             mainView.root.background = skin.keyboardDrawable(resources)
-            mainView.suggestionViewParent.background = skin.keyboardDrawable(resources)
-            mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
+            if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
+                mainView.suggestionViewParent.background = chrome.panelBackground()
+                mainView.candidateTabLayout.background = chrome.tabsBackground()
+                mainView.shortcutToolbarRecyclerview.background = chrome.toolbarBackground(resources)
+            } else {
+                mainView.suggestionViewParent.background = skin.keyboardDrawable(resources)
+                mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
+                mainView.shortcutToolbarRecyclerview.background = null
+            }
             return
         }
+        mainView.shortcutToolbarRecyclerview.background = null
         val isDynamic = DynamicColors.isDynamicColorAvailable()
         if (isKeyboardRounded == true) {
             val fallbackColor = getColor(com.kazumaproject.core.R.color.keyboard_bg)
@@ -5463,7 +5476,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             floatingView.root.background = skin.keyboardDrawable(resources, floating = true)
-            floatingView.suggestionViewParent.background = skin.keyboardDrawable(resources)
+            floatingView.suggestionViewParent.background = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.panelBackground()
+            } else skin.keyboardDrawable(resources)
             return
         }
         val isDynamic = DynamicColors.isDynamicColorAvailable()
@@ -7102,13 +7117,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
         if (palette != null) {
-            tab.setTabTextColors(palette.text, palette.selection)
-            tab.setSelectedTabIndicatorColor(palette.selection)
+            if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.applyTabs(tab)
+            } else {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.restoreTabs(tab)
+                tab.setTabTextColors(palette.text, palette.selection)
+                tab.setSelectedTabIndicatorColor(palette.selection)
+            }
         } else if (keyboardThemeMode == "custom") {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.restoreTabs(tab)
             tab.setTabTextColors(customThemeKeyTextColor ?: Color.BLACK,
                 customThemeSpecialKeyTextColor ?: Color.BLACK)
             tab.setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
         } else {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.restoreTabs(tab)
             tab.setTabTextColors(original.text)
             tab.setSelectedTabIndicatorColor(original.indicator)
         }
@@ -7116,15 +7138,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
     private fun applyCandidateAppearance() {
-        mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
+        if (!floatingCandidateSurfaceActive) {
+            mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
+        }
         val custom = keyboardThemeMode == "custom"
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setCandidateTextColor(if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
             adapter.setCandidateItemColors(
-                if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
-                if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) Color.TRANSPARENT
+                else if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.candidatePressedColor
+                } else if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
                     this, com.kazumaproject.core.R.color.qwety_key_bg_color
                 ) else null,
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) 0f else 16f,
+            )
+            adapter.setCandidateDividerColor(
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC)
+                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.dividerColor
+                else null
             )
         }
         listOfNotNull(mainLayoutBinding?.suggestionVisibility, floatingKeyboardBinding?.suggestionVisibility)
