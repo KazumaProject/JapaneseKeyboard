@@ -18,6 +18,7 @@ import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
@@ -96,10 +97,14 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context), KeyboardFont
             background = backgroundShape
         }
 
-        fun setContent(action: FlickAction, inputTextTransform: (String) -> String) {
+        fun setContent(
+            action: FlickAction,
+            inputTextTransform: (String) -> String,
+            fontSnapshot: KeyboardFontSnapshot,
+        ) {
             val content = action.toPopupCellContent()
             if (content.drawableResId != null) {
-                imageView.setImageResource(content.drawableResId)
+                KeyboardFontGlyphDrawable.setImageResource(imageView, content.drawableResId, fontSnapshot)
                 imageView.visibility = View.VISIBLE
                 textView.visibility = View.GONE
                 return
@@ -226,7 +231,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context), KeyboardFont
             }
 
             val cell = CellView(context).apply {
-                setContent(action, inputTextTransform)
+                setContent(action, inputTextTransform, keyboardFontSnapshot)
                 applyTextSize(popupTextSizeSp)
                 val theme = colorTheme
                 if (theme != null) {
@@ -278,7 +283,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context), KeyboardFont
 
             if (action != null) {
                 val cell = CellView(context).apply {
-                    setContent(action, inputTextTransform)
+                    setContent(action, inputTextTransform, keyboardFontSnapshot)
                     applyTextSize(popupTextSizeSp)
                     val theme = colorTheme
                     if (theme != null) {

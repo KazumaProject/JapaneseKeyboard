@@ -61,6 +61,7 @@ import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -202,6 +203,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyboardFontSnapshot = snapshot
         KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
         binding.keySwitchKeyMode.setKeyboardFont(snapshot)
+        binding.sideKeySymbolModeContainer.setKeyboardFont(snapshot)
         applyPopupKeyboardFont()
         skinGuide?.setKeyboardFont(snapshot)
     }
@@ -228,12 +230,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         )
     }
 
-    private val cachedSymbolDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.symbol
+    private val cachedSymbolDrawable: Drawable?
+        get() = KeyboardFontGlyphDrawable.create(
+            context, com.kazumaproject.core.R.drawable.symbol, keyboardFontSnapshot
         )
-    }
 
     private val cachedUndoDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -256,30 +256,25 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         )
     }
 
-    private val cachedNumberSmallDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.number_small
+    private val cachedNumberSmallDrawable: Drawable?
+        get() = KeyboardFontGlyphDrawable.create(
+            context, com.kazumaproject.core.R.drawable.number_small, keyboardFontSnapshot
         )
-    }
 
-    private val cachedNumberSmallFlickGuideDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.number_small_flick_guide
+    private val cachedNumberSmallFlickGuideDrawable: Drawable?
+        get() = KeyboardFontGlyphDrawable.create(
+            context, com.kazumaproject.core.R.drawable.number_small_flick_guide, keyboardFontSnapshot
         )
-    }
 
-    private val cachedKanaDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(context, com.kazumaproject.core.R.drawable.kana_small)
-    }
-
-    private val cachedOpenBracketDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.open_bracket
+    private val cachedKanaDrawable: Drawable?
+        get() = KeyboardFontGlyphDrawable.create(
+            context, com.kazumaproject.core.R.drawable.kana_small, keyboardFontSnapshot
         )
-    }
+
+    private val cachedOpenBracketDrawable: Drawable?
+        get() = KeyboardFontGlyphDrawable.create(
+            context, com.kazumaproject.core.R.drawable.open_bracket, keyboardFontSnapshot
+        )
 
     private val cachedLanguageDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -316,11 +311,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         )
     }
 
-    private val cachedEnglishDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            context, com.kazumaproject.core.R.drawable.english_small
+    private val cachedEnglishDrawable: Drawable?
+        get() = KeyboardFontGlyphDrawable.create(
+            context, com.kazumaproject.core.R.drawable.english_small, keyboardFontSnapshot
         )
-    }
 
 
     // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
@@ -2033,12 +2027,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * IME 側で候補表示などを更新した後も、旧アイコンを直接設定せずこのメソッドを使う。
      */
     fun setNumberSmallKeyPresentation() {
-        binding.keySmallLetter.setImageDrawable(
+        KeyboardFontGlyphDrawable.setImageDrawable(
+            binding.keySmallLetter,
             if (isNumberFlickGuideEnabled) {
                 cachedNumberSmallFlickGuideDrawable
             } else {
                 cachedNumberSmallDrawable
-            }
+            },
+            keyboardFontSnapshot,
         )
     }
 
@@ -2337,9 +2333,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 it.isPressed = true
-                it.setImageDrawable(
-                    cachedOpenBracketDrawable
-                )
+                KeyboardFontGlyphDrawable.setImageDrawable(it, cachedOpenBracketDrawable, keyboardFontSnapshot)
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 if (isLongPressed) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
@@ -2574,7 +2568,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     fun setBackgroundSmallLetterKey(
         drawable: Drawable? = cachedLanguageDrawable
     ) {
-        binding.keySmallLetter.setImageDrawable(drawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(binding.keySmallLetter, drawable, keyboardFontSnapshot)
     }
 
     /** Set default drawable for the small/dakuten key **/
@@ -2583,19 +2577,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         isEnglish: Boolean
     ) {
         if (isLanguageEnable) {
-            binding.keySmallLetter.setImageDrawable(cachedLanguageDrawable)
+            KeyboardFontGlyphDrawable.setImageDrawable(binding.keySmallLetter, cachedLanguageDrawable, keyboardFontSnapshot)
         } else {
             if (isEnglish) {
-                binding.keySmallLetter.setImageDrawable(cachedEnglishDrawable)
+                KeyboardFontGlyphDrawable.setImageDrawable(binding.keySmallLetter, cachedEnglishDrawable, keyboardFontSnapshot)
             } else {
-                binding.keySmallLetter.setImageDrawable(cachedKanaDrawable)
+                KeyboardFontGlyphDrawable.setImageDrawable(binding.keySmallLetter, cachedKanaDrawable, keyboardFontSnapshot)
             }
         }
     }
 
     /** Set custom drawable on the Enter key **/
     fun setSideKeyEnterDrawable(drawable: Drawable?) {
-        binding.keyEnter.setImageDrawable(drawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(binding.keyEnter, drawable, keyboardFontSnapshot)
     }
 
     /** Retrieve current Enter key drawable **/
@@ -2605,7 +2599,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Set custom drawable on the Space key **/
     fun setSideKeySpaceDrawable(drawable: Drawable?) {
-        binding.keySpace.setImageDrawable(drawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(binding.keySpace, drawable, keyboardFontSnapshot)
     }
 
     /** Enable/disable the “previous character” key **/
@@ -2615,7 +2609,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Enable/disable the “previous character” key **/
     fun setSideKeyPreviousDrawable(drawable: Drawable?) {
-        binding.keyReturn.setImageDrawable(drawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(binding.keyReturn, drawable, keyboardFontSnapshot)
     }
 
     /** Cycle through input modes when the switch key is clicked **/
@@ -2794,7 +2788,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             if (isLanguageIconEnabled) {
                 keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             } else {
-                keySmallLetter.setImageDrawable(cachedKanaDrawable)
+                KeyboardFontGlyphDrawable.setImageDrawable(keySmallLetter, cachedKanaDrawable, keyboardFontSnapshot)
             }
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
@@ -2824,7 +2818,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             if (isLanguageIconEnabled) {
                 keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             } else {
-                keySmallLetter.setImageDrawable(cachedEnglishDrawable)
+                KeyboardFontGlyphDrawable.setImageDrawable(keySmallLetter, cachedEnglishDrawable, keyboardFontSnapshot)
             }
             keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
@@ -2860,11 +2854,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             sideKeySymbolModeContainer.apply {
                 visibility = View.VISIBLE
                 setImages(
-                    ContextCompat.getDrawable(
+                    KeyboardFontGlyphDrawable.create(
                         context,
-                        com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+                        com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+                        keyboardFontSnapshot,
                     ),
-                    cachedSymbolDrawable
+                    cachedSymbolDrawable,
                 )
             }
             keySpace.apply {
