@@ -159,10 +159,13 @@ class LocalFontSettingsFragment : Fragment() {
             state.error != null -> getString(state.error.toStringRes())
             else -> ""
         }
-        chooseButton?.isEnabled = !state.busy
+        chooseButton?.isEnabled = true
         applyButton?.isEnabled = !state.busy && state.previewName != null
-        cancelButton?.isEnabled = !state.busy && state.previewName != null
-        standardButton?.isEnabled = !state.busy
+        cancelButton?.setText(
+            if (state.busy) R.string.local_font_cancel_loading else R.string.local_font_cancel_selection,
+        )
+        cancelButton?.isEnabled = state.busy || state.previewName != null
+        standardButton?.isEnabled = true
     }
 
     private fun LocalFontUiError.toStringRes(): Int = when (this) {

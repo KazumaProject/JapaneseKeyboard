@@ -1,0 +1,123 @@
+package com.kazumaproject.markdownhelperkeyboard.local_font;
+
+import android.content.ContentProvider;
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.database.MatrixCursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
+/** A test-only provider that can hold a pipe open without producing bytes. */
+public final class LocalFontBlockingTestProvider extends ContentProvider {
+    private static final Object LOCK = new Object();
+    private static ParcelFileDescriptor heldWriter;
+    private static boolean blockedOpened;
+
+    @Override
+    public boolean onCreate() {
+        return true;
+    }
+
+    @Override
+    public Cursor query(
+            Uri uri,
+            String[] projection,
+            String selection,
+            String[] selectionArgs,
+            String sortOrder
+    ) {
+        String[] columns = projection == null
+                ? new String[]{OpenableColumns.DISPLAY_NAME}
+                : projection;
+        MatrixCursor cursor = new MatrixCursor(columns);
+        Object[] row = new Object[columns.length];
+        for (int i = 0; i < columns.length; i++) {
+            if (OpenableColumns.DISPLAY_NAME.equals(columns[i])) {
+                row[i] = "blocked-font.ttf";
+            }
+        }
+        cursor.addRow(row);
+        return cursor;
+    }
+
+    @Override
+    public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
+        if ("blocked".equals(uri.getLastPathSegment())) {
+            try {
+                ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createPipe();
+                synchronized (LOCK) {
+                    closeQuietly(heldWriter);
+                    heldWriter = pipe[1];
+                    blockedOpened = true;
+                }
+                return pipe[0];
+            } catch (IOException e) {
+                FileNotFoundException failure = new FileNotFoundException(e.getMessage());
+                failure.initCause(e);
+                throw failure;
+            }
+        }
+        if ("valid".equals(uri.getLastPathSegment())) {
+            File font = new File("/system/fonts/DroidSansMono.ttf");
+            if (!font.isFile()) throw new FileNotFoundException(font.getPath());
+            return ParcelFileDescriptor.open(font, ParcelFileDescriptor.MODE_READ_ONLY);
+        }
+        throw new FileNotFoundException(uri.toString());
+    }
+
+    @Override
+    public String getType(Uri uri) {
+        return "font/ttf";
+    }
+
+    @Override
+    public Uri insert(Uri uri, ContentValues values) {
+        return null;
+    }
+
+    @Override
+    public int delete(Uri uri, String selection, String[] selectionArgs) {
+        return 0;
+    }
+
+    @Override
+    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+        return 0;
+    }
+
+    @Override
+    public Bundle call(String method, String arg, Bundle extras) {
+        Bundle response = new Bundle();
+        if ("reset".equals(method)) {
+            synchronized (LOCK) {
+                closeQuietly(heldWriter);
+                heldWriter = null;
+                blockedOpened = false;
+            }
+        } else if ("opened".equals(method)) {
+            synchronized (LOCK) {
+                response.putBoolean("opened", blockedOpened);
+            }
+        } else if ("release".equals(method)) {
+            synchronized (LOCK) {
+                closeQuietly(heldWriter);
+                heldWriter = null;
+            }
+        }
+        return response;
+    }
+
+    private static void closeQuietly(ParcelFileDescriptor descriptor) {
+        if (descriptor == null) return;
+        try {
+            descriptor.close();
+        } catch (IOException ignored) {
+        }
+    }
+}

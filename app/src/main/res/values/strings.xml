@@ -1841,6 +1841,7 @@
     <string name="local_font_preview_small_label">Small guide and candidate sample</string>
     <string name="local_font_apply">Apply</string>
     <string name="local_font_cancel_selection">Cancel selection</string>
+    <string name="local_font_cancel_loading">Cancel loading</string>
     <string name="local_font_restore_standard">Restore standard</string>
     <string name="local_font_restore_warning">The saved font could not be restored. Choose it again or restore the standard appearance.</string>
     <string name="local_font_error_unsupported">This font format is not supported. Choose a static TTF or OTF file.</string>
