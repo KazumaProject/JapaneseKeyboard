@@ -550,7 +550,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
             // 3. 特殊キーへの適用
             val specialDrawableState =
-                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+                getDynamicNeumorphDrawable(specialKeyColor, radius,
+                    com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER).constantState
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
             specialKeys.forEach { view ->
@@ -562,6 +563,12 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 }
                 ImageViewCompat.setImageTintList(view, specialColorStateList)
             }
+            KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+                keySpace.background = skin.keyDrawable(resources,
+                    role = com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE)
+                ImageViewCompat.setImageTintList(keySpace,
+                    ColorStateList.valueOf(skin.palette.spaceText))
+            }
 
         }
     }
@@ -569,8 +576,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
     /**
      * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
      */
-    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float,
+            role: com.kazumaproject.core.ui.skin.SkinKeyRole =
+                com.kazumaproject.core.ui.skin.SkinKeyRole.CHARACTER): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, role = role) }
         val highlightColor = manipulateColor(baseColor, 1.2f)
         val shadowColor = manipulateColor(baseColor, 0.8f)
 
