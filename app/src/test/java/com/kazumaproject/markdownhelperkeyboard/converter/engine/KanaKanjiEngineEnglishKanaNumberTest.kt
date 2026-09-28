@@ -281,6 +281,136 @@ class KanaKanjiEngineEnglishKanaNumberTest {
     }
 
     @Test
+    fun mixedWidthDigitInputKeepsItsSourceAndGetsNormalizedStyleRepresentatives() {
+        val method = KanaKanjiEngine::class.java.getDeclaredMethod(
+            "buildDirectDigitCandidateAdditions",
+            String::class.java,
+            List::class.java,
+            List::class.java,
+        ).apply { isAccessible = true }
+        val examples = listOf(
+            listOf("1２", "12", "１２", "十二"),
+            listOf("０07", "007", "００７", "〇〇七"),
+        )
+
+        examples.forEach { (mixed, halfWidth, fullWidth, kanji) ->
+            val digitStyles = listOf(
+                Candidate(mixed, 22, mixed.length.toUByte(), 0),
+                Candidate(fullWidth, 22, mixed.length.toUByte(), 0),
+                Candidate(halfWidth, 31, mixed.length.toUByte(), 0),
+                Candidate(kanji, 17, mixed.length.toUByte(), 0),
+            )
+
+            @Suppress("UNCHECKED_CAST")
+            val engineCandidates = method.invoke(engine, mixed, emptyList<Candidate>(), digitStyles) as List<Candidate>
+            val presented = NumberCandidatePresenter.present(
+                candidates = engineCandidates,
+                segmentsByCandidateString = emptyMap(),
+                config = NumberPresentationConfig(),
+            )
+
+            assertEquals(
+                listOf(halfWidth, fullWidth, kanji, mixed),
+                presented.candidates.map(Candidate::string),
+            )
+            assertEquals(NumberStyle.HALF_WIDTH, presented.candidates[0].numberMetadata?.style)
+            assertEquals(NumberStyle.FULL_WIDTH, presented.candidates[1].numberMetadata?.style)
+            assertEquals(NumberStyle.KANJI, presented.candidates[2].numberMetadata?.style)
+            assertEquals(NumberStyle.MIXED, presented.candidates[3].numberMetadata?.style)
+        }
+    }
+
+    @Test
+    fun mixedWidthDigitInputKeepsOriginalAndGeneratesNormalizedStyleRepresentativesThroughTheEngine() {
+        val examples = listOf(
+            Triple("1２", "12", "１２") to "十二",
+            Triple("１2", "12", "１２") to "十二",
+            Triple("０07", "007", "００７") to "〇〇七",
+        )
+        val styleOrders = listOf(
+            listOf(NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH, NumberStyle.KANJI),
+            listOf(NumberStyle.HALF_WIDTH, NumberStyle.KANJI, NumberStyle.FULL_WIDTH),
+            listOf(NumberStyle.FULL_WIDTH, NumberStyle.HALF_WIDTH, NumberStyle.KANJI),
+            listOf(NumberStyle.FULL_WIDTH, NumberStyle.KANJI, NumberStyle.HALF_WIDTH),
+            listOf(NumberStyle.KANJI, NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH),
+            listOf(NumberStyle.KANJI, NumberStyle.FULL_WIDTH, NumberStyle.HALF_WIDTH),
+        )
+
+        examples.forEach { (forms, kanji) ->
+            val (input, halfWidth, fullWidth) = forms
+            val engineCandidates = engine.getCandidatesEnglishKana(input)
+            assertTrue("engine must preserve typed input $input", engineCandidates.any { it.string == input })
+
+            styleOrders.forEach { styleOrder ->
+                val presented = NumberCandidatePresenter.present(
+                    candidates = engineCandidates,
+                    segmentsByCandidateString = emptyMap(),
+                    config = NumberPresentationConfig(styleOrder = styleOrder),
+                )
+                val normalizedHalfWidth = presented.candidates.firstOrNull { it.string == halfWidth }
+                assertTrue("$input should produce normalized half-width $halfWidth", normalizedHalfWidth != null)
+                assertEquals(NumberStyle.HALF_WIDTH, normalizedHalfWidth?.numberMetadata?.style)
+                assertTrue("$input should produce full-width $fullWidth", presented.candidates.any { it.string == fullWidth })
+                assertTrue("$input should produce kanji $kanji", presented.candidates.any { it.string == kanji })
+                val familyStyles = presented.candidates.mapNotNull { candidate ->
+                    candidate.numberMetadata?.takeIf { it.familyKey == normalizedHalfWidth?.numberMetadata?.familyKey }
+                        ?.style
+                        ?.takeIf { it in NumberPresentationConfig.DEFAULT_STYLE_ORDER }
+                }
+                assertEquals(styleOrder, familyStyles.distinct())
+                val original = presented.candidates.first { it.string == input }
+                assertTrue(
+                    "typed input $input must not occupy a configured number style slot",
+                    original.numberMetadata?.style != NumberStyle.HALF_WIDTH &&
+                        original.numberMetadata?.style != NumberStyle.FULL_WIDTH &&
+                        original.numberMetadata?.style != NumberStyle.KANJI,
+                )
+                assertEquals(NumberStyle.MIXED, original.numberMetadata?.style)
+                val firstStyleRepresentative = presented.candidates.first {
+                    it.numberMetadata?.style in setOf(NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH, NumberStyle.KANJI)
+                }
+                val lastStyleRepresentative = presented.candidates.last {
+                    it.numberMetadata?.style in setOf(NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH, NumberStyle.KANJI)
+                }
+                assertEquals(styleOrder.first(), firstStyleRepresentative.numberMetadata?.style)
+                assertTrue(
+                    "the configured style representative should precede the original mixed input",
+                    presented.candidates.indexOf(firstStyleRepresentative) < presented.candidates.indexOf(original),
+                )
+                assertTrue(
+                    "the original mixed input should follow every normalized form",
+                    presented.candidates.indexOf(lastStyleRepresentative) < presented.candidates.indexOf(original),
+                )
+
+                val reapplied = NumberCandidatePresenter.present(
+                    candidates = presented.candidates,
+                    segmentsByCandidateString = presented.segmentsByCandidateString,
+                    config = NumberPresentationConfig(styleOrder = styleOrder),
+                )
+                assertEquals(
+                    "reapplying presentation should preserve order for $input and $styleOrder",
+                    presented.candidates.map(Candidate::string),
+                    reapplied.candidates.map(Candidate::string),
+                )
+            }
+
+            val additionsDisabled = NumberCandidatePresenter.present(
+                candidates = engineCandidates,
+                segmentsByCandidateString = emptyMap(),
+                config = NumberPresentationConfig(additionsEnabled = false),
+            )
+            assertTrue(
+                "disabling added forms must preserve the typed input $input",
+                additionsDisabled.candidates.any { it.string == input },
+            )
+            assertEquals(
+                NumberStyle.MIXED,
+                additionsDisabled.candidates.first { it.string == input }.numberMetadata?.style,
+            )
+        }
+    }
+
+    @Test
     fun getCandidatesEnglishKana_returns_temporal_year_candidates_for_kotoshi() {
         assertYearCandidates("ことし", 0)
     }

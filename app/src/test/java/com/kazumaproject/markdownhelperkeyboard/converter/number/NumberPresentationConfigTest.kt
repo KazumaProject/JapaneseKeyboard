@@ -19,7 +19,7 @@ class NumberPresentationConfigTest {
     }
 
     @Test
-    fun sixStyleOrderKeysAreUniqueCompletePermutations() {
+    fun sixStyleOrderKeysAreUniquePermutationsOfSelectableStyles() {
         val keys = listOf(
             "half_full_kanji",
             "half_kanji_full",
@@ -28,7 +28,7 @@ class NumberPresentationConfigTest {
             "kanji_half_full",
             "kanji_full_half",
         )
-        val expectedStyles = NumberStyle.values().toSet()
+        val expectedStyles = NumberPresentationConfig.DEFAULT_STYLE_ORDER.toSet()
         val parsed = keys.map { NumberPresentationConfig.parseStyleOrder(it) }
 
         assertEquals(6, parsed.toSet().size)
@@ -41,7 +41,7 @@ class NumberPresentationConfigTest {
     @Test
     fun malformedOrdersNormalizeToAllThreeStylesWithoutDuplicates() {
         val config = NumberPresentationConfig(
-            styleOrder = listOf(NumberStyle.KANJI, NumberStyle.KANJI),
+            styleOrder = listOf(NumberStyle.MIXED, NumberStyle.KANJI, NumberStyle.KANJI),
         ).normalized()
 
         assertEquals(

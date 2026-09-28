@@ -4,6 +4,7 @@ enum class NumberStyle {
     HALF_WIDTH,
     FULL_WIDTH,
     KANJI,
+    MIXED,
 }
 
 data class NumberPresentationConfig(
@@ -11,7 +12,7 @@ data class NumberPresentationConfig(
     val styleOrder: List<NumberStyle> = DEFAULT_STYLE_ORDER,
 ) {
     fun normalized(): NumberPresentationConfig = copy(
-        styleOrder = styleOrder.distinct().let { distinct ->
+        styleOrder = styleOrder.filter { it in DEFAULT_STYLE_ORDER }.distinct().let { distinct ->
             distinct + DEFAULT_STYLE_ORDER.filterNot(distinct::contains)
         },
     )

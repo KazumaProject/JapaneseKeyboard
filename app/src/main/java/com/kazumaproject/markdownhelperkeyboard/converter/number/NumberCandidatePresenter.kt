@@ -62,6 +62,7 @@ object NumberCandidatePresenter {
         val originalIndex: Int,
         val isFallback: Boolean,
         val candidatesByStyle: Map<NumberStyle, Candidate>,
+        val preservedCandidates: List<Candidate>,
     )
 
     /** Search more completed paths only for input that can contain a number or listed counter. */
@@ -162,8 +163,21 @@ object NumberCandidatePresenter {
         val familiesByKey = LinkedHashMap<String, Family>()
         val ordinary = mutableListOf<Pair<Int, Candidate>>()
         val simpleFallbacks = mutableListOf<Pair<Int, Candidate>>()
+        val mixedNumberSurfaces = rawCandidates.mapNotNullTo(hashSetOf()) { candidate ->
+            candidate.string.takeIf { candidate.numberMetadata?.style == NumberStyle.MIXED }
+        }
 
         rawCandidates.forEachIndexed { index, candidate ->
+            // The engine can emit the exact mixed input through more than one candidate path.
+            // Keep the metadata-bearing copy in its numeric family instead of letting an
+            // unannotated duplicate appear early as an ordinary candidate.
+            if (
+                candidate.numberMetadata == null &&
+                candidate.string in mixedNumberSurfaces &&
+                isTextConversionCandidate(candidate)
+            ) {
+                return@forEachIndexed
+            }
             if (!isTextConversionCandidate(candidate)) {
                 if (!isNgWord(candidate)) ordinary += index to candidate
                 return@forEachIndexed
@@ -211,6 +225,7 @@ object NumberCandidatePresenter {
                     originalIndex = index,
                     isFallback = fallback,
                     candidatesByStyle = style?.let { mapOf(it to candidate) }.orEmpty(),
+                    preservedCandidates = if (style == NumberStyle.MIXED) listOf(candidate) else emptyList(),
                 )
             } else {
                 val updated = previous.copy(
@@ -218,6 +233,11 @@ object NumberCandidatePresenter {
                         previous.candidatesByStyle + (style to candidate)
                     } else {
                         previous.candidatesByStyle
+                    },
+                    preservedCandidates = if (style == NumberStyle.MIXED) {
+                        (previous.preservedCandidates + candidate).distinctBy(::candidateIdentity)
+                    } else {
+                        previous.preservedCandidates
                     },
                 )
                 familiesByKey[familyKey] = updated
@@ -319,6 +339,9 @@ object NumberCandidatePresenter {
                         add(candidate)
                     }
                 }
+            }
+            visibleRegularFamilies.forEach { family ->
+                addAll(family.preservedCandidates.filterNot(isNgWord))
             }
         }
 
@@ -456,6 +479,7 @@ object NumberCandidatePresenter {
                 NumberStyle.HALF_WIDTH -> 31
                 NumberStyle.FULL_WIDTH -> 22
                 NumberStyle.KANJI -> 17
+                NumberStyle.MIXED -> sourceType
             }.toByte()
         }
 
@@ -699,9 +723,7 @@ object NumberCandidatePresenter {
                 else -> char
             }
         }.joinToString("")
-        val withGrouping = if (commaSeparated && !normalized.contains('.') && !normalized.startsWith('-') && !normalized.startsWith('+')) {
-            normalized.toLongOrNull()?.let(::groupThousands) ?: normalized
-        } else normalized
+        val withGrouping = if (commaSeparated) groupThousands(normalized) else normalized
 
         return when (style) {
             NumberStyle.HALF_WIDTH -> withGrouping
@@ -710,6 +732,7 @@ object NumberCandidatePresenter {
                     in '0'..'9' -> (char.code + 0xFEE0).toChar()
                     ',' -> '，'
                     '.' -> '．'
+                    '+' -> '＋'
                     '-' -> '－'
                     else -> char
                 }
@@ -729,14 +752,21 @@ object NumberCandidatePresenter {
                     normalized.toLongOrNull()?.toKanji()
                 }
             }
+            NumberStyle.MIXED -> null
         }
     }
 
-    private fun groupThousands(value: Long): String {
-        val raw = value.toString()
-        val sign = if (raw.startsWith('-')) "-" else ""
-        val digits = raw.removePrefix("-")
-        return sign + digits.reversed().chunked(3).joinToString(",").reversed()
+    private fun groupThousands(value: String): String {
+        val signLength = if (value.firstOrNull() in setOf('+', '-')) 1 else 0
+        val sign = value.take(signLength)
+        val unsigned = value.drop(signLength)
+        val decimalIndex = unsigned.indexOf('.')
+        val integerPart = if (decimalIndex >= 0) unsigned.substring(0, decimalIndex) else unsigned
+        if (integerPart.isEmpty() || integerPart.any { it !in '0'..'9' }) return value
+
+        val fractionalPart = if (decimalIndex >= 0) unsigned.substring(decimalIndex) else ""
+        val groupedInteger = integerPart.reversed().chunked(3).joinToString(",").reversed()
+        return sign + groupedInteger + fractionalPart
     }
 
     private fun toNumberSpan(run: NumericRun): NumberSpan = NumberSpan(
@@ -758,14 +788,22 @@ object NumberCandidatePresenter {
             val text = segments.subList(run.firstSegment, run.lastSegmentExclusive)
                 .joinToString("") { it.output }
                 .removeSuffix(run.counterSurface.orEmpty())
+            val hasHalfWidthDigit = text.any { it in '0'..'9' }
+            val hasFullWidthDigit = text.any { it in '０'..'９' }
             when {
+                hasHalfWidthDigit && hasFullWidthDigit -> NumberStyle.MIXED
                 text.all { it in '0'..'9' || it in ",.+-−" } -> NumberStyle.HALF_WIDTH
                 text.all { it in '０'..'９' || it in "，．＋－−" } -> NumberStyle.FULL_WIDTH
                 text.all { it in "〇零一二三四五六七八九十百千万億兆京・−+" } -> NumberStyle.KANJI
                 else -> null
             }
         }
-        return styles.firstOrNull()?.takeIf { first -> styles.all { it == first } }
+        return when {
+            styles.any { it == NumberStyle.MIXED } -> NumberStyle.MIXED
+            styles.all { it in setOf(NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH) } &&
+                styles.distinct().size > 1 -> NumberStyle.MIXED
+            else -> styles.firstOrNull()?.takeIf { first -> styles.all { it == first } }
+        }
     }
 
     private fun isNumericSegment(segment: CandidateConversionSegment): Boolean =

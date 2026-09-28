@@ -229,6 +229,57 @@ class NumberCandidatePresenterTest {
     }
 
     @Test
+    fun explicitSpanFullWidthRenderingConvertsPlusAndRemainsIdempotent() {
+        val source = candidate("+12", "+12").copy(
+            numberMetadata = NumberCandidateMetadata(
+                familyKey = "number:+12",
+                origin = NumberCandidateOrigin.SYSTEM_PATH,
+                style = NumberStyle.HALF_WIDTH,
+                numericSpans = listOf(NumberSpan(0, 3, 0, 3, "+12", digitSequence = true)),
+            ),
+        )
+        val config = NumberPresentationConfig()
+
+        val first = NumberCandidatePresenter.present(listOf(source), emptyMap(), config)
+        assertTrue(first.candidates.any { it.string == "＋１２" })
+
+        val second = NumberCandidatePresenter.present(first.candidates, first.segmentsByCandidateString, config)
+        assertEquals(first.candidates.map(Candidate::string), second.candidates.map(Candidate::string))
+        assertTrue(second.candidates.any { it.string == "＋１２" })
+    }
+
+    @Test
+    fun explicitCommaSeparatedRangeKeepsLeadingZeroesInEveryStyle() {
+        val source = candidate("0,012", "0,012").copy(
+            numberMetadata = NumberCandidateMetadata(
+                familyKey = "number:0012",
+                origin = NumberCandidateOrigin.SYSTEM_PATH,
+                style = NumberStyle.HALF_WIDTH,
+                numericSpans = listOf(
+                    NumberSpan(0, 5, 0, 5, "0012", digitSequence = true, commaSeparated = true),
+                ),
+            ),
+        )
+
+        val presented = NumberCandidatePresenter.present(
+            candidates = listOf(source),
+            segmentsByCandidateString = emptyMap(),
+            config = NumberPresentationConfig(),
+        )
+
+        assertTrue(presented.candidates.any { it.string == "0,012" })
+        assertTrue(presented.candidates.any { it.string == "０，０１２" })
+        assertTrue(presented.candidates.any { it.string == "〇〇一二" })
+
+        val reapplied = NumberCandidatePresenter.present(
+            presented.candidates,
+            presented.segmentsByCandidateString,
+            NumberPresentationConfig(),
+        )
+        assertEquals(presented.candidates.map(Candidate::string), reapplied.candidates.map(Candidate::string))
+    }
+
+    @Test
     fun multiBunsetsuSentenceRendersAllNumericSpansWithOneGlobalStyle() {
         val input = "さんまいとにまいをかう"
         val source = candidate("3枚と2枚を買う", input)
@@ -511,6 +562,56 @@ class NumberCandidatePresenterTest {
     }
 
     @Test
+    fun fullWidthPresentationConvertsLeadingPlusAndIsIdempotent() {
+        val first = presentNumber("+12")
+
+        assertEquals("＋１２", first.candidates[1].string)
+        val second = NumberCandidatePresenter.present(
+            candidates = first.candidates,
+            segmentsByCandidateString = first.segmentsByCandidateString,
+            config = NumberPresentationConfig(),
+        )
+        assertEquals(first.candidates.map(Candidate::string), second.candidates.map(Candidate::string))
+    }
+
+    @Test
+    fun commaSeparatedDigitSequenceKeepsLeadingZeroesInEveryStyle() {
+        val first = presentNumber("0,012")
+
+        assertEquals(listOf("0,012", "０，０１２", "〇〇一二"), first.candidates.map(Candidate::string))
+        val second = NumberCandidatePresenter.present(
+            candidates = first.candidates,
+            segmentsByCandidateString = first.segmentsByCandidateString,
+            config = NumberPresentationConfig(),
+        )
+        assertEquals(first.candidates.map(Candidate::string), second.candidates.map(Candidate::string))
+    }
+
+    @Test
+    fun commaGroupingSurvivesSignedAndDecimalWidthRendering() {
+        val signed = presentNumber("-1,234")
+        assertEquals("-1,234", signed.candidates[0].string)
+        assertEquals("－１，２３４", signed.candidates[1].string)
+
+        val decimal = presentNumber("1,234.50")
+        assertEquals("1,234.50", decimal.candidates[0].string)
+        assertEquals("１，２３４．５０", decimal.candidates[1].string)
+
+        val signedDecimal = presentNumber("-1,234.50")
+        assertEquals("-1,234.50", signedDecimal.candidates[0].string)
+        assertEquals("－１，２３４．５０", signedDecimal.candidates[1].string)
+
+        listOf(signed, decimal, signedDecimal).forEach { first ->
+            val second = NumberCandidatePresenter.present(
+                candidates = first.candidates,
+                segmentsByCandidateString = first.segmentsByCandidateString,
+                config = NumberPresentationConfig(),
+            )
+            assertEquals(first.candidates.map(Candidate::string), second.candidates.map(Candidate::string))
+        }
+    }
+
+    @Test
     fun kanjiPresentationMovesMultipleNumberSpansAcrossCounters() {
         val reading = "ひゃくかいとさんかい"
         val source = candidate("100回と3回", reading)
@@ -609,5 +710,6 @@ class NumberCandidatePresenterTest {
         NumberStyle.HALF_WIDTH -> "5$counter"
         NumberStyle.FULL_WIDTH -> "５$counter"
         NumberStyle.KANJI -> "五$counter"
+        NumberStyle.MIXED -> error("mixed width is not a presentation style")
     }
 }

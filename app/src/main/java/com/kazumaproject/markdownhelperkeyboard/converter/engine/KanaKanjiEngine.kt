@@ -4592,10 +4592,10 @@ class KanaKanjiEngine {
         inputDigits: String,
     ): Candidate {
         val halfWidthDigits = inputDigits.convertFullWidthNumbersToHalfWidth()
-        val style = if (inputDigits.all { it in '０'..'９' }) {
-            NumberStyle.FULL_WIDTH
-        } else {
-            NumberStyle.HALF_WIDTH
+        val style = when {
+            inputDigits.isNotEmpty() && inputDigits.all { it in '０'..'９' } -> NumberStyle.FULL_WIDTH
+            inputDigits.isNotEmpty() && inputDigits.all { it in '0'..'9' } -> NumberStyle.HALF_WIDTH
+            else -> NumberStyle.MIXED
         }
         return candidate.copy(
             numberMetadata = NumberCandidateMetadata(
