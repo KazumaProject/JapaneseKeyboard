@@ -1,6 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.local_font
 
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -9,9 +12,60 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class LocalFontRepositoryCancellationDeviceTest {
+    @Test
+    fun cancellingOnMainDoesNotWaitForBlockedCursorClose() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val repository = LocalFontRepository(context)
+        val resolver = context.contentResolver
+        val blockedUri = Uri.parse(
+            "content://com.kazumaproject.markdownhelperkeyboard.lite.localfonttest/font/blocked-cursor",
+        )
+        repository.loadIfNeeded()
+
+        var selection: kotlinx.coroutines.Job? = null
+        try {
+            val started = launch(Dispatchers.IO) { repository.prepare(blockedUri) }
+            selection = started
+            waitForBlockedCursor(resolver, blockedUri)
+
+            val releaseThread = Thread {
+                Thread.sleep(CURSOR_RELEASE_DELAY_MS)
+                resolver.call(blockedUri, "releaseBlockedCursor", null, null)
+            }.apply {
+                name = "LocalFontTestCursorRelease"
+                isDaemon = true
+                start()
+            }
+
+            val cancelStartedAt = SystemClock.elapsedRealtime()
+            instrumentation.runOnMainSync { started.cancel() }
+            val cancelDuration = SystemClock.elapsedRealtime() - cancelStartedAt
+            assertTrue(
+                "cancellation on Main waited ${cancelDuration}ms for Cursor.close()",
+                cancelDuration < MAIN_CANCELLATION_LIMIT_MS,
+            )
+
+            val mainEventHandled = CountDownLatch(1)
+            Handler(Looper.getMainLooper()).post { mainEventHandled.countDown() }
+            assertTrue(
+                "Main should continue processing events while Cursor.close() is blocked",
+                mainEventHandled.await(MAIN_CANCELLATION_LIMIT_MS, TimeUnit.MILLISECONDS),
+            )
+            withTimeout(OPERATION_TIMEOUT_MS) { started.join() }
+            releaseThread.join(OPERATION_TIMEOUT_MS)
+        } finally {
+            runCatching { resolver.call(blockedUri, "releaseBlockedCursor", null, null) }
+            selection?.cancelAndJoin()
+        }
+    }
+
     @Test
     fun cancellingBlockedProviderReadAllowsAnotherSelectionAndRestore() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -56,7 +110,17 @@ class LocalFontRepositoryCancellationDeviceTest {
         delay(300)
     }
 
+    private suspend fun waitForBlockedCursor(resolver: android.content.ContentResolver, uri: Uri) {
+        withTimeout(OPERATION_TIMEOUT_MS) {
+            while (resolver.call(uri, "cursorMoveStarted", null, null)?.getBoolean("started") != true) {
+                delay(25)
+            }
+        }
+    }
+
     private companion object {
         const val OPERATION_TIMEOUT_MS = 5_000L
+        const val CURSOR_RELEASE_DELAY_MS = 1_500L
+        const val MAIN_CANCELLATION_LIMIT_MS = 750L
     }
 }

@@ -17,8 +17,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
-import androidx.navigation.fragment.findNavController
-import com.google.android.material.appbar.MaterialToolbar
 import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -26,7 +24,6 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class LocalFontSettingsFragment : Fragment() {
     private val viewModel: LocalFontSettingsViewModel by viewModels()
-    private var titleView: TextView? = null
     private var currentView: TextView? = null
     private var previewNameView: TextView? = null
     private var sampleView: TextView? = null
@@ -59,19 +56,11 @@ class LocalFontSettingsFragment : Fragment() {
             orientation = LinearLayout.VERTICAL
             setPadding(resources.getDimensionPixelSize(R.dimen.local_font_screen_padding))
         }
-        val toolbar = MaterialToolbar(context).apply {
-            title = getString(R.string.local_font_title)
-            setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
-            setNavigationOnClickListener { findNavController().navigateUp() }
-        }
-        root.addView(toolbar, LinearLayout.LayoutParams(-1, -2))
         val scroll = ScrollView(context)
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, resources.getDimensionPixelSize(R.dimen.local_font_section_spacing), 0, 0)
         }
-        titleView = TextView(context).apply { textSize = 16f }
-        content.addView(titleView, matchWrap())
         currentView = TextView(context).apply { textSize = 14f }
         content.addView(currentView, matchWrap())
 
@@ -145,7 +134,6 @@ class LocalFontSettingsFragment : Fragment() {
     }
 
     private fun render(state: LocalFontSettingsUiState) {
-        titleView?.setText(R.string.local_font_title)
         currentView?.text = getString(
             R.string.local_font_current,
             state.currentName ?: getString(R.string.local_font_standard),

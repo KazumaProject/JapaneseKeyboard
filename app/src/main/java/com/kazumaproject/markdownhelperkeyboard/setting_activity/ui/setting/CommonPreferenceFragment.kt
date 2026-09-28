@@ -556,11 +556,6 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
-        findPreference<Preference>("local_font_settings_preference")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.localFontSettingsFragment)
-            true
-        }
-
         findPreference<Preference>("keyboard_background_image_select_preference")?.apply {
             setOnPreferenceClickListener {
                 keyboardBackgroundImageLauncher.launch(arrayOf("image/*"))

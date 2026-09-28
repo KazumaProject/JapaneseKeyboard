@@ -75,11 +75,4 @@
             android:title="@string/inline_suggestion_enabled_title" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="@string/category_common">
-        <Preference
-            android:key="local_font_settings_preference"
-            android:summary="@string/local_font_settings_summary"
-            android:title="@string/local_font_title" />
-    </PreferenceCategory>
-
 </PreferenceScreen>

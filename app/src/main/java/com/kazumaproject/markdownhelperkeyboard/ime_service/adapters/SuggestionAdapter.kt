@@ -1394,7 +1394,6 @@ class SuggestionAdapter internal constructor(
 
             else -> Unit
         }
-        applyKeyboardFont(holder)
     }
 
             VIEW_TYPE_ZERO_QUERY_CLOSE -> onBindZeroQueryCloseViewHolder(
@@ -1437,6 +1436,7 @@ class SuggestionAdapter internal constructor(
                 item as SuggestionDisplayItem.CustomLayoutItem,
             )
         }
+        applyKeyboardFont(holder)
         styleFloatingItem(holder, position)
     }
 
