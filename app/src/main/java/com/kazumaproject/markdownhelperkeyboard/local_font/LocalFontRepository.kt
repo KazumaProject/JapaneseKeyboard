@@ -64,43 +64,59 @@ class LocalFontRepository @Inject constructor(
         operationMutex.withLock {
             if (loaded) return@withLock _state.value
             loaded = true
-            val stored = store.readState()
-            val record = stored?.record
-            if (record == null) {
-                activeRecord = null
-                _state.value = LocalFontState(snapshot = KeyboardFontSnapshot(revision = 1L))
-                KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
-                store.collectGarbage(activeId = null, previewId = null)
-                return@withLock _state.value
-            }
-
-            try {
-                val file = store.fileFor(record)
-                if (!file.isFile || file.length() != record.sizeBytes || sha256(file) != record.sha256) {
-                    throw IOException("Saved font is unavailable")
+            when (val readResult = store.readState()) {
+                LocalFontReadResult.Missing -> {
+                    publishStandardState()
+                    store.collectGarbage(activeId = null, previewId = null)
+                    _state.value
                 }
-                SfntFontValidator.validate(file)
-                val typeface = createTypeface(file)
-                activeRecord = record
-                _state.value = LocalFontState(
-                    snapshot = KeyboardFontSnapshot(typeface = typeface, revision = 1L),
-                    displayName = record.displayName,
-                )
-                KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
-            } catch (e: CancellationException) {
-                loaded = false
-                throw e
-            } catch (_: Exception) {
-                activeRecord = null
-                _state.value = LocalFontState(
-                    snapshot = KeyboardFontSnapshot(revision = 1L),
-                    warning = LocalFontWarning.RESTORE_FAILED,
-                )
-                KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
+                LocalFontReadResult.Failed -> {
+                    // The saved selection may still be recoverable; keep every font copy intact.
+                    publishStandardState(LocalFontWarning.RESTORE_FAILED)
+                    _state.value
+                }
+                is LocalFontReadResult.Stored -> {
+                    val record = readResult.state.record
+                    if (record == null) {
+                        publishStandardState()
+                        store.collectGarbage(activeId = null, previewId = null)
+                        _state.value
+                    } else {
+                        try {
+                            val file = store.fileFor(record)
+                            if (!file.isFile || file.length() != record.sizeBytes || sha256(file) != record.sha256) {
+                                throw IOException("Saved font is unavailable")
+                            }
+                            SfntFontValidator.validate(file)
+                            val typeface = createTypeface(file)
+                            activeRecord = record
+                            _state.value = LocalFontState(
+                                snapshot = KeyboardFontSnapshot(typeface = typeface, revision = 1L),
+                                displayName = record.displayName,
+                            )
+                            KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
+                        } catch (e: CancellationException) {
+                            loaded = false
+                            throw e
+                        } catch (_: Exception) {
+                            publishStandardState(LocalFontWarning.RESTORE_FAILED)
+                            return@withLock _state.value
+                        }
+                        store.collectGarbage(activeRecord?.id, preview?.record?.id)
+                        _state.value
+                    }
+                }
             }
-            store.collectGarbage(activeRecord?.id, preview?.record?.id)
-            _state.value
         }
+    }
+
+    private fun publishStandardState(warning: LocalFontWarning? = null) {
+        activeRecord = null
+        _state.value = LocalFontState(
+            snapshot = KeyboardFontSnapshot(revision = 1L),
+            warning = warning,
+        )
+        KeyboardFontApplicator.updateProcessSnapshot(_state.value.snapshot)
     }
 
     suspend fun prepare(uri: Uri): LocalFontPreview = withContext(Dispatchers.IO) {

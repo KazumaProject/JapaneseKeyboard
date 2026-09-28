@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.local_font
 import android.util.AtomicFile
 import org.json.JSONObject
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
@@ -16,6 +17,12 @@ internal data class LocalFontRecord(
 )
 
 internal data class LocalFontStoredState(val record: LocalFontRecord?)
+
+internal sealed class LocalFontReadResult {
+    data class Stored(val state: LocalFontStoredState) : LocalFontReadResult()
+    object Missing : LocalFontReadResult()
+    object Failed : LocalFontReadResult()
+}
 
 /** Binary files and their sole durable activation record live outside Android backups. */
 internal class LocalFontStore(noBackupFilesDir: File) {
@@ -50,25 +57,46 @@ internal class LocalFontStore(noBackupFilesDir: File) {
         return file
     }
 
-    fun readState(): LocalFontStoredState? {
-        if (!stateFile.baseFile.exists()) return null
-        return try {
-            val json = JSONObject(stateFile.openRead().bufferedReader(Charsets.UTF_8).use { it.readText() })
-            if (json.optInt("schema") != SCHEMA_VERSION) return null
-            if (json.optString("mode") == "standard") return LocalFontStoredState(null)
-            if (json.optString("mode") != "custom") return null
-            val record = LocalFontRecord(
-                id = json.getString("id"),
-                extension = json.getString("extension"),
-                displayName = sanitizeDisplayName(json.optString("displayName")),
-                sizeBytes = json.getLong("sizeBytes"),
-                sha256 = json.getString("sha256"),
-            )
-            fileFor(record)
-            if (record.sizeBytes !in 1..MAX_LOCAL_FONT_BYTES || !record.sha256.matches(SHA_PATTERN)) return null
-            LocalFontStoredState(record)
+    fun readState(): LocalFontReadResult {
+        val input = try {
+            // Let AtomicFile restore a pending .bak before deciding that no state exists.
+            stateFile.openRead()
+        } catch (_: FileNotFoundException) {
+            val baseFile = stateFile.baseFile
+            val backupFile = File("${baseFile.path}.bak")
+            return if (!baseFile.exists() && !backupFile.exists() && root.isDirectory && root.canRead()) {
+                LocalFontReadResult.Missing
+            } else {
+                LocalFontReadResult.Failed
+            }
         } catch (_: Exception) {
-            null
+            return LocalFontReadResult.Failed
+        }
+
+        return try {
+            val json = JSONObject(input.bufferedReader(Charsets.UTF_8).use { it.readText() })
+            if (json.optInt("schema") != SCHEMA_VERSION) throw IOException("Unsupported font state")
+            val stored = when (json.optString("mode")) {
+                "standard" -> LocalFontStoredState(null)
+                "custom" -> {
+                    val record = LocalFontRecord(
+                        id = json.getString("id"),
+                        extension = json.getString("extension"),
+                        displayName = sanitizeDisplayName(json.optString("displayName")),
+                        sizeBytes = json.getLong("sizeBytes"),
+                        sha256 = json.getString("sha256"),
+                    )
+                    fileFor(record)
+                    if (record.sizeBytes !in 1..MAX_LOCAL_FONT_BYTES || !record.sha256.matches(SHA_PATTERN)) {
+                        throw IOException("Invalid font state")
+                    }
+                    LocalFontStoredState(record)
+                }
+                else -> throw IOException("Invalid font state mode")
+            }
+            LocalFontReadResult.Stored(stored)
+        } catch (_: Exception) {
+            LocalFontReadResult.Failed
         }
     }
 
