@@ -447,6 +447,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
+        updateCapsLockUI(capsLockState.value)
 
         // Int型の currentNightMode から Boolean型の isNightMode を判定
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
@@ -552,7 +553,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             // 3. 特殊キーへの適用 (specialKeyColorを使用)
             val specialDrawableState =
-                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+                getDynamicNeumorphDrawable(specialKeyColor, radius,
+                    com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER).constantState
 
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
@@ -577,6 +579,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
                 view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
+            KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+                keySpace.background = skin.keyDrawable(resources, qwerty = true,
+                    role = com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE)
+                keySpace.setTextColor(skin.palette.spaceText)
+            }
         }
     }
 
@@ -585,8 +592,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * @param baseColor キーのメインカラー
      * @param radius キーの角丸の半径 (px)
      */
-    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = true) }
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float,
+            role: com.kazumaproject.core.ui.skin.SkinKeyRole =
+                com.kazumaproject.core.ui.skin.SkinKeyRole.CHARACTER): Drawable {
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = true, role = role) }
         // 1. 色の計算
         // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
         val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
@@ -983,8 +992,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun updateCapsLockUI(state: CapsLockState) {
         // 大文字表示の切り替え
         val allCaps = state.shiftOn || state.capsLockOn
+        val classicLetterKeys: Set<View> = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) binding.run {
+            setOf(keyQ, keyW, keyE, keyR, keyT, keyY, keyU, keyI, keyO, keyP,
+                keyA, keyS, keyD, keyF, keyG, keyH, keyJ, keyK, keyL,
+                keyZ, keyX, keyC, keyV, keyB, keyN, keyM)
+        } else emptySet()
         qwertyButtonMap.keys.forEach { button ->
-            if (button is AppCompatButton) button.isAllCaps = allCaps
+            if (button is AppCompatButton) button.isAllCaps = allCaps || button in classicLetterKeys
         }
         // Shift キーの drawable は renderShiftKeyDrawable() に集約。
         renderShiftKeyDrawable()
@@ -2538,7 +2552,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val h = geometry.height
             val xOffset = geometry.xOffset
             val content = android.widget.TextView(context).apply {
-                text = if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) label.uppercase() else label
+                text = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC ||
+                    capsLockState.value.capsLockOn || capsLockState.value.shiftOn) label.uppercase() else label
                 setTextColor(skin.palette.text)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 32f)
                 gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL

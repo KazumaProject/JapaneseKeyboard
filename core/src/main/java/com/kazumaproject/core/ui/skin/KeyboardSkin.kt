@@ -10,7 +10,8 @@ interface KeyboardSkin {
     val id: KeyboardSkinId
     val palette: SkinPalette
     fun keyboardDrawable(resources: Resources, floating: Boolean = false): Drawable
-    fun keyDrawable(resources: Resources, qwerty: Boolean = false): Drawable
+    fun keyDrawable(resources: Resources, qwerty: Boolean = false,
+                    role: SkinKeyRole = SkinKeyRole.CHARACTER): Drawable
     fun popupDrawable(resources: Resources, direction: PopupDirection, selected: Boolean = false): Drawable
     fun configurePopupText(view: android.widget.TextView, flick: Boolean) {}
     fun configurePreviewText(view: android.widget.TextView) {}
@@ -19,7 +20,10 @@ interface KeyboardSkin {
     fun guideDrawable(resources: Resources, direction: PopupDirection, selected: Boolean): Drawable =
         popupDrawable(resources, PopupDirection.CENTER, selected)
     fun variationDrawable(resources: Resources): Drawable = popupDrawable(resources, PopupDirection.CENTER)
+    /** Hold deferred QWERTY popups for this long after a key release. */
     val popupReleaseDelayMillis: Long get() = 0L
+    /** Duration of the standard flick popup's exit animation after a selection commits. */
+    val popupReleaseAnimationMillis: Long get() = 0L
     val longPressLabelColor: Int? get() = null
     val longPressLabelFadeMillis: Long get() = 0L
     val longPressLabelRestoreMillis: Long get() = 0L
@@ -42,7 +46,13 @@ data class SkinPalette(
     val pressed: Int,
     val selection: Int,
     val selectionText: Int,
+    val specialKey: Int = key,
+    val specialText: Int = text,
+    val spaceKey: Int = key,
+    val spaceText: Int = text,
 )
+
+enum class SkinKeyRole { CHARACTER, MODIFIER, SPACE }
 
 enum class PopupDirection { CENTER, LEFT, TOP, RIGHT, BOTTOM, PREVIEW }
 
@@ -51,6 +61,7 @@ object KeyboardSkinRegistry {
     private val skins: Map<KeyboardSkinId, KeyboardSkin> = listOf(
         CupertinoSkin(KeyboardSkinId.CUPERTINO_LIGHT),
         CupertinoSkin(KeyboardSkinId.CUPERTINO_DARK),
+        CupertinoClassicSkin(),
     ).associateBy { it.id }
 
     @JvmStatic fun find(id: KeyboardSkinId): KeyboardSkin? = skins[id]

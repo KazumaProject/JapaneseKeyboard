@@ -455,7 +455,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
      * TenKeyの getDynamicNeumorphDrawable と同等の実装
      */
     private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources) }
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let {
+            return it.keyDrawable(resources, role = com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER)
+        }
         // 1. 色の計算 (TenKeyと同じ係数を使用)
         // ハイライト色: 明るくする (1.2f)
         val highlightColor = manipulateColor(baseColor, 1.2f)
