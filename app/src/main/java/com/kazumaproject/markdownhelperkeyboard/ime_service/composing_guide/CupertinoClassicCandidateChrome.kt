@@ -1,0 +1,121 @@
+package com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide
+
+import android.content.res.Resources
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.view.View
+import android.view.ViewGroup
+import com.google.android.material.tabs.TabLayout
+import java.util.WeakHashMap
+
+/** Candidate surfaces follow the segmented gray controls in the iOS 6 Japanese keyboard. */
+internal object CupertinoClassicCandidateChrome {
+    const val panelColor: Int = 0xffc9cbd2.toInt()
+    const val textColor: Int = 0xff25282d.toInt()
+    const val dividerColor: Int = 0xff969ca6.toInt()
+    const val candidatePressedColor: Int = 0xffb6bec9.toInt()
+    const val selectedTabColor: Int = 0xff626975.toInt()
+    private const val panelTop: Int = 0xffe7e7eb.toInt()
+    private const val panelBottom: Int = 0xffc9cbd2.toInt()
+    private const val tabTop: Int = 0xfff0f0f2.toInt()
+    private const val tabBottom: Int = 0xffc8cbd2.toInt()
+    private const val tabSelectedTop: Int = 0xff858c98.toInt()
+    private const val tabSelectedBottom: Int = selectedTabColor
+    private const val tabEdge: Int = 0xff7d8490.toInt()
+
+    private data class TabLayoutState(
+        val mode: Int,
+        val gravity: Int,
+        val rippleColor: android.content.res.ColorStateList?,
+        val tabs: List<TabViewState>,
+    )
+
+    private data class TabViewState(
+        val view: View,
+        val background: android.graphics.drawable.Drawable?,
+        val padding: android.graphics.Rect,
+    )
+
+    private val tabLayoutStates = WeakHashMap<TabLayout, TabLayoutState>()
+
+    fun originalTabRippleColor(tabLayout: TabLayout): android.content.res.ColorStateList? =
+        tabLayoutStates[tabLayout]?.rippleColor ?: tabLayout.tabRippleColor
+
+    fun panelBackground() = gradient(panelTop, panelBottom)
+
+    fun toolbarBackground(resources: Resources) = gradient(tabTop, panelBottom).apply {
+        setStroke(strokeWidth(resources), tabEdge)
+    }
+
+    fun tabsBackground() = gradient(panelTop, panelBottom)
+
+    fun applyTabs(tabLayout: TabLayout) {
+        val resources = tabLayout.resources
+        val strip = tabLayout.getChildAt(0) as? ViewGroup
+        tabLayoutStates.getOrPut(tabLayout) {
+            TabLayoutState(
+                mode = tabLayout.tabMode,
+                gravity = tabLayout.tabGravity,
+                rippleColor = tabLayout.tabRippleColor,
+                tabs = strip?.let { group -> (0 until group.childCount).map { index ->
+                    val tab = group.getChildAt(index)
+                    TabViewState(tab, tab.background, android.graphics.Rect(
+                        tab.paddingLeft, tab.paddingTop, tab.paddingRight, tab.paddingBottom))
+                } } ?: emptyList(),
+            )
+        }
+        tabLayout.setTabTextColors(textColor, android.graphics.Color.WHITE)
+        tabLayout.setSelectedTabIndicator(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        tabLayout.tabRippleColor = null
+        tabLayout.tabMode = if (tabLayout.tabCount <= 3) TabLayout.MODE_FIXED else TabLayout.MODE_SCROLLABLE
+        tabLayout.tabGravity = if (tabLayout.tabCount <= 3) TabLayout.GRAVITY_FILL else TabLayout.GRAVITY_START
+
+        val tabViews = strip ?: return
+        for (index in 0 until tabViews.childCount) {
+            val tab = tabViews.getChildAt(index)
+            tab.background = tabBackground(resources)
+            val horizontalInset = (8f * resources.displayMetrics.density).toInt()
+            tab.setPadding(horizontalInset, tab.paddingTop, horizontalInset, tab.paddingBottom)
+        }
+    }
+
+    fun restoreTabs(tabLayout: TabLayout) {
+        val state = tabLayoutStates.remove(tabLayout) ?: return
+        tabLayout.tabMode = state.mode
+        tabLayout.tabGravity = state.gravity
+        tabLayout.tabRippleColor = state.rippleColor
+        val strip = tabLayout.getChildAt(0) as? ViewGroup ?: return
+        for (index in 0 until strip.childCount) {
+            val view = strip.getChildAt(index)
+            val original = state.tabs.getOrNull(index) ?: state.tabs.firstOrNull() ?: continue
+            view.background = original.background?.constantState?.newDrawable(tabLayout.resources)?.mutate()
+                ?: original.background
+            view.setPadding(original.padding.left, original.padding.top,
+                original.padding.right, original.padding.bottom)
+        }
+    }
+
+    fun tabBackground(resources: Resources) = StateListDrawable().apply {
+        val selected = gradient(tabSelectedTop, tabSelectedBottom).apply {
+            setStroke(strokeWidth(resources), tabEdge)
+        }
+        val normal = gradient(tabTop, tabBottom).apply {
+            setStroke(strokeWidth(resources), tabEdge)
+        }
+        addState(intArrayOf(android.R.attr.state_selected), selected)
+        addState(intArrayOf(android.R.attr.state_activated), selected)
+        addState(intArrayOf(), normal)
+    }
+
+    private fun gradient(top: Int, bottom: Int) = GradientDrawable(
+        GradientDrawable.Orientation.TOP_BOTTOM,
+        intArrayOf(top, bottom),
+    ).apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = 0f
+    }
+
+    private fun strokeWidth(resources: Resources) =
+        resources.displayMetrics.density.toInt().coerceAtLeast(1)
+}
