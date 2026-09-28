@@ -415,11 +415,10 @@ object NumberCandidatePresenter {
         } else {
             renderTextFromSpans(source.string, family.numericSpans, style) ?: return null
         }
-        val transformedSpans = if (renderedSegments != null) {
-            numericRuns(renderedSegments).map(::toNumberSpan)
-        } else {
-            transformSpans(family.numericSpans, style)
-        }
+        // Keep the numeric value and digit-sequence metadata from the source family. Re-parsing
+        // rendered kanji output is lossy when a path's reading is not a Japanese number reading
+        // (for example, a direct digit candidate whose reading is "number").
+        val transformedSpans = transformSpans(family.numericSpans, style)
         if (newString == source.string) {
             return if (source.numberMetadata != null) {
                 source

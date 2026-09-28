@@ -494,6 +494,51 @@ class NumberCandidatePresenterTest {
     }
 
     @Test
+    fun leadingZeroPresentationRemainsIdempotentAndKeepsKanjiNumberSpan() {
+        val first = presentNumber("0012")
+        val kanji = first.candidates.single { it.string == "〇〇一二" }
+        val second = NumberCandidatePresenter.present(
+            candidates = first.candidates,
+            segmentsByCandidateString = first.segmentsByCandidateString,
+            config = NumberPresentationConfig(),
+        )
+
+        assertEquals(first.candidates.map { it.string }, second.candidates.map { it.string })
+        assertEquals(
+            listOf(NumberSpan(0, 4, 0, 4, "0012", digitSequence = true)),
+            kanji.numberMetadata?.numericSpans,
+        )
+    }
+
+    @Test
+    fun kanjiPresentationMovesMultipleNumberSpansAcrossCounters() {
+        val reading = "ひゃくかいとさんかい"
+        val source = candidate("100回と3回", reading)
+        val first = NumberCandidatePresenter.present(
+            candidates = listOf(source),
+            segmentsByCandidateString = mapOf(
+                source.string to listOf(
+                    CandidateConversionSegment(0, 3, "100", "ひゃく", 2044, 2044),
+                    CandidateConversionSegment(3, 5, "回", "かい", 2011, 2011),
+                    CandidateConversionSegment(5, 6, "と", "と", 100, 100),
+                    CandidateConversionSegment(6, 8, "3", "さん", 2044, 2044),
+                    CandidateConversionSegment(8, 10, "回", "かい", 2011, 2011),
+                ),
+            ),
+            config = NumberPresentationConfig(),
+        )
+
+        val kanji = first.candidates.single { it.string == "百回と三回" }
+        assertEquals(
+            listOf(
+                NumberSpan(0, 3, 0, 1, "100", digitSequence = false),
+                NumberSpan(6, 10, 3, 4, "3", digitSequence = false),
+            ),
+            kanji.numberMetadata?.numericSpans,
+        )
+    }
+
+    @Test
     fun nonNumericKanjiWordsAreUntouchedAndPresentationIsIdempotent() {
         val word = candidate("一生", "いっしょう")
         val once = NumberCandidatePresenter.present(
