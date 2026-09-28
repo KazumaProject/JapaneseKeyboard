@@ -33,6 +33,7 @@ import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.gojuon.GojuonCapsLockState
 import com.kazumaproject.core.domain.extensions.hide
@@ -314,6 +315,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
         KeyboardFontApplicator.track(this)
         keyboardFontSnapshot = snapshot
         KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
+        KeyboardFontGlyphDrawable.setImageResource(
+            binding.keyKigou,
+            com.kazumaproject.core.R.drawable.symbol,
+            snapshot,
+        )
         binding.keySwitchKeyMode.setKeyboardFont(snapshot)
         applyPopupKeyboardFont()
     }

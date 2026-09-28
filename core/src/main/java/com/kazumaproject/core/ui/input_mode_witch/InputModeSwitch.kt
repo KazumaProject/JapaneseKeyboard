@@ -2,7 +2,9 @@ package com.kazumaproject.core.ui.input_mode_witch
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.AttributeSet
 import androidx.appcompat.content.res.AppCompatResources
@@ -13,6 +15,7 @@ import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class InputModeSwitch(context: Context, attrs: AttributeSet) :
@@ -80,8 +83,6 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
         val tint = imageTintList?.getColorForState(drawableState, fallbackColor)
         val selectedColor = tint ?: ContextCompat.getColor(context, R.color.keyboard_icon_color)
         val idleColor = tint ?: 0xff839096.toInt()
-        labelPaint.textSize = iconHeight * 0.29f
-        labelPaint.alpha = imageAlpha
         val (labels, positions, selectedIndex) = when {
             useThreeStateKeyboard -> {
                 val selected = when (currentInputMode) {
@@ -100,10 +101,33 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
                 Triple(listOf("あ", "a"), floatArrayOf(.38f, .62f), selected)
             }
         }
-        val baseline = paddingTop + iconHeight / 2f - (labelPaint.ascent() + labelPaint.descent()) / 2f
         labels.forEachIndexed { index, label ->
-            labelPaint.color = if (index == selectedIndex) selectedColor else idleColor
-            canvas.drawText(label, paddingLeft + iconWidth * positions[index], baseline, labelPaint)
+            val baseColor = if (index == selectedIndex) selectedColor else idleColor
+            val color = Color.argb(
+                Color.alpha(baseColor) * imageAlpha / 255,
+                Color.red(baseColor),
+                Color.green(baseColor),
+                Color.blue(baseColor),
+            )
+            val centerX = paddingLeft + iconWidth * positions[index]
+            KeyboardFontGlyphDrawable.drawGlyph(
+                canvas = canvas,
+                paint = labelPaint,
+                text = label,
+                region = RectF(
+                    centerX - iconWidth * 0.11f,
+                    paddingTop + iconHeight * 0.28f,
+                    centerX + iconWidth * 0.11f,
+                    paddingTop + iconHeight * 0.72f,
+                ),
+                color = color,
+                typeface = fontSnapshot.typeface ?: Typeface.DEFAULT,
+                style = if (!useThreeStateKeyboard && index == selectedIndex) {
+                    Typeface.BOLD
+                } else {
+                    Typeface.NORMAL
+                },
+            )
         }
     }
 }
