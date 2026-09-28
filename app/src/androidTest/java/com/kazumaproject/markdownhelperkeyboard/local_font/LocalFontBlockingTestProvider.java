@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** A test-only provider that can hold a pipe open without producing bytes. */
 public final class LocalFontBlockingTestProvider extends ContentProvider {
@@ -22,6 +23,7 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
     private static final Object CURSOR_OPERATION_LOCK = new Object();
     private static volatile CountDownLatch cursorMoveStarted = new CountDownLatch(0);
     private static volatile CountDownLatch cursorRelease = new CountDownLatch(0);
+    private static final AtomicInteger blockedCursorCloseCalls = new AtomicInteger();
 
     @Override
     public boolean onCreate() {
@@ -43,6 +45,7 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
         if ("blocked-cursor".equals(uri.getLastPathSegment())) {
             cursorMoveStarted = new CountDownLatch(1);
             cursorRelease = new CountDownLatch(1);
+            blockedCursorCloseCalls.set(0);
             cursor = new MatrixCursor(columns) {
                 @Override
                 public boolean onMove(int oldPosition, int newPosition) {
@@ -60,6 +63,7 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
 
                 @Override
                 public void close() {
+                    blockedCursorCloseCalls.incrementAndGet();
                     synchronized (CURSOR_OPERATION_LOCK) {
                         super.close();
                     }
@@ -138,6 +142,8 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
             }
         } else if ("cursorMoveStarted".equals(method)) {
             response.putBoolean("started", cursorMoveStarted.getCount() == 0);
+        } else if ("cursorCloseCount".equals(method)) {
+            response.putInt("count", blockedCursorCloseCalls.get());
         } else if ("releaseBlockedCursor".equals(method)) {
             cursorRelease.countDown();
         } else if ("release".equals(method)) {
