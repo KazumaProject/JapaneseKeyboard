@@ -19,7 +19,10 @@ interface KeyboardSkin {
     fun guideDrawable(resources: Resources, direction: PopupDirection, selected: Boolean): Drawable =
         popupDrawable(resources, PopupDirection.CENTER, selected)
     fun variationDrawable(resources: Resources): Drawable = popupDrawable(resources, PopupDirection.CENTER)
+    /** Hold deferred QWERTY popups for this long after a key release. */
     val popupReleaseDelayMillis: Long get() = 0L
+    /** Duration of the standard flick popup's exit animation after a selection commits. */
+    val popupReleaseAnimationMillis: Long get() = 0L
     val longPressLabelColor: Int? get() = null
     val longPressLabelFadeMillis: Long get() = 0L
     val longPressLabelRestoreMillis: Long get() = 0L
