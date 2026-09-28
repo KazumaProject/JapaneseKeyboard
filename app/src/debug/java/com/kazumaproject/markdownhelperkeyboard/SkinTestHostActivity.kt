@@ -20,16 +20,21 @@ class SkinTestHostActivity : Activity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(128,128,128)) }
         val type = intent.getStringExtra("keyboard") ?: "kana"
-        val id = if (intent.getBooleanExtra("dark",false)) KeyboardSkinId.CUPERTINO_DARK else KeyboardSkinId.CUPERTINO_LIGHT
+        val id = intent.getStringExtra("skin")?.let(KeyboardSkinId::fromPreference)
+            ?.takeIf { it != KeyboardSkinId.DEFAULT }
+            ?: if (intent.getBooleanExtra("dark",false)) KeyboardSkinId.CUPERTINO_DARK else KeyboardSkinId.CUPERTINO_LIGHT
         keyboard = if(type=="kana") {
             val inflated=LayoutInflater.from(this).inflate(R.layout.main_layout,null)
             inflated.findViewById<TenKey>(R.id.keyboard_view).also { (it.parent as ViewGroup).removeView(it) }
         } else QWERTYKeyboardView(this)
         keyboard.visibility=View.VISIBLE
-        val palette = requireNotNull(KeyboardSkinRegistry.find(id)).palette
+        val skin = requireNotNull(KeyboardSkinRegistry.find(id))
+        val palette = skin.palette
         keyboard.javaClass.methods.single { it.name=="applyKeyboardTheme" }.invoke(keyboard,
             "custom",android.content.res.Configuration.UI_MODE_NIGHT_NO,false,
-            palette.background,palette.key,palette.key,palette.text,palette.text,false,false,Color.BLACK,255,1,id)
+            palette.background,palette.key,palette.specialKey,palette.text,palette.specialText,
+            false,false,Color.BLACK,255,1,id)
+        if (id == KeyboardSkinId.CUPERTINO_CLASSIC) keyboard.background = skin.keyboardDrawable(resources)
         keyboard.javaClass.methods.single { it.name=="setLongPressTimeout" }.invoke(keyboard,300L)
         root.addView(keyboard,FrameLayout.LayoutParams(-1,(280*resources.displayMetrics.density).toInt(),Gravity.BOTTOM))
         root.setOnApplyWindowInsetsListener { view, insets ->
