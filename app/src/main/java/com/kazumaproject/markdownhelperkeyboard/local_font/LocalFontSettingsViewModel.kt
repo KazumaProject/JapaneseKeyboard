@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +33,8 @@ class LocalFontSettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LocalFontSettingsUiState())
     val uiState: StateFlow<LocalFontSettingsUiState> = _uiState.asStateFlow()
     private var prepared: LocalFontPreview? = null
+    private var selectionJob: Job? = null
+    private var operationVersion = 0L
 
     init {
         viewModelScope.launch {
@@ -54,69 +58,111 @@ class LocalFontSettingsViewModel @Inject constructor(
     }
 
     fun select(uri: Uri) {
-        viewModelScope.launch {
-            val previous = prepared
-            prepared = null
-            repository.cancelPreview(previous)
-            _uiState.update { it.copy(busy = true, previewName = null, previewTypeface = null, error = null) }
+        val operation = ++operationVersion
+        selectionJob?.cancel()
+        val previous = prepared
+        prepared = null
+        _uiState.update { it.copy(busy = true, previewName = null, previewTypeface = null, error = null) }
+        val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             try {
+                repository.cancelPreview(previous)
                 val next = repository.prepare(uri)
+                if (operation != operationVersion) {
+                    repository.cancelPreview(next)
+                    return@launch
+                }
                 prepared = next
                 _uiState.update {
                     it.copy(busy = false, previewName = next.displayName, previewTypeface = next.typeface, error = null)
                 }
             } catch (e: CancellationException) {
+                if (operation == operationVersion) {
+                    _uiState.update { it.copy(busy = false) }
+                }
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = e.toUiError()) }
+                if (operation == operationVersion) {
+                    _uiState.update { it.copy(busy = false, error = e.toUiError()) }
+                }
+            } finally {
+                if (operation == operationVersion) selectionJob = null
             }
         }
+        selectionJob = job
+        job.start()
     }
 
     fun applyPreview() {
         val candidate = prepared ?: return
+        val operation = ++operationVersion
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             try {
                 repository.apply(candidate)
                 prepared = null
-                _uiState.update { it.copy(busy = false, previewName = null, previewTypeface = null) }
+                if (operation == operationVersion) {
+                    _uiState.update { it.copy(busy = false, previewName = null, previewTypeface = null) }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = e.toUiError()) }
+                if (operation == operationVersion) {
+                    _uiState.update { it.copy(busy = false, error = e.toUiError()) }
+                }
             }
         }
     }
 
     fun cancelPreview() {
+        val operation = ++operationVersion
+        selectionJob?.cancel()
+        selectionJob = null
         val candidate = prepared
         prepared = null
         viewModelScope.launch {
             repository.cancelPreview(candidate)
-            _uiState.update { it.copy(previewName = null, previewTypeface = null, error = null) }
+            if (operation == operationVersion) {
+                _uiState.update {
+                    it.copy(
+                        busy = false,
+                        previewName = null,
+                        previewTypeface = null,
+                        error = null,
+                    )
+                }
+            }
         }
     }
 
     fun restoreStandard() {
+        val operation = ++operationVersion
+        selectionJob?.cancel()
+        selectionJob = null
+        prepared = null
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             try {
                 repository.restoreStandard()
-                prepared = null
-                _uiState.update {
-                    it.copy(busy = false, currentName = null, previewName = null, previewTypeface = null, restoreWarning = false)
+                if (operation == operationVersion) {
+                    _uiState.update {
+                        it.copy(busy = false, currentName = null, previewName = null, previewTypeface = null, restoreWarning = false)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = LocalFontUiError.STORAGE) }
+                if (operation == operationVersion) {
+                    _uiState.update { it.copy(busy = false, error = LocalFontUiError.STORAGE) }
+                }
             }
         }
     }
 
     fun discardPreviewOnExit() {
-        val candidate = prepared ?: return
+        ++operationVersion
+        selectionJob?.cancel()
+        selectionJob = null
+        val candidate = prepared
         prepared = null
         viewModelScope.launch { repository.cancelPreview(candidate) }
     }

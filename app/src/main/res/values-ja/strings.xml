@@ -1839,6 +1839,7 @@
     <string name="local_font_preview_small_label">小さなガイド・候補のサンプル</string>
     <string name="local_font_apply">適用</string>
     <string name="local_font_cancel_selection">選択を取り消す</string>
+    <string name="local_font_cancel_loading">読込を中断</string>
     <string name="local_font_restore_standard">標準に戻す</string>
     <string name="local_font_restore_warning">保存したフォントを復元できませんでした。再選択するか、標準表示に戻してください。</string>
     <string name="local_font_error_unsupported">この形式には対応していません。静的TTFまたはOTFを選択してください。</string>

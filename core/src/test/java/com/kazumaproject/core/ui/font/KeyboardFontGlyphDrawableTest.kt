@@ -5,10 +5,12 @@ import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.widget.ImageView
 import androidx.test.core.app.ApplicationProvider
+import androidx.core.graphics.PathParser
 import com.kazumaproject.core.R
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
@@ -118,6 +120,36 @@ class KeyboardFontGlyphDrawableTest {
             androidx.core.content.ContextCompat.getColor(context, R.color.keyboard_icon_color),
             spec.defaultColor(context),
         )
+    }
+
+    @Test
+    fun customKanaSmallArrowStaysBetweenTheSmallAndLargeLabels() {
+        val spec = checkNotNull(KeyboardFontGlyphDrawable.specs[R.drawable.kana_small_custom])
+        assertEquals(100f, spec.viewportWidth, 0f)
+        assertEquals(100f, spec.viewportHeight, 0f)
+
+        val decoration = spec.decorations.single()
+        val path = checkNotNull(PathParser.createPathFromPathData(decoration.pathData))
+        if (decoration.scaleX != 1f || decoration.scaleY != 1f ||
+            decoration.translateX != 0f || decoration.translateY != 0f ||
+            decoration.pivotX != 0f || decoration.pivotY != 0f
+        ) {
+            val tx = decoration.translateX + decoration.pivotX - decoration.scaleX * decoration.pivotX
+            val ty = decoration.translateY + decoration.pivotY - decoration.scaleY * decoration.pivotY
+            val matrix = Matrix().apply {
+                setValues(
+                    floatArrayOf(
+                        decoration.scaleX, 0f, tx,
+                        0f, decoration.scaleY, ty,
+                        0f, 0f, 1f,
+                    )
+                )
+            }
+            path.transform(matrix)
+        }
+        val bounds = RectF().also { path.computeBounds(it, true) }
+
+        assertTrue("custom kana arrow left its original central label area: $bounds", RectF(34f, 51f, 68f, 68f).contains(bounds))
     }
 
     @Test

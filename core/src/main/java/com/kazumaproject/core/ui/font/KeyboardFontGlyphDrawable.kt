@@ -306,14 +306,7 @@ class KeyboardFontGlyphDrawable private constructor(
             put(R.drawable.kana_small, IconSpec(
                 100f, 100f, kanaGlyphs, decorations = listOf(kanaArrow), ink = Ink.BLACK
             ))
-            put(R.drawable.kana_small_custom, IconSpec(100f, 100f, kanaGlyphs, decorations = listOf(
-                kanaArrow.copy(
-                    scaleX = 0.75f,
-                    scaleY = 0.75f,
-                    translateX = -25.8f,
-                    translateY = -24.5f,
-                )
-            )))
+            put(R.drawable.kana_small_custom, IconSpec(100f, 100f, kanaGlyphs, decorations = listOf(kanaArrow)))
 
             put(R.drawable.number_small, IconSpec(100f, 100f, listOf(
                 glyph("()", 0.36f, 0.38f, 0.52f, 0.62f),
