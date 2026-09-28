@@ -49,7 +49,7 @@ class KeyboardSkinAppearanceTest {
             assertEquals(palette.specialKey, effective.customThemeSpecialKeyColor)
             assertEquals(palette.specialText, effective.customThemeSpecialKeyTextColor)
             if (id == KeyboardSkinId.CUPERTINO_CLASSIC) {
-                assertEquals(palette.specialText, effective.customThemeShortcutIconColor)
+                assertEquals(palette.text, effective.customThemeShortcutIconColor)
             }
             ImePreferencesSnapshot::class.java.declaredFields.filter {
                 !java.lang.reflect.Modifier.isStatic(it.modifiers) && it.name !in appearanceFields

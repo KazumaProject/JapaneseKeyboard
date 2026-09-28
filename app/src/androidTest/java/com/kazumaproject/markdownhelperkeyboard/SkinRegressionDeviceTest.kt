@@ -82,6 +82,7 @@ class SkinRegressionDeviceTest {
         val large = args.getString("layoutSize") == "large"
         val columns = args.getString("columns") ?: "2"
         val tabs = args.getString("tabs") == "true"
+        val integratedShortcuts = args.getString("integratedShortcuts") != "false"
         val candidateHeight = args.getString("candidateHeight")?.toInt() ?: if(large)150 else 110
         val candidateEmptyHeight = args.getString("candidateEmptyHeight")?.toInt() ?: if(large)90 else 60
         val keyboards = (args.getString("keyboards") ?: "TENKEY,QWERTY").split(',')
@@ -128,10 +129,14 @@ class SkinRegressionDeviceTest {
                     val area = bounds(tab)
                     val selected = when {
                         name.contains("cupertino_dark") -> 0xff0091ff.toInt()
-                        name.contains("cupertino_classic") -> 0xff2878cf.toInt()
+                        name.contains("cupertino_classic") -> 0xff626975.toInt()
                         else -> 0xff0088ff.toInt()
                     }
-                    val unselected = if (name.contains("cupertino_dark")) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+                    val unselected = when {
+                        name.contains("cupertino_dark") -> android.graphics.Color.WHITE
+                        name.contains("cupertino_classic") -> 0xff25282d.toInt()
+                        else -> android.graphics.Color.BLACK
+                    }
                     var selectedPixels=0; var unselectedPixels=0
                     for (y in area.top until area.bottom) for (x in area.left until area.right) {
                         when (bmp.getPixel(x,y)) { selected -> selectedPixels++; unselected -> unselectedPixels++ }
@@ -184,7 +189,7 @@ class SkinRegressionDeviceTest {
                 .putInt("candidate_view_height_dp_landscape_preference",candidateHeight)
                 .putInt("candidate_view_empty_height_dp_landscape_preference",candidateEmptyHeight)
                 .putBoolean("shortcut_toolbar_visibility_preference",true)
-                .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",true)
+                .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",integratedShortcuts)
                 .putBoolean("clipboard_preview_enable_preference",false).putBoolean("clipboard_history_preference",false)
                 .putBoolean("live_conversion_preference",false).putBoolean("enable_ai_conversion_zenz_preference",false)
                 .putBoolean("learn_dictionary_preference",false)
