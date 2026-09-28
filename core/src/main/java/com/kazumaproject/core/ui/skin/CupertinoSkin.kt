@@ -24,7 +24,7 @@ internal class CupertinoSkin(override val id: KeyboardSkinId) : KeyboardSkin {
             cornerRadii = floatArrayOf(radius, radius, radius, radius, bottom, bottom, bottom, bottom)
         }
 
-    override fun keyDrawable(resources: Resources, qwerty: Boolean): Drawable {
+    override fun keyDrawable(resources: Resources, qwerty: Boolean, role: SkinKeyRole): Drawable {
         val radius = (if (qwerty) 8f else 12.5f) * resources.displayMetrics.density
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), CupertinoSurfaceDrawable(palette.pressed, radius))
