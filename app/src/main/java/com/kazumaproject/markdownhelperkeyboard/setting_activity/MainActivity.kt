@@ -83,7 +83,6 @@ class MainActivity : AppCompatActivity() {
         R.id.candidateHeightLandscapeSettingFragment,
         R.id.candidateHeightDefaultsFragment,
         R.id.shortcutToolbarSizeSettingFragment,
-        R.id.localFontSettingsFragment,
     )
     private val destinationsWithoutSharedActionBar =
         destinationsWithOwnToolbar + R.id.enableKeyboardFragment
