@@ -255,6 +255,7 @@ class LocalFontRepository @Inject constructor(
                 )
                 val cursorResource = cursor?.let(register)
                 try {
+                    currentCoroutineContext().ensureActive()
                     val name = if (cursor?.moveToFirst() == true) {
                         cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                             .takeIf { it >= 0 }

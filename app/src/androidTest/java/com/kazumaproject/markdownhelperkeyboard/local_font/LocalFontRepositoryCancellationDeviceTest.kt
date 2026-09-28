@@ -20,6 +20,58 @@ import java.util.concurrent.TimeUnit
 
 class LocalFontRepositoryCancellationDeviceTest {
     @Test
+    fun cancellationDuringQueryDoesNotReadLateReturnedCursor() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val repository = LocalFontRepository(context)
+        val resolver = context.contentResolver
+        val uri = Uri.parse(
+            "content://com.kazumaproject.markdownhelperkeyboard.lite.localfonttest/font/late-blocked-cursor",
+        )
+        repository.loadIfNeeded()
+
+        var selection: kotlinx.coroutines.Job? = null
+        try {
+            val started = launch(Dispatchers.IO) { repository.prepare(uri) }
+            selection = started
+            waitForLateCursorQuery(resolver, uri)
+
+            val cancelStartedAt = SystemClock.elapsedRealtime()
+            instrumentation.runOnMainSync { started.cancel() }
+            val cancelDuration = SystemClock.elapsedRealtime() - cancelStartedAt
+            assertTrue(
+                "cancellation on Main waited ${cancelDuration}ms for provider query",
+                cancelDuration < MAIN_CANCELLATION_LIMIT_MS,
+            )
+
+            val mainEventHandled = CountDownLatch(1)
+            Handler(Looper.getMainLooper()).post { mainEventHandled.countDown() }
+            assertTrue(
+                "Main should continue processing while provider query is blocked",
+                mainEventHandled.await(MAIN_CANCELLATION_LIMIT_MS, TimeUnit.MILLISECONDS),
+            )
+
+            resolver.call(uri, "releaseLateCursorQuery", null, null)
+            withTimeout(OPERATION_TIMEOUT_MS) {
+                while (resolver.call(uri, "lateCursorReturned", null, null)?.getBoolean("returned") != true) {
+                    delay(25)
+                }
+            }
+            withTimeout(OPERATION_TIMEOUT_MS) { started.join() }
+            withTimeout(OPERATION_TIMEOUT_MS) {
+                while (resolver.call(uri, "lateCursorCloseCount", null, null)?.getInt("count") != 1) {
+                    delay(25)
+                }
+            }
+            assertEquals(0, resolver.call(uri, "lateCursorMoveCount", null, null)?.getInt("count"))
+            assertEquals(1, resolver.call(uri, "lateCursorCloseCount", null, null)?.getInt("count"))
+        } finally {
+            runCatching { resolver.call(uri, "releaseLateCursorQuery", null, null) }
+            selection?.cancelAndJoin()
+        }
+    }
+
+    @Test
     fun cancellingOnMainDoesNotWaitForBlockedCursorClose() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -118,6 +170,14 @@ class LocalFontRepositoryCancellationDeviceTest {
     private suspend fun waitForBlockedCursor(resolver: android.content.ContentResolver, uri: Uri) {
         withTimeout(OPERATION_TIMEOUT_MS) {
             while (resolver.call(uri, "cursorMoveStarted", null, null)?.getBoolean("started") != true) {
+                delay(25)
+            }
+        }
+    }
+
+    private suspend fun waitForLateCursorQuery(resolver: android.content.ContentResolver, uri: Uri) {
+        withTimeout(OPERATION_TIMEOUT_MS) {
+            while (resolver.call(uri, "lateCursorQueryStarted", null, null)?.getBoolean("started") != true) {
                 delay(25)
             }
         }

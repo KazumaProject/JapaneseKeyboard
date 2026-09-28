@@ -24,6 +24,11 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
     private static volatile CountDownLatch cursorMoveStarted = new CountDownLatch(0);
     private static volatile CountDownLatch cursorRelease = new CountDownLatch(0);
     private static final AtomicInteger blockedCursorCloseCalls = new AtomicInteger();
+    private static volatile CountDownLatch lateCursorQueryStarted = new CountDownLatch(0);
+    private static volatile CountDownLatch lateCursorQueryRelease = new CountDownLatch(0);
+    private static volatile boolean lateCursorReturned;
+    private static final AtomicInteger lateCursorMoveCalls = new AtomicInteger();
+    private static final AtomicInteger lateCursorCloseCalls = new AtomicInteger();
 
     @Override
     public boolean onCreate() {
@@ -69,6 +74,34 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
                     }
                 }
             };
+        } else if ("late-blocked-cursor".equals(uri.getLastPathSegment())) {
+            lateCursorQueryStarted = new CountDownLatch(1);
+            lateCursorQueryRelease = new CountDownLatch(1);
+            lateCursorReturned = false;
+            lateCursorMoveCalls.set(0);
+            lateCursorCloseCalls.set(0);
+            lateCursorQueryStarted.countDown();
+            try {
+                if (!lateCursorQueryRelease.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Test did not release the blocked cursor query");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Blocked cursor query was interrupted", e);
+            }
+            cursor = new MatrixCursor(columns) {
+                @Override
+                public boolean onMove(int oldPosition, int newPosition) {
+                    lateCursorMoveCalls.incrementAndGet();
+                    return super.onMove(oldPosition, newPosition);
+                }
+
+                @Override
+                public void close() {
+                    lateCursorCloseCalls.incrementAndGet();
+                    super.close();
+                }
+            };
         } else {
             cursor = new MatrixCursor(columns);
         }
@@ -79,6 +112,9 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
             }
         }
         cursor.addRow(row);
+        if ("late-blocked-cursor".equals(uri.getLastPathSegment())) {
+            lateCursorReturned = true;
+        }
         return cursor;
     }
 
@@ -144,6 +180,16 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
             response.putBoolean("started", cursorMoveStarted.getCount() == 0);
         } else if ("cursorCloseCount".equals(method)) {
             response.putInt("count", blockedCursorCloseCalls.get());
+        } else if ("lateCursorQueryStarted".equals(method)) {
+            response.putBoolean("started", lateCursorQueryStarted.getCount() == 0);
+        } else if ("releaseLateCursorQuery".equals(method)) {
+            lateCursorQueryRelease.countDown();
+        } else if ("lateCursorReturned".equals(method)) {
+            response.putBoolean("returned", lateCursorReturned);
+        } else if ("lateCursorMoveCount".equals(method)) {
+            response.putInt("count", lateCursorMoveCalls.get());
+        } else if ("lateCursorCloseCount".equals(method)) {
+            response.putInt("count", lateCursorCloseCalls.get());
         } else if ("releaseBlockedCursor".equals(method)) {
             cursorRelease.countDown();
         } else if ("release".equals(method)) {
