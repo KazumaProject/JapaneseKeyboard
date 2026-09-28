@@ -36,6 +36,7 @@ import java.io.Closeable
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.EmptyCoroutineContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -357,12 +358,11 @@ class LocalFontRepository @Inject constructor(
             invokeImmediately = true,
         ) { cause ->
             if (cause != null) {
-                runCatching { signal.cancel() }
                 val toClose = synchronized(resourceLock) {
                     cancelled = true
                     resource.also { resource = null }
                 }
-                runCatching { toClose?.close() }
+                dispatchProviderCleanup(signal, toClose)
             }
         }
         try {
@@ -374,11 +374,27 @@ class LocalFontRepository @Inject constructor(
                         false
                     }
                 }
-                if (closeNow) runCatching { closeable.close() }
+                if (closeNow) dispatchProviderCleanup(resource = closeable)
             }
         } finally {
             cancellation.dispose()
             synchronized(resourceLock) { resource = null }
+        }
+    }
+
+    private fun dispatchProviderCleanup(
+        signal: CancellationSignal? = null,
+        resource: Closeable? = null,
+    ) {
+        signal?.let { cancellationSignal ->
+            Dispatchers.IO.dispatch(EmptyCoroutineContext, Runnable {
+                runCatching { cancellationSignal.cancel() }
+            })
+        }
+        resource?.let { closeable ->
+            Dispatchers.IO.dispatch(EmptyCoroutineContext, Runnable {
+                runCatching { closeable.close() }
+            })
         }
     }
 

@@ -138,10 +138,19 @@ class LocalFontSettingsViewModel @Inject constructor(
         val operation = ++operationVersion
         selectionJob?.cancel()
         selectionJob = null
+        val candidate = prepared
         prepared = null
         viewModelScope.launch {
-            _uiState.update { it.copy(busy = true, error = null) }
+            _uiState.update {
+                it.copy(
+                    busy = true,
+                    previewName = null,
+                    previewTypeface = null,
+                    error = null,
+                )
+            }
             try {
+                repository.cancelPreview(candidate)
                 repository.restoreStandard()
                 if (operation == operationVersion) {
                     _uiState.update {

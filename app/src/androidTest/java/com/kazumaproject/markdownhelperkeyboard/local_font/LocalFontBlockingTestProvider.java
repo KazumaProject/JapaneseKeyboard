@@ -12,12 +12,16 @@ import android.provider.OpenableColumns;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
 
 /** A test-only provider that can hold a pipe open without producing bytes. */
 public final class LocalFontBlockingTestProvider extends ContentProvider {
     private static final Object LOCK = new Object();
     private static ParcelFileDescriptor heldWriter;
     private static boolean blockedOpened;
+    private static final Object CURSOR_OPERATION_LOCK = new Object();
+    private static volatile CountDownLatch cursorMoveStarted = new CountDownLatch(0);
+    private static volatile CountDownLatch cursorRelease = new CountDownLatch(0);
 
     @Override
     public boolean onCreate() {
@@ -35,7 +39,35 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
         String[] columns = projection == null
                 ? new String[]{OpenableColumns.DISPLAY_NAME}
                 : projection;
-        MatrixCursor cursor = new MatrixCursor(columns);
+        MatrixCursor cursor;
+        if ("blocked-cursor".equals(uri.getLastPathSegment())) {
+            cursorMoveStarted = new CountDownLatch(1);
+            cursorRelease = new CountDownLatch(1);
+            cursor = new MatrixCursor(columns) {
+                @Override
+                public boolean onMove(int oldPosition, int newPosition) {
+                    synchronized (CURSOR_OPERATION_LOCK) {
+                        cursorMoveStarted.countDown();
+                        try {
+                            cursorRelease.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return false;
+                        }
+                        return super.onMove(oldPosition, newPosition);
+                    }
+                }
+
+                @Override
+                public void close() {
+                    synchronized (CURSOR_OPERATION_LOCK) {
+                        super.close();
+                    }
+                }
+            };
+        } else {
+            cursor = new MatrixCursor(columns);
+        }
         Object[] row = new Object[columns.length];
         for (int i = 0; i < columns.length; i++) {
             if (OpenableColumns.DISPLAY_NAME.equals(columns[i])) {
@@ -104,6 +136,10 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
             synchronized (LOCK) {
                 response.putBoolean("opened", blockedOpened);
             }
+        } else if ("cursorMoveStarted".equals(method)) {
+            response.putBoolean("started", cursorMoveStarted.getCount() == 0);
+        } else if ("releaseBlockedCursor".equals(method)) {
+            cursorRelease.countDown();
         } else if ("release".equals(method)) {
             synchronized (LOCK) {
                 closeQuietly(heldWriter);
