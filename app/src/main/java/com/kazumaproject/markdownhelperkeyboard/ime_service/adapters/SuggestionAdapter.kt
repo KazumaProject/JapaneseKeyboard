@@ -32,6 +32,7 @@ import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
@@ -1905,7 +1906,11 @@ class SuggestionAdapter internal constructor(
     ) {
         val shortcutType = item.shortcutType
         holder.imageView.apply {
-            setImageResource(shortcutType.resolveShortcutIconResId())
+            KeyboardFontGlyphDrawable.setImageResource(
+                this,
+                shortcutType.resolveShortcutIconResId(),
+                keyboardFontSnapshot,
+            )
             contentDescription = shortcutType.description
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)

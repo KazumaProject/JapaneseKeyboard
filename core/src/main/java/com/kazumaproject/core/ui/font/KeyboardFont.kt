@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import java.util.WeakHashMap
 
@@ -137,10 +138,27 @@ object KeyboardFontApplicator {
         when (root) {
             is KeyboardFontAware -> root.setKeyboardFont(snapshot)
             is TextView -> apply(root, snapshot)
+            is ImageView -> (root.drawable as? KeyboardFontAware)?.setKeyboardFont(snapshot)
             is ViewGroup -> {
                 for (index in 0 until root.childCount) {
                     applyToKeyboardViews(root.getChildAt(index), snapshot)
                 }
+            }
+        }
+        // A KeyboardFontAware container owns its text handling, but may contain drawable-backed
+        // glyphs. Update those separately without broadening the text traversal.
+        if (root is KeyboardFontAware && root is ViewGroup) {
+            applyToImageDrawables(root, snapshot)
+        }
+    }
+
+    private fun applyToImageDrawables(root: View, snapshot: KeyboardFontSnapshot) {
+        if (root is ImageView) {
+            (root.drawable as? KeyboardFontAware)?.setKeyboardFont(snapshot)
+        }
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) {
+                applyToImageDrawables(root.getChildAt(index), snapshot)
             }
         }
     }

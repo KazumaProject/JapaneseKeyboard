@@ -40,6 +40,7 @@ import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
@@ -112,6 +113,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         KeyboardFontApplicator.applyToTextViews(categoryTab, snapshot) { true }
         symbolAdapter.setKeyboardFont(snapshot, currentMode != SymbolMode.EMOJI)
         clipboardAdapter.setKeyboardFont(snapshot)
+        KeyboardFontGlyphDrawable.setImageResource(
+            returnButton,
+            com.kazumaproject.core.R.drawable.language_japanese_kana_24px,
+            snapshot,
+        )
+        updateEmojiCategoryTabIcons(snapshot)
     }
 
     private var pagingJob: Job? = null
@@ -140,6 +147,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
         returnButton = findViewById(R.id.return_jp_keyboard_button)
         deleteButton = findViewById(R.id.symbol_keyboard_delete_key)
+        KeyboardFontGlyphDrawable.setImageResource(
+            returnButton,
+            com.kazumaproject.core.R.drawable.language_japanese_kana_24px,
+            keyboardFontSnapshot,
+        )
 
         // Initialize default colors
         themeIconColor =
@@ -761,7 +773,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 emojiMap.keys.forEach { cat ->
                     categoryTab.addTab(
                         categoryTab.newTab().setIcon(
-                            categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key
+                            KeyboardFontGlyphDrawable.create(
+                                context,
+                                categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key,
+                                keyboardFontSnapshot,
+                            )
                         ).setContentDescription(emojiCategoryLabelRes.getValue(cat))
                     )
                 }
@@ -839,6 +855,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         if (isCustomThemeApplied) {
             // postを使って描画後に適用
             postTabTheme(categoryTab)
+        }
+    }
+
+    private fun updateEmojiCategoryTabIcons(snapshot: KeyboardFontSnapshot) {
+        if (currentMode != SymbolMode.EMOJI) return
+        var tabIndex = if (historyEmojiList.isNotEmpty()) 1 else 0
+        emojiMap.keys.forEach { category ->
+            val resourceId = categoryIconRes[category] ?: com.kazumaproject.core.R.drawable.logo_key
+            categoryTab.getTabAt(tabIndex++)?.setIcon(
+                KeyboardFontGlyphDrawable.create(context, resourceId, snapshot)
+            )
         }
     }
 

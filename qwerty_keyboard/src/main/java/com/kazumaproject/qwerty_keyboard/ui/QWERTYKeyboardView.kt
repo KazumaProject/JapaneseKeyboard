@@ -48,6 +48,7 @@ import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
@@ -181,6 +182,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
         allQwertyButtons().forEach { it.setKeyboardFont(snapshot) }
         variationPopupView?.setKeyboardFont(snapshot)
+        renderShiftKeyDrawable()
     }
 
     private fun allQwertyButtons(): Set<QWERTYButton> = buildSet {
@@ -997,7 +999,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
             }
         }
-        binding.keyShift.setImageResource(drawableRes)
+        KeyboardFontGlyphDrawable.setImageResource(binding.keyShift, drawableRes, keyboardFontSnapshot)
     }
 
     // CapsLock UI update extraction
