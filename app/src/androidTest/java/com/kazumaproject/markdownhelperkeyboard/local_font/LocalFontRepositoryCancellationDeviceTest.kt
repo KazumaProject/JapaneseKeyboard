@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,7 +46,10 @@ class LocalFontRepositoryCancellationDeviceTest {
             }
 
             val cancelStartedAt = SystemClock.elapsedRealtime()
-            instrumentation.runOnMainSync { started.cancel() }
+            instrumentation.runOnMainSync {
+                started.cancel()
+                started.cancel()
+            }
             val cancelDuration = SystemClock.elapsedRealtime() - cancelStartedAt
             assertTrue(
                 "cancellation on Main waited ${cancelDuration}ms for Cursor.close()",
@@ -60,6 +64,7 @@ class LocalFontRepositoryCancellationDeviceTest {
             )
             withTimeout(OPERATION_TIMEOUT_MS) { started.join() }
             releaseThread.join(OPERATION_TIMEOUT_MS)
+            waitForBlockedCursorClose(resolver, blockedUri)
         } finally {
             runCatching { resolver.call(blockedUri, "releaseBlockedCursor", null, null) }
             selection?.cancelAndJoin()
@@ -116,6 +121,15 @@ class LocalFontRepositoryCancellationDeviceTest {
                 delay(25)
             }
         }
+    }
+
+    private suspend fun waitForBlockedCursorClose(resolver: android.content.ContentResolver, uri: Uri) {
+        withTimeout(OPERATION_TIMEOUT_MS) {
+            while (resolver.call(uri, "cursorCloseCount", null, null)?.getInt("count") != 1) {
+                delay(25)
+            }
+        }
+        assertEquals(1, resolver.call(uri, "cursorCloseCount", null, null)?.getInt("count"))
     }
 
     private companion object {

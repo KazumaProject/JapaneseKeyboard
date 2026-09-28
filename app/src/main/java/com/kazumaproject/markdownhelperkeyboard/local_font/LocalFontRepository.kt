@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.local_font
 
 import android.content.ContentResolver
 import android.content.Context
-import android.database.Cursor
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
@@ -35,6 +34,7 @@ import java.io.IOException
 import java.io.Closeable
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.EmptyCoroutineContext
 import javax.inject.Inject
@@ -243,10 +243,9 @@ class LocalFontRepository @Inject constructor(
     }
 
     private suspend fun queryDisplayName(uri: Uri): String {
-        var cursor: Cursor? = null
         return try {
             withProviderCancellation { signal, register ->
-                cursor = resolver.query(
+                val cursor = resolver.query(
                     uri,
                     arrayOf(OpenableColumns.DISPLAY_NAME),
                     null,
@@ -254,20 +253,21 @@ class LocalFontRepository @Inject constructor(
                     null,
                     signal,
                 )
-                cursor?.let(register)
-                val result = cursor
-                val name = if (result?.moveToFirst() == true) {
-                    result.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                        .takeIf { it >= 0 }
-                        ?.let(result::getString)
-                } else null
-                LocalFontStore.sanitizeDisplayName(name.orEmpty())
+                val cursorResource = cursor?.let(register)
+                try {
+                    val name = if (cursor?.moveToFirst() == true) {
+                        cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            .takeIf { it >= 0 }
+                            ?.let(cursor::getString)
+                    } else null
+                    LocalFontStore.sanitizeDisplayName(name.orEmpty())
+                } finally {
+                    cursorResource?.close()
+                }
             }
         } catch (_: Exception) {
             currentCoroutineContext().ensureActive()
             "Local font"
-        } finally {
-            cursor?.close()
         }
     }
 
@@ -276,9 +276,9 @@ class LocalFontRepository @Inject constructor(
         return withProviderCancellation { signal, register ->
             val descriptor = resolver.openFileDescriptor(uri, "r", signal)
                 ?: throw IOException("Unable to open selected font")
-            register(descriptor)
-            var total = 0L
-            descriptor.use {
+            val descriptorResource = register(descriptor)
+            try {
+                var total = 0L
                 FileOutputStream(target).use { output ->
                     val buffer = ByteArray(16 * 1024)
                     while (true) {
@@ -293,9 +293,11 @@ class LocalFontRepository @Inject constructor(
                     }
                     output.fd.sync()
                 }
+                if (total == 0L) throw FontValidationException(FontFormatIssue.EMPTY)
+                total to digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+            } finally {
+                descriptorResource.close()
             }
-            if (total == 0L) throw FontValidationException(FontFormatIssue.EMPTY)
-            total to digest.digest().joinToString("") { byte -> "%02x".format(byte) }
         }
     }
 
@@ -345,14 +347,14 @@ class LocalFontRepository @Inject constructor(
 
     @OptIn(InternalCoroutinesApi::class)
     private suspend fun <T> withProviderCancellation(
-        block: suspend (CancellationSignal, (Closeable) -> Unit) -> T,
+        block: suspend (CancellationSignal, (Closeable) -> Closeable) -> T,
     ): T {
         val context = currentCoroutineContext()
         val job = context[Job] ?: throw IllegalStateException("Provider call has no coroutine job")
         val signal = CancellationSignal()
         val resourceLock = Any()
         var cancelled = false
-        var resource: Closeable? = null
+        var resource: ProviderResourceCloseHandle? = null
         val cancellation = job.invokeOnCompletion(
             onCancelling = true,
             invokeImmediately = true,
@@ -368,34 +370,35 @@ class LocalFontRepository @Inject constructor(
         try {
             context.ensureActive()
             return block(signal) { closeable ->
+                val handle = ProviderResourceCloseHandle(closeable)
                 val closeNow = synchronized(resourceLock) {
                     if (cancelled) true else {
-                        resource = closeable
+                        resource = handle
                         false
                     }
                 }
-                if (closeNow) dispatchProviderCleanup(resource = closeable)
+                if (closeNow) dispatchProviderCleanup(resource = handle)
+                handle
             }
         } finally {
             cancellation.dispose()
-            synchronized(resourceLock) { resource = null }
+            val remaining = synchronized(resourceLock) {
+                resource.also { resource = null }
+            }
+            remaining?.close()
         }
     }
 
     private fun dispatchProviderCleanup(
         signal: CancellationSignal? = null,
-        resource: Closeable? = null,
+        resource: ProviderResourceCloseHandle? = null,
     ) {
         signal?.let { cancellationSignal ->
             Dispatchers.IO.dispatch(EmptyCoroutineContext, Runnable {
                 runCatching { cancellationSignal.cancel() }
             })
         }
-        resource?.let { closeable ->
-            Dispatchers.IO.dispatch(EmptyCoroutineContext, Runnable {
-                runCatching { closeable.close() }
-            })
-        }
+        resource?.closeAsync()
     }
 
     private fun collectGarbage(activeId: String?, previewId: String?) {
@@ -442,5 +445,21 @@ class LocalFontRepository @Inject constructor(
 
     private companion object {
         const val PROVIDER_READ_POLL_MS = 200
+    }
+}
+
+internal class ProviderResourceCloseHandle(private val resource: Closeable) : Closeable {
+    private val claimed = AtomicBoolean(false)
+
+    override fun close() {
+        if (claimed.compareAndSet(false, true)) resource.close()
+    }
+
+    fun closeAsync() {
+        if (claimed.compareAndSet(false, true)) {
+            Dispatchers.IO.dispatch(EmptyCoroutineContext, Runnable {
+                runCatching { resource.close() }
+            })
+        }
     }
 }
