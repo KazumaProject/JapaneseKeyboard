@@ -430,6 +430,51 @@ class NumberCandidatePresenterTest {
     }
 
     @Test
+    fun engineSupplementsWithoutExplicitNumericSpansKeepTheirOriginalSurface() {
+        val supplements = listOf(
+            candidate("1億", "いちおく").copy(
+                type = 17,
+                leftId = 2046,
+                rightId = 2046,
+                numberMetadata = NumberCandidateMetadata(
+                    familyKey = "number-extra:いちおく:1億",
+                    origin = NumberCandidateOrigin.ENGINE_SUPPLEMENT,
+                ),
+            ),
+            candidate("10⁸", "いちおく").copy(
+                type = 20,
+                leftId = 2044,
+                rightId = 2044,
+                numberMetadata = NumberCandidateMetadata(
+                    familyKey = "number-extra:いちおく:10⁸",
+                    origin = NumberCandidateOrigin.ENGINE_SUPPLEMENT,
+                ),
+            ),
+        )
+        val segments = supplements.associate { supplement ->
+            val reading = requireNotNull(supplement.yomi)
+            supplement.string to listOf(
+                CandidateConversionSegment(
+                    inputStart = 0,
+                    inputEnd = reading.length,
+                    output = supplement.string,
+                    reading = reading,
+                    leftId = supplement.leftId,
+                    rightId = supplement.rightId,
+                ),
+            )
+        }
+
+        val result = NumberCandidatePresenter.present(
+            candidates = supplements,
+            segmentsByCandidateString = segments,
+            config = NumberPresentationConfig(),
+        )
+
+        assertEquals(listOf("1億", "10⁸"), result.candidates.map(Candidate::string))
+    }
+
+    @Test
     fun digitSequencesDecimalsSignsAndOutOfRangeValuesDoNotLoseDigits() {
         val leadingZeroResult = presentNumber("0012")
         assertEquals(listOf("0012", "００１２", "〇〇一二"), leadingZeroResult.candidates.map { it.string })

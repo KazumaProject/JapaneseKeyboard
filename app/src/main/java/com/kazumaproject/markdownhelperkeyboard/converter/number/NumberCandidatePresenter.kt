@@ -169,10 +169,21 @@ object NumberCandidatePresenter {
                 return@forEachIndexed
             }
 
+            val metadata = candidate.numberMetadata
+            if (
+                metadata?.origin == NumberCandidateOrigin.ENGINE_SUPPLEMENT &&
+                metadata.numericSpans.isEmpty()
+            ) {
+                // Engine supplements can be complete alternate spellings (for example, 10⁸).
+                // Their readings may describe a number without identifying which output characters
+                // should be rewritten, so preserve the exact surface instead of inferring a span.
+                if (!isNgWord(candidate)) simpleFallbacks += index to candidate
+                return@forEachIndexed
+            }
+
             val segments = segmentsByCandidateString[candidate.string]
                 ?: candidate.yomi?.takeIf(String::isNotEmpty)?.let { syntheticSegments(candidate) }
             val runs = segments?.let(::numericRuns).orEmpty()
-            val metadata = candidate.numberMetadata
             val familyKey = metadata?.familyKey ?: segments?.let(::semanticFamilyKey)
             val spans = metadata?.numericSpans?.takeIf { it.isNotEmpty() }
                 ?: runs.map(::toNumberSpan)

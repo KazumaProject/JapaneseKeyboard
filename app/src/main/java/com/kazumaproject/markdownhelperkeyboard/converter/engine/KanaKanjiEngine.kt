@@ -4627,7 +4627,7 @@ class KanaKanjiEngine {
         }
         val styled = digitStyles.map { candidate ->
             when {
-                candidate.string == input -> markSystemNumberCandidate(candidate, inputDigits)
+                candidate.string == input -> markSystemNumberCandidate(candidate, input)
                 candidate.type.toInt() == 17 -> markGeneratedNumberCandidate(
                     candidate,
                     inputDigits,

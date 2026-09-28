@@ -5,6 +5,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidatePresenter
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberPresentationConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -203,6 +204,80 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         )
         assertTrue(presented.candidates.any { it.string == "〇〇一二" && it.commitText == "〇〇一二" })
         assertFalse(presented.candidates.any { it.string == "十二" })
+    }
+
+    @Test
+    fun directFullWidthDigitInputKeepsSurfaceStylesAlignedForBothPriorityOrders() {
+        val method = KanaKanjiEngine::class.java.getDeclaredMethod(
+            "buildDirectDigitCandidateAdditions",
+            String::class.java,
+            List::class.java,
+            List::class.java,
+        ).apply { isAccessible = true }
+        val examples = listOf(
+            Triple("１２", "12", "十二"),
+            Triple("００７", "007", "〇〇七"),
+        )
+        val styleOrders = listOf(
+            listOf(NumberStyle.HALF_WIDTH, NumberStyle.FULL_WIDTH, NumberStyle.KANJI),
+            listOf(NumberStyle.FULL_WIDTH, NumberStyle.HALF_WIDTH, NumberStyle.KANJI),
+        )
+
+        examples.forEach { (fullWidth, halfWidth, kanji) ->
+            val digitStyles = listOf(
+                Candidate(
+                    string = fullWidth,
+                    type = 22,
+                    length = fullWidth.length.toUByte(),
+                    score = 0,
+                    yomi = fullWidth,
+                    leftId = 2044,
+                    rightId = 2044,
+                ),
+                Candidate(
+                    string = halfWidth,
+                    type = 31,
+                    length = fullWidth.length.toUByte(),
+                    score = 0,
+                    yomi = fullWidth,
+                    leftId = 2044,
+                    rightId = 2044,
+                ),
+                Candidate(
+                    string = kanji,
+                    type = 17,
+                    length = fullWidth.length.toUByte(),
+                    score = 0,
+                    yomi = fullWidth,
+                    leftId = 2046,
+                    rightId = 2046,
+                ),
+            )
+
+            @Suppress("UNCHECKED_CAST")
+            val additions = method.invoke(engine, fullWidth, emptyList<Candidate>(), digitStyles) as List<Candidate>
+            val expectedStyles = linkedMapOf(
+                halfWidth to NumberStyle.HALF_WIDTH,
+                fullWidth to NumberStyle.FULL_WIDTH,
+                kanji to NumberStyle.KANJI,
+            )
+
+            styleOrders.forEach { styleOrder ->
+                val presented = NumberCandidatePresenter.present(
+                    candidates = additions,
+                    segmentsByCandidateString = emptyMap(),
+                    config = NumberPresentationConfig(styleOrder = styleOrder),
+                )
+
+                assertEquals(
+                    styleOrder.map { style -> expectedStyles.entries.first { it.value == style }.key },
+                    presented.candidates.map(Candidate::string),
+                )
+                presented.candidates.forEach { candidate ->
+                    assertEquals(expectedStyles[candidate.string], candidate.numberMetadata?.style)
+                }
+            }
+        }
     }
 
     @Test
