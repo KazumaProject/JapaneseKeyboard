@@ -19,6 +19,11 @@ class CupertinoClassicCandidateChromeTest {
         com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard,
     )
 
+    @Test fun dockedStripKeepsItsMinimumControlsVisibleWithoutShrinkingLargerSettings() {
+        assertEquals(58, CupertinoClassicCandidateChrome.resolveDockedStripHeightDp(30))
+        assertEquals(110, CupertinoClassicCandidateChrome.resolveDockedStripHeightDp(110))
+    }
+
     @Test fun candidateTabsUseSegmentedSelectionAndRestoreTheirPreviousAppearance() {
         val layout = TabLayout(context).apply {
             addTab(newTab().setText("予測"))
