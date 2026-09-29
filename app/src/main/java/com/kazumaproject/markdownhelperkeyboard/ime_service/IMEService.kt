@@ -3192,7 +3192,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customThemeShortcutIconColor ?: Color.BLACK,
         ) else null
         return com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(
-            context, KeyboardSkinRegistry.find(keyboardSkinId)?.palette, custom)
+            context,
+            KeyboardSkinRegistry.find(keyboardSkinId)?.palette,
+            custom,
+            cupertinoClassic = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC,
+        )
     }
 
     private fun configureFloatingCandidates(binding: MainLayoutBinding) {
@@ -5393,10 +5397,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             mainView.root.background = skin.keyboardDrawable(resources)
-            mainView.suggestionViewParent.background = skin.keyboardDrawable(resources)
-            mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
+            if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
+                mainView.suggestionViewParent.background = chrome.panelBackground()
+                mainView.candidateTabLayout.background = chrome.tabsBackground()
+                mainView.shortcutToolbarRecyclerview.background = chrome.toolbarBackground(resources)
+            } else {
+                mainView.suggestionViewParent.background = skin.keyboardDrawable(resources)
+                mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
+                mainView.shortcutToolbarRecyclerview.background = null
+            }
             return
         }
+        mainView.shortcutToolbarRecyclerview.background = null
         val isDynamic = DynamicColors.isDynamicColorAvailable()
         if (isKeyboardRounded == true) {
             val fallbackColor = getColor(com.kazumaproject.core.R.color.keyboard_bg)
@@ -5494,7 +5507,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             floatingView.root.background = skin.keyboardDrawable(resources, floating = true)
-            floatingView.suggestionViewParent.background = skin.keyboardDrawable(resources)
+            floatingView.suggestionViewParent.background = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.panelBackground()
+            } else skin.keyboardDrawable(resources)
             return
         }
         val isDynamic = DynamicColors.isDynamicColorAvailable()
@@ -7136,13 +7151,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val palette = KeyboardSkinRegistry.find(keyboardSkinId)?.palette
         if (palette != null) {
-            tab.setTabTextColors(palette.text, palette.selection)
-            tab.setSelectedTabIndicatorColor(palette.selection)
+            if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.applyTabs(tab)
+            } else {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.restoreTabs(tab)
+                tab.setTabTextColors(palette.text, palette.selection)
+                tab.setSelectedTabIndicatorColor(palette.selection)
+            }
         } else if (keyboardThemeMode == "custom") {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.restoreTabs(tab)
             tab.setTabTextColors(customThemeKeyTextColor ?: Color.BLACK,
                 customThemeSpecialKeyTextColor ?: Color.BLACK)
             tab.setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
         } else {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.restoreTabs(tab)
             tab.setTabTextColors(original.text)
             tab.setSelectedTabIndicatorColor(original.indicator)
         }
@@ -7150,15 +7172,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
     private fun applyCandidateAppearance() {
-        mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
+        if (!floatingCandidateSurfaceActive) {
+            mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
+        }
         val custom = keyboardThemeMode == "custom"
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setCandidateTextColor(if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
             adapter.setCandidateItemColors(
-                if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
-                if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) Color.TRANSPARENT
+                else if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.candidatePressedColor
+                } else if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
                     this, com.kazumaproject.core.R.color.qwety_key_bg_color
                 ) else null,
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) 0f else 16f,
+            )
+            adapter.setCandidateDividerColor(
+                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC)
+                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.dividerColor
+                else null,
+                verticalMarginDp = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC)
+                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.candidateDividerVerticalInsetDp
+                else null,
             )
         }
         listOfNotNull(mainLayoutBinding?.suggestionVisibility, floatingKeyboardBinding?.suggestionVisibility)
@@ -18984,11 +19020,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidatesShown = candidatesShown,
             symbolKeyboardShown = false,
         )
-        val candidateStripHeightDp = resolveCandidateStripHeightDp(
+        val configuredCandidateStripHeightDp = resolveCandidateStripHeightDp(
             candidatesShown = candidatesShown,
             candidateHeightDp = prefs.candidateHeight,
             emptyHeightDp = prefs.candidateEmptyHeight
         )
+        val candidateStripHeightDp = if (
+            !floatingCandidateSurfaceActive && keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
+        ) {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
+                .resolveDockedStripHeightDp(configuredCandidateStripHeightDp)
+        } else {
+            configuredCandidateStripHeightDp
+        }
         val baseKeyboardHeight = heightPx + if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
@@ -19058,6 +19102,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyKeyboardLayoutParameters(
             mainView = mainView,
             heightPx = heightPx,
+            candidateStripHeightPx = when {
+                floatingCandidateSurfaceActive -> null
+                keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC ->
+                    applicationContext.dpToPx(candidateStripHeightDp)
+                else -> ViewGroup.LayoutParams.WRAP_CONTENT
+            },
             finalKeyboardHeight = windowHeight,
             backgroundSurfaceHeight = backgroundSurfaceHeight,
             finalKeyboardWidth = finalKeyboardWidth,
@@ -19149,6 +19199,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyKeyboardLayoutParameters(
         mainView: MainLayoutBinding,
         heightPx: Int,
+        candidateStripHeightPx: Int?,
         finalKeyboardHeight: Int,
         backgroundSurfaceHeight: Int,
         finalKeyboardWidth: Int,
@@ -19185,6 +19236,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         changed = true
                     }
                 } else {
+                    candidateStripHeightPx?.let { candidateHeight ->
+                        if (forceLayout || params.height != candidateHeight) {
+                            params.height = candidateHeight
+                            changed = true
+                        }
+                    }
                     if (forceLayout || params.bottomMargin != heightPx) {
                         params.bottomMargin = heightPx
                         changed = true
