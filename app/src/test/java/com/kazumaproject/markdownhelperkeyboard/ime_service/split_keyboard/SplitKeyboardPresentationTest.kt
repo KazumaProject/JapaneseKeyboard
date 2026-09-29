@@ -157,8 +157,14 @@ class SplitKeyboardPresentationTest {
             renderCustomKeyboardToggles(right,
                 com.kazumaproject.markdownhelperkeyboard.ime_service.CustomKeyboardShiftState.OFF, false, true)
         }
-        fun icon(view: FlickKeyboardView, index: Int) = org.robolectric.Shadows.shadowOf(
-            (view.getChildAt(index) as ImageView).drawable).createdFromResId
+        fun icon(view: FlickKeyboardView, index: Int): Int {
+            val drawable = (view.getChildAt(index) as ImageView).drawable
+            return if (drawable is com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable) {
+                drawable.resourceId
+            } else {
+                org.robolectric.Shadows.shadowOf(drawable).createdFromResId
+            }
+        }
         apply()
         for (view in listOf(left, right)) {
             view.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())

@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 /** Moves the existing candidate views, retaining their adapters, listeners and autofill children. */
 internal class CandidateSurfaceHost(
@@ -16,7 +18,12 @@ internal class CandidateSurfaceHost(
     private var origins = emptyList<Origin>()
     private var backgrounds = emptyList<Pair<View, android.graphics.drawable.Drawable?>>()
     private var colors = CandidatePanelColors.resolve(tabs.context)
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     fun setColors(value: CandidatePanelColors) { colors = value; refreshAppearance() }
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToKeyboardViews(tabs, snapshot)
+    }
     private var tabViews = emptyList<View?>()
     private var tabPadding = emptyList<Pair<View, android.graphics.Rect>>()
     private var scrollbars = false to false
@@ -165,6 +172,7 @@ internal class CandidateSurfaceHost(
                         addState(intArrayOf(), android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
                     }
                 }
+                KeyboardFontApplicator.apply(this, keyboardFontSnapshot)
             }
         }
     }

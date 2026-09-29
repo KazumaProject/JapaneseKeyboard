@@ -31,6 +31,9 @@ import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
@@ -165,6 +168,37 @@ internal fun resolveCandidateYomiPresentation(
 class SuggestionAdapter internal constructor(
     private val backgroundDiffExecutor: Executor = diffExecutor
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        if (keyboardFontSnapshot == snapshot) return
+        keyboardFontSnapshot = snapshot
+        notifyDataSetChanged()
+    }
+
+    private fun applyKeyboardFont(holder: RecyclerView.ViewHolder) {
+        when (holder) {
+            is SuggestionViewHolder -> {
+                KeyboardFontApplicator.apply(holder.text, keyboardFontSnapshot)
+                KeyboardFontApplicator.apply(holder.yomiText, keyboardFontSnapshot)
+                KeyboardFontApplicator.apply(holder.typeText, keyboardFontSnapshot)
+            }
+            is SelectionActionViewHolder -> {
+                KeyboardFontApplicator.apply(holder.badgeText, keyboardFontSnapshot)
+                KeyboardFontApplicator.apply(holder.actionText, keyboardFontSnapshot)
+            }
+            is InlineSuggestionToggleViewHolder -> KeyboardFontApplicator.apply(holder.badgeText, keyboardFontSnapshot)
+            is ZeroQueryViewHolder -> KeyboardFontApplicator.apply(holder.text, keyboardFontSnapshot)
+            is ClipboardPreviewViewHolder -> {
+                holder.clipboardPreviewText?.let { KeyboardFontApplicator.apply(it, keyboardFontSnapshot) }
+                holder.clipboardPreviewTextDescription?.let { KeyboardFontApplicator.apply(it, keyboardFontSnapshot) }
+            }
+            is CustomLayoutViewHolder -> KeyboardFontApplicator.apply(holder.nameTextView, keyboardFontSnapshot)
+            // Icon-only shortcuts/actions and framework-owned inline suggestions keep their
+            // icon/framework typography.
+        }
+    }
 
     companion object {
         private const val FLOATING_VIEW_TYPE_OFFSET = 10000
@@ -1366,7 +1400,10 @@ class SuggestionAdapter internal constructor(
             }
 
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
-        }.also { visitAppearanceViews(it.itemView, capture = true) }
+    }.also {
+        visitAppearanceViews(it.itemView, capture = true)
+        applyKeyboardFont(it)
+    }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -1391,9 +1428,9 @@ class SuggestionAdapter internal constructor(
                         item,
                     )
 
-                    else -> Unit
-                }
-            }
+            else -> Unit
+        }
+    }
 
             VIEW_TYPE_ZERO_QUERY_CLOSE -> onBindZeroQueryCloseViewHolder(
                 holder as ZeroQueryViewHolder,
@@ -1435,6 +1472,7 @@ class SuggestionAdapter internal constructor(
                 item as SuggestionDisplayItem.CustomLayoutItem,
             )
         }
+        applyKeyboardFont(holder)
         styleFloatingItem(holder, position)
     }
 
@@ -1917,7 +1955,11 @@ class SuggestionAdapter internal constructor(
     ) {
         val shortcutType = item.shortcutType
         holder.imageView.apply {
-            setImageResource(shortcutType.resolveShortcutIconResId())
+            KeyboardFontGlyphDrawable.setImageResource(
+                this,
+                shortcutType.resolveShortcutIconResId(),
+                keyboardFontSnapshot,
+            )
             contentDescription = shortcutType.description
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)
