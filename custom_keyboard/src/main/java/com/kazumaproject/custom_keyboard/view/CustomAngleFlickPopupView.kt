@@ -13,6 +13,9 @@ import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.graphics.toColorInt
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -28,7 +31,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), KeyboardFontAware {
 
     // ... (PaintやThemeの定義は変更なし) ...
     private val targetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -59,7 +62,14 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     )
 
     init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
         applyThemeToPaints()
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(textPaint, snapshot)
+        invalidate()
     }
 
     private var currentFlickDirection = CircularFlickDirection.TAP
