@@ -3,6 +3,7 @@ package com.kazumaproject.custom_keyboard.view
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.view.View
 import android.view.ContextThemeWrapper
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -38,6 +39,15 @@ class TfbiFlickPopupViewPresentationTest {
             assertEquals(TfbiFlickPopupView.PresentationMode.LONG_PRESS, presentationMode(view))
             val changedPixels = flickPixels.indices.count { flickPixels[it] != longPressPixels[it] }
             assertTrue("$skin should use a distinct long-press panel", changedPixels > 0)
+            assertEquals(
+                "$skin should leave an unused diagonal cell transparent",
+                0,
+                Color.alpha(longPressPixels[75 * view.width + 50])
+            )
+            assertTrue(
+                "$skin should draw the configured top choice",
+                Color.alpha(longPressPixels[75 * view.width + 150]) > 0
+            )
 
             view.setPresentationMode(TfbiFlickPopupView.PresentationMode.FLICK)
             assertArrayEquals(flickPixels, render(view))

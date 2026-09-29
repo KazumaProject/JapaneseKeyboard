@@ -3,6 +3,7 @@ package com.kazumaproject.custom_keyboard.view
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
@@ -199,49 +200,68 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
         characters: Map<TfbiFlickDirection, String>
     ) {
         val density = resources.displayMetrics.density
-        val inset = density.coerceAtLeast(1f)
-        val panel = RectF(inset, inset, width - inset, height - inset)
-        if (panel.width() <= 0f || panel.height() <= 0f) return
-
-        val radius = 7f * density
-        val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = density.coerceAtLeast(1f)
-            color = ColorUtils.setAlphaComponent(palette.text, 72)
+        val visibleRects = characters.keys.mapNotNull { direction ->
+            rects[direction]?.let { direction to it }
         }
-        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.key }
-        canvas.drawRoundRect(panel, radius, radius, fill)
+        if (visibleRects.isEmpty()) return
 
-        val cellWidth = panel.width() / 3f
-        val cellHeight = panel.height() / 3f
+        // Build a continuous silhouette from the actual choices. A full 3x3 plate leaves
+        // conspicuous empty corners for the common five-way (center + four directions) map.
+        val panelShape = Path()
+        visibleRects.forEachIndexed { index, (_, rect) ->
+            val cellPath = Path().apply {
+                addRect(rect, Path.Direction.CW)
+            }
+            if (index == 0) {
+                panelShape.set(cellPath)
+            } else {
+                panelShape.op(cellPath, Path.Op.UNION)
+            }
+        }
+
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.key }
+        canvas.drawPath(panelShape, fill)
+
         val selectedRect = rects[highlightedDirection]
-            ?.let { RectF(it.left + inset, it.top + inset, it.right - inset, it.bottom - inset) }
+            ?.takeIf { highlightedDirection in characters }
+            ?.let { RectF(it.left + density, it.top + density, it.right - density, it.bottom - density) }
         if (selectedRect != null) {
             fill.color = palette.selection
             canvas.save()
-            val clip = android.graphics.Path().apply {
-                addRoundRect(panel, radius, radius, android.graphics.Path.Direction.CW)
-            }
-            canvas.clipPath(clip)
+            canvas.clipPath(panelShape)
             canvas.drawRoundRect(selectedRect, 4f * density, 4f * density, fill)
             canvas.restore()
         }
 
-        outline.color = ColorUtils.setAlphaComponent(palette.text, 54)
         val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ColorUtils.setAlphaComponent(palette.text, 50)
             strokeWidth = density.coerceAtLeast(1f)
         }
-        for (index in 1..2) {
-            val x = panel.left + cellWidth * index
-            val y = panel.top + cellHeight * index
-            canvas.drawLine(x, panel.top + radius, x, panel.bottom - radius, dividerPaint)
-            canvas.drawLine(panel.left + radius, y, panel.right - radius, y, dividerPaint)
+        visibleRects.forEachIndexed { index, (_, first) ->
+            visibleRects.drop(index + 1).forEach { (_, second) ->
+                when {
+                    first.top == second.top && first.right == second.left ->
+                        canvas.drawLine(first.right, first.top, first.right, first.bottom, dividerPaint)
+                    first.top == second.top && second.right == first.left ->
+                        canvas.drawLine(first.left, first.top, first.left, first.bottom, dividerPaint)
+                    first.left == second.left && first.bottom == second.top ->
+                        canvas.drawLine(first.left, first.bottom, first.right, first.bottom, dividerPaint)
+                    first.left == second.left && second.bottom == first.top ->
+                        canvas.drawLine(first.left, first.top, first.right, first.top, dividerPaint)
+                }
+            }
         }
-        canvas.drawRoundRect(panel, radius, radius, outline)
 
-        characters.forEach { (direction, label) ->
-            rects[direction]?.let { rect ->
+        val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = density.coerceAtLeast(1f)
+            color = ColorUtils.setAlphaComponent(palette.text, 54)
+        }
+        canvas.drawPath(panelShape, outline)
+
+        visibleRects.forEach { (direction, rect) ->
+            val label = characters[direction].orEmpty()
+            if (label.isNotEmpty()) {
                 textPaint.color = if (direction == highlightedDirection) {
                     palette.selectionText
                 } else {
