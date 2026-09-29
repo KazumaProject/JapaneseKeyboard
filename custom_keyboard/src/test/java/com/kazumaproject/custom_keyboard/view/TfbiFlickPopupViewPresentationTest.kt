@@ -44,6 +44,11 @@ class TfbiFlickPopupViewPresentationTest {
                 0,
                 Color.alpha(longPressPixels[75 * view.width + 50])
             )
+            assertEquals(
+                "$skin should leave an empty hold-only direction transparent",
+                0,
+                Color.alpha(longPressPixels[375 * view.width + 50])
+            )
             assertTrue(
                 "$skin should draw the configured top choice",
                 Color.alpha(longPressPixels[75 * view.width + 150]) > 0
@@ -78,7 +83,8 @@ class TfbiFlickPopupViewPresentationTest {
                     TfbiFlickDirection.UP to "あ",
                     TfbiFlickDirection.LEFT to "い",
                     TfbiFlickDirection.RIGHT to "う",
-                    TfbiFlickDirection.DOWN to "え"
+                    TfbiFlickDirection.DOWN to "え",
+                    TfbiFlickDirection.DOWN_LEFT to ""
                 )
             )
             measure(exactly(300), exactly(450))
