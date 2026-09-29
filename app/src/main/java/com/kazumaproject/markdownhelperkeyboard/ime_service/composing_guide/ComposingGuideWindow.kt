@@ -14,6 +14,8 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import androidx.preference.PreferenceManager
 import timber.log.Timber
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import kotlin.math.roundToInt
 
 /** Non-focusable candidate window; the service owns candidate placement and keyboard sizing. */
@@ -35,6 +37,7 @@ internal class ComposingGuideWindow(
     private var active = false
     private var content = ComposingGuideContent()
     private var guideView: ComposingGuideView? = null
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     private var windowParams: WindowManager.LayoutParams? = null
     private var bounds: GuideBounds? = null
     private var area = Rect()
@@ -54,6 +57,11 @@ internal class ComposingGuideWindow(
     }
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        guideView?.setKeyboardFont(snapshot)
+    }
     private val editExtraDp get() = if (profile.hasText) ComposingGuideView.EDIT_EXTRA_DP else 44
     private val extra get() = dp(ComposingGuideView.MOVE_BAND_DP) +
         if (editing) dp(editExtraDp) else 0
@@ -115,6 +123,7 @@ internal class ComposingGuideWindow(
             },
             onHandleEvent = ::handleEvent,
         ).also { view ->
+            view.setKeyboardFont(keyboardFontSnapshot)
             guideView = view
             coordinates.observeLegacyOrigin(view, { windowParams }, ::refresh)
             val minimumLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
@@ -134,6 +143,7 @@ internal class ComposingGuideWindow(
                 }
             })
         }
+        view.setKeyboardFont(keyboardFontSnapshot)
         view.setColors(colors())
         if (view.editing != editing) view.setEditing(editing)
         view.setEditAvailable(editing || area.height() >= dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + editExtraDp))
