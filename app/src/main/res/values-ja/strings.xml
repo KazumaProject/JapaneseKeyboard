@@ -319,6 +319,9 @@
     <string name="custom_keyboard_suggestion_title">未入力時の表示</string>
     <string name="custom_keyboard_suggestion_summary_on">文字を入力していないときは、カスタムタブの一覧を表示します。</string>
     <string name="custom_keyboard_suggestion_summary_off">文字を入力していないときは、標準の表示（クリップボードなど）のままにします。</string>
+    <string name="custom_keyboard_input_in_empty_areas_title">空白部分でもキー入力</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_on">空白セルやスペーサーを押すと、最も近いキーを入力します。</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_off">空白セルやスペーサーでは入力しません。</string>
     <string name="remember_last_custom_keyboard_title">最後に使用したカスタムキーボードを復元</string>
     <string name="remember_last_custom_keyboard_summary_on">カスタムキーボードを開いたとき、前回使用したカスタムキーボードを表示します</string>
     <string name="remember_last_custom_keyboard_summary_off">カスタムキーボードを開いたとき、最初のカスタムキーボードを表示します</string>
