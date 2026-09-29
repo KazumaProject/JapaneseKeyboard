@@ -106,9 +106,14 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
         // Pressed state is controlled only by setPressedKey().
     }
 
-    fun setUseThreeStateKeyboard(enabled: Boolean) {
+    fun setUseThreeStateKeyboard(enabled: Boolean, numberSymbolKeyGapDp: Int = 4) {
         useThreeStateKeyboard = enabled
         numberButton.visibility = if (enabled) GONE else VISIBLE
+        val symbolParams = symbolButton.layoutParams as LayoutParams
+        symbolParams.marginStart = if (enabled) 0 else {
+            (numberSymbolKeyGapDp.coerceIn(0, 16) * resources.displayMetrics.density).toInt()
+        }
+        symbolButton.layoutParams = symbolParams
         (numberButton.layoutParams as LayoutParams).apply {
             width = 0
             weight = if (enabled) 0f else 1f
