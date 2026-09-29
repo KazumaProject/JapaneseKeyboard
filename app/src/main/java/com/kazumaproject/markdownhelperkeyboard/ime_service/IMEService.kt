@@ -935,6 +935,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
         AppPreference.CUSTOM_KEYMAP_GUIDE_KEY,
+        AppPreference.CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
         AppPreference.DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY,
         AppPreference.VIBRATION_KEY,
@@ -2627,7 +2628,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             state.customDirect = resolveInitialCustomKeyboardDirectMode(selected.layoutId, selected.stableId, layout.isDirectMode)
                             isCustomLayoutRomajiMode = state.customRomaji
                             isCustomLayoutDirectMode = state.customDirect
-                            setKeyboardWithDeleteKeyFlickPreferences(binding.customLayoutFloating, layout)
+                            setKeyboardWithDeleteKeyFlickPreferences(
+                                binding.customLayoutFloating,
+                                layout,
+                                isUserDefinedCustomLayout = true
+                            )
                             syncCustomKeyboardTogglePresentation(binding.customLayoutFloating)
                         }
                         else -> Unit
@@ -3591,6 +3596,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applyCurrentFlickGuidePreference(customLayoutFloating)
             customLayoutFloating.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
             customLayoutFloating.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
+        }
+        syncCustomKeyboardHitTestPreference()
+    }
+
+    private fun customKeyboardHitTestMode(): KeyHitTestMode =
+        if (appPreference.custom_keyboard_input_in_empty_areas_preference) {
+            KeyHitTestMode.NEAREST_KEY
+        } else {
+            KeyHitTestMode.NEAREST_KEY_IN_KEY_CELLS
+        }
+
+    private fun syncCustomKeyboardHitTestPreference() {
+        val hitTestMode = customKeyboardHitTestMode()
+        if (splitController != null) {
+            splitInputs.values
+                .filter { state ->
+                    state.selection.type == KeyboardType.CUSTOM &&
+                        state.binding.customLayoutFloating.activeKeyHitTestMode !=
+                        KeyHitTestMode.KEY_BOUNDS
+                }
+                .forEach { state ->
+                    state.binding.customLayoutFloating.setKeyHitTestMode(hitTestMode)
+                }
+            return
+        }
+
+        val isCustomLayoutActive = qwertyMode.value == TenKeyQWERTYMode.Custom ||
+            (qwertyMode.value == TenKeyQWERTYMode.Number &&
+                numberUsageCustomKeyboardLayoutOrNull() != null)
+        if (isCustomLayoutActive) {
+            getActiveKeyboardSurface()?.customLayout
+                ?.takeIf { it.activeKeyHitTestMode != KeyHitTestMode.KEY_BOUNDS }
+                ?.setKeyHitTestMode(hitTestMode)
         }
     }
 
@@ -9977,10 +10015,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardWithDeleteKeyFlickPreferences(
         flickView: FlickKeyboardView,
-        layout: KeyboardLayout
+        layout: KeyboardLayout,
+        isUserDefinedCustomLayout: Boolean = false
     ) {
         flickView.clearSumireSpecialKeyActionResolver()
-        flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
+        flickView.setKeyboard(
+            applyDeleteKeyFlickPreferences(layout),
+            if (isUserDefinedCustomLayout) customKeyboardHitTestMode() else KeyHitTestMode.KEY_BOUNDS
+        )
     }
 
     private fun syncCustomKeyboardTogglePresentation(
@@ -10088,7 +10130,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("setNumberCustomLayoutTo: skip stale render id=$id stableId=$expectedStableId")
                     return@withContext
                 }
-                setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
+                setKeyboardWithDeleteKeyFlickPreferences(
+                    flickView,
+                    finalLayout,
+                    isUserDefinedCustomLayout = true
+                )
             }
         }
     }
@@ -10130,7 +10176,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val apply = {
                 if (splitInputs[state.slot] === state && state.presentedMode == expectedMode) {
                     val view = state.binding.customLayoutFloating
-                    setKeyboardWithDeleteKeyFlickPreferences(view, layout)
+                    setKeyboardWithDeleteKeyFlickPreferences(
+                        view,
+                        layout,
+                        isUserDefinedCustomLayout = true
+                    )
                     view.setKeyCharacterCase(if (expectedMode == TenKeyQWERTYMode.Number) KeyCharacterCase.AS_DEFINED else state.shift.keyCharacterCase)
                     syncSplitPresentation()
                 }
@@ -10174,7 +10224,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (!isCurrentCustomKeyboardSelection(layoutId = id, stableId = expectedStableId)) {
                     return@withContext
                 }
-                setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
+                setKeyboardWithDeleteKeyFlickPreferences(
+                    flickView,
+                    finalLayout,
+                    isUserDefinedCustomLayout = true
+                )
                 syncCustomKeyboardTogglePresentation(flickView)
                 refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
             }
@@ -10186,7 +10240,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.customLayout
             ?.let { flickView ->
                 applyCurrentFlickGuidePreference(flickView)
-                setKeyboardWithDeleteKeyFlickPreferences(flickView, layout)
+                setKeyboardWithDeleteKeyFlickPreferences(
+                    flickView,
+                    layout,
+                    isUserDefinedCustomLayout = true
+                )
             }
     }
 
@@ -10194,10 +10252,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetCustomToggleState()
         getNormalKeyboardSurface()
             ?.customLayout
-            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+            ?.let { flickView ->
+                setKeyboardWithDeleteKeyFlickPreferences(
+                    flickView,
+                    layout,
+                    isUserDefinedCustomLayout = true
+                )
+            }
         getFloatingKeyboardSurface()
             ?.customLayout
-            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+            ?.let { flickView ->
+                setKeyboardWithDeleteKeyFlickPreferences(
+                    flickView,
+                    layout,
+                    isUserDefinedCustomLayout = true
+                )
+            }
     }
 
     private fun refreshDeleteKeyFlickPreferenceLayouts() {

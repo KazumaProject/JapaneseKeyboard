@@ -320,6 +320,9 @@
     <string name="custom_keyboard_suggestion_title">Display when no text is entered</string>
     <string name="custom_keyboard_suggestion_summary_on">Show a list from the custom tab when no text is entered.</string>
     <string name="custom_keyboard_suggestion_summary_off">Keep the standard display (clipboard, etc.) when no text is entered.</string>
+    <string name="custom_keyboard_input_in_empty_areas_title">Allow input in empty areas</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_on">Touches in empty cells and spacers use the nearest key.</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_off">Empty cells and spacers do not accept input.</string>
     <string name="remember_last_custom_keyboard_title">Restore last used custom keyboard</string>
     <string name="remember_last_custom_keyboard_summary_on">Shows the custom keyboard you used last when opening custom keyboards</string>
     <string name="remember_last_custom_keyboard_summary_off">Shows the first custom keyboard when opening custom keyboards</string>
