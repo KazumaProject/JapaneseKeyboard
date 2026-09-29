@@ -13,6 +13,9 @@ import androidx.core.graphics.toColorInt
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import kotlin.math.min
@@ -20,7 +23,7 @@ import kotlin.math.min
 /**
  * 通常フリック時に表示される、方向を示す矢印型のポップアップ
  */
-class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
+class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context), KeyboardFontAware {
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         // 初期色は設定するが、onDrawで動的に上書きされる
@@ -48,11 +51,17 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     private var popupTextColor: Int? = null
 
     init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
         // init時のテキスト色はテーマで上書きされる前提
         setTextColor(Color.WHITE)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
         // ▼▼▼ 追加: 枠線の太さを設定 ▼▼▼
         strokePaint.strokeWidth = dpToPx(1f)
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(this, snapshot)
     }
 
     /**

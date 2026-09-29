@@ -13,14 +13,18 @@ import android.util.TypedValue
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 /**
  * Draw the guide in the anchor window's overlay when it fits. Guide and keyboard labels
  * then share a render transaction, without creating or retiring another surface.
  * The overlay never participates in input hit testing or keyboard layout measurement.
  */
-class SkinGuidePopup(context: Context) {
+class SkinGuidePopup(context: Context) : KeyboardFontAware {
     private val content = FrameLayout(context)
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     private val cells = listOf(PopupDirection.CENTER, PopupDirection.LEFT, PopupDirection.TOP,
         PopupDirection.RIGHT, PopupDirection.BOTTOM).associateWith { direction ->
         KeyWindowLayout(context).apply {
@@ -37,6 +41,11 @@ class SkinGuidePopup(context: Context) {
     private var skin: KeyboardSkin? = null
     private var animationGeneration = 0L
     val isShowing: Boolean get() = (owner != null && content.isAttachedToWindow) || overflowWindow?.isShowing == true
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(content, snapshot) { true }
+    }
 
     fun show(
         anchor: View,
@@ -123,6 +132,7 @@ class SkinGuidePopup(context: Context) {
             val label = cell.getChildAt(0) as TextView
             label.text = labels[direction] ?: ""
             skin.configurePopupText(label, false)
+            KeyboardFontApplicator.apply(label, keyboardFontSnapshot)
             textSizeSp?.let { label.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.coerceIn(8f, 48f)) }
             cell.visibility = if (label.text.isEmpty()) View.INVISIBLE else View.VISIBLE
             val bounds = SkinPopupGeometry.resolve(width, height, direction, false).bounds
