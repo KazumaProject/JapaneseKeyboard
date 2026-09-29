@@ -6,7 +6,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.LruCache
 import android.widget.ImageView
-import androidx.appcompat.content.res.AppCompatResources
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import java.io.File
 
 object KeyIconResolver {
@@ -53,7 +53,7 @@ object KeyIconResolver {
         val overrideDrawable = when (icon?.type) {
             KeyIconType.DRAWABLE_RESOURCE_NAME ->
                 KeyIconBuiltInDrawable.resolve(icon.value)
-                    ?.let { AppCompatResources.getDrawable(context, it) }
+                    ?.let { KeyboardFontGlyphDrawable.create(context, it) }
 
             KeyIconType.USER_IMAGE_FILE ->
                 icon.value?.let { loadUserImageDrawable(context, it) }
@@ -62,7 +62,7 @@ object KeyIconResolver {
             null -> null
         }
         if (overrideDrawable != null) return overrideDrawable
-        return fallbackResId?.let { AppCompatResources.getDrawable(context, it) }
+        return fallbackResId?.let { KeyboardFontGlyphDrawable.create(context, it) }
     }
 
     private fun suppressesDoNothingDefaultContent(keyData: KeyData): Boolean =

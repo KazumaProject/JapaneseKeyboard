@@ -31,6 +31,10 @@ import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.gojuon.GojuonCapsLockState
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
@@ -105,7 +109,7 @@ import java.util.concurrent.atomic.AtomicReference
 @SuppressLint("ClickableViewAccessibility")
 class GojuonKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : ConstraintLayout(context, attrs, defStyleAttr), View.OnTouchListener {
+) : ConstraintLayout(context, attrs, defStyleAttr), View.OnTouchListener, KeyboardFontAware {
 
     private val binding: GojuonLayoutBinding =
         GojuonLayoutBinding.inflate(LayoutInflater.from(context), this)
@@ -305,6 +309,26 @@ class GojuonKeyboardView @JvmOverloads constructor(
     private lateinit var popupWindowCenter: PopupWindow
     private lateinit var bubbleViewCenter: KeyWindowLayout
     private lateinit var popTextCenter: MaterialTextView
+    private var keyboardFontSnapshot = KeyboardFontSnapshot()
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
+        KeyboardFontGlyphDrawable.setImageResource(
+            binding.keyKigou,
+            com.kazumaproject.core.R.drawable.symbol,
+            snapshot,
+        )
+        binding.keySwitchKeyMode.setKeyboardFont(snapshot)
+        applyPopupKeyboardFont()
+    }
+
+    private fun applyPopupKeyboardFont() {
+        if (!::popTextActive.isInitialized) return
+        listOf(popTextActive, popTextLeft, popTextTop, popTextRight, popTextBottom, popTextCenter)
+            .forEach { KeyboardFontApplicator.apply(it, keyboardFontSnapshot) }
+    }
 
     private val _gojuonCapsLockState = MutableStateFlow(GojuonCapsLockState())
     private val gojuonCapsLockState: StateFlow<GojuonCapsLockState> =
@@ -810,6 +834,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
         bubbleViewCenter.skinId = keyboardSkinId
         popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
+        applyPopupKeyboardFont()
     }
 
     @SuppressLint("InflateParams")

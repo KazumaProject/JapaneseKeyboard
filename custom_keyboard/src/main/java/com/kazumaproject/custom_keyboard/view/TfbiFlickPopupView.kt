@@ -10,10 +10,13 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
-class TfbiFlickPopupView(context: Context) : View(context) {
+class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
 
     // ===== 描画関連のプロパティ =====
 
@@ -46,6 +49,16 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var inputTextTransform: (String) -> String = { it }
+
+    init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(textPaint, snapshot)
+        invalidate()
+    }
 
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
