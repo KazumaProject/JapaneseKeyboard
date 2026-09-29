@@ -27,6 +27,14 @@ class CupertinoClassicCandidateChromeTest {
         assertEquals(110, CupertinoClassicCandidateChrome.resolveDockedStripHeightDp(110))
     }
 
+    @Test fun candidateAndExpandedSurfacesUseTheSameUniformBackground() {
+        val panel = CupertinoClassicCandidateChrome.panelBackground()
+        val tabs = CupertinoClassicCandidateChrome.tabsBackground()
+
+        assertEquals(CupertinoClassicCandidateChrome.panelColor, panel.color)
+        assertEquals(panel.color, tabs.color)
+    }
+
     @Test fun candidateTabsUseSegmentedSelectionAndRestoreTheirPreviousAppearance() {
         val layout = TabLayout(context).apply {
             addTab(newTab().setText("予測"))

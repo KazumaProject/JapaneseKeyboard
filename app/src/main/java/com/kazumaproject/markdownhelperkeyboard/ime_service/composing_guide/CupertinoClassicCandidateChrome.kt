@@ -21,7 +21,6 @@ internal object CupertinoClassicCandidateChrome {
 
     fun resolveDockedStripHeightDp(configuredHeightDp: Int): Int =
         configuredHeightDp.coerceAtLeast(minimumDockedStripHeightDp)
-    private const val panelTop: Int = 0xffe7e7eb.toInt()
     private const val panelBottom: Int = 0xffc9cbd2.toInt()
     private const val tabTop: Int = 0xfff0f0f2.toInt()
     private const val tabBottom: Int = 0xffc8cbd2.toInt()
@@ -49,13 +48,13 @@ internal object CupertinoClassicCandidateChrome {
     fun originalTabRippleColor(tabLayout: TabLayout): android.content.res.ColorStateList? =
         tabLayoutStates[tabLayout]?.rippleColor ?: tabLayout.tabRippleColor
 
-    fun panelBackground() = gradient(panelTop, panelBottom)
+    fun panelBackground() = ColorDrawable(panelColor)
 
     fun toolbarBackground(resources: Resources) = gradient(tabTop, panelBottom).apply {
         setStroke(strokeWidth(resources), tabEdge)
     }
 
-    fun tabsBackground() = gradient(panelTop, panelBottom)
+    fun tabsBackground() = ColorDrawable(panelColor)
 
     fun expandButtonBackground(resources: Resources) = StateListDrawable().apply {
         addState(intArrayOf(android.R.attr.state_pressed), expandButtonDrawable(
