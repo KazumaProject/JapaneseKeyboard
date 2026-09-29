@@ -9,6 +9,9 @@ import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 interface BubbleClickListener {
     fun onBubbleClick()
@@ -18,7 +21,7 @@ class BubbleTextView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : AppCompatTextView(context, attrs, defStyleAttr) {
+) : AppCompatTextView(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private var listener: BubbleClickListener? = null
 
@@ -36,6 +39,11 @@ class BubbleTextView @JvmOverloads constructor(
     private val bubbleRect = RectF()
 
     private val cornerRadius = 20f
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(this, snapshot)
+    }
 
     init {
         setPadding(20, 20, 20, 20)

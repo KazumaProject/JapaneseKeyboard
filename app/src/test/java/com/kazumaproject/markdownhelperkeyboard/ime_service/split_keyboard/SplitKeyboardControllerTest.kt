@@ -5,8 +5,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
+import android.graphics.Typeface
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.FloatingPanelFrame
 import org.junit.Assert.*
 import org.junit.Test
@@ -78,6 +82,50 @@ class SplitKeyboardControllerTest {
             }
         } finally { controller.stop(); activity.finish() }
     }
+
+    @Test fun fontChangesReachCandidateAdaptersInBothPanes() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(FrameLayout(activity))
+        PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()
+        val controller = SplitKeyboardController(activity, activity.window.decorView, {}, {}, {})
+        val adapters = SplitSlot.entries.associateWith { SuggestionAdapter() }
+        val lists = SplitSlot.entries.associateWith { slot ->
+            RecyclerView(activity).apply { adapter = adapters.getValue(slot) }
+        }
+        lists.forEach { (slot, list) -> controller.add(slot, FrameLayout(activity), list, 160) }
+        try {
+            val local = KeyboardFontSnapshot(Typeface.create("serif", Typeface.NORMAL), 91)
+            controller.setKeyboardFont(local)
+            adapters.values.forEach { adapter ->
+                assertEquals(local, org.robolectric.util.ReflectionHelpers.getField(adapter, "keyboardFontSnapshot"))
+            }
+
+            val standard = local.copy(typeface = null)
+            controller.setKeyboardFont(standard)
+            adapters.values.forEach { adapter ->
+                assertEquals(standard, org.robolectric.util.ReflectionHelpers.getField(adapter, "keyboardFontSnapshot"))
+            }
+        } finally { controller.stop(); activity.finish() }
+    }
+
+    @Test fun splitPanelFrameDoesNotOverrideFontRolesInsideItsContent() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val frame = FloatingPanelFrame(activity, {}, {}, title = "Split")
+        val iconOwnedContent = TextView(activity).apply {
+            typeface = Typeface.create("monospace", Typeface.BOLD)
+        }
+        val baseline = iconOwnedContent.typeface
+        frame.contentContainer.addView(iconOwnedContent)
+
+        val custom = KeyboardFontSnapshot(Typeface.create("serif", Typeface.NORMAL), 92)
+        frame.setKeyboardFont(custom)
+        assertSame(baseline, iconOwnedContent.typeface)
+        frame.setKeyboardFont(custom.copy(typeface = null))
+        assertSame(baseline, iconOwnedContent.typeface)
+
+        activity.finish()
+    }
+
     @Test fun cancelledDragDoesNotPersistAndResizeOnlyChangesItsSlot() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         activity.setContentView(FrameLayout(activity))
