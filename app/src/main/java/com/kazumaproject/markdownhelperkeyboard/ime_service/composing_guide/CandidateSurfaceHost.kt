@@ -93,7 +93,7 @@ internal class CandidateSurfaceHost(
 
     private fun styleSurface() {
         scrollbars = candidates.isVerticalScrollBarEnabled to candidates.isHorizontalScrollBarEnabled
-        backgrounds = listOf(toolbar, tabs, strip).map { it to it.background }
+        backgrounds = listOf(toolbar, tabs, strip, fullCandidates).map { it to it.background }
         (candidates as? androidx.recyclerview.widget.RecyclerView)?.addItemDecoration(spacing)
         (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
             tabMode = layout.tabMode

@@ -71,7 +71,8 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
         // サイズ調整とリスナー設定
         setKeyboardSize()
         binding.tenkeyLetterSizePreview.setUseThreeStateKeyboard(
-            appPreference.tenkey_use_three_state_keyboard_preference
+            appPreference.tenkey_use_three_state_keyboard_preference,
+            appPreference.tenkey_number_symbol_key_gap_preference,
         )
         binding.tenkeyLetterSizePreview.setUseQwertyNumberWhenThreeStateOff(
             appPreference.tenkey_switch_number_to_qwerty_number_preference

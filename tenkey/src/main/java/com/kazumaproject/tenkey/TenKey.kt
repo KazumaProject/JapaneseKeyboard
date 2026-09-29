@@ -1425,9 +1425,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
     }
 
-    fun setUseThreeStateKeyboard(enabled: Boolean) {
+    fun setUseThreeStateKeyboard(enabled: Boolean, numberSymbolKeyGapDp: Int = 4) {
         useThreeStateKeyboard = enabled
-        binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
+        binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled, numberSymbolKeyGapDp)
         binding.keySwitchKeyMode.setInputMode(
             inputMode = currentInputMode.value,
             isGojuon = false,

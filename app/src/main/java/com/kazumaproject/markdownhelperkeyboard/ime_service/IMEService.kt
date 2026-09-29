@@ -680,6 +680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyUseThreeStateKeyboard: Boolean = true
+    private var tenkeyNumberSymbolKeyGapDp: Int = 4
     private var tenkeySwitchNumberToQwertyNumberPreference: Boolean = false
     private var qwertyNumberOpenedFromTenkeyTwoStateNumberKey: Boolean = false
     private var qwertySwitchNumberKeyReturnSource: RestartInputModeQwertyReturnSource =
@@ -931,6 +932,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_NUMBER_KEY,
+        AppPreference.TENKEY_USE_THREE_STATE_KEY,
+        AppPreference.TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
@@ -3546,6 +3549,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             english = appPreference.tenkey_keymap_guide_english,
             number = appPreference.tenkey_keymap_guide_number
         )
+        val latestTenkeyUseThreeStateKeyboard =
+            appPreference.tenkey_use_three_state_keyboard_preference
+        val latestTenkeyNumberSymbolKeyGapDp =
+            appPreference.tenkey_number_symbol_key_gap_preference
+        if (
+            latestTenkeyUseThreeStateKeyboard != tenkeyUseThreeStateKeyboard ||
+            latestTenkeyNumberSymbolKeyGapDp != tenkeyNumberSymbolKeyGapDp
+        ) {
+            tenkeyUseThreeStateKeyboard = latestTenkeyUseThreeStateKeyboard
+            tenkeyNumberSymbolKeyGapDp = latestTenkeyNumberSymbolKeyGapDp
+            buildList {
+                mainLayoutBinding?.keyboardView?.let(::add)
+                floatingKeyboardBinding?.keyboardViewFloating?.let(::add)
+                splitInputs.values.forEach { add(it.binding.keyboardViewFloating) }
+            }.distinct().forEach { tenkeyView ->
+                tenkeyView.setUseThreeStateKeyboard(
+                    tenkeyUseThreeStateKeyboard,
+                    tenkeyNumberSymbolKeyGapDp,
+                )
+            }
+        }
         sumireKeymapGuideSettings = ModeKeymapGuideSettings(
             japanese = appPreference.sumire_keymap_guide_japanese,
             english = appPreference.sumire_keymap_guide_english,
@@ -3763,6 +3787,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
         tenkeyUseThreeStateKeyboard = preferences.tenkeyUseThreeStateKeyboard
+        tenkeyNumberSymbolKeyGapDp = preferences.tenkeyNumberSymbolKeyGapDp
         tenkeySwitchNumberToQwertyNumberPreference =
             preferences.tenkeySwitchNumberToQwertyNumberPreference
         tenkeyRestoreInputModeOnRestart =
@@ -5432,7 +5457,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun applyCandidateExpandedSurfaceBackground(view: View) {
+        view.background = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.panelBackground()
+        } else {
+            null
+        }
+    }
+
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
+        applyCandidateExpandedSurfaceBackground(mainView.candidatesRowView)
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             mainView.root.background = skin.keyboardDrawable(resources)
             if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
@@ -5543,6 +5577,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFloatingKeyboardContainerBackgrounds(
         floatingView: FloatingKeyboardLayoutBinding
     ) {
+        applyCandidateExpandedSurfaceBackground(floatingView.candidatesRowView)
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             floatingView.root.background = skin.keyboardDrawable(resources, floating = true)
             floatingView.suggestionViewParent.background = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
@@ -5747,7 +5782,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     borderWidth = customKeyBorderWidth ?: 1
                 )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
-                    tenkeyUseThreeStateKeyboard
+                    tenkeyUseThreeStateKeyboard,
+                    tenkeyNumberSymbolKeyGapDp,
                 )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setUseQwertyNumberWhenThreeStateOff(
                     tenkeySwitchNumberToQwertyNumberPreference
@@ -5848,7 +5884,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
-                keyboardView.setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
+                keyboardView.setUseThreeStateKeyboard(
+                    tenkeyUseThreeStateKeyboard,
+                    tenkeyNumberSymbolKeyGapDp,
+                )
                 keyboardView.setUseQwertyNumberWhenThreeStateOff(
                     tenkeySwitchNumberToQwertyNumberPreference
                 )
@@ -6306,6 +6345,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = null
         tenkeyQWERTYSwitchNumber = null
         tenkeyUseThreeStateKeyboard = true
+        tenkeyNumberSymbolKeyGapDp = 4
         tenkeySwitchNumberToQwertyNumberPreference = false
         tenkeyRestoreInputModeOnRestart = false
         sumireRestoreInputModeOnRestart = false
@@ -7210,9 +7250,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
     private fun applyCandidateAppearance() {
+        mainLayoutBinding?.let { applyCandidateExpandedSurfaceBackground(it.candidatesRowView) }
+        floatingKeyboardBinding?.let { applyCandidateExpandedSurfaceBackground(it.candidatesRowView) }
         if (!floatingCandidateSurfaceActive) {
             mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
         }
+        val classic = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
         val custom = keyboardThemeMode == "custom"
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setCandidateTextColor(if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
@@ -7235,8 +7278,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 else null,
             )
         }
-        listOfNotNull(mainLayoutBinding?.suggestionVisibility, floatingKeyboardBinding?.suggestionVisibility)
-            .forEach { button ->
+        val defaultButtonTint = ContextCompat.getColorStateList(
+            this, com.kazumaproject.core.R.color.keyboard_icon_color
+        )
+        listOfNotNull(
+            mainLayoutBinding?.let { it.suggestionVisibility to it.candidatesRowView },
+            floatingKeyboardBinding?.let { it.suggestionVisibility to it.candidatesRowView },
+        ).forEach { (button, expandedCandidates) ->
+            button.isSelected = expandedCandidates.visibility == View.VISIBLE
+            if (classic) {
+                val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
+                button.background = chrome.expandButtonBackground(button.resources)
+                button.imageTintList = chrome.expandButtonTint()
+                button.clearColorFilter()
+            } else {
                 // setBackgroundResource may keep the same resource instance after a skin
                 // mutated its fill. Load a fresh drawable to restore the themed XML colors.
                 button.background = ContextCompat.getDrawable(
@@ -7244,6 +7299,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (DynamicColors.isDynamicColorAvailable()) com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
                     else com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
                 )?.mutate()
+                button.imageTintList = defaultButtonTint
                 if (custom) {
                     button.setDrawableSolidColor(customThemeSpecialKeyColor ?: Color.GRAY)
                     button.setColorFilter(customThemeKeyTextColor ?: Color.BLACK)
@@ -7251,6 +7307,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     button.clearColorFilter()
                 }
             }
+        }
         val shortcutColor = if (custom) customThemeShortcutIconColor ?: Color.BLACK else null
         shortcutAdapter?.setIconColor(shortcutColor)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setShortcutIconColor(shortcutColor) }
@@ -10451,7 +10508,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             borderWidth = customKeyBorderWidth ?: 1
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
-            tenkeyUseThreeStateKeyboard
+            tenkeyUseThreeStateKeyboard,
+            tenkeyNumberSymbolKeyGapDp,
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setUseQwertyNumberWhenThreeStateOff(
             tenkeySwitchNumberToQwertyNumberPreference
@@ -10605,7 +10663,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
                 borderWidth = customKeyBorderWidth ?: 1
             )
-            setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
+            setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard, tenkeyNumberSymbolKeyGapDp)
             setUseQwertyNumberWhenThreeStateOff(tenkeySwitchNumberToQwertyNumberPreference)
             setOnQwertyNumberModeRequestedListener {
                 switchTenkeyTwoStateNumberToQwertyNumber()
@@ -19614,6 +19672,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                applyCandidateExpandedSurfaceBackground(floatingKeyboardLayoutBinding.candidatesRowView)
                 val activeFloatingKeyboardView = when (qwertyMode.value) {
                     TenKeyQWERTYMode.TenKeyQWERTY,
                     TenKeyQWERTYMode.TenKeyQWERTYRomaji -> floatingKeyboardLayoutBinding.qwertyViewFloating
@@ -19642,6 +19701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 floatingKeyboardLayoutBinding.suggestionVisibility.apply {
                     this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
+                    isSelected = !isVisible
                 }
                 updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
                 floatingKeyboardLayoutBinding.root.postDelayed(
@@ -19650,6 +19710,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+        applyCandidateExpandedSurfaceBackground(mainView.candidatesRowView)
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
         mainView.candidatesRowView.scrollToPosition(0)
         hideFirstRowCandidatesInFullScreen(mainView)
@@ -19693,6 +19754,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         mainView.suggestionVisibility.apply {
             this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
+            isSelected = !isVisible
         }
         if (!isVisible) {
             // The full candidate view was intentionally not diffed while hidden. Submit the

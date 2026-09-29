@@ -100,6 +100,8 @@ object AppPreference {
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
+    const val TENKEY_USE_THREE_STATE_KEY = "tenkey_use_three_state_keyboard_preference"
+    const val TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY = "tenkey_number_symbol_key_gap_preference"
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
@@ -240,7 +242,9 @@ object AppPreference {
         Pair("tenkey_kana_english_qwerty_preference", false)
 
     private val TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE =
-        Pair("tenkey_use_three_state_keyboard_preference", true)
+        Pair(TENKEY_USE_THREE_STATE_KEY, true)
+    private val TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE =
+        Pair(TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY, 4)
 
     private val TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE =
         Pair("tenkey_switch_number_to_qwerty_number_preference", false)
@@ -1238,6 +1242,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE.first, value)
+        }
+
+    var tenkey_number_symbol_key_gap_preference: Int
+        get() = preferences.getInt(
+            TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE.first,
+            TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE.second,
+        ).coerceIn(0, 16)
+        set(value) = preferences.edit {
+            it.putInt(TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE.first, value.coerceIn(0, 16))
         }
 
     var tenkey_switch_number_to_qwerty_number_preference: Boolean
