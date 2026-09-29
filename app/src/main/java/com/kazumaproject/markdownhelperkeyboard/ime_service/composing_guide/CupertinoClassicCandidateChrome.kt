@@ -28,6 +28,8 @@ internal object CupertinoClassicCandidateChrome {
     private const val tabSelectedTop: Int = 0xff858c98.toInt()
     private const val tabSelectedBottom: Int = selectedTabColor
     private const val tabEdge: Int = 0xff7d8490.toInt()
+    private const val expandButtonPressedTop: Int = 0xffb6bec9.toInt()
+    private const val expandButtonPressedBottom: Int = 0xff969ca6.toInt()
 
     private data class TabLayoutState(
         val mode: Int,
@@ -54,6 +56,28 @@ internal object CupertinoClassicCandidateChrome {
     }
 
     fun tabsBackground() = gradient(panelTop, panelBottom)
+
+    fun expandButtonBackground(resources: Resources) = StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_pressed), expandButtonDrawable(
+            resources, expandButtonPressedTop, expandButtonPressedBottom
+        ))
+        addState(intArrayOf(android.R.attr.state_selected), expandButtonDrawable(
+            resources, tabSelectedTop, tabSelectedBottom
+        ))
+        addState(intArrayOf(), expandButtonDrawable(resources, tabTop, tabBottom))
+    }
+
+    fun expandButtonTint() = android.content.res.ColorStateList(
+        arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()),
+        intArrayOf(android.graphics.Color.WHITE, textColor),
+    )
+
+    private fun expandButtonDrawable(resources: Resources, top: Int, bottom: Int) =
+        GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 16 * resources.displayMetrics.density
+            setStroke(strokeWidth(resources), tabEdge)
+        }
 
     fun applyTabs(tabLayout: TabLayout) {
         val resources = tabLayout.resources
