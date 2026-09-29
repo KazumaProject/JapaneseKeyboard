@@ -6,20 +6,13 @@ import android.graphics.Color
 import android.view.*
 import android.widget.FrameLayout
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
-import com.kazumaproject.core.domain.flick.GestureSessionConfig
-import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
-import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
-import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
-import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.tenkey.TenKey
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
-import android.widget.Button
 
 /** Debug-only host for keyboard input and popup lifecycle regression tests. */
 class SkinTestHostActivity : Activity() {
     lateinit var keyboard: ViewGroup
-    private var longPressPopupTestController: FlickLongPressInputController? = null
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         setTheme(R.style.Theme_MarkdownKeyboard)
@@ -52,63 +45,5 @@ class SkinTestHostActivity : Activity() {
         }
         setContentView(root)
         root.requestApplyInsets()
-        if (intent.getBooleanExtra("longPressPopupTest", false)) {
-            installLongPressPopupTestKey(root)
-        }
-    }
-
-    private fun installLongPressPopupTestKey(root: FrameLayout) {
-        val density = resources.displayMetrics.density
-        val testSkinId = intent.getStringExtra("skin")
-            ?.let(KeyboardSkinId::fromPreference)
-            ?.takeIf { it != KeyboardSkinId.DEFAULT }
-            ?: KeyboardSkinId.CUPERTINO_CLASSIC
-        val testKey = Button(this).apply { text = "長押し候補を表示" }
-        root.addView(
-            testKey,
-            FrameLayout.LayoutParams(
-                (112 * density).toInt(),
-                (64 * density).toInt(),
-                Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            ).apply { topMargin = (130 * density).toInt() }
-        )
-        val normal = mapOf(
-            TfbiFlickDirection.TAP to "あ",
-            TfbiFlickDirection.UP to "う",
-            TfbiFlickDirection.LEFT to "い",
-            TfbiFlickDirection.RIGHT to "え",
-            TfbiFlickDirection.DOWN to "お"
-        )
-        val held = mapOf(
-            TfbiFlickDirection.TAP to "長",
-            TfbiFlickDirection.UP to "上",
-            TfbiFlickDirection.LEFT to "左",
-            TfbiFlickDirection.RIGHT to "右",
-            TfbiFlickDirection.DOWN to "下"
-        )
-        longPressPopupTestController = FlickLongPressInputController(
-            this,
-            GestureSessionConfigSource {
-                GestureSessionConfig(
-                    settingsRevision = 1L,
-                    flickSensitivity = 100,
-                    flickThresholdPx = 24f,
-                    longPressTimeoutMillis = 300L
-                )
-            }
-        ).apply {
-            applyPopupViewStyle(PopupViewStyle(100, 20f, skinId = testSkinId))
-            attach(testKey, normal, held)
-            listener = object : FlickLongPressInputController.Listener {
-                override fun onPress(character: String) = Unit
-                override fun onCommit(character: String, isFlick: Boolean) = Unit
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        longPressPopupTestController?.cancel()
-        longPressPopupTestController = null
-        super.onDestroy()
     }
 }
