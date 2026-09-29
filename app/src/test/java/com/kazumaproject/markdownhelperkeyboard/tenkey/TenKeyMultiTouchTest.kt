@@ -36,7 +36,7 @@ import java.time.Duration
 class TenKeyMultiTouchTest {
     @Test
     fun secondFingerDoesNotCommitFirstAndBothCommitOnTheirOwnRelease() {
-        val (keyboard, commits) = keyboard()
+        val (keyboard, commits) = keyboard(independentMultiTouchEnabled = true)
         val first = center(keyboard, keyboard.findViewById(TenKeyR.id.key_4))
         val second = center(keyboard, keyboard.findViewById(TenKeyR.id.key_1))
         val firstFlick = first.copy(x = first.x - 70f)
@@ -55,7 +55,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun firstFingerCanReleaseWhileSecondRemainsPressed() {
-        val (keyboard, commits) = keyboard()
+        val (keyboard, commits) = keyboard(independentMultiTouchEnabled = true)
         val first = center(keyboard, keyboard.findViewById(TenKeyR.id.key_4))
         val second = center(keyboard, keyboard.findViewById(TenKeyR.id.key_1))
         val downTime = SystemClock.uptimeMillis()
@@ -72,7 +72,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun cancelDiscardsBothFingersAndReusedPointerIdStartsFreshGesture() {
-        val (keyboard, commits) = keyboard()
+        val (keyboard, commits) = keyboard(independentMultiTouchEnabled = true)
         val first = center(keyboard, keyboard.findViewById(TenKeyR.id.key_4))
         val second = center(keyboard, keyboard.findViewById(TenKeyR.id.key_1))
         val downTime = SystemClock.uptimeMillis()
@@ -89,7 +89,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun movingEitherFingerUpdatesItsOwnFlickPreview() {
-        val (keyboard, _) = keyboard()
+        val (keyboard, _) = keyboard(independentMultiTouchEnabled = true)
         val previews = mutableListOf<FlickTextPreviewEvent>()
         keyboard.setOnFlickTextPreviewListener { previews.add(it) }
         val first = center(keyboard, keyboard.findViewById(TenKeyR.id.key_4))
@@ -110,7 +110,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun secondFingerCanLongPressWhileFirstIsHeld() {
-        val (keyboard, _) = keyboard()
+        val (keyboard, _) = keyboard(independentMultiTouchEnabled = true)
         keyboard.setLongPressTimeout(100)
         val longPresses = mutableListOf<Key>()
         keyboard.setOnLongPressListener(object : LongPressListener {
@@ -130,7 +130,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun releasingOtherFingerDoesNotRestartActiveLongPress() {
-        val (keyboard, _) = keyboard()
+        val (keyboard, _) = keyboard(independentMultiTouchEnabled = true)
         keyboard.setLongPressTimeout(100)
         val longPresses = mutableListOf<Key>()
         keyboard.setOnLongPressListener(object : LongPressListener {
@@ -154,7 +154,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun releasingOlderFingerKeepsThirdFingerActive() {
-        val (keyboard, _) = keyboard()
+        val (keyboard, _) = keyboard(independentMultiTouchEnabled = true)
         keyboard.setLongPressTimeout(100)
         val longPresses = mutableListOf<Key>()
         keyboard.setOnLongPressListener(object : LongPressListener {
@@ -177,7 +177,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun numberSmallKeyIconIsRestoredWhenSecondFingerReleases() {
-        val (keyboard, _) = keyboard()
+        val (keyboard, _) = keyboard(independentMultiTouchEnabled = true)
         val downKeys = mutableListOf<Key>()
         keyboard.setOnFlickListener(object : FlickListener {
             override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -210,7 +210,7 @@ class TenKeyMultiTouchTest {
 
     @Test
     fun characterAndSymbolKeysBothShowPressedWhileHeld() {
-        val (keyboard, _) = keyboard()
+        val (keyboard, _) = keyboard(independentMultiTouchEnabled = true)
         val character = keyboard.findViewById<View>(TenKeyR.id.key_4)
         val symbolContainer = keyboard.findViewById<SideKeySymbolModeContainerView>(
             TenKeyR.id.sideKey_symbol_mode_container
@@ -230,13 +230,57 @@ class TenKeyMultiTouchTest {
         send(keyboard, downTime, MotionEvent.ACTION_CANCEL, 0, 3 to first)
     }
 
-    private fun keyboard(): Pair<TenKey, MutableList<String>> {
+    @Test
+    fun independentMultiTouchIsOffByDefaultAndKeepsLegacySecondDownCommit() {
+        val downEvents = mutableListOf<Key>()
+        val (keyboard, commits) = keyboard(downEvents = downEvents)
+        val first = center(keyboard, keyboard.findViewById(TenKeyR.id.key_4))
+        val second = center(keyboard, keyboard.findViewById(TenKeyR.id.key_1))
+        val downTime = SystemClock.uptimeMillis()
+
+        send(keyboard, downTime, MotionEvent.ACTION_DOWN, 0, 0 to first)
+        send(keyboard, downTime, MotionEvent.ACTION_POINTER_DOWN, 1, 0 to first, 1 to second)
+
+        assertEquals(listOf("た"), commits)
+        assertEquals(listOf(Key.KeyTA), downEvents)
+        send(keyboard, downTime, MotionEvent.ACTION_UP, 0, 1 to second)
+        assertEquals(listOf("た", "あ"), commits)
+    }
+
+    @Test
+    fun changingSettingDuringGestureAppliesStartingWithNextGesture() {
+        val (keyboard, commits) = keyboard(independentMultiTouchEnabled = true)
+        val first = center(keyboard, keyboard.findViewById(TenKeyR.id.key_4))
+        val second = center(keyboard, keyboard.findViewById(TenKeyR.id.key_1))
+        val downTime = SystemClock.uptimeMillis()
+
+        send(keyboard, downTime, MotionEvent.ACTION_DOWN, 0, 3 to first)
+        keyboard.setIndependentMultiTouchEnabled(false)
+        send(keyboard, downTime, MotionEvent.ACTION_POINTER_DOWN, 1, 3 to first, 7 to second)
+        assertEquals(emptyList<String>(), commits)
+        send(keyboard, downTime, MotionEvent.ACTION_POINTER_UP, 1, 3 to first, 7 to second)
+        send(keyboard, downTime, MotionEvent.ACTION_UP, 0, 3 to first)
+        assertEquals(listOf("あ", "た"), commits)
+
+        val nextDownTime = SystemClock.uptimeMillis()
+        send(keyboard, nextDownTime, MotionEvent.ACTION_DOWN, 0, 0 to first)
+        send(keyboard, nextDownTime, MotionEvent.ACTION_POINTER_DOWN, 1, 0 to first, 1 to second)
+        assertEquals(listOf("あ", "た", "た"), commits)
+        send(keyboard, nextDownTime, MotionEvent.ACTION_UP, 0, 1 to second)
+        assertEquals(listOf("あ", "た", "た", "あ"), commits)
+    }
+
+    private fun keyboard(
+        independentMultiTouchEnabled: Boolean = false,
+        downEvents: MutableList<Key>? = null,
+    ): Pair<TenKey, MutableList<String>> {
         val controller = Robolectric.buildActivity(Activity::class.java)
         val activity = controller.get()
         activity.setTheme(R.style.Theme_MarkdownKeyboard)
         controller.setup()
         val root = activity.layoutInflater.inflate(R.layout.main_layout, null)
         val keyboard = root.findViewById<TenKey>(R.id.keyboard_view)
+        keyboard.setIndependentMultiTouchEnabled(independentMultiTouchEnabled)
         activity.setContentView(root)
         keyboard.visibility = View.VISIBLE
         keyboard.applyKeyboardTheme(
@@ -262,7 +306,11 @@ class TenKeyMultiTouchTest {
         val commits = mutableListOf<String>()
         keyboard.setOnFlickListener(object : FlickListener {
             override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
-                if (gestureType != GestureType.Down) char?.let { commits.add(it.toString()) }
+                if (gestureType == GestureType.Down) {
+                    downEvents?.add(key)
+                } else {
+                    char?.let { commits.add(it.toString()) }
+                }
             }
         })
         return keyboard to commits

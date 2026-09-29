@@ -100,6 +100,7 @@ object AppPreference {
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
+    const val TENKEY_INDEPENDENT_MULTI_TOUCH_KEY = "tenkey_independent_multi_touch_preference"
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
@@ -239,6 +240,9 @@ object AppPreference {
 
     private val TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE =
         Pair("tenkey_use_three_state_keyboard_preference", true)
+
+    private val TENKEY_INDEPENDENT_MULTI_TOUCH_PREFERENCE =
+        Pair(TENKEY_INDEPENDENT_MULTI_TOUCH_KEY, false)
 
     private val TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE =
         Pair("tenkey_switch_number_to_qwerty_number_preference", false)
@@ -1234,6 +1238,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE.first, value)
+        }
+
+    var tenkey_independent_multi_touch_preference: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_INDEPENDENT_MULTI_TOUCH_PREFERENCE.first,
+            TENKEY_INDEPENDENT_MULTI_TOUCH_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_INDEPENDENT_MULTI_TOUCH_PREFERENCE.first, value)
         }
 
     var tenkey_switch_number_to_qwerty_number_preference: Boolean

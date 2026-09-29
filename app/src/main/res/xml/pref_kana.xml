@@ -49,6 +49,11 @@
             app:summary="@string/tenkey_use_three_state_keyboard_summary" />
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="tenkey_independent_multi_touch_preference"
+            android:title="@string/tenkey_independent_multi_touch_title"
+            android:summary="@string/tenkey_independent_multi_touch_summary" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:dependency="tenkey_use_three_state_keyboard_preference"
             android:key="tenkey_switch_number_to_qwerty_number_preference"
             android:title="数字入力時にQWERTY数字キーボードを使用" />
