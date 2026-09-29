@@ -136,6 +136,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // Track which key is currently pressed
     private lateinit var pressedKey: PressedKey
+    private val pressedKeysByPointerId = linkedMapOf<Int, PressedKey>()
+    private val lastCoordinatesByPointerId = mutableMapOf<Int, Pair<Float, Float>>()
+    private var independentMultiTouchEnabled = false
+    private var independentMultiTouchForCurrentGesture = false
 
     // External listeners
     private var flickListener: FlickListener? = null
@@ -1480,6 +1484,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
+        if (view != null && event != null && view.visibility == View.VISIBLE &&
+            event.action and MotionEvent.ACTION_MASK == MotionEvent.ACTION_DOWN
+        ) {
+            // Keep one gesture on one behavior even if the preference changes while fingers
+            // are still down. The next ACTION_DOWN picks up the new setting.
+            independentMultiTouchForCurrentGesture = independentMultiTouchEnabled
+        }
+        return if (independentMultiTouchForCurrentGesture) {
+            onTouchIndependentMultiTouch(view, event)
+        } else {
+            onTouchLegacy(view, event)
+        }
+    }
+
+    /** Original single-active-key touch handling used when independent multi-touch is disabled. */
+    private fun onTouchLegacy(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
             if (view.visibility != View.VISIBLE) {
                 return false
@@ -1500,10 +1520,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         return true
                     }
 
-                    flickTextPreviewEmitter.begin(
-                        resolveTextSelection(key, GestureType.Tap)
-                    )
-
+                    flickTextPreviewEmitter.begin(resolveTextSelection(key, GestureType.Tap))
                     setKeyPressed()
                     longPressJob = scope.launch {
                         delay(longPressTimeout)
@@ -1539,9 +1556,231 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         Log.d("TenKey: ACTION_UP in pointer", "called $pressedKey")
+                        dispatchResolvedGesture(pressedKey.key, gestureType)
+                    }
+                    Log.d("TenKey: ACTION_UP out", "called $pressedKey")
+                    resetAllKeys()
+                    popupWindowActive.hide()
+                    val button = getButtonFromKey(pressedKey.key)
+                    button?.let {
+                        if (it is AppCompatButton) {
+                            setTextForMode(it, currentInputMode.value)
+                        }
+                        if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
+                            setNumberSmallKeyPresentation()
+                        }
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    if (isCursorMode) {
+                        val threshold = 16f
+                        val pointer = pressedKey.pointer
+                        val (currentX, currentY) = getRawCoordinates(event, pointer)
+                        val dx = currentX - pressedKey.initialX
+                        val dy = currentY - pressedKey.initialY
+
+                        if (abs(dx) > abs(dy) && abs(dx) > threshold) {
+                            if (dx < 0f) {
+                                flickListener?.onFlick(GestureType.Tap, Key.SideKeyCursorLeft, null)
+                            } else {
+                                flickListener?.onFlick(
+                                    GestureType.Tap,
+                                    Key.SideKeyCursorRight,
+                                    null
+                                )
+                            }
+                            pressedKey = pressedKey.copy(initialX = currentX, initialY = currentY)
+                        } else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
+                            if (dy < 0f) {
+                                flickListener?.onFlick(
+                                    GestureType.FlickTop,
+                                    Key.SideKeyCursorLeft,
+                                    null
+                                )
+                            } else {
+                                flickListener?.onFlick(
+                                    GestureType.FlickBottom,
+                                    Key.SideKeyCursorRight,
+                                    null
+                                )
+                            }
+                            pressedKey = pressedKey.copy(initialX = currentX, initialY = currentY)
+                        }
+
+                        return true
+                    }
+
+                    val gestureType = if (event.pointerCount == 1) {
+                        getGestureType(event, 0)
+                    } else {
+                        getGestureType(event, pressedKey.pointer)
+                    }
+                    flickTextPreviewEmitter.update(resolveTextSelection(pressedKey.key, gestureType))
+                    when (gestureType) {
+                        GestureType.Null -> {}
+                        GestureType.Down -> {}
+                        GestureType.Tap -> setTapInActionMove()
+                        GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> setFlickInActionMove(
+                            gestureType
+                        )
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (isLongPressed) {
+                        hideAllPopWindow()
+                        Blur.removeBlurEffect(this)
+                    }
+                    popupWindowActive.hide()
+                    longPressJob?.cancel()
+                    if (isCursorMode) {
+                        return true
+                    }
+                    Log.d(
+                        "TenKey: ACTION_POINTER_DOWN",
+                        "called $pressedKey ${binding.keySmallLetter.drawable == cachedLanguageDrawable}"
+                    )
+                    if (pressedKey.key == Key.SideKeySymbol ||
+                        pressedKey.key == Key.SideKeyNumberMode ||
+                        pressedKey.key == Key.SideKeyInputMode ||
+                        (pressedKey.key == Key.KeyDakutenSmall && binding.keySmallLetter.drawable == cachedLanguageDrawable)
+                    ) {
+                        return true
+                    }
+                    if (event.pointerCount == 2) {
+                        isLongPressed = false
+                        val pointer = event.getPointerId(event.actionIndex)
+                        val key = pressedKeyByMotionEvent(event, pointer)
+                        val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
+                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
+                            setNumberSmallKeyPresentation()
+                        }
+                        dispatchResolvedGesture(pressedKey.key, gestureType2)
+                        (getButtonFromKey(pressedKey.key) as? AppCompatButton)?.let { button ->
+                            setTextForMode(button, currentInputMode.value)
+                        }
+                        val (initialX, initialY) = getRawCoordinates(event, event.actionIndex)
+                        pressedKey = pressedKey.copy(
+                            key = key, pointer = pointer, initialX = initialX, initialY = initialY
+                        )
+                        setKeyPressed()
+                        flickTextPreviewEmitter.begin(resolveTextSelection(key, GestureType.Tap))
+                        longPressJob = scope.launch {
+                            delay(longPressTimeout)
+                            if (pressedKey.key != Key.NotSelected) {
+                                longPressListener?.onLongPress(pressedKey.key)
+                                isLongPressed = true
+                                onLongPressed()
+                            }
+                        }
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.pointerCount == 2) {
+                        if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                            resetLongPressAction()
+                            if (isCursorMode) return true
+                            val gestureType = getGestureType(event, event.getPointerId(event.actionIndex))
+                            Log.d("TenKey: ACTION_POINTER_UP", "called [${pressedKey.key}]")
+                            dispatchResolvedGesture(pressedKey.key, gestureType)
+                            val button = getButtonFromKey(pressedKey.key)
+                            button?.let {
+                                if (it is AppCompatButton) {
+                                    it.isPressed = false
+                                    setTextForMode(it, currentInputMode.value)
+                                }
+                            }
+                            pressedKey = pressedKey.copy(key = Key.NotSelected)
+                            popupWindowActive.hide()
+                        }
+                        return false
+                    }
+                    return false
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+                    return true
+                }
+
+                else -> return false
+            }
+        }
+        return false
+    }
+
+    private fun onTouchIndependentMultiTouch(view: View?, event: MotionEvent?): Boolean {
+        if (view != null && event != null) {
+            if (view.visibility != View.VISIBLE) {
+                return false
+            }
+            when (event.action and MotionEvent.ACTION_MASK) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (keyboardSkinId != KeyboardSkinId.DEFAULT) hideAllPopWindow()
+                    skinGuide?.dismiss()
+                    skinLongPress.clear()
+                    val key = pressedKeyByMotionEvent(event, 0)
+                    flickListener?.onFlick(GestureType.Down, key, null)
+
+                    val (initialX, initialY) = getRawCoordinates(event, event.actionIndex)
+                    val pointerId = event.getPointerId(event.actionIndex)
+                    pressedKey = PressedKey(key = key, pointer = pointerId, initialX = initialX, initialY = initialY)
+                    pressedKeysByPointerId.clear()
+                    pressedKeysByPointerId[pointerId] = pressedKey
+                    lastCoordinatesByPointerId.clear()
+                    lastCoordinatesByPointerId[pointerId] = initialX to initialY
+
+                    if (isCursorMode) {
+                        flickTextPreviewEmitter.cancel()
+                        return true
+                    }
+
+                    flickTextPreviewEmitter.begin(
+                        resolveTextSelection(key, GestureType.Tap)
+                    )
+
+                    setKeyPressed()
+                    scheduleLongPress(pointerId)
+                    return false
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    resetLongPressAction(animateLabels = true)
+                    if (isCursorMode) {
+                        pressedKeysByPointerId.clear()
+                        lastCoordinatesByPointerId.clear()
+                        val viewToRelease: View? = when (pressedKey.key) {
+                            Key.SideKeySpace -> binding.keySpace
+                            else -> null
+                        }
+                        viewToRelease?.let { key ->
+                            key.isPressed = false
+                            flickListener?.onFlick(
+                                gestureType = GestureType.Tap,
+                                key = pressedKey.key,
+                                char = null
+                            )
+                        }
+                        handleCurrentInputModeSwitch(currentInputMode.value)
+                        isCursorMode = false
+                        return false
+                    }
+
+                    val releasedKey = pressedKeysByPointerId.remove(event.getPointerId(event.actionIndex))
+                    if (releasedKey != null) {
+                        pressedKey = releasedKey
+                        val gestureType = getGestureType(event, event.actionIndex)
+                        Log.d("TenKey: ACTION_UP in pointer", "called $pressedKey")
 
                         dispatchResolvedGesture(pressedKey.key, gestureType)
                     }
+                    pressedKeysByPointerId.clear()
+                    lastCoordinatesByPointerId.clear()
                     Log.d("TenKey: ACTION_UP out", "called $pressedKey")
                     resetAllKeys()
                     popupWindowActive.hide()
@@ -1564,7 +1803,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         val threshold = 16f
 
                         // 1) get the tracked pointer index
-                        val pointer = pressedKey.pointer
+                        val pointer = event.findPointerIndex(pressedKey.pointer)
+                        if (pointer < 0) return false
 
                         // 2) read its current raw X–Y
                         val (currentX, currentY) = getRawCoordinates(event, pointer)
@@ -1609,10 +1849,36 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         return true
                     }
 
-                    val gestureType = if (event.pointerCount == 1) {
-                        getGestureType(event, 0)
-                    } else {
-                        getGestureType(event, pressedKey.pointer)
+                    var movedPointerId: Int? = null
+                    var largestMovement = 0f
+                    for (index in 0 until event.pointerCount) {
+                        val pointerId = event.getPointerId(index)
+                        if (pointerId !in pressedKeysByPointerId) continue
+                        val coordinates = getRawCoordinates(event, index)
+                        val previous = lastCoordinatesByPointerId.put(pointerId, coordinates)
+                        if (previous != null) {
+                            val movement = abs(coordinates.first - previous.first) +
+                                abs(coordinates.second - previous.second)
+                            if (movement > largestMovement) {
+                                largestMovement = movement
+                                movedPointerId = pointerId
+                            }
+                        }
+                    }
+                    val movedKey = movedPointerId?.let(pressedKeysByPointerId::get)
+                    val switchedPointer = movedKey != null && movedKey.pointer != pressedKey.pointer
+                    if (movedKey != null && switchedPointer) {
+                        resetLongPressAction()
+                        pressedKey = movedKey
+                        popupWindowActive.hide()
+                        flickTextPreviewEmitter.begin(resolveTextSelection(pressedKey.key, GestureType.Tap))
+                        setKeyPressed()
+                    }
+                    val pointerIndex = event.findPointerIndex(pressedKey.pointer)
+                    if (pointerIndex < 0) return false
+                    val gestureType = getGestureType(event, pointerIndex)
+                    if (switchedPointer && gestureType == GestureType.Tap) {
+                        scheduleLongPress(pressedKey.pointer)
                     }
                     flickTextPreviewEmitter.update(
                         resolveTextSelection(pressedKey.key, gestureType)
@@ -1649,61 +1915,65 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     ) {
                         return true
                     }
-                    if (event.pointerCount == 2) {
-                        isLongPressed = false
-                        val pointer = event.getPointerId(event.actionIndex)
-                        val key = pressedKeyByMotionEvent(event, pointer)
-                        val gestureType2 = getGestureType(
-                            event, if (pointer == 0) 1 else 0
-                        )
-                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
-                            setNumberSmallKeyPresentation()
-                        }
-                        dispatchResolvedGesture(pressedKey.key, gestureType2)
-                        (getButtonFromKey(pressedKey.key) as? AppCompatButton)?.let { button ->
-                            setTextForMode(button, currentInputMode.value)
-                        }
-                        val (initialX, initialY) = getRawCoordinates(event, event.actionIndex)
-                        pressedKey = pressedKey.copy(
-                            key = key, pointer = pointer, initialX = initialX, initialY = initialY
-                        )
-                        setKeyPressed()
-                        flickTextPreviewEmitter.begin(
-                            resolveTextSelection(key, GestureType.Tap)
-                        )
-                        longPressJob = scope.launch {
-                            delay(longPressTimeout)
-                            if (pressedKey.key != Key.NotSelected) {
-                                longPressListener?.onLongPress(pressedKey.key)
-                                isLongPressed = true
-                                onLongPressed()
-                            }
-                        }
-                    }
+                    isLongPressed = false
+                    val pointer = event.getPointerId(event.actionIndex)
+                    val key = pressedKeyByMotionEvent(event, event.actionIndex)
+                    val (initialX, initialY) = getRawCoordinates(event, event.actionIndex)
+                    pressedKeysByPointerId[pointer] = PressedKey(
+                        key = key, pointer = pointer, initialX = initialX, initialY = initialY
+                    )
+                    lastCoordinatesByPointerId[pointer] = initialX to initialY
+                    flickListener?.onFlick(GestureType.Down, key, null)
+                    pressedKey = pressedKeysByPointerId.getValue(pointer)
+                    setKeyPressed()
+                    flickTextPreviewEmitter.begin(resolveTextSelection(key, GestureType.Tap))
+                    scheduleLongPress(pointer)
                     return false
                 }
 
                 MotionEvent.ACTION_POINTER_UP -> {
-                    if (event.pointerCount == 2) {
-                        if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
-                            resetLongPressAction()
-                            if (isCursorMode) return true
-                            val gestureType = getGestureType(
-                                event, event.getPointerId(event.actionIndex)
-                            )
-                            Log.d("TenKey: ACTION_POINTER_UP", "called [${pressedKey.key}]")
-                            dispatchResolvedGesture(pressedKey.key, gestureType)
-                            val button = getButtonFromKey(pressedKey.key)
-                            button?.let {
-                                if (it is AppCompatButton) {
-                                    it.isPressed = false
-                                    setTextForMode(it, currentInputMode.value)
-                                }
-                            }
-                            pressedKey = pressedKey.copy(key = Key.NotSelected)
-                            popupWindowActive.hide()
+                    val pointerId = event.getPointerId(event.actionIndex)
+                    val activePointerId = pressedKey.pointer
+                    val releasingActivePointer = activePointerId == pointerId
+                    val releasedKey = pressedKeysByPointerId.remove(pointerId) ?: return false
+                    lastCoordinatesByPointerId.remove(pointerId)
+                    if (releasingActivePointer) resetLongPressAction()
+                    if (isCursorMode) return true
+                    flickTextPreviewEmitter.cancel()
+                    pressedKey = releasedKey
+                    val gestureType = getGestureType(event, event.actionIndex)
+                    flickTextPreviewEmitter.begin(resolveTextSelection(releasedKey.key, gestureType))
+                    Log.d("TenKey: ACTION_POINTER_UP", "called [${releasedKey.key}]")
+                    dispatchResolvedGesture(releasedKey.key, gestureType)
+                    if (releasedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
+                        setNumberSmallKeyPresentation()
+                    }
+                    (getButtonFromKey(releasedKey.key) as? AppCompatButton)?.let { button ->
+                        button.isPressed = false
+                        setTextForMode(button, currentInputMode.value)
+                    }
+                    if (releasingActivePointer) popupWindowActive.hide()
+                    val remainingKey = pressedKeysByPointerId[activePointerId]
+                        ?: pressedKeysByPointerId.values.firstOrNull()
+                    if (remainingKey != null) {
+                        pressedKey = remainingKey
+                        setKeyPressed()
+                        val remainingIndex = event.findPointerIndex(remainingKey.pointer)
+                        val remainingGesture = if (remainingIndex >= 0) {
+                            getGestureType(event, remainingIndex)
+                        } else {
+                            GestureType.Tap
                         }
-                        return false
+                        flickTextPreviewEmitter.begin(resolveTextSelection(remainingKey.key, remainingGesture))
+                        when (remainingGesture) {
+                            GestureType.Tap -> if (releasingActivePointer) scheduleLongPress(remainingKey.pointer)
+                            GestureType.FlickLeft, GestureType.FlickTop,
+                            GestureType.FlickRight, GestureType.FlickBottom -> setFlickInActionMove(remainingGesture)
+                            else -> Unit
+                        }
+                    } else {
+                        pressedKey = releasedKey.copy(key = Key.NotSelected)
+                        resetAllKeys()
                     }
                     return false
                 }
@@ -1730,8 +2000,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             popupWindowActive.hide()
         }
 
-        if (::pressedKey.isInitialized && pressedKey.key != Key.NotSelected) {
-            keyTouchCancelListener?.onKeyTouchCanceled(pressedKey.key, reason)
+        val keysToCancel = if (independentMultiTouchForCurrentGesture) {
+            pressedKeysByPointerId.values
+        } else {
+            if (::pressedKey.isInitialized) listOf(pressedKey) else emptyList()
+        }
+        keysToCancel.forEach { key ->
+            if (key.key != Key.NotSelected) {
+                keyTouchCancelListener?.onKeyTouchCanceled(key.key, reason)
+            }
+        }
+        pressedKeysByPointerId.clear()
+        lastCoordinatesByPointerId.clear()
+        if (::pressedKey.isInitialized) {
             pressedKey = pressedKey.copy(key = Key.NotSelected)
         }
 
@@ -1754,6 +2035,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity.coerceIn(1, 200)
         flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
+    }
+
+    fun setIndependentMultiTouchEnabled(enabled: Boolean) {
+        independentMultiTouchEnabled = enabled
     }
 
     fun setFlickThresholdShape(shape: FlickThresholdShape) {
@@ -2156,12 +2441,32 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Visually indicate which key is pressed **/
     private fun setKeyPressed() {
-        binding.sideKeySymbolModeContainer.setPressedKey(pressedKey.key)
+        val activeKeys = if (independentMultiTouchForCurrentGesture) {
+            pressedKeysByPointerId.values.mapTo(mutableSetOf()) { it.key }
+        } else if (::pressedKey.isInitialized && pressedKey.key != Key.NotSelected) {
+            setOf(pressedKey.key)
+        } else {
+            emptySet()
+        }
+        binding.sideKeySymbolModeContainer.setPressedKeys(activeKeys)
         listKeys.forEach { (keyEnum, viewObj) ->
             when (viewObj) {
-                is InputModeSwitch -> viewObj.isPressed = (keyEnum == pressedKey.key)
-                is AppCompatButton -> viewObj.isPressed = (keyEnum == pressedKey.key)
-                is AppCompatImageButton -> viewObj.isPressed = (keyEnum == pressedKey.key)
+                is InputModeSwitch -> viewObj.isPressed = (keyEnum in activeKeys)
+                is AppCompatButton -> viewObj.isPressed = (keyEnum in activeKeys)
+                is AppCompatImageButton -> viewObj.isPressed = (keyEnum in activeKeys)
+            }
+        }
+    }
+
+    private fun scheduleLongPress(pointerId: Int) {
+        longPressJob?.cancel()
+        longPressJob = scope.launch {
+            delay(longPressTimeout)
+            val key = pressedKeysByPointerId[pointerId]
+            if (key != null && key.key != Key.NotSelected && pressedKey.pointer == pointerId) {
+                longPressListener?.onLongPress(key.key)
+                isLongPressed = true
+                onLongPressed()
             }
         }
     }

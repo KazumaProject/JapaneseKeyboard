@@ -673,6 +673,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyUseThreeStateKeyboard: Boolean = true
+    private var tenkeyIndependentMultiTouchEnabled: Boolean = false
     private var tenkeySwitchNumberToQwertyNumberPreference: Boolean = false
     private var qwertyNumberOpenedFromTenkeyTwoStateNumberKey: Boolean = false
     private var qwertySwitchNumberKeyReturnSource: RestartInputModeQwertyReturnSource =
@@ -923,6 +924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_NUMBER_KEY,
+        AppPreference.TENKEY_INDEPENDENT_MULTI_TOUCH_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
@@ -3506,6 +3508,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             english = appPreference.tenkey_keymap_guide_english,
             number = appPreference.tenkey_keymap_guide_number
         )
+        tenkeyIndependentMultiTouchEnabled =
+            appPreference.tenkey_independent_multi_touch_preference
         sumireKeymapGuideSettings = ModeKeymapGuideSettings(
             japanese = appPreference.sumire_keymap_guide_japanese,
             english = appPreference.sumire_keymap_guide_english,
@@ -3520,6 +3524,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
 
         mainLayoutBinding?.apply {
+            keyboardView.setIndependentMultiTouchEnabled(tenkeyIndependentMultiTouchEnabled)
             keyboardView.setFlickSensitivityValue(sensitivity)
             keyboardView.setFlickThresholdShape(thresholdShape)
             keyboardView.setLongPressTimeout(longPressTimeout.toLong())
@@ -3539,6 +3544,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customLayoutDefault.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
         floatingKeyboardBinding?.apply {
+            keyboardViewFloating.setIndependentMultiTouchEnabled(tenkeyIndependentMultiTouchEnabled)
             keyboardViewFloating.setFlickSensitivityValue(sensitivity)
             keyboardViewFloating.setFlickThresholdShape(thresholdShape)
             keyboardViewFloating.setLongPressTimeout(longPressTimeout.toLong())
@@ -3690,6 +3696,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
         tenkeyUseThreeStateKeyboard = preferences.tenkeyUseThreeStateKeyboard
+        tenkeyIndependentMultiTouchEnabled = preferences.tenkeyIndependentMultiTouchEnabled
         tenkeySwitchNumberToQwertyNumberPreference =
             preferences.tenkeySwitchNumberToQwertyNumberPreference
         tenkeyRestoreInputModeOnRestart =
@@ -5665,6 +5672,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
                     tenkeyUseThreeStateKeyboard
                 )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setIndependentMultiTouchEnabled(
+                    tenkeyIndependentMultiTouchEnabled
+                )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setUseQwertyNumberWhenThreeStateOff(
                     tenkeySwitchNumberToQwertyNumberPreference
                 )
@@ -5765,6 +5775,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
                 keyboardView.setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
+                keyboardView.setIndependentMultiTouchEnabled(tenkeyIndependentMultiTouchEnabled)
                 keyboardView.setUseQwertyNumberWhenThreeStateOff(
                     tenkeySwitchNumberToQwertyNumberPreference
                 )
@@ -10279,6 +10290,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
             tenkeyUseThreeStateKeyboard
         )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setIndependentMultiTouchEnabled(
+            tenkeyIndependentMultiTouchEnabled
+        )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setUseQwertyNumberWhenThreeStateOff(
             tenkeySwitchNumberToQwertyNumberPreference
         )
@@ -10432,6 +10446,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 borderWidth = customKeyBorderWidth ?: 1
             )
             setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
+            setIndependentMultiTouchEnabled(tenkeyIndependentMultiTouchEnabled)
             setUseQwertyNumberWhenThreeStateOff(tenkeySwitchNumberToQwertyNumberPreference)
             setOnQwertyNumberModeRequestedListener {
                 switchTenkeyTwoStateNumberToQwertyNumber()

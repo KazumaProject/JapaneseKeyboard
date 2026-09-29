@@ -160,9 +160,13 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
     }
 
     fun setPressedKey(key: Key?) {
+        setPressedKeys(if (key == null) emptySet() else setOf(key))
+    }
+
+    fun setPressedKeys(keys: Set<Key>) {
         isPressed = false
-        numberButton.isPressed = !useThreeStateKeyboard && key == Key.SideKeyNumberMode
-        symbolButton.isPressed = key == Key.SideKeySymbol
+        numberButton.isPressed = !useThreeStateKeyboard && Key.SideKeyNumberMode in keys
+        symbolButton.isPressed = Key.SideKeySymbol in keys
     }
 
     fun clearPressedKey() {
