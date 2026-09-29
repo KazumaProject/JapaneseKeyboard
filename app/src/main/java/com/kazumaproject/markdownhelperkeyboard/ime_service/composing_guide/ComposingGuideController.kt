@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import androidx.preference.PreferenceManager
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 /** Coordinates mutually exclusive hosts of the single candidate surface. */
 internal class ComposingGuideController(
@@ -38,6 +39,10 @@ internal class ComposingGuideController(
     }
 
     private fun allowedProfiles(): List<GuideProfile> = settings.profiles
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        windows.values.forEach { it.setKeyboardFont(snapshot) }
+    }
 
     fun start(view: View) { stop(); anchor = view; refresh() }
 

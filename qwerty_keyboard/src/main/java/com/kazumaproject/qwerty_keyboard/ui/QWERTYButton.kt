@@ -11,12 +11,15 @@ import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class QWERTYButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = androidx.appcompat.R.attr.buttonStyle
-) : AppCompatButton(context, attrs, defStyleAttr) {
+) : AppCompatButton(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private val gestureDetector = GestureDetector(context, GestureListener())
 
@@ -63,6 +66,12 @@ class QWERTYButton @JvmOverloads constructor(
 
     init {
         isAllCaps = false
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(this, snapshot)
+        KeyboardFontApplicator.apply(topRightPaint, snapshot)
     }
 
     @SuppressLint("ClickableViewAccessibility")

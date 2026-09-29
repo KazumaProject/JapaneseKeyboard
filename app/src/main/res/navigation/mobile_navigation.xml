@@ -129,6 +129,11 @@
         android:label="@string/category_common" />
 
     <fragment
+        android:id="@+id/localFontSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontSettingsFragment"
+        android:label="@string/local_font_title" />
+
+    <fragment
         android:id="@+id/legacyCommonPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.LegacyCommonPreferenceFragment"
         android:label="@string/category_common" />

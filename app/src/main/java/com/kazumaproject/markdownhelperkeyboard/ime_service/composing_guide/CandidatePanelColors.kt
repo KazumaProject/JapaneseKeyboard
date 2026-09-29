@@ -14,9 +14,25 @@ internal data class CandidatePanelColors(
     val selection: Int,
     val selectionText: Int,
     val icon: Int = text,
+    val cupertinoClassic: Boolean = false,
 ) {
     companion object {
-        fun resolve(context: Context, skin: SkinPalette? = null, custom: CandidatePanelColors? = null): CandidatePanelColors {
+        fun resolve(
+            context: Context,
+            skin: SkinPalette? = null,
+            custom: CandidatePanelColors? = null,
+            cupertinoClassic: Boolean = false,
+        ): CandidatePanelColors {
+            if (cupertinoClassic) return CandidatePanelColors(
+                background = CupertinoClassicCandidateChrome.panelColor,
+                candidate = android.graphics.Color.TRANSPARENT,
+                text = CupertinoClassicCandidateChrome.textColor,
+                pressed = CupertinoClassicCandidateChrome.candidatePressedColor,
+                selection = CupertinoClassicCandidateChrome.selectedTabColor,
+                selectionText = android.graphics.Color.WHITE,
+                icon = CupertinoClassicCandidateChrome.textColor,
+                cupertinoClassic = true,
+            )
             if (skin != null) return CandidatePanelColors(skin.background, skin.key, skin.text, skin.pressed, skin.selection, skin.selectionText)
             if (custom != null) return custom
             fun color(id: Int) = context.getColor(id)

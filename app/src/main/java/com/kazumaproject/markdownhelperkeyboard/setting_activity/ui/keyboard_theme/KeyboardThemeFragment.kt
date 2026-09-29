@@ -77,6 +77,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_PRE_EDIT_TEXT = "theme_custom_pre_edit_text_color"
         private const val PREF_KEY_CUSTOM_POST_EDIT_BG = "theme_custom_post_edit_bg_color"
         private const val PREF_KEY_CUSTOM_POST_EDIT_TEXT = "theme_custom_post_edit_text_color"
+        private const val PREF_KEY_LOCAL_FONT = "local_font_settings_preference"
 
         // Modes
         private const val MODE_DEFAULT = "default"
@@ -428,13 +429,24 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val skinPreference = Preference(context).apply {
             key = KeyboardSkinId.PREFERENCE_KEY
             title = getString(R.string.keyboard_skin_choose)
-            order = -1
+            order = -2
             setOnPreferenceClickListener {
                 findNavController().navigate(R.id.keyboardSkinSelectionFragment)
                 true
             }
         }
         screen.addPreference(skinPreference)
+        val localFontPreference = Preference(context).apply {
+            key = PREF_KEY_LOCAL_FONT
+            title = getString(R.string.local_font_title)
+            summary = getString(R.string.local_font_settings_summary)
+            order = -1
+            setOnPreferenceClickListener {
+                findNavController().navigate(R.id.localFontSettingsFragment)
+                true
+            }
+        }
+        screen.addPreference(localFontPreference)
         preferenceScreen = screen
 
         // Initialize state based on current preference
@@ -449,7 +461,11 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             getString(KeyboardThemeCatalog.find(selected).titleRes)
         for (index in 0 until preferenceScreen.preferenceCount) {
             val preference = preferenceScreen.getPreference(index)
-            if (preference.key != KeyboardSkinId.PREFERENCE_KEY && preference.key != CATEGORY_KEY_CUSTOM_INPUT) {
+            if (
+                preference.key != KeyboardSkinId.PREFERENCE_KEY &&
+                preference.key != PREF_KEY_LOCAL_FONT &&
+                preference.key != CATEGORY_KEY_CUSTOM_INPUT
+            ) {
                 preference.isEnabled = selected == KeyboardSkinId.DEFAULT
             }
         }

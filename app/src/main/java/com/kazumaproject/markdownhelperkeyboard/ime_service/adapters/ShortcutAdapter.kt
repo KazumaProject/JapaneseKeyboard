@@ -9,6 +9,9 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 
@@ -32,6 +35,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     var onItemClicked: ((ShortcutType) -> Unit)? = null
 
     private val iconColorState = ShortcutIconColorState()
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
     private var toolbarHeightPx: Int = 0
     private var iconSizePx: Int = 0
@@ -74,7 +78,11 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         val item = getItem(position)
         holder.itemView.contentDescription = item.description
         applyShortcutToolbarSize(holder)
-        holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
+        KeyboardFontGlyphDrawable.setImageResource(
+            holder.imageView,
+            item.resolveIconResId(),
+            keyboardFontSnapshot,
+        ) // Enumからアイコン取得
 
         // ★追加: 色が設定されていれば適用し、なければ解除する
         iconColorState.iconColor?.let { color ->
@@ -82,6 +90,12 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         } ?: run {
             holder.imageView.clearColorFilter()
         }
+    }
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        if (keyboardFontSnapshot == snapshot) return
+        keyboardFontSnapshot = snapshot
+        if (itemCount > 0) notifyItemRangeChanged(0, itemCount)
     }
 
     fun setShortcutToolbarSize(

@@ -337,6 +337,7 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
+        add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_split_keyboard, R.id.splitKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))

@@ -46,6 +46,10 @@ import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.data.qwerty.CapsLockState
@@ -97,7 +101,7 @@ import kotlin.math.hypot
  */
 class QWERTYKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : ConstraintLayout(context, attrs, defStyleAttr) {
+) : ConstraintLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private val binding: QwertyLayoutBinding
 
@@ -170,6 +174,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var longPressedPointerId: Int? = null
     private var keyPreviewPopupStyle = PopupViewStyle(100, 28f)
     private var variationPopupStyle = PopupViewStyle(100, 28f)
+    private var keyboardFontSnapshot = KeyboardFontSnapshot()
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(this, snapshot) { true }
+        allQwertyButtons().forEach { it.setKeyboardFont(snapshot) }
+        variationPopupView?.setKeyboardFont(snapshot)
+        renderShiftKeyDrawable()
+    }
+
+    private fun allQwertyButtons(): Set<QWERTYButton> = buildSet {
+        addAll(defaultQWERTYButtons)
+        addAll(defaultQWERTYButtonsRoman)
+        addAll(numberQWERTYButtons)
+        addAll(numberRowButtons)
+        add(binding.keyTouten)
+        add(binding.keyKuten)
+    }
 
     // ★ ポインターをロックするための変数を追加
     private var lockedPointerId: Int? = null
@@ -985,7 +1008,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
             }
         }
-        binding.keyShift.setImageResource(drawableRes)
+        KeyboardFontGlyphDrawable.setImageResource(binding.keyShift, drawableRes, keyboardFontSnapshot)
     }
 
     // CapsLock UI update extraction
@@ -2563,6 +2586,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 setPadding((shift*2).toInt().coerceAtLeast(0),paddingTop,(-shift*2).toInt().coerceAtLeast(0),0)
                 background = geometry.background
             }
+            KeyboardFontApplicator.apply(content, keyboardFontSnapshot)
             val popup = PopupWindow(content, w, h, false).apply {
                 isTouchable = false
                 elevation = 0f
@@ -2635,6 +2659,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             is AppCompatImageButton -> tv.text = ""
             else -> tv.text = ""
         }
+        KeyboardFontApplicator.apply(tv, keyboardFontSnapshot)
 
         val scale = keyPreviewPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
         val popupWidth = (view.width * 2 * scale).toInt().coerceAtLeast(1)
@@ -2882,6 +2907,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         variationPopupView = VariationsPopupView(context).apply {
             applyPopupViewStyle(if (skin != null) variationPopupStyle.copy(skinId = keyboardSkinId) else variationPopupStyle)
             setChars(variations)
+            setKeyboardFont(keyboardFontSnapshot)
         }
         when (themeMode) {
             "custom" -> {

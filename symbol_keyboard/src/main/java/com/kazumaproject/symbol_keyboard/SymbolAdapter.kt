@@ -16,9 +16,20 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.domain.EmojiSkinToneSupport
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class SymbolAdapter :
     PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(DIFF_CALLBACK) {
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+    private var useKeyboardFont = false
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot, useForCurrentMode: Boolean) {
+        keyboardFontSnapshot = snapshot
+        useKeyboardFont = useForCurrentMode
+        notifyDataSetChanged()
+    }
 
     /** シンボル文字列をクリックしたとき */
     private var onItemClickListener: ((String) -> Unit)? = null
@@ -120,6 +131,11 @@ class SymbolAdapter :
         if (symbol != null) {
             holder.symbolTextView.text = symbol
             holder.symbolTextView.textSize = symbolTextSize
+            KeyboardFontApplicator.apply(
+                holder.symbolTextView,
+                if (useKeyboardFont) keyboardFontSnapshot
+                else keyboardFontSnapshot.copy(typeface = null)
+            )
 
             // ★追加: テキストカラーの適用
             holder.symbolTextView.setTextColor(themeTextColor?.let(android.content.res.ColorStateList::valueOf) ?: holder.originalTextColors)
@@ -140,6 +156,11 @@ class SymbolAdapter :
             )
         } else {
             holder.symbolTextView.text = ""
+            KeyboardFontApplicator.apply(
+                holder.symbolTextView,
+                if (useKeyboardFont) keyboardFontSnapshot
+                else keyboardFontSnapshot.copy(typeface = null)
+            )
             holder.skinToneIndicator.visibility = View.GONE
         }
     }

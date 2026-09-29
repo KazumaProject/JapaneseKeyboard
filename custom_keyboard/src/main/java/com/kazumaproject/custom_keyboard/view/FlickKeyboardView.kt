@@ -33,6 +33,10 @@ import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -100,7 +104,26 @@ import kotlin.math.roundToInt
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : GridLayout(context, attrs, defStyleAttr) {
+) : GridLayout(context, attrs, defStyleAttr), KeyboardFontAware {
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        for (index in 0 until childCount) {
+            KeyboardFontApplicator.applyToKeyboardViews(getChildAt(index), snapshot)
+        }
+        keyInfos.forEach { info ->
+            val button = info.view as? AppCompatImageButton ?: return@forEach
+            updateImageButtonMatrix(button, info.keyData)
+        }
+    }
+
+    override fun onViewAdded(child: View) {
+        super.onViewAdded(child)
+        KeyboardFontApplicator.applyToKeyboardViews(child, keyboardFontSnapshot)
+    }
 
     interface OnKeyboardActionListener {
         fun onPress(action: KeyAction)
@@ -802,7 +825,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             .forEach { info ->
                 if (info.view is AppCompatImageButton) {
                     (info.view as AppCompatImageButton).apply {
-                        setImageResource(drawableResId)
+                        KeyboardFontGlyphDrawable.setImageResource(this, drawableResId, keyboardFontSnapshot)
                         applyImageButtonTint(this, info.keyData.copy(drawableResId = drawableResId))
                     }
                 }
@@ -998,7 +1021,14 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         if (availableWidth <= 0f || availableHeight <= 0f) return
 
-        val targetContentSizePx = getSpecialIconTargetSizePx(keyData)
+        val customFontTextScale = if (
+            keyData.isSpecialKey && drawable is KeyboardFontGlyphDrawable && drawable.usesCustomFont
+        ) {
+            getSpecialKeyTextSizeSp() / SPECIAL_KEY_BASE_TEXT_SIZE_SP
+        } else {
+            1f
+        }
+        val targetContentSizePx = getSpecialIconTargetSizePx(keyData) * customFontTextScale
 
         val baseScale = minOf(
             targetContentSizePx / drawableWidth,

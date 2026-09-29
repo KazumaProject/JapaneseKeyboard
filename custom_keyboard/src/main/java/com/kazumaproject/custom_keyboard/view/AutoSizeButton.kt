@@ -5,16 +5,23 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.LayerDrawable
 import android.util.AttributeSet
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatButton
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.min
 
 class AutoSizeButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = androidx.appcompat.R.attr.buttonStyle
-) : AppCompatButton(context, attrs, defStyleAttr) {
+) : AppCompatButton(context, attrs, defStyleAttr), KeyboardFontAware {
 
     data class FlickGuideLabels(
         val tap: String = "",
@@ -52,6 +59,25 @@ class AutoSizeButton @JvmOverloads constructor(
     private var flickGuideLabels: FlickGuideLabels? = null
     private var flickGuideTextColor: Int = Color.BLACK
     private var flickGuideTextSizeSp: Float? = null
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(this, snapshot)
+        KeyboardFontApplicator.apply(guidePaint, snapshot)
+        KeyboardFontApplicator.apply(centerGuidePaint, snapshot)
+        applyKeyboardFontToDrawable(background, snapshot)
+        refreshTextSize()
+    }
+
+    private fun applyKeyboardFontToDrawable(drawable: Drawable?, snapshot: KeyboardFontSnapshot) {
+        when (drawable) {
+            is SegmentedBackgroundDrawable -> drawable.setKeyboardFont(snapshot)
+            is LayerDrawable -> repeat(drawable.numberOfLayers) { index ->
+                applyKeyboardFontToDrawable(drawable.getDrawable(index), snapshot)
+            }
+            is InsetDrawable -> applyKeyboardFontToDrawable(drawable.drawable, snapshot)
+        }
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
