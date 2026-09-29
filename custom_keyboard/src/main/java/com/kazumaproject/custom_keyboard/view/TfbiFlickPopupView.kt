@@ -7,6 +7,7 @@ import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -17,6 +18,11 @@ import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
 class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
+
+    enum class PresentationMode {
+        FLICK,
+        LONG_PRESS
+    }
 
     // ===== 描画関連のプロパティ =====
 
@@ -49,6 +55,7 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
     private var inputTextTransform: (String) -> String = { it }
+    private var presentationMode = PresentationMode.FLICK
 
     init {
         setKeyboardFont(KeyboardFontApplicator.processSnapshot)
@@ -108,6 +115,13 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
         }
     }
 
+    fun setPresentationMode(mode: PresentationMode) {
+        if (presentationMode != mode) {
+            presentationMode = mode
+            invalidate()
+        }
+    }
+
     private var skinId = KeyboardSkinId.DEFAULT
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -138,6 +152,10 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
         super.onDraw(canvas)
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
             val characters = petalCharacters + (TfbiFlickDirection.TAP to tapCharacter)
+            if (presentationMode == PresentationMode.LONG_PRESS) {
+                drawCupertinoLongPressPanel(canvas, skin.palette, characters)
+                return
+            }
             characters.forEach { (direction, label) ->
                 rects[direction]?.let { rect ->
                     val selected = direction == highlightedDirection
@@ -166,6 +184,70 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
                 canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
                 canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
                 drawTextCentered(canvas, inputTextTransform(char), rect)
+            }
+        }
+    }
+
+    /**
+     * Long-press choices are shown in one continuous Cupertino panel. The radial, individually
+     * raised petals remain reserved for active flicking; only the currently held direction is
+     * selected inside this grid.
+     */
+    private fun drawCupertinoLongPressPanel(
+        canvas: Canvas,
+        palette: com.kazumaproject.core.ui.skin.SkinPalette,
+        characters: Map<TfbiFlickDirection, String>
+    ) {
+        val density = resources.displayMetrics.density
+        val inset = density.coerceAtLeast(1f)
+        val panel = RectF(inset, inset, width - inset, height - inset)
+        if (panel.width() <= 0f || panel.height() <= 0f) return
+
+        val radius = 7f * density
+        val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = density.coerceAtLeast(1f)
+            color = ColorUtils.setAlphaComponent(palette.text, 72)
+        }
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.key }
+        canvas.drawRoundRect(panel, radius, radius, fill)
+
+        val cellWidth = panel.width() / 3f
+        val cellHeight = panel.height() / 3f
+        val selectedRect = rects[highlightedDirection]
+            ?.let { RectF(it.left + inset, it.top + inset, it.right - inset, it.bottom - inset) }
+        if (selectedRect != null) {
+            fill.color = palette.selection
+            canvas.save()
+            val clip = android.graphics.Path().apply {
+                addRoundRect(panel, radius, radius, android.graphics.Path.Direction.CW)
+            }
+            canvas.clipPath(clip)
+            canvas.drawRoundRect(selectedRect, 4f * density, 4f * density, fill)
+            canvas.restore()
+        }
+
+        outline.color = ColorUtils.setAlphaComponent(palette.text, 54)
+        val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = ColorUtils.setAlphaComponent(palette.text, 50)
+            strokeWidth = density.coerceAtLeast(1f)
+        }
+        for (index in 1..2) {
+            val x = panel.left + cellWidth * index
+            val y = panel.top + cellHeight * index
+            canvas.drawLine(x, panel.top + radius, x, panel.bottom - radius, dividerPaint)
+            canvas.drawLine(panel.left + radius, y, panel.right - radius, y, dividerPaint)
+        }
+        canvas.drawRoundRect(panel, radius, radius, outline)
+
+        characters.forEach { (direction, label) ->
+            rects[direction]?.let { rect ->
+                textPaint.color = if (direction == highlightedDirection) {
+                    palette.selectionText
+                } else {
+                    palette.text
+                }
+                drawTextCentered(canvas, inputTextTransform(label), rect)
             }
         }
     }
