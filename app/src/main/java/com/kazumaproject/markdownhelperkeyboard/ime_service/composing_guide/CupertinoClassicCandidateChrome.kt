@@ -16,6 +16,11 @@ internal object CupertinoClassicCandidateChrome {
     const val dividerColor: Int = 0xff969ca6.toInt()
     const val candidatePressedColor: Int = 0xffb6bec9.toInt()
     const val selectedTabColor: Int = 0xff626975.toInt()
+    const val minimumDockedStripHeightDp: Int = 58
+    const val candidateDividerVerticalInsetDp: Int = 4
+
+    fun resolveDockedStripHeightDp(configuredHeightDp: Int): Int =
+        configuredHeightDp.coerceAtLeast(minimumDockedStripHeightDp)
     private const val panelTop: Int = 0xffe7e7eb.toInt()
     private const val panelBottom: Int = 0xffc9cbd2.toInt()
     private const val tabTop: Int = 0xfff0f0f2.toInt()

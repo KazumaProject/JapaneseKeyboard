@@ -168,6 +168,7 @@ class SuggestionAdapter internal constructor(
 
     companion object {
         private const val FLOATING_VIEW_TYPE_OFFSET = 10000
+        private const val DEFAULT_CANDIDATE_DIVIDER_VERTICAL_MARGIN_DP = 18
         const val VIEW_TYPE_EMPTY = 0
         const val VIEW_TYPE_SUGGESTION = 1
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
@@ -356,6 +357,7 @@ class SuggestionAdapter internal constructor(
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
+    private var candidateDividerVerticalMarginDp: Int? = null
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
@@ -389,6 +391,7 @@ class SuggestionAdapter internal constructor(
         candidateTextSize = source.candidateTextSize
         candidateTextColor = source.candidateTextColor
         candidateDividerColor = source.candidateDividerColor
+        candidateDividerVerticalMarginDp = source.candidateDividerVerticalMarginDp
         showCandidateYomiForLiveConversion = source.showCandidateYomiForLiveConversion
         showDictionaryCandidateLabels = source.showDictionaryCandidateLabels
         candidateEmptyDrawableColor = source.candidateEmptyDrawableColor
@@ -2006,9 +2009,10 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
-    fun setCandidateDividerColor(color: Int?) {
-        if (candidateDividerColor == color) return
+    fun setCandidateDividerColor(color: Int?, verticalMarginDp: Int? = null) {
+        if (candidateDividerColor == color && candidateDividerVerticalMarginDp == verticalMarginDp) return
         candidateDividerColor = color
+        candidateDividerVerticalMarginDp = verticalMarginDp
         notifyItemRangeChanged(0, itemCount)
     }
 
@@ -2342,9 +2346,25 @@ class SuggestionAdapter internal constructor(
     private fun applyCandidateItemBackground(itemView: View) {
         val backgroundColor = candidateItemColorState.backgroundColor
         val pressedColor = candidateItemColorState.pressedBackgroundColor
-        itemView.findViewById<View>(R.id.candidate_divider)?.setBackgroundColor(
-            candidateDividerColor ?: ContextCompat.getColor(itemView.context, com.kazumaproject.core.R.color.sub_text_color)
-        )
+        itemView.findViewById<View>(R.id.candidate_divider)?.let { divider ->
+            divider.setBackgroundColor(
+                candidateDividerColor ?: ContextCompat.getColor(
+                    itemView.context,
+                    com.kazumaproject.core.R.color.sub_text_color,
+                )
+            )
+            (divider.layoutParams as? ViewGroup.MarginLayoutParams)?.let { params ->
+                val density = itemView.resources.displayMetrics.density
+                val verticalMargin = (
+                    (candidateDividerVerticalMarginDp ?: DEFAULT_CANDIDATE_DIVIDER_VERTICAL_MARGIN_DP) * density
+                ).toInt()
+                if (params.topMargin != verticalMargin || params.bottomMargin != verticalMargin) {
+                    params.topMargin = verticalMargin
+                    params.bottomMargin = verticalMargin
+                    divider.layoutParams = params
+                }
+            }
+        }
         if (backgroundColor == null && pressedColor == null) {
             itemView.setBackgroundResource(defaultCandidateItemBackgroundRes())
             return

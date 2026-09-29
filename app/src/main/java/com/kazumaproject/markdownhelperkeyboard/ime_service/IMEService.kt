@@ -7157,7 +7157,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setCandidateDividerColor(
                 if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC)
                     com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.dividerColor
-                else null
+                else null,
+                verticalMarginDp = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC)
+                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.candidateDividerVerticalInsetDp
+                else null,
             )
         }
         listOfNotNull(mainLayoutBinding?.suggestionVisibility, floatingKeyboardBinding?.suggestionVisibility)
@@ -18926,11 +18929,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidatesShown = candidatesShown,
             symbolKeyboardShown = false,
         )
-        val candidateStripHeightDp = resolveCandidateStripHeightDp(
+        val configuredCandidateStripHeightDp = resolveCandidateStripHeightDp(
             candidatesShown = candidatesShown,
             candidateHeightDp = prefs.candidateHeight,
             emptyHeightDp = prefs.candidateEmptyHeight
         )
+        val candidateStripHeightDp = if (
+            !floatingCandidateSurfaceActive && keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
+        ) {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
+                .resolveDockedStripHeightDp(configuredCandidateStripHeightDp)
+        } else {
+            configuredCandidateStripHeightDp
+        }
         val baseKeyboardHeight = heightPx + if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
@@ -19000,6 +19011,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyKeyboardLayoutParameters(
             mainView = mainView,
             heightPx = heightPx,
+            candidateStripHeightPx = when {
+                floatingCandidateSurfaceActive -> null
+                keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC ->
+                    applicationContext.dpToPx(candidateStripHeightDp)
+                else -> ViewGroup.LayoutParams.WRAP_CONTENT
+            },
             finalKeyboardHeight = windowHeight,
             backgroundSurfaceHeight = backgroundSurfaceHeight,
             finalKeyboardWidth = finalKeyboardWidth,
@@ -19091,6 +19108,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyKeyboardLayoutParameters(
         mainView: MainLayoutBinding,
         heightPx: Int,
+        candidateStripHeightPx: Int?,
         finalKeyboardHeight: Int,
         backgroundSurfaceHeight: Int,
         finalKeyboardWidth: Int,
@@ -19127,6 +19145,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         changed = true
                     }
                 } else {
+                    candidateStripHeightPx?.let { candidateHeight ->
+                        if (forceLayout || params.height != candidateHeight) {
+                            params.height = candidateHeight
+                            changed = true
+                        }
+                    }
                     if (forceLayout || params.bottomMargin != heightPx) {
                         params.bottomMargin = heightPx
                         changed = true
