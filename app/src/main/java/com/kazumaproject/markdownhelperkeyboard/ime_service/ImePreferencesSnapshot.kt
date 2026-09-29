@@ -272,8 +272,7 @@ data class ImePreferencesSnapshot(
             customThemeCandidateItemPressedBgColor = palette.pressed,
             customThemeCandidateEmptyPopupBgColor = palette.key,
             customThemeCandidateEmptyPopupTextColor = palette.text,
-            customThemeShortcutIconColor = if (keyboardSkin == KeyboardSkinId.CUPERTINO_CLASSIC)
-                palette.specialText else palette.text,
+            customThemeShortcutIconColor = palette.text,
             liquidGlassThemePreference = false,
             liquidGlassKeyBlurRadiousPreference = 255,
             keyboardTouchEffectTypePreference = "none",
