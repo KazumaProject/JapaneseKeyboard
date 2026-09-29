@@ -200,7 +200,7 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
         characters: Map<TfbiFlickDirection, String>
     ) {
         val density = resources.displayMetrics.density
-        val visibleRects = characters.keys.mapNotNull { direction ->
+        val visibleRects = characters.filterValues { it.isNotEmpty() }.keys.mapNotNull { direction ->
             rects[direction]?.let { direction to it }
         }
         if (visibleRects.isEmpty()) return
