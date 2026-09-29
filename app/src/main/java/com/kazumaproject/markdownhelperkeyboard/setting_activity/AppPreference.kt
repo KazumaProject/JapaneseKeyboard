@@ -104,6 +104,8 @@ object AppPreference {
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
     const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
+    const val CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY =
+        "custom_keyboard_input_in_empty_areas_preference"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
     const val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY =
         "delete_long_press_conversion_behavior"
@@ -430,6 +432,8 @@ object AppPreference {
     private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
         Pair("custom_keyboard_suggestion_preference", true)
+    private val CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE =
+        Pair(CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY, false)
     private val REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE =
         Pair("remember_last_custom_keyboard_preference", false)
     private val LAST_USED_CUSTOM_KEYBOARD_STABLE_ID =
@@ -2616,6 +2620,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
+        }
+
+    var custom_keyboard_input_in_empty_areas_preference: Boolean
+        get() = preferences.getBoolean(
+            CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.first,
+            CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.first, value)
         }
 
     var remember_last_custom_keyboard_preference: Boolean?
