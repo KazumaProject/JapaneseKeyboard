@@ -47,6 +47,15 @@
             app:disableDependentsState="true"
             android:title="@string/tenkey_use_three_state_keyboard_title"
             app:summary="@string/tenkey_use_three_state_keyboard_summary" />
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="tenkey_use_three_state_keyboard_preference"
+            android:key="tenkey_number_symbol_key_gap_preference"
+            android:max="16"
+            android:title="@string/tenkey_number_symbol_key_gap_title"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:summary="@string/tenkey_number_symbol_key_gap_summary" />
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:dependency="tenkey_use_three_state_keyboard_preference"
