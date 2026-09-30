@@ -1476,6 +1476,8 @@
     <string name="tenkey_restore_input_mode_timeout_minutes_summary">TenKey の最後の入力モードを復元できる時間を分単位で設定します。</string>
     <string name="tenkey_use_three_state_keyboard_title">三状態キーボードの使用</string>
     <string name="tenkey_use_three_state_keyboard_summary">TenKey の切り替えキーで、日本語・英字・数字の3つの入力モードを切り替えます。</string>
+    <string name="tenkey_number_symbol_key_gap_title">数字・記号キーの間隔</string>
+    <string name="tenkey_number_symbol_key_gap_summary">三状態キーボードをオフにしたときの数字キーと記号キーの間隔をdp単位で設定します。</string>
     <string name="sumire_restore_input_mode_on_restart_title">キーボード再起動時に入力モードを復元</string>
     <string name="sumire_restore_input_mode_on_restart_summary">Sumire を開き直したとき、最後に使用した日本語・英字・数字の入力モードを復元します。</string>
     <string name="sumire_restore_input_mode_only_within_time_title">指定時間内のみ Sumire の入力モードを復元</string>
