@@ -5477,8 +5477,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             transparentWithLiquidGlass = true,
         )
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
-            mainView.root.background = skin.keyboardDrawable(resources)
+            val keyboardBackground = skin.keyboardDrawable(resources)
             if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                applyClassicKeyboardCornerRounding(
+                    drawable = keyboardBackground,
+                    rounded = isKeyboardRounded == true,
+                    radiusDp = keyboardCornerRadiusDp,
+                    density = resources.displayMetrics.density,
+                    topLeft = keyboardCornerTopLeft,
+                    topRight = keyboardCornerTopRight,
+                    bottomRight = keyboardCornerBottomRight,
+                    bottomLeft = keyboardCornerBottomLeft,
+                )
                 val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
                 mainView.suggestionViewParent.background = chrome.panelBackground()
                 mainView.candidateTabLayout.background = chrome.tabsBackground()
@@ -5488,6 +5498,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
                 mainView.shortcutToolbarRecyclerview.background = null
             }
+            mainView.root.background = keyboardBackground
             return
         }
         mainView.shortcutToolbarRecyclerview.background = null
