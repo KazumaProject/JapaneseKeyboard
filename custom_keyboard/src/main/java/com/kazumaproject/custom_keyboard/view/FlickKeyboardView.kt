@@ -592,13 +592,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun skinKeyRole(keyData: KeyData): com.kazumaproject.core.ui.skin.SkinKeyRole = when (keyData.action) {
-        KeyAction.Space, KeyAction.ForceHalfWidthSpace, KeyAction.ForceFullWidthSpace ->
-            com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE
-        else -> if (KeyVisualStyleResolver.usesSpecialSurface(keyData))
-            com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER
-        else com.kazumaproject.core.ui.skin.SkinKeyRole.CHARACTER
-    }
+    private fun skinKeyRole(keyData: KeyData): com.kazumaproject.core.ui.skin.SkinKeyRole =
+        KeyVisualStyleResolver.resolveSkinKeyRole(
+            keyData,
+            useModifierSurfaceForSpecialSpaceKeys = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
+        )
 
     private fun defaultKeyBackgroundDrawable(keyData: KeyData, isDarkTheme: Boolean): Drawable? {
         val drawableResId = when {

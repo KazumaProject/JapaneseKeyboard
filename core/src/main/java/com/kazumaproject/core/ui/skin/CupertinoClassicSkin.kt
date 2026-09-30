@@ -56,7 +56,7 @@ internal class CupertinoClassicSkin : KeyboardSkin {
         ClassicPopupDrawable(direction, resources.displayMetrics.density, selected)
 
     override fun guideDrawable(resources: Resources, direction: PopupDirection, selected: Boolean): Drawable =
-        popupDrawable(resources, direction, selected)
+        ClassicGuideDrawable(direction, resources.displayMetrics.density, selected)
 
     override fun variationDrawable(resources: Resources): Drawable =
         GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -199,6 +199,69 @@ internal class ClassicPopupDrawable(
     @Deprecated("Deprecated in Android") override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
     override fun getConstantState(): ConstantState = object : ConstantState() {
         override fun newDrawable(): Drawable = ClassicPopupDrawable(direction, density, selected)
+        override fun getChangingConfigurations(): Int = 0
+    }
+}
+
+/** Adjacent guide cells share square inner edges to form the continuous long-press cross. */
+internal class ClassicGuideDrawable(
+    private val direction: PopupDirection,
+    private val density: Float,
+    private val selected: Boolean,
+) : Drawable() {
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = density.coerceAtLeast(1f)
+    }
+    private var opacity = 255
+
+    override fun draw(canvas: Canvas) {
+        if (bounds.isEmpty) return
+        val radius = 5f * density
+        val radii = when (direction) {
+            PopupDirection.LEFT -> floatArrayOf(radius, radius, 0f, 0f, 0f, 0f, radius, radius)
+            PopupDirection.TOP -> floatArrayOf(radius, radius, radius, radius, 0f, 0f, 0f, 0f)
+            PopupDirection.RIGHT -> floatArrayOf(0f, 0f, radius, radius, radius, radius, 0f, 0f)
+            PopupDirection.BOTTOM -> floatArrayOf(0f, 0f, 0f, 0f, radius, radius, radius, radius)
+            PopupDirection.PREVIEW -> FloatArray(8) { radius }
+            else -> FloatArray(8)
+        }
+        val path = Path().apply {
+            addRoundRect(RectF(bounds), radii, Path.Direction.CW)
+        }
+        fill.style = Paint.Style.FILL
+        fill.alpha = opacity
+        fill.shader = LinearGradient(
+            0f, bounds.top.toFloat(), 0f, bounds.bottom.toFloat(),
+            if (selected) 0xff69a9ea.toInt() else 0xfffdfdfe.toInt(),
+            if (selected) 0xff2165b0.toInt() else 0xffb8c0ca.toInt(),
+            Shader.TileMode.CLAMP,
+        )
+        canvas.drawPath(path, fill)
+        fill.shader = null
+
+        outline.color = if (selected) 0xff164b85.toInt() else 0xff4b5664.toInt()
+        outline.alpha = opacity
+        canvas.drawPath(path, outline)
+    }
+
+    override fun setAlpha(alpha: Int) {
+        opacity = alpha
+        invalidateSelf()
+    }
+
+    override fun setColorFilter(colorFilter: ColorFilter?) {
+        fill.colorFilter = colorFilter
+        outline.colorFilter = colorFilter
+        invalidateSelf()
+    }
+
+    @Deprecated("Deprecated in Android")
+    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+
+    override fun getConstantState(): ConstantState = object : ConstantState() {
+        override fun newDrawable(): Drawable = ClassicGuideDrawable(direction, density, selected)
         override fun getChangingConfigurations(): Int = 0
     }
 }

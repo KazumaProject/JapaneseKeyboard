@@ -30,6 +30,7 @@ import androidx.core.widget.ImageViewCompat
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.skin.spaceConvertKeyStyle
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
@@ -1186,10 +1187,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 setKeyDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
             KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+                val spaceConvertStyle = skin.spaceConvertKeyStyle()
                 keySpace.background = skin.keyDrawable(resources,
-                    role = com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE)
+                    role = spaceConvertStyle.role)
                 ImageViewCompat.setImageTintList(keySpace,
-                    ColorStateList.valueOf(skin.palette.spaceText))
+                    ColorStateList.valueOf(spaceConvertStyle.textColor))
             }
         }
     }
@@ -1423,9 +1425,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
     }
 
-    fun setUseThreeStateKeyboard(enabled: Boolean) {
+    fun setUseThreeStateKeyboard(enabled: Boolean, numberSymbolKeyGapDp: Int = 4) {
         useThreeStateKeyboard = enabled
-        binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
+        binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled, numberSymbolKeyGapDp)
         binding.keySwitchKeyMode.setInputMode(
             inputMode = currentInputMode.value,
             isGojuon = false,

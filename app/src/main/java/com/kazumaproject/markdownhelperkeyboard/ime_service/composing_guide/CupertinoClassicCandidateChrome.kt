@@ -21,13 +21,14 @@ internal object CupertinoClassicCandidateChrome {
 
     fun resolveDockedStripHeightDp(configuredHeightDp: Int): Int =
         configuredHeightDp.coerceAtLeast(minimumDockedStripHeightDp)
-    private const val panelTop: Int = 0xffe7e7eb.toInt()
     private const val panelBottom: Int = 0xffc9cbd2.toInt()
     private const val tabTop: Int = 0xfff0f0f2.toInt()
     private const val tabBottom: Int = 0xffc8cbd2.toInt()
     private const val tabSelectedTop: Int = 0xff858c98.toInt()
     private const val tabSelectedBottom: Int = selectedTabColor
     private const val tabEdge: Int = 0xff7d8490.toInt()
+    private const val expandButtonPressedTop: Int = 0xffb6bec9.toInt()
+    private const val expandButtonPressedBottom: Int = 0xff969ca6.toInt()
 
     private data class TabLayoutState(
         val mode: Int,
@@ -47,13 +48,37 @@ internal object CupertinoClassicCandidateChrome {
     fun originalTabRippleColor(tabLayout: TabLayout): android.content.res.ColorStateList? =
         tabLayoutStates[tabLayout]?.rippleColor ?: tabLayout.tabRippleColor
 
-    fun panelBackground() = gradient(panelTop, panelBottom)
+    fun panelBackground(alpha: Int = 255) = ColorDrawable(panelColor).apply {
+        this.alpha = alpha.coerceIn(0, 255)
+    }
 
     fun toolbarBackground(resources: Resources) = gradient(tabTop, panelBottom).apply {
         setStroke(strokeWidth(resources), tabEdge)
     }
 
-    fun tabsBackground() = gradient(panelTop, panelBottom)
+    fun tabsBackground() = ColorDrawable(panelColor)
+
+    fun expandButtonBackground(resources: Resources) = StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_pressed), expandButtonDrawable(
+            resources, expandButtonPressedTop, expandButtonPressedBottom
+        ))
+        addState(intArrayOf(android.R.attr.state_selected), expandButtonDrawable(
+            resources, tabSelectedTop, tabSelectedBottom
+        ))
+        addState(intArrayOf(), expandButtonDrawable(resources, tabTop, tabBottom))
+    }
+
+    fun expandButtonTint() = android.content.res.ColorStateList(
+        arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()),
+        intArrayOf(android.graphics.Color.WHITE, textColor),
+    )
+
+    private fun expandButtonDrawable(resources: Resources, top: Int, bottom: Int) =
+        GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 16 * resources.displayMetrics.density
+            setStroke(strokeWidth(resources), tabEdge)
+        }
 
     fun applyTabs(tabLayout: TabLayout) {
         val resources = tabLayout.resources
