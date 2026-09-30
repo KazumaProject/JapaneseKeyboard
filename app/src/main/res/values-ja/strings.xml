@@ -774,6 +774,11 @@
     <string name="key_action">キーのアクション</string>
     <string name="double_tap_action">ダブルタップのアクション</string>
     <string name="double_tap_disabled">なし</string>
+    <string name="special_key_category_input">入力・変換</string>
+    <string name="special_key_category_delete_cursor">削除・カーソル</string>
+    <string name="special_key_category_text_mode">文字種・入力モード</string>
+    <string name="special_key_category_keyboard">キーボード切替</string>
+    <string name="special_key_category_edit_other">編集・その他</string>
     <string name="setting_flick">フリック設定</string>
     <string name="tap">タップ</string>
     <string name="flick_left">左フリック</string>

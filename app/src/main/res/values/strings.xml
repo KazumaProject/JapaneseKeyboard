@@ -816,6 +816,11 @@
     <string name="key_action">Action for Key</string>
     <string name="double_tap_action">Double-tap action</string>
     <string name="double_tap_disabled">None</string>
+    <string name="special_key_category_input">Input and conversion</string>
+    <string name="special_key_category_delete_cursor">Delete and cursor</string>
+    <string name="special_key_category_text_mode">Text and input mode</string>
+    <string name="special_key_category_keyboard">Keyboard switching</string>
+    <string name="special_key_category_edit_other">Edit and other</string>
     <string name="setting_flick">Flick</string>
     <string name="tap">Tap</string>
     <string name="flick_left">Flick Left</string>
