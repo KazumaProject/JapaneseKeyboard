@@ -7,10 +7,7 @@ object KeyVisualStyleResolver {
         keyData.isSpecialKey &&
                 keyData.specialKeyColorStyle == SpecialKeyColorStyle.SPECIAL
 
-    /**
-     * Space/Convert is one physical toggle key in several layouts. Classic assigns distinct
-     * colors to space and modifier roles, so keep that key's surface stable across its states.
-     */
+    /** Space/Convert is one physical toggle key in several layouts. */
     fun isSpaceConvertToggle(keyData: KeyData): Boolean {
         if (!usesSpecialSurface(keyData)) return false
         val actions = keyData.dynamicStates.orEmpty().map { it.action }
@@ -22,11 +19,19 @@ object KeyVisualStyleResolver {
         return hasSpace && KeyAction.Convert in actions
     }
 
+    /**
+     * Classic's button-style special Space keys use the modifier surface; the QWERTY spacebar
+     * has its own renderer and continues to use the dedicated space surface.
+     */
     fun resolveSkinKeyRole(
         keyData: KeyData,
-        keepSpaceConvertToggleSurface: Boolean = false
+        useModifierSurfaceForSpecialSpaceKeys: Boolean = false
     ): SkinKeyRole {
-        if (keepSpaceConvertToggleSurface && isSpaceConvertToggle(keyData)) {
+        val isSpaceAction = when (keyData.action) {
+            KeyAction.Space, KeyAction.ForceHalfWidthSpace, KeyAction.ForceFullWidthSpace -> true
+            else -> isSpaceConvertToggle(keyData)
+        }
+        if (useModifierSurfaceForSpecialSpaceKeys && isSpaceAction && usesSpecialSurface(keyData)) {
             return SkinKeyRole.MODIFIER
         }
         return when (keyData.action) {
