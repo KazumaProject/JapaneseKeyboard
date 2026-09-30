@@ -122,9 +122,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     // 現在選択中のセルモード
     private var currentCellMode: CellMode? = null
 
-    private lateinit var keyActionAdapter: ArrayAdapter<String>
+    private lateinit var keyActionOptions: List<SpecialKeyActionOption>
+    private lateinit var specialFlickActionOptions: List<SpecialKeyActionOption>
     private lateinit var customKeyboardTargetAdapter: ArrayAdapter<String>
-    private lateinit var doubleTapActionAdapter: ArrayAdapter<String>
     private lateinit var doubleTapTargetAdapter: ArrayAdapter<String>
     private lateinit var circularFlickAdapter: CircularFlickMappingAdapter
     private lateinit var circularMapAdapter: ArrayAdapter<String>
@@ -189,35 +189,29 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         displayActions = raw.map { DisplayActionUi(it.displayName, it.action, it.iconResId) }
         specialFlickDisplayActions = displayActions
 
-        val actionDisplayNames = displayActions.map { it.displayName }
-        keyActionAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
-            actionDisplayNames
+        keyActionOptions = groupedSpecialKeyActionOptions(displayActions) {
+            getString(it.titleResId)
+        }
+        specialFlickActionOptions = listOf(SpecialKeyActionOption("")) + keyActionOptions
+        binding.keyActionSpinner.setAdapter(
+            SpecialKeyActionDropdownAdapter(requireContext(), keyActionOptions)
         )
-        binding.keyActionSpinner.setAdapter(keyActionAdapter)
 
-        doubleTapActionAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
-            listOf(getString(R.string.double_tap_disabled)) + actionDisplayNames
+        binding.doubleTapActionSpinner.setAdapter(
+            SpecialKeyActionDropdownAdapter(
+                requireContext(),
+                listOf(SpecialKeyActionOption(getString(R.string.double_tap_disabled))) + keyActionOptions
+            )
         )
-        binding.doubleTapActionSpinner.setAdapter(doubleTapActionAdapter)
         binding.doubleTapActionSpinner.setText(
             getString(R.string.double_tap_disabled),
             false
         )
 
         // 特殊フリック用アクションスピナー（セル選択後に表示）
-        val specialActionNames = mutableListOf("").apply {
-            addAll(specialFlickDisplayActions.map { it.displayName })
-        }
-        val specialActionAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
-            specialActionNames
+        binding.specialFlickMappingsRecyclerView.setAdapter(
+            SpecialKeyActionDropdownAdapter(requireContext(), specialFlickActionOptions)
         )
-        binding.specialFlickMappingsRecyclerView.setAdapter(specialActionAdapter)
 
         customKeyboardTargetAdapter = ArrayAdapter(
             requireContext(),
@@ -297,11 +291,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.specialFlickMappingsRecyclerView.setOnItemClickListener { _, _, idx, _ ->
             val mode = currentCellMode as? CellMode.SpecialFlick ?: return@setOnItemClickListener
             val item = currentSpecialFlickItems.firstOrNull { it.direction == mode.direction }
-            val selectedAction = if (idx == 0) {
-                null
-            } else {
+            val selectedAction = specialFlickActionOptions.getOrNull(idx)?.action?.let {
                 resolveSpecialFlickSelectedAction(
-                    selectedAction = specialFlickDisplayActions[idx - 1].action,
+                    selectedAction = it.action,
                     currentAction = item?.action,
                     selectedTargetStableId = selectedTargetCustomKeyboardStableId,
                     validTargetStableIds = validTargetStableIds()
@@ -465,7 +457,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
         binding.keyActionSpinner.setOnItemClickListener { _, _, position, _ ->
             if (
-                displayActions.getOrNull(position)?.action == KeyAction.ShiftKey &&
+                keyActionOptions.getOrNull(position)?.action?.action == KeyAction.ShiftKey &&
                 selectedDoubleTapDisplayAction() == null
             ) {
                 displayActionForAction(KeyAction.CapLockKey)?.let { capLock ->
