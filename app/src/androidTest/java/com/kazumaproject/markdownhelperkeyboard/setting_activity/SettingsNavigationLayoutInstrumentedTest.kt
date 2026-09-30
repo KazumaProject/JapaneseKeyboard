@@ -162,6 +162,108 @@ class SettingsNavigationLayoutInstrumentedTest {
         }
     }
 
+    @Test
+    fun imeSettingsShortcutStartsImmediatelyBelowSharedActionBar() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val shortcutIntent = Intent(context, MainActivity::class.java)
+            .putExtra(OPEN_SETTING_ACTIVITY_EXTRA, "setting_fragment_request")
+
+        withHomeMode(useNewHome = false, launchIntent = shortcutIntent) { scenario ->
+            // A test device may not have this IME enabled yet, in which case the
+            // settings home correctly redirects to the enable-keyboard screen.
+            // Move to a shared-ActionBar destination to verify this launch's insets.
+            scenario.onActivity { navController(it).navigate(R.id.navigation_learn_dictionary) }
+            instrumentation.waitForIdleSync()
+            assertNavHostImmediatelyBelowSharedActionBar(scenario)
+        }
+    }
+
+    @Test
+    fun returningFromOwnToolbarFragmentKeepsSharedActionBarAligned() {
+        withHomeMode(useNewHome = false) { scenario ->
+            scenario.onActivity { activity ->
+                navController(activity).navigate(R.id.navigation_learn_dictionary)
+                assertEquals(
+                    R.id.navigation_learn_dictionary,
+                    navController(activity).currentDestination?.id,
+                )
+            }
+            instrumentation.waitForIdleSync()
+            assertNavHostImmediatelyBelowSharedActionBar(scenario)
+
+            repeat(2) {
+                scenario.onActivity { activity ->
+                    val nav = navController(activity)
+                    nav.navigate(R.id.shortcutToolbarSizeSettingFragment)
+                    assertEquals(
+                        R.id.shortcutToolbarSizeSettingFragment,
+                        nav.currentDestination?.id,
+                    )
+                }
+                awaitActionBarShowing(scenario, expectedShowing = false)
+                scenario.onActivity { activity ->
+                    val nav = navController(activity)
+                    assertTrue(nav.popBackStack())
+                    assertEquals(R.id.navigation_learn_dictionary, nav.currentDestination?.id)
+                }
+                awaitActionBarShowing(scenario, expectedShowing = true)
+                instrumentation.waitForIdleSync()
+                assertNavHostImmediatelyBelowSharedActionBar(scenario)
+            }
+        }
+    }
+
+    private fun awaitActionBarShowing(
+        scenario: ActivityScenario<MainActivity>,
+        expectedShowing: Boolean,
+    ) {
+        val deadline = SystemClock.elapsedRealtime() + ACTION_BAR_ANIMATION_TIMEOUT_MS
+        while (true) {
+            var isShowing = false
+            var currentDestinationId = 0
+            scenario.onActivity { activity ->
+                isShowing = activity.supportActionBar?.isShowing == true
+                currentDestinationId = navController(activity).currentDestination?.id ?: 0
+            }
+            if (isShowing == expectedShowing) return
+            if (SystemClock.elapsedRealtime() >= deadline) {
+                assertEquals(
+                    "ActionBar showing state at destination $currentDestinationId",
+                    expectedShowing,
+                    isShowing,
+                )
+            }
+            SystemClock.sleep(ACTION_BAR_VISIBILITY_POLL_INTERVAL_MS)
+        }
+    }
+
+    private fun assertNavHostImmediatelyBelowSharedActionBar(
+        scenario: ActivityScenario<MainActivity>,
+    ) {
+        scenario.onActivity { activity ->
+            val actionBar = activity.findViewById<View>(
+                androidx.appcompat.R.id.action_bar_container,
+            )
+            val navHost = activity.findViewById<View>(R.id.nav_host_fragment_activity_main)
+            assertEquals(
+                "ActionBar is hidden at destination " +
+                    "${navController(activity).currentDestination?.id}",
+                View.VISIBLE,
+                actionBar.visibility,
+            )
+
+            val actionBarLocation = IntArray(2).also(actionBar::getLocationOnScreen)
+            val navHostLocation = IntArray(2).also(navHost::getLocationOnScreen)
+            val actionBarBottom = actionBarLocation[1] + actionBar.height
+            assertEquals(
+                "NavHost starts at ${navHostLocation[1]}, ActionBar ends at $actionBarBottom; " +
+                    "ActionBar y=${actionBarLocation[1]} height=${actionBar.height}",
+                actionBarBottom,
+                navHostLocation[1],
+            )
+        }
+    }
+
     private fun assertBottomNavigationAboveSystemNavigation(scenario: ActivityScenario<MainActivity>) {
         scenario.onActivity { activity ->
             val nav = activity.findViewById<View>(R.id.nav_view)
@@ -664,6 +766,8 @@ class SettingsNavigationLayoutInstrumentedTest {
         const val SETTING_USE_NEW_HOME_SCREEN = "setting_use_new_home_screen_preference"
         const val OPEN_SETTING_ACTIVITY_EXTRA = "openSettingActivity"
         const val DICTIONARY_FRAGMENT_REQUEST = "dictionary_fragment_request"
+        const val ACTION_BAR_ANIMATION_TIMEOUT_MS = 2_000L
+        const val ACTION_BAR_VISIBILITY_POLL_INTERVAL_MS = 25L
     }
 
     private class InitializationGate(private val expectedEntries: Int) {
