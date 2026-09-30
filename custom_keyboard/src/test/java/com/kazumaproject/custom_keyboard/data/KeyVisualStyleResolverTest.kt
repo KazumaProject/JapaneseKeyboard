@@ -1,5 +1,6 @@
 package com.kazumaproject.custom_keyboard.data
 
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -54,7 +55,7 @@ class KeyVisualStyleResolverTest {
 
         assertEquals(
             com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER,
-            KeyVisualStyleResolver.resolveSkinKeyRole(key, keepSpaceConvertToggleSurface = true)
+            KeyVisualStyleResolver.resolveSkinKeyRole(key, useModifierSurfaceForSpecialSpaceKeys = true)
         )
         assertEquals(
             com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE,
@@ -63,19 +64,33 @@ class KeyVisualStyleResolverTest {
     }
 
     @Test
-    fun separateSpaceKeyKeepsSpaceRoleInClassic() {
+    fun numberEditorSpaceKeyUsesModifierRoleInClassic() {
+        val key = KeyboardDefaultLayouts.createNumberLayout().keys.single {
+            it.action == KeyAction.Space
+        }
+
+        assertTrue(KeyVisualStyleResolver.usesSpecialSurface(key))
+        assertEquals(
+            com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER,
+            KeyVisualStyleResolver.resolveSkinKeyRole(key, useModifierSurfaceForSpecialSpaceKeys = true)
+        )
+    }
+
+    @Test
+    fun normalSurfaceSpaceKeyKeepsSpaceRoleInClassic() {
         val key = KeyData(
             label = "空白",
             row = 0,
             column = 0,
             isFlickable = false,
             action = KeyAction.Space,
-            isSpecialKey = true
+            isSpecialKey = true,
+            specialKeyColorStyle = SpecialKeyColorStyle.NORMAL,
         )
 
         assertEquals(
             com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE,
-            KeyVisualStyleResolver.resolveSkinKeyRole(key, keepSpaceConvertToggleSurface = true)
+            KeyVisualStyleResolver.resolveSkinKeyRole(key, useModifierSurfaceForSpecialSpaceKeys = true)
         )
     }
 

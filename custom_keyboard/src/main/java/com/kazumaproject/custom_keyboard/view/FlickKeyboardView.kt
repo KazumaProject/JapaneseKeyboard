@@ -595,7 +595,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun skinKeyRole(keyData: KeyData): com.kazumaproject.core.ui.skin.SkinKeyRole =
         KeyVisualStyleResolver.resolveSkinKeyRole(
             keyData,
-            keepSpaceConvertToggleSurface = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
+            useModifierSurfaceForSpecialSpaceKeys = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
         )
 
     private fun defaultKeyBackgroundDrawable(keyData: KeyData, isDarkTheme: Boolean): Drawable? {
