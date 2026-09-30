@@ -33,6 +33,12 @@ class CupertinoClassicCandidateChromeTest {
 
         assertEquals(CupertinoClassicCandidateChrome.panelColor, panel.color)
         assertEquals(panel.color, tabs.color)
+        assertEquals(255, panel.alpha)
+    }
+
+    @Test fun expandedCandidateBackgroundCanFollowLiquidGlassTransparency() {
+        assertEquals(0, CupertinoClassicCandidateChrome.panelBackground(alpha = 0).alpha)
+        assertEquals(255, CupertinoClassicCandidateChrome.panelBackground(alpha = 255).alpha)
     }
 
     @Test fun candidateTabsUseSegmentedSelectionAndRestoreTheirPreviousAppearance() {
