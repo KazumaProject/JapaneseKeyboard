@@ -13,7 +13,29 @@ internal data class RuntimeInputBehaviorSafetyState(
     val candidateHighlightActive: Boolean,
 )
 
+internal enum class DirectCommitTransition {
+    NONE,
+    CLEAR,
+    FINISH_AND_CLEAR,
+}
+
 internal object RuntimeInputBehaviorPolicy {
+    fun directCommitTransition(
+        previous: ResolvedInputBehavior,
+        current: ResolvedInputBehavior,
+        startingNewInput: Boolean,
+        canToggleSafely: Boolean,
+    ): DirectCommitTransition {
+        if (current != ResolvedInputBehavior.DIRECT_COMMIT) return DirectCommitTransition.NONE
+        if (startingNewInput) return DirectCommitTransition.CLEAR
+        if (previous == ResolvedInputBehavior.DIRECT_COMMIT) return DirectCommitTransition.NONE
+        return if (canToggleSafely) {
+            DirectCommitTransition.CLEAR
+        } else {
+            DirectCommitTransition.FINISH_AND_CLEAR
+        }
+    }
+
     fun resolveBaseline(
         qwertyMode: TenKeyQWERTYMode,
         isCustomLayoutDirectMode: Boolean,
