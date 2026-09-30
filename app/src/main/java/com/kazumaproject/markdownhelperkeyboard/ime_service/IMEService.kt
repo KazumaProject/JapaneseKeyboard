@@ -3172,6 +3172,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 binding.shortcutToolbarRecyclerview, binding.candidateTabLayout,
                 binding.suggestionViewParent, binding.suggestionRecyclerView, binding.candidatesRowView,
             ).also {
+                it.setPanelBackgroundAlpha(if (liquidGlassThemePreference == true) 0 else 255)
                 it.setKeyboardFont(KeyboardFontApplicator.processSnapshot)
                 it.attach(target)
             }
@@ -5457,16 +5458,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun applyCandidateExpandedSurfaceBackground(view: View) {
+    private fun applyCandidateExpandedSurfaceBackground(
+        view: View,
+        transparentWithLiquidGlass: Boolean = false,
+    ) {
         view.background = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
-            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.panelBackground()
+            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.panelBackground(
+                alpha = if (transparentWithLiquidGlass && liquidGlassThemePreference == true) 0 else 255,
+            )
         } else {
             null
         }
     }
 
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
-        applyCandidateExpandedSurfaceBackground(mainView.candidatesRowView)
+        applyCandidateExpandedSurfaceBackground(
+            mainView.candidatesRowView,
+            transparentWithLiquidGlass = true,
+        )
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             mainView.root.background = skin.keyboardDrawable(resources)
             if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
@@ -6503,6 +6512,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         decision: ImeGlassRenderDecision = currentImeGlassRenderDecision(),
     ) {
+        candidateSurfaceHost?.setPanelBackgroundAlpha(
+            if (liquidGlassThemePreference == true) 0 else 255,
+        )
         if (liquidGlassThemePreference != true) return
 
         val rootAlpha = when (decision.mode) {
@@ -6514,6 +6526,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.root.setDrawableAlpha(rootAlpha)
         mainView.suggestionViewParent.setDrawableAlpha(0)
         mainView.candidateTabLayout.setDrawableAlpha(0)
+        mainView.candidatesRowView.setDrawableAlpha(0)
     }
 
     private fun updateImeWindowBlurForCurrentMode(targetWindow: Window? = window.window) {
@@ -7250,7 +7263,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     /** Reapply appearance to reused candidate surfaces at every input session, not only inflation. */
     private fun applyCandidateAppearance() {
-        mainLayoutBinding?.let { applyCandidateExpandedSurfaceBackground(it.candidatesRowView) }
+        mainLayoutBinding?.let {
+            applyCandidateExpandedSurfaceBackground(
+                it.candidatesRowView,
+                transparentWithLiquidGlass = true,
+            )
+        }
         floatingKeyboardBinding?.let { applyCandidateExpandedSurfaceBackground(it.candidatesRowView) }
         if (!floatingCandidateSurfaceActive) {
             mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
@@ -19710,7 +19728,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        applyCandidateExpandedSurfaceBackground(mainView.candidatesRowView)
+        applyCandidateExpandedSurfaceBackground(
+            mainView.candidatesRowView,
+            transparentWithLiquidGlass = true,
+        )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
         mainView.candidatesRowView.scrollToPosition(0)
         hideFirstRowCandidatesInFullScreen(mainView)
@@ -22686,7 +22707,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }
-        candidateSurfaceHost?.refreshAppearance()
+        candidateSurfaceHost?.let { host ->
+            host.setPanelBackgroundAlpha(if (liquidGlassThemePreference == true) 0 else 255)
+            host.refreshAppearance()
+        }
     }
 
     private fun collapseShortcutEntryExpansion(refreshContent: Boolean = true) {

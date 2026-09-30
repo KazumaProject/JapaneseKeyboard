@@ -48,7 +48,9 @@ internal object CupertinoClassicCandidateChrome {
     fun originalTabRippleColor(tabLayout: TabLayout): android.content.res.ColorStateList? =
         tabLayoutStates[tabLayout]?.rippleColor ?: tabLayout.tabRippleColor
 
-    fun panelBackground() = ColorDrawable(panelColor)
+    fun panelBackground(alpha: Int = 255) = ColorDrawable(panelColor).apply {
+        this.alpha = alpha.coerceIn(0, 255)
+    }
 
     fun toolbarBackground(resources: Resources) = gradient(tabTop, panelBottom).apply {
         setStroke(strokeWidth(resources), tabEdge)
