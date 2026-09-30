@@ -31,6 +31,7 @@ import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.skin.spaceConvertKeyStyle
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
@@ -321,6 +322,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
             snapshot,
         )
         binding.keySwitchKeyMode.setKeyboardFont(snapshot)
+        skinGuidePopup?.setKeyboardFont(snapshot)
         applyPopupKeyboardFont()
     }
 
@@ -354,6 +356,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
     private var borderWidth: Int = 1
 
     private val skinLongPress = com.kazumaproject.core.ui.skin.SkinLongPressPresentation()
+    private var skinGuidePopup: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
 
     init {
@@ -564,10 +567,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 ImageViewCompat.setImageTintList(view, specialColorStateList)
             }
             KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+                val spaceConvertStyle = skin.spaceConvertKeyStyle()
                 keySpace.background = skin.keyDrawable(resources,
-                    role = com.kazumaproject.core.ui.skin.SkinKeyRole.SPACE)
+                    role = spaceConvertStyle.role)
                 ImageViewCompat.setImageTintList(keySpace,
-                    ColorStateList.valueOf(skin.palette.spaceText))
+                    ColorStateList.valueOf(spaceConvertStyle.textColor))
             }
 
         }
@@ -3184,6 +3188,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
                         return
                     }
                 }
+                if (showClassicSkinGuide(it)) return
                 if (popTextTop.text.isNotEmpty()) {
                     popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
                 }
@@ -3208,7 +3213,27 @@ class GojuonKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun showClassicSkinGuide(anchor: View): Boolean {
+        if (keyboardSkinId != KeyboardSkinId.CUPERTINO_CLASSIC) return false
+        val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(keyboardSkinId) ?: return false
+        hideAllPopWindow()
+        val presenter = skinGuidePopup ?: com.kazumaproject.core.ui.skin.SkinGuidePopup(context).also {
+            skinGuidePopup = it
+            it.setKeyboardFont(keyboardFontSnapshot)
+        }
+        val guide = presenter.show(anchor, skin, mapOf(
+            com.kazumaproject.core.ui.skin.PopupDirection.CENTER to popTextActive.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.LEFT to popTextLeft.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.TOP to popTextTop.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.RIGHT to popTextRight.text,
+            com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM to popTextBottom.text,
+        ), includeEmptyCenterConnector = true)
+        skinLongPress.show(this, keyboardSkinId, guide)
+        return true
+    }
+
     private fun hideAllPopWindow() {
+        skinGuidePopup?.dismiss()
         skinLongPress.clear()
         popupWindowActive.hide()
         popupWindowLeft.hide()
@@ -3219,6 +3244,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     private fun setTapInActionMove() {
+        if (skinGuidePopup?.isShowing == true) {
+            skinGuidePopup?.select(com.kazumaproject.core.ui.skin.PopupDirection.CENTER)
+            return
+        }
         if (!isLongPressed) popupWindowActive.hide()
         val button = getButtonFromKey(pressedKey.key)
         if (currentInputMode.get() == InputMode.ModeEnglish &&
@@ -3266,6 +3295,17 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
+        if (skinGuidePopup?.isShowing == true) {
+            val direction = when (gestureType) {
+                GestureType.FlickLeft -> com.kazumaproject.core.ui.skin.PopupDirection.LEFT
+                GestureType.FlickTop -> com.kazumaproject.core.ui.skin.PopupDirection.TOP
+                GestureType.FlickRight -> com.kazumaproject.core.ui.skin.PopupDirection.RIGHT
+                GestureType.FlickBottom -> com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM
+                else -> com.kazumaproject.core.ui.skin.PopupDirection.CENTER
+            }
+            skinGuidePopup?.select(direction)
+            return
+        }
         val button = getButtonFromKey(pressedKey.key)
         if (currentInputMode.get() == InputMode.ModeEnglish &&
             (gojuonCapsLockState.value.capsLockOn || gojuonCapsLockState.value.shiftOn)

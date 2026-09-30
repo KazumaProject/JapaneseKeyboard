@@ -1511,6 +1511,8 @@
     <string name="tenkey_restore_input_mode_timeout_minutes_summary">Sets how many minutes the last TenKey input mode can be restored.</string>
     <string name="tenkey_use_three_state_keyboard_title">Use three-state keyboard switching</string>
     <string name="tenkey_use_three_state_keyboard_summary">Switches TenKey between Japanese, English, and number input modes using the mode switch key.</string>
+    <string name="tenkey_number_symbol_key_gap_title">Number/symbol key gap</string>
+    <string name="tenkey_number_symbol_key_gap_summary">Set the gap in dp between the number and symbol keys when three-state switching is off.</string>
     <string name="sumire_restore_input_mode_on_restart_title">Restore input mode on keyboard restart</string>
     <string name="sumire_restore_input_mode_on_restart_summary">Restores the last Japanese, English, or number input mode when Sumire is opened again.</string>
     <string name="sumire_restore_input_mode_only_within_time_title">Restore Sumire input mode only within time limit</string>

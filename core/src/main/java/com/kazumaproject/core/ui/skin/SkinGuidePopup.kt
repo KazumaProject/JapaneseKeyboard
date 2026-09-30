@@ -52,13 +52,14 @@ class SkinGuidePopup(context: Context) : KeyboardFontAware {
         skin: KeyboardSkin,
         labels: Map<PopupDirection, CharSequence>,
         textSizeSp: Float? = null,
+        includeEmptyCenterConnector: Boolean = false,
     ): View {
         val root = anchor.rootView as? ViewGroup ?: error("Keyboard must have a window root")
         cancelAnimation()
         removeImmediately()
         val width = anchor.width
         val height = anchor.height
-        configure(width, height, skin, labels, textSizeSp)
+        configure(width, height, skin, labels, textSizeSp, includeEmptyCenterConnector)
         skin.showPopup(content)
         val anchorPosition = IntArray(2)
         val rootPosition = IntArray(2)
@@ -124,9 +125,13 @@ class SkinGuidePopup(context: Context) : KeyboardFontAware {
         skin: KeyboardSkin,
         labels: Map<PopupDirection, CharSequence>,
         textSizeSp: Float? = null,
+        includeEmptyCenterConnector: Boolean = false,
     ): View {
         check(width > 0 && height > 0)
         this.skin = skin
+        val hasDirectionalCandidate = labels.any { (direction, text) ->
+            direction != PopupDirection.CENTER && text.isNotEmpty()
+        }
         cells.forEach { (direction, cell) ->
             cell.skinId = skin.id
             val label = cell.getChildAt(0) as TextView
@@ -134,7 +139,13 @@ class SkinGuidePopup(context: Context) : KeyboardFontAware {
             skin.configurePopupText(label, false)
             KeyboardFontApplicator.apply(label, keyboardFontSnapshot)
             textSizeSp?.let { label.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.coerceIn(8f, 48f)) }
-            cell.visibility = if (label.text.isEmpty()) View.INVISIBLE else View.VISIBLE
+            val emptyCenterConnector = includeEmptyCenterConnector &&
+                hasDirectionalCandidate && direction == PopupDirection.CENTER && label.text.isEmpty()
+            cell.visibility = if (label.text.isEmpty() && !emptyCenterConnector) {
+                View.INVISIBLE
+            } else {
+                View.VISIBLE
+            }
             val bounds = SkinPopupGeometry.resolve(width, height, direction, false).bounds
             cell.layoutParams = FrameLayout.LayoutParams(width, height).apply {
                 leftMargin = bounds.left + width
@@ -149,7 +160,10 @@ class SkinGuidePopup(context: Context) : KeyboardFontAware {
         val palette = skin?.palette ?: return
         // Empty alternatives never gain a visible selection; the keyboard owns commit semantics.
         cells.forEach { (position, cell) ->
-            cell.skinSelected = position == direction
+            val label = cell.getChildAt(0) as TextView
+            val isEmptyCenterConnector = position == PopupDirection.CENTER && label.text.isEmpty() &&
+                cell.visibility == View.VISIBLE
+            cell.skinSelected = position == direction && !isEmptyCenterConnector
             (cell.getChildAt(0) as TextView).setTextColor(
                 if (cell.skinSelected) palette.selectionText else palette.text)
         }
