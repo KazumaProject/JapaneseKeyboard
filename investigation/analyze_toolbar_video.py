@@ -40,10 +40,6 @@ def main():
     reference_dark, reference_bright = metrics(initial, roi)
     if reference_dark < .45 or reference_bright < .001:
         raise RuntimeError(f"Unusable visual fixture: dark={reference_dark} ink={reference_bright}")
-    def missing(dark, bright):
-        return dark < reference_dark * .5 or bright < reference_bright * .15
-    # Validate both kinds of complete loss before relying on a zero-detection result.
-    assert missing(0, 1) and missing(1, 0) and not missing(reference_dark, reference_bright)
     rows = []
     with av.open(str(recording)) as container:
         for frame in container.decode(video=0):
@@ -51,21 +47,42 @@ def main():
                 continue
             # Decode all frames, then downscale by 4 to keep ROI analysis inexpensive.
             image = frame.reformat(width=frame.width//4, height=frame.height//4, format="rgb24")
-            scaled = [int(roi[0]*image.width/initial.shape[1]), int(roi[1]*image.height/initial.shape[0]),
-                      int(roi[2]*image.width/initial.shape[1]), int(roi[3]*image.height/initial.shape[0])]
-            dark, bright = metrics(image.to_ndarray(), scaled)
-            rows.append((frame.time, dark, bright, missing(dark, bright)))
+            rgb = image.to_ndarray()
+            if result["landscape"] and metadata["recordBackend"].startswith("emulator-host"):
+                # The host records the physical display buffer, before guest rotation.
+                rgb = np.rot90(rgb, 1)
+            scale = min(rgb.shape[1]/initial.shape[1], rgb.shape[0]/initial.shape[0])
+            offset_x = (rgb.shape[1] - initial.shape[1]*scale)/2
+            offset_y = (rgb.shape[0] - initial.shape[0]*scale)/2
+            # Device screenrecord fits a rotated display in its initial portrait canvas.
+            scaled = [int(roi[0]*scale+offset_x), int(roi[1]*scale+offset_y),
+                      int(roi[2]*scale+offset_x), int(roi[3]*scale+offset_y)]
+            dark, bright = metrics(rgb, scaled)
+            rows.append((frame.time, dark, bright))
     if not rows or rows[-1][0] < end - .5:
         raise RuntimeError("Recording does not cover the complete test interval")
+    first_input = (result["events"][1]["uptimeMs"] - metadata["recordStartedUptimeMs"]) / 1000
+    calibration = [row for row in rows if row[0] < first_input]
+    if len(calibration) < 3 or any(row[1] < .45 or row[2] == 0 for row in calibration):
+        raise RuntimeError("Video does not contain a usable visible-keyboard calibration interval")
+    # Recompression and portrait letterboxing reduce tiny text's brightness. Calibrate the
+    # decoded recording against its own ready interval, whose geometry/screenshot are known.
+    video_dark = float(np.median([row[1] for row in calibration]))
+    video_bright = float(np.median([row[2] for row in calibration]))
+    def missing(dark, bright):
+        return dark < video_dark * .5 or bright < video_bright * .15
+    assert missing(0, 1) and missing(1, 0) and not missing(video_dark, video_bright)
+    rows = [(time, dark, bright, missing(dark, bright)) for time,dark,bright in rows]
     with (directory / "video-frames.csv").open("w") as stream:
         writer = csv.writer(stream)
         writer.writerow(("timeSeconds", "darkFraction", "inkFraction", "missingKeyboard"))
         writer.writerows(rows)
     gaps = [b[0]-a[0] for a,b in zip(rows,rows[1:])]
-    summary = {"frames":len(rows), "startSeconds":start, "endSeconds":end,
+    summary = {"analysisVersion":3, "frames":len(rows), "startSeconds":start, "endSeconds":end,
                "maximumFrameGapMs":round(max(gaps, default=0)*1000,2),
                "missingKeyboardFrames":sum(row[3] for row in rows),
                "referenceDarkFraction":reference_dark, "referenceInkFraction":reference_bright,
+               "videoReferenceDarkFraction":video_dark, "videoReferenceInkFraction":video_bright,
                "roi":roi, "detectorControlsPassed":True,
                "limitation":"Video and in-process geometry do not establish UMIDIGI driver behavior."}
     (directory / "video-analysis.json").write_text(json.dumps(summary,indent=2))
