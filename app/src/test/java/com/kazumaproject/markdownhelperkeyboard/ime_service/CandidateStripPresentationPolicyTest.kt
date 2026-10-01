@@ -458,6 +458,22 @@ class CandidateStripPresentationPolicyTest {
         )
     }
 
+    @Test
+    fun dockedSurfaceReservesTheLargerActiveCandidateHeightOutsideNavigation() {
+        assertEquals(1007, resolveDockedImeSurfaceHeightPx(577, 157, 210, 94, 126))
+    }
+
+    @Test
+    fun dockedSurfaceAlsoPreservesAnExplicitlyLargerEmptyCandidateHeight() {
+        assertEquals(1007, resolveDockedImeSurfaceHeightPx(577, 210, 157, 94, 126))
+    }
+
+    @Test
+    fun dockedSurfaceSupportsCandidateTabsWithoutAnIndependentToolbar() {
+        assertEquals(955, resolveDockedImeSurfaceHeightPx(577, 157, 157, 95, 126))
+        assertEquals(860, resolveDockedImeSurfaceHeightPx(577, 157, 157, 0, 126))
+    }
+
     private fun baseState(
         candidateTabVisible: Boolean = true,
         candidatesShown: Boolean = false,
