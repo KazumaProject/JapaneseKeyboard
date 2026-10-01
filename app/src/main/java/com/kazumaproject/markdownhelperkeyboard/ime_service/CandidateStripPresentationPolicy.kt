@@ -25,6 +25,38 @@ data class CandidateStripPresentation(
     val showIntegratedShortcutEntry: Boolean
 )
 
+internal fun resolveDockedCandidateChromeHeightPx(
+    presentation: CandidateStripPresentation,
+    candidateTabVisibility: Boolean,
+    candidateTabHeightPx: Int,
+    shortcutToolbarHeightPx: Int
+): Int {
+    val candidateTabHeight = candidateTabHeightPx.coerceAtLeast(0)
+    val visibleCandidateTabHeight =
+        resolveCandidateTabOffsetPx(presentation, candidateTabHeight)
+    val shortcutToolbarHeight = if (
+        presentation.showIndependentShortcutToolbar ||
+        presentation.reserveIndependentShortcutToolbarSpace
+    ) {
+        shortcutToolbarHeightPx.coerceAtLeast(0)
+    } else {
+        0
+    }
+    val reservedCandidateTabHeight = if (
+        candidateTabVisibility && shortcutToolbarHeight > 0
+    ) {
+        candidateTabHeight
+    } else {
+        0
+    }
+
+    return maxOf(
+        visibleCandidateTabHeight,
+        reservedCandidateTabHeight,
+        shortcutToolbarHeight
+    )
+}
+
 internal fun resolveCandidateTabOffsetPx(
     presentation: CandidateStripPresentation,
     candidateTabHeightPx: Int
