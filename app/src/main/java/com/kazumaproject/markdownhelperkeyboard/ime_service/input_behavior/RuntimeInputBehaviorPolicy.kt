@@ -25,10 +25,13 @@ internal object RuntimeInputBehaviorPolicy {
         current: ResolvedInputBehavior,
         startingNewInput: Boolean,
         canToggleSafely: Boolean,
+        replaceComposingOnNextInput: Boolean = false,
     ): DirectCommitTransition {
         if (current != ResolvedInputBehavior.DIRECT_COMMIT) return DirectCommitTransition.NONE
         if (startingNewInput) return DirectCommitTransition.CLEAR
         if (previous == ResolvedInputBehavior.DIRECT_COMMIT) return DirectCommitTransition.NONE
+        // Preserve both composing states until the first direct commit replaces the span.
+        if (replaceComposingOnNextInput && !canToggleSafely) return DirectCommitTransition.NONE
         return if (canToggleSafely) {
             DirectCommitTransition.CLEAR
         } else {

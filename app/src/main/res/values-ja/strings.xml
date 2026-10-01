@@ -1862,4 +1862,7 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
 ！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
 空白　変換　確定　検索　return</string>
     <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
+    <string name="custom_direct_input_replace_composing_title">直接入力で未確定文字を置き換える</string>
+    <string name="custom_direct_input_replace_composing_summary_off">直接入力に切り替えると、未確定文字を確定します。</string>
+    <string name="custom_direct_input_replace_composing_summary_on">直接入力に切り替えた後、最初の入力で未確定文字を置き換えます。</string>
 </resources>
