@@ -495,6 +495,12 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 resetLayout()
             }
         }
+        binding.keySwitchKeyMode.setInputMode(currentInputMode.get(), isGojuon = true)
+        val modeLabelColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.specialText
+        binding.keySwitchKeyMode.setSkinModeLabelColors(
+            selectedColor = modeLabelColor,
+            idleColor = modeLabelColor?.let { ColorUtils.setAlphaComponent(it, 150) },
+        )
     }
 
     /**
