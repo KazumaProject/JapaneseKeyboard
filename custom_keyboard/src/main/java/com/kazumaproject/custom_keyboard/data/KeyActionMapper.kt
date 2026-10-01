@@ -78,6 +78,11 @@ object KeyActionMapper {
             ),
             DisplayAction(KeyAction.ForceNewLine, context.getString(R.string.action_new_line)),
             DisplayAction(
+                KeyAction.Cut,
+                context.getString(R.string.action_cut),
+                com.kazumaproject.core.R.drawable.content_cut_24dp
+            ),
+            DisplayAction(
                 KeyAction.Paste,
                 context.getString(R.string.action_paste),
                 com.kazumaproject.core.R.drawable.content_paste_24px
@@ -208,6 +213,7 @@ object KeyActionMapper {
             KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
             KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.Cut -> com.kazumaproject.core.R.drawable.content_cut_24dp
             KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
             KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
             KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
@@ -255,6 +261,7 @@ object KeyActionMapper {
             is KeyAction.SelectLeft -> "SelectLeft"
             is KeyAction.SelectRight -> "SelectRight"
             is KeyAction.SelectAll -> "SelectAll"
+            is KeyAction.Cut -> "Cut"
             is KeyAction.Paste -> "Paste"
             is KeyAction.Copy -> "Copy"
             is KeyAction.ChangeInputMode -> "ChangeInputMode"
@@ -318,6 +325,7 @@ object KeyActionMapper {
             "SelectLeft" -> KeyAction.SelectLeft
             "SelectRight" -> KeyAction.SelectRight
             "SelectAll" -> KeyAction.SelectAll
+            "Cut" -> KeyAction.Cut
             "Paste" -> KeyAction.Paste
             "Copy" -> KeyAction.Copy
             "ChangeInputMode" -> KeyAction.ChangeInputMode
