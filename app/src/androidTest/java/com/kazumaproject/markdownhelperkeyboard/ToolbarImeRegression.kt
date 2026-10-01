@@ -20,6 +20,8 @@ import android.view.ViewTreeObserver
 import android.view.inputmethod.BaseInputConnection
 import android.view.inspector.WindowInspector
 import androidx.preference.PreferenceManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
@@ -134,6 +136,8 @@ internal class ToolbarImeRegression(private val instrumentation: Instrumentation
         phases.put(JSONObject().put("phase", phase).put("uptimeMs", SystemClock.uptimeMillis())
             .put("text", text.toString()).put("composingStart", BaseInputConnection.getComposingSpanStart(text))
             .put("mainHeight", requireNotNull(main).height)
+            .put("editorImeInset", ViewCompat.getRootWindowInsets(activity.window.decorView)
+                ?.getInsets(WindowInsetsCompat.Type.ime())?.bottom)
             .put("candidateHeight", main?.findViewById<View>(R.id.suggestionView_parent)?.height)
             .put("keyboardBounds", jsonRect(rect(requireNotNull(keyboard)))))
     }
@@ -318,12 +322,27 @@ internal class ToolbarImeRegression(private val instrumentation: Instrumentation
             check(frames.length() >= cycles * 3) { "Insufficient continuous samples" }
             val heights = (0 until frames.length()).map { frames.getJSONObject(it).getInt("mainHeight") }.toSet()
             result.put("observedMainHeights", JSONArray(heights.sorted()))
+            val surfaceHeights = (0 until frames.length()).map { frames.getJSONObject(it).getInt("windowHeight") }.toSet()
+            result.put("observedSurfaceHeights", JSONArray(surfaceHeights.sorted()))
             val missing = (0 until frames.length()).count {
                 val frame = frames.getJSONObject(it)
                 !frame.getBoolean("shown") || frame.getDouble("alpha") == 0.0 || frame.getDouble("windowAlpha") == 0.0
             }
             result.put("missingKeyboardSamples", missing)
             check(missing == 0) { "Keyboard disappeared in $missing samples" }
+            if (!floating && !expectHeightChange) {
+                check(surfaceHeights.size == 1) { "Backing IME surface resized during input: $surfaceHeights" }
+                val keyBounds = (0 until frames.length()).map {
+                    frames.getJSONObject(it).getJSONArray("keyBounds").toString()
+                }.toSet()
+                check(keyBounds.size == 1) { "Key body moved during candidate changes: $keyBounds" }
+                if (Build.VERSION.SDK_INT >= 30) {
+                    check((0 until phases.length()).all { index ->
+                        val snapshot = phases.getJSONObject(index)
+                        kotlin.math.abs(snapshot.getInt("editorImeInset") - snapshot.getInt("mainHeight")) <= 1
+                    }) { "Editor IME Insets did not follow the actual input-view height" }
+                }
+            }
             if (expectHeightChange) {
                 check(heights.size > 1) { "Baseline control did not detect the expected height change" }
             } else if (!floating && candidateHeight == 60 && (mode == "on" || !tab)) {
@@ -331,7 +350,11 @@ internal class ToolbarImeRegression(private val instrumentation: Instrumentation
             } else if (!floating) {
                 val density = context.resources.displayMetrics.density
                 val candidateDelta = (candidateHeight * density).toInt() - (60 * density).toInt()
-                val tabDelta = if (tab && mode != "on") (36 * density).toInt() else 0
+                // XML dimensions use resource rounding; 36dp at 2.625 density is 95px,
+                // whereas the candidate preferences deliberately truncate their dp values.
+                val tabDelta = if (tab && mode != "on") onMain {
+                    requireNotNull(main).findViewById<View>(R.id.candidate_tab_layout).layoutParams.height
+                } else 0
                 val activeHeight = initialHeight + candidateDelta + tabDelta
                 check(heights.all { it == initialHeight || it == activeHeight }) {
                     "Unexpected height during configured resize: $heights; expected=$initialHeight/$activeHeight"
