@@ -1091,6 +1091,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
         }
         applyPopupKeyboardFont()
+        val modeLabelColor = KeyboardSkinRegistry.find(keyboardSkinId)?.palette?.specialText
+        binding.keySwitchKeyMode.setSkinModeLabelColors(
+            selectedColor = modeLabelColor,
+            idleColor = modeLabelColor?.let { ColorUtils.setAlphaComponent(it, 150) },
+        )
     }
 
     /**
