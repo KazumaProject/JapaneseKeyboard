@@ -340,6 +340,124 @@ class CandidateStripPresentationPolicyTest {
         assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
+    @Test
+    fun independentToolbarKeepsItsHeightWhileCandidatesHideIt() {
+        val emptyPresentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                candidateTabVisible = false,
+                shortcutToolbarIntegratedInSuggestion = false
+            )
+        )
+        val candidatesPresentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                candidateTabVisible = false,
+                shortcutToolbarIntegratedInSuggestion = false,
+                candidatesShown = true,
+                inputStringEmpty = false,
+                shortcutToolbarHiddenForCandidates = true
+            )
+        )
+
+        assertEquals(
+            72,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = emptyPresentation,
+                candidateTabVisibility = false,
+                candidateTabHeightPx = 36,
+                shortcutToolbarHeightPx = 72
+            )
+        )
+        assertEquals(
+            72,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = candidatesPresentation,
+                candidateTabVisibility = false,
+                candidateTabHeightPx = 36,
+                shortcutToolbarHeightPx = 72
+            )
+        )
+    }
+
+    @Test
+    fun independentToolbarReservesLargerConfiguredCandidateTabHeight() {
+        val emptyPresentation = CandidateStripPresentationPolicy.resolve(
+            baseState(shortcutToolbarIntegratedInSuggestion = false)
+        )
+        val candidatesPresentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                shortcutToolbarIntegratedInSuggestion = false,
+                candidatesShown = true,
+                inputStringEmpty = false,
+                shortcutToolbarHiddenForCandidates = true
+            )
+        )
+
+        assertEquals(
+            48,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = emptyPresentation,
+                candidateTabVisibility = true,
+                candidateTabHeightPx = 48,
+                shortcutToolbarHeightPx = 32
+            )
+        )
+        assertEquals(
+            48,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = candidatesPresentation,
+                candidateTabVisibility = true,
+                candidateTabHeightPx = 48,
+                shortcutToolbarHeightPx = 32
+            )
+        )
+
+        assertEquals(
+            72,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = emptyPresentation,
+                candidateTabVisibility = true,
+                candidateTabHeightPx = 32,
+                shortcutToolbarHeightPx = 72
+            )
+        )
+        assertEquals(
+            72,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = candidatesPresentation,
+                candidateTabVisibility = true,
+                candidateTabHeightPx = 32,
+                shortcutToolbarHeightPx = 72
+            )
+        )
+    }
+
+    @Test
+    fun disabledOrIntegratedToolbarDoesNotReserveIndependentToolbarHeight() {
+        val toolbarDisabled = CandidateStripPresentationPolicy.resolve(
+            baseState(shortcutToolbarVisible = false)
+        )
+        val toolbarIntegrated = CandidateStripPresentationPolicy.resolve(baseState())
+
+        assertEquals(
+            0,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = toolbarDisabled,
+                candidateTabVisibility = false,
+                candidateTabHeightPx = 36,
+                shortcutToolbarHeightPx = 72
+            )
+        )
+        assertEquals(
+            0,
+            resolveDockedCandidateChromeHeightPx(
+                presentation = toolbarIntegrated,
+                candidateTabVisibility = false,
+                candidateTabHeightPx = 36,
+                shortcutToolbarHeightPx = 72
+            )
+        )
+    }
+
     private fun baseState(
         candidateTabVisible: Boolean = true,
         candidatesShown: Boolean = false,

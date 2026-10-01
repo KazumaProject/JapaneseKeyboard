@@ -19183,19 +19183,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
-        val candidateTabOffset = if (floatingCandidateSurfaceActive) 0 else resolveCandidateTabOffsetPx(
+        val candidateTabHeightPx = if (floatingCandidateSurfaceActive) {
+            0
+        } else {
+            candidateTabHeightPx(mainView)
+        }
+        val candidateTabOffset = resolveCandidateTabOffsetPx(
             presentation = presentation,
-            candidateTabHeightPx = candidateTabHeightPx(mainView)
+            candidateTabHeightPx = candidateTabHeightPx
         )
-        val contentKeyboardHeight = when {
-            floatingCandidateSurfaceActive -> heightPx
-            candidateTabOffset > 0 ->
-                baseKeyboardHeight + candidateTabOffset
-
-            !addCandidateTabHeight && presentation.showIndependentShortcutToolbar ->
-                baseKeyboardHeight + shortcutToolbarHeightPx()
-
-            else -> baseKeyboardHeight
+        val dockedCandidateChromeHeight = if (floatingCandidateSurfaceActive) {
+            0
+        } else {
+            resolveDockedCandidateChromeHeightPx(
+                presentation = presentation,
+                candidateTabVisibility = candidateTabVisibility == true,
+                candidateTabHeightPx = candidateTabHeightPx,
+                shortcutToolbarHeightPx = shortcutToolbarHeightPx()
+            )
+        }
+        val contentKeyboardHeight = if (floatingCandidateSurfaceActive) {
+            heightPx
+        } else {
+            baseKeyboardHeight + dockedCandidateChromeHeight
         }
         // Keep the candidate/body budget independent from the navigation-bar safe area.
         // The root window includes the safe area, while its bottom padding keeps content
