@@ -14324,6 +14324,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     }
 
+                    KeyAction.Cut -> {}
+
                     KeyAction.Delete -> {
                         handleDeleteLongPress()
                     }
@@ -14494,6 +14496,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Copy -> {}
+                    KeyAction.Cut -> {}
                     KeyAction.Delete -> {
                         stopDeleteLongPress()
                     }
@@ -14614,6 +14617,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         copyAction()
                     }
 
+                    KeyAction.Cut -> {
+                        cutAction()
+                    }
+
                     KeyAction.Delete -> {
                         handleDeleteLongPress()
                     }
@@ -14727,6 +14734,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Copy -> {}
+                    KeyAction.Cut -> {}
                     KeyAction.Delete -> {
                         stopDeleteLongPress()
                     }
@@ -15349,6 +15357,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Backspace -> {}
+                    KeyAction.Cut -> {
+                        cutAction()
+                    }
                     KeyAction.Copy -> {
                         copyAction()
                     }
