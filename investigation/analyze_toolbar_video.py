@@ -33,7 +33,7 @@ def main():
 
     def metrics(rgb, scaled_roi):
         x0,y0,x1,y1 = scaled_roi
-        pixels = rgb[y0:y1:2, x0:x1:2].astype(np.float32)
+        pixels = rgb[y0:y1, x0:x1].astype(np.float32)
         luma = pixels[...,0]*.299 + pixels[...,1]*.587 + pixels[...,2]*.114
         return float((luma < 80).mean()), float((luma > 180).mean())
 
@@ -45,8 +45,8 @@ def main():
         for frame in container.decode(video=0):
             if frame.time < start or frame.time > end:
                 continue
-            # Decode all frames, then downscale by 4 to keep ROI analysis inexpensive.
-            image = frame.reformat(width=frame.width//4, height=frame.height//4, format="rgb24")
+            # Decode all frames, then downscale by 2 to keep ROI analysis inexpensive.
+            image = frame.reformat(width=frame.width//2, height=frame.height//2, format="rgb24")
             rgb = image.to_ndarray()
             if result["landscape"] and metadata["recordBackend"].startswith("emulator-host"):
                 # The host records the physical display buffer, before guest rotation.
@@ -78,7 +78,7 @@ def main():
         writer.writerow(("timeSeconds", "darkFraction", "inkFraction", "missingKeyboard"))
         writer.writerows(rows)
     gaps = [b[0]-a[0] for a,b in zip(rows,rows[1:])]
-    summary = {"analysisVersion":3, "frames":len(rows), "startSeconds":start, "endSeconds":end,
+    summary = {"analysisVersion":4, "frames":len(rows), "startSeconds":start, "endSeconds":end,
                "maximumFrameGapMs":round(max(gaps, default=0)*1000,2),
                "missingKeyboardFrames":sum(row[3] for row in rows),
                "referenceDarkFraction":reference_dark, "referenceInkFraction":reference_bright,
