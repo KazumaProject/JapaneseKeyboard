@@ -25,16 +25,6 @@ data class CandidateStripPresentation(
     val showIntegratedShortcutEntry: Boolean
 )
 
-/** Keep the backing surface stable while the input view still uses its configured height. */
-internal fun resolveDockedImeSurfaceHeightPx(
-    keyboardBodyHeightPx: Int,
-    emptyCandidateHeightPx: Int,
-    activeCandidateHeightPx: Int,
-    candidateChromeHeightPx: Int,
-    bottomInsetPx: Int
-): Int = keyboardBodyHeightPx + maxOf(emptyCandidateHeightPx, activeCandidateHeightPx) +
-    candidateChromeHeightPx + bottomInsetPx
-
 internal fun resolveDockedCandidateChromeHeightPx(
     presentation: CandidateStripPresentation,
     candidateTabVisibility: Boolean,
