@@ -140,6 +140,55 @@ class RuntimeInputBehaviorPolicyTest {
         assertFalse(RuntimeInputBehaviorPolicy.canToggle(safeState(candidateHighlightActive = true)))
     }
 
+    @Test
+    fun enteringDirectCommitFinishesActiveCompositionBeforeClearingIt() {
+        assertEquals(
+            DirectCommitTransition.FINISH_AND_CLEAR,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = ResolvedInputBehavior.COMPOSING_TEXT,
+                current = ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = false,
+                canToggleSafely = false,
+            )
+        )
+        assertEquals(
+            DirectCommitTransition.CLEAR,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = ResolvedInputBehavior.COMPOSING_TEXT,
+                current = ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = false,
+                canToggleSafely = true,
+            )
+        )
+        assertEquals(
+            DirectCommitTransition.NONE,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = ResolvedInputBehavior.DIRECT_COMMIT,
+                current = ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = false,
+                canToggleSafely = false,
+            )
+        )
+        assertEquals(
+            DirectCommitTransition.CLEAR,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = ResolvedInputBehavior.DIRECT_COMMIT,
+                current = ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = true,
+                canToggleSafely = false,
+            )
+        )
+        assertEquals(
+            DirectCommitTransition.NONE,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = ResolvedInputBehavior.COMPOSING_TEXT,
+                current = ResolvedInputBehavior.COMPOSING_TEXT,
+                startingNewInput = false,
+                canToggleSafely = false,
+            )
+        )
+    }
+
     private fun safeState(
         inputStringEmpty: Boolean = true,
         tailEmpty: Boolean = true,
