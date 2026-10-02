@@ -171,6 +171,18 @@ class ImeSelectionPopupBehaviorTest {
         assertNull(popup)
     }
 
+    @Test fun backClosesOnReleaseWithoutRemovingTheOverlayDuringKeyDown() {
+        call("showCurrentDateListPopup")
+        val shown = requireNotNull(popup)
+        assertTrue(service.onKeyDown(KeyEvent.KEYCODE_BACK, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK)))
+        assertSame(shown, popup)
+        assertTrue(shown.isShowing)
+        assertTrue(service.onKeyUp(KeyEvent.KEYCODE_BACK, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK)))
+        assertNull(popup)
+        assertFalse(ReflectionHelpers.getField<Boolean>(service, "consumeKeyboardSelectionPopupBackKeyUp"))
+        assertEquals("background", appEditor.text.toString())
+    }
+
     @Test fun outsideTapAndEscapeOnlyCloseTheMenu() {
         call("showCurrentDateListPopup")
         requireNotNull(popup).contentView.performClick()

@@ -73,16 +73,42 @@ class ImePopupInstrumentedTest {
         await { findNodeId("popup_listview") == null }
         awaitNode("定型文")
         awaitText(host, "")
+        repeat(3) {
+            openShortcut("定型文")
+            shell("input keyevent 4")
+            await { findNodeId("popup_listview") == null }
+            awaitNode("定型文")
+            awaitText(host, "")
+        }
+        shell("input keyevent 4")
+        await { findNode("定型文") == null }
+        Unit
     }
 
-    @Test fun integratedAndFloatingToolbarsUseTheSameSelectionWindow() {
-        for (integrated in listOf(false, true)) for (floating in listOf(false, true)) {
-            withHost(integrated = integrated, floating = floating) { host ->
+    @Test fun independentAndIntegratedToolbarsUseTheSameSelectionWindow() {
+        for (integrated in listOf(false, true)) {
+            withHost(integrated = integrated) { host ->
                 openShortcut("定型文")
                 tap(awaitNode(TEMPLATE))
                 awaitText(host, TEMPLATE)
             }
         }
+    }
+
+    @Test fun floatingKeyboardSwitchListPreservesFocusAndSelection() = withHost(floating = true) { host ->
+        awaitNodeId("keyboard_view_floating")
+        longPress(awaitNodeId("key_small_letter"))
+        val list = awaitNodeId("popup_listview")
+        host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+        tap(requireNotNull(list.getChild(0)))
+        await { findNodeId("popup_listview") == null }
+        awaitText(host, "")
+        awaitNodeId("keyboard_view_floating")
+        longPress(awaitNodeId("key_small_letter"))
+        awaitNodeId("popup_listview")
+        key(KeyEvent.KEYCODE_ESCAPE)
+        await { findNodeId("popup_listview") == null }
+        host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
     }
 
     @Test fun ngWordFormEditsLocallyAndSavesExplicitMatchMode() = withHost { host ->
@@ -96,11 +122,15 @@ class ImePopupInstrumentedTest {
         key(KeyEvent.KEYCODE_X)
         val word = awaitNodeId("edit_text_ng_word_tango_registration")
         tap(word)
+        flick("key_4", 0f, 100f) // Compose と through the IME's own keyboard into the local form.
         key(KeyEvent.KEYCODE_Y)
+        // Make each registration new even when a previous device run was interrupted.
+        SystemClock.uptimeMillis().toString().forEach { key(KeyEvent.KEYCODE_0 + (it - '0')) }
         val updatedReading = awaitNodeId("edit_text_ng_word_yomi_registration").text.toString()
         val updatedWord = awaitNodeId("edit_text_ng_word_tango_registration").text.toString()
         assertTrue(updatedReading.contains("x"))
         assertTrue(updatedWord.contains("y"))
+        assertTrue(updatedWord.contains("と"))
         host.onActivity { assertEquals(appBefore, it.editor.text.toString()); assertTrue(it.editor.hasWindowFocus()) }
         tap(awaitNodeId("ng_word_match_exact"))
         tap(awaitNodeId("button_ng_word_registration_save"))
@@ -196,6 +226,7 @@ class ImePopupInstrumentedTest {
         Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("payworks") == "true")
         prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false)
             .putBoolean("keyboard_floating_preference", false).commit()
+        restartImeForFixture()
         ins.targetContext.startActivity(Intent(Intent.ACTION_VIEW,
             android.net.Uri.parse("https://login.payworks.ca/login?ssoLoggedOut=true"))
             .setPackage("com.android.chrome").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -232,6 +263,14 @@ class ImePopupInstrumentedTest {
         }
     }
 
+    private fun restartImeForFixture() {
+        if (originalIme.isNotEmpty() && originalIme != "null" && originalIme != targetIme) {
+            shell("ime set $originalIme")
+            SystemClock.sleep(200)
+            shell("ime set $targetIme")
+        }
+    }
+
     private fun withHost(
         variation: Int = InputType.TYPE_TEXT_VARIATION_NORMAL,
         integrated: Boolean = false,
@@ -243,11 +282,7 @@ class ImePopupInstrumentedTest {
             .putBoolean("keyboard_floating_preference", floating).commit()
         // Each configuration gets a fresh IME instance so a previous test's physical/floating
         // keyboard state cannot hide the software keyboard in the next editor.
-        if (originalIme.isNotEmpty() && originalIme != "null" && originalIme != targetIme) {
-            shell("ime set $originalIme")
-            SystemClock.sleep(200)
-            shell("ime set $targetIme")
-        }
+        restartImeForFixture()
         ins.targetContext.startActivity(Intent(ins.targetContext, ImePopupHostActivity::class.java)
             .putExtra("variation", variation).putExtra("web", web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         val activity = await { ImePopupHostActivity.current }
@@ -375,6 +410,7 @@ class ImePopupInstrumentedTest {
         private var wasEnabled = false
         private var targetIme = ""
         private lateinit var oldShortcuts: List<ShortcutItem>
+        private lateinit var originalNgWordIds: Set<Int>
         private var macroId = 0L
         private var templateId = 0
         private var previous: Map<String, Any?> = emptyMap()
@@ -411,6 +447,7 @@ class ImePopupInstrumentedTest {
             database = EntryPointAccessors.fromApplication(instrumentation.targetContext.applicationContext,
                 BunsetsuTestDatabaseEntryPoint::class.java).database()
             runBlocking {
+                originalNgWordIds = database.ngWordDao().getAll().map { it.id }.toSet()
                 oldShortcuts = database.shortcutDao().getAllShortcuts()
                 database.shortcutDao().replaceAll(listOf("template", "select_date", "text_macro", "keyboard_picker")
                     .mapIndexed { index, type -> ShortcutItem(typeId = type, sortOrder = index) })
@@ -433,7 +470,13 @@ class ImePopupInstrumentedTest {
                 database.userTemplateDao().delete(templateId)
                 database.textMacroDao().deleteById(macroId)
                 if (::oldShortcuts.isInitialized) database.shortcutDao().replaceAll(oldShortcuts)
-                database.ngWordDao().getAll().filter { it.tango.startsWith(TEMPLATE) }.forEach { database.ngWordDao().delete(it) }
+                if (::originalNgWordIds.isInitialized) {
+                    // Editing can insert text anywhere in the fixture word, so a prefix check
+                    // cannot identify saved drafts. Preserve pre-existing IDs and remove new ones.
+                    database.ngWordDao().getAll().filter { it.id !in originalNgWordIds }
+                        .forEach { database.ngWordDao().delete(it) }
+                    assertEquals(originalNgWordIds, database.ngWordDao().getAll().map { it.id }.toSet())
+                }
             }
             prefs.edit().apply { previous.forEach { (key, value) -> when (value) {
                 null -> remove(key); is Boolean -> putBoolean(key, value); is String -> putString(key, value)
