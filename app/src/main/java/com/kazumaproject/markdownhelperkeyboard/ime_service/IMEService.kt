@@ -311,6 +311,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitTransition
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.KeyInputBehaviorDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.QwertyEnglishDirectInputPolicy
@@ -21200,22 +21201,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     "current=$currentInputBehavior"
         )
 
-        if (
-            currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT &&
-            shouldClearDirectCommitCompositionState(previousInputBehavior, reason)
+        when (
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = previousInputBehavior,
+                current = currentInputBehavior,
+                startingNewInput = reason == "start input",
+                canToggleSafely = canToggleRuntimeInputBehaviorSafely(),
+            )
         ) {
-            clearDirectCommitCompositionState("direct commit $reason")
+            DirectCommitTransition.NONE -> Unit
+            DirectCommitTransition.CLEAR -> clearDirectCommitCompositionState("direct commit $reason")
+            DirectCommitTransition.FINISH_AND_CLEAR -> {
+                // commitText would replace the editor's active composing span.
+                finishComposingText()
+                clearDirectCommitCompositionState("direct commit $reason")
+            }
         }
         updateShortcutActiveStates()
-    }
-
-    private fun shouldClearDirectCommitCompositionState(
-        previousInputBehavior: ResolvedInputBehavior,
-        reason: String,
-    ): Boolean {
-        if (reason == "start input") return true
-        if (previousInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT) return false
-        return canToggleRuntimeInputBehaviorSafely()
     }
 
     private fun resetRuntimeInputBehaviorForCurrentInput() {
