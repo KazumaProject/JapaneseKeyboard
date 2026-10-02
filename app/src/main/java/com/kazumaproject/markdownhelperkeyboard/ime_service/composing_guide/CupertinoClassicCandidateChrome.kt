@@ -34,6 +34,7 @@ internal object CupertinoClassicCandidateChrome {
         val mode: Int,
         val gravity: Int,
         val rippleColor: android.content.res.ColorStateList?,
+        val indicator: android.graphics.drawable.Drawable?,
         val tabs: List<TabViewState>,
     )
 
@@ -83,17 +84,20 @@ internal object CupertinoClassicCandidateChrome {
     fun applyTabs(tabLayout: TabLayout) {
         val resources = tabLayout.resources
         val strip = tabLayout.getChildAt(0) as? ViewGroup
-        tabLayoutStates.getOrPut(tabLayout) {
+        val original = tabLayoutStates.getOrPut(tabLayout) {
             TabLayoutState(
                 mode = tabLayout.tabMode,
                 gravity = tabLayout.tabGravity,
                 rippleColor = tabLayout.tabRippleColor,
-                tabs = strip?.let { group -> (0 until group.childCount).map { index ->
-                    val tab = group.getChildAt(index)
-                    TabViewState(tab, tab.background, android.graphics.Rect(
-                        tab.paddingLeft, tab.paddingTop, tab.paddingRight, tab.paddingBottom))
-                } } ?: emptyList(),
+                indicator = tabLayout.tabSelectedIndicator,
+                tabs = captureTabViews(strip),
             )
+        }
+        if (original.tabs.isEmpty() && strip != null && strip.childCount > 0) {
+            // A cold input view can be styled before its tabs are created. Capture their
+            // original ripple and padding once they exist, before applying Classic.
+            tabLayout.tabRippleColor = original.rippleColor
+            tabLayoutStates[tabLayout] = original.copy(tabs = captureTabViews(strip))
         }
         tabLayout.setTabTextColors(textColor, android.graphics.Color.WHITE)
         tabLayout.setSelectedTabIndicator(ColorDrawable(android.graphics.Color.TRANSPARENT))
@@ -110,11 +114,19 @@ internal object CupertinoClassicCandidateChrome {
         }
     }
 
+    private fun captureTabViews(strip: ViewGroup?): List<TabViewState> =
+        strip?.let { group -> (0 until group.childCount).map { index ->
+            val tab = group.getChildAt(index)
+            TabViewState(tab, tab.background, android.graphics.Rect(
+                tab.paddingLeft, tab.paddingTop, tab.paddingRight, tab.paddingBottom))
+        } } ?: emptyList()
+
     fun restoreTabs(tabLayout: TabLayout) {
         val state = tabLayoutStates.remove(tabLayout) ?: return
         tabLayout.tabMode = state.mode
         tabLayout.tabGravity = state.gravity
         tabLayout.tabRippleColor = state.rippleColor
+        tabLayout.setSelectedTabIndicator(state.indicator)
         val strip = tabLayout.getChildAt(0) as? ViewGroup ?: return
         for (index in 0 until strip.childCount) {
             val view = strip.getChildAt(index)
