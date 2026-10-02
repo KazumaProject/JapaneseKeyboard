@@ -105,6 +105,7 @@ object AppPreference {
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
+    const val STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY = "stabilize_candidate_strip_height_preference"
     const val CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY =
         "custom_direct_input_replace_composing_preference"
     const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
@@ -3095,6 +3096,12 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.first, value)
+        }
+
+    var stabilize_candidate_strip_height_preference: Boolean
+        get() = preferences.getBoolean(STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY, value)
         }
 
     var shortcut_toolbar_height_dp_preference: Int
