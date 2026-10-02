@@ -1987,6 +1987,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardFloatingMode = _keyboardFloatingMode.asStateFlow()
 
     private var keyboardContainer: FrameLayout? = null
+    private var dockedToolbarContainerActive = false
 
     private var isSpaceKeyLongPressed = false
     private var suppressSpaceConvertTapUntilUptimeMillis = 0L
@@ -5477,8 +5478,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             transparentWithLiquidGlass = true,
         )
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
-            mainView.root.background = skin.keyboardDrawable(resources)
+            val keyboardBackground = skin.keyboardDrawable(resources)
             if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                applyClassicKeyboardCornerRounding(
+                    drawable = keyboardBackground,
+                    rounded = isKeyboardRounded == true,
+                    radiusDp = keyboardCornerRadiusDp,
+                    density = resources.displayMetrics.density,
+                    topLeft = keyboardCornerTopLeft,
+                    topRight = keyboardCornerTopRight,
+                    bottomRight = keyboardCornerBottomRight,
+                    bottomLeft = keyboardCornerBottomLeft,
+                )
                 val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
                 mainView.suggestionViewParent.background = chrome.panelBackground()
                 mainView.candidateTabLayout.background = chrome.tabsBackground()
@@ -5488,6 +5499,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.candidateTabLayout.setBackgroundColor(skin.palette.background)
                 mainView.shortcutToolbarRecyclerview.background = null
             }
+            mainView.root.background = keyboardBackground
             return
         }
         mainView.shortcutToolbarRecyclerview.background = null
@@ -6455,6 +6467,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             outInsets?.contentTopInsets = inputHeight
             outInsets?.visibleTopInsets = inputHeight
             outInsets?.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        } else if (dockedToolbarContainerActive && !isFullscreenMode && outInsets != null) {
+            val container = keyboardContainer ?: return
+            val position = IntArray(2)
+            val touchableRegion = android.graphics.Region()
+            var top: Int? = null
+            // Include app-owned overlays too; only the unused transparent area passes through.
+            for (index in 0 until container.childCount) {
+                val child = container.getChildAt(index)
+                if (!child.isShown || child.width == 0 || child.height == 0) continue
+                child.getLocationInWindow(position)
+                top = minOf(top ?: position[1], position[1])
+                touchableRegion.op(
+                    position[0], position[1], position[0] + child.width, position[1] + child.height,
+                    android.graphics.Region.Op.UNION
+                )
+            }
+            top?.let {
+                outInsets.contentTopInsets = it
+                outInsets.visibleTopInsets = it
+                outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
+                outInsets.touchableRegion.set(touchableRegion)
+            }
         }
     }
 
@@ -9432,6 +9466,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
+        updateDockedToolbarContainerHeight(null)
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.width = ViewGroup.LayoutParams.MATCH_PARENT
             params.height = getScreenHeight(this@IMEService)
@@ -19194,24 +19229,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
-        val candidateTabOffset = if (floatingCandidateSurfaceActive) 0 else resolveCandidateTabOffsetPx(
+        val candidateTabHeightPx = if (floatingCandidateSurfaceActive) {
+            0
+        } else {
+            candidateTabHeightPx(mainView)
+        }
+        val candidateTabOffset = resolveCandidateTabOffsetPx(
             presentation = presentation,
-            candidateTabHeightPx = candidateTabHeightPx(mainView)
+            candidateTabHeightPx = candidateTabHeightPx
         )
-        val contentKeyboardHeight = when {
-            floatingCandidateSurfaceActive -> heightPx
-            candidateTabOffset > 0 ->
-                baseKeyboardHeight + candidateTabOffset
-
-            !addCandidateTabHeight && presentation.showIndependentShortcutToolbar ->
-                baseKeyboardHeight + shortcutToolbarHeightPx()
-
-            else -> baseKeyboardHeight
+        val dockedCandidateChromeHeight = if (floatingCandidateSurfaceActive) {
+            0
+        } else {
+            resolveDockedCandidateChromeHeightPx(
+                presentation = presentation,
+                candidateTabHeightPx = candidateTabHeightPx,
+                shortcutToolbarHeightPx = shortcutToolbarHeightPx()
+            )
+        }
+        val contentKeyboardHeight = if (floatingCandidateSurfaceActive) {
+            heightPx
+        } else {
+            baseKeyboardHeight + dockedCandidateChromeHeight
         }
         // Keep the candidate/body budget independent from the navigation-bar safe area.
-        // The root window includes the safe area, while its bottom padding keeps content
+        // The visible input view includes the safe area, while its bottom padding keeps content
         // above it. This prevents the inset from shrinking the configured candidate view.
-        val windowHeight = contentKeyboardHeight + systemBottomInset
+        val inputViewHeight = contentKeyboardHeight + systemBottomInset
+        fun candidateHeightPx(configuredHeightDp: Int): Int = applicationContext.dpToPx(
+            if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
+                    .resolveDockedStripHeightDp(configuredHeightDp)
+            } else {
+                configuredHeightDp
+            }
+        )
+        val reserveToolbarDrawingSpace = !isSymbol && !floatingCandidateSurfaceActive &&
+            isKeyboardFloatingMode != true &&
+            physicalKeyboardEnable.replayCache.firstOrNull() != true && !isFullscreenMode &&
+            (presentation.showIndependentShortcutToolbar || presentation.reserveIndependentShortcutToolbarSpace)
+        val transparentContainerHeight = if (reserveToolbarDrawingSpace) {
+            resolveDockedToolbarContainerHeightPx(
+                keyboardBodyHeightPx = heightPx,
+                emptyCandidateHeightPx = candidateHeightPx(prefs.candidateEmptyHeight),
+                activeCandidateHeightPx = candidateHeightPx(prefs.candidateHeight),
+                candidateTabHeightPx = if (candidateTabVisibility == true) candidateTabHeightPx else 0,
+                shortcutToolbarHeightPx = shortcutToolbarHeightPx(),
+                bottomInsetPx = systemBottomInset
+            )
+        } else {
+            null
+        }
         val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) {
             heightPx
         } else {
@@ -19246,6 +19314,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 prefs.bottomMargin
             }
 
+        updateDockedToolbarContainerHeight(transparentContainerHeight?.plus(finalBottomMargin))
+
         val positionIsEnd =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
                 prefs.qwertyPositionIsEnd
@@ -19265,7 +19335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     applicationContext.dpToPx(candidateStripHeightDp)
                 else -> ViewGroup.LayoutParams.WRAP_CONTENT
             },
-            finalKeyboardHeight = windowHeight,
+            finalKeyboardHeight = inputViewHeight,
             backgroundSurfaceHeight = backgroundSurfaceHeight,
             finalKeyboardWidth = finalKeyboardWidth,
             gravity = gravity,
@@ -19349,6 +19419,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         if (changed) {
+            container.layoutParams = params
+        }
+    }
+
+    private fun updateDockedToolbarContainerHeight(heightPx: Int?) {
+        val container = keyboardContainer ?: return
+        dockedToolbarContainerActive = heightPx != null
+        val height = heightPx ?: ViewGroup.LayoutParams.WRAP_CONTENT
+        val params = container.layoutParams ?: FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, height
+        )
+        if (params.height != height || container.layoutParams == null) {
+            params.height = height
             container.layoutParams = params
         }
     }
@@ -22712,9 +22795,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (presentation.showIndependentShortcutToolbar) {
             mainView.shortcutToolbarRecyclerview.isVisible = true
-        } else if (presentation.reserveIndependentShortcutToolbarSpace) {
-            if (floatingCandidateSurfaceActive) mainView.shortcutToolbarRecyclerview.isVisible = false
-            else mainView.shortcutToolbarRecyclerview.isInvisible = true
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }

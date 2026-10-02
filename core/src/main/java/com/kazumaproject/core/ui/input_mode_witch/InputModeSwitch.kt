@@ -26,6 +26,8 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
     private var useThreeStateKeyboard = true
     private var numberReturnTarget = TwoStateNumberReturnTarget.Japanese
     private var fontSnapshot = KeyboardFontSnapshot()
+    private var skinSelectedLabelColor: Int? = null
+    private var skinIdleLabelColor: Int? = null
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
     fun setInputMode(inputMode: InputMode, isGojuon: Boolean) {
@@ -45,6 +47,17 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
         renderModeIcon()
     }
 
+    /** Uses separately colored mode labels while a keyboard skin is active. */
+    fun setSkinModeLabelColors(selectedColor: Int?, idleColor: Int?) {
+        require((selectedColor == null) == (idleColor == null)) {
+            "Selected and idle label colors must both be set or both be cleared"
+        }
+        if (skinSelectedLabelColor == selectedColor && skinIdleLabelColor == idleColor) return
+        skinSelectedLabelColor = selectedColor
+        skinIdleLabelColor = idleColor
+        renderModeIcon()
+    }
+
     override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
         KeyboardFontApplicator.track(this)
         if (fontSnapshot == snapshot) return
@@ -54,7 +67,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
     }
 
     private fun renderModeIcon() {
-        if (fontSnapshot.typeface != null) {
+        if (fontSnapshot.typeface != null || skinSelectedLabelColor != null) {
             setImageDrawable(null)
             invalidate()
             return
@@ -69,7 +82,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
     }
 
     override fun onDraw(canvas: Canvas) {
-        if (fontSnapshot.typeface == null) {
+        if (fontSnapshot.typeface == null && skinSelectedLabelColor == null) {
             super.onDraw(canvas)
             return
         }
@@ -81,8 +94,10 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
         if (iconWidth <= 0 || iconHeight <= 0) return
         val fallbackColor = ContextCompat.getColor(context, R.color.keyboard_icon_color)
         val tint = imageTintList?.getColorForState(drawableState, fallbackColor)
-        val selectedColor = tint ?: ContextCompat.getColor(context, R.color.keyboard_icon_color)
-        val idleColor = tint ?: 0xff839096.toInt()
+        val selectedColor = skinSelectedLabelColor
+            ?: tint
+            ?: ContextCompat.getColor(context, R.color.keyboard_icon_color)
+        val idleColor = skinIdleLabelColor ?: tint ?: 0xff839096.toInt()
         val (labels, positions, selectedIndex) = when {
             useThreeStateKeyboard -> {
                 val selected = when (currentInputMode) {
@@ -90,7 +105,8 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
                     InputMode.ModeEnglish -> 1
                     InputMode.ModeNumber -> 2
                 }
-                Triple(listOf("あ", "a", "1"), floatArrayOf(.28f, .5f, .72f), selected)
+                val englishLabel = if (isGojuonMode) "A" else "a"
+                Triple(listOf("あ", englishLabel, "1"), floatArrayOf(.28f, .5f, .72f), selected)
             }
             currentInputMode == InputMode.ModeNumber -> {
                 val returnLabel = if (numberReturnTarget == TwoStateNumberReturnTarget.Japanese) "あ" else "a"
@@ -122,7 +138,9 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
                 ),
                 color = color,
                 typeface = fontSnapshot.typeface ?: Typeface.DEFAULT,
-                style = if (!useThreeStateKeyboard && index == selectedIndex) {
+                style = if (index == selectedIndex &&
+                    (!useThreeStateKeyboard || skinSelectedLabelColor != null)
+                ) {
                     Typeface.BOLD
                 } else {
                     Typeface.NORMAL
