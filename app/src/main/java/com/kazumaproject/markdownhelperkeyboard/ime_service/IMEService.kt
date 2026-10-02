@@ -949,6 +949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var runtimeInputPreferenceListenerRegistered = false
     private val runtimeInputPreferenceKeys = setOf(
         AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
+        AppPreference.STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY,
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
         AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
@@ -2013,7 +2014,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardFloatingMode = _keyboardFloatingMode.asStateFlow()
 
     private var keyboardContainer: FrameLayout? = null
-    private var dockedToolbarContainerActive = false
+    private var dockedCandidateContainerActive = false
+    private var dockedCandidateHeightStabilized = false
+    private var stabilizeCandidateStripHeightPreference = false
 
     private var isSpaceKeyLongPressed = false
     private var suppressSpaceConvertTapUntilUptimeMillis = 0L
@@ -3533,6 +3536,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
 
+        val previousStabilizeCandidateStripHeight = stabilizeCandidateStripHeightPreference
+        stabilizeCandidateStripHeightPreference =
+            appPreference.stabilize_candidate_strip_height_preference
+        if (previousStabilizeCandidateStripHeight != stabilizeCandidateStripHeightPreference && isInputViewActive) {
+            mainLayoutBinding?.let { updateKeyboardLayout(it) }
+        }
+
         customDirectInputReplaceComposingPreference =
             appPreference.custom_direct_input_replace_composing_preference
 
@@ -3816,6 +3826,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateColumns = preferences.candidateColumns
         candidateColumnsLandscape = preferences.candidateColumnsLandscape
         candidateTabVisibility = preferences.candidateTabVisibility
+        stabilizeCandidateStripHeightPreference = preferences.stabilizeCandidateStripHeightPreference
         symbolKeyboardFirstItem = preferences.symbolKeyboardFirstItem
         defaultEmojiSkinTonePreference = preferences.defaultEmojiSkinTone
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
@@ -6381,6 +6392,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateColumnsLandscape = null
         candidateViewHeight = null
         candidateTabVisibility = null
+        stabilizeCandidateStripHeightPreference = false
+        dockedCandidateHeightStabilized = false
         isTablet = null
         isNgWordEnable = null
         deleteKeyHighLight = null
@@ -6500,28 +6513,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             outInsets?.contentTopInsets = inputHeight
             outInsets?.visibleTopInsets = inputHeight
             outInsets?.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
-        } else if (dockedToolbarContainerActive && !isFullscreenMode && outInsets != null) {
+        } else if (dockedCandidateContainerActive && !isFullscreenMode && outInsets != null) {
             val container = keyboardContainer ?: return
-            val position = IntArray(2)
-            val touchableRegion = android.graphics.Region()
-            var top: Int? = null
-            // Include app-owned overlays too; only the unused transparent area passes through.
-            for (index in 0 until container.childCount) {
-                val child = container.getChildAt(index)
-                if (!child.isShown || child.width == 0 || child.height == 0) continue
-                child.getLocationInWindow(position)
-                top = minOf(top ?: position[1], position[1])
-                touchableRegion.op(
-                    position[0], position[1], position[0] + child.width, position[1] + child.height,
-                    android.graphics.Region.Op.UNION
-                )
-            }
-            top?.let {
-                outInsets.contentTopInsets = it
-                outInsets.visibleTopInsets = it
-                outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
-                outInsets.touchableRegion.set(touchableRegion)
-            }
+            applyDockedCandidateInsets(container, dockedCandidateHeightStabilized, outInsets)
         }
     }
 
@@ -9529,7 +9523,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
-        updateDockedToolbarContainerHeight(null)
+        updateDockedCandidateContainerHeight(null)
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.width = ViewGroup.LayoutParams.MATCH_PARENT
             params.height = getScreenHeight(this@IMEService)
@@ -19327,17 +19321,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 configuredHeightDp
             }
         )
-        val reserveToolbarDrawingSpace = !isSymbol && !floatingCandidateSurfaceActive &&
+        val independentToolbarEnabled = shortcutTollbarVisibility == true &&
+            shortcutToolbarIntegratedInSuggestion != true
+        val reserveCandidateDrawingSpace = !isSymbol && !floatingCandidateSurfaceActive &&
             isKeyboardFloatingMode != true &&
             physicalKeyboardEnable.replayCache.firstOrNull() != true && !isFullscreenMode &&
-            (presentation.showIndependentShortcutToolbar || presentation.reserveIndependentShortcutToolbarSpace)
-        val transparentContainerHeight = if (reserveToolbarDrawingSpace) {
-            resolveDockedToolbarContainerHeightPx(
+            (stabilizeCandidateStripHeightPreference || presentation.showIndependentShortcutToolbar ||
+                presentation.reserveIndependentShortcutToolbarSpace)
+        val transparentContainerHeight = if (reserveCandidateDrawingSpace) {
+            resolveDockedCandidateContainerHeightPx(
                 keyboardBodyHeightPx = heightPx,
                 emptyCandidateHeightPx = candidateHeightPx(prefs.candidateEmptyHeight),
                 activeCandidateHeightPx = candidateHeightPx(prefs.candidateHeight),
                 candidateTabHeightPx = if (candidateTabVisibility == true) candidateTabHeightPx else 0,
-                shortcutToolbarHeightPx = shortcutToolbarHeightPx(),
+                shortcutToolbarHeightPx = if (independentToolbarEnabled) shortcutToolbarHeightPx() else 0,
                 bottomInsetPx = systemBottomInset
             )
         } else {
@@ -19377,7 +19374,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 prefs.bottomMargin
             }
 
-        updateDockedToolbarContainerHeight(transparentContainerHeight?.plus(finalBottomMargin))
+        updateDockedCandidateContainerHeight(
+            heightPx = transparentContainerHeight?.plus(finalBottomMargin),
+            stabilizeInsets = stabilizeCandidateStripHeightPreference
+        )
 
         val positionIsEnd =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -19486,9 +19486,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateDockedToolbarContainerHeight(heightPx: Int?) {
+    private fun updateDockedCandidateContainerHeight(heightPx: Int?, stabilizeInsets: Boolean = false) {
         val container = keyboardContainer ?: return
-        dockedToolbarContainerActive = heightPx != null
+        dockedCandidateContainerActive = heightPx != null
+        dockedCandidateHeightStabilized = heightPx != null && stabilizeInsets
         val height = heightPx ?: ViewGroup.LayoutParams.WRAP_CONTENT
         val params = container.layoutParams ?: FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, height

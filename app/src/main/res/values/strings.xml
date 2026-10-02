@@ -1867,4 +1867,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="custom_direct_input_replace_composing_title">Replace composing text with direct input</string>
     <string name="custom_direct_input_replace_composing_summary_off">Switching to direct input commits composing text.</string>
     <string name="custom_direct_input_replace_composing_summary_on">The first input after switching to direct input replaces composing text.</string>
+    <string name="stabilize_candidate_strip_height_title">Stabilize candidate area height</string>
+    <string name="stabilize_candidate_strip_height_summary">Keep the editor position stable when typing or confirming text. Any extra space stays transparent and allows touches through.</string>
 </resources>
