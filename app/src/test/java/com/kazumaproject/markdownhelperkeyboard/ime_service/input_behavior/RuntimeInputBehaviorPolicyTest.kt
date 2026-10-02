@@ -189,6 +189,34 @@ class RuntimeInputBehaviorPolicyTest {
         )
     }
 
+    @Test
+    fun replacementPreservesUnsafeCompositionButKeepsNormalTransitionCleanup() {
+        assertEquals(
+            DirectCommitTransition.NONE,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                ResolvedInputBehavior.COMPOSING_TEXT, ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = false, canToggleSafely = false,
+                replaceComposingOnNextInput = true,
+            )
+        )
+        assertEquals(
+            DirectCommitTransition.CLEAR,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                ResolvedInputBehavior.COMPOSING_TEXT, ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = false, canToggleSafely = true,
+                replaceComposingOnNextInput = true,
+            )
+        )
+        assertEquals(
+            DirectCommitTransition.CLEAR,
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                ResolvedInputBehavior.COMPOSING_TEXT, ResolvedInputBehavior.DIRECT_COMMIT,
+                startingNewInput = true, canToggleSafely = false,
+                replaceComposingOnNextInput = true,
+            )
+        )
+    }
+
     private fun safeState(
         inputStringEmpty: Boolean = true,
         tailEmpty: Boolean = true,

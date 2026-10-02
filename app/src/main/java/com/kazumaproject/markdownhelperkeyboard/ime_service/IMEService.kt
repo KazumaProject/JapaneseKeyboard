@@ -963,6 +963,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
         AppPreference.CUSTOM_KEYMAP_GUIDE_KEY,
         AppPreference.CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY,
+        AppPreference.CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
         AppPreference.DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY,
         AppPreference.VIBRATION_KEY,
@@ -1968,6 +1969,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isNgWordEnable: Boolean? = false
     private var deleteKeyHighLight: Boolean? = true
     private var customKeyboardSuggestionPreference: Boolean? = true
+    private var customDirectInputReplaceComposingPreference = false
     private var zenzDebounceTimePreference: Int? = 300
     private var zenzMaximumLetterSizePreference: Int? = 32
     private var zenzMaximumContextSizePreference: Int? = 512
@@ -3531,6 +3533,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
 
+        customDirectInputReplaceComposingPreference =
+            appPreference.custom_direct_input_replace_composing_preference
+
         val previousInlineSuggestionEnabled = inlineSuggestionEnabled
         applyInlineSuggestionEnabled(appPreference.inline_suggestion_enabled_preference)
         if (previousInlineSuggestionEnabled != inlineSuggestionEnabled) {
@@ -3798,6 +3803,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = preferences.isNgWordEnable
         deleteKeyHighLight = preferences.deleteKeyHighLight
         customKeyboardSuggestionPreference = preferences.customKeyboardSuggestionPreference
+        customDirectInputReplaceComposingPreference =
+            preferences.customDirectInputReplaceComposingPreference
         userDictionaryPrefixMatchNumber = preferences.userDictionaryPrefixMatchNumber
         isVibration = preferences.isVibration
         vibrationTimingStr = preferences.vibrationTimingStr
@@ -6378,6 +6385,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
+        customDirectInputReplaceComposingPreference = false
         customKeymapGuidePreference = false
         sumireKeymapGuideSettings = ModeKeymapGuideSettings()
         flickGuideTextSizeSpPreference = null
@@ -21207,6 +21215,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 current = currentInputBehavior,
                 startingNewInput = reason == "start input",
                 canToggleSafely = canToggleRuntimeInputBehaviorSafely(),
+                replaceComposingOnNextInput = customDirectInputReplaceComposingPreference &&
+                        _tenKeyQWERTYMode.value == TenKeyQWERTYMode.Custom &&
+                        isCustomLayoutDirectMode,
             )
         ) {
             DirectCommitTransition.NONE -> Unit

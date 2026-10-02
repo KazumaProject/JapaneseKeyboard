@@ -80,6 +80,7 @@ data class ImePreferencesSnapshot(
     val isNgWordEnable: Boolean,
     val deleteKeyHighLight: Boolean,
     val customKeyboardSuggestionPreference: Boolean,
+    val customDirectInputReplaceComposingPreference: Boolean,
     val userDictionaryPrefixMatchNumber: Int,
     val isVibration: Boolean,
     val vibrationTimingStr: String,
@@ -444,6 +445,8 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_romaji_shift_conversion_preference,
                 isNgWordEnable = appPreference.ng_word_preference ?: true,
                 deleteKeyHighLight = appPreference.delete_key_high_light_preference ?: true,
+                customDirectInputReplaceComposingPreference =
+                    appPreference.custom_direct_input_replace_composing_preference,
                 customKeyboardSuggestionPreference =
                     appPreference.custom_keyboard_suggestion_preference ?: true,
                 userDictionaryPrefixMatchNumber =
