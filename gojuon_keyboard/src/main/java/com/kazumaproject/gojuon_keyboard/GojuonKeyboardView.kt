@@ -16,6 +16,8 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
+import com.kazumaproject.core.domain.flick.IndependentKeyTouchDispatcher
+import com.kazumaproject.core.domain.flick.IndependentKeyTouchSession
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -116,7 +118,38 @@ class GojuonKeyboardView @JvmOverloads constructor(
         GojuonLayoutBinding.inflate(LayoutInflater.from(context), this)
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
+    private var displayedInputMode: InputMode = InputMode.ModeJapanese
     private lateinit var pressedKey: PressedKey
+    private var independentMultiTouchEnabled = false
+    private var independentMultiTouchForCurrentGesture = false
+    private val independentTouches: IndependentKeyTouchDispatcher by lazy {
+        IndependentKeyTouchDispatcher(
+            view = this,
+            scope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
+            hitTest = ::pressedKeyByMotionEvent,
+            threshold = { flickThresholdPx },
+            thresholdShape = { flickThresholdShape },
+            longPressTimeout = { longPressTimeout },
+            isExclusiveKey = ::isIndependentExclusiveKey,
+            isExclusiveMode = { false },
+            dispatch = { session, event ->
+                withIndependentSession(session) { onTouchLegacy(this, event) }
+            },
+            onLongPress = { session ->
+                withIndependentSession(session) {
+                    longPressListener?.onLongPress(pressedKey.key)
+                    if (independentTouches.contains(session)) onLongPressed()
+                }
+            },
+            onCancel = { session, reason ->
+                withIndependentSession(session) { resetLongPressAction() }
+                (getButtonFromKey(session.key) as? View)?.isPressed = false
+                keyTouchCancelListener?.onKeyTouchCanceled(session.key, reason)
+            },
+            restore = ::restoreIndependentTouches
+        )
+    }
+
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
 
     private var flickSensitivity: Int = 100
@@ -875,7 +908,40 @@ class GojuonKeyboardView @JvmOverloads constructor(
         keyTouchCancelListener = listener
     }
 
-    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+    override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            independentMultiTouchForCurrentGesture = independentMultiTouchEnabled
+        }
+        // Legacy mode keeps Android's existing child-key dispatch. Independent mode needs the
+        // complete pointer stream, rather than separate ACTION_DOWN events split across children.
+        return independentMultiTouchForCurrentGesture || super.onInterceptTouchEvent(event)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean =
+        if (independentMultiTouchForCurrentGesture) onTouch(this, event)
+        else super.onTouchEvent(event)
+
+    fun setIndependentMultiTouchEnabled(enabled: Boolean) {
+        independentMultiTouchEnabled = enabled
+    }
+
+    override fun onTouch(view: View?, event: MotionEvent?): Boolean {
+        if (view == null || event == null || visibility != View.VISIBLE) return false
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            independentMultiTouchForCurrentGesture = independentMultiTouchEnabled
+        }
+        if (independentMultiTouchForCurrentGesture && event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+            return true
+        }
+        return if (independentMultiTouchForCurrentGesture) {
+            independentTouches.onTouch(event)
+        } else {
+            onTouchLegacy(view, event)
+        }
+    }
+
+    private fun onTouchLegacy(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
             if (this.visibility != View.VISIBLE) {
                 return false
@@ -1348,7 +1414,54 @@ class GojuonKeyboardView @JvmOverloads constructor(
         longPressJob = null
     }
 
+    private inline fun withIndependentSession(session: IndependentKeyTouchSession, action: () -> Unit) {
+        val previousThreshold = flickThresholdPx
+        val previousShape = flickThresholdShape
+        val previousTimeout = longPressTimeout
+        pressedKey = session.pressedKey
+        longPressJob = session.longPressJob
+        isLongPressed = session.isLongPressed
+        flickThresholdPx = session.thresholdPx
+        flickThresholdShape = session.thresholdShape
+        longPressTimeout = session.longPressTimeoutMillis
+        try {
+            action()
+        } finally {
+            session.pressedKey = pressedKey
+            session.longPressJob = longPressJob
+            session.isLongPressed = isLongPressed
+            flickThresholdPx = previousThreshold
+            flickThresholdShape = previousShape
+            longPressTimeout = previousTimeout
+        }
+    }
+
+    private fun isIndependentExclusiveKey(key: Key): Boolean =
+        key == Key.SideKeySymbol || key == Key.SideKeyInputMode || key == Key.SideKeyNumberMode ||
+            (currentInputMode.get() != InputMode.ModeJapanese && key in setOf(Key.KeyKuten, Key.KeyO, Key.KeyKO))
+
+    private fun restoreIndependentTouches(
+        sessions: List<IndependentKeyTouchSession>,
+        focused: IndependentKeyTouchSession?
+    ) {
+        resetAllKeys()
+        focused?.let { session ->
+            withIndependentSession(session) {
+                if (session.isLongPressed) onLongPressed()
+
+                val move = MotionEvent.obtain(session.lastEvent).apply { action = MotionEvent.ACTION_MOVE }
+                try { onTouchLegacy(this, move) } finally { move.recycle() }
+            }
+        }
+        sessions.forEach { session -> (getButtonFromKey(session.key) as? View)?.isPressed = true }
+    }
+
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        if (independentMultiTouchForCurrentGesture) {
+            independentTouches.cancelAll(reason)
+            if (::pressedKey.isInitialized) pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
+
         resetLongPressAction()
         resetAllKeys()
 
@@ -3562,6 +3675,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
+        if (independentMultiTouchForCurrentGesture && displayedInputMode != inputMode) {
+            cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
+        }
+        displayedInputMode = inputMode
         when (inputMode) {
             InputMode.ModeJapanese -> {
                 setKeysInJapaneseText()

@@ -16,6 +16,8 @@ import android.util.AttributeSet
 import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
+import com.kazumaproject.core.domain.flick.IndependentKeyTouchDispatcher
+import com.kazumaproject.core.domain.flick.IndependentKeyTouchSession
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -141,6 +143,41 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // Track which key is currently pressed
     private lateinit var pressedKey: PressedKey
+    private var independentMultiTouchEnabled = false
+    private var independentMultiTouchForCurrentGesture = false
+    private val independentTouches: IndependentKeyTouchDispatcher by lazy {
+        IndependentKeyTouchDispatcher(
+            view = this,
+            scope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
+            hitTest = ::pressedKeyByMotionEvent,
+            threshold = { flickThresholdPx },
+            thresholdShape = { flickThresholdShape },
+            longPressTimeout = { longPressTimeout },
+            isExclusiveKey = ::isIndependentExclusiveKey,
+            isExclusiveMode = { isCursorMode },
+            dispatch = { session, event ->
+                withIndependentSession(session) {
+                    if (event.actionMasked == MotionEvent.ACTION_UP && !isCursorMode) {
+                        flickTextPreviewEmitter.begin(resolveTextSelection(session.key, getGestureType(event)))
+                    }
+                    onTouchLegacy(this, event)
+                }
+            },
+            onLongPress = { session ->
+                withIndependentSession(session) {
+                    longPressListener?.onLongPress(pressedKey.key)
+                    if (independentTouches.contains(session)) onLongPressed()
+                }
+            },
+            onCancel = { session, reason ->
+                withIndependentSession(session) { resetLongPressAction() }
+                (getButtonFromKey(session.key) as? View)?.isPressed = false
+                keyTouchCancelListener?.onKeyTouchCanceled(session.key, reason)
+            },
+            restore = ::restoreIndependentTouches
+        )
+    }
+
 
     // External listeners
     private var flickListener: FlickListener? = null
@@ -1391,6 +1428,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun setCurrentMode(inputMode: InputMode) {
+        if (independentMultiTouchForCurrentGesture && currentInputMode.value != inputMode) {
+            cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
+        }
         Log.d("setCurrentMode", "$inputMode")
         _currentInputMode.update { inputMode }
     }
@@ -1477,6 +1517,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun cancelTenKeyScope() {
+        if (independentMultiTouchForCurrentGesture) cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
         scope.coroutineContext.cancelChildren()
     }
 
@@ -1503,7 +1544,27 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    fun setIndependentMultiTouchEnabled(enabled: Boolean) {
+        independentMultiTouchEnabled = enabled
+    }
+
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
+        if (view == null || event == null || visibility != View.VISIBLE) return false
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            independentMultiTouchForCurrentGesture = independentMultiTouchEnabled
+        }
+        if (independentMultiTouchForCurrentGesture && event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+            return true
+        }
+        return if (independentMultiTouchForCurrentGesture) {
+            independentTouches.onTouch(event)
+        } else {
+            onTouchLegacy(view, event)
+        }
+    }
+
+    private fun onTouchLegacy(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
             if (view.visibility != View.VISIBLE) {
                 return false
@@ -1743,7 +1804,54 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         return false
     }
 
+    private inline fun withIndependentSession(session: IndependentKeyTouchSession, action: () -> Unit) {
+        val previousThreshold = flickThresholdPx
+        val previousShape = flickThresholdShape
+        val previousTimeout = longPressTimeout
+        pressedKey = session.pressedKey
+        longPressJob = session.longPressJob
+        isLongPressed = session.isLongPressed
+        flickThresholdPx = session.thresholdPx
+        flickThresholdShape = session.thresholdShape
+        longPressTimeout = session.longPressTimeoutMillis
+        try {
+            action()
+        } finally {
+            session.pressedKey = pressedKey
+            session.longPressJob = longPressJob
+            session.isLongPressed = isLongPressed
+            flickThresholdPx = previousThreshold
+            flickThresholdShape = previousShape
+            longPressTimeout = previousTimeout
+        }
+    }
+
+    private fun isIndependentExclusiveKey(key: Key): Boolean =
+        key == Key.SideKeySymbol || key == Key.SideKeyInputMode || key == Key.SideKeyNumberMode ||
+            (key == Key.KeyDakutenSmall && binding.keySmallLetter.drawable == cachedLanguageDrawable)
+
+    private fun restoreIndependentTouches(
+        sessions: List<IndependentKeyTouchSession>,
+        focused: IndependentKeyTouchSession?
+    ) {
+        resetAllKeys()
+        focused?.let { session ->
+            withIndependentSession(session) {
+                if (session.isLongPressed) onLongPressed()
+                flickTextPreviewEmitter.begin(resolveTextSelection(session.key, getGestureType(session.lastEvent)))
+                val move = MotionEvent.obtain(session.lastEvent).apply { action = MotionEvent.ACTION_MOVE }
+                try { onTouchLegacy(this, move) } finally { move.recycle() }
+            }
+        }
+        sessions.forEach { session -> (getButtonFromKey(session.key) as? View)?.isPressed = true }
+    }
+
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        if (independentMultiTouchForCurrentGesture) {
+            independentTouches.cancelAll(reason)
+            if (::pressedKey.isInitialized) pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
+
         skinGuide?.dismiss()
         skinLongPress.clear()
         flickTextPreviewEmitter.cancel()
@@ -2671,6 +2779,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Sync UI to a specified input mode (called from collector) **/
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
+        if (independentMultiTouchForCurrentGesture && independentTouches.activeSessions.any {
+                !isCursorMode && isIndependentExclusiveKey(it.key)
+            }) independentTouches.cancelAll(KeyTouchCancelReason.PointerInterrupted)
+
         when (inputMode) {
             InputMode.ModeJapanese -> setKeysInJapaneseText()
             InputMode.ModeEnglish -> setKeysInEnglishText()

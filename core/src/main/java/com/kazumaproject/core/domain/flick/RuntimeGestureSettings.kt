@@ -12,6 +12,7 @@ data class RuntimeGestureSettings(
     val flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial,
     val tfbiDiagonalRecognitionMode: TfbiDiagonalRecognitionMode = TfbiDiagonalRecognitionMode.LEGACY,
     val longPressTimeoutMillis: Long = DEFAULT_LONG_PRESS_TIMEOUT_MILLIS,
+    val independentMultiTouchEnabled: Boolean = false,
     val revision: Long = 0L
 ) {
     fun normalized(): RuntimeGestureSettings = copy(
@@ -58,6 +59,7 @@ class MutableRuntimeGestureSettingsSource(
         flickSensitivity: Int = current.flickSensitivity,
         flickThresholdShape: FlickThresholdShape = current.flickThresholdShape,
         tfbiDiagonalRecognitionMode: TfbiDiagonalRecognitionMode = current.tfbiDiagonalRecognitionMode,
+        independentMultiTouchEnabled: Boolean = current.independentMultiTouchEnabled,
         longPressTimeoutMillis: Long = current.longPressTimeoutMillis
     ): RuntimeGestureSettings {
         val previous = current
@@ -73,7 +75,8 @@ class MutableRuntimeGestureSettingsSource(
             previous.flickSensitivity == normalizedSensitivity &&
             previous.flickThresholdShape == flickThresholdShape &&
             previous.tfbiDiagonalRecognitionMode == tfbiDiagonalRecognitionMode &&
-            previous.longPressTimeoutMillis == normalizedLongPress
+            previous.longPressTimeoutMillis == normalizedLongPress &&
+            previous.independentMultiTouchEnabled == independentMultiTouchEnabled
         ) {
             return previous
         }
@@ -83,6 +86,7 @@ class MutableRuntimeGestureSettingsSource(
             flickThresholdShape = flickThresholdShape,
             tfbiDiagonalRecognitionMode = tfbiDiagonalRecognitionMode,
             longPressTimeoutMillis = normalizedLongPress,
+            independentMultiTouchEnabled = independentMultiTouchEnabled,
             revision = previous.revision + 1L
         ).also { current = it }
     }

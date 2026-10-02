@@ -965,6 +965,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY,
         AppPreference.CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
+        AppPreference.INDEPENDENT_MULTI_TOUCH_KEY,
         AppPreference.DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY,
         AppPreference.VIBRATION_KEY,
         AppPreference.VIBRATION_TIMING_KEY,
@@ -3612,6 +3613,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickSensitivity = sensitivity,
             flickThresholdShape = thresholdShape,
             tfbiDiagonalRecognitionMode = diagonalMode,
+            independentMultiTouchEnabled = appPreference.independent_multi_touch_preference,
             longPressTimeoutMillis = longPressTimeout.toLong()
         )
 
@@ -3653,7 +3655,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customLayoutFloating.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
             customLayoutFloating.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
+        applyIndependentMultiTouchPreference()
         syncCustomKeyboardHitTestPreference()
+    }
+
+    private fun applyIndependentMultiTouchPreference() {
+        val enabled = appPreference.independent_multi_touch_preference
+        mainLayoutBinding?.apply {
+            keyboardView.setIndependentMultiTouchEnabled(enabled)
+            gojuonView.setIndependentMultiTouchEnabled(enabled)
+            qwertyView.setIndependentMultiTouchEnabled(enabled)
+        }
+        buildList {
+            floatingKeyboardBinding?.let(::add)
+            splitInputs.values.forEach { add(it.binding) }
+        }.distinct().forEach { binding ->
+            binding.keyboardViewFloating.setIndependentMultiTouchEnabled(enabled)
+            binding.gojuonViewFloating.setIndependentMultiTouchEnabled(enabled)
+            binding.qwertyViewFloating.setIndependentMultiTouchEnabled(enabled)
+        }
     }
 
     private fun customKeyboardHitTestMode(): KeyHitTestMode =
@@ -5844,6 +5864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setOnQwertyNumberModeRequestedListener {
                     switchTenkeyTwoStateNumberToQwertyNumber()
                 }
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
                     (longPressTimeoutPreferenceValue ?: 300).toLong()
                 )
@@ -5935,6 +5956,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 keyboardView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
+                keyboardView.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
                 keyboardView.setUseThreeStateKeyboard(
@@ -5980,6 +6002,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 gojuonView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 gojuonView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
+                gojuonView.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
                 gojuonView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 applyCurrentFlickGuidePreference(customLayoutDefault)
                 customLayoutDefault.setFlickGuideTextSizeSp(
@@ -5990,6 +6013,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 qwertyView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 qwertyView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
+                qwertyView.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
                 qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 qwertyView.applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
                 qwertyView.setSpecialKeyVisibility(
@@ -10606,6 +10630,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.setOnQwertyNumberModeRequestedListener {
             switchTenkeyTwoStateNumberToQwertyNumber()
         }
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
         floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
             (longPressTimeoutPreferenceValue ?: 300).toLong()
         )
@@ -10985,6 +11010,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
             setFlickThresholdShape(flickThresholdShapePreferenceValue)
+            setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
             setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -23432,6 +23458,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyView.apply {
             setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
             setFlickThresholdShape(flickThresholdShapePreferenceValue)
+            setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
             setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
             applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
             setSpecialKeyVisibility(

@@ -97,6 +97,7 @@ data class ImePreferencesSnapshot(
     val isCustomKeyboardTwoWordsOutputEnable: Boolean,
     val tenkeyQWERTYSwitchNumber: Boolean,
     val tenkeyUseThreeStateKeyboard: Boolean,
+    val independentMultiTouchEnabled: Boolean,
     val tenkeyNumberSymbolKeyGapDp: Int,
     val tenkeySwitchNumberToQwertyNumberPreference: Boolean,
     val tenkeyRestoreInputModeOnRestart: Boolean,
@@ -468,6 +469,7 @@ data class ImePreferencesSnapshot(
                     appPreference.custom_keyboard_two_words_output ?: true,
                 tenkeyQWERTYSwitchNumber =
                     appPreference.tenkey_qwerty_switch_number_layout ?: false,
+                independentMultiTouchEnabled = appPreference.independent_multi_touch_preference,
                 tenkeyUseThreeStateKeyboard =
                     appPreference.tenkey_use_three_state_keyboard_preference,
                 tenkeyNumberSymbolKeyGapDp =
