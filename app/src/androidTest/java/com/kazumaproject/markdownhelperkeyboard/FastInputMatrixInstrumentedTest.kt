@@ -340,11 +340,6 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
-    fun independentShortcutToolbarKeepsImeBoundsAcrossKanaConversionAndCommit() {
-        ToolbarImeRegression(instrumentation).run()
-    }
-
-    @Test
     fun flickOnlyBackgroundDoesNotChangeAfterToggleTimeoutOnPhysicalDevice() {
         runPhysicalDeviceSession("flick-background-timeout") { session ->
             val scenario = launchHost(session.context)

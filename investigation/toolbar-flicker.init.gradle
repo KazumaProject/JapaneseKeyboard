@@ -1,6 +1,0 @@
-// Only the opt-in regression APK uses this ID. Never replace a user's keyboard.
-gradle.afterProject { project ->
-    if (project.path == ':app') {
-        project.android.defaultConfig.applicationId = 'com.kazumaproject.toolbarqa'
-    }
-}

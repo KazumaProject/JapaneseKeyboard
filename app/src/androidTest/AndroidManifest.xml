@@ -3,7 +3,7 @@
     <application>
         <provider
             android:name="com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontBlockingTestProvider"
-            android:authorities="${applicationId}.localfonttest"
+            android:authorities="com.kazumaproject.markdownhelperkeyboard.lite.localfonttest"
             android:exported="true" />
         <activity
             android:name="com.kazumaproject.markdownhelperkeyboard.qa.InlineAutofillLoginActivity"

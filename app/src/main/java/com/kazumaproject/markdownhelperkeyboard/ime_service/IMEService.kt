@@ -1589,10 +1589,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectionActionSession: SelectionActionSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
-    private var dockedImeSurfaceHeightPx: Int? = null
-    private var dockedFrameworkRoot: LinearLayout? = null
-    private var originalFrameworkRootHeight = ViewGroup.LayoutParams.WRAP_CONTENT
-    private var originalFrameworkRootGravity = Gravity.TOP
     private var lastKeyboardLayoutRootView: View? = null
     private var lastKeyboardLayoutOrientation: Int? = null
     private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
@@ -6546,10 +6542,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
-        if (!isFullscreen && !isCandidatesOnly && isKeyboardFloatingMode != true &&
-            physicalKeyboardEnable.replayCache.firstOrNull() != true && splitController == null) {
-            dockedImeSurfaceHeightPx?.let { height -> win?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height) }
-        }
         updateImeWindowBlurForCurrentMode(win)
     }
 
@@ -19113,12 +19105,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFloating: Boolean = false,
         addCandidateTabHeight: Boolean = false
     ) {
-        if (splitController != null) {
-            updateDockedImeSurfaceHeight(null)
-            ensureFloatingInputHostLayout(mainView)
-            splitController?.refresh()
-            return
-        }
+        if (splitController != null) { ensureFloatingInputHostLayout(mainView); splitController?.refresh(); return }
         // 1. 設定値の読み込み
         val prefs = getKeyboardSizePreferences()
         val orientation = resources.configuration.orientation
@@ -19224,29 +19211,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // The root window includes the safe area, while its bottom padding keeps content
         // above it. This prevents the inset from shrinking the configured candidate view.
         val windowHeight = contentKeyboardHeight + systemBottomInset
-        // Android 11 can discard the IME's displayed buffer when its window resizes.
-        // Reserve the largest configured surface, but keep the input view's actual height
-        // below. The framework's input-frame Insets then still follow that actual view.
-        fun candidateSurfaceHeightPx(configuredHeightDp: Int): Int = applicationContext.dpToPx(
-            if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
-                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
-                    .resolveDockedStripHeightDp(configuredHeightDp)
-            } else configuredHeightDp
-        )
-        updateDockedImeSurfaceHeight(
-            if (floatingCandidateSurfaceActive || isKeyboardFloatingMode == true ||
-                physicalKeyboardEnable.replayCache.firstOrNull() == true) null else
-                resolveDockedImeSurfaceHeightPx(
-                    keyboardBodyHeightPx = heightPx,
-                    emptyCandidateHeightPx = candidateSurfaceHeightPx(prefs.candidateEmptyHeight),
-                    activeCandidateHeightPx = candidateSurfaceHeightPx(prefs.candidateHeight),
-                    candidateChromeHeightPx = maxOf(
-                        dockedCandidateChromeHeight,
-                        if (candidateTabVisibility == true) candidateTabHeightPx else 0
-                    ),
-                    bottomInsetPx = systemBottomInset
-                )
-        )
         val backgroundSurfaceHeight = if (floatingCandidateSurfaceActive) {
             heightPx
         } else {
@@ -19333,42 +19297,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         lastKeyboardLayoutRootView = mainView.root
         lastKeyboardLayoutOrientation = orientation
-    }
-
-    private fun updateDockedImeSurfaceHeight(heightPx: Int?) {
-        dockedImeSurfaceHeightPx = heightPx
-        val imeWindow = window.window ?: return
-        val targetHeight = if (isFullscreenMode) ViewGroup.LayoutParams.MATCH_PARENT else
-            heightPx ?: ViewGroup.LayoutParams.WRAP_CONTENT
-        if (imeWindow.attributes.height != targetHeight) {
-            imeWindow.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, targetHeight)
-        }
-        val frameworkRoot = imeWindow.decorView.findViewById<View>(android.R.id.inputArea)
-            ?.parent as? LinearLayout
-        if (heightPx != null && !isFullscreenMode) {
-            // The framework's vertical root otherwise sits at the surface's top. Anchor
-            // that root at the bottom so unused surface space stays above the input frame;
-            // super.onComputeInsets() can then report the actual view's top unchanged.
-            frameworkRoot?.let { root ->
-                if (dockedFrameworkRoot !== root) {
-                    dockedFrameworkRoot = root
-                    originalFrameworkRootHeight = root.layoutParams.height
-                    originalFrameworkRootGravity = root.gravity
-                }
-                root.gravity = Gravity.BOTTOM
-                if (root.layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
-                    root.layoutParams = root.layoutParams.apply {
-                        height = ViewGroup.LayoutParams.MATCH_PARENT
-                    }
-                }
-            }
-        } else {
-            dockedFrameworkRoot?.let { root ->
-                root.gravity = originalFrameworkRootGravity
-                root.layoutParams = root.layoutParams.apply { height = originalFrameworkRootHeight }
-            }
-            dockedFrameworkRoot = null
-        }
     }
 
     /**
