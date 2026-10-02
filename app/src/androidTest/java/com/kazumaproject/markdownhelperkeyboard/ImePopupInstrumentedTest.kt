@@ -97,6 +97,7 @@ class ImePopupInstrumentedTest {
 
     @Test fun floatingKeyboardSwitchListPreservesFocusAndSelection() = withHost(floating = true) { host ->
         awaitNodeId("keyboard_view_floating")
+        SystemClock.sleep(500) // Let the freshly attached floating window finish positioning.
         longPress(awaitNodeId("key_small_letter"))
         val list = awaitNodeId("popup_listview")
         host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
@@ -224,15 +225,17 @@ class ImePopupInstrumentedTest {
     /** Optional network check against the reported site; never submits the login form. */
     @Test fun chromePayworksKeepsEmailAndPasswordFocusedWhileSelectingLists() {
         Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("payworks") == "true")
-        prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false)
-            .putBoolean("keyboard_floating_preference", false).commit()
-        restartImeForFixture()
+        restartImeForFixture {
+            prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false)
+                .putBoolean("keyboard_floating_preference", false).commit()
+        }
+        shell("am force-stop com.android.chrome")
         ins.targetContext.startActivity(Intent(Intent.ACTION_VIEW,
             android.net.Uri.parse("https://login.payworks.ca/login?ssoLoggedOut=true"))
             .setPackage("com.android.chrome").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         SystemClock.sleep(2500) // Wait for Chrome navigation to replace the previous tab's nodes.
         for (password in listOf(false, true)) {
-            val field = await {
+            val field = await(timeout = 90000) {
                 allNodes().firstOrNull { it.packageName == "com.android.chrome" &&
                     it.className == "android.widget.EditText" && it.viewIdResourceName != "com.android.chrome:id/url_bar" &&
                     it.isPassword == password }
@@ -263,12 +266,19 @@ class ImePopupInstrumentedTest {
         }
     }
 
-    private fun restartImeForFixture() {
-        if (originalIme.isNotEmpty() && originalIme != "null" && originalIme != targetIme) {
-            shell("ime set $originalIme")
-            SystemClock.sleep(200)
-            shell("ime set $targetIme")
+    private fun restartImeForFixture(configure: () -> Unit = {}) {
+        check(originalIme.isNotEmpty() && originalIme != "null" && originalIme != targetIme) {
+            "The isolated fixture requires another IME to restore between tests"
         }
+        shell("ime set $originalIme")
+        // Switching is asynchronous. Wait for the previous service to finish destroying
+        // before writing preferences that its teardown can otherwise overwrite.
+        await {
+            (!shell("dumpsys activity services ${ins.targetContext.packageName}")
+                .contains(".ime_service.IMEService")).takeIf { it }
+        }
+        configure()
+        shell("ime set $targetIme")
     }
 
     private fun withHost(
@@ -278,11 +288,12 @@ class ImePopupInstrumentedTest {
         web: Boolean = false,
         block: (HostScenario) -> Unit,
     ) {
-        prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", integrated)
-            .putBoolean("keyboard_floating_preference", floating).commit()
         // Each configuration gets a fresh IME instance so a previous test's physical/floating
         // keyboard state cannot hide the software keyboard in the next editor.
-        restartImeForFixture()
+        restartImeForFixture {
+            prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", integrated)
+                .putBoolean("keyboard_floating_preference", floating).commit()
+        }
         ins.targetContext.startActivity(Intent(ins.targetContext, ImePopupHostActivity::class.java)
             .putExtra("variation", variation).putExtra("web", web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         val activity = await { ImePopupHostActivity.current }
@@ -358,7 +369,19 @@ class ImePopupInstrumentedTest {
     }
     private fun longPress(node: AccessibilityNodeInfo) {
         val rect = Rect().also(node::getBoundsInScreen)
-        touch(rect.exactCenterX(), rect.exactCenterY(), 700)
+        val down = SystemClock.uptimeMillis()
+        fun inject(action: Int) {
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                rect.exactCenterX(), rect.exactCenterY(), 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            check(automation.injectInputEvent(event, true)); event.recycle()
+        }
+        inject(MotionEvent.ACTION_DOWN)
+        try {
+            // Wait for the actual long-press result before releasing, including on a busy emulator.
+            awaitNodeId("popup_listview")
+        } finally { inject(MotionEvent.ACTION_UP) }
+        SystemClock.sleep(100)
     }
     private fun touch(x: Float, y: Float, hold: Long = 50) {
         val down = SystemClock.uptimeMillis()
