@@ -38,8 +38,8 @@ internal fun resolveDockedCandidateChromeHeightPx(
     }
 )
 
-/** Reserve only transparent drawing space; the visible keyboard keeps its own height. */
-internal fun resolveDockedToolbarContainerHeightPx(
+/** Reserve drawing space independently from the visible keyboard and touchable region. */
+internal fun resolveDockedCandidateContainerHeightPx(
     keyboardBodyHeightPx: Int,
     emptyCandidateHeightPx: Int,
     activeCandidateHeightPx: Int,
@@ -50,6 +50,13 @@ internal fun resolveDockedToolbarContainerHeightPx(
     emptyCandidateHeightPx + shortcutToolbarHeightPx,
     activeCandidateHeightPx + candidateTabHeightPx
 )
+
+/** Stable insets prevent candidate visibility changes from resizing or panning the editor. */
+internal fun resolveDockedCandidateInsetsTopPx(
+    stabilizeHeight: Boolean,
+    reservedTopPx: Int,
+    visibleTopPx: Int
+): Int = if (stabilizeHeight) reservedTopPx else visibleTopPx
 
 internal fun resolveCandidateTabOffsetPx(
     presentation: CandidateStripPresentation,
