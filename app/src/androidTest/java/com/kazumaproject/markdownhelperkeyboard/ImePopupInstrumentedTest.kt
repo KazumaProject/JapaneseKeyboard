@@ -225,6 +225,10 @@ class ImePopupInstrumentedTest {
             SystemClock.sleep(500)
             assertNotNull(findNode(MACRO_NAME))
             tap(awaitNode(MACRO_NAME))
+            if (!password) {
+                SystemClock.sleep(300)
+                shell("input keyevent 4") // Reveal the password field below Chrome's resized viewport.
+            }
         }
     }
 
@@ -237,6 +241,13 @@ class ImePopupInstrumentedTest {
     ) {
         prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", integrated)
             .putBoolean("keyboard_floating_preference", floating).commit()
+        // Each configuration gets a fresh IME instance so a previous test's physical/floating
+        // keyboard state cannot hide the software keyboard in the next editor.
+        if (originalIme.isNotEmpty() && originalIme != "null" && originalIme != targetIme) {
+            shell("ime set $originalIme")
+            SystemClock.sleep(200)
+            shell("ime set $targetIme")
+        }
         ins.targetContext.startActivity(Intent(ins.targetContext, ImePopupHostActivity::class.java)
             .putExtra("variation", variation).putExtra("web", web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         val activity = await { ImePopupHostActivity.current }
@@ -331,8 +342,7 @@ class ImePopupInstrumentedTest {
             nodes += node
             for (index in 0 until node.childCount) visit(node.getChild(index))
         }
-        automation.windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD ||
-            it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }.forEach { visit(it.root) }
+        automation.windows.forEach { visit(it.root) }
         return nodes.filter { it.isVisibleToUser }
     }
     private fun findNode(text: String) = allNodes().firstOrNull {
