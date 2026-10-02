@@ -61,6 +61,7 @@ sealed class KeyAction {
     data object SelectAll : KeyAction()
 
     // クリップボード系
+    data object Cut : KeyAction()
     data object Paste : KeyAction()
     data object Copy : KeyAction()
 
