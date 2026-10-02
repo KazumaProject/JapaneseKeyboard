@@ -74,6 +74,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
+import android.widget.RadioGroup
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -1651,6 +1652,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var restoreFloatingModeAfterGemmaPanel: Boolean = false
     private var consumeGemmaBackKeyUp: Boolean = false
     private var consumeKeyboardSelectionPopupBackKeyUp: Boolean = false
+    private var keyboardSelectionPopupBackKeyTarget: PopupWindow? = null
     private val imeSwitchPopupConsumedKeyUps = mutableSetOf<Int>()
     private var gemmaBackInvokedCallback: OnBackInvokedCallback? = null
     private var isGemmaBackInvokedCallbackRegistered: Boolean = false
@@ -3292,8 +3294,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         dictionaryEditorInfo ?: super.getCurrentInputEditorInfo()
 
     private fun switchDictionaryInputTarget(editor: EditText?) {
+        if (ngWordRegistrationPopup != null && editor !in ngWordRegistrationEditors) {
+            ngWordRegistrationPopup?.dismiss()
+        }
         val targetChanged = dictionaryInputEditor !== editor
         if (targetChanged) {
+            keyboardPopupRequests.invalidate()
             // Undo entries contain editor text and must never cross input targets.
             deletedBuffer.clear()
             activeDeleteHistoryBatch = null
@@ -3440,6 +3446,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        dismissKeyboardSelectionPopups()
         composingGuide?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
@@ -5707,7 +5714,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         shortcutToolbarHiddenForCandidates = false
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
-        keyboardSelectionPopupWindow?.dismiss()
+        dismissKeyboardSelectionPopups()
         addUserDictionaryPopup?.dismiss()
         mainLayoutBinding?.let { mainView ->
             rebindMainKeyboardInputListeners(mainView)
@@ -6091,6 +6098,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        dismissKeyboardSelectionPopups()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
         dismissJob?.cancel()
@@ -6107,6 +6115,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        dismissKeyboardSelectionPopups()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
         dismissJob?.cancel()
@@ -6155,6 +6164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        dismissKeyboardSelectionPopups()
         floatingPhysicalToolbarWindow?.dismiss()
         imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
@@ -6172,7 +6182,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         localFontScope.cancel()
-        keyboardSelectionPopupWindow?.dismiss()
+        dismissKeyboardSelectionPopups()
         stopSplitKeyboard()
         dictionaryFloats?.destroy()
         dictionaryFloats = null
@@ -6633,6 +6643,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        dismissKeyboardSelectionPopups()
         floatingPhysicalToolbarWindow?.dismiss()
         floatingPhysicalToolbarWindow = null
         dictionaryConfigurationChanging = true
@@ -7980,7 +7991,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             keyboardSelectionPopupWindow?.isShowing == true
         ) {
-            keyboardSelectionPopupWindow?.dismiss()
+            // Keep the overlay callback installed through key-up. Removing it on key-down
+            // can route the same key-up to Android's default IME-hide callback.
+            keyboardSelectionPopupBackKeyTarget = keyboardSelectionPopupWindow
             consumeKeyboardSelectionPopupBackKeyUp = true
             return true
         }
@@ -8999,6 +9012,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (keyCode == KeyEvent.KEYCODE_BACK && consumeKeyboardSelectionPopupBackKeyUp) {
             consumeKeyboardSelectionPopupBackKeyUp = false
+            val popup = keyboardSelectionPopupBackKeyTarget
+            keyboardSelectionPopupBackKeyTarget = null
+            if (event?.isCanceled != true) popup?.dismiss()
             return true
         }
         when (keyCode) {
@@ -11684,10 +11700,111 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var keyboardSelectionPopupWindow: PopupWindow? = null
     private var imeSwitchPopupWindow: PopupWindow? = null
+    private val keyboardPopupRequests = ImePopupRequestTracker()
+    private var ngWordRegistrationPopup: PopupWindow? = null
+    private var ngWordRegistrationEditors: Set<EditText> = emptySet()
+
+    private data class KeyboardPopupRequest(
+        val id: Long,
+        val mainView: MainLayoutBinding,
+        val connection: InputConnection,
+        val revision: Long,
+    )
+
+    private fun dismissKeyboardSelectionPopups() {
+        keyboardPopupRequests.invalidate()
+        keyboardSelectionPopupBackKeyTarget = null
+        keyboardSelectionPopupWindow?.dismiss()
+        keyboardSelectionPopupWindow = null
+        imeSwitchPopupWindow = null
+        onKeyboardSwitchLongPressUp = false
+        updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+    }
+
+    private fun beginKeyboardPopupRequest(): KeyboardPopupRequest? {
+        dismissKeyboardSelectionPopups()
+        val mainView = mainLayoutBinding ?: return null
+        val connection = currentInputConnection ?: return null
+        if (!canShowPopupWindow(resolveShowListPopupAnchor(mainView))) return null
+        return KeyboardPopupRequest(
+            keyboardPopupRequests.begin(), mainView, connection, editorMutationRevision.current(),
+        )
+    }
+
+    private fun isKeyboardPopupRequestCurrent(request: KeyboardPopupRequest): Boolean =
+        keyboardPopupRequests.isCurrent(request.id) && isInputViewActive &&
+            mainLayoutBinding === request.mainView && currentInputConnection === request.connection &&
+            editorMutationRevision.isCurrent(request.revision)
+
+    private fun showKeyboardSelectionList(
+        request: KeyboardPopupRequest,
+        items: List<String>,
+        source: String,
+        onSelected: (Int) -> Unit,
+    ): Boolean {
+        if (!isKeyboardPopupRequestCurrent(request)) return false
+        val popupView = layoutInflater.inflate(R.layout.popup_list_layout, request.mainView.root, false)
+        val list = popupView.findViewById<ListView>(R.id.popup_listview).apply {
+            choiceMode = ListView.CHOICE_MODE_SINGLE
+            adapter = createKeyboardFontArrayAdapter(this@IMEService, R.layout.list_item_layout, items)
+        }
+        val popup = ImeSelectionPopupWindow(this, popupView)
+        list.setOnItemClickListener { _, _, position, _ ->
+            val valid = isKeyboardPopupRequestCurrent(request)
+            popup.dismiss()
+            if (valid && position in items.indices) onSelected(position)
+        }
+        return showKeyboardSelectionPopup(
+            popup, resolveShowListPopupAnchor(request.mainView), Gravity.CENTER, 0, source,
+        )
+    }
+
+    private fun showKeyboardSelectionPopup(
+        popup: PopupWindow,
+        anchor: View?,
+        gravity: Int,
+        y: Int,
+        source: String,
+        x: Int = 0,
+        onDismiss: () -> Unit = {},
+    ): Boolean {
+        replaceKeyboardSelectionPopupWindow(popup)
+        popup.setOnDismissListener {
+            onDismiss()
+            if (keyboardSelectionPopupWindow === popup) {
+                keyboardPopupRequests.invalidate()
+                keyboardSelectionPopupWindow = null
+                onKeyboardSwitchLongPressUp = false
+                updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+            }
+            if (imeSwitchPopupWindow === popup) imeSwitchPopupWindow = null
+        }
+        val shown = showPopupWindowSafely(popup, anchor, gravity, x, y, source)
+        if (shown && popup.isShowing) {
+            onKeyboardSwitchLongPressUp = true
+            updateKeyboardSelectionPopupBackInvokedCallback(registered = true, popupWindow = popup)
+            return true
+        }
+        // PopupWindow.dismiss() is a no-op if the window never became visible.
+        popup.dismiss()
+        onDismiss()
+        if (keyboardSelectionPopupWindow === popup) {
+            keyboardSelectionPopupWindow = null
+            keyboardPopupRequests.invalidate()
+            onKeyboardSwitchLongPressUp = false
+            updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+        }
+        return false
+    }
 
     private fun handleImeSwitchPopupKeyDown(keyCode: Int): Boolean {
-        val popupWindow = imeSwitchPopupWindow?.takeIf { it.isShowing } ?: return false
+        val popupWindow = keyboardSelectionPopupWindow?.takeIf { it.isShowing } ?: return false
+        if (keyCode == KeyEvent.KEYCODE_ESCAPE) {
+            popupWindow.dismiss()
+            return true
+        }
         val listView = popupWindow.contentView.findViewById<ListView>(R.id.popup_listview)
+            ?: return false
         val adapter = listView.adapter
         val itemCount = adapter?.count ?: 0
         return when (keyCode) {
@@ -11760,6 +11877,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isKeyboardSelectionPopupBackInvokedCallbackRegistered) return
             val targetPopupWindow = requireNotNull(popupWindow)
             val callback = OnBackInvokedCallback {
+                // Predictive Back may complete without another key-up reaching the IME.
+                consumeKeyboardSelectionPopupBackKeyUp = false
+                keyboardSelectionPopupBackKeyTarget = null
                 targetPopupWindow.takeIf { it.isShowing }?.dismiss()
             }.also { keyboardSelectionPopupBackInvokedCallback = it }
             dispatcher.registerOnBackInvokedCallback(
@@ -11785,20 +11905,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun showCandidateLongPressActions(
         insertString: String, candidate: Candidate, candidatePosition: Int
     ) {
+        val request = beginKeyboardPopupRequest() ?: return
         ioScope.launch {
-            val enabledPromptTemplates = if (gemmaTranslationManager.isTranslationAvailable()) {
-                gemmaPromptTemplateRepository.getEnabledTemplates(customGemmaPromptActionLimit)
-            } else {
-                emptyList()
+            try {
+                val enabledPromptTemplates = if (gemmaTranslationManager.isTranslationAvailable()) {
+                    gemmaPromptTemplateRepository.getEnabledTemplates(customGemmaPromptActionLimit)
+                } else {
+                    emptyList()
+                }
+                withContext(Dispatchers.Main) {
+                    if (isKeyboardPopupRequestCurrent(request)) {
+                        showCandidateLongPressActionsPopup(
+                            insertString, candidate, candidatePosition, enabledPromptTemplates, request,
+                        )
+                    }
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                reportKeyboardPopupFailure(request, exception)
             }
+        }
+    }
 
-            withContext(Dispatchers.Main) {
-                showCandidateLongPressActionsPopup(
-                    insertString = insertString,
-                    candidate = candidate,
-                    candidatePosition = candidatePosition,
-                    promptTemplates = enabledPromptTemplates
-                )
+    private suspend fun reportKeyboardPopupFailure(request: KeyboardPopupRequest, exception: Exception) {
+        withContext(Dispatchers.Main) {
+            if (isKeyboardPopupRequestCurrent(request)) {
+                dismissKeyboardSelectionPopups()
+                Timber.w(exception, "IME popup could not be loaded")
+                showToastMessage(getString(R.string.ime_popup_unavailable))
             }
         }
     }
@@ -11807,112 +11942,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         candidate: Candidate,
         candidatePosition: Int,
-        promptTemplates: List<GemmaPromptTemplate>
+        promptTemplates: List<GemmaPromptTemplate>,
+        request: KeyboardPopupRequest,
     ) {
-        mainLayoutBinding?.let { mainView ->
-            val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
-            val listView = popupView.findViewById<ListView>(R.id.popup_listview)
-
-            listView.choiceMode = ListView.CHOICE_MODE_SINGLE
-
-            val actions = buildList {
-                if (candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY) {
-                    add(CandidateLongPressAction.ForgetLearnedEntry)
-                }
-                if (isNgWordEnable == true) {
-                    add(CandidateLongPressAction.HideWord)
-                }
-                if (gemmaTranslationManager.isTranslationAvailable()) {
-                    add(CandidateLongPressAction.Translate)
-                    promptTemplates.forEach { template ->
-                        add(CandidateLongPressAction.CustomPrompt(template))
-                    }
-                }
-                add(CandidateLongPressAction.Close)
+        val actions = buildList {
+            if (candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY) {
+                add(CandidateLongPressAction.ForgetLearnedEntry)
             }
-
-            val items = actions.map { action ->
-                when (action) {
-                    CandidateLongPressAction.ForgetLearnedEntry ->
-                        getString(R.string.candidate_action_forget_learning)
-                    CandidateLongPressAction.HideWord -> getString(R.string.candidate_action_hide_word)
-                    CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
-                    is CandidateLongPressAction.CustomPrompt -> action.template.title
-                    CandidateLongPressAction.Close -> getString(R.string.candidate_action_close)
+            if (isNgWordEnable == true) {
+                add(CandidateLongPressAction.HideWord)
+            }
+            if (gemmaTranslationManager.isTranslationAvailable()) {
+                add(CandidateLongPressAction.Translate)
+                promptTemplates.forEach { template ->
+                    add(CandidateLongPressAction.CustomPrompt(template))
                 }
             }
+            add(CandidateLongPressAction.Close)
+        }
 
-            val adapter = createKeyboardFontArrayAdapter(
-                this@IMEService,
-                R.layout.list_item_layout,
-                items,
-            )
-            listView.adapter = adapter
+        val items = actions.map { action ->
+            when (action) {
+                CandidateLongPressAction.ForgetLearnedEntry ->
+                    getString(R.string.candidate_action_forget_learning)
+                CandidateLongPressAction.HideWord -> getString(R.string.candidate_action_hide_word)
+                CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
+                is CandidateLongPressAction.CustomPrompt -> action.template.title
+                CandidateLongPressAction.Close -> getString(R.string.candidate_action_close)
+            }
+        }
 
-            replaceKeyboardSelectionPopupWindow(PopupWindow(
-                popupView,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                true
-            ))
-            listView.setOnItemClickListener { _, _, position, _ ->
-                Timber.d("candidate long click: $candidate $candidatePosition")
-                val selectedAction = actions.getOrNull(position)
-                when (selectedAction) {
-                    CandidateLongPressAction.ForgetLearnedEntry -> {
-                        val reading = resolveLearnedCandidateReading(insertString, candidate)
-                        if (reading.isNotEmpty()) {
-                            ioScope.launch {
-                                learnRepository.deleteByInputAndOutput(
-                                    input = reading,
-                                    output = candidate.string,
-                                )
-                                withContext(Dispatchers.Main) {
-                                    requestCandidateRefresh(CandidateShowFlag.Updating)
-                                }
+        showKeyboardSelectionList(request, items, "candidate long press") { position ->
+            val selectedAction = actions.getOrNull(position)
+            when (selectedAction) {
+                CandidateLongPressAction.ForgetLearnedEntry -> {
+                    val reading = resolveLearnedCandidateReading(insertString, candidate)
+                    if (reading.isNotEmpty()) {
+                        ioScope.launch {
+                            learnRepository.deleteByInputAndOutput(
+                                input = reading,
+                                output = candidate.string,
+                            )
+                            withContext(Dispatchers.Main) {
+                                requestCandidateRefresh(CandidateShowFlag.Updating)
                             }
                         }
                     }
-
-                    CandidateLongPressAction.HideWord -> {
-                        keyboardSelectionPopupWindow?.dismiss()
-                        if (!showNgWordRegistrationPopup(insertString, candidate)) {
-                            registerNgWord(
-                                yomi = insertString,
-                                tango = candidate.string,
-                                matchMode = NgWordMatchMode.PARTIAL,
-                            )
-                        }
-                    }
-
-                    CandidateLongPressAction.Translate -> translateCandidateInPlace(
-                        candidate = candidate,
-                        candidatePosition = candidatePosition
-                    )
-
-                    is CandidateLongPressAction.CustomPrompt -> executeCustomGemmaPromptInPlace(
-                        template = selectedAction.template,
-                        candidate = candidate,
-                        candidatePosition = candidatePosition
-                    )
-
-                    CandidateLongPressAction.Close, null -> Unit
                 }
-                if (selectedAction != CandidateLongPressAction.HideWord) {
-                    keyboardSelectionPopupWindow?.dismiss()
-                }
-            }
 
-            keyboardSelectionPopupWindow?.let { popupWindow ->
-                showPopupWindowSafely(
-                    popupWindow = popupWindow,
-                    anchorView = mainView.suggestionRecyclerView,
-                    gravity = Gravity.TOP,
-                    x = 0,
-                    y = 0,
-                    source = "registerNGWord"
+                CandidateLongPressAction.HideWord -> {
+                    showNgWordRegistrationPopup(insertString, candidate)
+                }
+
+                CandidateLongPressAction.Translate -> translateCandidateInPlace(
+                    candidate = candidate,
+                    candidatePosition = candidatePosition
                 )
+
+                is CandidateLongPressAction.CustomPrompt -> executeCustomGemmaPromptInPlace(
+                    template = selectedAction.template,
+                    candidate = candidate,
+                    candidatePosition = candidatePosition
+                )
+
+                CandidateLongPressAction.Close, null -> Unit
             }
         }
     }
@@ -11921,73 +12014,103 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         candidate: Candidate,
     ): Boolean {
-        val mainView = mainLayoutBinding ?: return false
-        val context = mainView.root.context
-        val popupView = LayoutInflater.from(context).inflate(
-            R.layout.popup_ng_word_registration,
-            mainView.root,
-            false,
+        dictionaryFloats?.releaseInputTarget()
+        val request = beginKeyboardPopupRequest() ?: return false
+        val mainView = request.mainView
+        val anchor = resolveShowListPopupAnchor(mainView) ?: return false
+        val popupView = LayoutInflater.from(mainView.root.context).inflate(
+            R.layout.popup_ng_word_registration, mainView.root, false,
         )
-        val yomiEditText = popupView.findViewById<EditText>(R.id.edit_text_ng_word_yomi_registration)
-        val tangoEditText = popupView.findViewById<EditText>(R.id.edit_text_ng_word_tango_registration)
-        val matchModeSpinner = popupView.findViewById<Spinner>(R.id.spinner_ng_word_match_mode_registration)
-        val matchModes = NgWordMatchMode.values().toList()
-
-        yomiEditText.setText(insertString)
-        tangoEditText.setText(candidate.string)
-        matchModeSpinner.adapter = createKeyboardFontArrayAdapter(
-            context,
-            android.R.layout.simple_spinner_item,
-            context.resources.getStringArray(R.array.ng_word_match_mode_entries).toList(),
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        matchModeSpinner.setSelection(matchModes.indexOf(NgWordMatchMode.PARTIAL))
-
-        val popupWindow = PopupWindow(
-            popupView,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            true,
-        ).apply {
-            setBackgroundDrawable(popupView.background)
-            isOutsideTouchable = true
-            inputMethodMode = PopupWindow.INPUT_METHOD_NEEDED
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-        }
-        replaceKeyboardSelectionPopupWindow(popupWindow)
-        popupWindow.setOnDismissListener {
-            if (keyboardSelectionPopupWindow === popupWindow) {
-                keyboardSelectionPopupWindow = null
+        val yomi = popupView.findViewById<ImeLocalTextInputEditText>(R.id.edit_text_ng_word_yomi_registration)
+        val tango = popupView.findViewById<ImeLocalTextInputEditText>(R.id.edit_text_ng_word_tango_registration)
+        val modes = popupView.findViewById<RadioGroup>(R.id.ng_word_match_mode_registration)
+        yomi.setText(insertString)
+        tango.setText(candidate.string)
+        modes.check(R.id.ng_word_match_partial)
+        val editors = setOf<EditText>(yomi, tango)
+        for (editor in listOf(yomi, tango)) {
+            editor.showSoftInputOnFocus = false
+            editor.onSelectionChangedListener = ::onDictionaryEditorSelectionChanged
+            editor.setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN && editor in ngWordRegistrationEditors &&
+                    ngWordRegistrationPopup?.isShowing == true && dictionaryInputEditor !== editor) {
+                    switchDictionaryInputTarget(editor)
+                }
+                false
+            }
+            editor.onFocusChangeListener = View.OnFocusChangeListener { _, focused ->
+                if (focused && editor in ngWordRegistrationEditors && ngWordRegistrationPopup?.isShowing == true &&
+                    dictionaryInputEditor !== editor) switchDictionaryInputTarget(editor)
             }
         }
 
+        // Keep a bounded, scrollable form above the active keyboard so it remains usable for editing.
+        val available = Rect().also(anchor::getWindowVisibleDisplayFrame)
+        val keyboardLocation = IntArray(2)
+        (requireActiveKeyboardSurface()?.rootView ?: mainView.root).getLocationOnScreen(keyboardLocation)
+        available.bottom = minOf(available.bottom, keyboardLocation[1])
+        val margin = (12 * resources.displayMetrics.density).toInt()
+        available.inset(margin, margin)
+        if (available.width() <= 0 || available.height() < margin * 4) {
+            showToastMessage(getString(R.string.ime_popup_unavailable))
+            return false
+        }
+        val formWidth = minOf((320 * resources.displayMetrics.density).toInt(), available.width())
+        popupView.measure(
+            View.MeasureSpec.makeMeasureSpec(formWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(available.height(), View.MeasureSpec.AT_MOST),
+        )
+        val popup = PopupWindow(popupView, formWidth, popupView.measuredHeight, false).apply {
+            setBackgroundDrawable(popupView.background)
+            isOutsideTouchable = false
+            inputMethodMode = PopupWindow.INPUT_METHOD_NEEDED
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) setIsLaidOutInScreen(true)
+        }
+        ngWordRegistrationPopup = popup
+        ngWordRegistrationEditors = editors
         popupView.findViewById<View>(R.id.button_ng_word_registration_cancel)
-            .setOnClickListener { popupWindow.dismiss() }
+            .setOnClickListener { popup.dismiss() }
         popupView.findViewById<View>(R.id.button_ng_word_registration_save)
             .setOnClickListener {
-                val yomi = yomiEditText.text.toString().trim()
-                val tango = tangoEditText.text.toString().trim()
-                if (yomi.isEmpty() || tango.isEmpty()) {
+                if (ngWordRegistrationPopup !== popup) return@setOnClickListener
+                finishComposingText()
+                val reading = yomi.text.toString().trim()
+                val word = tango.text.toString().trim()
+                if (reading.isEmpty() || word.isEmpty()) {
                     showToastMessage(getString(R.string.ng_word_empty_input_message))
                     return@setOnClickListener
                 }
-                val matchMode = matchModes.getOrNull(matchModeSpinner.selectedItemPosition)
-                    ?: NgWordMatchMode.PARTIAL
-                popupWindow.dismiss()
-                registerNgWord(yomi, tango, matchMode)
+                val mode = if (modes.checkedRadioButtonId == R.id.ng_word_match_exact) {
+                    NgWordMatchMode.EXACT
+                } else {
+                    NgWordMatchMode.PARTIAL
+                }
+                popup.dismiss()
+                registerNgWord(reading, word, mode)
             }
-
-        val shown = showPopupWindowSafely(
-            popupWindow = popupWindow,
-            anchorView = mainView.suggestionRecyclerView,
-            gravity = Gravity.CENTER,
-            x = 0,
-            y = 0,
-            source = "showNgWordRegistrationPopup",
+        var x = available.left + (available.width() - formWidth) / 2
+        var y = available.top + (available.height() - popupView.measuredHeight) / 2
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val screen = IntArray(2).also(anchor::getLocationOnScreen)
+            val inWindow = IntArray(2).also(anchor::getLocationInWindow)
+            x -= screen[0] - inWindow[0]
+            y -= screen[1] - inWindow[1]
+        }
+        val shown = showKeyboardSelectionPopup(
+            popup, anchor, Gravity.TOP or Gravity.LEFT, y, "NG word registration", x = x,
+            onDismiss = {
+                if (ngWordRegistrationPopup === popup) {
+                    ngWordRegistrationPopup = null
+                    ngWordRegistrationEditors = emptySet()
+                    if (dictionaryInputEditor in editors) switchDictionaryInputTarget(null)
+                }
+            },
         )
-        if (!shown) {
-            popupWindow.dismiss()
+        if (shown) {
+            yomi.requestFocus()
+            switchDictionaryInputTarget(yomi)
+        } else {
+            showToastMessage(getString(R.string.ime_popup_unavailable))
         }
         return shown
     }
@@ -12656,8 +12779,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun showListPopup() {
-        onKeyboardSwitchLongPressUp = true
         if (inputString.value.isNotEmpty()) return
+        if (beginKeyboardPopupRequest() == null) return
 
         mainLayoutBinding?.let { mainView ->
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
@@ -12736,29 +12859,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.adapter = adapter
             limitListViewVisibleItems(listView, maxVisible = 5)
 
-            // --- 3) PopupWindow ---
-            // This popup belongs to the IME window. Taking focus can make the editor
-            // hide the IME, which also removes this popup on some apps and OEMs.
-            // A non-focusable popup still receives taps in its ListView.
-            val touchShield = FrameLayout(this).apply {
-                addView(
-                    popupView,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                        Gravity.CENTER,
-                    ),
-                )
-            }
-            val popupWindow = PopupWindow(
-                touchShield,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                false,
-            )
-            // A non-focusable popup passes touches outside its bounds to the editor/keyboard.
-            // Cover the display and consume a tap outside the list before dismissing it.
-            touchShield.setOnClickListener { popupWindow.dismiss() }
+            val popupWindow = ImeSelectionPopupWindow(this, popupView)
             replaceKeyboardSelectionPopupWindow(popupWindow)
             imeSwitchPopupWindow = popupWindow
             onKeyboardSwitchLongPressUp = true
@@ -12932,99 +13033,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
 
     private fun showUserTemplateListPopup() {
-        onKeyboardSwitchLongPressUp = true
         if (inputString.value.isNotEmpty()) return
-
-        mainLayoutBinding?.let { mainView ->
-            ioScope.launch {
+        val request = beginKeyboardPopupRequest() ?: return
+        ioScope.launch {
+            try {
                 val templates = userTemplateRepository.allTemplatesSuspend()
-                val templateNames = templates.map { it.word }
-
                 withContext(Dispatchers.Main) {
-                    val inflater =
-                        getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-                    val popupView =
-                        inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
-                    val listView = popupView.findViewById<ListView>(R.id.popup_listview)
-
-                    listView.choiceMode = ListView.CHOICE_MODE_SINGLE
-
-                    val adapter = createKeyboardFontArrayAdapter(
-                        this@IMEService, R.layout.list_item_layout, templateNames
-                    )
-                    listView.adapter = adapter
-
-                    replaceKeyboardSelectionPopupWindow(PopupWindow(
-                        popupView,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        true // Focusable
-                    ))
-                    onKeyboardSwitchLongPressUp = true
-
-                    listView.setOnItemClickListener { _, _, position, _ ->
-                        val selectedTemplate = templates[position]
-                        val textToCommit = selectedTemplate.word
-                        commitText(textToCommit, 1)
-
-                        keyboardSelectionPopupWindow?.dismiss()
+                    if (!isKeyboardPopupRequestCurrent(request)) return@withContext
+                    if (templates.isEmpty()) {
+                        dismissKeyboardSelectionPopups()
+                        showToastMessage(getString(R.string.ime_no_templates_registered))
+                        return@withContext
                     }
-
-                    keyboardSelectionPopupWindow?.setOnDismissListener {
-                        onKeyboardSwitchLongPressUp = false
+                    showKeyboardSelectionList(request, templates.map { it.word }, "templates") { position ->
+                        commitText(templates[position].word, 1)
                     }
-
-                    keyboardSelectionPopupWindow?.showAsDropDown(mainView.shortcutToolbarRecyclerview)
                 }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                reportKeyboardPopupFailure(request, exception)
             }
         }
     }
 
     private fun showCurrentDateListPopup() {
-        onKeyboardSwitchLongPressUp = true
         if (inputString.value.isNotEmpty()) return
-        val calendar = Calendar.getInstance()
-        mainLayoutBinding?.let { mainView ->
-            ioScope.launch {
-                val currentDates = createDateStrings(calendar)
-
-                withContext(Dispatchers.Main) {
-                    val inflater =
-                        getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-                    val popupView =
-                        inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
-                    val listView = popupView.findViewById<ListView>(R.id.popup_listview)
-
-                    listView.choiceMode = ListView.CHOICE_MODE_SINGLE
-
-                    val adapter = createKeyboardFontArrayAdapter(
-                        this@IMEService, R.layout.list_item_layout, currentDates
-                    )
-                    listView.adapter = adapter
-
-                    replaceKeyboardSelectionPopupWindow(PopupWindow(
-                        popupView,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        true // Focusable
-                    ))
-                    onKeyboardSwitchLongPressUp = true
-
-                    listView.setOnItemClickListener { _, _, position, _ ->
-                        val selectedDates = currentDates[position]
-                        commitText(selectedDates, 1)
-
-                        keyboardSelectionPopupWindow?.dismiss()
-                    }
-
-                    keyboardSelectionPopupWindow?.setOnDismissListener {
-                        onKeyboardSwitchLongPressUp = false
-                    }
-
-                    keyboardSelectionPopupWindow?.showAsDropDown(mainView.shortcutToolbarRecyclerview)
-                }
-            }
-        }
+        val request = beginKeyboardPopupRequest() ?: return
+        val dates = createDateStrings(Calendar.getInstance())
+        showKeyboardSelectionList(request, dates, "dates") { position -> commitText(dates[position], 1) }
     }
 
     private fun createDateStrings(calendar: Calendar): List<String> {
@@ -26940,55 +26977,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun showTextMacroListPopup() {
-        onKeyboardSwitchLongPressUp = true
-        val mainView = mainLayoutBinding ?: return
-        val requestId = textMacroExecutionRequestId.incrementAndGet()
+        val request = beginKeyboardPopupRequest() ?: return
         ioScope.launch {
-            val macros = runCatching { textMacroRepository.getAllEnabled() }.getOrDefault(emptyList())
-            withContext(Dispatchers.Main.immediate) {
-                if (requestId != textMacroExecutionRequestId.get()) return@withContext
-                if (macros.isEmpty()) {
-                    Toast.makeText(
-                        this@IMEService,
-                        R.string.text_macro_context_unavailable,
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    return@withContext
+            try {
+                val macros = textMacroRepository.getAllEnabled()
+                withContext(Dispatchers.Main.immediate) {
+                    if (!isKeyboardPopupRequestCurrent(request)) return@withContext
+                    if (macros.isEmpty()) {
+                        dismissKeyboardSelectionPopups()
+                        showToastMessage(getString(R.string.text_macro_context_unavailable))
+                        return@withContext
+                    }
+                    showKeyboardSelectionList(request, macros.map { it.name }, "text macros") { position ->
+                        executeTextMacro(macros[position].id)
+                    }
                 }
-                val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-                val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
-                val listView = popupView.findViewById<ListView>(R.id.popup_listview).apply {
-                    choiceMode = ListView.CHOICE_MODE_SINGLE
-                    adapter = createKeyboardFontArrayAdapter(
-                        this@IMEService,
-                        R.layout.list_item_layout,
-                        macros.map { it.name },
-                    )
-                }
-                limitListViewVisibleItems(listView, maxVisible = 8)
-                replaceKeyboardSelectionPopupWindow(PopupWindow(
-                    popupView,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    true,
-                ).apply {
-                    setOnDismissListener { onKeyboardSwitchLongPressUp = false }
-                })
-                onKeyboardSwitchLongPressUp = true
-                listView.setOnItemClickListener { _, _, position, _ ->
-                    keyboardSelectionPopupWindow?.dismiss()
-                    macros.getOrNull(position)?.let { executeTextMacro(it.id) }
-                }
-                keyboardSelectionPopupWindow?.let { popupWindow ->
-                    showPopupWindowSafely(
-                        popupWindow = popupWindow,
-                        anchorView = mainView.shortcutToolbarRecyclerview,
-                        gravity = Gravity.CENTER,
-                        x = 0,
-                        y = 0,
-                        source = "showTextMacroListPopup",
-                    )
-                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                reportKeyboardPopupFailure(request, exception)
             }
         }
     }

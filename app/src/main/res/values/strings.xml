@@ -1864,6 +1864,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
 ！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
 空白　変換　確定　検索　return</string>
     <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
+    <string name="ime_popup_unavailable">Could not display the list. Please try again.</string>
+    <string name="ime_no_templates_registered">No templates registered.</string>
     <string name="custom_direct_input_replace_composing_title">Replace composing text with direct input</string>
     <string name="custom_direct_input_replace_composing_summary_off">Switching to direct input commits composing text.</string>
     <string name="custom_direct_input_replace_composing_summary_on">The first input after switching to direct input replaces composing text.</string>
