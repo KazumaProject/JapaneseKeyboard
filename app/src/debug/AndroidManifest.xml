@@ -24,6 +24,12 @@
         </service>
 
         <activity
+            android:name=".CandidateHeightTestHostActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".FastInputHostActivity"
             android:exported="true"
             android:screenOrientation="unspecified"
