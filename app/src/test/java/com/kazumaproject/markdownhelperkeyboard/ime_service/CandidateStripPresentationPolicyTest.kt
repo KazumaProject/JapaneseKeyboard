@@ -361,15 +361,15 @@ class CandidateStripPresentationPolicyTest {
                     resolveDockedCandidateChromeHeightPx(presentation, tabHeight, toolbarHeight)
                 )
                 assertEquals(containerHeight,
-                    resolveDockedToolbarContainerHeightPx(500, 60, 60, tabHeight, toolbarHeight, 20))
+                    resolveDockedCandidateContainerHeightPx(500, 60, 60, tabHeight, toolbarHeight, 20))
             }
         }
     }
 
     @Test
     fun transparentContainerReservesTheLargerConfiguredVisibleState() {
-        assertEquals(636, resolveDockedToolbarContainerHeightPx(500, 60, 80, 36, 32, 20))
-        assertEquals(632, resolveDockedToolbarContainerHeightPx(500, 80, 60, 36, 32, 20))
+        assertEquals(636, resolveDockedCandidateContainerHeightPx(500, 60, 80, 36, 32, 20))
+        assertEquals(632, resolveDockedCandidateContainerHeightPx(500, 80, 60, 36, 32, 20))
     }
 
     @Test
@@ -384,6 +384,31 @@ class CandidateStripPresentationPolicyTest {
                     resolveDockedCandidateChromeHeightPx(presentation, 36, 72)
                 )
             }
+        }
+    }
+
+    @Test
+    fun stableContainerCoversAllConfiguredColumnHeightsWithoutAToolbar() {
+        // active height, empty height, tab height, expected total including body/inset
+        val cases = listOf(
+            listOf(60, 48, 0, 580), listOf(60, 48, 36, 616),
+            listOf(80, 60, 0, 600), listOf(80, 60, 36, 636),
+            listOf(100, 60, 0, 620), listOf(100, 60, 36, 656),
+            listOf(60, 120, 0, 640), listOf(60, 120, 36, 640)
+        )
+        for ((candidateHeight, emptyHeight, tabHeight, expectedHeight) in cases) {
+            assertEquals(
+                expectedHeight,
+                resolveDockedCandidateContainerHeightPx(500, emptyHeight, candidateHeight, tabHeight, 0, 20)
+            )
+        }
+    }
+
+    @Test
+    fun stableInsetsIgnoreInputAndConfirmationHeightChanges() {
+        for (visibleTop in listOf(100, 136, 160, 100)) {
+            assertEquals(100, resolveDockedCandidateInsetsTopPx(true, 100, visibleTop))
+            assertEquals(visibleTop, resolveDockedCandidateInsetsTopPx(false, 100, visibleTop))
         }
     }
 

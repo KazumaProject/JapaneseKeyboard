@@ -420,6 +420,7 @@ class SuggestionAdapter internal constructor(
         showIntegratedShortcutEntry = source.showIntegratedShortcutEntry
         integratedShortcutEntryExpanded = source.integratedShortcutEntryExpanded
         shortcutIconColor = source.shortcutIconColor
+        inlineSuggestionIconBackgroundTint = source.inlineSuggestionIconBackgroundTint
         activeShortcutTypes = source.activeShortcutTypes
         incognitoIconDrawable = source.incognitoIconDrawable
         candidateTextSize = source.candidateTextSize
@@ -2351,6 +2352,14 @@ class SuggestionAdapter internal constructor(
         }
     }
 
+    private var inlineSuggestionIconBackgroundTint: android.content.res.ColorStateList? = null
+
+    internal fun setInlineSuggestionIconBackgroundTint(tint: android.content.res.ColorStateList?) {
+        if (inlineSuggestionIconBackgroundTint == tint) return
+        inlineSuggestionIconBackgroundTint = tint
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     private fun onBindInlineSuggestionToggleViewHolder(
         holder: InlineSuggestionToggleViewHolder,
         item: SuggestionDisplayItem.InlineSuggestionToggleItem,
@@ -2359,10 +2368,15 @@ class SuggestionAdapter internal constructor(
         holder.badgeText.text = item.toggle.badge.orEmpty()
         holder.badgeText.isVisible = !item.toggle.badge.isNullOrEmpty()
         holder.badgeIcon.isVisible = item.toggle.iconResId != null
+        holder.badgeIcon.backgroundTintList = inlineSuggestionIconBackgroundTint
         holder.badgeIcon.background = item.toggle.iconBackgroundResId?.let { backgroundResId ->
             ContextCompat.getDrawable(holder.itemView.context, backgroundResId)
         }
-        item.toggle.iconResId?.let(holder.badgeIcon::setImageResource)
+        // Reload even when the resource is unchanged: clearing ImageView tint on reuse
+        // also clears the vector's XML tint, which setImageResource would otherwise retain.
+        holder.badgeIcon.setImageDrawable(item.toggle.iconResId?.let { iconResId ->
+            ContextCompat.getDrawable(holder.itemView.context, iconResId)?.mutate()
+        })
         holder.itemView.contentDescription = item.toggle.contentDescription
         candidateTextColor?.let { color ->
             holder.badgeText.setTextColor(color)
