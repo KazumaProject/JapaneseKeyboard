@@ -105,6 +105,9 @@ internal class FloatingDictionaryController(
 
     fun destroy() { endSession(); scope.cancel() }
 
+    /** Release ownership before another IME-local form starts editing. */
+    fun releaseInputTarget() { focus(null) }
+
     private fun focus(editor: EditText?) {
         if (activeEditor === editor) return
         changingFocus = true
