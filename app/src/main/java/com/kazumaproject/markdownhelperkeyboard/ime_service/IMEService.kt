@@ -7334,16 +7334,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!floatingCandidateSurfaceActive) {
             mainLayoutBinding?.candidateTabLayout?.let(::applyCandidateTabAppearance)
         }
+        val skin = KeyboardSkinRegistry.find(keyboardSkinId)
+        val skinColors = skin?.let { resolveCandidatePanelColors() }
         val classic = keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
-        val custom = keyboardThemeMode == "custom"
+        val custom = keyboardThemeMode == "custom" && skin == null
+        val inlineBackgroundTint = skin?.palette?.let { palette ->
+            android.content.res.ColorStateList(
+                arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf()),
+                intArrayOf(palette.pressed, palette.key),
+            )
+        }
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
-            adapter.setCandidateTextColor(if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
+            adapter.setCandidateTextColor(skinColors?.text ?: if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
+            adapter.setInlineSuggestionIconBackgroundTint(inlineBackgroundTint)
             adapter.setCandidateItemColors(
-                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) Color.TRANSPARENT
-                else if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
-                if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) {
-                    com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.candidatePressedColor
-                } else if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
+                if (classic) Color.TRANSPARENT
+                else skin?.palette?.background ?: if (custom) customThemeCandidateItemBgColor ?: Color.TRANSPARENT else null,
+                skinColors?.pressed ?: if (custom) customThemeCandidateItemPressedBgColor ?: ContextCompat.getColor(
                     this, com.kazumaproject.core.R.color.qwety_key_bg_color
                 ) else null,
                 if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC) 0f else 16f,
@@ -7365,6 +7372,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardBinding?.let { it.suggestionVisibility to it.candidatesRowView },
         ).forEach { (button, expandedCandidates) ->
             button.isSelected = expandedCandidates.visibility == View.VISIBLE
+            button.backgroundTintList = null
             if (classic) {
                 val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
                 button.background = chrome.expandButtonBackground(button.resources)
@@ -7378,8 +7386,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (DynamicColors.isDynamicColorAvailable()) com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
                     else com.kazumaproject.core.R.drawable.recyclerview_size_button_bg
                 )?.mutate()
-                button.imageTintList = defaultButtonTint
-                if (custom) {
+                button.imageTintList = skinColors?.let { android.content.res.ColorStateList.valueOf(it.icon) }
+                    ?: defaultButtonTint
+                if (skin != null) {
+                    button.backgroundTintList = android.content.res.ColorStateList(
+                        arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf()),
+                        intArrayOf(skin.palette.pressed, skin.palette.specialKey),
+                    )
+                    button.clearColorFilter()
+                } else if (custom) {
                     button.setDrawableSolidColor(customThemeSpecialKeyColor ?: Color.GRAY)
                     button.setColorFilter(customThemeKeyTextColor ?: Color.BLACK)
                 } else {
@@ -7387,7 +7402,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
-        val shortcutColor = if (custom) customThemeShortcutIconColor ?: Color.BLACK else null
+        val shortcutColor = resolveCandidateShortcutIconColor()
         shortcutAdapter?.setIconColor(shortcutColor)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { it.setShortcutIconColor(shortcutColor) }
         listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
@@ -7396,8 +7411,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         composingGuide?.refresh()
     }
 
+    private fun resolveCandidateShortcutIconColor(): Int? =
+        if (KeyboardSkinRegistry.find(keyboardSkinId) != null) resolveCandidatePanelColors().icon
+        else if (keyboardThemeMode == "custom") customThemeShortcutIconColor ?: Color.BLACK
+        else null
+
     private fun applyCandidateEmptyPopupThemeToAdapters() {
         val adapters = listOfNotNull(suggestionAdapter, suggestionAdapterFull)
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
+            val colors = resolveCandidatePanelColors()
+            adapters.forEach { it.setCandidateEmptyPopupColors(skin.palette.key, colors.icon) }
+            return
+        }
         if (keyboardThemeMode != "custom") {
             adapters.forEach { adapter ->
                 adapter.clearCandidateEmptyPopupColors()
@@ -7422,7 +7447,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resolveFloatingCandidateTextColor(): Int? {
-        return if (keyboardThemeMode == "custom") {
+        return if (KeyboardSkinRegistry.find(keyboardSkinId) != null) {
+            resolveCandidatePanelColors().text
+        } else if (keyboardThemeMode == "custom") {
             customThemeCandidateTextColor ?: Color.BLACK
         } else {
             // Let FormulaViewHolder resolve the color from its popup context.  The popup is
@@ -21665,6 +21692,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tab.text = getCandidateTabDisplayName(tabType)
             mainView.candidateTabLayout.addTab(tab)
         }
+        // TabLayout recreates each TabView background; style the new views, not the old ones.
+        if (floatingCandidateSurfaceActive) candidateSurfaceHost?.refreshAppearance()
+        else applyCandidateTabAppearance(mainView.candidateTabLayout)
     }
 
     private fun getCandidateTabDisplayName(candidateTab: CandidateTab): String {
@@ -23218,15 +23248,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
-        when (keyboardThemeMode) {
-            "custom" -> {
-                shortcutAdapter?.setIconColor(customThemeShortcutIconColor ?: Color.BLACK)
-                suggestionAdapter?.setShortcutIconColor(customThemeShortcutIconColor ?: Color.BLACK)
-            }
-
-            else -> {
-            }
-        }
+        val iconColor = resolveCandidateShortcutIconColor()
+        shortcutAdapter?.setIconColor(iconColor)
+        suggestionAdapter?.setShortcutIconColor(iconColor)
         shortcutAdapter?.onItemClicked = { type ->
             handleShortcutAction(type, mainView)
         }
