@@ -196,6 +196,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     // ★ ポインターをロックするための変数を追加
     private var lockedPointerId: Int? = null
+    private val independentlyLockedPointers = mutableSetOf<Int>()
+    private fun isPointerLocked(pointerId: Int): Boolean =
+        if (independentMultiTouchForCurrentGesture) pointerId in independentlyLockedPointers
+        else pointerId == lockedPointerId
 
     private var isCursorMode: Boolean = false
 
@@ -258,10 +262,26 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private var enableFlickDownDetection = false
 
-    /**
-     * 各ポインターのタッチ開始座標 (X, Y) を保存するマップ
-     * Key: pointerId, Value: Pair(startX, startY)
-     */
+    private var independentMultiTouchEnabled = false
+    private var independentFlickThreshold = 0f
+    private var independentFlickThresholdShape = FlickThresholdShape.Radial
+    private var cursorPointerId: Int? = null
+    private var independentMultiTouchForCurrentGesture = false
+
+    fun setIndependentMultiTouchEnabled(enabled: Boolean) {
+        independentMultiTouchEnabled = enabled
+    }
+
+    private fun isIndependentExclusiveKey(view: View): Boolean =
+        (view === binding.keyShift && qwertyMode.value != QWERTYMode.Default) || qwertyButtonMap[view] in setOf(
+            QWERTYKey.QWERTYKeySwitchDefaultLayout,
+            QWERTYKey.QWERTYKeySwitchMode,
+            QWERTYKey.QWERTYKeyEmoji,
+            QWERTYKey.QWERTYKeySwitchRomajiEnglish,
+            QWERTYKey.QWERTYKeySwitchNumberKey
+        )
+
+    /** Each pointer's local coordinates when its key gesture began. */
     private val pointerStartCoords = SparseArray<Pair<Float, Float>>()
 
     /**
@@ -1495,13 +1515,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            independentMultiTouchForCurrentGesture = independentMultiTouchEnabled
+            independentFlickThreshold = flickThreshold
+            independentFlickThresholdShape = flickThresholdShape
+        }
 
         if (isCursorMode) {
             when (event.actionMasked) {
                 MotionEvent.ACTION_MOVE -> {
                     val threshold = 20f
-                    val currentX = event.x
-                    val currentY = event.y
+                    val index = if (independentMultiTouchForCurrentGesture) cursorPointerId?.let(event::findPointerIndex) ?: 0 else 0
+                    if (index < 0) return true
+                    val currentX = event.getX(index)
+                    val currentY = event.getY(index)
 
                     val dx = currentX - cursorInitialX
                     val dy = currentY - cursorInitialY
@@ -1521,7 +1548,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                MotionEvent.ACTION_UP -> {
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.actionMasked == MotionEvent.ACTION_POINTER_UP &&
+                        (!independentMultiTouchForCurrentGesture || event.getPointerId(event.actionIndex) != cursorPointerId)) return true
                     setCursorMode(false)
                     clearAllPressed()
                 }
@@ -1552,7 +1581,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val newPointerIndex = event.actionIndex
                 val newPointerId = event.getPointerId(newPointerIndex)
 
-                if (variationPopup?.isShowing == true) {
+                if (!independentMultiTouchForCurrentGesture && variationPopup?.isShowing == true) {
                     val variationPointerId = longPressedPointerId
                     if (variationPointerId != null &&
                         finishVariationGesture(
@@ -1585,6 +1614,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     return true
                 }
 
+                if (independentMultiTouchForCurrentGesture) {
+                    if (existingPointerIds.any { pid ->
+                            pointerButtonMap[pid]?.let(::isIndependentExclusiveKey) == true
+                        }) {
+                        suppressedPointerIds.add(newPointerId)
+                        return true
+                    }
+                    val newView = findButtonUnder(event.getX(newPointerIndex).toInt(), event.getY(newPointerIndex).toInt())
+                    if (newView != null && existingPointerIds.any { pointerButtonMap[it] === newView }) {
+                        suppressedPointerIds.add(newPointerId)
+                        return true
+                    }
+                    if (newView != null && isIndependentExclusiveKey(newView)) {
+                        existingPointerIds.forEach { pid ->
+                            notifyQwertyTouchCanceledForPointer(pid, KeyTouchCancelReason.PointerInterrupted)
+                            pointerButtonMap[pid]?.isPressed = false
+                            cancelLongPressForPointer(pid)
+                            pointerButtonMap.remove(pid)
+                            pointerStartCoords.remove(pid)
+                            independentlyLockedPointers.remove(pid)
+                            flickLockedPointers.remove(pid)
+                            if (longPressedPointerId == pid) dismissVariationPopup()
+                            suppressedPointerIds.add(pid)
+                        }
+                    }
+                    handlePointerDown(event, newPointerIndex)
+                    return true
+                }
+
                 existingPointerIds.forEach { pointerId ->
                     if (!suppressedPointerIds.contains(pointerId)) {
                         val pointerIndex = event.findPointerIndex(pointerId)
@@ -1614,10 +1672,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         val popupY = touchY - location[1]
                         variationPopupView?.updateSelection(popupX, popupY)
                     }
-                } else {
+                }
+                if (independentMultiTouchForCurrentGesture || variationPopup?.isShowing != true) {
                     for (i in 0 until event.pointerCount) {
                         val pid = event.getPointerId(i)
-                        if (suppressedPointerIds.contains(pid) || pid == lockedPointerId) continue
+                        if (variationPopup?.isShowing == true && pid == longPressedPointerId) continue
+                        if (suppressedPointerIds.contains(pid) || isPointerLocked(pid)) continue
                         handlePointerMove(event, pointerIndex = i, pointerId = pid)
                     }
                 }
@@ -2027,7 +2087,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun cancelIndependentTouchesForLayoutChange() {
+        if (!independentMultiTouchForCurrentGesture) return
+        notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.PointerInterrupted)
+        clearAllPressed()
+    }
+
     fun resetQWERTYKeyboard() {
+        cancelIndependentTouchesForLayoutChange()
         cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
@@ -2039,6 +2106,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun resetQWERTYKeyboard(enterKyeText: String) {
+        cancelIndependentTouchesForLayoutChange()
         cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
@@ -2051,6 +2119,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setNumberView() {
+        if (qwertyMode.value != QWERTYMode.Number || romajiModeState.value) cancelIndependentTouchesForLayoutChange()
         cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Number }
@@ -2062,6 +2131,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setRomajiKeyboard(enterKeyText: String) {
+        if (qwertyMode.value != QWERTYMode.Default || !romajiModeState.value) cancelIndependentTouchesForLayoutChange()
         cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps(notifyListener = true)
         _qwertyMode.update { QWERTYMode.Default }
@@ -2101,6 +2171,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * もう一方の QWERTYKeyboardView へ現在状態を伝搬する用途で利用する。
      */
     fun renderUiState(state: QwertyKeyboardUiState) {
+        if (state.qwertyMode != qwertyMode.value || state.romajiMode != romajiModeState.value) cancelIndependentTouchesForLayoutChange()
         cancelQwertyGlideCandidate(notify = glideStarted)
         // romaji を先に反映してから qwertyMode を反映することで、
         // applyContentForMode で参照される romajiMode の値が正しい状態で
@@ -2212,6 +2283,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         pointerButtonMap.remove(pointerId)
         flickLockedPointers.remove(pointerId)
+        independentlyLockedPointers.remove(pointerId)
         if (!wasFlick) {
             lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
         }
@@ -2313,8 +2385,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             FlickGestureMath.cardinalDirection(
                 deltaX = dx,
                 deltaY = dy,
-                thresholdPx = threshold,
-                thresholdShape = flickThresholdShape
+                thresholdPx = if (independentMultiTouchForCurrentGesture) independentFlickThreshold else threshold,
+                thresholdShape = if (independentMultiTouchForCurrentGesture) independentFlickThresholdShape else flickThresholdShape
             )
         ) {
             CoreFlickDirection.Left -> FlickDirection.LEFT
@@ -2402,12 +2474,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
-        if (suppressedPointerIds.contains(pointerId) || pointerId == lockedPointerId) return
+        if (suppressedPointerIds.contains(pointerId) || isPointerLocked(pointerId)) return
         if (flickLockedPointers.contains(pointerId)) return
 
         val x = event.getX(pointerIndex)
         val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
+
+        if (independentMultiTouchForCurrentGesture) {
+            val start = pointerStartCoords[pointerId] ?: return
+            if (detectFlickDirection(x, y, start.first, start.second, flickThreshold) != FlickDirection.NONE) {
+                cancelLongPressForPointer(pointerId)
+            }
+            return
+        }
 
         if (tryHandleFlickAt(pointerId, x, y)) {
             return
@@ -2447,7 +2527,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun tryHandleFlickAt(pointerId: Int, x: Float, y: Float): Boolean {
-        if (suppressedPointerIds.contains(pointerId) || pointerId == lockedPointerId) return false
+        if (suppressedPointerIds.contains(pointerId) || isPointerLocked(pointerId)) return false
         if (flickLockedPointers.contains(pointerId)) return true
 
         val (startX, startY) = pointerStartCoords[pointerId] ?: return false
@@ -2540,6 +2620,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
         dismissVariationPopup(defer = preserveReleasedPopups)
         lockedPointerId = null
+        independentlyLockedPointers.clear()
     }
 
     private fun notifyQwertyTouchCanceledForActivePointers(
@@ -2885,15 +2966,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val hasVariations = info != null && !info.variations.isNullOrEmpty()
                 val isSpecialLongPressKey = qwertyKey in longPressEnabledKeys
                 if (hasVariations) {
+                    if (independentMultiTouchForCurrentGesture && variationPopup?.isShowing == true) return@launch
                     clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
+                    if (independentMultiTouchForCurrentGesture && pointerButtonMap[pointerId] !== view) return@launch
                     info?.variations?.let { showVariationPopup(view, it) }
                     longPressedPointerId = pointerId
                     dismissKeyPreview()
                 } else if (isSpecialLongPressKey) {
                     clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
-                    lockedPointerId = pointerId
+                    if (!independentMultiTouchForCurrentGesture || pointerButtonMap[pointerId] === view) {
+                        lockedPointerId = pointerId
+                        if (independentMultiTouchForCurrentGesture) independentlyLockedPointers.add(pointerId)
+                    }
                 }
             }
         }
@@ -3012,8 +3098,26 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
         if (enabled) {
+            if (independentMultiTouchForCurrentGesture) {
+                cursorPointerId = (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
+                    .firstOrNull { pointerButtonMap[it]?.id == binding.keySpace.id }
+                cursorPointerId?.let { pointerStartCoords[it] }?.let { position ->
+                    cursorInitialX = position.first
+                    cursorInitialY = position.second
+                }
+                (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
+                    .filter { it != cursorPointerId }.forEach { pid ->
+                        notifyQwertyTouchCanceledForPointer(pid, KeyTouchCancelReason.PointerInterrupted)
+                        pointerButtonMap[pid]?.isPressed = false
+                        cancelLongPressForPointer(pid)
+                        pointerButtonMap.remove(pid)
+                        pointerStartCoords.remove(pid)
+                        suppressedPointerIds.add(pid)
+                    }
+            }
             setKeysForCursorMoveMode()
         } else {
+            cursorPointerId = null
             applyContentForMode(qwertyMode.value)
             if (_romajiModeState.value) {
                 binding.keySpace.text =
