@@ -64,8 +64,9 @@ internal fun resolveCandidateStripHeightDp(
 
 internal fun isCandidateStripActive(
     candidatesShown: Boolean,
-    inputStringEmpty: Boolean
-): Boolean = candidatesShown && !inputStringEmpty
+    inputStringEmpty: Boolean,
+    suggestionsSuppressed: Boolean = false
+): Boolean = candidatesShown && !inputStringEmpty && !suggestionsSuppressed
 
 object CandidateStripPresentationPolicy {
 
