@@ -818,4 +818,12 @@
             android:title="@string/app_version_title" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/setting_category_candidate_bar_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
+    </PreferenceCategory>
+
 </PreferenceScreen>
