@@ -29,7 +29,7 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 
 /** Test-only window: exercises production Sumire views without replacing the user's IME. */
-class SumireNearestKeyTestActivity : Activity() {
+open class SumireNearestKeyTestActivity : Activity() {
     lateinit var keyboard: FlickKeyboardView
     private lateinit var root: FrameLayout
     private lateinit var definition: KeyboardLayout
