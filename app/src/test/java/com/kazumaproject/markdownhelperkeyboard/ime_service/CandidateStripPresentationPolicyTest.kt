@@ -341,8 +341,11 @@ class CandidateStripPresentationPolicyTest {
     }
 
     @Test
-    fun independentToolbarKeepsHeightBeforeInputDuringCandidatesAndAfterCommit() {
-        for ((tabHeight, toolbarHeight) in listOf(0 to 36, 0 to 72, 48 to 32, 32 to 72)) {
+    fun independentToolbarSeparatesVisibleHeightFromTransparentContainerHeight() {
+        for ((tabHeight, toolbarHeight, containerHeight) in listOf(
+            Triple(0, 32, 612), Triple(0, 36, 616), Triple(0, 72, 652),
+            Triple(36, 32, 616), Triple(36, 36, 616), Triple(36, 72, 652)
+        )) {
             for (candidatesShown in listOf(false, true, false)) {
                 val presentation = CandidateStripPresentationPolicy.resolve(
                     baseState(
@@ -354,13 +357,19 @@ class CandidateStripPresentationPolicyTest {
                     )
                 )
                 assertEquals(
-                    maxOf(tabHeight, toolbarHeight),
-                    resolveDockedCandidateChromeHeightPx(
-                        presentation, tabHeight > 0, tabHeight, toolbarHeight
-                    )
+                    if (candidatesShown) tabHeight else toolbarHeight,
+                    resolveDockedCandidateChromeHeightPx(presentation, tabHeight, toolbarHeight)
                 )
+                assertEquals(containerHeight,
+                    resolveDockedToolbarContainerHeightPx(500, 60, 60, tabHeight, toolbarHeight, 20))
             }
         }
+    }
+
+    @Test
+    fun transparentContainerReservesTheLargerConfiguredVisibleState() {
+        assertEquals(636, resolveDockedToolbarContainerHeightPx(500, 60, 80, 36, 32, 20))
+        assertEquals(632, resolveDockedToolbarContainerHeightPx(500, 80, 60, 36, 32, 20))
     }
 
     @Test
@@ -372,7 +381,7 @@ class CandidateStripPresentationPolicyTest {
                 )
                 assertEquals(
                     if (candidatesShown) 36 else 0,
-                    resolveDockedCandidateChromeHeightPx(presentation, true, 36, 72)
+                    resolveDockedCandidateChromeHeightPx(presentation, 36, 72)
                 )
             }
         }
