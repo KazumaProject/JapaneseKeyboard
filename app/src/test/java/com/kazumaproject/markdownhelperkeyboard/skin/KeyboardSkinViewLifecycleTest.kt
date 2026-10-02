@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
@@ -85,6 +86,27 @@ class KeyboardSkinViewLifecycleTest {
             theme(KeyboardSkinId.CUPERTINO_CLASSIC)
             theme(KeyboardSkinId.DEFAULT)
             assertEquals(original, androidx.core.widget.ImageViewCompat.getImageTintList(button))
+        }
+    }
+
+    @Test fun skinAppliesModeLabelRenderingToTenKeyAndGojuonAndDefaultRestoresVectors() {
+        views().take(2).forEach { view ->
+            val modeSwitchId = if (view is TenKey) {
+                com.kazumaproject.tenkey.R.id.key_switch_key_mode
+            } else {
+                com.kazumaproject.gojuon_keyboard.R.id.key_switch_key_mode
+            }
+            val modeSwitch = view.findViewById<InputModeSwitch>(modeSwitchId)
+
+            apply(view, KeyboardSkinId.CUPERTINO_LIGHT)
+            assertEquals(
+                "${view.javaClass.simpleName} should draw separately colored labels",
+                null,
+                modeSwitch.drawable,
+            )
+
+            apply(view, KeyboardSkinId.DEFAULT)
+            assertTrue("${view.javaClass.simpleName} should restore its mode icon", modeSwitch.drawable != null)
         }
     }
 

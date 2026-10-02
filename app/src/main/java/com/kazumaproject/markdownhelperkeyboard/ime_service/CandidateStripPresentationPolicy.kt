@@ -25,6 +25,32 @@ data class CandidateStripPresentation(
     val showIntegratedShortcutEntry: Boolean
 )
 
+internal fun resolveDockedCandidateChromeHeightPx(
+    presentation: CandidateStripPresentation,
+    candidateTabHeightPx: Int,
+    shortcutToolbarHeightPx: Int
+): Int = maxOf(
+    resolveCandidateTabOffsetPx(presentation, candidateTabHeightPx),
+    if (presentation.showIndependentShortcutToolbar) {
+        shortcutToolbarHeightPx.coerceAtLeast(0)
+    } else {
+        0
+    }
+)
+
+/** Reserve only transparent drawing space; the visible keyboard keeps its own height. */
+internal fun resolveDockedToolbarContainerHeightPx(
+    keyboardBodyHeightPx: Int,
+    emptyCandidateHeightPx: Int,
+    activeCandidateHeightPx: Int,
+    candidateTabHeightPx: Int,
+    shortcutToolbarHeightPx: Int,
+    bottomInsetPx: Int
+): Int = keyboardBodyHeightPx + bottomInsetPx + maxOf(
+    emptyCandidateHeightPx + shortcutToolbarHeightPx,
+    activeCandidateHeightPx + candidateTabHeightPx
+)
+
 internal fun resolveCandidateTabOffsetPx(
     presentation: CandidateStripPresentation,
     candidateTabHeightPx: Int
