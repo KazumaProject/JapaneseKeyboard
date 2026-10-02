@@ -41,22 +41,41 @@ class CandidateHeightStabilizationSettingsTest {
     }
 
     @Test
-    fun bothCommonScreensUseTheSameSwitchAndDefault() {
-        for (xml in listOf(R.xml.pref_common, R.xml.pref_common_legacy)) {
+    fun candidateConversionScreensPlaceTheSwitchBesideCandidateSettings() {
+        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
             val parser = context.resources.getXml(xml)
             parser.use {
-                var found = false
+                val keys = mutableListOf<String>()
                 while (parser.eventType != XmlPullParser.END_DOCUMENT) {
-                    if (parser.eventType == XmlPullParser.START_TAG &&
-                        parser.getAttributeValue(ANDROID_NS, "key") == key
-                    ) {
-                        assertEquals("SwitchPreferenceCompat", parser.name)
-                        assertEquals("false", parser.getAttributeValue(ANDROID_NS, "defaultValue"))
-                        found = true
+                    if (parser.eventType == XmlPullParser.START_TAG) {
+                        val preferenceKey = parser.getAttributeValue(ANDROID_NS, "key")
+                        if (preferenceKey != null) keys += preferenceKey
+                        if (preferenceKey == key) {
+                            assertEquals("SwitchPreferenceCompat", parser.name)
+                            assertEquals("false", parser.getAttributeValue(ANDROID_NS, "defaultValue"))
+                        }
                     }
                     parser.next()
                 }
-                assertTrue("Missing switch in common screen $xml", found)
+                val settingIndex = keys.indexOf(key)
+                assertTrue("Missing switch in candidate settings screen $xml", settingIndex >= 0)
+                assertTrue("Switch should follow candidate tab settings in $xml", keys[settingIndex - 1] in setOf(
+                    "candidate_tab_order_preference",
+                    "candidate_column_landscape_preference",
+                ))
+                assertEquals("hide_candidate_password_preference", keys[settingIndex + 1])
+            }
+        }
+        val commonParser = context.resources.getXml(R.xml.pref_common)
+        commonParser.use {
+            while (commonParser.eventType != XmlPullParser.END_DOCUMENT) {
+                if (commonParser.eventType == XmlPullParser.START_TAG) {
+                    assertTrue(
+                        "Candidate height stabilization belongs in candidate conversion settings",
+                        commonParser.getAttributeValue(ANDROID_NS, "key") != key,
+                    )
+                }
+                commonParser.next()
             }
         }
     }

@@ -444,6 +444,12 @@
             android:title="@string/preference_title_num_columns_conversion_landscape" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="hide_candidate_password_preference"
             android:summaryOff="@string/hide_candidate_password_summary_off"
@@ -816,14 +822,6 @@
         <Preference
             android:key="app_version_preference"
             android:title="@string/app_version_title" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/setting_category_candidate_bar_title">
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="stabilize_candidate_strip_height_preference"
-            android:title="@string/stabilize_candidate_strip_height_title"
-            android:summary="@string/stabilize_candidate_strip_height_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>
