@@ -14,6 +14,7 @@
     <string name="action_convert">Convert</string>
     <string name="action_enter">Enter</string>
     <string name="action_new_line">New Line</string>
+    <string name="action_cut">Cut</string>
     <string name="action_paste">Paste</string>
     <string name="action_copy">Copy</string>
     <string name="action_switch_to_next_ime">Switch IME</string>

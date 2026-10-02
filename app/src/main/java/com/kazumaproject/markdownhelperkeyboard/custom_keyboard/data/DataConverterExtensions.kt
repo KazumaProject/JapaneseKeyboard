@@ -52,6 +52,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "MOVE_CURSOR_DOWN" -> KeyAction.MoveCursorDown
         "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
         "SELECT_ALL" -> KeyAction.SelectAll
+        "CUT" -> KeyAction.Cut
         "PASTE" -> KeyAction.Paste
         "COPY" -> KeyAction.Copy
         "CHANGE_INPUT_MODE" -> KeyAction.ChangeInputMode
@@ -110,6 +111,7 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "MOVE_CURSOR_DOWN" -> KeyAction.MoveCursorDown
         "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
         "SELECT_ALL" -> KeyAction.SelectAll
+        "CUT" -> KeyAction.Cut
         "PASTE" -> KeyAction.Paste
         "COPY" -> KeyAction.Copy
         "CHANGE_INPUT_MODE" -> KeyAction.ChangeInputMode
@@ -173,6 +175,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.MoveCursorDown -> "MOVE_CURSOR_DOWN" to null
             KeyAction.MoveCursorRight -> "MOVE_CURSOR_RIGHT" to null
             KeyAction.SelectAll -> "SELECT_ALL" to null
+            KeyAction.Cut -> "CUT" to null
             KeyAction.Paste -> "PASTE" to null
             KeyAction.Copy -> "COPY" to null
             KeyAction.ChangeInputMode -> "CHANGE_INPUT_MODE" to null

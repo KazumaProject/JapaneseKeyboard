@@ -410,6 +410,7 @@ object KeyboardDefaultLayouts {
 
     private fun stableSpecialKeyBaseId(keyData: KeyData): String {
         return when (keyData.action) {
+            KeyAction.Cut -> "cut_key"
             KeyAction.Paste -> "paste_key"
             KeyAction.MoveCursorLeft -> "cursor_left_key"
             KeyAction.MoveCursorRight -> "cursor_right_key"
