@@ -1127,7 +1127,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // That event must not make the empty strip behave like an active conversion strip.
         val effectiveCandidatesShown = isCandidateStripActive(
             candidatesShown = candidatesShown,
-            inputStringEmpty = inputString.value.isEmpty()
+            inputStringEmpty = inputString.value.isEmpty(),
+            suggestionsSuppressed = suppressSuggestions
         )
 
         val content = resolveCandidateStripContent(
@@ -17908,7 +17909,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     prevFlag,
                     currentFlag,
                 )
-                if (CandidateRefreshTransitionPolicy.shouldEnterActiveCandidatePhase(
+                if (!suppressSuggestions && CandidateRefreshTransitionPolicy.shouldEnterActiveCandidatePhase(
                         previousFlag = prevFlag,
                         currentFlag = currentFlag,
                         input = insertString,
@@ -18024,7 +18025,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateShowFlag.Updating -> {
-                        val candidateStripActive = insertString.isNotEmpty()
+                        val candidateStripActive = isCandidateStripActive(
+                            candidatesShown = true,
+                            inputStringEmpty = insertString.isEmpty(),
+                            suggestionsSuppressed = suppressSuggestions,
+                        )
                         clearZeroQueryAllState(refresh = false)
                         shortcutToolbarHiddenForCandidates = candidateStripActive
                         refreshCandidateStripContent(candidatesShown = candidateStripActive)
@@ -19263,7 +19268,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 3. 最終的な高さ、幅、Gravity、マージンの決定
         val candidatesShown = isCandidateStripActive(
             candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates,
-            inputStringEmpty = inputString.value.isEmpty()
+            inputStringEmpty = inputString.value.isEmpty(),
+            suggestionsSuppressed = suppressSuggestions
         )
         val presentation = resolveCandidateStripPresentation(
             candidatesShown = candidatesShown,
@@ -19817,7 +19823,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
-        if (currentInputType.isPassword()) return
+        // Password fields can allow candidates. Their tab offset and content height
+        // must be updated together, just as for any other composing field.
+        if (suppressSuggestions) return
         updateKeyboardLayout(
             mainView = mainView,
             addCandidateTabHeight = true
@@ -22820,7 +22828,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return CandidateStripPresentationPolicy.resolve(
             CandidateStripPresentationState(
                 candidateTabVisible = candidateTabVisibility == true,
-                candidatesShown = candidatesShown,
+                candidatesShown = candidatesShown && !suppressSuggestions,
                 resetCandidateTabSelection = resetCandidateTabSelection,
                 shortcutToolbarVisible = shortcutTollbarVisibility == true,
                 shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
@@ -26041,7 +26049,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputString: String, mainView: MainLayoutBinding
     ) {
         Timber.d("setSuggestionOnView: tabPosition first: $inputString $suggestionClickNum")
-        if (inputString.isEmpty() || suggestionClickNum > 0) return
+        if (inputString.isEmpty() || suppressSuggestions || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition $bunsetsuPositionList")
         val mode = CandidateQueryModeResolver.resolve(
