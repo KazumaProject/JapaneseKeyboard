@@ -56,4 +56,30 @@ class SpecialKeyActionOptionsTest {
         val indent = (16 * context.resources.displayMetrics.density).roundToInt()
         assertEquals(indent, item.paddingStart - header.paddingStart)
     }
+
+    @Test
+    fun clipboardAndSelectionActionsShareTheEditCategory() {
+        val actions = KeyActionMapper.getDisplayActions(ApplicationProvider.getApplicationContext())
+            .map { DisplayActionUi(it.displayName, it.action, it.iconResId) }
+
+        val options = groupedSpecialKeyActionOptions(actions) { it.name }
+        val editActions = options
+            .filter { !it.isHeader && it.action?.action in setOf(
+                KeyAction.Cut,
+                KeyAction.Copy,
+                KeyAction.Paste,
+                KeyAction.SelectAll
+            ) }
+
+        assertEquals(
+            setOf(KeyAction.Cut, KeyAction.Copy, KeyAction.Paste, KeyAction.SelectAll),
+            editActions.mapNotNull { it.action?.action }.toSet()
+        )
+        assertEquals(
+            setOf(SpecialKeyActionCategory.EDIT_AND_OTHER.name),
+            editActions.map { selected ->
+                options.takeWhile { it != selected }.last { it.isHeader }.label
+            }.toSet()
+        )
+    }
 }
