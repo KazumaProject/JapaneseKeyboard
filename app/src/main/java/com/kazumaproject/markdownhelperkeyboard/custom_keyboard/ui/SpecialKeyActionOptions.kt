@@ -46,8 +46,12 @@ private fun KeyAction.specialKeyCategory(): SpecialKeyActionCategory = when (thi
     KeyAction.MoveCursorLeft,
     KeyAction.MoveCursorUp,
     KeyAction.MoveCursorDown,
-    KeyAction.MoveCursorRight,
-    KeyAction.SelectAll -> SpecialKeyActionCategory.DELETE_AND_CURSOR
+    KeyAction.MoveCursorRight -> SpecialKeyActionCategory.DELETE_AND_CURSOR
+
+    KeyAction.Cut,
+    KeyAction.Copy,
+    KeyAction.Paste,
+    KeyAction.SelectAll -> SpecialKeyActionCategory.EDIT_AND_OTHER
 
     KeyAction.ToggleDakuten,
     KeyAction.ToggleDakutenOnly,

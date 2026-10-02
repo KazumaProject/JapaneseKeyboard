@@ -312,6 +312,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitTransition
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.KeyInputBehaviorDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.QwertyEnglishDirectInputPolicy
@@ -874,6 +875,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectedEditorText: String = ""
     private val selectedEditorTextRequestId = AtomicLong(0L)
     private val editorConnectionReadMutex = Mutex()
+    private val horizontalCursorSelectionRevision = AtomicLong(0L)
     private var systemUserDictionaryLoadJob: Job? = null
     private var kanaKanjiEngineLoadJob: Job? = null
     private var kanaKanjiEngineActivationJob: Job? = null
@@ -881,6 +883,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val localFontScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val horizontalCursorMoveHandler by lazy {
+        HorizontalCursorMoveHandler(
+            scope = scope,
+            currentConnection = { currentInputConnection },
+            currentRevision = { editorMutationRevision.current() },
+            currentSelectionRevision = { horizontalCursorSelectionRevision.get() },
+            canCollapseSelection = { !selectMode.value },
+            readMutex = editorConnectionReadMutex,
+            setSelection = { connection, start, end ->
+                if (currentInputConnection !== connection) false else setSelection(start, end)
+            },
+            sendDpad = { direction ->
+                sendDownUpKeyEvents(
+                    if (direction == HorizontalCursorMoveHandler.Direction.Left) {
+                        KeyEvent.KEYCODE_DPAD_LEFT
+                    } else {
+                        KeyEvent.KEYCODE_DPAD_RIGHT
+                    }
+                )
+            },
+        )
+    }
     private val forwardDeleteCoordinator by lazy {
         ForwardDeleteCoordinator(
             scope = scope,
@@ -940,6 +964,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
         AppPreference.CUSTOM_KEYMAP_GUIDE_KEY,
         AppPreference.CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY,
+        AppPreference.CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
         AppPreference.DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY,
         AppPreference.VIBRATION_KEY,
@@ -1945,6 +1970,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isNgWordEnable: Boolean? = false
     private var deleteKeyHighLight: Boolean? = true
     private var customKeyboardSuggestionPreference: Boolean? = true
+    private var customDirectInputReplaceComposingPreference = false
     private var zenzDebounceTimePreference: Int? = 300
     private var zenzMaximumLetterSizePreference: Int? = 32
     private var zenzMaximumContextSizePreference: Int? = 512
@@ -3309,6 +3335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun onDictionaryEditorSelectionChanged(editor: EditText, start: Int, end: Int) {
         if (dictionaryInputEditor !== editor) return
+        horizontalCursorSelectionRevision.incrementAndGet()
         forwardDeleteCoordinator.onSelectionChanged(start, end)
     }
 
@@ -3511,6 +3538,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
+
+        customDirectInputReplaceComposingPreference =
+            appPreference.custom_direct_input_replace_composing_preference
 
         val previousInlineSuggestionEnabled = inlineSuggestionEnabled
         applyInlineSuggestionEnabled(appPreference.inline_suggestion_enabled_preference)
@@ -3779,6 +3809,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = preferences.isNgWordEnable
         deleteKeyHighLight = preferences.deleteKeyHighLight
         customKeyboardSuggestionPreference = preferences.customKeyboardSuggestionPreference
+        customDirectInputReplaceComposingPreference =
+            preferences.customDirectInputReplaceComposingPreference
         userDictionaryPrefixMatchNumber = preferences.userDictionaryPrefixMatchNumber
         isVibration = preferences.isVibration
         vibrationTimingStr = preferences.vibrationTimingStr
@@ -6362,6 +6394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
+        customDirectInputReplaceComposingPreference = false
         customKeymapGuidePreference = false
         sumireKeymapGuideSettings = ModeKeymapGuideSettings()
         flickGuideTextSizeSpPreference = null
@@ -7809,6 +7842,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+        if (oldSelStart != newSelStart || oldSelEnd != newSelEnd) {
+            horizontalCursorSelectionRevision.incrementAndGet()
+        }
         forwardDeleteCoordinator.onSelectionChanged(newSelStart, newSelEnd)
         invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
         // Skip if composing text is active
@@ -14390,6 +14426,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     }
 
+                    KeyAction.Cut -> {}
+
                     KeyAction.Delete -> {
                         handleDeleteLongPress()
                     }
@@ -14560,6 +14598,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Copy -> {}
+                    KeyAction.Cut -> {}
                     KeyAction.Delete -> {
                         stopDeleteLongPress()
                     }
@@ -14680,6 +14719,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         copyAction()
                     }
 
+                    KeyAction.Cut -> {
+                        cutAction()
+                    }
+
                     KeyAction.Delete -> {
                         handleDeleteLongPress()
                     }
@@ -14793,6 +14836,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Copy -> {}
+                    KeyAction.Cut -> {}
                     KeyAction.Delete -> {
                         stopDeleteLongPress()
                     }
@@ -15415,6 +15459,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Backspace -> {}
+                    KeyAction.Cut -> {
+                        cutAction()
+                    }
                     KeyAction.Copy -> {
                         copyAction()
                     }
@@ -21189,22 +21236,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     "current=$currentInputBehavior"
         )
 
-        if (
-            currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT &&
-            shouldClearDirectCommitCompositionState(previousInputBehavior, reason)
+        when (
+            RuntimeInputBehaviorPolicy.directCommitTransition(
+                previous = previousInputBehavior,
+                current = currentInputBehavior,
+                startingNewInput = reason == "start input",
+                canToggleSafely = canToggleRuntimeInputBehaviorSafely(),
+                replaceComposingOnNextInput = customDirectInputReplaceComposingPreference &&
+                        _tenKeyQWERTYMode.value == TenKeyQWERTYMode.Custom &&
+                        isCustomLayoutDirectMode,
+            )
         ) {
-            clearDirectCommitCompositionState("direct commit $reason")
+            DirectCommitTransition.NONE -> Unit
+            DirectCommitTransition.CLEAR -> clearDirectCommitCompositionState("direct commit $reason")
+            DirectCommitTransition.FINISH_AND_CLEAR -> {
+                // commitText would replace the editor's active composing span.
+                finishComposingText()
+                clearDirectCommitCompositionState("direct commit $reason")
+            }
         }
         updateShortcutActiveStates()
-    }
-
-    private fun shouldClearDirectCommitCompositionState(
-        previousInputBehavior: ResolvedInputBehavior,
-        reason: String,
-    ): Boolean {
-        if (reason == "start input") return true
-        if (previousInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT) return false
-        return canToggleRuntimeInputBehaviorSafely()
     }
 
     private fun resetRuntimeInputBehaviorForCurrentInput() {
@@ -28359,12 +28410,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 if (insertString.isNotEmpty()) {
                     updateLeftInputString(insertString)
-                } else if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
-                    if (selectMode.value) {
-                        extendOrShrinkLeftOneChar()
-                    } else {
-                        handleLeftCursorMoveAction()
-                    }
+                } else if (stringInTail.get().isEmpty() && selectMode.value) {
+                    extendOrShrinkLeftOneChar()
                 } else {
                     handleLeftCursorMoveAction()
                 }
@@ -28481,58 +28528,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private suspend fun isCursorAtBeginning(): Boolean {
-        val inputConnection = currentInputConnection ?: return true
-        return editorConnectionReadMutex.withLock {
-            withContext(Dispatchers.IO) {
-                val extractedText = runCatching {
-                    inputConnection.getExtractedText(ExtractedTextRequest(), 0)
-                }.getOrNull()
-                extractedText?.selectionStart?.let { return@withContext it <= 0 }
-                val textBeforeCursor = runCatching {
-                    inputConnection.getTextBeforeCursor(1, 0)
-                }.getOrNull()
-                textBeforeCursor.isNullOrEmpty()
-            }
-        }
-    }
-
-    private suspend fun isCursorAtEnd(): Boolean {
-        val inputConnection = currentInputConnection ?: return true
-        return editorConnectionReadMutex.withLock {
-            withContext(Dispatchers.IO) {
-                val extractedText = runCatching {
-                    inputConnection.getExtractedText(ExtractedTextRequest(), 0)
-                }.getOrNull()
-                extractedText?.let {
-                    val textLength = it.text?.length ?: 0
-                    val cursorPosition = it.selectionEnd
-                    return@withContext cursorPosition >= textLength
-                }
-                val textAfterCursor = runCatching {
-                    inputConnection.getTextAfterCursor(1, 0)
-                }.getOrNull()
-                textAfterCursor.isNullOrEmpty()
-            }
-        }
-    }
-
     private fun sendDpadLeftIfPossible() {
-        val inputConnection = currentInputConnection ?: return
-        scope.launch {
-            if (!isCursorAtBeginning() && currentInputConnection === inputConnection) {
-                sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
-            }
-        }
+        horizontalCursorMoveHandler.move(HorizontalCursorMoveHandler.Direction.Left)
     }
 
     private fun sendDpadRightIfPossible() {
-        val inputConnection = currentInputConnection ?: return
-        scope.launch {
-            if (!isCursorAtEnd() && currentInputConnection === inputConnection) {
-                sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
-            }
-        }
+        horizontalCursorMoveHandler.move(HorizontalCursorMoveHandler.Direction.Right)
     }
 
     private fun handleEmptyInputString() {
