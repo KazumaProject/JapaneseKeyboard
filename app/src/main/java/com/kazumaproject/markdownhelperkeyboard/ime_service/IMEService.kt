@@ -1650,6 +1650,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var restoreFloatingModeAfterGemmaPanel: Boolean = false
     private var consumeGemmaBackKeyUp: Boolean = false
     private var consumeKeyboardSelectionPopupBackKeyUp: Boolean = false
+    private var keyboardSelectionPopupBackKeyTarget: PopupWindow? = null
     private val imeSwitchPopupConsumedKeyUps = mutableSetOf<Int>()
     private var gemmaBackInvokedCallback: OnBackInvokedCallback? = null
     private var isGemmaBackInvokedCallbackRegistered: Boolean = false
@@ -7968,7 +7969,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             keyboardSelectionPopupWindow?.isShowing == true
         ) {
-            keyboardSelectionPopupWindow?.dismiss()
+            // Keep the overlay callback installed through key-up. Removing it on key-down
+            // can route the same key-up to Android's default IME-hide callback.
+            keyboardSelectionPopupBackKeyTarget = keyboardSelectionPopupWindow
             consumeKeyboardSelectionPopupBackKeyUp = true
             return true
         }
@@ -8987,6 +8990,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (keyCode == KeyEvent.KEYCODE_BACK && consumeKeyboardSelectionPopupBackKeyUp) {
             consumeKeyboardSelectionPopupBackKeyUp = false
+            val popup = keyboardSelectionPopupBackKeyTarget
+            keyboardSelectionPopupBackKeyTarget = null
+            if (event?.isCanceled != true) popup?.dismiss()
             return true
         }
         when (keyCode) {
@@ -11685,6 +11691,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun dismissKeyboardSelectionPopups() {
         keyboardPopupRequests.invalidate()
+        keyboardSelectionPopupBackKeyTarget = null
         keyboardSelectionPopupWindow?.dismiss()
         keyboardSelectionPopupWindow = null
         imeSwitchPopupWindow = null
@@ -11848,6 +11855,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isKeyboardSelectionPopupBackInvokedCallbackRegistered) return
             val targetPopupWindow = requireNotNull(popupWindow)
             val callback = OnBackInvokedCallback {
+                // Predictive Back may complete without another key-up reaching the IME.
+                consumeKeyboardSelectionPopupBackKeyUp = false
+                keyboardSelectionPopupBackKeyTarget = null
                 targetPopupWindow.takeIf { it.isShowing }?.dismiss()
             }.also { keyboardSelectionPopupBackInvokedCallback = it }
             dispatcher.registerOnBackInvokedCallback(
