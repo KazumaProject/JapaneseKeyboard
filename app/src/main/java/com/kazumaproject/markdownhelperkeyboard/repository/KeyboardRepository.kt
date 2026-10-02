@@ -1070,6 +1070,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+            KeyAction.Cut -> com.kazumaproject.core.R.drawable.content_cut_24dp
             KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
             KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
