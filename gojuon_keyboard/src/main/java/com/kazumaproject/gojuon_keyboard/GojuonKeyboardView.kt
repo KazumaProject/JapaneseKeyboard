@@ -122,6 +122,9 @@ class GojuonKeyboardView @JvmOverloads constructor(
     private lateinit var pressedKey: PressedKey
     private var independentMultiTouchEnabled = false
     private var independentMultiTouchForCurrentGesture = false
+    private val pointerPopups = mutableMapOf<Int, PointerPopups>()
+    private var popupPointerId: Int? = null
+    private var longPressPresentationShown = false
     private val independentTouches: IndependentKeyTouchDispatcher by lazy {
         IndependentKeyTouchDispatcher(
             view = this,
@@ -133,7 +136,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
             isExclusiveKey = ::isIndependentExclusiveKey,
             isExclusiveMode = { false },
             dispatch = { session, event ->
-                withIndependentSession(session) { onTouchLegacy(this, event) }
+                withIndependentSession(session) {
+                    onTouchLegacy(this, event)
+                    if (event.actionMasked == MotionEvent.ACTION_UP) releasePointerPopups(session.pointerId)
+                }
             },
             onLongPress = { session ->
                 withIndependentSession(session) {
@@ -142,7 +148,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 }
             },
             onCancel = { session, reason ->
-                withIndependentSession(session) { resetLongPressAction() }
+                withIndependentSession(session) {
+                    resetLongPressAction()
+                    releasePointerPopups(session.pointerId)
+                }
                 (getButtonFromKey(session.key) as? View)?.isPressed = false
                 keyTouchCancelListener?.onKeyTouchCanceled(session.key, reason)
             },
@@ -480,6 +489,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
     ) {
         // メンバ変数に代入
         if (this.keyboardSkinId != skinId) { hideAllPopWindow() }
+        if (pointerPopups.isNotEmpty()) cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
         skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
@@ -1199,7 +1209,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 MotionEvent.ACTION_POINTER_DOWN -> {
                     if (isLongPressed) {
                         hideAllPopWindow()
-                        Blur.removeBlurEffect(this)
+                        if (!hasOtherLongPress()) Blur.removeBlurEffect(this)
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
@@ -1414,7 +1424,120 @@ class GojuonKeyboardView @JvmOverloads constructor(
         longPressJob = null
     }
 
+    /** Display state has the same lifetime and owner as its pointer's recognizer. */
+    private class PointerPopups(
+        val popupWindowActive: PopupWindow,
+        val bubbleViewActive: KeyWindowLayout,
+        val popTextActive: MaterialTextView,
+        val popupWindowLeft: PopupWindow,
+        val bubbleViewLeft: KeyWindowLayout,
+        val popTextLeft: MaterialTextView,
+        val popupWindowTop: PopupWindow,
+        val bubbleViewTop: KeyWindowLayout,
+        val popTextTop: MaterialTextView,
+        val popupWindowRight: PopupWindow,
+        val bubbleViewRight: KeyWindowLayout,
+        val popTextRight: MaterialTextView,
+        val popupWindowBottom: PopupWindow,
+        val bubbleViewBottom: KeyWindowLayout,
+        val popTextBottom: MaterialTextView,
+        val popupWindowCenter: PopupWindow,
+        val bubbleViewCenter: KeyWindowLayout,
+        val popTextCenter: MaterialTextView,
+        var guide: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null,
+    )
+
+
+    private fun capturePopups() = PointerPopups(
+        popupWindowActive,
+        bubbleViewActive,
+        popTextActive,
+        popupWindowLeft,
+        bubbleViewLeft,
+        popTextLeft,
+        popupWindowTop,
+        bubbleViewTop,
+        popTextTop,
+        popupWindowRight,
+        bubbleViewRight,
+        popTextRight,
+        popupWindowBottom,
+        bubbleViewBottom,
+        popTextBottom,
+        popupWindowCenter,
+        bubbleViewCenter,
+        popTextCenter,
+        skinGuidePopup,
+    )
+
+    private fun usePopups(popups: PointerPopups) {
+        popupWindowActive = popups.popupWindowActive
+        bubbleViewActive = popups.bubbleViewActive
+        popTextActive = popups.popTextActive
+        popupWindowLeft = popups.popupWindowLeft
+        bubbleViewLeft = popups.bubbleViewLeft
+        popTextLeft = popups.popTextLeft
+        popupWindowTop = popups.popupWindowTop
+        bubbleViewTop = popups.bubbleViewTop
+        popTextTop = popups.popTextTop
+        popupWindowRight = popups.popupWindowRight
+        bubbleViewRight = popups.bubbleViewRight
+        popTextRight = popups.popTextRight
+        popupWindowBottom = popups.popupWindowBottom
+        bubbleViewBottom = popups.bubbleViewBottom
+        popTextBottom = popups.popTextBottom
+        popupWindowCenter = popups.popupWindowCenter
+        bubbleViewCenter = popups.bubbleViewCenter
+        popTextCenter = popups.popTextCenter
+        skinGuidePopup = popups.guide
+    }
+
+    private fun createPointerPopups(): PointerPopups {
+        val previous = capturePopups()
+        try {
+            skinGuidePopup = null
+            declarePopupWindows()
+            if (themeMode == "custom") setCustomThemePopup()
+            return capturePopups()
+        } finally {
+            usePopups(previous)
+        }
+    }
+
+    private fun releasePointerPopups(pointerId: Int) {
+        pointerPopups.remove(pointerId)?.let { popups ->
+            popups.guide?.dismiss()
+            popups.popupWindowActive.hide()
+            popups.popupWindowLeft.hide()
+            popups.popupWindowTop.hide()
+            popups.popupWindowRight.hide()
+            popups.popupWindowBottom.hide()
+            popups.popupWindowCenter.hide()
+        }
+    }
+
+    private fun hasOtherLongPress(): Boolean = independentMultiTouchForCurrentGesture &&
+        independentTouches.activeSessions.any { it.pointerId != popupPointerId && it.isLongPressed }
+
+    private fun showLongPressPresentation(guide: View?) {
+        if (!independentMultiTouchForCurrentGesture || !longPressPresentationShown) {
+            skinLongPress.show(this, keyboardSkinId, guide)
+            longPressPresentationShown = true
+        }
+    }
+
+    private fun clearLongPressPresentation(animated: Boolean = false) {
+        if (hasOtherLongPress()) return
+        skinLongPress.clear(animated)
+        longPressPresentationShown = false
+    }
+
     private inline fun withIndependentSession(session: IndependentKeyTouchSession, action: () -> Unit) {
+        val previousPopups = capturePopups()
+        val previousPopupPointerId = popupPointerId
+        val popups = pointerPopups.getOrPut(session.pointerId) { createPointerPopups() }
+        popupPointerId = session.pointerId
+        usePopups(popups)
         val previousThreshold = flickThresholdPx
         val previousShape = flickThresholdShape
         val previousTimeout = longPressTimeout
@@ -1433,6 +1556,12 @@ class GojuonKeyboardView @JvmOverloads constructor(
             flickThresholdPx = previousThreshold
             flickThresholdShape = previousShape
             longPressTimeout = previousTimeout
+            popups.guide = skinGuidePopup
+            usePopups(previousPopups)
+            popupPointerId = previousPopupPointerId
+            if (independentMultiTouchForCurrentGesture) {
+                restoreIndependentTouches(independentTouches.activeSessions, null)
+            }
         }
     }
 
@@ -1445,14 +1574,6 @@ class GojuonKeyboardView @JvmOverloads constructor(
         focused: IndependentKeyTouchSession?
     ) {
         resetAllKeys()
-        focused?.let { session ->
-            withIndependentSession(session) {
-                if (session.isLongPressed) onLongPressed()
-
-                val move = MotionEvent.obtain(session.lastEvent).apply { action = MotionEvent.ACTION_MOVE }
-                try { onTouchLegacy(this, move) } finally { move.recycle() }
-            }
-        }
         sessions.forEach { session -> (getButtonFromKey(session.key) as? View)?.isPressed = true }
     }
 
@@ -1462,6 +1583,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
             if (::pressedKey.isInitialized) pressedKey = pressedKey.copy(key = Key.NotSelected)
         }
 
+        pointerPopups.keys.toList().forEach(::releasePointerPopups)
         resetLongPressAction()
         resetAllKeys()
 
@@ -3274,7 +3396,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
     private fun resetLongPressAction() {
         if (isLongPressed) {
             hideAllPopWindow()
-            Blur.removeBlurEffect(this)
+            if (!hasOtherLongPress()) Blur.removeBlurEffect(this)
         }
         longPressJob?.cancel()
         isLongPressed = false
@@ -3347,13 +3469,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
             com.kazumaproject.core.ui.skin.PopupDirection.RIGHT to popTextRight.text,
             com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM to popTextBottom.text,
         ), includeEmptyCenterConnector = true)
-        skinLongPress.show(this, keyboardSkinId, guide)
+        showLongPressPresentation(guide)
         return true
     }
 
     private fun hideAllPopWindow() {
         skinGuidePopup?.dismiss()
-        skinLongPress.clear()
+        clearLongPressPresentation()
         popupWindowActive.hide()
         popupWindowLeft.hide()
         popupWindowTop.hide()

@@ -6,6 +6,7 @@ import android.content.res.XmlResourceParser
 import androidx.annotation.IdRes
 import androidx.annotation.XmlRes
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import org.xmlpull.v1.XmlPullParser
 import java.text.Normalizer
@@ -226,7 +227,13 @@ object SettingSearchIndex {
             ?.takeIf { it.configuration == configuration }
             ?.let { return it.destinations }
 
-        val destinations = sources().flatMap { source -> readPreferenceXml(context, source) }
+        val destinations = sources().flatMap { source ->
+            val items = readPreferenceXml(context, source)
+            // New settings routes must resolve to the operation screen, not its legacy duplicate.
+            if (source.xmlRes == R.xml.pref_common_legacy) {
+                items.filterNot { it.key == AppPreference.INDEPENDENT_MULTI_TOUCH_KEY }
+            } else items
+        }
         destinationCache = DestinationCache(configuration, destinations)
         return destinations
     }
