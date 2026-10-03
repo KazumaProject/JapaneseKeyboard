@@ -57,6 +57,82 @@ class ImePopupInstrumentedTest {
         }
     }
 
+    @Test fun fortyTemplatesScrollBothWaysAndCommitTheLastEntry() {
+        val entries = (0..40).map { index -> UserTemplate(word = "Scroll QA %02d".format(index),
+            reading = "scroll-qa-%02d".format(index), posIndex = 0, posScore = 0) }
+        val ids = runBlocking {
+            database.userTemplateDao().insertAll(entries)
+            database.userTemplateDao().getAllSuspend().filter { it.reading.startsWith("scroll-qa-") }.map { it.id }
+        }
+        try {
+            for (floating in listOf(false, true)) withHost(floating = floating, integrated = floating) { host ->
+                openShortcut("定型文")
+                awaitNode("Scroll QA 00")
+                assertTrue(awaitNodeId("popup_listview").childCount <= 5)
+                scrollToTemplate("Scroll QA 40", up = true)
+                scrollToTemplate("Scroll QA 00", up = false)
+                scrollToTemplate("Scroll QA 40", up = true)
+                tap(awaitNode("Scroll QA 40"))
+                awaitText(host, "Scroll QA 40")
+                host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+            }
+        } finally { runBlocking { ids.forEach { database.userTemplateDao().delete(it) } } }
+    }
+
+    private fun scrollToTemplate(label: String, up: Boolean) {
+        repeat(20) {
+            findNode(label)?.let { node ->
+                val row = Rect().also(node::getBoundsInScreen)
+                val viewport = Rect().also(awaitNodeId("popup_listview")::getBoundsInScreen)
+                if (viewport.contains(row)) return
+            }
+            swipeList(up)
+        }
+        awaitNode(label)
+    }
+
+    private fun swipeList(up: Boolean) {
+        val rect = Rect().also(awaitNodeId("popup_listview")::getBoundsInScreen)
+        val start = if (up) rect.bottom - 12f else rect.top + 12f
+        val end = if (up) rect.top + 12f else rect.bottom - 12f
+        val down = SystemClock.uptimeMillis()
+        for (step in 0..12) {
+            val action = when (step) { 0 -> MotionEvent.ACTION_DOWN; 12 -> MotionEvent.ACTION_UP; else -> MotionEvent.ACTION_MOVE }
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                rect.exactCenterX(), start + (end - start) * step / 12f, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            check(automation.injectInputEvent(event, true)); event.recycle()
+            SystemClock.sleep(30)
+        }
+        SystemClock.sleep(100)
+    }
+
+    @Test fun toolbarPopupPlacementFitsPortraitAndLandscapeScreens() {
+        try {
+            for (rotation in listOf(0, 1)) {
+                check(automation.setRotation(rotation))
+                for (floating in listOf(false, true)) withHost(floating = floating, integrated = floating) { host ->
+                    // The launcher can force portrait until the unconstrained editor is shown.
+                    host.onActivity { it.requestedOrientation = if (rotation == 0) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    await { automation.takeScreenshot()?.let { screenshot ->
+                        val matches = (screenshot.width > screenshot.height) == (rotation == 1)
+                        screenshot.recycle(); matches.takeIf { it }
+                    } }
+                    SystemClock.sleep(300)
+                    openShortcut("定型文")
+                    val listBounds = Rect().also(awaitNodeId("popup_listview")::getBoundsInScreen)
+                    val screenshot = checkNotNull(automation.takeScreenshot())
+                    assertTrue(listBounds.left >= 0 && listBounds.top >= 0)
+                    assertTrue(listBounds.right <= screenshot.width && listBounds.bottom <= screenshot.height)
+                    screenshot.recycle()
+                    tap(awaitNode(TEMPLATE))
+                    awaitText(host, TEMPLATE)
+                    host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+                }
+            }
+        } finally { automation.setRotation(-2) }
+    }
+
     @Test fun outsideTapBackAndEscapeDismissOnlyTheList() = withHost { host ->
         openShortcut("定型文")
         awaitNode(TEMPLATE)
@@ -93,6 +169,49 @@ class ImePopupInstrumentedTest {
                 awaitText(host, TEMPLATE)
             }
         }
+    }
+
+    @Test fun dictionarySearchKeepsItsLocalInputTargetWhileSelectingAList() = withHost { host ->
+        await {
+            findNodeId("dock_icon")?.let { tap(it) }
+            findNode("ユーザー辞書フロート") ?: findNode(ins.targetContext.getString(R.string.shortcut_entry_content_description))?.let {
+                tap(it); null
+            }
+        }.let(::tap)
+        val searchLabel = ins.targetContext.getString(R.string.floating_dictionary_search)
+        tap(awaitNode(searchLabel))
+        longPress(awaitNodeId("key_small_letter"))
+        awaitNodeId("popup_listview")
+        SystemClock.sleep(500)
+        assertNotNull(findNode(searchLabel))
+        tap(requireNotNull(awaitNodeId("popup_listview").getChild(0)))
+        await { findNodeId("popup_listview") == null }
+        tap(awaitNode(searchLabel))
+        openShortcut("定型文")
+        tap(awaitNode(TEMPLATE))
+        await { allNodes().firstOrNull { it.contentDescription == searchLabel && it.text?.toString() == TEMPLATE } }
+        awaitText(host, "")
+        host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+    }
+
+    @Test fun keyboardPickerSelectsInternalKeyboardAndAnEnabledExternalIme() = withHost { host ->
+        val manager = ins.targetContext.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+        val external = manager.enabledInputMethodList.first { it.packageName != ins.targetContext.packageName }
+        longPress(awaitNodeId("key_small_letter"))
+        tap(requireNotNull(awaitNodeId("popup_listview").getChild(0)))
+        await { findNodeId("popup_listview") == null }
+        host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+        longPress(awaitNodeId("key_small_letter"))
+        val label = external.loadLabel(ins.targetContext.packageManager).toString()
+        try {
+            repeat(10) { if (findNode(label) == null) swipeList(up = true) }
+            tap(awaitNode(label))
+            if (android.os.Build.VERSION.SDK_INT < 28) {
+                awaitNodeId("select_dialog_listview")
+                tap(awaitNode(label))
+            }
+            await { (shell("settings get secure default_input_method") == external.id).takeIf { it } }
+        } finally { shell("ime set $targetIme") }
     }
 
     @Test fun floatingKeyboardSwitchListPreservesFocusAndSelection() = withHost(floating = true) { host ->
@@ -202,7 +321,7 @@ class ImePopupInstrumentedTest {
             for (label in listOf("Email", "Password")) {
                 val field = await {
                     allNodes().firstOrNull { it.className == "android.widget.EditText" &&
-                        (it.hintText?.toString() == label || it.text?.toString() == label || it.contentDescription?.toString() == label) }
+                        ((android.os.Build.VERSION.SDK_INT >= 26 && it.hintText?.toString() == label) || it.text?.toString() == label || it.contentDescription?.toString() == label) }
                         ?: allNodes().filter { it.className == "android.widget.EditText" }.getOrNull(if (label == "Email") 0 else 1)
                 }
                 tap(field)
@@ -240,7 +359,11 @@ class ImePopupInstrumentedTest {
                     it.className == "android.widget.EditText" && it.viewIdResourceName != "com.android.chrome:id/url_bar" &&
                     it.isPassword == password }
             }
-            tap(field)
+            field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
+            SystemClock.sleep(500)
+            val currentField = await { allNodes().firstOrNull { it.viewIdResourceName == field.viewIdResourceName && it.className == "android.widget.EditText" } }
+            tap(currentField)
+            awaitNodeId("keyboard_view")
             openShortcut("定型文")
             awaitNode(TEMPLATE)
             SystemClock.sleep(500)
@@ -253,7 +376,8 @@ class ImePopupInstrumentedTest {
             awaitNodeId("popup_listview")
             SystemClock.sleep(500)
             assertNotNull(findNodeId("popup_listview"))
-            key(KeyEvent.KEYCODE_ESCAPE)
+            tap(requireNotNull(awaitNodeId("popup_listview").getChild(0)))
+            await { findNodeId("popup_listview") == null }
             openShortcut("動的定型文（マクロ）")
             awaitNode(MACRO_NAME)
             SystemClock.sleep(500)
@@ -262,6 +386,7 @@ class ImePopupInstrumentedTest {
             if (!password) {
                 SystemClock.sleep(300)
                 shell("input keyevent 4") // Reveal the password field below Chrome's resized viewport.
+                SystemClock.sleep(700) // Retrieve password bounds after Chrome completes its viewport resize.
             }
         }
     }
@@ -298,7 +423,7 @@ class ImePopupInstrumentedTest {
             .putExtra("variation", variation).putExtra("web", web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         val activity = await { ImePopupHostActivity.current }
         try { block(HostScenario(activity)) } finally {
-            ins.runOnMainSync { activity.finish() }
+            ins.runOnMainSync { (ImePopupHostActivity.current ?: activity).finish() }
             await { ImePopupHostActivity.current == null }
         }
     }
@@ -307,7 +432,7 @@ class ImePopupInstrumentedTest {
     // directly instead of ActivityScenario's unbounded waitForIdleSync during launch.
     private class HostScenario(private val activity: ImePopupHostActivity) {
         fun onActivity(action: (ImePopupHostActivity) -> Unit) =
-            InstrumentationRegistry.getInstrumentation().runOnMainSync { action(activity) }
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { action(ImePopupHostActivity.current ?: activity) }
     }
 
     private fun text(host: HostScenario): String {
@@ -324,7 +449,9 @@ class ImePopupInstrumentedTest {
             findNode(label) ?: findNode(ins.targetContext.getString(R.string.shortcut_entry_content_description))?.let {
                 tap(it); null
             }
-        }.let(::tap)
+        }.let { node ->
+            if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) tap(node)
+        }
         awaitNodeId("popup_listview")
     }
     private fun typeReading() {
@@ -381,7 +508,7 @@ class ImePopupInstrumentedTest {
             // Wait for the actual long-press result before releasing, including on a busy emulator.
             awaitNodeId("popup_listview")
         } finally { inject(MotionEvent.ACTION_UP) }
-        SystemClock.sleep(100)
+        SystemClock.sleep(500)
     }
     private fun touch(x: Float, y: Float, hold: Long = 50) {
         val down = SystemClock.uptimeMillis()
@@ -435,6 +562,8 @@ class ImePopupInstrumentedTest {
         private lateinit var oldShortcuts: List<ShortcutItem>
         private lateinit var originalNgWordIds: Set<Int>
         private var macroId = 0L
+        private var originalAutoRotation = ""
+        private var originalRotation = ""
         private var templateId = 0
         private var previous: Map<String, Any?> = emptyMap()
         private val defaults = mapOf<String, Any>(
@@ -461,6 +590,8 @@ class ImePopupInstrumentedTest {
             }
             originalIme = shell("settings get secure default_input_method")
             originalHardware = shell("settings get secure show_ime_with_hard_keyboard")
+            originalAutoRotation = shell("settings get system accelerometer_rotation")
+            originalRotation = shell("settings get system user_rotation")
             previous = defaults.keys.associateWith { prefs.all[it] }
             prefs.edit().apply {
                 defaults.forEach { (key, value) -> when (value) {
@@ -472,11 +603,15 @@ class ImePopupInstrumentedTest {
             runBlocking {
                 originalNgWordIds = database.ngWordDao().getAll().map { it.id }.toSet()
                 oldShortcuts = database.shortcutDao().getAllShortcuts()
-                database.shortcutDao().replaceAll(listOf("template", "select_date", "text_macro", "keyboard_picker")
+                database.shortcutDao().replaceAll(listOf("template", "select_date", "text_macro", "keyboard_picker", "floating_user_dictionary")
                     .mapIndexed { index, type -> ShortcutItem(typeId = type, sortOrder = index) })
                 database.userTemplateDao().insert(UserTemplate(word = TEMPLATE, reading = "てすと", posIndex = 0, posScore = 0))
                 templateId = database.userTemplateDao().searchByReadingExactSuspend("てすと", 100).single { it.word == TEMPLATE }.id
-                macroId = database.textMacroDao().insert(TextMacro(name = MACRO_NAME, body = MACRO_TEXT))
+                // Recover our reserved record after an interrupted instrumentation process.
+                val existingMacro = database.textMacroDao().getByName(MACRO_NAME)
+                check(existingMacro == null || existingMacro.body == MACRO_TEXT)
+                macroId = existingMacro?.id
+                    ?: database.textMacroDao().insert(TextMacro(name = MACRO_NAME, body = MACRO_TEXT))
             }
             targetIme = "${instrumentation.targetContext.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
             wasEnabled = shell("ime list -s").lines().any { it == targetIme }
@@ -485,6 +620,10 @@ class ImePopupInstrumentedTest {
         }
 
         @JvmStatic @AfterClass fun restore() {
+            for ((key, value) in listOf("accelerometer_rotation" to originalAutoRotation, "user_rotation" to originalRotation)) {
+                if (value == "null") shell("settings delete system $key")
+                else if (value.isNotEmpty()) shell("settings put system $key $value")
+            }
             if (originalIme.isNotEmpty() && originalIme != "null") shell("ime set $originalIme")
             if (!wasEnabled && targetIme.isNotEmpty() && targetIme != originalIme) shell("ime disable $targetIme")
             if (originalHardware == "null") shell("settings delete secure show_ime_with_hard_keyboard")
