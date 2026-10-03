@@ -147,6 +147,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var listener: OnKeyboardActionListener? = null
     private val flickTextPreviewEmitter = FlickTextPreviewEmitter()
     private var previewKeyData: KeyData? = null
+    private var independentMultiTouchForCurrentGesture = false
+    private val independentTextPreviews = linkedMapOf<KeyData, FlickTextSelection>()
+    private val independentLastCoordinates = mutableMapOf<Int, Pair<Float, Float>>()
+
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val centerGuideFlickControllers = mutableListOf<CenterGuideFlickInputController>()
@@ -204,6 +208,8 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private var iconScalePercent: Int = 100
     private var isCursorMode: Boolean = false
+    private var cursorPointerId: Int? = null
+    private var longPressOwnerKeyData: KeyData? = null
     private var cursorInitialX = 0f
     private var cursorInitialY = 0f
 
@@ -336,6 +342,14 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
+        if (popupViewStyleSet.directional.skinId != styleSet.directional.skinId ||
+            popupViewStyleSet.cross.skinId != styleSet.cross.skinId ||
+            popupViewStyleSet.standard.skinId != styleSet.standard.skinId ||
+            popupViewStyleSet.tfbi.skinId != styleSet.tfbi.skinId
+        ) {
+            cancelTrackedTouchState()
+            cancelInputControllers()
+        }
         popupViewStyleSet = FlickPopupViewStyleSet(
             directional = clampPopupStyle(styleSet.directional),
             cross = clampPopupStyle(styleSet.cross),
@@ -361,6 +375,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             textColor = style.textColor,
             skinId = style.skinId
         )
+    }
+
+    fun setIndependentMultiTouchEnabled(enabled: Boolean) {
+        localRuntimeGestureSettings.update(independentMultiTouchEnabled = enabled)
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
@@ -468,6 +486,24 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
+        if (enabled && independentMultiTouchForCurrentGesture) {
+            val ownerView = dynamicKeyMap.values.firstOrNull { it.keyData == longPressOwnerKeyData }?.view
+            val owner = motionTargets.entries.firstOrNull { it.value.view === ownerView } ?: motionTargets.entries.firstOrNull()
+            cursorPointerId = owner?.key
+            owner?.let {
+                independentLastCoordinates[it.key]?.let { position -> cursorInitialX = position.first; cursorInitialY = position.second }
+                motionTargets.toList().filter { target -> target.first != it.key }.forEach { (id, target) ->
+                    motionTargets.remove(id)
+                    val time = pointerDownTime.remove(id) ?: SystemClock.uptimeMillis()
+                    val cancel = MotionEvent.obtain(time, SystemClock.uptimeMillis(), MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+                    try { target.view.dispatchTouchEvent(cancel) } finally { cancel.recycle() }
+                    target.view.isPressed = false
+                    independentLastCoordinates.remove(id)
+                }
+                independentTextPreviews.clear()
+                cancelTextPreview()
+            }
+        } else if (!enabled) cursorPointerId = null
     }
 
     fun setAngleAndRange(
@@ -1623,10 +1659,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 action: FlickAction?,
                                 isFlick: Boolean
                             ) {
-                                updateTextPreview(textOutputFromFlickAction(action), isFlick)
+                                updateTextPreview(keyData, textOutputFromFlickAction(action), isFlick)
                             }
 
-                            override fun onCanceled() = cancelTextPreview()
+                            override fun onCanceled() = cancelTextPreview(keyData)
                         }
 
                         val mapSwitchLabels = List(circularKeyMapsList.size) { null }
@@ -1756,6 +1792,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onFlickLongPress(action: KeyAction) {
                                 if (action !is KeyAction.Text) {
                                     doubleTapActionDispatcher.interrupt()
+                                    longPressOwnerKeyData = keyData
                                     this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
                                 }
                             }
@@ -1920,6 +1957,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setConcurrentSkinGuidesProvider { independentMultiTouchForCurrentGesture }
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.standard)
@@ -1940,9 +1978,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 override fun onSelectionChanged(
                                     character: String?,
                                     isFlick: Boolean
-                                ) = updateTextPreview(character, isFlick)
+                                ) = updateTextPreview(keyData, character, isFlick)
 
-                                override fun onCanceled() = cancelTextPreview()
+                                override fun onCanceled() = cancelTextPreview(keyData)
                             }
 
                         val stringMap = extractInputMap(flickActionMap)
@@ -2132,13 +2170,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onTextSelectionChanged(
                                 text: String?,
                                 isFlick: Boolean
-                            ) = updateTextPreview(text, isFlick)
+                            ) = updateTextPreview(keyData, text, isFlick)
 
-                            override fun onCanceled() = cancelTextPreview()
+                            override fun onCanceled() = cancelTextPreview(keyData)
 
                             override fun onFlickLongPress(action: KeyAction) {
                                 if (action !is KeyAction.Text) {
                                     doubleTapActionDispatcher.interrupt()
+                                    longPressOwnerKeyData = keyData
                                     this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
                                 }
                             }
@@ -2217,9 +2256,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onSelectionChanged(
                                 character: String?,
                                 isFlick: Boolean
-                            ) = updateTextPreview(character, isFlick)
+                            ) = updateTextPreview(keyData, character, isFlick)
 
-                            override fun onCanceled() = cancelTextPreview()
+                            override fun onCanceled() = cancelTextPreview(keyData)
                         }
 
                         attach(keyView, stringMap)
@@ -2305,6 +2344,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                                 override fun onLongPress() {
                                     doubleTapActionDispatcher.interrupt()
+                                    longPressOwnerKeyData = keyData
                                     this@FlickKeyboardView.listener?.onActionLongPress(
                                         currentAction()
                                     )
@@ -2465,6 +2505,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
         val textAction = action as? KeyAction.Text
         if (textAction != null && canPreviewText(keyData, textAction)) {
+            if (independentMultiTouchForCurrentGesture && previewKeyData != keyData) {
+                previewKeyData = keyData
+                flickTextPreviewEmitter.begin(FlickTextSelection(textAction.text, isFlick))
+            }
+            independentTextPreviews.remove(keyData)
             flickTextPreviewEmitter.commit(
                 FlickTextSelection(textAction.text, isFlick),
                 dispatch
@@ -2501,18 +2546,35 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (character.isNotEmpty()) listener?.onPress(action)
         if (character.isNotEmpty() && canPreviewText(keyData, action)) {
             previewKeyData = keyData
-            flickTextPreviewEmitter.begin(FlickTextSelection(character, false))
+            val selection = FlickTextSelection(character, false)
+            if (independentMultiTouchForCurrentGesture) independentTextPreviews[keyData] = selection
+            flickTextPreviewEmitter.begin(selection)
         } else {
             cancelTextPreview()
         }
     }
 
-    private fun updateTextPreview(character: String?, isFlick: Boolean) {
+    private fun updateTextPreview(keyData: KeyData, character: String?, isFlick: Boolean) {
+        val selection = FlickTextSelection(character, isFlick)
+        if (independentMultiTouchForCurrentGesture) {
+            if (!independentTextPreviews.containsKey(keyData)) return
+            independentTextPreviews.remove(keyData)
+            independentTextPreviews[keyData] = selection
+            if (previewKeyData != keyData) {
+                previewKeyData = keyData
+                flickTextPreviewEmitter.begin(selection)
+                return
+            }
+        }
         if (previewKeyData == null) return
-        flickTextPreviewEmitter.update(FlickTextSelection(character, isFlick))
+        flickTextPreviewEmitter.update(selection)
     }
 
-    private fun cancelTextPreview() {
+    private fun cancelTextPreview(keyData: KeyData? = null) {
+        if (independentMultiTouchForCurrentGesture && keyData != null) {
+            independentTextPreviews.remove(keyData)
+            if (previewKeyData != keyData) return
+        }
         flickTextPreviewEmitter.cancel()
         previewKeyData = null
     }
@@ -2604,7 +2666,20 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val pointerDownTime = mutableMapOf<Int, Long>()
     private val TAG = "FlickKeyboardViewTouch"
 
+    private fun cancelInputControllers() {
+        flickControllers.forEach { it.cancel() }
+        crossFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.forEach { it.cancel() }
+
+        flickLongPressControllers.forEach { it.cancel() }
+
+        tapLongPressControllers.forEach { it.cancel() }
+    }
+
     private fun cancelTrackedTouchState() {
+        independentLastCoordinates.clear()
+        independentTextPreviews.clear()
         cancelTextPreview()
         if (motionTargets.isEmpty() && pointerDownTime.isEmpty()) return
 
@@ -2816,6 +2891,12 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            independentMultiTouchForCurrentGesture = runtimeGestureSettings.snapshot().independentMultiTouchEnabled
+        }
+        if (independentMultiTouchForCurrentGesture) {
+            return if (isCursorMode) onIndependentCursorTouchEvent(event) else onIndependentTouchEvent(event)
+        }
         val action = event.actionMasked
         val pointerIndex = event.actionIndex
         val pointerId = event.getPointerId(pointerIndex)
@@ -3057,6 +3138,109 @@ class FlickKeyboardView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
+    private fun onIndependentCursorTouchEvent(event: MotionEvent): Boolean {
+        val index = cursorPointerId?.let(event::findPointerIndex) ?: 0
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (index < 0) return true
+                cursorPointerId = event.getPointerId(index)
+                cursorInitialX = event.displayX(index)
+                cursorInitialY = event.displayY(index)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (index < 0) return true
+                val x = event.displayX(index); val y = event.displayY(index)
+                val dx = x - cursorInitialX; val dy = y - cursorInitialY
+                if (abs(dx) > abs(dy) && abs(dx) > 30f) {
+                    dispatchNonTapAction(if (dx < 0f) KeyAction.MoveCursorLeft else KeyAction.MoveCursorRight, false)
+                    cursorInitialX = x; cursorInitialY = y
+                } else if (abs(dy) > abs(dx) && abs(dy) > 30f) {
+                    dispatchNonTapAction(if (dy < 0f) KeyAction.MoveCursorUp else KeyAction.MoveCursorDown, false)
+                    cursorInitialX = x; cursorInitialY = y
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
+                if (event.actionMasked == MotionEvent.ACTION_POINTER_UP && event.getPointerId(event.actionIndex) != cursorPointerId) return true
+                dispatchEndEventToTrackedTargets(event, if (event.actionMasked == MotionEvent.ACTION_CANCEL) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP)
+                if (event.actionMasked == MotionEvent.ACTION_CANCEL) listener?.onLongPressActionCanceled(KeyAction.Cancel)
+                setCursorMode(false)
+                crossFlickControllers.forEach { it.dismissAllPopups() }
+                clearSpaceKeyPressedState()
+                motionTargets.clear(); pointerDownTime.clear()
+                independentLastCoordinates.clear(); independentTextPreviews.clear()
+            }
+        }
+        return true
+    }
+
+    private fun isIndependentExclusiveTarget(target: MotionTarget): Boolean {
+        val key = dynamicKeyMap.values.firstOrNull { it.view === target.view }?.keyData ?: return false
+        return key.keyId == "switch_next_ime" || key.action == KeyAction.InputText("^_^") ||
+            key.action in setOf(
+                KeyAction.ChangeInputMode, KeyAction.SwitchToNextIme, KeyAction.SwitchDirectMode,
+                KeyAction.SwitchRomajiEnglish, KeyAction.SwitchToKanaLayout, KeyAction.SwitchToEnglishLayout, KeyAction.SwitchToNumberLayout,
+                KeyAction.ShowEmojiKeyboard, KeyAction.MoveCustomKeyboardTab
+            ) || key.action is KeyAction.MoveToCustomKeyboard
+    }
+
+    private fun onIndependentTouchEvent(event: MotionEvent): Boolean {
+        val index = event.actionIndex
+        val pointerId = event.getPointerId(index)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) cancelTrackedTouchState()
+                if (motionTargets.values.any(::isIndependentExclusiveTarget)) return true
+                val target = findTargetView(event.displayX(index), event.displayY(index)) ?: return true
+                // A controller has one gesture state; don't deliver a second DOWN to a held key.
+                if (motionTargets.values.any { it.view === target.view }) return true
+                if (isIndependentExclusiveTarget(target)) cancelTrackedTouchState()
+                motionTargets[pointerId] = target
+                pointerDownTime[pointerId] = event.eventTime
+                independentLastCoordinates[pointerId] = event.displayX(index) to event.displayY(index)
+                dispatchPointerEvent(event, index, target, MotionEvent.ACTION_DOWN, event.eventTime)
+                if (motionTargets[pointerId] === target) target.view.isPressed = true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                motionTargets.toList().forEach { (id, target) ->
+                    val pointerIndex = event.findPointerIndex(id)
+                    if (pointerIndex >= 0 && motionTargets[id] === target) {
+                        val coordinates = event.displayX(pointerIndex) to event.displayY(pointerIndex)
+                        if (independentLastCoordinates.put(id, coordinates) != coordinates) {
+                            dispatchPointerEvent(event, pointerIndex, target, MotionEvent.ACTION_MOVE,
+                                pointerDownTime[id] ?: event.downTime)
+                        }
+                    }
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP -> {
+                val target = motionTargets.remove(pointerId)
+                val downTime = pointerDownTime.remove(pointerId)
+                independentLastCoordinates.remove(pointerId)
+                if (target != null && downTime != null) {
+                    dispatchPointerEvent(event, index, target, MotionEvent.ACTION_UP, downTime)
+                    target.view.isPressed = false
+                    val key = dynamicKeyMap.values.firstOrNull { it.view === target.view }?.keyData
+                    independentTextPreviews.remove(key)
+                    restoreIndependentTextPreview()
+                }
+                if (event.actionMasked == MotionEvent.ACTION_UP) cancelTrackedTouchState()
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                cancelTrackedTouchState()
+                listener?.onLongPressActionCanceled(KeyAction.Cancel)
+            }
+        }
+        return true
+    }
+
+    private fun restoreIndependentTextPreview() {
+        val preview = independentTextPreviews.entries.lastOrNull() ?: return
+        if (previewKeyData != preview.key) {
+            previewKeyData = preview.key
+            flickTextPreviewEmitter.begin(preview.value)
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (!controllerRebindPending) return
@@ -3082,14 +3266,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         cancelTrackedTouchState()
         super.onDetachedFromWindow()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
-        flickControllers.forEach { it.cancel() }
-        crossFlickControllers.forEach { it.cancel() }
-        centerGuideFlickControllers.forEach { it.cancel() }
-        standardFlickControllers.forEach { it.cancel() }
-
-        flickLongPressControllers.forEach { it.cancel() }
-
-        tapLongPressControllers.forEach { it.cancel() }
+        cancelInputControllers()
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
@@ -3098,6 +3275,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             doubleTapActionDispatcher.cancel()
             cancelTextPreview()
             cancelTrackedTouchState()
+            cancelInputControllers()
             listener?.onLongPressActionCanceled(KeyAction.Cancel)
         }
     }
@@ -3128,7 +3306,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         sourceEvent: MotionEvent,
         actionToDispatch: Int
     ) {
-        motionTargets.forEach { (trackedPointerId, target) ->
+        motionTargets.toList().forEach { (trackedPointerId, target) ->
             val trackedPointerIndex = sourceEvent.findPointerIndex(trackedPointerId)
             if (trackedPointerIndex == -1) {
                 target.view.isPressed = false

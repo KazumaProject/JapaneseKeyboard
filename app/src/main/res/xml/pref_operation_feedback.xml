@@ -38,6 +38,14 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/independent_multi_touch_category_title">
+        <SwitchPreferenceCompat
+            android:key="independent_multi_touch_preference"
+            android:defaultValue="false"
+            android:title="@string/independent_multi_touch_title"
+            android:summary="@string/independent_multi_touch_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_function_title">
 
         <Preference

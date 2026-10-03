@@ -16,6 +16,8 @@ import android.util.AttributeSet
 import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
+import com.kazumaproject.core.domain.flick.IndependentKeyTouchDispatcher
+import com.kazumaproject.core.domain.flick.IndependentKeyTouchSession
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -141,6 +143,48 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // Track which key is currently pressed
     private lateinit var pressedKey: PressedKey
+    private var independentMultiTouchEnabled = false
+    private var independentMultiTouchForCurrentGesture = false
+    private val pointerPopups = mutableMapOf<Int, PointerPopups>()
+    private var popupPointerId: Int? = null
+    private var longPressPresentationShown = false
+    private val independentTouches: IndependentKeyTouchDispatcher by lazy {
+        IndependentKeyTouchDispatcher(
+            view = this,
+            scope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
+            hitTest = ::pressedKeyByMotionEvent,
+            threshold = { flickThresholdPx },
+            thresholdShape = { flickThresholdShape },
+            longPressTimeout = { longPressTimeout },
+            isExclusiveKey = ::isIndependentExclusiveKey,
+            isExclusiveMode = { isCursorMode },
+            dispatch = { session, event ->
+                withIndependentSession(session) {
+                    if (event.actionMasked == MotionEvent.ACTION_UP && !isCursorMode) {
+                        flickTextPreviewEmitter.begin(resolveTextSelection(session.key, getGestureType(event)))
+                    }
+                    onTouchLegacy(this, event)
+                    if (event.actionMasked == MotionEvent.ACTION_UP) releasePointerPopups(session.pointerId)
+                }
+            },
+            onLongPress = { session ->
+                withIndependentSession(session) {
+                    longPressListener?.onLongPress(pressedKey.key)
+                    if (independentTouches.contains(session)) onLongPressed()
+                }
+            },
+            onCancel = { session, reason ->
+                withIndependentSession(session) {
+                    resetLongPressAction()
+                    releasePointerPopups(session.pointerId)
+                }
+                (getButtonFromKey(session.key) as? View)?.isPressed = false
+                keyTouchCancelListener?.onKeyTouchCanceled(session.key, reason)
+            },
+            restore = ::restoreIndependentTouches
+        )
+    }
+
 
     // External listeners
     private var flickListener: FlickListener? = null
@@ -643,6 +687,88 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         applyPopupKeyboardFont()
     }
 
+    private fun setCustomPopupViewTheme(inflater: LayoutInflater) {
+        val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+        popupWindowActive = PopupWindow(
+            activeBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewActive = activeBinding.bubbleLayoutActive
+        bubbleViewActive.skinId = keyboardSkinId
+        popTextActive = activeBinding.popupTextActive
+        val activeColor = manipulateColor(customSpecialKeyColor, 1.2f)
+        bubbleViewActive.setBubbleColor(activeColor)
+        popTextActive.setTextColor(customSpecialKeyTextColor)
+
+        val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowLeft = PopupWindow(
+            leftBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewLeft = leftBinding.bubbleLayout
+        bubbleViewLeft.skinId = keyboardSkinId
+        popTextLeft = leftBinding.popupText
+        bubbleViewLeft.setBubbleColor(customSpecialKeyColor)
+        popTextLeft.setTextColor(customSpecialKeyTextColor)
+
+        // --- Top popup ---
+        val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowTop = PopupWindow(
+            topBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewTop = topBinding.bubbleLayout
+        bubbleViewTop.skinId = keyboardSkinId
+        popTextTop = topBinding.popupText
+        bubbleViewTop.setBubbleColor(customSpecialKeyColor)
+        popTextTop.setTextColor(customSpecialKeyTextColor)
+
+        // --- Right popup ---
+        val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowRight = PopupWindow(
+            rightBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewRight = rightBinding.bubbleLayout
+        bubbleViewRight.skinId = keyboardSkinId
+        popTextRight = rightBinding.popupText
+        bubbleViewRight.setBubbleColor(customSpecialKeyColor)
+        popTextRight.setTextColor(customSpecialKeyTextColor)
+
+        // --- Bottom popup ---
+        val bottomBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowBottom = PopupWindow(
+            bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+        )
+        bubbleViewBottom = bottomBinding.bubbleLayout
+        bubbleViewBottom.skinId = keyboardSkinId
+        popTextBottom = bottomBinding.popupText
+        bubbleViewBottom.setBubbleColor(customSpecialKeyColor)
+        popTextBottom.setTextColor(customSpecialKeyTextColor)
+
+        // --- Center popup (for long‐press + flick previews) ---
+        val centerBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+        popupWindowCenter = PopupWindow(
+            centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+        )
+        bubbleViewCenter = centerBinding.bubbleLayout
+        bubbleViewCenter.skinId = keyboardSkinId
+        popTextCenter = centerBinding.popupText
+        bubbleViewCenter.setBubbleColor(customSpecialKeyColor)
+        popTextCenter.setTextColor(customSpecialKeyTextColor)
+        applyPopupTextSize()
+        applyPopupColors()
+        applyPopupKeyboardFont()
+    }
+
     fun applyPopupViewStyle(style: PopupViewStyle) {
         popupViewStyle = PopupViewStyle(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
@@ -956,6 +1082,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     ) {
         // Dismiss held labels before restoring colors, so their cleanup cannot restore skin colors.
         if (this.keyboardSkinId != skinId && ::popupWindowActive.isInitialized) { hideAllPopWindow() }
+        if (pointerPopups.isNotEmpty()) cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
         skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
@@ -991,82 +1118,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
 
             "custom" -> {
-                val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
-                popupWindowActive = PopupWindow(
-                    activeBinding.root,
-                    LayoutParams.WRAP_CONTENT,
-                    LayoutParams.WRAP_CONTENT,
-                    false
-                )
-                bubbleViewActive = activeBinding.bubbleLayoutActive
-                bubbleViewActive.skinId = keyboardSkinId
-                popTextActive = activeBinding.popupTextActive
-                val activeColor = manipulateColor(customSpecialKeyColor, 1.2f)
-                bubbleViewActive.setBubbleColor(activeColor)
-                popTextActive.setTextColor(customSpecialKeyTextColor)
-
-                val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
-                popupWindowLeft = PopupWindow(
-                    leftBinding.root,
-                    LayoutParams.WRAP_CONTENT,
-                    LayoutParams.WRAP_CONTENT,
-                    false
-                )
-                bubbleViewLeft = leftBinding.bubbleLayout
-                bubbleViewLeft.skinId = keyboardSkinId
-                popTextLeft = leftBinding.popupText
-                bubbleViewLeft.setBubbleColor(customSpecialKeyColor)
-                popTextLeft.setTextColor(customSpecialKeyTextColor)
-
-                // --- Top popup ---
-                val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowTop = PopupWindow(
-                    topBinding.root,
-                    LayoutParams.WRAP_CONTENT,
-                    LayoutParams.WRAP_CONTENT,
-                    false
-                )
-                bubbleViewTop = topBinding.bubbleLayout
-                bubbleViewTop.skinId = keyboardSkinId
-                popTextTop = topBinding.popupText
-                bubbleViewTop.setBubbleColor(customSpecialKeyColor)
-                popTextTop.setTextColor(customSpecialKeyTextColor)
-
-                // --- Right popup ---
-                val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowRight = PopupWindow(
-                    rightBinding.root,
-                    LayoutParams.WRAP_CONTENT,
-                    LayoutParams.WRAP_CONTENT,
-                    false
-                )
-                bubbleViewRight = rightBinding.bubbleLayout
-                bubbleViewRight.skinId = keyboardSkinId
-                popTextRight = rightBinding.popupText
-                bubbleViewRight.setBubbleColor(customSpecialKeyColor)
-                popTextRight.setTextColor(customSpecialKeyTextColor)
-
-                // --- Bottom popup ---
-                val bottomBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowBottom = PopupWindow(
-                    bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewBottom = bottomBinding.bubbleLayout
-                bubbleViewBottom.skinId = keyboardSkinId
-                popTextBottom = bottomBinding.popupText
-                bubbleViewBottom.setBubbleColor(customSpecialKeyColor)
-                popTextBottom.setTextColor(customSpecialKeyTextColor)
-
-                // --- Center popup (for long‐press + flick previews) ---
-                val centerBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowCenter = PopupWindow(
-                    centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewCenter = centerBinding.bubbleLayout
-                bubbleViewCenter.skinId = keyboardSkinId
-                popTextCenter = centerBinding.popupText
-                bubbleViewCenter.setBubbleColor(customSpecialKeyColor)
-                popTextCenter.setTextColor(customSpecialKeyTextColor)
+                setCustomPopupViewTheme(inflater)
 
                 setFullCustomNeumorphismTheme(
                     backgroundColor = customBgColor,
@@ -1391,6 +1443,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun setCurrentMode(inputMode: InputMode) {
+        if (independentMultiTouchForCurrentGesture && currentInputMode.value != inputMode) {
+            cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
+        }
         Log.d("setCurrentMode", "$inputMode")
         _currentInputMode.update { inputMode }
     }
@@ -1477,6 +1532,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun cancelTenKeyScope() {
+        if (independentMultiTouchForCurrentGesture) cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
         scope.coroutineContext.cancelChildren()
     }
 
@@ -1503,7 +1559,27 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    fun setIndependentMultiTouchEnabled(enabled: Boolean) {
+        independentMultiTouchEnabled = enabled
+    }
+
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
+        if (view == null || event == null || visibility != View.VISIBLE) return false
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            independentMultiTouchForCurrentGesture = independentMultiTouchEnabled
+        }
+        if (independentMultiTouchForCurrentGesture && event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+            return true
+        }
+        return if (independentMultiTouchForCurrentGesture) {
+            independentTouches.onTouch(event)
+        } else {
+            onTouchLegacy(view, event)
+        }
+    }
+
+    private fun onTouchLegacy(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
             if (view.visibility != View.VISIBLE) {
                 return false
@@ -1512,7 +1588,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_DOWN -> {
                     if (keyboardSkinId != KeyboardSkinId.DEFAULT) hideAllPopWindow()
                     skinGuide?.dismiss()
-                    skinLongPress.clear()
+                    clearLongPressPresentation()
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(GestureType.Down, key, null)
 
@@ -1655,7 +1731,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_POINTER_DOWN -> {
                     if (isLongPressed) {
                         hideAllPopWindow()
-                        Blur.removeBlurEffect(this)
+                        if (!hasOtherLongPress()) Blur.removeBlurEffect(this)
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
@@ -1743,10 +1819,172 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         return false
     }
 
+    /** Display state has the same lifetime and owner as its pointer's recognizer. */
+    private class PointerPopups(
+        val popupWindowActive: PopupWindow,
+        val bubbleViewActive: KeyWindowLayout,
+        val popTextActive: MaterialTextView,
+        val popupWindowLeft: PopupWindow,
+        val bubbleViewLeft: KeyWindowLayout,
+        val popTextLeft: MaterialTextView,
+        val popupWindowTop: PopupWindow,
+        val bubbleViewTop: KeyWindowLayout,
+        val popTextTop: MaterialTextView,
+        val popupWindowRight: PopupWindow,
+        val bubbleViewRight: KeyWindowLayout,
+        val popTextRight: MaterialTextView,
+        val popupWindowBottom: PopupWindow,
+        val bubbleViewBottom: KeyWindowLayout,
+        val popTextBottom: MaterialTextView,
+        val popupWindowCenter: PopupWindow,
+        val bubbleViewCenter: KeyWindowLayout,
+        val popTextCenter: MaterialTextView,
+        var guide: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null,
+    )
+
+
+    private fun capturePopups() = PointerPopups(
+        popupWindowActive,
+        bubbleViewActive,
+        popTextActive,
+        popupWindowLeft,
+        bubbleViewLeft,
+        popTextLeft,
+        popupWindowTop,
+        bubbleViewTop,
+        popTextTop,
+        popupWindowRight,
+        bubbleViewRight,
+        popTextRight,
+        popupWindowBottom,
+        bubbleViewBottom,
+        popTextBottom,
+        popupWindowCenter,
+        bubbleViewCenter,
+        popTextCenter,
+        skinGuide,
+    )
+
+    private fun usePopups(popups: PointerPopups) {
+        popupWindowActive = popups.popupWindowActive
+        bubbleViewActive = popups.bubbleViewActive
+        popTextActive = popups.popTextActive
+        popupWindowLeft = popups.popupWindowLeft
+        bubbleViewLeft = popups.bubbleViewLeft
+        popTextLeft = popups.popTextLeft
+        popupWindowTop = popups.popupWindowTop
+        bubbleViewTop = popups.bubbleViewTop
+        popTextTop = popups.popTextTop
+        popupWindowRight = popups.popupWindowRight
+        bubbleViewRight = popups.bubbleViewRight
+        popTextRight = popups.popTextRight
+        popupWindowBottom = popups.popupWindowBottom
+        bubbleViewBottom = popups.bubbleViewBottom
+        popTextBottom = popups.popTextBottom
+        popupWindowCenter = popups.popupWindowCenter
+        bubbleViewCenter = popups.bubbleViewCenter
+        popTextCenter = popups.popTextCenter
+        skinGuide = popups.guide
+    }
+
+    private fun createPointerPopups(): PointerPopups {
+        val previous = capturePopups()
+        try {
+            skinGuide = null
+            if (themeMode == "custom") {
+                setCustomPopupViewTheme(LayoutInflater.from(context))
+            } else {
+                setPopupViewTheme(isDynamicColorEnabled, isNightMode, LayoutInflater.from(context))
+            }
+            return capturePopups()
+        } finally {
+            usePopups(previous)
+        }
+    }
+
+    private fun releasePointerPopups(pointerId: Int) {
+        pointerPopups.remove(pointerId)?.let { popups ->
+            popups.guide?.dismiss()
+            popups.popupWindowActive.hide()
+            popups.popupWindowLeft.hide()
+            popups.popupWindowTop.hide()
+            popups.popupWindowRight.hide()
+            popups.popupWindowBottom.hide()
+            popups.popupWindowCenter.hide()
+        }
+    }
+
+    private fun hasOtherLongPress(): Boolean = independentMultiTouchForCurrentGesture &&
+        independentTouches.activeSessions.any { it.pointerId != popupPointerId && it.isLongPressed }
+
+    private fun showLongPressPresentation(guide: View?) {
+        if (!independentMultiTouchForCurrentGesture || !longPressPresentationShown) {
+            skinLongPress.show(this, keyboardSkinId, guide)
+            longPressPresentationShown = true
+        }
+    }
+
+    private fun clearLongPressPresentation(animated: Boolean = false) {
+        if (hasOtherLongPress()) return
+        skinLongPress.clear(animated)
+        longPressPresentationShown = false
+    }
+
+    private inline fun withIndependentSession(session: IndependentKeyTouchSession, action: () -> Unit) {
+        val previousPopups = capturePopups()
+        val previousPopupPointerId = popupPointerId
+        val popups = pointerPopups.getOrPut(session.pointerId) { createPointerPopups() }
+        popupPointerId = session.pointerId
+        usePopups(popups)
+        val previousThreshold = flickThresholdPx
+        val previousShape = flickThresholdShape
+        val previousTimeout = longPressTimeout
+        pressedKey = session.pressedKey
+        longPressJob = session.longPressJob
+        isLongPressed = session.isLongPressed
+        flickThresholdPx = session.thresholdPx
+        flickThresholdShape = session.thresholdShape
+        longPressTimeout = session.longPressTimeoutMillis
+        try {
+            action()
+        } finally {
+            session.pressedKey = pressedKey
+            session.longPressJob = longPressJob
+            session.isLongPressed = isLongPressed
+            flickThresholdPx = previousThreshold
+            flickThresholdShape = previousShape
+            longPressTimeout = previousTimeout
+            popups.guide = skinGuide
+            usePopups(previousPopups)
+            popupPointerId = previousPopupPointerId
+            if (independentMultiTouchForCurrentGesture) {
+                restoreIndependentTouches(independentTouches.activeSessions, null)
+            }
+        }
+    }
+
+    private fun isIndependentExclusiveKey(key: Key): Boolean =
+        key == Key.SideKeySymbol || key == Key.SideKeyInputMode || key == Key.SideKeyNumberMode ||
+            (key == Key.KeyDakutenSmall && binding.keySmallLetter.drawable == cachedLanguageDrawable)
+
+    private fun restoreIndependentTouches(
+        sessions: List<IndependentKeyTouchSession>,
+        focused: IndependentKeyTouchSession?
+    ) {
+        resetAllKeys()
+        sessions.forEach { session -> (getButtonFromKey(session.key) as? View)?.isPressed = true }
+    }
+
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        if (independentMultiTouchForCurrentGesture) {
+            independentTouches.cancelAll(reason)
+            if (::pressedKey.isInitialized) pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
+
         skinGuide?.dismiss()
-        skinLongPress.clear()
+        clearLongPressPresentation()
         flickTextPreviewEmitter.cancel()
+        pointerPopups.keys.toList().forEach(::releasePointerPopups)
         resetLongPressAction()
         resetAllKeys()
 
@@ -2196,9 +2434,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun resetLongPressAction(animateLabels: Boolean = false) {
         if (isLongPressed) {
             // iOS removes the guide immediately; only surrounding labels keep fading.
-            if (animateLabels) skinLongPress.clear(animated = true)
+            if (animateLabels) clearLongPressPresentation(animated = true)
             hideAllPopWindow(restoreLabels = !animateLabels)
-            Blur.removeBlurEffect(this)
+            if (!hasOtherLongPress()) Blur.removeBlurEffect(this)
         }
         longPressJob?.cancel()
         isLongPressed = false
@@ -2252,7 +2490,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                 }
                 if (showSkinGuide(it)) return@let
-                skinLongPress.show(this, keyboardSkinId, bubbleViewActive)
+                showLongPressPresentation(bubbleViewActive)
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                 if (popTextBottom.text.isNotEmpty()) {
@@ -2273,7 +2511,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popTextRight.setTextFlickRightNumber(it.id)
                     if (keyboardSkinId != KeyboardSkinId.DEFAULT) popTextActive.setTextTapNumber(it.id)
                     if (showSkinGuide(it)) return@let
-                    skinLongPress.show(this, keyboardSkinId, bubbleViewActive)
+                    showLongPressPresentation(bubbleViewActive)
                     popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
                     popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                     popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
@@ -2299,14 +2537,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             com.kazumaproject.core.ui.skin.PopupDirection.RIGHT to popTextRight.text,
             com.kazumaproject.core.ui.skin.PopupDirection.BOTTOM to popTextBottom.text
         ))
-        skinLongPress.show(this, keyboardSkinId, guide)
+        showLongPressPresentation(guide)
         return true
     }
 
     /** Hide every popup bubble **/
     private fun hideAllPopWindow(restoreLabels: Boolean = true) {
         skinGuide?.dismiss()
-        if (restoreLabels) skinLongPress.clear()
+        if (restoreLabels) clearLongPressPresentation()
         popupWindowActive.hide()
         popupWindowLeft.hide()
         popupWindowTop.hide()
@@ -2671,6 +2909,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Sync UI to a specified input mode (called from collector) **/
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
+        if (independentMultiTouchForCurrentGesture && independentTouches.activeSessions.any {
+                !isCursorMode && isIndependentExclusiveKey(it.key)
+            }) independentTouches.cancelAll(KeyTouchCancelReason.PointerInterrupted)
+
         when (inputMode) {
             InputMode.ModeJapanese -> setKeysInJapaneseText()
             InputMode.ModeEnglish -> setKeysInEnglishText()
