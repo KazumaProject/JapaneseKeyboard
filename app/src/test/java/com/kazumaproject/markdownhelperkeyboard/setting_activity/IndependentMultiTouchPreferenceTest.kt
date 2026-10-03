@@ -46,8 +46,8 @@ class IndependentMultiTouchPreferenceTest {
         assertTrue(AppPreference.independent_multi_touch_preference)
     }
 
-    @Test fun bothCommonScreensDeclareTheSameDefaultOffSwitch() {
-        for (resource in listOf(R.xml.pref_common, R.xml.pref_common_legacy)) {
+    @Test fun bothOperationScreensDeclareTheSameDefaultOffSwitch() {
+        for (resource in listOf(R.xml.pref_operation_feedback, R.xml.pref_common_legacy)) {
             val parser = context.resources.getXml(resource)
             parser.use {
                 var matches = 0
@@ -65,9 +65,32 @@ class IndependentMultiTouchPreferenceTest {
         }
     }
 
-    @Test fun searchAndFrequentSettingsPointToTheCorrectCommonScreen() {
+    @Test fun switchSitsAfterFlickSettingsAndIsAbsentFromNewCommonHome() {
+        for (resource in listOf(R.xml.pref_operation_feedback, R.xml.pref_common_legacy)) {
+            val keys = mutableListOf<String>()
+            context.resources.getXml(resource).use { parser ->
+                while (parser.eventType != XmlPullParser.END_DOCUMENT) {
+                    if (parser.eventType == XmlPullParser.START_TAG) {
+                        parser.getAttributeValue("http://schemas.android.com/apk/res/android", "key")?.let(keys::add)
+                    }
+                    parser.next()
+                }
+            }
+            val index = keys.indexOf(key)
+            assertEquals("Immediately after flick settings", keys.indexOf("flick_threshold_shape_preference") + 1, index)
+            assertTrue(index < keys.indexOf("long_press_timeout_preference"))
+        }
+        context.resources.getXml(R.xml.pref_common).use { parser ->
+            while (parser.eventType != XmlPullParser.END_DOCUMENT) {
+                assertNotEquals(key, parser.getAttributeValue("http://schemas.android.com/apk/res/android", "key"))
+                parser.next()
+            }
+        }
+    }
+
+    @Test fun searchAndFrequentSettingsPointToTheCorrectOperationScreen() {
         val newSetting = SettingSearchIndex.destinationsForKeys(context, listOf(key)).single()
-        assertEquals(R.id.commonPreferenceFragment, (newSetting.destination as SettingDestinationType.SwitchPreference).destinationId)
+        assertEquals(R.id.operationFeedbackPreferenceFragment, (newSetting.destination as SettingDestinationType.SwitchPreference).destinationId)
         assertFalse((newSetting.destination as SettingDestinationType.SwitchPreference).defaultValue)
         val legacySetting = SettingSearchIndex.legacyDestinationsForKeys(context, listOf(key)).single()
         assertEquals(R.id.legacyCommonPreferenceFragment, SettingDestinations.destinationId(legacySetting.destination))

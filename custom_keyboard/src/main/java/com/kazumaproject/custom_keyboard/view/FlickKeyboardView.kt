@@ -351,6 +351,14 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
+        if (popupViewStyleSet.directional.skinId != styleSet.directional.skinId ||
+            popupViewStyleSet.cross.skinId != styleSet.cross.skinId ||
+            popupViewStyleSet.standard.skinId != styleSet.standard.skinId ||
+            popupViewStyleSet.tfbi.skinId != styleSet.tfbi.skinId
+        ) {
+            cancelTrackedTouchState()
+            cancelInputControllers()
+        }
         popupViewStyleSet = FlickPopupViewStyleSet(
             directional = clampPopupStyle(styleSet.directional),
             cross = clampPopupStyle(styleSet.cross),
@@ -1984,6 +1992,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        setConcurrentSkinGuidesProvider { independentMultiTouchForCurrentGesture }
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.standard)
@@ -2973,6 +2982,18 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val pointerDownTime = mutableMapOf<Int, Long>()
     private val TAG = "FlickKeyboardViewTouch"
 
+    private fun cancelInputControllers() {
+        flickControllers.forEach { it.cancel() }
+        crossFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.forEach { it.cancel() }
+        tfbiControllers.forEach { it.cancel() }
+        flickLongPressControllers.forEach { it.cancel() }
+        stickyTfbiControllers.forEach { it.cancel() }
+        hierarchicalTfbiControllers.forEach { it.cancel() }
+        tapLongPressControllers.forEach { it.cancel() }
+    }
+
     private fun cancelTrackedTouchState() {
         independentLastCoordinates.clear()
         independentTextPreviews.clear()
@@ -3562,15 +3583,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         cancelTrackedTouchState()
         super.onDetachedFromWindow()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
-        flickControllers.forEach { it.cancel() }
-        crossFlickControllers.forEach { it.cancel() }
-        centerGuideFlickControllers.forEach { it.cancel() }
-        standardFlickControllers.forEach { it.cancel() }
-        tfbiControllers.forEach { it.cancel() }
-        flickLongPressControllers.forEach { it.cancel() }
-        stickyTfbiControllers.forEach { it.cancel() }
-        hierarchicalTfbiControllers.forEach { it.cancel() }
-        tapLongPressControllers.forEach { it.cancel() }
+        cancelInputControllers()
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
@@ -3579,6 +3592,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             doubleTapActionDispatcher.cancel()
             cancelTextPreview()
             cancelTrackedTouchState()
+            cancelInputControllers()
             listener?.onLongPressActionCanceled(KeyAction.Cancel)
         }
     }

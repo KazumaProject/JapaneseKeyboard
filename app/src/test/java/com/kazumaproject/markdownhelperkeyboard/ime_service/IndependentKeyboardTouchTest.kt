@@ -7,6 +7,15 @@ import android.view.ContextThemeWrapper
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
+import android.widget.PopupWindow
+import android.widget.TextView
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.skin.SkinGuidePopup
+import com.kazumaproject.core.ui.skin.PopupDirection
+import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
@@ -238,7 +247,187 @@ class IndependentKeyboardTouchTest {
         }
     }
 
-    private fun keyboard(kind: Kind, enabled: Boolean = true, applySetting: Boolean = true, customLayout: KeyboardLayout? = null): Keyboard {
+    private fun field(owner: Any, name: String): Any? =
+        owner.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(owner)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun popups(k: Keyboard): Map<Int, Any> = field(k.view, "pointerPopups") as Map<Int, Any>
+
+    @Test fun flickPopupsKeepTheirOwnAnchorsAndOtherFingerSurvivesEitherReleaseOrder() {
+        for (kind in listOf(Kind.TENKEY, Kind.GOJUON)) for (firstReleased in listOf(0, 1)) {
+            val k = keyboard(kind, gojuonVowels = true)
+            val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+            val upA = a.copy(point = a.point.copy(y = a.point.y - 80))
+            val upB = b.copy(point = b.point.copy(y = b.point.y - 80))
+            send(k, MotionEvent.ACTION_DOWN, 0, a)
+            send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b)
+            send(k, MotionEvent.ACTION_MOVE, 0, upA, upB)
+            val windows = listOf(3, 19).map { field(popups(k).getValue(it), "popupWindowActive") as PopupWindow }
+            assertNotSame(windows[0], windows[1])
+            windows.forEachIndexed { index, window ->
+                assertTrue("$kind popup $index visible", window.isShowing)
+                val anchor = field(window, "mAnchor") as java.lang.ref.WeakReference<*>
+                assertSame("$kind popup $index anchor", k.keys[index], anchor.get())
+            }
+            val survivor = 1 - firstReleased
+            val survivorText = (field(popups(k).getValue(listOf(3, 19)[survivor]), "popTextActive") as TextView).text.toString()
+            send(k, MotionEvent.ACTION_POINTER_UP, firstReleased, upA, upB)
+            assertFalse(windows[firstReleased].isShowing)
+            assertTrue(windows[survivor].isShowing)
+            assertEquals(survivorText, (field(popups(k).values.single(), "popTextActive") as TextView).text.toString())
+            send(k, MotionEvent.ACTION_UP, 0, if (survivor == 0) upA else upB)
+            assertTrue(popups(k).isEmpty())
+            assertTrue(windows.none { it.isShowing })
+            assertEquals(listOf(k.names[firstReleased] + "↑", k.names[survivor] + "↑"), k.committed)
+        }
+    }
+
+    @Test fun cupertinoLongPressGuidesAreIndependentAndDoNotRestartWhenAnotherFingerLifts() {
+        for (kind in listOf(Kind.TENKEY, Kind.GOJUON)) for (skin in listOf(
+            KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK, KeyboardSkinId.CUPERTINO_CLASSIC)) {
+            val k = keyboard(kind, skin = skin)
+            val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+            send(k, MotionEvent.ACTION_DOWN, 0, a)
+            send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b)
+            shadowOf(Looper.getMainLooper()).idleFor(1100, TimeUnit.MILLISECONDS)
+            val states = listOf(3, 19).map { popups(k).getValue(it) }
+            fun visible(state: Any): Boolean = (field(state, "guide") as? SkinGuidePopup)?.isShowing
+                ?: (field(state, "popupWindowActive") as PopupWindow).isShowing
+            fun text(state: Any): String {
+                val guide = field(state, "guide") as? SkinGuidePopup
+                if (guide == null) return (field(state, "popTextActive") as TextView).text.toString()
+                @Suppress("UNCHECKED_CAST")
+                val cells = field(guide, "cells") as Map<PopupDirection, KeyWindowLayout>
+                return (cells.getValue(PopupDirection.CENTER).getChildAt(0) as TextView).text.toString()
+            }
+            assertEquals(listOf("あ", "か"), states.map(::text))
+            assertTrue("$kind $skin guides visible", states.all(::visible))
+            assertNotSame(field(states[0], "popupWindowActive"), field(states[1], "popupWindowActive"))
+            assertEquals(2, k.longPresses.size)
+            send(k, MotionEvent.ACTION_POINTER_UP, 1, a, b)
+            shadowOf(Looper.getMainLooper()).idleFor(250, TimeUnit.MILLISECONDS)
+            assertTrue(visible(states[0]))
+            assertFalse(visible(states[1]))
+            assertEquals("No repeated long-press callback", 2, k.longPresses.size)
+            assertEquals("$kind $skin remaining long press retains label presentation",
+                kind == Kind.TENKEY || skin == KeyboardSkinId.CUPERTINO_CLASSIC,
+                field(k.view, "longPressPresentationShown"))
+            send(k, MotionEvent.ACTION_CANCEL, 0, a)
+            shadowOf(Looper.getMainLooper()).idleFor(250, TimeUnit.MILLISECONDS)
+            assertTrue(popups(k).isEmpty())
+            assertTrue(states.none(::visible))
+            assertEquals(false, field(k.view, "longPressPresentationShown"))
+        }
+    }
+
+    @Test fun qwertyPreviewsRemainVisibleForBothPointersAndOnlyOwnerIsDismissed() {
+        val k = keyboard(Kind.QWERTY)
+        (k.view as QWERTYKeyboardView).setPopUpViewState(true)
+        val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+        send(k, MotionEvent.ACTION_DOWN, 0, a)
+        send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b)
+        @Suppress("UNCHECKED_CAST")
+        val previews = field(k.view, "keyPreviewPopups") as Map<Int, PopupWindow>
+        val first = previews.getValue(3); val second = previews.getValue(19)
+        assertTrue(first.isShowing && second.isShowing)
+        assertNotSame(first, second)
+        send(k, MotionEvent.ACTION_POINTER_UP, 1, a, b)
+        assertTrue(first.isShowing)
+        assertFalse(second.isShowing)
+        assertEquals(setOf(3), previews.keys)
+        send(k, MotionEvent.ACTION_CANCEL, 0, a)
+        assertFalse(first.isShowing)
+        assertTrue(previews.isEmpty())
+    }
+
+    @Test fun customCupertinoGuidesRemainIndependentThroughEitherReleaseOrder() {
+        for (skin in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK,
+            KeyboardSkinId.CUPERTINO_CLASSIC)) for (released in listOf(0, 1)) {
+            val k = keyboard(Kind.CUSTOM, skin = skin)
+            val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+            send(k, MotionEvent.ACTION_DOWN, 0, a, realDispatch = true)
+            send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b, realDispatch = true)
+            val controllers = field(k.view, "standardFlickControllers") as List<*>
+            val guides = controllers.take(2).map { field(it!!, "skinGuidePopup") as SkinGuidePopup }
+            assertTrue("$skin both custom guides visible", guides.all { it.isShowing })
+            assertNotSame(guides[0], guides[1])
+            send(k, MotionEvent.ACTION_POINTER_UP, released, a, b, realDispatch = true)
+            shadowOf(Looper.getMainLooper()).idleFor(250, TimeUnit.MILLISECONDS)
+            assertFalse(guides[released].isShowing)
+            assertTrue(guides[1 - released].isShowing)
+            send(k, MotionEvent.ACTION_CANCEL, 0, if (released == 0) b else a, realDispatch = true)
+            assertTrue(guides.none { it.isShowing })
+            assertEquals(listOf(k.names[released]), k.committed)
+        }
+    }
+
+    @Test fun sumireLongPressPopupsStayWithTheirKeysWhenTheOtherFingerMovesOrLifts() {
+        val layout = KeyboardDefaultLayouts.createFinalLayout(
+            KeyboardInputMode.HIRAGANA, emptyMap(), "toggle", "default")
+        for (released in listOf(0, 1)) {
+            val k = keyboard(Kind.CUSTOM, customLayout = layout)
+            val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+            send(k, MotionEvent.ACTION_DOWN, 0, a, realDispatch = true)
+            send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b, realDispatch = true)
+            shadowOf(Looper.getMainLooper()).idleFor(1100, TimeUnit.MILLISECONDS)
+            val controllers = field(k.view, "crossFlickControllers") as List<*>
+            val owners = k.keys.take(2).map { key -> controllers.single { field(it!!, "anchorView") === key }!! }
+            val overlays = owners.map { field(it, "popupOverlay")!! }
+            fun visible(overlay: Any) = (field(overlay, "visibleViews") as Set<*>).isNotEmpty()
+            assertNotSame(overlays[0], overlays[1])
+            assertTrue(overlays.all(::visible))
+            val movedA = a.copy(point = a.point.copy(y = a.point.y - 80))
+            val remainingViews = (field(overlays[1], "visibleViews") as Set<*>).toList()
+            send(k, MotionEvent.ACTION_MOVE, 0, movedA, b, realDispatch = true)
+            assertEquals(remainingViews, (field(overlays[1], "visibleViews") as Set<*>).toList())
+            send(k, MotionEvent.ACTION_POINTER_UP, released, movedA, b, realDispatch = true)
+            assertFalse(visible(overlays[released]))
+            assertTrue(visible(overlays[1 - released]))
+            send(k, MotionEvent.ACTION_CANCEL, 0, if (released == 0) b else movedA, realDispatch = true)
+            assertTrue(overlays.none(::visible))
+        }
+    }
+
+    @Test fun hidingOrDetachingDismissesBothLongPressPopupSets() {
+        for (kind in listOf(Kind.TENKEY, Kind.GOJUON)) for (detach in listOf(false, true)) {
+            val k = keyboard(kind, skin = KeyboardSkinId.CUPERTINO_CLASSIC)
+            val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+            send(k, MotionEvent.ACTION_DOWN, 0, a)
+            send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b)
+            shadowOf(Looper.getMainLooper()).idleFor(1100, TimeUnit.MILLISECONDS)
+            val guides = popups(k).values.map { field(it, "guide") as SkinGuidePopup }
+            assertTrue(guides.all { it.isShowing })
+            if (detach) (k.view.parent as ViewGroup).removeView(k.view) else k.view.visibility = View.GONE
+            shadowOf(Looper.getMainLooper()).idleFor(1100, TimeUnit.MILLISECONDS)
+            assertTrue(popups(k).isEmpty())
+            assertTrue(guides.none { it.isShowing })
+            assertEquals(false, field(k.view, "longPressPresentationShown"))
+            assertTrue(k.keys.none { it.isPressed })
+            assertTrue(k.committed.isEmpty())
+            assertEquals(2, k.longPresses.size)
+        }
+    }
+
+    @Test fun customSkinSwitchCancelsBothGuidesAndPendingInputs() {
+        val k = keyboard(Kind.CUSTOM, skin = KeyboardSkinId.CUPERTINO_LIGHT)
+        val a = pointer(3, k.keys[0]); val b = pointer(19, k.keys[1])
+        send(k, MotionEvent.ACTION_DOWN, 0, a, realDispatch = true)
+        send(k, MotionEvent.ACTION_POINTER_DOWN, 1, a, b, realDispatch = true)
+        val controllers = field(k.view, "standardFlickControllers") as List<*>
+        val guides = controllers.take(2).map { field(it!!, "skinGuidePopup") as SkinGuidePopup }
+        assertTrue(guides.all { it.isShowing })
+        val style = PopupViewStyle(100, 19f, skinId = KeyboardSkinId.CUPERTINO_DARK)
+        (k.view as FlickKeyboardView).applyPopupViewStyleSet(FlickPopupViewStyleSet(style, style, style, style))
+        shadowOf(Looper.getMainLooper()).idleFor(1100, TimeUnit.MILLISECONDS)
+        assertTrue(guides.none { it.isShowing })
+        assertTrue(k.keys.none { it.isPressed })
+        send(k, MotionEvent.ACTION_POINTER_UP, 1, a, b, realDispatch = true)
+        send(k, MotionEvent.ACTION_UP, 0, a, realDispatch = true)
+        assertTrue(k.committed.isEmpty())
+        assertTrue(k.longPresses.isEmpty())
+    }
+
+    private fun keyboard(kind: Kind, enabled: Boolean = true, applySetting: Boolean = true, customLayout: KeyboardLayout? = null, skin: KeyboardSkinId = KeyboardSkinId.DEFAULT, gojuonVowels: Boolean = false): Keyboard {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val context = ContextThemeWrapper(activity,
             com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)
@@ -267,7 +456,7 @@ class IndependentKeyboardTouchTest {
                     customBgColor = -1, customKeyColor = -1, customSpecialKeyColor = -1,
                     customKeyTextColor = -16777216, customSpecialKeyTextColor = -16777216,
                     liquidGlassEnable = false, customBorderEnable = false, customBorderColor = 0,
-                    liquidGlassKeyAlphaEnable = 255, borderWidth = 1
+                    liquidGlassKeyAlphaEnable = 255, borderWidth = 1, skinId = skin
                 )
                 keyboard.setOnFlickListener(listener)
                 keyboard.setOnLongPressListener(longListener)
@@ -284,15 +473,17 @@ class IndependentKeyboardTouchTest {
                     customBgColor = -1, customKeyColor = -1, customSpecialKeyColor = -1,
                     customKeyTextColor = -16777216, customSpecialKeyTextColor = -16777216,
                     liquidGlassEnable = false, customBorderEnable = false, customBorderColor = 0,
-                    liquidGlassKeyAlphaEnable = 255, borderWidth = 1
+                    liquidGlassKeyAlphaEnable = 255, borderWidth = 1, skinId = skin
                 )
                 keyboard.setOnFlickListener(listener)
                 keyboard.setOnLongPressListener(longListener)
                 keyboard.setLongPressTimeout(1000)
                 view = keyboard; enable = keyboard::setIndependentMultiTouchEnabled
                 dispatch = { keyboard.onTouch(keyboard, it) }
-                ids = listOf(com.kazumaproject.gojuon_keyboard.R.id.key_51, com.kazumaproject.gojuon_keyboard.R.id.key_46, com.kazumaproject.gojuon_keyboard.R.id.key_41)
-                names = listOf("KeyA", "KeyKA", "KeySA")
+                ids = if (gojuonVowels) listOf(com.kazumaproject.gojuon_keyboard.R.id.key_51,
+                    com.kazumaproject.gojuon_keyboard.R.id.key_52, com.kazumaproject.gojuon_keyboard.R.id.key_53)
+                    else listOf(com.kazumaproject.gojuon_keyboard.R.id.key_51, com.kazumaproject.gojuon_keyboard.R.id.key_46, com.kazumaproject.gojuon_keyboard.R.id.key_41)
+                names = if (gojuonVowels) listOf("KeyA", "KeyI", "KeyU") else listOf("KeyA", "KeyKA", "KeySA")
             }
             Kind.QWERTY -> {
                 val keyboard = QWERTYKeyboardView(context)
@@ -317,6 +508,8 @@ class IndependentKeyboardTouchTest {
             }
             Kind.CUSTOM -> {
                 val keyboard = FlickKeyboardView(context)
+                val style = PopupViewStyle(100, 19f, skinId = skin)
+                keyboard.applyPopupViewStyleSet(FlickPopupViewStyleSet(style, style, style, style))
                 val keys = listOf("a", "b", "c").mapIndexed { index, text ->
                     KeyData(label = text, row = 0, column = index, isFlickable = true,
                         action = KeyAction.Text(text), keyId = text, keyType = KeyType.STANDARD_FLICK)

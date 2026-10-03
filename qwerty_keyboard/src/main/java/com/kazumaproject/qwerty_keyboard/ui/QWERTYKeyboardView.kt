@@ -137,7 +137,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private val suppressedPointerIds = mutableSetOf<Int>()
 
-    private var keyPreviewPopup: PopupWindow? = null
+    private val keyPreviewPopups = mutableMapOf<Int, PopupWindow>()
     private val deferredPopupDismissals = mutableMapOf<PopupWindow, Runnable>()
     private val hitRect = Rect()
 
@@ -486,7 +486,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT
     ) {
         // メンバ変数に代入
-        if (this.keyboardSkinId != skinId) { dismissKeyPreview(); dismissVariationPopup() }
+        if (this.keyboardSkinId != skinId) { clearAllPressed() }
         skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
         this.themeMode = themeMode
@@ -1908,7 +1908,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun startQwertyGlide(pointerId: Int) {
         val pressedView = pointerButtonMap[pointerId]
         pressedView?.isPressed = false
-        dismissKeyPreview()
+        dismissKeyPreview(pointerId = pointerId)
         notifyQwertyTouchCanceledForPointer(pointerId, KeyTouchCancelReason.PointerInterrupted)
         cancelLongPressForPointer(pointerId)
         variationPopup?.dismiss()
@@ -1963,7 +1963,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun releasePressedKeyForGlideMove(pointerId: Int) {
         pointerButtonMap[pointerId]?.isPressed = false
-        dismissKeyPreview()
+        dismissKeyPreview(pointerId = pointerId)
         notifyQwertyTouchCanceledForPointer(pointerId, KeyTouchCancelReason.PointerInterrupted)
         cancelLongPressForPointer(pointerId)
     }
@@ -2243,7 +2243,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.id != binding.switchRomajiEnglish.id &&
                 it.id != binding.switchNumberLayout.id
             ) {
-                showKeyPreview(it)
+                showKeyPreview(it, pid)
             }
             scheduleLongPressForPointer(pid, it)
         }
@@ -2314,7 +2314,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (lockedPointerId == pointerId) {
             lockedPointerId = null
         }
-        dismissKeyPreview()
+        dismissKeyPreview(pointerId = pointerId)
         dismissVariationPopup(defer = commitSelection)
 
         if (commitSelection) {
@@ -2333,7 +2333,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun releaseTrackedView(pointerId: Int, view: View) {
         view.isPressed = false
-        dismissKeyPreview(defer = true)
+        dismissKeyPreview(defer = true, pointerId = pointerId)
         cancelLongPressForPointer(pointerId)
 
         val wasShift = view.id == binding.keyShift.id
@@ -2410,7 +2410,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun applyCommonFlickEffects(pointerId: Int, previousView: View) {
         flickLockedPointers.add(pointerId)
         previousView.isPressed = false
-        dismissKeyPreview()
+        dismissKeyPreview(pointerId = pointerId)
         cancelLongPressForPointer(pointerId)
     }
 
@@ -2497,7 +2497,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (currentView != previousView) {
             previousView?.let {
                 it.isPressed = false
-                dismissKeyPreview()
+                dismissKeyPreview(pointerId = pointerId)
                 cancelLongPressForPointer(pointerId)
             }
             currentView?.let {
@@ -2516,7 +2516,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     it.id != binding.cursorRight.id &&
                     it.id != binding.cursorLeft.id
                 ) {
-                    showKeyPreview(it)
+                    showKeyPreview(it, pointerId)
                 }
             } ?: run {
                 pointerButtonMap.remove(pointerId)
@@ -2642,10 +2642,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
     }
 
-    private fun showKeyPreview(view: View) {
+    private fun showKeyPreview(view: View, pointerId: Int) {
         if (isTablet) return
         if (!showPopupView) return
-        dismissKeyPreview()
+        dismissKeyPreview(pointerId = if (independentMultiTouchForCurrentGesture) pointerId else null)
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             val label = (view as? android.widget.TextView)?.text?.toString().orEmpty()
             if (label.isEmpty()) return
@@ -2675,7 +2675,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
             skin.showPopup(content)
             popup.showAsDropDown(view, xOffset, geometry.yOffset)
-            keyPreviewPopup = popup
+            keyPreviewPopups[pointerId] = popup
             return
         }
         val previewHeight = dpToPx(view.height)
@@ -2755,7 +2755,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val xOffset = -((popupWidth - view.width) / 2)
         val yOffset = -popupHeight
         popup.showAsDropDown(view, xOffset, yOffset)
-        keyPreviewPopup = popup
+        keyPreviewPopups[pointerId] = popup
     }
 
     private fun clearDeferredPopups() {
@@ -2764,8 +2764,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun dismissPopup(popup: PopupWindow?, defer: Boolean) {
-        if (!defer) clearDeferredPopups()
         if (popup == null) return
+        deferredPopupDismissals.remove(popup)?.let(::removeCallbacks)
         val hold = if (defer) KeyboardSkinRegistry.find(keyboardSkinId)?.popupReleaseDelayMillis ?: 0L else 0L
         if (hold == 0L || !isAttachedToWindow) popup.dismiss()
         else {
@@ -2775,10 +2775,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun dismissKeyPreview(defer: Boolean = false) {
-        val popup = keyPreviewPopup
-        keyPreviewPopup = null
-        dismissPopup(popup, defer)
+    private fun dismissKeyPreview(defer: Boolean = false, pointerId: Int? = null) {
+        if (pointerId != null) {
+            dismissPopup(keyPreviewPopups.remove(pointerId), defer)
+        } else {
+            if (!defer) clearDeferredPopups()
+            val popups = keyPreviewPopups.values.toList()
+            keyPreviewPopups.clear()
+            popups.forEach { dismissPopup(it, defer) }
+        }
     }
 
     private fun findButtonUnder(x: Int, y: Int): View? {
@@ -2972,7 +2977,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     if (independentMultiTouchForCurrentGesture && pointerButtonMap[pointerId] !== view) return@launch
                     info?.variations?.let { showVariationPopup(view, it) }
                     longPressedPointerId = pointerId
-                    dismissKeyPreview()
+                    dismissKeyPreview(pointerId = pointerId)
                 } else if (isSpecialLongPressKey) {
                     clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
