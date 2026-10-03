@@ -80,8 +80,8 @@ class IMEServiceCupertinoCandidateAppearanceTest {
                 "customThemeShortcutIconColor", "customThemeSpecialKeyColor",
                 "customThemeKeyTextColor", "customThemeCandidateEmptyPopupBgColor",
                 "customThemeCandidateEmptyPopupTextColor")) {
-                set(name, ImePreferencesSnapshot::class.java.getDeclaredField(name)
-                    .apply { isAccessible = true }.get(preferences))
+                set(name, ImeKeyboardAppearance::class.java.getDeclaredField(name)
+                    .apply { isAccessible = true }.get(preferences.appearance))
             }
         }
 
