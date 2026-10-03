@@ -124,10 +124,6 @@ class ImePopupInstrumentedTest {
                     val screenshot = checkNotNull(automation.takeScreenshot())
                     assertTrue(listBounds.left >= 0 && listBounds.top >= 0)
                     assertTrue(listBounds.right <= screenshot.width && listBounds.bottom <= screenshot.height)
-                    val directory = java.io.File(ins.targetContext.getExternalFilesDir(null), "popup-placement").apply { mkdirs() }
-                    java.io.File(directory, "rotation-$rotation-floating-$floating.png").outputStream().use {
-                        screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                    }
                     screenshot.recycle()
                     tap(awaitNode(TEMPLATE))
                     awaitText(host, TEMPLATE)
@@ -188,12 +184,6 @@ class ImePopupInstrumentedTest {
         awaitNodeId("popup_listview")
         SystemClock.sleep(500)
         assertNotNull(findNode(searchLabel))
-        val screenshot = checkNotNull(automation.takeScreenshot())
-        val directory = java.io.File(ins.targetContext.getExternalFilesDir(null), "popup-placement").apply { mkdirs() }
-        java.io.File(directory, "dictionary-picker-api${android.os.Build.VERSION.SDK_INT}.png").outputStream().use {
-            screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-        }
-        screenshot.recycle()
         tap(requireNotNull(awaitNodeId("popup_listview").getChild(0)))
         await { findNodeId("popup_listview") == null }
         tap(awaitNode(searchLabel))
