@@ -42,7 +42,10 @@ class ImeSelectionPopupBehaviorTest {
     private val appEditor = EditText(activity).apply { setText("background"); setSelection(length()) }
     private var appConnection = appEditor.onCreateInputConnection(android.view.inputmethod.EditorInfo())
     private val root = InkTouchDispatchFrameLayout(activity)
-    private val binding = mock<MainLayoutBinding>().apply { whenever(getRoot()).thenReturn(this@ImeSelectionPopupBehaviorTest.root) }
+    private val binding = mock<MainLayoutBinding>().apply {
+        whenever(getRoot()).thenReturn(this@ImeSelectionPopupBehaviorTest.root)
+        ReflectionHelpers.setField(this, "shortcutToolbarRecyclerview", androidx.recyclerview.widget.RecyclerView(activity))
+    }
     private val service = spy(IMEService()).also { service ->
         ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
             ClassParameter.from(Context::class.java, activity))
@@ -142,6 +145,110 @@ class ImeSelectionPopupBehaviorTest {
         assertFalse(ReflectionHelpers.getField<Boolean>(service, "onKeyboardSwitchLongPressUp"))
     }
 
+    @Config(sdk = [24, 29, 35])
+    @Test fun dictionaryEditorConnectionReceivesSelectionWithoutMutatingTheAppEditor() {
+        val dictionaryEditor = EditText(activity)
+        (root.parent as FrameLayout).addView(dictionaryEditor)
+        dictionaryEditor.requestFocus()
+        val connection = dictionaryEditor.onCreateInputConnection(android.view.inputmethod.EditorInfo())
+        ReflectionHelpers.setField(service, "dictionaryInputConnection", connection)
+        ReflectionHelpers.setField(service, "dictionaryEditorInfo", android.view.inputmethod.EditorInfo())
+        call("showCurrentDateListPopup")
+        val list = requireNotNull(popup).contentView.findViewById<ListView>(R.id.popup_listview)
+        val expected = list.adapter.getItem(0).toString()
+        list.performItemClick(null, 0, list.adapter.getItemId(0))
+        assertEquals(expected, dictionaryEditor.text.toString())
+        assertEquals("background", appEditor.text.toString())
+        assertTrue(dictionaryEditor.hasFocus())
+    }
+
+    @Test fun templatesStayCompactAndExposeOnlyFiveRowsOnTallDisplays() {
+        val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
+        val list = content.findViewById<ListView>(R.id.popup_listview)
+        list.adapter = android.widget.ArrayAdapter(activity, R.layout.list_item_layout, (1..40).map { "Template $it" })
+        val window = ImeSelectionPopupWindow(activity, content)
+        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        window.contentView.layout(0, 0, 1080, 1920)
+        assertTrue("large screens must not expand a compact menu to show the entire list", list.lastVisiblePosition <= 4)
+    }
+
+    @Config(sdk = [24, 29, 35])
+    @Test fun keyboardListCentersOnTheVisibleKeyboardInsteadOfTheScreen() {
+        val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
+        content.findViewById<ListView>(R.id.popup_listview).adapter =
+            android.widget.ArrayAdapter(activity, R.layout.list_item_layout, listOf("Japanese", "English"))
+        val window = ImeSelectionPopupWindow(activity, content, ImeSelectionPopupPlacement.KEYBOARD_CENTER, root)
+        window.showAtLocation(root, Gravity.NO_GRAVITY, 0, 0)
+        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        window.contentView.layout(0, 0, 1080, 1920)
+        val anchor = IntArray(2).also(root::getLocationOnScreen)
+        val origin = IntArray(2).also(window.contentView::getLocationOnScreen)
+        assertTrue(kotlin.math.abs(anchor[1] - origin[1] + root.height / 2 - content.top - content.height / 2) <= 1)
+        assertFalse(window.isFocusable)
+        assertEquals(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING, window.softInputMode)
+        window.dismiss()
+    }
+
+    @Config(sdk = [24, 29, 35])
+    @Test fun expandedInputHostUsesTheVisibleKeyboardBounds() {
+        val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
+        content.findViewById<ListView>(R.id.popup_listview).adapter =
+            android.widget.ArrayAdapter(activity, R.layout.list_item_layout, listOf("Japanese", "English"))
+        val window = ImeSelectionPopupWindow(activity, content, ImeSelectionPopupPlacement.KEYBOARD_CENTER,
+            root.parent as View, referenceViews = listOf(root))
+        window.showAtLocation(root, Gravity.NO_GRAVITY, 0, 0)
+        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        window.contentView.layout(0, 0, 1080, 1920)
+        val anchor = IntArray(2).also(root::getLocationOnScreen)
+        val origin = IntArray(2).also(window.contentView::getLocationOnScreen)
+        assertTrue(kotlin.math.abs(anchor[1] - origin[1] + root.height / 2 - content.top - content.height / 2) <= 1)
+        window.dismiss()
+    }
+
+    @Config(sdk = [24, 29, 35])
+    @Test fun dropdownStartsAtTheVisibleToolbarAndRemainsInsideTheScreen() {
+        val toolbar = View(activity)
+        root.addView(toolbar, android.widget.FrameLayout.LayoutParams(600, 40))
+        root.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.EXACTLY))
+        root.layout(root.left, root.top, root.right, root.bottom)
+        val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
+        content.findViewById<ListView>(R.id.popup_listview).adapter =
+            android.widget.ArrayAdapter(activity, R.layout.list_item_layout, listOf("Template"))
+        val window = ImeSelectionPopupWindow(activity, content, ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN, toolbar)
+        window.showAtLocation(root, Gravity.NO_GRAVITY, 0, 0)
+        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        window.contentView.layout(0, 0, 1080, 1920)
+        val anchor = IntArray(2).also(toolbar::getLocationOnScreen)
+        val origin = IntArray(2).also(window.contentView::getLocationOnScreen)
+        assertEquals(anchor[1] - origin[1] + toolbar.height, content.top)
+        assertTrue(content.bottom <= window.contentView.height)
+        window.dismiss()
+    }
+
+    @Config(sdk = [24, 29, 35])
+    @Test fun macroListRetainsEightRowsAndScrollsToItsLastItem() {
+        val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
+        val list = content.findViewById<ListView>(R.id.popup_listview)
+        list.adapter = android.widget.ArrayAdapter(activity, R.layout.list_item_layout, (1..40).map { "Macro $it" })
+        val window = ImeSelectionPopupWindow(activity, content, maxVisibleItems = 8)
+        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        window.contentView.layout(0, 0, 1080, 1920)
+        assertEquals(7, list.lastVisiblePosition)
+        assertTrue(list.isVerticalScrollBarEnabled)
+        list.setSelection(39)
+        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        window.contentView.layout(0, 0, 1080, 1920)
+        assertEquals(39, list.lastVisiblePosition)
+    }
+
+    @Config(sdk = [24, 29, 35])
     @Test fun multilineListFitsSmallLandscapeViewportAndRemainsScrollable() {
         val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
         val list = content.findViewById<ListView>(R.id.popup_listview)

@@ -11740,6 +11740,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         request: KeyboardPopupRequest,
         items: List<String>,
         source: String,
+        placement: ImeSelectionPopupPlacement = ImeSelectionPopupPlacement.SCREEN_CENTER,
+        maxVisibleItems: Int = 5,
         onSelected: (Int) -> Unit,
     ): Boolean {
         if (!isKeyboardPopupRequestCurrent(request)) return false
@@ -11748,7 +11750,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             choiceMode = ListView.CHOICE_MODE_SINGLE
             adapter = createKeyboardFontArrayAdapter(this@IMEService, R.layout.list_item_layout, items)
         }
-        val popup = ImeSelectionPopupWindow(this, popupView)
+        val reference = when (placement) {
+            ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN -> resolveSelectionToolbarAnchor(request.mainView)
+            ImeSelectionPopupPlacement.KEYBOARD_CENTER -> requireActiveKeyboardSurface()?.rootView
+            else -> null
+        }
+        val popup = ImeSelectionPopupWindow(this, popupView, placement, reference, maxVisibleItems)
         list.setOnItemClickListener { _, _, position, _ ->
             val valid = isKeyboardPopupRequestCurrent(request)
             popup.dismiss()
@@ -11757,6 +11764,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return showKeyboardSelectionPopup(
             popup, resolveShowListPopupAnchor(request.mainView), Gravity.CENTER, 0, source,
         )
+    }
+
+    private fun resolveKeyboardSelectionReferenceViews(mainView: MainLayoutBinding): List<View> {
+        val surface = requireActiveKeyboardSurface()
+        if (isKeyboardFloatingMode == true) return listOfNotNull(surface?.rootView)
+        // Dictionary/split panels can expand the IME host to the full screen. Center in the
+        // visible keyboard and candidate chrome rather than that transparent host.
+        val visible = listOf(mainView.keyboardBackgroundContainer, mainView.suggestionViewParent,
+            mainView.candidateTabLayout, mainView.shortcutToolbarRecyclerview).filter { it.isShown }
+        return visible.ifEmpty { listOf(surface?.rootView ?: mainView.root) }
+    }
+
+    private fun resolveSelectionToolbarAnchor(mainView: MainLayoutBinding): View {
+        val toolbar = mainView.shortcutToolbarRecyclerview
+        val visible = Rect()
+        if (toolbar.isShown && toolbar.getGlobalVisibleRect(visible)) return toolbar
+        return requireActiveKeyboardSurface()?.suggestionRecyclerView?.takeIf {
+            it.isShown && it.getGlobalVisibleRect(visible)
+        } ?: requireActiveKeyboardSurface()?.rootView ?: mainView.root
     }
 
     private fun showKeyboardSelectionPopup(
@@ -12857,9 +12883,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             listView.adapter = adapter
-            limitListViewVisibleItems(listView, maxVisible = 5)
-
-            val popupWindow = ImeSelectionPopupWindow(this, popupView)
+            val popupWindow = ImeSelectionPopupWindow(this, popupView,
+                ImeSelectionPopupPlacement.KEYBOARD_CENTER, requireActiveKeyboardSurface()?.rootView ?: mainView.root,
+                referenceViews = resolveKeyboardSelectionReferenceViews(mainView))
             replaceKeyboardSelectionPopupWindow(popupWindow)
             imeSwitchPopupWindow = popupWindow
             onKeyboardSwitchLongPressUp = true
@@ -12967,37 +12993,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun limitListViewVisibleItems(listView: ListView, maxVisible: Int) {
-        val adapter = listView.adapter ?: return
-        val visibleCount = minOf(maxVisible, adapter.count)
-        if (visibleCount <= 0) return
-
-        var totalHeight = 0
-
-        // 各行を実測して合算（simple_list_item_2 等でもOK）
-        for (i in 0 until visibleCount) {
-            val itemView = adapter.getView(i, null, listView)
-
-            // 幅が未確定でも高さはだいたい測れる。より厳密にしたいなら widthSpec を調整。
-            itemView.measure(
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            )
-            totalHeight += itemView.measuredHeight
-        }
-
-        val divider = listView.dividerHeight
-        totalHeight += divider * (visibleCount - 1)
-        totalHeight += listView.paddingTop + listView.paddingBottom
-
-        listView.layoutParams = listView.layoutParams.apply {
-            height = totalHeight
-        }
-
-        // スクロールバーを出したい場合（任意）
-        listView.isVerticalScrollBarEnabled = true
-    }
-
     private fun InputMethodService.listEnabledImeItems(): List<ImeItem> {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val pm = packageManager
@@ -13045,7 +13040,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showToastMessage(getString(R.string.ime_no_templates_registered))
                         return@withContext
                     }
-                    showKeyboardSelectionList(request, templates.map { it.word }, "templates") { position ->
+                    showKeyboardSelectionList(request, templates.map { it.word }, "templates", ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN) { position ->
                         commitText(templates[position].word, 1)
                     }
                 }
@@ -13061,7 +13056,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.value.isNotEmpty()) return
         val request = beginKeyboardPopupRequest() ?: return
         val dates = createDateStrings(Calendar.getInstance())
-        showKeyboardSelectionList(request, dates, "dates") { position -> commitText(dates[position], 1) }
+        showKeyboardSelectionList(request, dates, "dates", ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN) { position -> commitText(dates[position], 1) }
     }
 
     private fun createDateStrings(calendar: Calendar): List<String> {
@@ -26988,7 +26983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showToastMessage(getString(R.string.text_macro_context_unavailable))
                         return@withContext
                     }
-                    showKeyboardSelectionList(request, macros.map { it.name }, "text macros") { position ->
+                    showKeyboardSelectionList(request, macros.map { it.name }, "text macros", maxVisibleItems = 8) { position ->
                         executeTextMacro(macros[position].id)
                     }
                 }
