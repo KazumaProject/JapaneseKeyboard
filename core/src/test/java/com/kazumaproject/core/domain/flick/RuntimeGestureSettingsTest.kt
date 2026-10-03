@@ -5,6 +5,19 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 
 class RuntimeGestureSettingsTest {
+    @Test fun independentInputDefaultsOffAndPublishesWithoutResettingOtherSettings() {
+        val source = MutableRuntimeGestureSettingsSource(RuntimeGestureSettings(flickSensitivity = 75))
+        assertEquals(false, source.snapshot().independentMultiTouchEnabled)
+        val enabled = source.update(independentMultiTouchEnabled = true)
+        assertEquals(true, enabled.independentMultiTouchEnabled)
+        assertEquals(75, enabled.flickSensitivity)
+        assertEquals(1L, enabled.revision)
+        assertSame(enabled, source.update(independentMultiTouchEnabled = true))
+        source.update(longPressTimeoutMillis = 800)
+        assertEquals(true, source.snapshot().independentMultiTouchEnabled)
+        assertEquals(false, source.update(independentMultiTouchEnabled = false).independentMultiTouchEnabled)
+    }
+
 
     @Test
     fun updatePublishesOneNormalizedAtomicSnapshotAndRevision() {

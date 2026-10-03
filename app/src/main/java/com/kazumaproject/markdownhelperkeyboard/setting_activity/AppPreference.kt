@@ -111,6 +111,7 @@ object AppPreference {
     const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
     const val CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY =
         "custom_keyboard_input_in_empty_areas_preference"
+    const val INDEPENDENT_MULTI_TOUCH_KEY = "independent_multi_touch_preference"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
     const val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY =
         "delete_long_press_conversion_behavior"
@@ -1880,6 +1881,10 @@ object AppPreference {
                 value.coerceIn(0, 34)
             )
         }
+
+    var independent_multi_touch_preference: Boolean
+        get() = preferences.getBoolean(INDEPENDENT_MULTI_TOUCH_KEY, false)
+        set(value) = preferences.edit { it.putBoolean(INDEPENDENT_MULTI_TOUCH_KEY, value) }
 
     var long_press_timeout_preference: Int?
         get() = preferences.getInt(

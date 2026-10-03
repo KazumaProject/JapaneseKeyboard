@@ -510,6 +510,7 @@ object SettingDestinations {
         "flick_sensitivity_preference",
         "flick_threshold_shape_preference",
         "long_press_timeout_preference",
+        "independent_multi_touch_preference",
         "delete_key_flick_left_preference",
         "undo_enable_preference",
         "vibration_preference",
