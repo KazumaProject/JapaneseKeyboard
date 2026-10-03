@@ -1862,10 +1862,14 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
 ！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
 空白　変換　確定　検索　return</string>
     <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
+    <string name="ime_popup_unavailable">一覧を表示できませんでした。もう一度お試しください。</string>
+    <string name="ime_no_templates_registered">定型文が登録されていません。</string>
     <string name="custom_direct_input_replace_composing_title">直接入力で未確定文字を置き換える</string>
     <string name="custom_direct_input_replace_composing_summary_off">直接入力に切り替えると、未確定文字を確定します。</string>
     <string name="custom_direct_input_replace_composing_summary_on">直接入力に切り替えた後、最初の入力で未確定文字を置き換えます。</string>
     <string name="independent_multi_touch_category_title">二本指の操作</string>
     <string name="independent_multi_touch_title">二本指の入力を独立して扱う</string>
     <string name="independent_multi_touch_summary">異なるキーを指ごとに操作し、指を離した順に入力を確定します。同じキーへの二本目のタッチは無視します。</string>
+    <string name="stabilize_candidate_strip_height_title">変換候補欄の高さを安定させる</string>
+    <string name="stabilize_candidate_strip_height_summary">入力・確定時に入力欄の位置が変わりにくくなります。高さの差分は透明にし、背後へのタッチを通します。</string>
 </resources>

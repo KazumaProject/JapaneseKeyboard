@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <application>
+        <activity android:name=".ImePopupHostActivity" android:exported="false"
+            android:theme="@style/Theme.MarkdownKeyboard" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".SkinTestHostActivity" android:exported="false" android:theme="@style/Theme.MarkdownKeyboard" />
         <activity
             android:name=".autofill.DebugInlineAutofillAttributionActivity"
@@ -22,6 +24,12 @@
                 android:name="android.autofill"
                 android:resource="@xml/debug_inline_autofill_service" />
         </service>
+
+        <activity
+            android:name=".CandidateHeightTestHostActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".FastInputHostActivity"
