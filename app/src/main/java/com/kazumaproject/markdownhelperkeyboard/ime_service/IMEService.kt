@@ -9634,17 +9634,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mode: TenKeyQWERTYMode,
         isFloating: Boolean
     ) {
-        if (splitController == null) hideKeyboardViews(surface)
-        else {
-            val target: View? = when (mode) {
+        val target: View? = if (handwritingModeActive && !isFloating) {
+            surface.handwritingView
+        } else {
+            when (mode) {
                 TenKeyQWERTYMode.Default -> surface.keyboardView
                 TenKeyQWERTYMode.Gojuon -> surface.gojuonView
                 TenKeyQWERTYMode.TenKeyQWERTY, TenKeyQWERTYMode.TenKeyQWERTYRomaji -> surface.qwertyView
                 else -> surface.customLayout
             }
-            listOfNotNull(surface.keyboardView, surface.gojuonView, surface.qwertyView, surface.customLayout)
-                .filter { it !== target }.forEach { it.isVisible = false }
         }
+        // Rendering the current mode must not cancel gestures on its already-visible surface.
+        listOfNotNull(surface.keyboardView, surface.gojuonView, surface.qwertyView,
+            surface.customLayout, surface.handwritingView)
+            .filter { it !== target }.forEach { it.isVisible = false }
         if (handwritingModeActive && !isFloating) {
             surface.handwritingView?.isVisible = true
             return
@@ -13791,6 +13794,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncFloatingKeyboardContentForMode(qwertyMode.value)
     }
 
+    private fun switchFlickKeyboardInputMode(mode: KeyboardInputMode) {
+        customKeyboardMode = mode
+        setCurrentInputModeForSession(
+            when (mode) {
+                KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+            }
+        )
+        createNewKeyboardLayoutForSumire()
+    }
+
+    private fun cycleFlickKeyboardInputMode() {
+        switchFlickKeyboardInputMode(
+            when (customKeyboardMode) {
+                KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+            }
+        )
+    }
+
     private var isCustomLayoutRomajiMode = false
     private var isCustomLayoutDirectMode = false
     private var customKeyboardShiftState = CustomKeyboardShiftState.OFF
@@ -14409,15 +14434,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (action) {
                     KeyAction.DoNothing -> Unit
                     KeyAction.Backspace -> {}
-                    KeyAction.ChangeInputMode -> {
-                        // 現在のモードに応じて次のモードを決定
-                        customKeyboardMode = when (customKeyboardMode) {
-                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
-                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
-                        }
-                        updateKeyboardLayout()
-                    }
+                    KeyAction.ChangeInputMode -> cycleFlickKeyboardInputMode()
 
                     KeyAction.Convert -> {
                         val insertString = inputString.value
@@ -14570,26 +14587,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ToggleDakuten -> {}
                     KeyAction.ToggleDakutenOnly -> {}
                     KeyAction.ToggleHandakutenOnly -> {}
-                    KeyAction.SwitchToEnglishLayout -> {
-                        customKeyboardMode = KeyboardInputMode.ENGLISH
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeEnglish
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToEnglishLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.ENGLISH)
 
-                    KeyAction.SwitchToKanaLayout -> {
-                        customKeyboardMode = KeyboardInputMode.HIRAGANA
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeJapanese
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToKanaLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.HIRAGANA)
 
-                    KeyAction.SwitchToNumberLayout -> {
-                        customKeyboardMode = KeyboardInputMode.SYMBOLS
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeNumber
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToNumberLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.SYMBOLS)
 
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
@@ -14991,26 +14993,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         toggleHandakutenOnlyForCustomKeyboard()
                     }
 
-                    KeyAction.SwitchToEnglishLayout -> {
-                        customKeyboardMode = KeyboardInputMode.ENGLISH
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeEnglish
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToEnglishLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.ENGLISH)
 
-                    KeyAction.SwitchToKanaLayout -> {
-                        customKeyboardMode = KeyboardInputMode.HIRAGANA
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeJapanese
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToKanaLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.HIRAGANA)
 
-                    KeyAction.SwitchToNumberLayout -> {
-                        customKeyboardMode = KeyboardInputMode.SYMBOLS
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeNumber
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToNumberLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.SYMBOLS)
 
                     KeyAction.ShiftKey -> {
                         handleCustomKeyboardShiftTap()
@@ -15384,25 +15371,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    KeyAction.ChangeInputMode -> {
-                        // 現在のモードに応じて次のモードを決定
-                        customKeyboardMode = when (customKeyboardMode) {
-                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
-                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
-                        }
-                        createNewKeyboardLayoutForSumire()
-
-                        val inputMode = when (customKeyboardMode) {
-                            KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
-                            KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
-                            KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
-                        }
-                        if (isGojuonSurface()) {
-                            mainView.gojuonView.currentInputMode.set(inputMode)
-                        }
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.ChangeInputMode -> cycleFlickKeyboardInputMode()
 
                     KeyAction.Delete -> {
                         val insertString = inputString.value
@@ -15545,32 +15514,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         toggleHandakutenOnlyForCustomKeyboard()
                     }
 
-                    KeyAction.SwitchToEnglishLayout -> {
-                        customKeyboardMode = KeyboardInputMode.ENGLISH
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeEnglish
-                        if (isGojuonSurface()) {
-                            mainView.gojuonView.currentInputMode.set(inputMode)
-                        }
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToEnglishLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.ENGLISH)
 
-                    KeyAction.SwitchToKanaLayout -> {
-                        customKeyboardMode = KeyboardInputMode.HIRAGANA
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeJapanese
-                        if (isGojuonSurface()) {
-                            mainView.gojuonView.currentInputMode.set(inputMode)
-                        }
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToKanaLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.HIRAGANA)
 
-                    KeyAction.SwitchToNumberLayout -> {
-                        customKeyboardMode = KeyboardInputMode.SYMBOLS
-                        createNewKeyboardLayoutForSumire()
-                        val inputMode = InputMode.ModeNumber
-                        setCurrentInputModeForSession(inputMode)
-                    }
+                    KeyAction.SwitchToNumberLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.SYMBOLS)
 
                     KeyAction.ShiftKey -> {
                         handleCustomKeyboardShiftTap()
