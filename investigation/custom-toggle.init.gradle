@@ -2,5 +2,14 @@
 gradle.afterProject { project ->
     if (project.path == ':app') {
         project.android.defaultConfig.applicationId = 'com.kazumaproject.customtoggletest'
+        // The test provider must also be isolated when the regular test APK is installed.
+        def testManifest = project.file('src/androidTest/AndroidManifest.xml')
+        def isolatedManifest = project.layout.buildDirectory.file(
+            'generated/custom-toggle-test/AndroidManifest.xml').get().asFile
+        isolatedManifest.parentFile.mkdirs()
+        isolatedManifest.text = testManifest.text.replace(
+            'com.kazumaproject.markdownhelperkeyboard.lite.localfonttest',
+            '${applicationId}.localfonttest')
+        project.android.sourceSets.androidTest.manifest.srcFile(isolatedManifest)
     }
 }
