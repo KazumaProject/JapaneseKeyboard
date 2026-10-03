@@ -372,6 +372,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickLongPressControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         stickyTfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
 
+        restoreInputControllersIfNeeded()
     }
 
     private fun clampPopupStyle(style: PopupViewStyle): PopupViewStyle {
@@ -685,6 +686,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         ) {
             Log.d("FlickKeyboardView", "setKeyboard (Reuse Existing Views)")
             cancelTrackedTouchState()
+            restoreInputControllersIfNeeded()
             return
         }
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
@@ -693,32 +695,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         cancelTrackedTouchState()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
 
+        cancelInputControllers()
         removeAllViews()
-
-        flickControllers.forEach { it.cancel() }
-        flickControllers.clear()
-
-        crossFlickControllers.forEach { it.cancel() }
-        crossFlickControllers.clear()
-
-        centerGuideFlickControllers.forEach { it.cancel() }
-        centerGuideFlickControllers.clear()
-
-        standardFlickControllers.forEach { it.cancel() }
-        standardFlickControllers.clear()
-
-        tfbiControllers.forEach { it.cancel() }
-        tfbiControllers.clear()
-
-        flickLongPressControllers.forEach { it.cancel() }
-        flickLongPressControllers.clear()
-
-        stickyTfbiControllers.forEach { it.cancel() }
-        stickyTfbiControllers.clear()
-
-
-        tapLongPressControllers.forEach { it.cancel() }
-        tapLongPressControllers.clear()
 
         keyInfos.clear()
         dynamicKeyMap.clear()
@@ -754,6 +732,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
         renderedKeyboardRenderRevision = keyboardRenderRevision
+        controllerRebindPending = false
     }
 
     private fun addKeyItem(item: KeyItem) {
@@ -2859,15 +2838,36 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val TAG = "FlickKeyboardViewTouch"
 
     private fun cancelInputControllers() {
+        controllerRebindPending = true
         flickControllers.forEach { it.cancel() }
+        flickControllers.clear()
         crossFlickControllers.forEach { it.cancel() }
+        crossFlickControllers.clear()
         centerGuideFlickControllers.forEach { it.cancel() }
+        centerGuideFlickControllers.clear()
         standardFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.clear()
         tfbiControllers.forEach { it.cancel() }
+        tfbiControllers.clear()
         flickLongPressControllers.forEach { it.cancel() }
+        flickLongPressControllers.clear()
         stickyTfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.clear()
 
         tapLongPressControllers.forEach { it.cancel() }
+        tapLongPressControllers.clear()
+        keyInfos.forEach { it.controller = null }
+    }
+
+    /** Reconnect disposed handlers without replacing keys or resetting their dynamic state. */
+    private fun restoreInputControllersIfNeeded() {
+        if (!controllerRebindPending || currentLayout == null) return
+        // A dynamic key may have been updated while hidden; dispose that partial binding too.
+        cancelInputControllers()
+        controllerRebindPending = false
+        keyInfos.forEach { info ->
+            info.controller = attachKeyBehavior(info.view, info.keyData)
+        }
     }
 
     private fun cancelTrackedTouchState() {
@@ -3436,24 +3436,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (!controllerRebindPending) return
-
-        controllerRebindPending = false
-        post {
-            if (isAttachedToWindow) {
-                Log.d(
-                    "FlickKeyboardView",
-                    "Rebuilding input controllers after window reattach"
-                )
-                rebuildCurrentKeyboard()
-            } else {
-                controllerRebindPending = true
-            }
-        }
+        restoreInputControllersIfNeeded()
     }
 
     override fun onDetachedFromWindow() {
-        controllerRebindPending = true
         doubleTapActionDispatcher.cancel()
         cancelTextPreview()
         cancelTrackedTouchState()
@@ -3470,6 +3456,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             cancelTrackedTouchState()
             cancelInputControllers()
             listener?.onLongPressActionCanceled(KeyAction.Cancel)
+        } else if (changedView == this && visibility == View.VISIBLE) {
+            restoreInputControllersIfNeeded()
         }
     }
 
