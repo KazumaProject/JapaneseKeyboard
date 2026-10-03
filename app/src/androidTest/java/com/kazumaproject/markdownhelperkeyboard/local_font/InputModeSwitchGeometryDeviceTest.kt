@@ -30,13 +30,10 @@ class InputModeSwitchGeometryDeviceTest {
                                 layout(0, 0, size.first, size.second)
                             }
                             val standard = render(view)
-                            val saveExample = font == null && !gojuon && threeState && mode == InputMode.ModeJapanese && size == (240 to 120)
-                            if (saveExample) save(standard, "default")
                             for (skin in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK, KeyboardSkinId.CUPERTINO_CLASSIC)) {
                                 val color = requireNotNull(KeyboardSkinRegistry.find(skin)).palette.specialText
                                 view.setSkinModeLabelColors(color, ColorUtils.setAlphaComponent(color, 150))
                                 val actual = render(view)
-                                if (saveExample) save(actual, skin.toString())
                                 var mismatches = 0
                                 for (y in 0 until actual.height) for (x in 0 until actual.width) {
                                     // Ignore faint anti-aliasing pixels affected by the idle-label alpha.
@@ -68,10 +65,6 @@ class InputModeSwitchGeometryDeviceTest {
         return try { android.graphics.Typeface.createFromFile(target) } finally { target.delete() }
     }
 
-    private fun save(bitmap: Bitmap, name: String) {
-        val directory = java.io.File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "mode-label-comparison").apply { mkdirs() }
-        java.io.File(directory, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-    }
     private fun newView(): InputModeSwitch {
         val context = androidx.appcompat.view.ContextThemeWrapper(InstrumentationRegistry.getInstrumentation().targetContext,
             com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
