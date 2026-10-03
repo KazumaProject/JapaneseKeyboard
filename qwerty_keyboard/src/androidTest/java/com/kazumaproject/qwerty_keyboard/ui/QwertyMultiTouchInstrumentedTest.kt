@@ -19,6 +19,46 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class QwertyMultiTouchInstrumentedTest {
+    @Test fun independentLettersWaitForReleaseAndCommitInReleaseOrder() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder).apply { setIndependentMultiTouchEnabled(true) }
+            val a = pointer(3, keyboard.keyCenter(R.id.key_a))
+            val b = pointer(19, keyboard.keyCenter(R.id.key_b))
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, a)
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_POINTER_DOWN, 1, a, b)
+            assertTrue(recorder.taps.isEmpty())
+            assertTrue(keyboard.findViewById<View>(R.id.key_a).isPressed)
+            keyboard.sendEvent(100L, 140L, MotionEvent.ACTION_POINTER_UP, 1, a, b)
+            assertEquals(listOf('b'), recorder.taps)
+            assertTrue(keyboard.findViewById<View>(R.id.key_a).isPressed)
+            keyboard.sendEvent(100L, 160L, MotionEvent.ACTION_UP, 0, a)
+            assertEquals(listOf('b', 'a'), recorder.taps)
+        }
+    }
+
+    @Test fun independentFlickWaitsForReleaseAndSameKeySecondPointerIsIgnored() {
+        runOnMain {
+            val recorder = RecordingQwertyKeyListener()
+            val keyboard = createKeyboard(recorder).apply {
+                setIndependentMultiTouchEnabled(true)
+                setFlickUpDetectionEnabled(true)
+            }
+            val aPoint = keyboard.keyCenter(R.id.key_a)
+            val a = pointer(3, aPoint)
+            val duplicate = pointer(19, aPoint)
+            val flick = pointer(3, aPoint.copy(y = aPoint.y - 160))
+            keyboard.sendEvent(100L, 100L, MotionEvent.ACTION_DOWN, 0, a)
+            keyboard.sendEvent(100L, 120L, MotionEvent.ACTION_POINTER_DOWN, 1, a, duplicate)
+            keyboard.sendEvent(100L, 130L, MotionEvent.ACTION_MOVE, 0, flick, duplicate)
+            assertTrue(recorder.upFlicks.isEmpty())
+            keyboard.sendEvent(100L, 140L, MotionEvent.ACTION_POINTER_UP, 0, flick, duplicate)
+            keyboard.sendEvent(100L, 160L, MotionEvent.ACTION_UP, 0, duplicate)
+            assertEquals(listOf(QWERTYKey.QWERTYKeyA), recorder.upFlicks)
+            assertTrue(recorder.taps.isEmpty())
+        }
+    }
+
 
     @Test
     fun englishSpaceFlickIsIndependentAndNeverAddsATap() {
@@ -301,50 +341,53 @@ class QwertyMultiTouchInstrumentedTest {
     @Test
     fun activeGlideThenSecondPointerDown_cancelsGlideWithoutReactivatingOldPointer() {
         runOnMain {
-            val recorder = RecordingQwertyKeyListener()
-            val glideRecorder = RecordingGlideInputListener()
-            val keyboard = createKeyboard(recorder).apply {
-                setQwertyGlideInputListener(glideRecorder)
-                setQwertyGlideInputMode(true)
+            for (independent in listOf(false, true)) {
+                val recorder = RecordingQwertyKeyListener()
+                val glideRecorder = RecordingGlideInputListener()
+                val keyboard = createKeyboard(recorder).apply {
+                    setQwertyGlideInputListener(glideRecorder)
+                    setQwertyGlideInputMode(true)
+                    setIndependentMultiTouchEnabled(independent)
+                }
+                val a = keyboard.keyCenter(R.id.key_a)
+                val s = keyboard.keyCenter(R.id.key_s)
+                val d = keyboard.keyCenter(R.id.key_d)
+                val b = keyboard.keyCenter(R.id.key_b)
+
+                keyboard.sendEvent(600L, 600L, MotionEvent.ACTION_DOWN, 0, pointer(31, a))
+                keyboard.sendEvent(600L, 640L, MotionEvent.ACTION_MOVE, 0, pointer(31, s))
+                keyboard.sendEvent(600L, 680L, MotionEvent.ACTION_MOVE, 0, pointer(31, d))
+                assertEquals(1, glideRecorder.started)
+
+                keyboard.sendEvent(
+                    600L,
+                    700L,
+                    MotionEvent.ACTION_POINTER_DOWN,
+                    1,
+                    pointer(31, d),
+                    pointer(27, b)
+                )
+                keyboard.sendEvent(
+                    600L,
+                    720L,
+                    MotionEvent.ACTION_MOVE,
+                    0,
+                    pointer(31, a),
+                    pointer(27, b)
+                )
+                keyboard.sendEvent(
+                    600L,
+                    740L,
+                    MotionEvent.ACTION_POINTER_UP,
+                    0,
+                    pointer(31, a),
+                    pointer(27, b)
+                )
+                keyboard.sendEvent(600L, 760L, MotionEvent.ACTION_UP, 0, pointer(27, b))
+
+                assertEquals(1, glideRecorder.cancelled)
+                assertEquals(listOf('b'), recorder.taps)
             }
-            val a = keyboard.keyCenter(R.id.key_a)
-            val s = keyboard.keyCenter(R.id.key_s)
-            val d = keyboard.keyCenter(R.id.key_d)
-            val b = keyboard.keyCenter(R.id.key_b)
-
-            keyboard.sendEvent(600L, 600L, MotionEvent.ACTION_DOWN, 0, pointer(31, a))
-            keyboard.sendEvent(600L, 640L, MotionEvent.ACTION_MOVE, 0, pointer(31, s))
-            keyboard.sendEvent(600L, 680L, MotionEvent.ACTION_MOVE, 0, pointer(31, d))
-            assertEquals(1, glideRecorder.started)
-
-            keyboard.sendEvent(
-                600L,
-                700L,
-                MotionEvent.ACTION_POINTER_DOWN,
-                1,
-                pointer(31, d),
-                pointer(27, b)
-            )
-            keyboard.sendEvent(
-                600L,
-                720L,
-                MotionEvent.ACTION_MOVE,
-                0,
-                pointer(31, a),
-                pointer(27, b)
-            )
-            keyboard.sendEvent(
-                600L,
-                740L,
-                MotionEvent.ACTION_POINTER_UP,
-                0,
-                pointer(31, a),
-                pointer(27, b)
-            )
-            keyboard.sendEvent(600L, 760L, MotionEvent.ACTION_UP, 0, pointer(27, b))
-
-            assertEquals(1, glideRecorder.cancelled)
-            assertEquals(listOf('b'), recorder.taps)
         }
     }
 
