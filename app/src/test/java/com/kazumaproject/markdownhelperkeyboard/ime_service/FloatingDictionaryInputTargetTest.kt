@@ -41,6 +41,7 @@ class FloatingDictionaryInputTargetTest {
     private val service = spy(IMEService()).also { service ->
         ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
             ClassParameter.from(Context::class.java, context))
+        service.zenzRuntimeClient = mock()
         service.appPreference = mock<AppPreference>().apply {
             whenever(undo_enable_preference).thenReturn(true)
         }
@@ -67,6 +68,41 @@ class FloatingDictionaryInputTargetTest {
                 ClassParameter.from(Int::class.javaPrimitiveType, start),
                 ClassParameter.from(Int::class.javaPrimitiveType, end))
         }
+    }
+
+    @Test fun materialNgWordEditorRoutesCompositionAndSelectionLocallyThenRestoresApp() {
+        activity.setTheme(com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val field = ImeLocalTextInputEditText(activity).apply {
+            showSoftInputOnFocus = false
+            setText("reading")
+            setSelection(length())
+            onSelectionChangedListener = { view, start, end ->
+                ReflectionHelpers.callInstanceMethod<Unit>(service, "onDictionaryEditorSelectionChanged",
+                    ClassParameter.from(EditText::class.java, view),
+                    ClassParameter.from(Int::class.javaPrimitiveType, start),
+                    ClassParameter.from(Int::class.javaPrimitiveType, end))
+            }
+        }
+        activity.setContentView(field)
+        field.requestFocus()
+        switch(field)
+        // Mockito spies copy the service; constructor callbacks otherwise retain the original instance.
+        ReflectionHelpers.setField(service, "composingTextArbiter",
+            com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter(
+                writeComposingText = { value, position -> service.currentInputConnection!!.setComposingText(value, position) },
+                finishComposingText = { service.currentInputConnection!!.finishComposingText() },
+            ))
+        service.setComposingText("あ", 1)
+        service.finishComposingText()
+        assertEquals("readingあ", field.text.toString())
+        assertEquals("background", appEditor.text.toString())
+        field.setSelection(1, 3)
+        service.commitText("X", 1)
+        assertEquals("rXdingあ", field.text.toString())
+        switch(null)
+        service.commitText(" app", 1)
+        assertEquals("background app", appEditor.text.toString())
+        assertEquals("rXdingあ", field.text.toString())
     }
 
     private val history get() = ReflectionHelpers.getField<Any>(service, "deletedBuffer")

@@ -489,6 +489,7 @@ object SettingDestinations {
         "keyboard_corner_radius_dp_preference",
         "candidate_column_preference",
         "candidate_tab_visibility_preference",
+        "stabilize_candidate_strip_height_preference",
         "candidate_tab_order_preference",
         "live_conversion_preference",
         "live_conversion_start_length_preference",
