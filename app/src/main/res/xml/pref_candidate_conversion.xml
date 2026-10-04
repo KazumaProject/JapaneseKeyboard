@@ -63,6 +63,11 @@
 
     <PreferenceCategory android:title="@string/conversion_preference_title">
 
+        <Preference
+            android:key="date_candidate_settings_preference"
+            android:title="@string/date_candidate_settings_title"
+            android:summary="@string/date_candidate_settings_summary" />
+
         <SeekBarPreference
             android:defaultValue="4"
             android:key="n_best_preference"

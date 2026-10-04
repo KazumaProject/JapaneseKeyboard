@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="date_candidate_settings_title">Date candidates</string>
+    <string name="date_candidate_settings_summary">Choose date formats and their priority for きょう, きのう and あした</string>
+    <string name="date_candidate_order_hint">Enable the formats you want. Drag to reorder, or use the arrows. Enabled date candidates appear in this order.</string>
+    <string name="date_candidate_format_year_month_day">Year/month/day</string>
+    <string name="date_candidate_format_month_day">Month/day</string>
+    <string name="date_candidate_format_month_day_weekday">Date with Japanese weekday</string>
+    <string name="date_candidate_format_reiwa_date">Japanese era date</string>
+    <string name="date_candidate_format_reiwa_short_date">Abbreviated era date</string>
+    <string name="date_candidate_format_weekday_short">Japanese weekday (short)</string>
+    <string name="date_candidate_format_weekday_long">Japanese weekday (full)</string>
+    <string name="date_candidate_move_up">Move %1$s up</string>
+    <string name="date_candidate_move_down">Move %1$s down</string>
+    <string name="date_candidate_reset">Restore default formats and order</string>
+</resources>

@@ -230,6 +230,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQuery
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryResult
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityTrigger
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -983,6 +985,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.UTILITY_CALCULATION_PRECISION_KEY,
         AppPreference.UTILITY_REGIONAL_PROFILE_KEY,
         AppPreference.UTILITY_UNIT_TARGETS_JSON_KEY,
+        AppPreference.DATE_CANDIDATE_ORDER_KEY,
+        AppPreference.DATE_CANDIDATE_ENABLED_FORMATS_KEY,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -1963,6 +1967,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionBackend: ConversionBackend = ConversionBackend.LEGACY
     private val utilityCandidateProvider = UtilityCandidateProvider()
     private var utilityCandidateConfig: UtilityCandidateConfig = UtilityCandidateConfig()
+    private var dateCandidateConfig: DateCandidateConfig = DateCandidateConfig()
     private var predictionConfig: PredictionConfig = PredictionConfig()
     @Volatile
     private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
@@ -3570,6 +3575,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             requestCandidateRefresh(CandidateShowFlag.Updating)
         }
+        updateDateCandidateConfig(appPreference.date_candidate_config)
 
         val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
         val thresholdShape = FlickThresholdShape.fromPreferenceValue(
@@ -3740,6 +3746,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateTabOrder = preferences.candidateTabOrder
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
+        updateDateCandidateConfig(preferences.dateCandidateConfig)
         predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
@@ -26787,6 +26794,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return orderedCandidates
     }
 
+    private fun updateDateCandidateConfig(config: DateCandidateConfig) {
+        if (dateCandidateConfig == config) return
+        dateCandidateConfig = config
+        beginZenzRerankRequest()
+        synchronized(zenzRerankCache) { zenzRerankCache.clear() }
+        candidateRequestTracker.invalidate()
+        candidateRefreshCoordinator.invalidate()
+        if (isInputViewActive && inputString.value.isNotEmpty()) {
+            requestCandidateRefresh(CandidateShowFlag.Updating)
+        }
+    }
+
     private suspend fun applyMergedCandidateOrder(
         input: String,
         candidates: List<Candidate>,
@@ -26795,7 +26814,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val promotedCandidates = measureDebugStage("IMEService.exactInputPromotion") {
             ExactInputCandidatePromotionPolicy.promote(
                 input = input,
-                candidates = candidates,
+                candidates = DateCandidateComposer.compose(input, candidates, dateCandidateConfig),
             )
         }
         return if (appPreference.candidate_order_override_enable_preference == true) {
@@ -26883,6 +26902,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 collectCandidateSegments =
                     appPreference.candidate_order_override_enable_preference == true ||
                         shouldUseBunsetsuCursorMoveSession(),
+                dateCandidateConfig = dateCandidateConfig,
             )
         )
         if (BuildConfig.DEBUG) {
