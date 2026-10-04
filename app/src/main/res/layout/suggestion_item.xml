@@ -4,6 +4,7 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:clipChildren="false"
+    android:clipToPadding="false"
     android:background="@drawable/recyclerview_item_bg"
     android:paddingHorizontal="5dp">
 
