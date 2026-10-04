@@ -9,6 +9,9 @@ import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.TextView
+import android.widget.FrameLayout
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
@@ -52,26 +55,41 @@ class CandidateReadingSizeLimitsTest {
             body.text = "    感じ    "
             reading.text = "かんじ"
             reading.visibility = View.VISIBLE
+            val frame = FrameLayout(context)
+            val recycler = RecyclerView(context).apply {
+                layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
+                clipChildren = false
+                clipToPadding = false
+            }
+            frame.addView(recycler)
+            val frameHeight = (AppPreference.getCandidateVisibleHeightDp(false, rows.toString()) * context.resources.displayMetrics.density).toInt()
+            val spacing = if (rows > 1) context.resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing) else 0
+            val itemHeight = minOf((36 * context.resources.displayMetrics.density).toInt(), frameHeight / rows - spacing - spacing / rows)
+            val stripHeight = rows * itemHeight + if (rows > 1) (rows + 1) * spacing else 0
+            frame.layout(0, 0, 1000, frameHeight)
+            recycler.layout(0, (frameHeight - stripHeight) / 2, 1000, (frameHeight + stripHeight) / 2)
+            recycler.addView(root)
             var before: Rect? = null
             val heights = mutableListOf<Int>()
             for (size in listOf(1, maximum)) {
                 reading.textSize = size.toFloat()
-                val height = (36 * context.resources.displayMetrics.density).toInt()
+                val height = itemHeight
                 root.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                     View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST))
-                root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+                root.layout(0, spacing, root.measuredWidth, spacing + root.measuredHeight)
                 assertEquals("selected font size must draw without shrinking", 1f, reading.inkScale, .001f)
                 val rect = Rect(0, 0, body.width, body.height)
                 root.offsetDescendantRectToMyCoords(body, rect)
                 before?.let { assertEquals(it, rect) }
                 before = rect
-                val image = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
-                root.draw(Canvas(image))
+                val image = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
+                frame.draw(Canvas(image))
                 val annotation = Rect(0, 0, reading.width, reading.height)
-                root.offsetDescendantRectToMyCoords(reading, annotation)
+                frame.offsetDescendantRectToMyCoords(reading, annotation)
+                assertTrue("reading stays inside fixed frame", annotation.top >= 0)
                 reading.visibility = View.GONE
-                val without = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
-                root.draw(Canvas(without))
+                val without = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
+                frame.draw(Canvas(without))
                 val inkRows = (annotation.top until annotation.bottom).count { y ->
                     (annotation.left until annotation.right).any { x -> image.getPixel(x, y) != without.getPixel(x, y) }
                 }
