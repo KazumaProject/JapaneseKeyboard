@@ -139,10 +139,19 @@ class AutoSizeButton @JvmOverloads constructor(
 
         paint.getTextBounds(text.toString(), 0, text.length, textBounds)
 
-        // ★修正点2: 条件を更新 -> 幅「または」高さがはみ出す場合に縮小を開始
-        if (textBounds.width() > availableWidth || textBounds.height() > availableHeight) {
-            // ★修正点3: ループ条件も更新 -> 幅「または」高さが収まるまでループ
-            while (textBounds.width() > availableWidth || textBounds.height() > availableHeight) {
+        fun exceedsAvailableSpace(): Boolean {
+            // TextView lays out a line using glyph advances, which can exceed its ink bounds.
+            // Include both widths so a fitted single-line label cannot wrap or lose its last glyph.
+            val textWidth = if (maxLines == 1) {
+                maxOf(textBounds.width().toFloat(), paint.measureText(text.toString()))
+            } else {
+                textBounds.width().toFloat()
+            }
+            return textWidth > availableWidth || textBounds.height() > availableHeight
+        }
+
+        if (exceedsAvailableSpace()) {
+            while (exceedsAvailableSpace()) {
                 currentTextSizePx -= 1f // 1ピクセルずつ小さくする
                 if (currentTextSizePx <= 2f) { // 小さくなりすぎないように下限を設定
                     break
