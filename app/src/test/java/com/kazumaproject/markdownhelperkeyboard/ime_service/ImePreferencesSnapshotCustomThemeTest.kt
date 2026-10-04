@@ -7,8 +7,9 @@ class ImePreferencesSnapshotCustomThemeTest {
 
     @Test
     fun snapshotContainsCandidateAndShortcutThemeColors() {
-        val fieldNames = ImePreferencesSnapshot::class.java.declaredFields
-            .map { it.name }
+        val fieldNames = ImePreferencesSnapshot::class.java.methods
+            .filter { it.parameterCount == 0 && it.name.startsWith("get") }
+            .map { it.name.removePrefix("get").replaceFirstChar(Char::lowercaseChar) }
             .toSet()
 
         assertTrue(fieldNames.contains("customThemeCandidateTextColor"))

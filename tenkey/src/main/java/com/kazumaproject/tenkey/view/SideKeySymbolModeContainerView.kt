@@ -16,17 +16,22 @@ import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class SideKeySymbolModeContainerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : LinearLayout(context, attrs, defStyleAttr) {
+) : LinearLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private val numberButton = createButton("number_mode")
     private val symbolButton = createButton("symbol")
     private var useThreeStateKeyboard: Boolean = true
     private var iconPadding: Int = 0
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
 
     init {
         orientation = HORIZONTAL
@@ -40,19 +45,26 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
         clipToPadding = false
         clipChildren = false
 
-        numberButton.setImageDrawable(
-            AppCompatResources.getDrawable(
-                context,
-                com.kazumaproject.core.R.drawable.input_mode_number_select_custom
-            )
-        )
-        symbolButton.setImageDrawable(
-            AppCompatResources.getDrawable(context, com.kazumaproject.core.R.drawable.symbol)
-        )
+        setKeyboardFont(keyboardFontSnapshot)
 
         addView(numberButton)
         addView(symbolButton)
         setUseThreeStateKeyboard(true)
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontGlyphDrawable.setImageResource(
+            numberButton,
+            com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+            snapshot,
+        )
+        KeyboardFontGlyphDrawable.setImageResource(
+            symbolButton,
+            com.kazumaproject.core.R.drawable.symbol,
+            snapshot,
+        )
     }
 
     private fun createButton(description: String): AppCompatImageButton {
@@ -94,9 +106,14 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
         // Pressed state is controlled only by setPressedKey().
     }
 
-    fun setUseThreeStateKeyboard(enabled: Boolean) {
+    fun setUseThreeStateKeyboard(enabled: Boolean, numberSymbolKeyGapDp: Int = 4) {
         useThreeStateKeyboard = enabled
         numberButton.visibility = if (enabled) GONE else VISIBLE
+        val symbolParams = symbolButton.layoutParams as LayoutParams
+        symbolParams.marginStart = if (enabled) 0 else {
+            (numberSymbolKeyGapDp.coerceIn(0, 16) * resources.displayMetrics.density).toInt()
+        }
+        symbolButton.layoutParams = symbolParams
         (numberButton.layoutParams as LayoutParams).apply {
             width = 0
             weight = if (enabled) 0f else 1f
@@ -113,16 +130,16 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
     }
 
     fun setImages(numberDrawable: Drawable?, symbolDrawable: Drawable?) {
-        numberButton.setImageDrawable(numberDrawable)
-        symbolButton.setImageDrawable(symbolDrawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(numberButton, numberDrawable, keyboardFontSnapshot)
+        KeyboardFontGlyphDrawable.setImageDrawable(symbolButton, symbolDrawable, keyboardFontSnapshot)
     }
 
     fun setSymbolImageDrawable(drawable: Drawable?) {
-        symbolButton.setImageDrawable(drawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(symbolButton, drawable, keyboardFontSnapshot)
     }
 
     fun setNumberImageDrawable(drawable: Drawable?) {
-        numberButton.setImageDrawable(drawable)
+        KeyboardFontGlyphDrawable.setImageDrawable(numberButton, drawable, keyboardFontSnapshot)
     }
 
     fun setKeyBackground(drawable: Drawable?) {

@@ -262,6 +262,8 @@
     <string name="live_conversion_summary_off">Live conversion is disabled</string>
     <string name="live_conversion_start_length_title">Live conversion start length</string>
     <string name="live_conversion_start_length_summary">Start live conversion after this many characters are entered.</string>
+    <string name="live_conversion_candidate_yomi_size_title">Reading text size</string>
+    <string name="live_conversion_candidate_yomi_size_summary">Change the size of the reading shown above a candidate. You can select sizes that fit in the candidate area. The maximum depends on the candidate area height, number of rows, and font.</string>
     <string name="live_conversion_candidate_yomi_title">Show reading on live conversion candidates</string>
     <string name="live_conversion_candidate_yomi_summary_on">Displays the reading above live conversion candidates</string>
     <string name="live_conversion_candidate_yomi_summary_off">Does not display the reading above live conversion candidates</string>
@@ -320,6 +322,9 @@
     <string name="custom_keyboard_suggestion_title">Display when no text is entered</string>
     <string name="custom_keyboard_suggestion_summary_on">Show a list from the custom tab when no text is entered.</string>
     <string name="custom_keyboard_suggestion_summary_off">Keep the standard display (clipboard, etc.) when no text is entered.</string>
+    <string name="custom_keyboard_input_in_empty_areas_title">Allow input in empty areas</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_on">Touches in empty cells and spacers use the nearest key.</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_off">Empty cells and spacers do not accept input.</string>
     <string name="remember_last_custom_keyboard_title">Restore last used custom keyboard</string>
     <string name="remember_last_custom_keyboard_summary_on">Shows the custom keyboard you used last when opening custom keyboards</string>
     <string name="remember_last_custom_keyboard_summary_off">Shows the first custom keyboard when opening custom keyboards</string>
@@ -813,6 +818,11 @@
     <string name="key_action">Action for Key</string>
     <string name="double_tap_action">Double-tap action</string>
     <string name="double_tap_disabled">None</string>
+    <string name="special_key_category_input">Input and conversion</string>
+    <string name="special_key_category_delete_cursor">Delete and cursor</string>
+    <string name="special_key_category_text_mode">Text and input mode</string>
+    <string name="special_key_category_keyboard">Keyboard switching</string>
+    <string name="special_key_category_edit_other">Edit and other</string>
     <string name="setting_flick">Flick</string>
     <string name="tap">Tap</string>
     <string name="flick_left">Flick Left</string>
@@ -1508,6 +1518,8 @@
     <string name="tenkey_restore_input_mode_timeout_minutes_summary">Sets how many minutes the last TenKey input mode can be restored.</string>
     <string name="tenkey_use_three_state_keyboard_title">Use three-state keyboard switching</string>
     <string name="tenkey_use_three_state_keyboard_summary">Switches TenKey between Japanese, English, and number input modes using the mode switch key.</string>
+    <string name="tenkey_number_symbol_key_gap_title">Number/symbol key gap</string>
+    <string name="tenkey_number_symbol_key_gap_summary">Set the gap in dp between the number and symbol keys when three-state switching is off.</string>
     <string name="sumire_restore_input_mode_on_restart_title">Restore input mode on keyboard restart</string>
     <string name="sumire_restore_input_mode_on_restart_summary">Restores the last Japanese, English, or number input mode when Sumire is opened again.</string>
     <string name="sumire_restore_input_mode_only_within_time_title">Restore Sumire input mode only within time limit</string>
@@ -1830,4 +1842,38 @@
     <string name="qwerty_romaji_space_flick_summary">Flick up to insert the opposite space width to your Romaji space setting. Independent of letter-key up flicks.</string>
     <string name="qwerty_english_space_flick_summary">Flick up to insert a full-width space. If there is composing text, commit it with a full-width space. Tapping still inserts a half-width space. Independent of letter-key up flicks.</string>
     <string name="floating_keyboard_hide">Hide keyboard</string>
+    <string name="local_font_title">Local font</string>
+    <string name="local_font_settings_summary">Choose a font for keyboard labels and IME text</string>
+    <string name="local_font_current">Current: %1$s</string>
+    <string name="local_font_standard">Standard (existing appearance)</string>
+    <string name="local_font_choose">Choose a font on this device</string>
+    <string name="local_font_help">Supported: static TTF or OTF, up to 32 MiB. The selected font is copied to this app’s private storage and stays on this device. Characters missing from the font may use another font.</string>
+    <string name="local_font_loading">Loading and checking font…</string>
+    <string name="local_font_previewing">Preview: %1$s</string>
+    <string name="local_font_preview_small_label">Small guide and candidate sample</string>
+    <string name="local_font_apply">Apply</string>
+    <string name="local_font_cancel_selection">Cancel selection</string>
+    <string name="local_font_cancel_loading">Cancel loading</string>
+    <string name="local_font_restore_standard">Restore standard</string>
+    <string name="local_font_restore_warning">The saved font could not be restored. Choose it again or restore the standard appearance.</string>
+    <string name="local_font_error_unsupported">This font format is not supported. Choose a static TTF or OTF file.</string>
+    <string name="local_font_error_too_large">The font is larger than the 32 MiB limit.</string>
+    <string name="local_font_error_invalid">This file is empty, damaged, or is not a supported font.</string>
+    <string name="local_font_error_storage">The font could not be read or saved. Your current font is still active.</string>
+    <string name="local_font_preview_sample">あいうえお　がぎぐげご　ぱぴぷぺぽ　ぁぃぅぇぉっゃゅょ
+アイウエオ　日本語　漢字変換　𠮷
+ABC abc 0123456789　ＡＢＣ　１２３４５
+！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
+空白　変換　確定　検索　return</string>
+    <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
+    <string name="ime_popup_unavailable">Could not display the list. Please try again.</string>
+    <string name="ime_no_templates_registered">No templates registered.</string>
+    <string name="custom_direct_input_replace_composing_title">Replace composing text with direct input</string>
+    <string name="custom_direct_input_replace_composing_summary_off">Switching to direct input commits composing text.</string>
+    <string name="custom_direct_input_replace_composing_summary_on">The first input after switching to direct input replaces composing text.</string>
+    <string name="independent_multi_touch_category_title">Multi-finger input</string>
+    <string name="independent_multi_touch_title">Handle two-finger input independently</string>
+    <string name="independent_multi_touch_summary">Operate different keys independently and commit each input when its finger is lifted. A second touch on the same key is ignored.</string>
+    <string name="stabilize_candidate_strip_height_title">Stabilize candidate area height</string>
+    <string name="stabilize_candidate_strip_height_summary">Keep the editor position stable when typing or confirming text. Any extra space stays transparent and allows touches through.</string>
 </resources>

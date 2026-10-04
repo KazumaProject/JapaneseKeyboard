@@ -1,8 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class SuggestionAdapterThemeColorTest {
 
     @Test
@@ -24,6 +30,41 @@ class SuggestionAdapterThemeColorTest {
 
         assertEquals(0x01020304, state.backgroundColor)
         assertEquals(0x05060708, state.pressedBackgroundColor)
+    }
+
+    @Test
+    fun classicCandidateItemsUseNoFillNoCornersAndKeepPressedFeedback() {
+        val state = CandidateItemColorState()
+
+        state.setColors(android.graphics.Color.TRANSPARENT, 0xffb6bec9.toInt(), 0f)
+
+        assertEquals(android.graphics.Color.TRANSPARENT, state.backgroundColor)
+        assertEquals(0xffb6bec9.toInt(), state.pressedBackgroundColor)
+        assertEquals(0f, state.cornerRadiusDp)
+
+        state.setColors(null, null)
+        assertEquals(16f, state.cornerRadiusDp)
+    }
+
+    @Test
+    fun classicCandidateDrawableIsClearAtRestAndFlatWhenPressed() {
+        val drawable = createCandidateItemBackgroundDrawable(
+            backgroundColor = android.graphics.Color.TRANSPARENT,
+            pressedColor = 0xffb6bec9.toInt(),
+            density = 2f,
+            cornerRadiusDp = 0f,
+        )
+
+        drawable.state = intArrayOf()
+        val normal = drawable.current as android.graphics.drawable.GradientDrawable
+        assertEquals(android.graphics.Color.TRANSPARENT, requireNotNull(normal.color).defaultColor)
+        assertEquals(0f, normal.cornerRadius)
+
+        drawable.state = intArrayOf(android.R.attr.state_pressed)
+        val pressed = drawable.current as android.graphics.drawable.GradientDrawable
+        assertEquals(0xffb6bec9.toInt(), requireNotNull(pressed.color).defaultColor)
+        assertEquals(0f, pressed.cornerRadius)
+        assertTrue(drawable.isStateful)
     }
 
     @Test

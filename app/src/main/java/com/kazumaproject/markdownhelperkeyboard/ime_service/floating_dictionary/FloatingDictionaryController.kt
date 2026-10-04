@@ -24,6 +24,8 @@ import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.*
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.*
@@ -44,6 +46,7 @@ internal class FloatingDictionaryController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val manager = context.getSystemService(WindowManager::class.java)
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).toInt()
     val activeShortcuts: Set<ShortcutType> get() = panels.values.filter { it.visible }.map { it.kind.shortcut }.toSet()
@@ -57,6 +60,24 @@ internal class FloatingDictionaryController(
         host.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
         host.post { if (anchor === host) panels.values.filter { it.visible }.forEach { it.show() } }
     }
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        panels.values.forEach { it.root.setKeyboardFont(snapshot) }
+    }
+
+    private fun fontAwareSpinnerAdapter(items: List<String>) =
+        object : ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, items) {
+            private fun applyFont(view: View) {
+                KeyboardFontApplicator.applyToKeyboardViews(view, keyboardFontSnapshot)
+            }
+
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                super.getView(position, convertView, parent).also(::applyFont)
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
+                super.getDropDownView(position, convertView, parent).also(::applyFont)
+        }
 
     fun toggle(kind: DictionaryKind) {
         val panel = panels.getOrPut(kind) { Panel(kind) }
@@ -83,6 +104,9 @@ internal class FloatingDictionaryController(
     }
 
     fun destroy() { endSession(); scope.cancel() }
+
+    /** Release ownership before another IME-local form starts editing. */
+    fun releaseInputTarget() { focus(null) }
 
     private fun focus(editor: EditText?) {
         if (activeEditor === editor) return
@@ -122,7 +146,7 @@ internal class FloatingDictionaryController(
         private var gesture: ComposingGuideGesture? = null
         private val palette = colors()
         private val panelScope = CoroutineScope(SupervisorJob(scope.coroutineContext[Job]) + Dispatchers.Main.immediate)
-        private val root = ComposingGuideView(context,
+        val root = ComposingGuideView(context,
             onEdit = ::toggleLayoutEditing,
             onTextSize = { _, _ -> },
             onHandleEvent = ::handleEvent,
@@ -158,6 +182,7 @@ internal class FloatingDictionaryController(
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { empty.text = context.getString(R.string.update_failed); empty.visibility = View.VISIBLE }
             }
+            root.setKeyboardFont(keyboardFontSnapshot)
         }
 
         private fun label(value: String) = TextView(context).apply {
@@ -210,9 +235,9 @@ internal class FloatingDictionaryController(
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
                 setText((original?.score ?: if (kind == DictionaryKind.LEARN) 3000 else 4000).toString())
             }
-            val posList = context.resources.getStringArray(com.kazumaproject.core.R.array.parts_of_speech)
+            val posList = context.resources.getStringArray(com.kazumaproject.core.R.array.parts_of_speech).toList()
             val pos = Spinner(context).apply {
-                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, posList)
+                adapter = fontAwareSpinnerAdapter(posList)
                 setSelection(original?.pos ?: posList.indexOf("名詞").coerceAtLeast(0))
                 contentDescription = context.getString(R.string.floating_dictionary_pos)
             }
@@ -268,6 +293,7 @@ internal class FloatingDictionaryController(
                 body.removeAllViews(); body.addView(confirmation)
             }
             body.removeAllViews(); body.addView(form, FrameLayout.LayoutParams(-1, -1))
+            root.setKeyboardFont(keyboardFontSnapshot)
             focus(reading)
         }
 
@@ -414,6 +440,8 @@ internal class FloatingDictionaryController(
                 val item = items[position]
                 holder.reading.text = item.reading
                 holder.word.text = item.word
+                KeyboardFontApplicator.apply(holder.reading, keyboardFontSnapshot)
+                KeyboardFontApplicator.apply(holder.word, keyboardFontSnapshot)
                 holder.itemView.contentDescription = "${item.reading}、${item.word}"
                 holder.itemView.setOnClickListener { if (!busy) showForm(item) }
             }

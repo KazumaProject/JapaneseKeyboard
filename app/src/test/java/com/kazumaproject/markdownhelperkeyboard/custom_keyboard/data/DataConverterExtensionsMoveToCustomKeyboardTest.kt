@@ -20,6 +20,8 @@ class DataConverterExtensionsMoveToCustomKeyboardTest {
             KeyAction.CommitAndInsertSpace to "CommitAndInsertSpace",
             KeyAction.MoveCursorUp to "MOVE_CURSOR_UP",
             KeyAction.MoveCursorDown to "MOVE_CURSOR_DOWN",
+            KeyAction.Cut to "CUT",
+            KeyAction.SelectAll to "SELECT_ALL",
             KeyAction.DoNothing to "DoNothing"
         )
 

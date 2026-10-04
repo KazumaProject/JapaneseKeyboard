@@ -47,6 +47,12 @@
             app:summary="@string/candidate_tab_order_preference_summary" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="hide_candidate_password_preference"
             android:summaryOff="@string/hide_candidate_password_summary_off"
@@ -122,6 +128,16 @@
             android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <SeekBarPreference
+            android:defaultValue="14"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:key="live_conversion_candidate_yomi_size_preference"
+            android:max="24"
+            android:summary="@string/live_conversion_candidate_yomi_size_summary"
+            android:title="@string/live_conversion_candidate_yomi_size_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
 
     </PreferenceCategory>
 

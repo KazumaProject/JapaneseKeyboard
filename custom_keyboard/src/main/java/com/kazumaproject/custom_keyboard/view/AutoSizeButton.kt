@@ -5,16 +5,23 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.LayerDrawable
 import android.util.AttributeSet
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatButton
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.min
 
 class AutoSizeButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = androidx.appcompat.R.attr.buttonStyle
-) : AppCompatButton(context, attrs, defStyleAttr) {
+) : AppCompatButton(context, attrs, defStyleAttr), KeyboardFontAware {
 
     data class FlickGuideLabels(
         val tap: String = "",
@@ -52,6 +59,25 @@ class AutoSizeButton @JvmOverloads constructor(
     private var flickGuideLabels: FlickGuideLabels? = null
     private var flickGuideTextColor: Int = Color.BLACK
     private var flickGuideTextSizeSp: Float? = null
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(this, snapshot)
+        KeyboardFontApplicator.apply(guidePaint, snapshot)
+        KeyboardFontApplicator.apply(centerGuidePaint, snapshot)
+        applyKeyboardFontToDrawable(background, snapshot)
+        refreshTextSize()
+    }
+
+    private fun applyKeyboardFontToDrawable(drawable: Drawable?, snapshot: KeyboardFontSnapshot) {
+        when (drawable) {
+            is SegmentedBackgroundDrawable -> drawable.setKeyboardFont(snapshot)
+            is LayerDrawable -> repeat(drawable.numberOfLayers) { index ->
+                applyKeyboardFontToDrawable(drawable.getDrawable(index), snapshot)
+            }
+            is InsetDrawable -> applyKeyboardFontToDrawable(drawable.drawable, snapshot)
+        }
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -113,10 +139,19 @@ class AutoSizeButton @JvmOverloads constructor(
 
         paint.getTextBounds(text.toString(), 0, text.length, textBounds)
 
-        // ★修正点2: 条件を更新 -> 幅「または」高さがはみ出す場合に縮小を開始
-        if (textBounds.width() > availableWidth || textBounds.height() > availableHeight) {
-            // ★修正点3: ループ条件も更新 -> 幅「または」高さが収まるまでループ
-            while (textBounds.width() > availableWidth || textBounds.height() > availableHeight) {
+        fun exceedsAvailableSpace(): Boolean {
+            // TextView lays out a line using glyph advances, which can exceed its ink bounds.
+            // Include both widths so a fitted single-line label cannot wrap or lose its last glyph.
+            val textWidth = if (maxLines == 1) {
+                maxOf(textBounds.width().toFloat(), paint.measureText(text.toString()))
+            } else {
+                textBounds.width().toFloat()
+            }
+            return textWidth > availableWidth || textBounds.height() > availableHeight
+        }
+
+        if (exceedsAvailableSpace()) {
+            while (exceedsAvailableSpace()) {
                 currentTextSizePx -= 1f // 1ピクセルずつ小さくする
                 if (currentTextSizePx <= 2f) { // 小さくなりすぎないように下限を設定
                     break

@@ -9,15 +9,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
+import android.util.TypedValue
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 /**
  * Draw the guide in the anchor window's overlay when it fits. Guide and keyboard labels
  * then share a render transaction, without creating or retiring another surface.
  * The overlay never participates in input hit testing or keyboard layout measurement.
  */
-class SkinGuidePopup(context: Context) {
+class SkinGuidePopup(context: Context) : KeyboardFontAware {
     private val content = FrameLayout(context)
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     private val cells = listOf(PopupDirection.CENTER, PopupDirection.LEFT, PopupDirection.TOP,
         PopupDirection.RIGHT, PopupDirection.BOTTOM).associateWith { direction ->
         KeyWindowLayout(context).apply {
@@ -32,14 +39,27 @@ class SkinGuidePopup(context: Context) {
     private var owner: ViewGroup? = null
     private var overflowWindow: PopupWindow? = null
     private var skin: KeyboardSkin? = null
+    private var animationGeneration = 0L
     val isShowing: Boolean get() = (owner != null && content.isAttachedToWindow) || overflowWindow?.isShowing == true
 
-    fun show(anchor: View, skin: KeyboardSkin, labels: Map<PopupDirection, CharSequence>): View {
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(content, snapshot) { true }
+    }
+
+    fun show(
+        anchor: View,
+        skin: KeyboardSkin,
+        labels: Map<PopupDirection, CharSequence>,
+        textSizeSp: Float? = null,
+        includeEmptyCenterConnector: Boolean = false,
+    ): View {
         val root = anchor.rootView as? ViewGroup ?: error("Keyboard must have a window root")
-        dismiss()
+        cancelAnimation()
+        removeImmediately()
         val width = anchor.width
         val height = anchor.height
-        configure(width, height, skin, labels)
+        configure(width, height, skin, labels, textSizeSp, includeEmptyCenterConnector)
         skin.showPopup(content)
         val anchorPosition = IntArray(2)
         val rootPosition = IntArray(2)
@@ -95,19 +115,37 @@ class SkinGuidePopup(context: Context) {
                 popup.showAtLocation(anchor, Gravity.NO_GRAVITY, position.x, position.y)
             }
         }
+        animateIn()
         return content
     }
 
-    internal fun configure(width: Int, height: Int, skin: KeyboardSkin,
-                           labels: Map<PopupDirection, CharSequence>): View {
+    internal fun configure(
+        width: Int,
+        height: Int,
+        skin: KeyboardSkin,
+        labels: Map<PopupDirection, CharSequence>,
+        textSizeSp: Float? = null,
+        includeEmptyCenterConnector: Boolean = false,
+    ): View {
         check(width > 0 && height > 0)
         this.skin = skin
+        val hasDirectionalCandidate = labels.any { (direction, text) ->
+            direction != PopupDirection.CENTER && text.isNotEmpty()
+        }
         cells.forEach { (direction, cell) ->
             cell.skinId = skin.id
             val label = cell.getChildAt(0) as TextView
             label.text = labels[direction] ?: ""
             skin.configurePopupText(label, false)
-            cell.visibility = if (label.text.isEmpty()) View.INVISIBLE else View.VISIBLE
+            KeyboardFontApplicator.apply(label, keyboardFontSnapshot)
+            textSizeSp?.let { label.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.coerceIn(8f, 48f)) }
+            val emptyCenterConnector = includeEmptyCenterConnector &&
+                hasDirectionalCandidate && direction == PopupDirection.CENTER && label.text.isEmpty()
+            cell.visibility = if (label.text.isEmpty() && !emptyCenterConnector) {
+                View.INVISIBLE
+            } else {
+                View.VISIBLE
+            }
             val bounds = SkinPopupGeometry.resolve(width, height, direction, false).bounds
             cell.layoutParams = FrameLayout.LayoutParams(width, height).apply {
                 leftMargin = bounds.left + width
@@ -122,17 +160,88 @@ class SkinGuidePopup(context: Context) {
         val palette = skin?.palette ?: return
         // Empty alternatives never gain a visible selection; the keyboard owns commit semantics.
         cells.forEach { (position, cell) ->
-            cell.skinSelected = position == direction
+            val label = cell.getChildAt(0) as TextView
+            val isEmptyCenterConnector = position == PopupDirection.CENTER && label.text.isEmpty() &&
+                cell.visibility == View.VISIBLE
+            cell.skinSelected = position == direction && !isEmptyCenterConnector
             (cell.getChildAt(0) as TextView).setTextColor(
                 if (cell.skinSelected) palette.selectionText else palette.text)
         }
     }
 
-    fun dismiss() {
+    fun dismiss(
+        animated: Boolean = false,
+        animationDurationMillis: Long = EXIT_DURATION_MILLIS,
+        onDismissComplete: (() -> Unit)? = null,
+    ) {
+        if (!animated || animationDurationMillis <= 0L || !isShowing) {
+            cancelAnimation()
+            removeImmediately()
+            onDismissComplete?.invoke()
+            return
+        }
+
+        cancelAnimation(restoreProperties = false)
+        val generation = animationGeneration
+        content.animate()
+            .alpha(0f)
+            .scaleX(.96f)
+            .scaleY(.96f)
+            .setDuration(animationDurationMillis)
+            .setInterpolator(AccelerateInterpolator())
+            .withEndAction {
+                if (animationGeneration == generation) {
+                    removeImmediately()
+                    onDismissComplete?.invoke()
+                }
+            }
+            .start()
+    }
+
+    private fun animateIn() {
+        content.alpha = 0f
+        content.scaleX = .94f
+        content.scaleY = .94f
+        val generation = ++animationGeneration
+        content.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(ENTER_DURATION_MILLIS)
+            .setInterpolator(DecelerateInterpolator(1.5f))
+            .withEndAction {
+                if (animationGeneration == generation) {
+                    content.alpha = 1f
+                    content.scaleX = 1f
+                    content.scaleY = 1f
+                }
+            }
+            .start()
+    }
+
+    private fun cancelAnimation(restoreProperties: Boolean = true) {
+        animationGeneration += 1
+        content.animate().cancel()
+        if (restoreProperties) {
+            content.alpha = 1f
+            content.scaleX = 1f
+            content.scaleY = 1f
+        }
+    }
+
+    private fun removeImmediately() {
         owner?.overlay?.remove(content)
         owner = null
         overflowWindow?.dismiss()
         skin?.clearPopup(content)
         skin = null
+        content.alpha = 1f
+        content.scaleX = 1f
+        content.scaleY = 1f
+    }
+
+    private companion object {
+        const val ENTER_DURATION_MILLIS = 95L
+        const val EXIT_DURATION_MILLIS = 75L
     }
 }

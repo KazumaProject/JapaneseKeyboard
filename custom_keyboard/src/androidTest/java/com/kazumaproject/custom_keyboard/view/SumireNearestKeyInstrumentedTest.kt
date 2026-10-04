@@ -12,10 +12,14 @@ import android.widget.FrameLayout
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -25,7 +29,7 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 
 /** Test-only window: exercises production Sumire views without replacing the user's IME. */
-class SumireNearestKeyTestActivity : Activity() {
+open class SumireNearestKeyTestActivity : Activity() {
     lateinit var keyboard: FlickKeyboardView
     private lateinit var root: FrameLayout
     private lateinit var definition: KeyboardLayout
@@ -69,6 +73,43 @@ class SumireNearestKeyTestActivity : Activity() {
         val key = keyboard.getChildAt(index)
         val origin = IntArray(2).also(key::getLocationOnScreen)
         return Rect(origin[0], origin[1], origin[0] + key.width, origin[1] + key.height)
+    }
+
+    fun configureCustomLayout(hitTestMode: KeyHitTestMode) {
+        root.removeAllViews()
+        actions.clear()
+        val key = KeyData(
+            label = "a",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("a"),
+            keyId = "a",
+            keyType = KeyType.NORMAL
+        )
+        definition = KeyboardLayout(
+            keys = listOf(key),
+            flickKeyMaps = emptyMap(),
+            columnCount = 2,
+            rowCount = 1,
+            items = listOf(
+                KeyItem("a", key, GridPlacement(0, 0)),
+                SpacerItem("blank", GridPlacement(0, 2))
+            )
+        )
+        keyboard = FlickKeyboardView(this).apply {
+            setKeyboard(definition, hitTestMode)
+            setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
+                override fun onPress(action: KeyAction) = Unit
+                override fun onAction(action: KeyAction, isFlick: Boolean) { actions += action }
+                override fun onActionLongPress(action: KeyAction) = Unit
+                override fun onActionUpAfterLongPress(action: KeyAction) = Unit
+                override fun onFlickDirectionChanged(direction: FlickDirection) = Unit
+                override fun onFlickActionLongPress(action: KeyAction) = Unit
+                override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) = Unit
+            })
+        }
+        root.addView(keyboard, FrameLayout.LayoutParams(-1, 600, Gravity.BOTTOM))
     }
 }
 

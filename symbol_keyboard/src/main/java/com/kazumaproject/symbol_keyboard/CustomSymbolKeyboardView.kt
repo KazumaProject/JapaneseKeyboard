@@ -38,6 +38,10 @@ import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
@@ -66,7 +70,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ConstraintLayout(context, attrs, defStyleAttr) {
+) : ConstraintLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
@@ -100,6 +104,22 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var symbolsHistory: List<ClickedSymbol> = emptyList()
     private var clipBoardItems: List<ClipboardItem> = emptyList()
     private var currentMode: SymbolMode = SymbolMode.EMOJI
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToTextViews(modeTab, snapshot) { true }
+        KeyboardFontApplicator.applyToTextViews(categoryTab, snapshot) { true }
+        symbolAdapter.setKeyboardFont(snapshot, currentMode != SymbolMode.EMOJI)
+        clipboardAdapter.setKeyboardFont(snapshot)
+        KeyboardFontGlyphDrawable.setImageResource(
+            returnButton,
+            com.kazumaproject.core.R.drawable.language_japanese_kana_24px,
+            snapshot,
+        )
+        updateEmojiCategoryTabIcons(snapshot)
+    }
 
     private var pagingJob: Job? = null
     private var lifecycleOwner: LifecycleOwner? = null
@@ -127,6 +147,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
         returnButton = findViewById(R.id.return_jp_keyboard_button)
         deleteButton = findViewById(R.id.symbol_keyboard_delete_key)
+        KeyboardFontGlyphDrawable.setImageResource(
+            returnButton,
+            com.kazumaproject.core.R.drawable.language_japanese_kana_24px,
+            keyboardFontSnapshot,
+        )
 
         // Initialize default colors
         themeIconColor =
@@ -237,6 +262,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 currentMode = SymbolMode.entries[tab?.position ?: 0]
+                symbolAdapter.setKeyboardFont(keyboardFontSnapshot, currentMode != SymbolMode.EMOJI)
                 buildCategoryTabs()
                 categoryTab.getTabAt(0)?.select()
                 updateSymbolsForCategory(0)
@@ -455,7 +481,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
      * TenKeyの getDynamicNeumorphDrawable と同等の実装
      */
     private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources) }
+        KeyboardSkinRegistry.find(keyboardSkinId)?.let {
+            return it.keyDrawable(resources, role = com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER)
+        }
         // 1. 色の計算 (TenKeyと同じ係数を使用)
         // ハイライト色: 明るくする (1.2f)
         val highlightColor = manipulateColor(baseColor, 1.2f)
@@ -747,7 +775,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 emojiMap.keys.forEach { cat ->
                     categoryTab.addTab(
                         categoryTab.newTab().setIcon(
-                            categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key
+                            KeyboardFontGlyphDrawable.create(
+                                context,
+                                categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key,
+                                keyboardFontSnapshot,
+                            )
                         ).setContentDescription(emojiCategoryLabelRes.getValue(cat))
                     )
                 }
@@ -828,6 +860,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun updateEmojiCategoryTabIcons(snapshot: KeyboardFontSnapshot) {
+        if (currentMode != SymbolMode.EMOJI) return
+        var tabIndex = if (historyEmojiList.isNotEmpty()) 1 else 0
+        emojiMap.keys.forEach { category ->
+            val resourceId = categoryIconRes[category] ?: com.kazumaproject.core.R.drawable.logo_key
+            categoryTab.getTabAt(tabIndex++)?.setIcon(
+                KeyboardFontGlyphDrawable.create(context, resourceId, snapshot)
+            )
+        }
+    }
+
     private fun buildClipboardListItems(items: List<ClipboardItem>): List<ClipboardListItem> {
         val pinned = items.filter { it.isPinned() }
         val unpinned = items.filterNot { it.isPinned() }
@@ -852,6 +895,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateSymbolsForCategory(index: Int) {
+        KeyboardFontApplicator.applyToTextViews(modeTab, keyboardFontSnapshot) { true }
+        KeyboardFontApplicator.applyToTextViews(categoryTab, keyboardFontSnapshot) { true }
+        symbolAdapter.setKeyboardFont(keyboardFontSnapshot, currentMode != SymbolMode.EMOJI)
+        clipboardAdapter.setKeyboardFont(keyboardFontSnapshot)
         skinTonePopup?.dismiss()
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->

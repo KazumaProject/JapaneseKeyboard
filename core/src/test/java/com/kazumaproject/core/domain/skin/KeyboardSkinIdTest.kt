@@ -14,6 +14,6 @@ class KeyboardSkinIdTest {
         KeyboardSkinId.entries.forEach {
             assertEquals(it, KeyboardSkinId.fromPreference(it.preferenceValue))
         }
-        assertEquals(3, KeyboardSkinId.entries.map { it.preferenceValue }.toSet().size)
+        assertEquals(4, KeyboardSkinId.entries.map { it.preferenceValue }.toSet().size)
     }
 }

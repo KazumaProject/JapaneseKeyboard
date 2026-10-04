@@ -15,6 +15,52 @@ import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandida
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
+/** Appearance settings are grouped to keep snapshot copy/default calls within DEX's 255-word limit. */
+data class ImeKeyboardAppearance(
+    val keyboardThemeMode: String,
+    val customThemeBgColor: Int,
+    val customThemeKeyColor: Int,
+    val customThemeSpecialKeyColor: Int,
+    val customThemeKeyTextColor: Int,
+    val customThemeSpecialKeyTextColor: Int,
+    val customThemeCandidateTextColor: Int,
+    val customThemeCandidateItemBgColor: Int,
+    val customThemeCandidateItemPressedBgColor: Int,
+    val customThemeCandidateEmptyPopupBgColor: Int,
+    val customThemeCandidateEmptyPopupTextColor: Int,
+    val customThemeShortcutIconColor: Int,
+    val liquidGlassThemePreference: Boolean,
+    val liquidGlassBlurRadiousPreference: Int,
+    val liquidGlassKeyBlurRadiousPreference: Int,
+    val keyboardTouchEffectTypePreference: String,
+    val keyboardTouchEffectQualityPreference: String,
+    val suminagashiInkEffectPreference: Boolean,
+    val suminagashiInkColorModePreference: String,
+    val suminagashiInkColorPreference: Int,
+    val keyboardTouchEffectColorModePreference: String,
+    val keyboardTouchEffectColorPreference: Int,
+    val keyboardTouchEffectPalettePreference: String,
+    val liquidInkDensityPreference: Int,
+    val auroraInkDensityPreference: Int,
+    val cinematicWaveColorModePreference: String,
+    val cinematicWavePrimaryColorPreference: Int,
+    val cinematicWaveSecondaryColorPreference: Int,
+    val cinematicWaveSecondaryColorAutoPreference: Boolean,
+    val cinematicWaveTypePreference: String,
+    val cinematicWaveOpacityPercentPreference: Int,
+    val cinematicWaveIntensityPercentPreference: Int,
+    val cinematicWaveMotionPreference: String,
+    val cinematicWaveTouchResponsePreference: String,
+    val cinematicWaveQualityPreference: String,
+    val customKeyBorderEnablePreference: Boolean,
+    val customKeyBorderEnableColor: Int,
+    val customComposingTextPreference: Boolean,
+    val inputCompositionBackgroundColor: Int,
+    val inputCompositionTextColor: Int,
+    val inputConversionBackgroundColor: Int,
+    val inputConversionTextColor: Int,
+)
+
 data class ImePreferencesSnapshot(
     val keyboardOrder: List<KeyboardType>,
     val candidateTabOrder: List<CandidateTab>,
@@ -43,6 +89,7 @@ data class ImePreferencesSnapshot(
     val isLiveConversionEnable: Boolean,
     val liveConversionStartLength: Int,
     val showLiveConversionCandidateYomi: Boolean,
+    val liveConversionCandidateYomiTextSize: Int,
     val nBest: Int,
     val conversionBeamWidth: Int,
     val conversionBackend: ConversionBackend,
@@ -80,6 +127,7 @@ data class ImePreferencesSnapshot(
     val isNgWordEnable: Boolean,
     val deleteKeyHighLight: Boolean,
     val customKeyboardSuggestionPreference: Boolean,
+    val customDirectInputReplaceComposingPreference: Boolean,
     val userDictionaryPrefixMatchNumber: Int,
     val isVibration: Boolean,
     val vibrationTimingStr: String,
@@ -91,11 +139,14 @@ data class ImePreferencesSnapshot(
     val candidateColumns: String,
     val candidateColumnsLandscape: String,
     val candidateTabVisibility: Boolean,
+    val stabilizeCandidateStripHeightPreference: Boolean,
     val symbolKeyboardFirstItem: SymbolMode,
     val defaultEmojiSkinTone: String,
     val isCustomKeyboardTwoWordsOutputEnable: Boolean,
     val tenkeyQWERTYSwitchNumber: Boolean,
     val tenkeyUseThreeStateKeyboard: Boolean,
+    val independentMultiTouchEnabled: Boolean,
+    val tenkeyNumberSymbolKeyGapDp: Int,
     val tenkeySwitchNumberToQwertyNumberPreference: Boolean,
     val tenkeyRestoreInputModeOnRestart: Boolean,
     val sumireRestoreInputModeOnRestart: Boolean,
@@ -192,48 +243,7 @@ data class ImePreferencesSnapshot(
     val qwertySymbolKeymapTextSize: Float,
     val qwertySpecialKeyTextSize: Float,
     val qwertySpecialKeyIconSize: Float,
-    val keyboardThemeMode: String,
-    val customThemeBgColor: Int,
-    val customThemeKeyColor: Int,
-    val customThemeSpecialKeyColor: Int,
-    val customThemeKeyTextColor: Int,
-    val customThemeSpecialKeyTextColor: Int,
-    val customThemeCandidateTextColor: Int,
-    val customThemeCandidateItemBgColor: Int,
-    val customThemeCandidateItemPressedBgColor: Int,
-    val customThemeCandidateEmptyPopupBgColor: Int,
-    val customThemeCandidateEmptyPopupTextColor: Int,
-    val customThemeShortcutIconColor: Int,
-    val liquidGlassThemePreference: Boolean,
-    val liquidGlassBlurRadiousPreference: Int,
-    val liquidGlassKeyBlurRadiousPreference: Int,
-    val keyboardTouchEffectTypePreference: String,
-    val keyboardTouchEffectQualityPreference: String,
-    val suminagashiInkEffectPreference: Boolean,
-    val suminagashiInkColorModePreference: String,
-    val suminagashiInkColorPreference: Int,
-    val keyboardTouchEffectColorModePreference: String,
-    val keyboardTouchEffectColorPreference: Int,
-    val keyboardTouchEffectPalettePreference: String,
-    val liquidInkDensityPreference: Int,
-    val auroraInkDensityPreference: Int,
-    val cinematicWaveColorModePreference: String,
-    val cinematicWavePrimaryColorPreference: Int,
-    val cinematicWaveSecondaryColorPreference: Int,
-    val cinematicWaveSecondaryColorAutoPreference: Boolean,
-    val cinematicWaveTypePreference: String,
-    val cinematicWaveOpacityPercentPreference: Int,
-    val cinematicWaveIntensityPercentPreference: Int,
-    val cinematicWaveMotionPreference: String,
-    val cinematicWaveTouchResponsePreference: String,
-    val cinematicWaveQualityPreference: String,
-    val customKeyBorderEnablePreference: Boolean,
-    val customKeyBorderEnableColor: Int,
-    val customComposingTextPreference: Boolean,
-    val inputCompositionBackgroundColor: Int,
-    val inputCompositionTextColor: Int,
-    val inputConversionBackgroundColor: Int,
-    val inputConversionTextColor: Int,
+    val appearance: ImeKeyboardAppearance,
     val sumireEnglishQwertyPreference: Boolean,
     val conversionCandidatesRomajiEnablePreference: Boolean,
     val enableZenzRightContextPreference: Boolean,
@@ -257,26 +267,71 @@ data class ImePreferencesSnapshot(
     val utilityCandidateConfig: UtilityCandidateConfig,
     val keyboardSkin: KeyboardSkinId = KeyboardSkinId.DEFAULT,
 ) {
+    val keyboardThemeMode get() = appearance.keyboardThemeMode
+    val customThemeBgColor get() = appearance.customThemeBgColor
+    val customThemeKeyColor get() = appearance.customThemeKeyColor
+    val customThemeSpecialKeyColor get() = appearance.customThemeSpecialKeyColor
+    val customThemeKeyTextColor get() = appearance.customThemeKeyTextColor
+    val customThemeSpecialKeyTextColor get() = appearance.customThemeSpecialKeyTextColor
+    val customThemeCandidateTextColor get() = appearance.customThemeCandidateTextColor
+    val customThemeCandidateItemBgColor get() = appearance.customThemeCandidateItemBgColor
+    val customThemeCandidateItemPressedBgColor get() = appearance.customThemeCandidateItemPressedBgColor
+    val customThemeCandidateEmptyPopupBgColor get() = appearance.customThemeCandidateEmptyPopupBgColor
+    val customThemeCandidateEmptyPopupTextColor get() = appearance.customThemeCandidateEmptyPopupTextColor
+    val customThemeShortcutIconColor get() = appearance.customThemeShortcutIconColor
+    val liquidGlassThemePreference get() = appearance.liquidGlassThemePreference
+    val liquidGlassBlurRadiousPreference get() = appearance.liquidGlassBlurRadiousPreference
+    val liquidGlassKeyBlurRadiousPreference get() = appearance.liquidGlassKeyBlurRadiousPreference
+    val keyboardTouchEffectTypePreference get() = appearance.keyboardTouchEffectTypePreference
+    val keyboardTouchEffectQualityPreference get() = appearance.keyboardTouchEffectQualityPreference
+    val suminagashiInkEffectPreference get() = appearance.suminagashiInkEffectPreference
+    val suminagashiInkColorModePreference get() = appearance.suminagashiInkColorModePreference
+    val suminagashiInkColorPreference get() = appearance.suminagashiInkColorPreference
+    val keyboardTouchEffectColorModePreference get() = appearance.keyboardTouchEffectColorModePreference
+    val keyboardTouchEffectColorPreference get() = appearance.keyboardTouchEffectColorPreference
+    val keyboardTouchEffectPalettePreference get() = appearance.keyboardTouchEffectPalettePreference
+    val liquidInkDensityPreference get() = appearance.liquidInkDensityPreference
+    val auroraInkDensityPreference get() = appearance.auroraInkDensityPreference
+    val cinematicWaveColorModePreference get() = appearance.cinematicWaveColorModePreference
+    val cinematicWavePrimaryColorPreference get() = appearance.cinematicWavePrimaryColorPreference
+    val cinematicWaveSecondaryColorPreference get() = appearance.cinematicWaveSecondaryColorPreference
+    val cinematicWaveSecondaryColorAutoPreference get() = appearance.cinematicWaveSecondaryColorAutoPreference
+    val cinematicWaveTypePreference get() = appearance.cinematicWaveTypePreference
+    val cinematicWaveOpacityPercentPreference get() = appearance.cinematicWaveOpacityPercentPreference
+    val cinematicWaveIntensityPercentPreference get() = appearance.cinematicWaveIntensityPercentPreference
+    val cinematicWaveMotionPreference get() = appearance.cinematicWaveMotionPreference
+    val cinematicWaveTouchResponsePreference get() = appearance.cinematicWaveTouchResponsePreference
+    val cinematicWaveQualityPreference get() = appearance.cinematicWaveQualityPreference
+    val customKeyBorderEnablePreference get() = appearance.customKeyBorderEnablePreference
+    val customKeyBorderEnableColor get() = appearance.customKeyBorderEnableColor
+    val customComposingTextPreference get() = appearance.customComposingTextPreference
+    val inputCompositionBackgroundColor get() = appearance.inputCompositionBackgroundColor
+    val inputCompositionTextColor get() = appearance.inputCompositionTextColor
+    val inputConversionBackgroundColor get() = appearance.inputConversionBackgroundColor
+    val inputConversionTextColor get() = appearance.inputConversionTextColor
+
     /** Presentation overrides only: saved values and all input/layout fields remain intact. */
     fun withKeyboardSkinAppearance(): ImePreferencesSnapshot {
         val palette = KeyboardSkinRegistry.find(keyboardSkin)?.palette ?: return this
         return copy(
-            keyboardThemeMode = "custom",
-            customThemeBgColor = palette.background,
-            customThemeKeyColor = palette.key,
-            customThemeSpecialKeyColor = palette.key,
-            customThemeKeyTextColor = palette.text,
-            customThemeSpecialKeyTextColor = palette.text,
-            customThemeCandidateTextColor = palette.text,
-            customThemeCandidateItemBgColor = palette.background,
-            customThemeCandidateItemPressedBgColor = palette.pressed,
-            customThemeCandidateEmptyPopupBgColor = palette.key,
-            customThemeCandidateEmptyPopupTextColor = palette.text,
-            customThemeShortcutIconColor = palette.text,
-            liquidGlassThemePreference = false,
-            liquidGlassKeyBlurRadiousPreference = 255,
-            keyboardTouchEffectTypePreference = "none",
-            customKeyBorderEnablePreference = false,
+            appearance = appearance.copy(
+                keyboardThemeMode = "custom",
+                customThemeBgColor = palette.background,
+                customThemeKeyColor = palette.key,
+                customThemeSpecialKeyColor = palette.specialKey,
+                customThemeKeyTextColor = palette.text,
+                customThemeSpecialKeyTextColor = palette.specialText,
+                customThemeCandidateTextColor = palette.text,
+                customThemeCandidateItemBgColor = palette.background,
+                customThemeCandidateItemPressedBgColor = palette.pressed,
+                customThemeCandidateEmptyPopupBgColor = palette.key,
+                customThemeCandidateEmptyPopupTextColor = palette.text,
+                customThemeShortcutIconColor = palette.text,
+                liquidGlassThemePreference = false,
+                liquidGlassKeyBlurRadiousPreference = 255,
+                keyboardTouchEffectTypePreference = "none",
+                customKeyBorderEnablePreference = false,
+            ),
         )
     }
 
@@ -349,6 +404,7 @@ data class ImePreferencesSnapshot(
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
                 liveConversionStartLength =
                     appPreference.live_conversion_start_length_preference ?: 1,
+                liveConversionCandidateYomiTextSize = appPreference.live_conversion_candidate_yomi_size,
                 showLiveConversionCandidateYomi =
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
@@ -443,6 +499,8 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_romaji_shift_conversion_preference,
                 isNgWordEnable = appPreference.ng_word_preference ?: true,
                 deleteKeyHighLight = appPreference.delete_key_high_light_preference ?: true,
+                customDirectInputReplaceComposingPreference =
+                    appPreference.custom_direct_input_replace_composing_preference,
                 customKeyboardSuggestionPreference =
                     appPreference.custom_keyboard_suggestion_preference ?: true,
                 userDictionaryPrefixMatchNumber =
@@ -458,14 +516,19 @@ data class ImePreferencesSnapshot(
                 candidateColumns = appPreference.candidate_column_preference,
                 candidateColumnsLandscape = appPreference.candidate_column_landscape_preference,
                 candidateTabVisibility = appPreference.candidate_tab_preference,
+                stabilizeCandidateStripHeightPreference =
+                    appPreference.stabilize_candidate_strip_height_preference,
                 symbolKeyboardFirstItem = appPreference.symbol_mode_preference,
                 defaultEmojiSkinTone = appPreference.default_emoji_skin_tone_preference,
                 isCustomKeyboardTwoWordsOutputEnable =
                     appPreference.custom_keyboard_two_words_output ?: true,
                 tenkeyQWERTYSwitchNumber =
                     appPreference.tenkey_qwerty_switch_number_layout ?: false,
+                independentMultiTouchEnabled = appPreference.independent_multi_touch_preference,
                 tenkeyUseThreeStateKeyboard =
                     appPreference.tenkey_use_three_state_keyboard_preference,
+                tenkeyNumberSymbolKeyGapDp =
+                    appPreference.tenkey_number_symbol_key_gap_preference,
                 tenkeySwitchNumberToQwertyNumberPreference =
                     appPreference.tenkey_switch_number_to_qwerty_number_preference,
                 tenkeyRestoreInputModeOnRestart =
@@ -619,82 +682,84 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_symbol_keymap_text_size ?: 9.0f,
                 qwertySpecialKeyTextSize = appPreference.qwerty_special_key_text_size ?: 12.0f,
                 qwertySpecialKeyIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f,
-                keyboardThemeMode = appPreference.theme_mode,
                 keyboardSkin = appPreference.keyboardSkin,
-                customThemeBgColor = appPreference.custom_theme_bg_color,
-                customThemeKeyColor = appPreference.custom_theme_key_color,
-                customThemeSpecialKeyColor = appPreference.custom_theme_special_key_color,
-                customThemeKeyTextColor = appPreference.custom_theme_key_text_color,
-                customThemeSpecialKeyTextColor = appPreference.custom_theme_special_key_text_color,
-                customThemeCandidateTextColor = appPreference.getCustomThemeCandidateTextColor(
-                    appPreference.custom_theme_key_text_color
-                ),
-                customThemeCandidateItemBgColor = appPreference.getCustomThemeCandidateItemBgColor(
-                    AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR
-                ),
-                customThemeCandidateItemPressedBgColor =
-                    appPreference.getCustomThemeCandidateItemPressedBgColor(
-                        customThemeCandidateItemPressedBgColorDefault
+                appearance = ImeKeyboardAppearance(
+                    keyboardThemeMode = appPreference.theme_mode,
+                    customThemeBgColor = appPreference.custom_theme_bg_color,
+                    customThemeKeyColor = appPreference.custom_theme_key_color,
+                    customThemeSpecialKeyColor = appPreference.custom_theme_special_key_color,
+                    customThemeKeyTextColor = appPreference.custom_theme_key_text_color,
+                    customThemeSpecialKeyTextColor = appPreference.custom_theme_special_key_text_color,
+                    customThemeCandidateTextColor = appPreference.getCustomThemeCandidateTextColor(
+                        appPreference.custom_theme_key_text_color
                     ),
-                customThemeCandidateEmptyPopupBgColor =
-                    appPreference.getCustomThemeCandidateEmptyPopupBgColor(
-                        appPreference.custom_theme_special_key_color
+                    customThemeCandidateItemBgColor = appPreference.getCustomThemeCandidateItemBgColor(
+                        AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR
                     ),
-                customThemeCandidateEmptyPopupTextColor =
-                    appPreference.getCustomThemeCandidateEmptyPopupTextColor(
+                    customThemeCandidateItemPressedBgColor =
+                        appPreference.getCustomThemeCandidateItemPressedBgColor(
+                            customThemeCandidateItemPressedBgColorDefault
+                        ),
+                    customThemeCandidateEmptyPopupBgColor =
+                        appPreference.getCustomThemeCandidateEmptyPopupBgColor(
+                            appPreference.custom_theme_special_key_color
+                        ),
+                    customThemeCandidateEmptyPopupTextColor =
+                        appPreference.getCustomThemeCandidateEmptyPopupTextColor(
+                            appPreference.custom_theme_special_key_text_color
+                        ),
+                    customThemeShortcutIconColor = appPreference.getCustomThemeShortcutIconColor(
                         appPreference.custom_theme_special_key_text_color
                     ),
-                customThemeShortcutIconColor = appPreference.getCustomThemeShortcutIconColor(
-                    appPreference.custom_theme_special_key_text_color
+                    liquidGlassThemePreference = appPreference.liquid_glass_preference,
+                    liquidGlassBlurRadiousPreference = appPreference.liquid_glass_blur_radius,
+                    liquidGlassKeyBlurRadiousPreference = appPreference.liquid_glass_key_alpha,
+                    keyboardTouchEffectTypePreference =
+                        appPreference.keyboard_touch_effect_type_preference,
+                    keyboardTouchEffectQualityPreference =
+                        appPreference.keyboard_touch_effect_quality_preference,
+                    suminagashiInkEffectPreference = appPreference.suminagashi_ink_effect_preference,
+                    suminagashiInkColorModePreference =
+                        appPreference.keyboard_touch_effect_color_mode_preference,
+                    suminagashiInkColorPreference = appPreference.keyboard_touch_effect_color_preference,
+                    keyboardTouchEffectColorModePreference =
+                        appPreference.keyboard_touch_effect_color_mode_preference,
+                    keyboardTouchEffectColorPreference = appPreference.keyboard_touch_effect_color_preference,
+                    keyboardTouchEffectPalettePreference =
+                        appPreference.keyboard_touch_effect_palette_preference,
+                    liquidInkDensityPreference =
+                        appPreference.keyboard_touch_effect_liquid_ink_density_preference,
+                    auroraInkDensityPreference =
+                        appPreference.keyboard_touch_effect_aurora_ink_density_preference,
+                    cinematicWaveColorModePreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference,
+                    cinematicWavePrimaryColorPreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference,
+                    cinematicWaveSecondaryColorPreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference,
+                    cinematicWaveSecondaryColorAutoPreference =
+                        appPreference
+                            .keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference,
+                    cinematicWaveTypePreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_type_preference,
+                    cinematicWaveOpacityPercentPreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference,
+                    cinematicWaveIntensityPercentPreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference,
+                    cinematicWaveMotionPreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_motion_preference,
+                    cinematicWaveTouchResponsePreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference,
+                    cinematicWaveQualityPreference =
+                        appPreference.keyboard_touch_effect_cinematic_wave_quality_preference,
+                    customKeyBorderEnablePreference = appPreference.custom_theme_border_enable,
+                    customKeyBorderEnableColor = appPreference.custom_theme_border_color,
+                    customComposingTextPreference = appPreference.custom_theme_input_color_enable,
+                    inputCompositionBackgroundColor = appPreference.custom_theme_pre_edit_bg_color,
+                    inputCompositionTextColor = appPreference.custom_theme_pre_edit_text_color,
+                    inputConversionBackgroundColor = appPreference.custom_theme_post_edit_bg_color,
+                    inputConversionTextColor = appPreference.custom_theme_post_edit_text_color,
                 ),
-                liquidGlassThemePreference = appPreference.liquid_glass_preference,
-                liquidGlassBlurRadiousPreference = appPreference.liquid_glass_blur_radius,
-                liquidGlassKeyBlurRadiousPreference = appPreference.liquid_glass_key_alpha,
-                keyboardTouchEffectTypePreference =
-                    appPreference.keyboard_touch_effect_type_preference,
-                keyboardTouchEffectQualityPreference =
-                    appPreference.keyboard_touch_effect_quality_preference,
-                suminagashiInkEffectPreference = appPreference.suminagashi_ink_effect_preference,
-                suminagashiInkColorModePreference =
-                    appPreference.keyboard_touch_effect_color_mode_preference,
-                suminagashiInkColorPreference = appPreference.keyboard_touch_effect_color_preference,
-                keyboardTouchEffectColorModePreference =
-                    appPreference.keyboard_touch_effect_color_mode_preference,
-                keyboardTouchEffectColorPreference = appPreference.keyboard_touch_effect_color_preference,
-                keyboardTouchEffectPalettePreference =
-                    appPreference.keyboard_touch_effect_palette_preference,
-                liquidInkDensityPreference =
-                    appPreference.keyboard_touch_effect_liquid_ink_density_preference,
-                auroraInkDensityPreference =
-                    appPreference.keyboard_touch_effect_aurora_ink_density_preference,
-                cinematicWaveColorModePreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference,
-                cinematicWavePrimaryColorPreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference,
-                cinematicWaveSecondaryColorPreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference,
-                cinematicWaveSecondaryColorAutoPreference =
-                    appPreference
-                        .keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference,
-                cinematicWaveTypePreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_type_preference,
-                cinematicWaveOpacityPercentPreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference,
-                cinematicWaveIntensityPercentPreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference,
-                cinematicWaveMotionPreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_motion_preference,
-                cinematicWaveTouchResponsePreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference,
-                cinematicWaveQualityPreference =
-                    appPreference.keyboard_touch_effect_cinematic_wave_quality_preference,
-                customKeyBorderEnablePreference = appPreference.custom_theme_border_enable,
-                customKeyBorderEnableColor = appPreference.custom_theme_border_color,
-                customComposingTextPreference = appPreference.custom_theme_input_color_enable,
-                inputCompositionBackgroundColor = appPreference.custom_theme_pre_edit_bg_color,
-                inputCompositionTextColor = appPreference.custom_theme_pre_edit_text_color,
-                inputConversionBackgroundColor = appPreference.custom_theme_post_edit_bg_color,
-                inputConversionTextColor = appPreference.custom_theme_post_edit_text_color,
                 sumireEnglishQwertyPreference =
                     appPreference.sumire_english_qwerty_preference,
                 conversionCandidatesRomajiEnablePreference =

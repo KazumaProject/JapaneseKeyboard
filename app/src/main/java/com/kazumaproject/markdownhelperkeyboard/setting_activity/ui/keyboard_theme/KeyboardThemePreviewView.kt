@@ -10,6 +10,7 @@ import com.google.android.material.color.MaterialColors
 import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.skin.SkinKeyRole
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 
 /** A non-interactive miniature. Cupertino uses the same drawables as the keyboard. */
@@ -29,8 +30,14 @@ class KeyboardThemePreviewView(context: Context, id: KeyboardSkinId) : View(cont
         else color(com.kazumaproject.core.R.color.keyboard_icon_color)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val keyboardDrawable = skin?.keyboardDrawable(resources)
-    private val keyDrawable = skin?.keyDrawable(resources)
-    private val labels = listOf("↶", "あ", "か", "さ", "⌫", "◀", "た", "な", "は", "▶", "記号", "ま", "や", "ら", "変換", "あa", "小", "わ", "。", "↵")
+    private val keyDrawables = SkinKeyRole.entries.associateWith { skin?.keyDrawable(resources, role = it) }
+    private val labels = listOf("↶", "あ", "か", "さ", "⌫", "◀", "た", "な", "は", "▶", "記号", "ま", "や", "ら", "変換", "あa", "小", "わ", "空白", "↵")
+
+    private fun keyRole(index: Int): SkinKeyRole = when (index) {
+        18 -> SkinKeyRole.SPACE
+        0, 4, 5, 9, 10, 14, 15, 16, 19 -> SkinKeyRole.MODIFIER
+        else -> SkinKeyRole.CHARACTER
+    }
 
     init { importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
 
@@ -58,7 +65,7 @@ class KeyboardThemePreviewView(context: Context, id: KeyboardSkinId) : View(cont
         paint.color = backgroundColor
         canvas.drawRoundRect(RectF(0f, 0f, 320f, 184f), 12f, 12f, paint)
         keyboardDrawable?.let { drawSkinDrawable(canvas, it, RectF(0f, 0f, 320f, 184f)) }
-        paint.color = textColor
+        paint.color = skin?.palette?.specialText ?: textColor
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = 12f
         listOf("あ", "ありがとう", "明日").forEachIndexed { index, label ->
@@ -68,6 +75,8 @@ class KeyboardThemePreviewView(context: Context, id: KeyboardSkinId) : View(cont
             val left = 6f + (index % 5) * 63f
             val top = 34f + (index / 5) * 37f
             val rect = RectF(left, top, left + 57f, top + 32f)
+            val role = keyRole(index)
+            val keyDrawable = keyDrawables[role]
             if (keyDrawable != null) {
                 drawSkinDrawable(canvas, keyDrawable, rect)
             } else {
@@ -81,7 +90,11 @@ class KeyboardThemePreviewView(context: Context, id: KeyboardSkinId) : View(cont
                 paint.style = Paint.Style.FILL
                 paint.alpha = 255
             }
-            paint.color = textColor
+            paint.color = when (role) {
+                SkinKeyRole.CHARACTER -> textColor
+                SkinKeyRole.MODIFIER -> skin?.palette?.specialText ?: textColor
+                SkinKeyRole.SPACE -> skin?.palette?.spaceText ?: textColor
+            }
             paint.textSize = if (label.length > 1) 11f else 15f
             val baseline = rect.centerY() - (paint.ascent() + paint.descent()) / 2f
             canvas.drawText(label, rect.centerX(), baseline, paint)

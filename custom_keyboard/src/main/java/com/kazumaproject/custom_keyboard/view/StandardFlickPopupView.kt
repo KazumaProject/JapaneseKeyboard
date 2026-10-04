@@ -21,6 +21,9 @@ import androidx.core.text.inSpans
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import kotlin.math.roundToInt
@@ -29,7 +32,7 @@ import kotlin.math.roundToInt
  * フリック入力時に表示される単一の円形ポップアップビュー。
  * 内部のテキストはコントローラーによって動的に更新される。
  */
-class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
+class StandardFlickPopupView(context: Context) : AppCompatTextView(context), KeyboardFontAware {
 
     var viewSize = dpToPx(72) // ポップアップの直径
         private set
@@ -77,6 +80,7 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     }
 
     init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
         width = viewSize
         height = viewSize
         gravity = Gravity.CENTER
@@ -84,6 +88,11 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         maxLines = 4
         setLineSpacing(0f, 0.8f)
         background = backgroundDrawable
+    }
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        KeyboardFontApplicator.apply(this, snapshot)
     }
 
     /**

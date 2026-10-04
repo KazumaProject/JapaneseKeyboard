@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 /** Moves the existing candidate views, retaining their adapters, listeners and autofill children. */
 internal class CandidateSurfaceHost(
@@ -16,13 +18,27 @@ internal class CandidateSurfaceHost(
     private var origins = emptyList<Origin>()
     private var backgrounds = emptyList<Pair<View, android.graphics.drawable.Drawable?>>()
     private var colors = CandidatePanelColors.resolve(tabs.context)
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     fun setColors(value: CandidatePanelColors) { colors = value; refreshAppearance() }
+    private var panelBackgroundAlpha = 255
+    fun setPanelBackgroundAlpha(value: Int) {
+        val alpha = value.coerceIn(0, 255)
+        if (panelBackgroundAlpha == alpha) return
+        panelBackgroundAlpha = alpha
+        refreshAppearance()
+    }
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.applyToKeyboardViews(tabs, snapshot)
+    }
     private var tabViews = emptyList<View?>()
     private var tabPadding = emptyList<Pair<View, android.graphics.Rect>>()
     private var scrollbars = false to false
     private var tabMode = 0
     private var tabGravity = 0
     private var tabIndicator: android.graphics.drawable.Drawable? = null
+    private var tabRippleColor: android.content.res.ColorStateList? = null
+    private val classicSurfaceBackgrounds = java.util.WeakHashMap<View, android.graphics.drawable.Drawable>()
     private val spacing = object : androidx.recyclerview.widget.RecyclerView.ItemDecoration() {
         override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: androidx.recyclerview.widget.RecyclerView, state: androidx.recyclerview.widget.RecyclerView.State) {
             val gap = (4 * view.resources.displayMetrics.density).toInt()
@@ -84,14 +100,13 @@ internal class CandidateSurfaceHost(
 
     private fun styleSurface() {
         scrollbars = candidates.isVerticalScrollBarEnabled to candidates.isHorizontalScrollBarEnabled
-        backgrounds = listOf(toolbar, tabs, strip).map { it to it.background }
+        backgrounds = listOf(toolbar, tabs, strip, fullCandidates).map { it to it.background }
         (candidates as? androidx.recyclerview.widget.RecyclerView)?.addItemDecoration(spacing)
         (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
             tabMode = layout.tabMode
             tabGravity = layout.tabGravity
-            layout.tabMode = com.google.android.material.tabs.TabLayout.MODE_SCROLLABLE
-            layout.tabGravity = com.google.android.material.tabs.TabLayout.GRAVITY_START
             tabIndicator = layout.tabSelectedIndicator
+            tabRippleColor = CupertinoClassicCandidateChrome.originalTabRippleColor(layout)
             tabViews = (0 until layout.tabCount).map { layout.getTabAt(it)?.customView }
         }
         refreshAppearance()
@@ -101,9 +116,33 @@ internal class CandidateSurfaceHost(
         if (!attached) return
         refreshToolbarLayout()
         backgrounds.forEach { (view, _) ->
-            if ((view.background as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            if (colors.cupertinoClassic) {
+                val chrome = CupertinoClassicCandidateChrome
+                val background = when (view) {
+                    toolbar -> chrome.toolbarBackground(view.resources)
+                    tabs -> chrome.tabsBackground().apply { alpha = panelBackgroundAlpha }
+                    else -> chrome.panelBackground(alpha = panelBackgroundAlpha)
+                }
+                view.background = background
+                classicSurfaceBackgrounds[view] = background
+            } else {
+                val previousClassicBackground = classicSurfaceBackgrounds.remove(view)
+                if ((previousClassicBackground != null && view.background === previousClassicBackground) ||
+                    (view.background as? android.graphics.drawable.ColorDrawable)?.color?.let {
+                        it != android.graphics.Color.TRANSPARENT
+                    } == true
+                ) {
+                    view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
+            }
         }
         val tabLayout = tabs as? com.google.android.material.tabs.TabLayout ?: return
+        val classicTabsFit = colors.cupertinoClassic && tabLayout.tabCount <= 3
+        tabLayout.tabMode = if (classicTabsFit) com.google.android.material.tabs.TabLayout.MODE_FIXED
+        else com.google.android.material.tabs.TabLayout.MODE_SCROLLABLE
+        tabLayout.tabGravity = if (classicTabsFit) com.google.android.material.tabs.TabLayout.GRAVITY_FILL
+        else com.google.android.material.tabs.TabLayout.GRAVITY_START
+        tabLayout.tabRippleColor = if (colors.cupertinoClassic) null else tabRippleColor
         val ink = colors.text
         val accent = colors.selection
         if ((tabLayout.tabSelectedIndicator as? android.graphics.drawable.ColorDrawable)?.color != android.graphics.Color.TRANSPARENT) tabLayout.setSelectedTabIndicator(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
@@ -128,11 +167,19 @@ internal class CandidateSurfaceHost(
                 gravity = android.view.Gravity.CENTER
                 setPadding(0, 0, 0, 0)
                 layoutParams = ViewGroup.LayoutParams(-1, -1)
-                setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()), intArrayOf(colors.selectionText, ink)))
-                background = android.graphics.drawable.StateListDrawable().apply {
-                    addState(intArrayOf(android.R.attr.state_selected), android.graphics.drawable.GradientDrawable().apply { setColor(accent); cornerRadius = 10 * resources.displayMetrics.density })
-                    addState(intArrayOf(), android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                setTextColor(android.content.res.ColorStateList(
+                    arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf(android.R.attr.state_activated), intArrayOf()),
+                    intArrayOf(colors.selectionText, colors.selectionText, ink),
+                ))
+                background = if (colors.cupertinoClassic) {
+                    CupertinoClassicCandidateChrome.tabBackground(resources)
+                } else {
+                    android.graphics.drawable.StateListDrawable().apply {
+                        addState(intArrayOf(android.R.attr.state_selected), android.graphics.drawable.GradientDrawable().apply { setColor(accent); cornerRadius = 10 * resources.displayMetrics.density })
+                        addState(intArrayOf(), android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                    }
                 }
+                KeyboardFontApplicator.apply(this, keyboardFontSnapshot)
             }
         }
     }
@@ -147,6 +194,7 @@ internal class CandidateSurfaceHost(
             layout.setSelectedTabIndicator(tabIndicator)
             layout.tabMode = tabMode
             layout.tabGravity = tabGravity
+            layout.tabRippleColor = tabRippleColor
         }
         tabPadding.forEach { (view, padding) -> view.setPadding(padding.left, padding.top, padding.right, padding.bottom) }
         tabPadding = emptyList()

@@ -491,7 +491,10 @@ private fun configureTenKeyPreview(
             textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f
         )
     )
-    tenKey.setUseThreeStateKeyboard(appPreference.tenkey_use_three_state_keyboard_preference)
+    tenKey.setUseThreeStateKeyboard(
+        appPreference.tenkey_use_three_state_keyboard_preference,
+        appPreference.tenkey_number_symbol_key_gap_preference,
+    )
     tenKey.setUseQwertyNumberWhenThreeStateOff(
         appPreference.tenkey_switch_number_to_qwerty_number_preference
     )
