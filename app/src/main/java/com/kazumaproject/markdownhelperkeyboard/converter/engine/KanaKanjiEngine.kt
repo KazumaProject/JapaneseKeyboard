@@ -24,6 +24,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
@@ -74,7 +75,6 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.ObjectInputStream
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -4643,67 +4643,7 @@ class KanaKanjiEngine {
 
     private fun createCandidatesForDate(
         calendar: Calendar, input: String
-    ): List<Candidate> {
-        val formatter1 = SimpleDateFormat("M/d", Locale.getDefault())
-        val formatter2 = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-        val formatter3 = SimpleDateFormat("M月d日(EEE)", Locale.getDefault())
-        val formatterReiwa =
-            "令和${calendar.get(Calendar.YEAR) - 2018}年${calendar.get(Calendar.MONTH) + 1}月${
-                calendar.get(Calendar.DAY_OF_MONTH)
-            }日"
-        val formatterR06 = "R${calendar.get(Calendar.YEAR) - 2018}/${
-            String.format(
-                Locale.getDefault(), "%02d", calendar.get(Calendar.MONTH) + 1
-            )
-        }/${String.format(Locale.getDefault(), "%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
-        val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(calendar.time)
-
-        return listOf(
-            Candidate(
-                string = formatter1.format(calendar.time),  // M/d format
-                type = 14,
-                length = input.length.toUByte(),
-                score = 7000,
-                leftId = 1851,
-                rightId = 1851
-            ), Candidate(
-                string = formatter2.format(calendar.time),  // yyyy/MM/dd format
-                type = 14,
-                length = input.length.toUByte(),
-                score = 7000,
-                leftId = 1851,
-                rightId = 1851
-            ), Candidate(
-                string = formatter3.format(calendar.time),  // M月d日(曜日) format
-                type = 14,
-                length = input.length.toUByte(),
-                score = 7000,
-                leftId = 1851,
-                rightId = 1851
-            ), Candidate(
-                string = formatterReiwa,  // 令和 format
-                type = 14,
-                length = input.length.toUByte(),
-                score = 7000,
-                leftId = 1851,
-                rightId = 1851
-            ), Candidate(
-                string = formatterR06,  // Rxx/MM/dd format
-                type = 14,
-                length = input.length.toUByte(),
-                score = 7000,
-                leftId = 1851,
-                rightId = 1851
-            ), Candidate(
-                string = dayOfWeek,  // 曜日 format
-                type = 14,
-                length = input.length.toUByte(),
-                score = 7000,
-                leftId = 1851,
-                rightId = 1851
-            )
-        )
-    }
+    ): List<Candidate> = DateCandidateProvider.provide(calendar, input)
 
     /**
      * 4桁の数字を時刻の候補に変換する。
