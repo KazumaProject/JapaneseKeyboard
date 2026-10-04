@@ -101,6 +101,116 @@ class CandidateSurfaceHostTest {
         assertEquals(originalGravity, tabs.tabGravity)
     }
 
+    @Test fun floatingClassicUsesSegmentedTabsAndClearsClassicSurfacesOnThemeChange() {
+        val context = android.view.ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val root = FrameLayout(context)
+        val toolbar = FrameLayout(context)
+        val tabs = com.google.android.material.tabs.TabLayout(context)
+        listOf("予測", "変換", "英数カナ").forEach { tabs.addTab(tabs.newTab().setText(it)) }
+        val strip = FrameLayout(context)
+        val candidates = androidx.recyclerview.widget.RecyclerView(context)
+        strip.addView(candidates)
+        val full = View(context)
+        listOf(toolbar, tabs, strip, full).forEach { root.addView(it) }
+        val originalBackgrounds = listOf(toolbar.background, tabs.background, strip.background)
+        val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
+
+        host.attach(LinearLayout(context))
+        host.setColors(CandidatePanelColors.resolve(context, cupertinoClassic = true))
+
+        assertEquals(com.google.android.material.tabs.TabLayout.MODE_FIXED, tabs.tabMode)
+        assertEquals(com.google.android.material.tabs.TabLayout.GRAVITY_FILL, tabs.tabGravity)
+        assertTrue(toolbar.background is android.graphics.drawable.GradientDrawable)
+        assertEquals(CupertinoClassicCandidateChrome.panelColor,
+            (tabs.background as android.graphics.drawable.ColorDrawable).color)
+        assertEquals(CupertinoClassicCandidateChrome.panelColor,
+            (strip.background as android.graphics.drawable.ColorDrawable).color)
+
+        host.setColors(CandidatePanelColors.resolve(context))
+
+        assertEquals(com.google.android.material.tabs.TabLayout.MODE_SCROLLABLE, tabs.tabMode)
+        assertEquals(com.google.android.material.tabs.TabLayout.GRAVITY_START, tabs.tabGravity)
+        listOf(toolbar, tabs, strip).forEach { view ->
+            assertEquals(android.graphics.Color.TRANSPARENT,
+                (view.background as android.graphics.drawable.ColorDrawable).color)
+        }
+
+        host.setColors(CandidatePanelColors.resolve(context, cupertinoClassic = true))
+        val otherSkinBackground = android.graphics.drawable.GradientDrawable().apply {
+            setColor(0xff334455.toInt())
+        }
+        toolbar.background = otherSkinBackground
+        host.setColors(CandidatePanelColors.resolve(context))
+        assertSame(otherSkinBackground, toolbar.background)
+
+        host.detach()
+        listOf(toolbar, tabs, strip).forEachIndexed { index, view ->
+            assertSame(originalBackgrounds[index], view.background)
+        }
+    }
+
+    @Test fun floatingClassicThemeRoundTripKeepsDockedTabSnapshot() {
+        val context = android.view.ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val root = FrameLayout(context)
+        val toolbar = FrameLayout(context)
+        val tabs = com.google.android.material.tabs.TabLayout(context)
+        listOf("予測", "変換", "英数カナ").forEach { tabs.addTab(tabs.newTab().setText(it)) }
+        val originalRipple = android.content.res.ColorStateList.valueOf(0x33445566)
+        tabs.tabRippleColor = originalRipple
+        val strip = FrameLayout(context)
+        val candidates = androidx.recyclerview.widget.RecyclerView(context)
+        strip.addView(candidates)
+        val full = View(context)
+        listOf(toolbar, tabs, strip, full).forEach { root.addView(it) }
+        val originalMode = tabs.tabMode
+        val originalGravity = tabs.tabGravity
+        CupertinoClassicCandidateChrome.applyTabs(tabs)
+        val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
+
+        host.attach(LinearLayout(context))
+        host.setColors(CandidatePanelColors.resolve(context, cupertinoClassic = true))
+        host.setColors(CandidatePanelColors.resolve(context))
+        assertSame(originalRipple, tabs.tabRippleColor)
+        host.setColors(CandidatePanelColors.resolve(context, cupertinoClassic = true))
+        assertNull(tabs.tabRippleColor)
+        host.detach()
+        CupertinoClassicCandidateChrome.restoreTabs(tabs)
+
+        assertEquals(originalMode, tabs.tabMode)
+        assertEquals(originalGravity, tabs.tabGravity)
+        assertSame(originalRipple, tabs.tabRippleColor)
+    }
+
+    @Test fun relocatedClassicCandidatePanelsKeepLiquidGlassTransparencyWhenRefreshed() {
+        val context = android.view.ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val root = FrameLayout(context)
+        val toolbar = FrameLayout(context)
+        val tabs = com.google.android.material.tabs.TabLayout(context)
+        val strip = FrameLayout(context)
+        val candidates = androidx.recyclerview.widget.RecyclerView(context)
+        strip.addView(candidates)
+        val full = View(context)
+        listOf(toolbar, tabs, strip, full).forEach { root.addView(it) }
+        val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
+
+        host.setColors(CandidatePanelColors.resolve(context, cupertinoClassic = true))
+        host.setPanelBackgroundAlpha(0)
+        host.attach(LinearLayout(context))
+        host.refreshAppearance()
+
+        assertEquals(0, (tabs.background as android.graphics.drawable.ColorDrawable).alpha)
+        assertEquals(0, (strip.background as android.graphics.drawable.ColorDrawable).alpha)
+        assertEquals(0, (full.background as android.graphics.drawable.ColorDrawable).alpha)
+        assertEquals(255, (toolbar.background as android.graphics.drawable.GradientDrawable).alpha)
+
+        host.setPanelBackgroundAlpha(255)
+        assertEquals(255, (full.background as android.graphics.drawable.ColorDrawable).alpha)
+        host.detach()
+    }
+
     @Test fun movesAllExistingViewsAndRestoresOriginalOrderAndParameters() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val root = FrameLayout(context)

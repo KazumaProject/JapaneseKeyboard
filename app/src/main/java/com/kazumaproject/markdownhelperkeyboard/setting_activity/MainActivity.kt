@@ -29,6 +29,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
+import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,6 +45,8 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var appPreferenceProvider: Provider<AppPreference>
+    @Inject
+    lateinit var localFontRepository: LocalFontRepository
     private lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
@@ -76,9 +79,14 @@ class MainActivity : AppCompatActivity() {
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
         R.id.candidateHeightDefaultsFragment,
+        R.id.localFontSettingsFragment,
     )
-    private val destinationsWithOwnToolbar =
-        destinationsWithoutBottomNavigation + R.id.shortcutToolbarSizeSettingFragment
+    private val destinationsWithOwnToolbar = setOf(
+        R.id.candidateViewHeightSettingFragment,
+        R.id.candidateHeightLandscapeSettingFragment,
+        R.id.candidateHeightDefaultsFragment,
+        R.id.shortcutToolbarSizeSettingFragment,
+    )
     private val destinationsWithoutSharedActionBar =
         destinationsWithOwnToolbar + R.id.enableKeyboardFragment
 
@@ -116,6 +124,7 @@ class MainActivity : AppCompatActivity() {
                     initializeSettingsContentIfSafe()
                 }
             }
+            localFontRepository.loadIfNeeded()
         }
     }
 
@@ -162,19 +171,16 @@ class MainActivity : AppCompatActivity() {
                 .commitNow()
         }
         binding = ActivityMainBinding.inflate(layoutInflater)
-        // The ActionBar is outside this root. Reserve its height along with the
-        // system bars, then remove those insets before dispatching to children.
+        // AppCompat's ActionBarOverlayLayout includes the visible ActionBar in the
+        // content insets. Apply those insets once, then consume them for descendants.
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or
                     WindowInsetsCompat.Type.displayCutout(),
             )
-            val actionBarHeight = supportActionBar
-                ?.takeIf { it.isShowing }
-                ?.height ?: 0
             view.updatePadding(
                 left = bars.left,
-                top = bars.top + actionBarHeight,
+                top = bars.top,
                 right = bars.right,
                 bottom = bars.bottom,
             )
@@ -189,7 +195,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         // The content can be attached after the decor's first inset dispatch.
         binding.root.doOnAttach { root ->
-            root.post { applyCurrentWindowInsets() }
+            root.post { ViewCompat.requestApplyInsets(root) }
         }
 
         mainNavController = findMainNavController()
@@ -287,14 +293,6 @@ class MainActivity : AppCompatActivity() {
             supportActionBar?.hide()
         } else {
             supportActionBar?.show()
-        }
-        applyCurrentWindowInsets()
-    }
-
-    private fun applyCurrentWindowInsets() {
-        if (!::binding.isInitialized) return
-        ViewCompat.getRootWindowInsets(binding.root)?.let { insets ->
-            ViewCompat.dispatchApplyWindowInsets(binding.root, insets)
         }
     }
 

@@ -24,7 +24,7 @@ internal class CupertinoSkin(override val id: KeyboardSkinId) : KeyboardSkin {
             cornerRadii = floatArrayOf(radius, radius, radius, radius, bottom, bottom, bottom, bottom)
         }
 
-    override fun keyDrawable(resources: Resources, qwerty: Boolean): Drawable {
+    override fun keyDrawable(resources: Resources, qwerty: Boolean, role: SkinKeyRole): Drawable {
         val radius = (if (qwerty) 8f else 12.5f) * resources.displayMetrics.density
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), CupertinoSurfaceDrawable(palette.pressed, radius))
@@ -84,10 +84,11 @@ internal class CupertinoSkin(override val id: KeyboardSkinId) : KeyboardSkin {
         CupertinoSurfaceDrawable(palette.key, 10f * resources.displayMetrics.density,
             variationIllumination = id == KeyboardSkinId.CUPERTINO_DARK)
 
-    // Direct display timestamps target approximately 75 ms after event dispatch.
-    // The timer excludes Android window/compositor presentation latency.
-    // This is a visual hold only: gesture ownership and text commits finish immediately.
+    // QWERTY popups keep their existing visual hold; the timer excludes Android
+    // window/compositor latency. Gesture ownership and commits finish immediately.
     override val popupReleaseDelayMillis: Long = 34L
+    // Standard flick uses the same 34 ms budget for a fade/scale exit animation.
+    override val popupReleaseAnimationMillis: Long = 34L
     override val longPressLabelColor: Int =
         if (id == KeyboardSkinId.CUPERTINO_DARK) 0xff545454.toInt() else 0xff737373.toInt()
     override val longPressLabelFadeMillis: Long = 300L

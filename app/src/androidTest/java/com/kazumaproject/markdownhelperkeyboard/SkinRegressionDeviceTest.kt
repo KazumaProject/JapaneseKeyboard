@@ -75,13 +75,14 @@ class SkinRegressionDeviceTest {
         var navigationInsets = android.graphics.Insets.NONE
         val defaultPixels = mutableMapOf<String, Pair<Rect, IntArray>>()
         val defaultCandidateGeometry = mutableMapOf<String, String>()
-        val skins = (args.getString("skins") ?: "default,cupertino_light,cupertino_dark,default").split(',')
+        val skins = (args.getString("skins") ?: "default,cupertino_light,cupertino_dark,cupertino_classic,default").split(',')
         val floating = args.getString("floating") == "true"
         val symbolRootId = if (floating) "floating_symbol_keyboard" else "keyboard_symbol_view"
         val landscape = args.getString("rotation") == "landscape"
         val large = args.getString("layoutSize") == "large"
         val columns = args.getString("columns") ?: "2"
         val tabs = args.getString("tabs") == "true"
+        val integratedShortcuts = args.getString("integratedShortcuts") != "false"
         val candidateHeight = args.getString("candidateHeight")?.toInt() ?: if(large)150 else 110
         val candidateEmptyHeight = args.getString("candidateEmptyHeight")?.toInt() ?: if(large)90 else 60
         val keyboards = (args.getString("keyboards") ?: "TENKEY,QWERTY").split(',')
@@ -107,9 +108,13 @@ class SkinRegressionDeviceTest {
             if (name.endsWith("composing") && name.startsWith("TENKEY") && !floating) {
                 val input = all.first { it.isVisibleToUser && it.viewIdResourceName == "android:id/inputArea" }.let(::bounds)
                 val candidates = all.filter { it.isVisibleToUser && it.viewIdResourceName == "${ctx.packageName}:id/suggestion_item_text_view" }.map(::bounds)
-                row.put("candidateRows", candidates.map { it.centerY() }.distinct().size)
+                val candidateRows = candidates.map { it.centerY() }.sorted().fold(mutableListOf<Int>()) { rows, centerY ->
+                    if (rows.isEmpty() || centerY - rows.last() > 2) rows.add(centerY)
+                    rows
+                }
+                row.put("candidateRows", candidateRows.size)
                 row.put("candidateBounds", JSONArray(candidates.map { JSONArray(listOf(it.left,it.top,it.right,it.bottom)) }))
-                check(candidates.map { it.centerY() }.distinct().size == columns.toInt()) { "Expected $columns candidate rows: $candidates" }
+                check(candidateRows.size == columns.toInt()) { "Expected $columns candidate rows: $candidates" }
                 check(candidates.isNotEmpty() && candidates.all { it.top >= input.top && it.bottom <= bounds(requireNotNull(visibleRoot)).top }) { "Cupertino candidates clipped: $candidates / $input" }
             }
             if (name.contains("cupertino") && name.endsWith("symbol-category")) {
@@ -126,14 +131,35 @@ class SkinRegressionDeviceTest {
                 check((tab != null) == tabs) { "Candidate tab visibility differs from preference" }
                 if (tab != null && name.contains("cupertino")) {
                     val area = bounds(tab)
-                    val selected = if (name.contains("cupertino_dark")) 0xff0091ff.toInt() else 0xff0088ff.toInt()
-                    val unselected = if (name.contains("cupertino_dark")) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+                    val selected = when {
+                        name.contains("cupertino_dark") -> 0xff0091ff.toInt()
+                        name.contains("cupertino_classic") -> 0xff626975.toInt()
+                        else -> 0xff0088ff.toInt()
+                    }
+                    val unselected = when {
+                        name.contains("cupertino_dark") -> android.graphics.Color.WHITE
+                        name.contains("cupertino_classic") -> 0xff25282d.toInt()
+                        else -> android.graphics.Color.BLACK
+                    }
                     var selectedPixels=0; var unselectedPixels=0
                     for (y in area.top until area.bottom) for (x in area.left until area.right) {
                         when (bmp.getPixel(x,y)) { selected -> selectedPixels++; unselected -> unselectedPixels++ }
                     }
                     row.put("selectedTabPixels",selectedPixels).put("unselectedTabPixels",unselectedPixels)
                     check(selectedPixels>20 && unselectedPixels>20) { "Tab colors stale: $selectedPixels / $unselectedPixels" }
+                    if (name.contains("cupertino_classic")) {
+                        val panel = bounds(all.first { it.isVisibleToUser && it.viewIdResourceName == "${ctx.packageName}:id/suggestionView_parent" })
+                        row.put("classicTabToPanelGapPx", panel.top - area.bottom)
+                        check(panel.top == area.bottom) {
+                            "Cupertino Classic candidate panel must start at the tab edge: $area / $panel"
+                        }
+                        if (candidateHeight < com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.minimumDockedStripHeightDp) {
+                            val minHeightPx = (com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome.minimumDockedStripHeightDp * ctx.resources.displayMetrics.density).toInt()
+                            check(panel.height() >= minHeightPx) {
+                                "Cupertino Classic candidate panel clips below its content minimum: $panel / min=$minHeightPx"
+                            }
+                        }
+                    }
                 }
             }
             if (!floating && (name.endsWith("empty") || name.endsWith("composing"))) {
@@ -141,7 +167,7 @@ class SkinRegressionDeviceTest {
                 val geometry = listOf("inputArea", rootId, "suggestionView_parent", "suggestion_recycler_view", "candidate_tab_layout")
                     .joinToString { "$it=${row.optJSONArray(it)}" }
                 if (name.contains("-default-")) defaultCandidateGeometry.putIfAbsent(key, geometry)
-                else defaultCandidateGeometry[key]?.let { baseline ->
+                else if (!name.contains("cupertino_classic")) defaultCandidateGeometry[key]?.let { baseline ->
                     check(geometry == baseline) { "Theme changed candidate spacing: $key\nDefault: $baseline\nSkin: $geometry" }
                 }
             }
@@ -180,7 +206,7 @@ class SkinRegressionDeviceTest {
                 .putInt("candidate_view_height_dp_landscape_preference",candidateHeight)
                 .putInt("candidate_view_empty_height_dp_landscape_preference",candidateEmptyHeight)
                 .putBoolean("shortcut_toolbar_visibility_preference",true)
-                .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",true)
+                .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference",integratedShortcuts)
                 .putBoolean("clipboard_preview_enable_preference",false).putBoolean("clipboard_history_preference",false)
                 .putBoolean("live_conversion_preference",false).putBoolean("enable_ai_conversion_zenz_preference",false)
                 .putBoolean("learn_dictionary_preference",false)

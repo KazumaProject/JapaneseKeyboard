@@ -1,7 +1,8 @@
 package com.kazumaproject.custom_keyboard.view
 
-/** Input surface policy; custom layouts retain their intentional untouchable gaps by default. */
+/** Controls which parts of a keyboard surface can be assigned to the nearest key. */
 enum class KeyHitTestMode {
     KEY_BOUNDS,
-    NEAREST_KEY
+    NEAREST_KEY,
+    NEAREST_KEY_IN_KEY_CELLS
 }

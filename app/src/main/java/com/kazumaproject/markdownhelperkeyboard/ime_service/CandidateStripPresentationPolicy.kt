@@ -25,6 +25,39 @@ data class CandidateStripPresentation(
     val showIntegratedShortcutEntry: Boolean
 )
 
+internal fun resolveDockedCandidateChromeHeightPx(
+    presentation: CandidateStripPresentation,
+    candidateTabHeightPx: Int,
+    shortcutToolbarHeightPx: Int
+): Int = maxOf(
+    resolveCandidateTabOffsetPx(presentation, candidateTabHeightPx),
+    if (presentation.showIndependentShortcutToolbar) {
+        shortcutToolbarHeightPx.coerceAtLeast(0)
+    } else {
+        0
+    }
+)
+
+/** Reserve drawing space independently from the visible keyboard and touchable region. */
+internal fun resolveDockedCandidateContainerHeightPx(
+    keyboardBodyHeightPx: Int,
+    emptyCandidateHeightPx: Int,
+    activeCandidateHeightPx: Int,
+    candidateTabHeightPx: Int,
+    shortcutToolbarHeightPx: Int,
+    bottomInsetPx: Int
+): Int = keyboardBodyHeightPx + bottomInsetPx + maxOf(
+    emptyCandidateHeightPx + shortcutToolbarHeightPx,
+    activeCandidateHeightPx + candidateTabHeightPx
+)
+
+/** Stable insets prevent candidate visibility changes from resizing or panning the editor. */
+internal fun resolveDockedCandidateInsetsTopPx(
+    stabilizeHeight: Boolean,
+    reservedTopPx: Int,
+    visibleTopPx: Int
+): Int = if (stabilizeHeight) reservedTopPx else visibleTopPx
+
 internal fun resolveCandidateTabOffsetPx(
     presentation: CandidateStripPresentation,
     candidateTabHeightPx: Int
@@ -38,8 +71,9 @@ internal fun resolveCandidateStripHeightDp(
 
 internal fun isCandidateStripActive(
     candidatesShown: Boolean,
-    inputStringEmpty: Boolean
-): Boolean = candidatesShown && !inputStringEmpty
+    inputStringEmpty: Boolean,
+    suggestionsSuppressed: Boolean = false
+): Boolean = candidatesShown && !inputStringEmpty && !suggestionsSuppressed
 
 object CandidateStripPresentationPolicy {
 

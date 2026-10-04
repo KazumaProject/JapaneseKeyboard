@@ -444,6 +444,12 @@
             android:title="@string/preference_title_num_columns_conversion_landscape" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="hide_candidate_password_preference"
             android:summaryOff="@string/hide_candidate_password_summary_off"
@@ -561,6 +567,14 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/independent_multi_touch_category_title">
+        <SwitchPreferenceCompat
+            android:key="independent_multi_touch_preference"
+            android:defaultValue="false"
+            android:title="@string/independent_multi_touch_title"
+            android:summary="@string/independent_multi_touch_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_function_title">
 
         <ListPreference
@@ -655,6 +669,16 @@
             android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <SeekBarPreference
+            android:defaultValue="14"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:key="live_conversion_candidate_yomi_size_preference"
+            android:max="24"
+            android:summary="@string/live_conversion_candidate_yomi_size_summary"
+            android:title="@string/live_conversion_candidate_yomi_size_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
