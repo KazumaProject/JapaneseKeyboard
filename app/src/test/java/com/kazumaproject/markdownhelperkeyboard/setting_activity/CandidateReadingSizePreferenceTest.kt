@@ -16,6 +16,7 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 class CandidateReadingSizePreferenceTest {
     private val context = ContextThemeWrapper(
         ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard
@@ -37,11 +38,13 @@ class CandidateReadingSizePreferenceTest {
             val keys = (0 until group.preferenceCount).map { group.getPreference(it).key }
             assertEquals(keys.indexOf(show.key) + 1, keys.indexOf(size.key))
             assertEquals(show.key, size.dependency)
-            assertEquals(8, size.min)
-            assertEquals(24, size.max)
-            size.value = 20
+            assertEquals(1, size.min)
+            com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits.configurePreference(context, size)
+            val maximum = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits.maximumSp(context)
+            assertEquals(maximum, size.max)
+            size.value = maximum
             AppPreference.init(context)
-            assertEquals(20, AppPreference.live_conversion_candidate_yomi_size)
+            assertEquals(maximum, AppPreference.live_conversion_candidate_yomi_size)
         }
     }
 
@@ -53,6 +56,6 @@ class CandidateReadingSizePreferenceTest {
         prefs.edit().putInt(AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY, 99).commit()
         assertEquals(24, AppPreference.live_conversion_candidate_yomi_size)
         prefs.edit().putInt(AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY, 1).commit()
-        assertEquals(8, AppPreference.live_conversion_candidate_yomi_size)
+        assertEquals(1, AppPreference.live_conversion_candidate_yomi_size)
     }
 }
