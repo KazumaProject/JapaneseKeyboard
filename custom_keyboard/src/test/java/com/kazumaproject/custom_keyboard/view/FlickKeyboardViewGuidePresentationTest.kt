@@ -3,6 +3,8 @@ package com.kazumaproject.custom_keyboard.view
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -22,12 +24,12 @@ class FlickKeyboardViewGuidePresentationTest {
 
         view.setFlickGuideEnabled(enabled = false, allowMultiCharacterLabels = true)
         view.setKeyboard(layout)
-        assertNotNull(view.findButtonWithText("ABC"))
-        assertNull(view.findButtonWithText("a"))
+        assertNotNull(view.findInputButtonWithText("ABC", layout))
+        assertNull(view.findInputButtonWithText("a", layout))
 
         view.setFlickGuideEnabled(enabled = true, allowMultiCharacterLabels = true)
-        assertNotNull(view.findButtonWithText("a"))
-        assertNull(view.findButtonWithText("ABC"))
+        assertNotNull(view.findInputButtonWithText("a", layout))
+        assertNull(view.findInputButtonWithText("ABC", layout))
     }
 
     @Test
@@ -37,11 +39,11 @@ class FlickKeyboardViewGuidePresentationTest {
 
         view.setFlickGuideEnabled(enabled = false, allowMultiCharacterLabels = true)
         view.setKeyboard(layout)
-        assertNotNull(view.findButtonWithText("1\n☆♪→"))
+        assertNotNull(view.findInputButtonWithText("1\n☆♪→", layout))
 
         view.setFlickGuideEnabled(enabled = true, allowMultiCharacterLabels = true)
-        assertNotNull(view.findButtonWithText("1"))
-        assertNull(view.findButtonWithText("1\n☆♪→"))
+        assertNotNull(view.findInputButtonWithText("1", layout))
+        assertNull(view.findInputButtonWithText("1\n☆♪→", layout))
     }
 
     @Test
@@ -49,10 +51,11 @@ class FlickKeyboardViewGuidePresentationTest {
         val view = createView()
 
         view.setFlickGuideEnabled(enabled = true, allowMultiCharacterLabels = false)
-        view.setKeyboard(createSumireLayout(KeyboardInputMode.ENGLISH))
+        val layout = createSumireLayout(KeyboardInputMode.ENGLISH)
+        view.setKeyboard(layout)
 
-        assertNotNull(view.findButtonWithText("ABC"))
-        assertNull(view.findButtonWithText("a"))
+        assertNotNull(view.findInputButtonWithText("ABC", layout))
+        assertNull(view.findInputButtonWithText("a", layout))
     }
 
     private fun createView(): FlickKeyboardView {
@@ -72,8 +75,10 @@ class FlickKeyboardViewGuidePresentationTest {
             inputStyle = "default"
         )
 
-    private fun FlickKeyboardView.findButtonWithText(text: String): AutoSizeButton? {
+    private fun FlickKeyboardView.findInputButtonWithText(text: String, layout: KeyboardLayout): AutoSizeButton? {
         for (index in 0 until childCount) {
+            val key = (layout.items[index] as? KeyItem)?.keyData ?: continue
+            if (key.isSpecialKey) continue
             val button = getChildAt(index) as? AutoSizeButton ?: continue
             if (button.text.toString() == text) return button
         }
