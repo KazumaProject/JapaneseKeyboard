@@ -340,6 +340,78 @@ class CandidateStripPresentationPolicyTest {
         assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
+    @Test
+    fun independentToolbarSeparatesVisibleHeightFromTransparentContainerHeight() {
+        for ((tabHeight, toolbarHeight, containerHeight) in listOf(
+            Triple(0, 32, 612), Triple(0, 36, 616), Triple(0, 72, 652),
+            Triple(36, 32, 616), Triple(36, 36, 616), Triple(36, 72, 652)
+        )) {
+            for (candidatesShown in listOf(false, true, false)) {
+                val presentation = CandidateStripPresentationPolicy.resolve(
+                    baseState(
+                        candidateTabVisible = tabHeight > 0,
+                        shortcutToolbarIntegratedInSuggestion = false,
+                        candidatesShown = candidatesShown,
+                        inputStringEmpty = !candidatesShown,
+                        shortcutToolbarHiddenForCandidates = candidatesShown
+                    )
+                )
+                assertEquals(
+                    if (candidatesShown) tabHeight else toolbarHeight,
+                    resolveDockedCandidateChromeHeightPx(presentation, tabHeight, toolbarHeight)
+                )
+                assertEquals(containerHeight,
+                    resolveDockedCandidateContainerHeightPx(500, 60, 60, tabHeight, toolbarHeight, 20))
+            }
+        }
+    }
+
+    @Test
+    fun transparentContainerReservesTheLargerConfiguredVisibleState() {
+        assertEquals(636, resolveDockedCandidateContainerHeightPx(500, 60, 80, 36, 32, 20))
+        assertEquals(632, resolveDockedCandidateContainerHeightPx(500, 80, 60, 36, 32, 20))
+    }
+
+    @Test
+    fun disabledOrIntegratedToolbarKeepsOnlyVisibleCandidateTabHeight() {
+        for (state in listOf(baseState(shortcutToolbarVisible = false), baseState())) {
+            for (candidatesShown in listOf(false, true)) {
+                val presentation = CandidateStripPresentationPolicy.resolve(
+                    state.copy(candidatesShown = candidatesShown, inputStringEmpty = !candidatesShown)
+                )
+                assertEquals(
+                    if (candidatesShown) 36 else 0,
+                    resolveDockedCandidateChromeHeightPx(presentation, 36, 72)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun stableContainerCoversAllConfiguredColumnHeightsWithoutAToolbar() {
+        // active height, empty height, tab height, expected total including body/inset
+        val cases = listOf(
+            listOf(60, 48, 0, 580), listOf(60, 48, 36, 616),
+            listOf(80, 60, 0, 600), listOf(80, 60, 36, 636),
+            listOf(100, 60, 0, 620), listOf(100, 60, 36, 656),
+            listOf(60, 120, 0, 640), listOf(60, 120, 36, 640)
+        )
+        for ((candidateHeight, emptyHeight, tabHeight, expectedHeight) in cases) {
+            assertEquals(
+                expectedHeight,
+                resolveDockedCandidateContainerHeightPx(500, emptyHeight, candidateHeight, tabHeight, 0, 20)
+            )
+        }
+    }
+
+    @Test
+    fun stableInsetsIgnoreInputAndConfirmationHeightChanges() {
+        for (visibleTop in listOf(100, 136, 160, 100)) {
+            assertEquals(100, resolveDockedCandidateInsetsTopPx(true, 100, visibleTop))
+            assertEquals(visibleTop, resolveDockedCandidateInsetsTopPx(false, 100, visibleTop))
+        }
+    }
+
     private fun baseState(
         candidateTabVisible: Boolean = true,
         candidatesShown: Boolean = false,

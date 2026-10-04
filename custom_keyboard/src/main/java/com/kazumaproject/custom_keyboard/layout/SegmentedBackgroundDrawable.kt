@@ -10,6 +10,8 @@ import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import androidx.core.graphics.withClip
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import kotlin.math.roundToInt
 
 /**
@@ -24,6 +26,12 @@ class SegmentedBackgroundDrawable(
     private val primaryTextSizePx: Float = 60f,
     private val secondaryTextSizePx: Float = 40f
 ) : Drawable() {
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.apply(textPaint, snapshot)
+        KeyboardFontApplicator.apply(secondaryTextPaint, snapshot)
+        invalidateSelf()
+    }
 
     var highlightDirection: FlickDirection? = null
         set(value) {
@@ -45,6 +53,10 @@ class SegmentedBackgroundDrawable(
         color = textColor
         textAlign = Paint.Align.CENTER
         textSize = secondaryTextSizePx
+    }
+
+    init {
+        setKeyboardFont(KeyboardFontApplicator.processSnapshot)
     }
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

@@ -1,6 +1,9 @@
 package com.kazumaproject.symbol_keyboard
 
+import android.text.SpannableString
+import android.text.Spanned
 import android.view.LayoutInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -12,9 +15,22 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.listeners.ClipboardItemAction
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSpan
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class ClipboardAdapter :
     PagingDataAdapter<ClipboardListItem, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+    private var activeClipboardPopupMenu: PopupMenu? = null
+    private val activeClipboardMenuItems = mutableListOf<Pair<MenuItem, CharSequence>>()
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        notifyDataSetChanged()
+        updateClipboardPopupTitles()
+    }
 
     private var onItemClickListener: ((ClipboardItem) -> Unit)? = null
     private var onItemActionListener: ((ClipboardItem, ClipboardItemAction) -> Unit)? = null
@@ -36,6 +52,7 @@ class ClipboardAdapter :
 
         fun bind(item: ClipboardListItem.Header) {
             titleView.text = item.title
+            KeyboardFontApplicator.apply(titleView, keyboardFontSnapshot)
         }
     }
 
@@ -70,6 +87,7 @@ class ClipboardAdapter :
                     imageView.visibility = View.GONE
                     textCardView.visibility = View.VISIBLE
                     textView.text = item.text
+                    KeyboardFontApplicator.apply(textView, keyboardFontSnapshot)
                 }
 
                 is ClipboardItem.Empty -> {
@@ -117,25 +135,50 @@ class ClipboardAdapter :
     }
 
     private fun showClipboardActionMenu(anchor: View, item: ClipboardItem) {
-        PopupMenu(anchor.context, anchor).apply {
-            menu.add(0, ClipboardItemAction.PASTE.ordinal, 0, R.string.symbol_clipboard_action_paste)
-            menu.add(
-                0,
-                if (item.isPinned()) ClipboardItemAction.UNPIN.ordinal else ClipboardItemAction.PIN.ordinal,
-                1,
-                if (item.isPinned()) {
-                    R.string.symbol_clipboard_action_unpin
-                } else {
-                    R.string.symbol_clipboard_action_pin
-                }
-            )
-            menu.add(0, ClipboardItemAction.DELETE.ordinal, 2, R.string.symbol_clipboard_action_delete)
-            setOnMenuItemClickListener { menuItem ->
-                val action = ClipboardItemAction.values()[menuItem.itemId]
-                onItemActionListener?.invoke(item, action)
-                true
+        val popupMenu = PopupMenu(anchor.context, anchor)
+        activeClipboardMenuItems.clear()
+        fun addAction(action: ClipboardItemAction, order: Int, titleResource: Int) {
+            val title = anchor.context.getString(titleResource)
+            val menuItem = popupMenu.menu.add(0, action.ordinal, order, title)
+            activeClipboardMenuItems += menuItem to title
+        }
+        addAction(ClipboardItemAction.PASTE, 0, R.string.symbol_clipboard_action_paste)
+        addAction(
+            if (item.isPinned()) ClipboardItemAction.UNPIN else ClipboardItemAction.PIN,
+            1,
+            if (item.isPinned()) {
+                R.string.symbol_clipboard_action_unpin
+            } else {
+                R.string.symbol_clipboard_action_pin
+            },
+        )
+        addAction(ClipboardItemAction.DELETE, 2, R.string.symbol_clipboard_action_delete)
+        popupMenu.setOnDismissListener {
+            if (activeClipboardPopupMenu === popupMenu) {
+                activeClipboardPopupMenu = null
+                activeClipboardMenuItems.clear()
             }
-            show()
+        }
+        popupMenu.setOnMenuItemClickListener { menuItem ->
+            val action = ClipboardItemAction.values()[menuItem.itemId]
+            onItemActionListener?.invoke(item, action)
+            true
+        }
+        activeClipboardPopupMenu = popupMenu
+        updateClipboardPopupTitles()
+        popupMenu.show()
+    }
+
+    private fun updateClipboardPopupTitles() {
+        val typeface = keyboardFontSnapshot.typeface
+        activeClipboardMenuItems.forEach { (menuItem, baselineTitle) ->
+            menuItem.title = if (typeface == null || baselineTitle.isEmpty()) {
+                baselineTitle
+            } else {
+                SpannableString(baselineTitle).apply {
+                    setSpan(KeyboardFontSpan(typeface), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
         }
     }
 

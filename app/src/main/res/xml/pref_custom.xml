@@ -30,6 +30,20 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="custom_keyboard_input_in_empty_areas_preference"
+            android:summaryOff="@string/custom_keyboard_input_in_empty_areas_summary_off"
+            android:summaryOn="@string/custom_keyboard_input_in_empty_areas_summary_on"
+            android:title="@string/custom_keyboard_input_in_empty_areas_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="custom_direct_input_replace_composing_preference"
+            android:title="@string/custom_direct_input_replace_composing_title"
+            android:summaryOff="@string/custom_direct_input_replace_composing_summary_off"
+            android:summaryOn="@string/custom_direct_input_replace_composing_summary_on" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="remember_last_custom_keyboard_preference"
             android:summaryOff="@string/remember_last_custom_keyboard_summary_off"
             android:summaryOn="@string/remember_last_custom_keyboard_summary_on"

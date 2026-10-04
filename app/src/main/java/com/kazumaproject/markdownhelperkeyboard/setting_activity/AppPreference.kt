@@ -100,10 +100,18 @@ object AppPreference {
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
+    const val TENKEY_USE_THREE_STATE_KEY = "tenkey_use_three_state_keyboard_preference"
+    const val TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY = "tenkey_number_symbol_key_gap_preference"
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
+    const val STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY = "stabilize_candidate_strip_height_preference"
+    const val CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY =
+        "custom_direct_input_replace_composing_preference"
     const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
+    const val CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY =
+        "custom_keyboard_input_in_empty_areas_preference"
+    const val INDEPENDENT_MULTI_TOUCH_KEY = "independent_multi_touch_preference"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
     const val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY =
         "delete_long_press_conversion_behavior"
@@ -238,7 +246,9 @@ object AppPreference {
         Pair("tenkey_kana_english_qwerty_preference", false)
 
     private val TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE =
-        Pair("tenkey_use_three_state_keyboard_preference", true)
+        Pair(TENKEY_USE_THREE_STATE_KEY, true)
+    private val TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE =
+        Pair(TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY, 4)
 
     private val TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE =
         Pair("tenkey_switch_number_to_qwerty_number_preference", false)
@@ -407,6 +417,10 @@ object AppPreference {
         Pair("custom_direct_mode_space_hankaku_preference", true)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
+    const val LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY = "live_conversion_candidate_yomi_size_preference"
+    const val DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 14
+    const val MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 1
+    const val MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 24
     private val LIVE_CONVERSION_CANDIDATE_YOMI =
         Pair("live_conversion_candidate_yomi_preference", false)
     private const val OLD_SUMIRE_PREFERENCE_KEY = "sumire_keyboard_input_type_preference"
@@ -430,6 +444,8 @@ object AppPreference {
     private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
         Pair("custom_keyboard_suggestion_preference", true)
+    private val CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE =
+        Pair(CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_KEY, false)
     private val REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE =
         Pair("remember_last_custom_keyboard_preference", false)
     private val LAST_USED_CUSTOM_KEYBOARD_STABLE_ID =
@@ -1236,6 +1252,15 @@ object AppPreference {
             it.putBoolean(TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE.first, value)
         }
 
+    var tenkey_number_symbol_key_gap_preference: Int
+        get() = preferences.getInt(
+            TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE.first,
+            TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE.second,
+        ).coerceIn(0, 16)
+        set(value) = preferences.edit {
+            it.putInt(TENKEY_NUMBER_SYMBOL_KEY_GAP_PREFERENCE.first, value.coerceIn(0, 16))
+        }
+
     var tenkey_switch_number_to_qwerty_number_preference: Boolean
         get() = preferences.getBoolean(
             TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE.first,
@@ -1860,6 +1885,10 @@ object AppPreference {
                 value.coerceIn(0, 34)
             )
         }
+
+    var independent_multi_touch_preference: Boolean
+        get() = preferences.getBoolean(INDEPENDENT_MULTI_TOUCH_KEY, false)
+        set(value) = preferences.edit { it.putBoolean(INDEPENDENT_MULTI_TOUCH_KEY, value) }
 
     var long_press_timeout_preference: Int?
         get() = preferences.getInt(
@@ -2603,6 +2632,15 @@ object AppPreference {
             )
         }
 
+    var live_conversion_candidate_yomi_size: Int
+        get() = preferences.getInt(
+            LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY, DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE
+        ).coerceIn(MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE, MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE)
+        set(value) = preferences.edit {
+            it.putInt(LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY,
+                value.coerceIn(MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE, MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE))
+        }
+
     var delete_key_high_light_preference: Boolean?
         get() = preferences.getBoolean(DELETE_KEY_HIGH_LIGHT.first, DELETE_KEY_HIGH_LIGHT.second)
         set(value) = preferences.edit {
@@ -2616,6 +2654,21 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
+        }
+
+    var custom_direct_input_replace_composing_preference: Boolean
+        get() = preferences.getBoolean(CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY, value)
+        }
+
+    var custom_keyboard_input_in_empty_areas_preference: Boolean
+        get() = preferences.getBoolean(
+            CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.first,
+            CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.first, value)
         }
 
     var remember_last_custom_keyboard_preference: Boolean?
@@ -3061,6 +3114,12 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.first, value)
+        }
+
+    var stabilize_candidate_strip_height_preference: Boolean
+        get() = preferences.getBoolean(STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY, value)
         }
 
     var shortcut_toolbar_height_dp_preference: Int

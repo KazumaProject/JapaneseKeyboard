@@ -32,6 +32,17 @@ class CandidatePanelColorsTest {
         assertEquals(custom, CandidatePanelColors.resolve(context, custom = custom))
     }
 
+    @Test fun classicCandidateChromeUsesFlatLightPanelAndDarkInk() {
+        val palette = KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_CLASSIC)!!.palette
+        val colors = CandidatePanelColors.resolve(context, palette, cupertinoClassic = true)
+
+        assertTrue(colors.cupertinoClassic)
+        assertEquals(android.graphics.Color.TRANSPARENT, colors.candidate)
+        assertEquals(CupertinoClassicCandidateChrome.textColor, colors.text)
+        assertEquals(CupertinoClassicCandidateChrome.textColor, colors.icon)
+        assertEquals(CupertinoClassicCandidateChrome.panelColor, colors.background)
+    }
+
     @Test @Config(sdk = [28]) fun oldDevicesUseExistingColorResources() {
         val actual = CandidatePanelColors.resolve(context)
         assertEquals(context.getColor(com.kazumaproject.core.R.color.keyboard_bg), actual.background)

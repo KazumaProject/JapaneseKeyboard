@@ -319,6 +319,9 @@
     <string name="custom_keyboard_suggestion_title">未入力時の表示</string>
     <string name="custom_keyboard_suggestion_summary_on">文字を入力していないときは、カスタムタブの一覧を表示します。</string>
     <string name="custom_keyboard_suggestion_summary_off">文字を入力していないときは、標準の表示（クリップボードなど）のままにします。</string>
+    <string name="custom_keyboard_input_in_empty_areas_title">空白部分でもキー入力</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_on">空白セルやスペーサーを押すと、最も近いキーを入力します。</string>
+    <string name="custom_keyboard_input_in_empty_areas_summary_off">空白セルやスペーサーでは入力しません。</string>
     <string name="remember_last_custom_keyboard_title">最後に使用したカスタムキーボードを復元</string>
     <string name="remember_last_custom_keyboard_summary_on">カスタムキーボードを開いたとき、前回使用したカスタムキーボードを表示します</string>
     <string name="remember_last_custom_keyboard_summary_off">カスタムキーボードを開いたとき、最初のカスタムキーボードを表示します</string>
@@ -771,6 +774,11 @@
     <string name="key_action">キーのアクション</string>
     <string name="double_tap_action">ダブルタップのアクション</string>
     <string name="double_tap_disabled">なし</string>
+    <string name="special_key_category_input">入力・変換</string>
+    <string name="special_key_category_delete_cursor">削除・カーソル</string>
+    <string name="special_key_category_text_mode">文字種・入力モード</string>
+    <string name="special_key_category_keyboard">キーボード切替</string>
+    <string name="special_key_category_edit_other">編集・その他</string>
     <string name="setting_flick">フリック設定</string>
     <string name="tap">タップ</string>
     <string name="flick_left">左フリック</string>
@@ -1454,6 +1462,8 @@
     <string name="sumire_special_key_input_text">文字を入力</string>
     <string name="sumire_special_key_key_action">特殊アクション</string>
     <string name="sumire_special_key_input_text_hint">入力する文字</string>
+    <string name="live_conversion_candidate_yomi_size_title">読みの文字の大きさ</string>
+    <string name="live_conversion_candidate_yomi_size_summary">候補の上に表示する読みの文字の大きさを変更します。候補欄に収まる大きさまで選べます。候補欄の高さ、段数、フォントによって選べる最大値が変わります。</string>
     <string name="live_conversion_candidate_yomi_title">ライブ変換候補に読みを表示</string>
     <string name="live_conversion_candidate_yomi_summary_on">ライブ変換候補の上部に読みを表示します</string>
     <string name="live_conversion_candidate_yomi_summary_off">ライブ変換候補の上部に読みを表示しません</string>
@@ -1468,6 +1478,8 @@
     <string name="tenkey_restore_input_mode_timeout_minutes_summary">TenKey の最後の入力モードを復元できる時間を分単位で設定します。</string>
     <string name="tenkey_use_three_state_keyboard_title">三状態キーボードの使用</string>
     <string name="tenkey_use_three_state_keyboard_summary">TenKey の切り替えキーで、日本語・英字・数字の3つの入力モードを切り替えます。</string>
+    <string name="tenkey_number_symbol_key_gap_title">数字・記号キーの間隔</string>
+    <string name="tenkey_number_symbol_key_gap_summary">三状態キーボードをオフにしたときの数字キーと記号キーの間隔をdp単位で設定します。</string>
     <string name="sumire_restore_input_mode_on_restart_title">キーボード再起動時に入力モードを復元</string>
     <string name="sumire_restore_input_mode_on_restart_summary">Sumire を開き直したとき、最後に使用した日本語・英字・数字の入力モードを復元します。</string>
     <string name="sumire_restore_input_mode_only_within_time_title">指定時間内のみ Sumire の入力モードを復元</string>
@@ -1828,4 +1840,38 @@
     <string name="qwerty_romaji_space_flick_summary">上フリックで、既存のローマ字のスペース設定と反対の幅（半角・全角）の空白を入力します。文字キーの上フリック設定とは独立しています。</string>
     <string name="qwerty_english_space_flick_summary">上フリックで全角スペースを入力します。未確定文字がある場合は確定して全角スペースを挿入します。タップは半角スペースのままです。文字キーの上フリック設定とは独立しています。</string>
     <string name="floating_keyboard_hide">キーボードを非表示</string>
+    <string name="local_font_title">ローカルフォント</string>
+    <string name="local_font_settings_summary">キーボードのラベルとIME内の文字に使うフォントを選択します</string>
+    <string name="local_font_current">現在：%1$s</string>
+    <string name="local_font_standard">標準（既存の表示）</string>
+    <string name="local_font_choose">端末内のフォントを選択</string>
+    <string name="local_font_help">対応形式：静的TTF / OTF、最大32 MiB。選択したフォントはアプリ専用領域に保存され、この端末内にとどまります。フォントに含まれない文字は別のフォントで表示される場合があります。</string>
+    <string name="local_font_loading">フォントを読み込み、検証しています…</string>
+    <string name="local_font_previewing">プレビュー：%1$s</string>
+    <string name="local_font_preview_small_label">小さなガイド・候補のサンプル</string>
+    <string name="local_font_apply">適用</string>
+    <string name="local_font_cancel_selection">選択を取り消す</string>
+    <string name="local_font_cancel_loading">読込を中断</string>
+    <string name="local_font_restore_standard">標準に戻す</string>
+    <string name="local_font_restore_warning">保存したフォントを復元できませんでした。再選択するか、標準表示に戻してください。</string>
+    <string name="local_font_error_unsupported">この形式には対応していません。静的TTFまたはOTFを選択してください。</string>
+    <string name="local_font_error_too_large">フォントが上限の32 MiBを超えています。</string>
+    <string name="local_font_error_invalid">ファイルが空か破損しているか、対応フォントではありません。</string>
+    <string name="local_font_error_storage">フォントを読み込み・保存できませんでした。現在のフォントは引き続き使用されます。</string>
+    <string name="local_font_preview_sample">あいうえお　がぎぐげご　ぱぴぷぺぽ　ぁぃぅぇぉっゃゅょ
+アイウエオ　日本語　漢字変換　𠮷
+ABC abc 0123456789　ＡＢＣ　１２３４５
+！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
+空白　変換　確定　検索　return</string>
+    <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
+    <string name="ime_popup_unavailable">一覧を表示できませんでした。もう一度お試しください。</string>
+    <string name="ime_no_templates_registered">定型文が登録されていません。</string>
+    <string name="custom_direct_input_replace_composing_title">直接入力で未確定文字を置き換える</string>
+    <string name="custom_direct_input_replace_composing_summary_off">直接入力に切り替えると、未確定文字を確定します。</string>
+    <string name="custom_direct_input_replace_composing_summary_on">直接入力に切り替えた後、最初の入力で未確定文字を置き換えます。</string>
+    <string name="independent_multi_touch_category_title">二本指の操作</string>
+    <string name="independent_multi_touch_title">二本指の入力を独立して扱う</string>
+    <string name="independent_multi_touch_summary">異なるキーを指ごとに操作し、指を離した順に入力を確定します。同じキーへの二本目のタッチは無視します。</string>
+    <string name="stabilize_candidate_strip_height_title">変換候補欄の高さを安定させる</string>
+    <string name="stabilize_candidate_strip_height_summary">入力・確定時に入力欄の位置が変わりにくくなります。高さの差分は透明にし、背後へのタッチを通します。</string>
 </resources>

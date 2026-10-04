@@ -21,6 +21,16 @@ class KeyboardSkinAppearanceTest {
         AppPreference.init(context)
     }
 
+    @Test fun generatedCopyFitsDexArgumentWordLimit() {
+        for (type in listOf(ImePreferencesSnapshot::class.java, ImeKeyboardAppearance::class.java)) {
+            val copyDefault = type.declaredMethods.single { it.name == "copy\$default" }
+            val words = copyDefault.parameterTypes.fold(0) { words, type ->
+                words + if (type == java.lang.Long.TYPE || type == java.lang.Double.TYPE) 2 else 1
+            }
+            assertTrue("${type.simpleName} copy requires $words argument words (DEX maximum 255)", words <= 255)
+        }
+    }
+
     @Test fun defaultReturnsOriginalSnapshot() {
         val saved = ImePreferencesSnapshot.from(AppPreference)
         assertSame(saved, saved.withKeyboardSkinAppearance())
@@ -37,18 +47,31 @@ class KeyboardSkinAppearanceTest {
             "customThemeCandidateEmptyPopupTextColor", "customThemeShortcutIconColor",
             "liquidGlassThemePreference", "liquidGlassKeyBlurRadiousPreference",
             "keyboardTouchEffectTypePreference", "customKeyBorderEnablePreference")
-        for (id in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK)) {
+        for (id in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK,
+                KeyboardSkinId.CUPERTINO_CLASSIC)) {
             AppPreference.keyboardSkin = id
             val saved = ImePreferencesSnapshot.from(AppPreference)
             val effective = saved.withKeyboardSkinAppearance()
             assertEquals("custom", effective.keyboardThemeMode)
             assertFalse(effective.liquidGlassThemePreference)
             assertFalse(effective.customKeyBorderEnablePreference)
+            val palette = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(id)!!.palette
+            assertEquals(palette.specialKey, effective.customThemeSpecialKeyColor)
+            assertEquals(palette.specialText, effective.customThemeSpecialKeyTextColor)
+            if (id == KeyboardSkinId.CUPERTINO_CLASSIC) {
+                assertEquals(palette.text, effective.customThemeShortcutIconColor)
+            }
             ImePreferencesSnapshot::class.java.declaredFields.filter {
-                !java.lang.reflect.Modifier.isStatic(it.modifiers) && it.name !in appearanceFields
+                !java.lang.reflect.Modifier.isStatic(it.modifiers) && it.name !in appearanceFields && it.name != "appearance"
             }.forEach { field ->
                 field.isAccessible = true
                 assertEquals("Input/layout field ${field.name} changed", field.get(saved), field.get(effective))
+            }
+            ImeKeyboardAppearance::class.java.declaredFields.filter {
+                !java.lang.reflect.Modifier.isStatic(it.modifiers) && it.name !in appearanceFields
+            }.forEach { field ->
+                field.isAccessible = true
+                assertEquals("Appearance field ${field.name} changed", field.get(saved.appearance), field.get(effective.appearance))
             }
             assertEquals(0xff765432.toInt(), AppPreference.custom_theme_key_color)
         }

@@ -13,10 +13,13 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.font.KeyboardFontAware
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import kotlin.math.ceil
 import kotlin.math.min
 
-class VariationsPopupView(context: Context) : View(context) {
+class VariationsPopupView(context: Context) : View(context), KeyboardFontAware {
 
     // ★ デザインモードの定義
     enum class PopupStyle {
@@ -57,6 +60,15 @@ class VariationsPopupView(context: Context) : View(context) {
         textAlign = Paint.Align.CENTER
         textSize = 60f
         color = Color.BLACK
+    }
+    private var keyboardFontSnapshot = KeyboardFontSnapshot()
+
+    override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        KeyboardFontApplicator.track(this)
+        keyboardFontSnapshot = snapshot
+        KeyboardFontApplicator.apply(flatTextPaint, snapshot)
+        KeyboardFontApplicator.apply(neuTextPaint, snapshot)
+        invalidate()
     }
     private val neuBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL

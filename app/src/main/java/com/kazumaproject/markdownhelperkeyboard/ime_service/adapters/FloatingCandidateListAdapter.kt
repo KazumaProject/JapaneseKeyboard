@@ -9,6 +9,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
@@ -25,9 +27,27 @@ private const val VIEW_TYPE_FORMULA = 3
 class FloatingCandidateListAdapter(
     private val pageSize: Int,
 ) : ListAdapter<CandidateItem, RecyclerView.ViewHolder>(DiffCallback()) {
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     private val formulaParser = FormulaParser()
     private var candidateTextSizeSp: Float = 14f
     private var candidateTextColor: Int? = null
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        keyboardFontSnapshot = snapshot
+        notifyItemRangeChanged(0, itemCount, FONT_PAYLOAD)
+    }
+
+    private fun applyKeyboardFont(holder: RecyclerView.ViewHolder) {
+        when (holder) {
+            is SuggestionViewHolder -> KeyboardFontApplicator.apply(holder.fontTarget, keyboardFontSnapshot)
+            is FormulaViewHolder -> KeyboardFontApplicator.apply(holder.badgeView, keyboardFontSnapshot)
+            is PagerViewHolder -> KeyboardFontApplicator.apply(holder.fontTarget, keyboardFontSnapshot)
+        }
+    }
+
+    companion object {
+        private const val FONT_PAYLOAD = "local-font"
+    }
 
     // --- Public Callbacks ---
     var onSuggestionClicked: ((suggestion: CandidateItem) -> Unit)? = null
@@ -75,6 +95,7 @@ class FloatingCandidateListAdapter(
     // --- Suggestion ViewHolder ---
     inner class SuggestionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val textView: TextView = view.findViewById(R.id.text_view_item)
+        val fontTarget: TextView get() = textView
 
         init {
             itemView.setOnClickListener {
@@ -91,7 +112,7 @@ class FloatingCandidateListAdapter(
 
     inner class FormulaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val formulaView: FormulaView = view.findViewById(R.id.floating_formula_view)
-        private val badgeView: TextView = view.findViewById(R.id.floating_formula_badge)
+        val badgeView: TextView = view.findViewById(R.id.floating_formula_badge)
 
         init {
             itemView.setOnClickListener {
@@ -129,6 +150,7 @@ class FloatingCandidateListAdapter(
     // --- Pager ViewHolder ---
     inner class PagerViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val textView: TextView = view.findViewById(R.id.text_view_item)
+        val fontTarget: TextView get() = textView
 
         init {
             itemView.setOnClickListener { onPagerClicked?.invoke() }
@@ -189,6 +211,7 @@ class FloatingCandidateListAdapter(
             is FormulaViewHolder -> holder.bind(currentItem)
             is PagerViewHolder -> holder.bind(currentItem.word)
         }
+        applyKeyboardFont(holder)
     }
 
     // --- DiffUtil Callback ---
