@@ -117,6 +117,51 @@ class CandidateReadingLayoutTest {
         adapter.release()
     }
 
+    @Test fun readingSizeRebindsIndependentlyInImePreviewAndSplitCandidates() {
+        val candidate = Candidate(string = "漢字", type = 1, length = 3u, score = 0, yomi = "かんじ")
+        val ime = SuggestionAdapter()
+        val preview = SuggestionAdapter2()
+        val split = SuggestionAdapter()
+        ime.submitContent(com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent.Candidates(listOf(candidate)))
+        preview.suggestions = listOf(candidate)
+        ime.setShowCandidateYomiForLiveConversion(true)
+        preview.setShowCandidateYomiForLiveConversion(true)
+        ime.setCandidateTextSize(32f)
+        preview.setCandidateTextSize(32f)
+        ime.setCandidateYomiTextSize(20f)
+        preview.setCandidateYomiTextSize(20f)
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while ((ime.itemCount != 1 || preview.itemCount != 1) && System.nanoTime() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        split.mirrorSplitContentFrom(ime)
+        shadowOf(Looper.getMainLooper()).idle()
+        val parent = FrameLayout(context)
+        for (adapter in listOf(ime, preview, split)) {
+            val holder = adapter.createViewHolder(parent, adapter.getItemViewType(0))
+            adapter.onBindViewHolder(holder, 0)
+            val root = holder.itemView as CandidateReadingLayout
+            layout(root, dp(160))
+            val body = root.findViewById<TextView>(R.id.suggestion_item_text_view)
+            val reading = root.findViewById<TextView>(R.id.suggestion_item_yomi_text_view)
+            val before = bounds(root, body)
+            assertEquals(20f * context.resources.displayMetrics.scaledDensity, reading.textSize, .01f)
+            when (adapter) {
+                is SuggestionAdapter -> adapter.setCandidateYomiTextSize(24f)
+                is SuggestionAdapter2 -> adapter.setCandidateYomiTextSize(24f)
+            }
+            adapter.onBindViewHolder(holder, 0)
+            layout(root, dp(160))
+            assertEquals(24f * context.resources.displayMetrics.scaledDensity, reading.textSize, .01f)
+            assertEquals(32f * context.resources.displayMetrics.scaledDensity, body.textSize, .01f)
+            assertEquals(before, bounds(root, body))
+        }
+        ime.release()
+        preview.release()
+        split.release()
+    }
+
     @Test fun floatingPaddingRemainsAvailableForTheAnnotation() {
         val view = create()
         view.setPadding(dp(12), dp(8), dp(12), dp(8))
