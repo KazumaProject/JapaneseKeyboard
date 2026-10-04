@@ -46,6 +46,7 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FormulaView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateYomiPresentation
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,31 +74,6 @@ private class PreviewCandidateItemColorState {
         this.pressedBackgroundColor = pressedBackgroundColor
         return true
     }
-}
-
-private data class PreviewCandidateYomiPresentation(
-    val isVisible: Boolean,
-    val text: String,
-    val textSize: Float
-)
-
-private fun resolvePreviewCandidateYomiPresentation(
-    showCandidateYomiForLiveConversion: Boolean,
-    isFirstCandidate: Boolean,
-    suggestion: Candidate,
-    candidateTextSize: Float
-): PreviewCandidateYomiPresentation {
-    val yomi = suggestion.yomi
-    val shouldShowYomi =
-        showCandidateYomiForLiveConversion &&
-            isFirstCandidate &&
-            !yomi.isNullOrBlank() &&
-            yomi != suggestion.string
-    return PreviewCandidateYomiPresentation(
-        isVisible = shouldShowYomi,
-        text = if (shouldShowYomi) yomi.orEmpty() else "",
-        textSize = candidateTextSize * 0.72f
-    )
 }
 
 class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -964,7 +940,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         holder.text.isVisible = !isFormula
 
         holder.text.textSize = candidateTextSize
-        val yomiPresentation = resolvePreviewCandidateYomiPresentation(
+        val yomiPresentation = resolveCandidateYomiPresentation(
             showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
             isFirstCandidate = position == 0,
             suggestion = suggestion,
@@ -973,11 +949,6 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
         holder.yomiText.textSize = yomiPresentation.textSize
-        holder.yomiText.translationX = if (yomiPresentation.isVisible) {
-            holder.text.paint.measureText(" ".repeat(paddingLength))
-        } else {
-            0f
-        }
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
