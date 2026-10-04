@@ -36,6 +36,84 @@ class CandidateReadingLayoutTest {
         com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.init(context)
     }
 
+    @Test fun fixedFrameHeadroomMakesReadingLargerWithoutMovingAnyCandidate() {
+        val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        for ((rows, heightDp, wrapped) in listOf(Triple(1, 60, false), Triple(2, 80, false),
+            Triple(3, 100, false), Triple(1, 60, true))) {
+            val prefs = com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+            prefs.setCandidateColumnAndSyncHeight(false, rows.toString())
+            prefs.setCandidateColumnAndSyncHeight(true, rows.toString())
+            val frame = androidx.constraintlayout.widget.ConstraintLayout(context)
+            val recycler = androidx.recyclerview.widget.RecyclerView(context).apply {
+                id = View.generateViewId()
+                clipToPadding = false
+                layoutManager = androidx.recyclerview.widget.GridLayoutManager(context, rows,
+                    androidx.recyclerview.widget.RecyclerView.HORIZONTAL, false)
+                if (rows > 1) addItemDecoration(GridSpacingItemDecoration(rows,
+                    resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing), true))
+            }
+            var showReading = false
+            recycler.adapter = object : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
+                override fun getItemCount() = 6
+                override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int) =
+                    object : androidx.recyclerview.widget.RecyclerView.ViewHolder(
+                        LayoutInflater.from(parent.context).inflate(R.layout.suggestion_item, parent, false)) {}
+                override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, position: Int) {
+                    holder.itemView.findViewById<TextView>(R.id.suggestion_item_text_view).text = "    感じ    "
+                    holder.itemView.findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view).apply {
+                        text = "かんじ"
+                        textSize = CandidateReadingSizeLimits.maximumSp(context).toFloat()
+                        visibility = if (showReading && position == 0) View.VISIBLE else View.GONE
+                    }
+                }
+            }
+            val area = if (wrapped) androidx.constraintlayout.widget.ConstraintLayout(context).also {
+                frame.addView(it, androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1, -2).apply {
+                    bottomToBottom = 0; startToStart = 0; endToEnd = 0
+                })
+            } else frame
+            area.addView(recycler, androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(0, -2).apply {
+                topToTop = 0; bottomToBottom = 0; startToStart = 0; endToEnd = 0
+            })
+            activity.setContentView(frame)
+            fun measureFrame() {
+                shadowOf(Looper.getMainLooper()).idle()
+                frame.measure(View.MeasureSpec.makeMeasureSpec(dp(400), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(dp(heightDp), View.MeasureSpec.EXACTLY))
+                frame.layout(0, 0, frame.measuredWidth, frame.measuredHeight)
+            }
+            fun bodies() = (0 until recycler.childCount).map {
+                val child = recycler.getChildAt(it)
+                bounds(frame, child.findViewById<TextView>(R.id.suggestion_item_text_view))
+            }
+            measureFrame()
+            val before = bodies()
+            assertTrue(before.size >= rows)
+            showReading = true
+            recycler.adapter!!.notifyDataSetChanged()
+            measureFrame()
+            assertEquals("all candidate body vertical positions in $rows rows",
+                before.map { it.top to it.bottom }, bodies().map { it.top to it.bottom })
+            val first = recycler.findViewHolderForAdapterPosition(0)!!.itemView
+            val reading = first.findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
+            assertFalse(recycler.clipChildren)
+            assertEquals(1f, reading.inkScale, .001f)
+            val annotation = bounds(frame, reading)
+            assertTrue(annotation.top >= 0)
+            if (rows == 1) assertTrue("use space above the item", annotation.top < bounds(frame, first).top)
+            val with = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
+            frame.draw(Canvas(with))
+            reading.visibility = View.GONE
+            val without = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
+            frame.draw(Canvas(without))
+            val inkRows = (annotation.top until annotation.bottom).count { y ->
+                (annotation.left until annotation.right).any { x -> with.getPixel(x, y) != without.getPixel(x, y) }
+            }
+            assertTrue("annotation actually draws in fixed frame: rows=$rows ink=$inkRows height=${reading.height} bounds=$annotation", inkRows >= reading.height * .8f)
+        }
+        activity.finish()
+    }
+
     @Test fun readingDoesNotChangeBodyOrBadgePositionInOneTwoAndThreeRows() {
         for ((rows, heightDp) in listOf(1 to 60, 2 to 80, 3 to 100)) {
             val view = create()
@@ -261,7 +339,7 @@ class CandidateReadingLayoutTest {
             View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
         view.layout(0, 0, view.measuredWidth, view.measuredHeight)
     }
-    private fun bounds(root: CandidateReadingLayout, view: View) = Rect(0, 0, view.width, view.height).also {
+    private fun bounds(root: android.view.ViewGroup, view: View) = Rect(0, 0, view.width, view.height).also {
         root.offsetDescendantRectToMyCoords(view, it)
     }
 }

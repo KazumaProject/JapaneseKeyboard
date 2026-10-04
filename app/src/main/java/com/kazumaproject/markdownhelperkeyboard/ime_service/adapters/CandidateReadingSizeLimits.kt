@@ -68,7 +68,12 @@ internal object CandidateReadingSizeLimits {
         item.offsetDescendantRectToMyCoords(body, bounds)
         val ink = Rect()
         body.paint.getTextBounds(GLYPHS, 0, GLYPHS.length, ink)
-        val available = (bounds.top + body.baseline + ink.top - ceil(key.density.toDouble()).toInt()).coerceAtLeast(0)
+        // The first annotation can use the empty space above the centered strip. The
+        // strip's measured items and grid decorations remain exactly as with reading OFF.
+        val stripHeight = rows * item.measuredHeight + if (rows > 1) (rows + 1) * spacing else 0
+        val frameHeight = (heightDp * key.density).toInt()
+        val headroom = ((frameHeight - stripHeight) / 2).coerceAtLeast(0) + spacing
+        val available = (headroom + bounds.top + body.baseline + ink.top - ceil(key.density.toDouble()).toInt()).coerceAtLeast(0)
         val reading = item.findViewById<TextView>(R.id.suggestion_item_yomi_text_view)
         KeyboardFontApplicator.apply(reading, key.font)
         val paint = Paint(reading.paint)
