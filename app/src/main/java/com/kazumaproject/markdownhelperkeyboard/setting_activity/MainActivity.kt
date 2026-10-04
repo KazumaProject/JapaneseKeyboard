@@ -29,6 +29,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
+import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,6 +45,8 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var appPreferenceProvider: Provider<AppPreference>
+    @Inject
+    lateinit var localFontRepository: LocalFontRepository
     private lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
@@ -121,6 +124,7 @@ class MainActivity : AppCompatActivity() {
                     initializeSettingsContentIfSafe()
                 }
             }
+            localFontRepository.loadIfNeeded()
         }
     }
 

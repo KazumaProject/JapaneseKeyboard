@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting
 
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
+import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -177,6 +180,14 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
+
+    private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
+
+    fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
+        if (keyboardFontSnapshot == snapshot) return
+        keyboardFontSnapshot = snapshot
+        notifyItemRangeChanged(0, itemCount)
+    }
 
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
@@ -947,6 +958,10 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         holder.formulaView.setFormulaTextSizeSp(candidateTextSize)
         holder.text.isVisible = !isFormula
 
+        listOf(holder.text, holder.yomiText, holder.typeText).forEach {
+            KeyboardFontApplicator.apply(
+                it, keyboardFontSnapshot)
+        }
         holder.text.textSize = candidateTextSize
         val yomiPresentation = resolveCandidateYomiPresentation(
             showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
@@ -956,7 +971,10 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         )
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
-        holder.yomiText.textSize = yomiPresentation.textSize
+        holder.yomiText.textSize = if (yomiPresentation.isVisible) {
+            CandidateReadingSizeLimits.clamp(
+                holder.itemView.context, yomiPresentation.textSize)
+        } else yomiPresentation.textSize
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)

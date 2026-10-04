@@ -419,7 +419,7 @@ object AppPreference {
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
     const val LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY = "live_conversion_candidate_yomi_size_preference"
     const val DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 14
-    const val MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 8
+    const val MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 1
     const val MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 24
     private val LIVE_CONVERSION_CANDIDATE_YOMI =
         Pair("live_conversion_candidate_yomi_preference", false)

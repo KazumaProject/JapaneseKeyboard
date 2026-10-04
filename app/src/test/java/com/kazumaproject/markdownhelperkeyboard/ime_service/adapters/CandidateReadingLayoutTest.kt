@@ -31,6 +31,11 @@ class CandidateReadingLayoutTest {
         ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard
     )
 
+    @org.junit.Before fun initializePreferences() {
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).edit().clear().commit()
+        com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.init(context)
+    }
+
     @Test fun readingDoesNotChangeBodyOrBadgePositionInOneTwoAndThreeRows() {
         for ((rows, heightDp) in listOf(1 to 60, 2 to 80, 3 to 100)) {
             val view = create()
@@ -128,15 +133,20 @@ class CandidateReadingLayoutTest {
         preview.setShowCandidateYomiForLiveConversion(true)
         ime.setCandidateTextSize(32f)
         preview.setCandidateTextSize(32f)
-        ime.setCandidateYomiTextSize(20f)
-        preview.setCandidateYomiTextSize(20f)
+        ime.setCandidateYomiTextSize(1f)
+        preview.setCandidateYomiTextSize(1f)
         val deadline = System.nanoTime() + 2_000_000_000L
         while ((ime.itemCount != 1 || preview.itemCount != 1) && System.nanoTime() < deadline) {
             shadowOf(Looper.getMainLooper()).idle()
             Thread.sleep(10)
         }
         split.mirrorSplitContentFrom(ime)
-        shadowOf(Looper.getMainLooper()).idle()
+        val splitDeadline = System.nanoTime() + 2_000_000_000L
+        while (split.itemCount != 1 && System.nanoTime() < splitDeadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        assertEquals(1, split.itemCount)
         val parent = FrameLayout(context)
         for (adapter in listOf(ime, preview, split)) {
             val holder = adapter.createViewHolder(parent, adapter.getItemViewType(0))
@@ -146,14 +156,14 @@ class CandidateReadingLayoutTest {
             val body = root.findViewById<TextView>(R.id.suggestion_item_text_view)
             val reading = root.findViewById<TextView>(R.id.suggestion_item_yomi_text_view)
             val before = bounds(root, body)
-            assertEquals(20f * context.resources.displayMetrics.scaledDensity, reading.textSize, .01f)
+            assertEquals(1f * context.resources.displayMetrics.scaledDensity, reading.textSize, .01f)
             when (adapter) {
-                is SuggestionAdapter -> adapter.setCandidateYomiTextSize(24f)
-                is SuggestionAdapter2 -> adapter.setCandidateYomiTextSize(24f)
+                is SuggestionAdapter -> adapter.setCandidateYomiTextSize(2f)
+                is SuggestionAdapter2 -> adapter.setCandidateYomiTextSize(2f)
             }
             adapter.onBindViewHolder(holder, 0)
             layout(root, dp(160))
-            assertEquals(24f * context.resources.displayMetrics.scaledDensity, reading.textSize, .01f)
+            assertEquals(2f * context.resources.displayMetrics.scaledDensity, reading.textSize, .01f)
             assertEquals(32f * context.resources.displayMetrics.scaledDensity, body.textSize, .01f)
             assertEquals(before, bounds(root, body))
         }

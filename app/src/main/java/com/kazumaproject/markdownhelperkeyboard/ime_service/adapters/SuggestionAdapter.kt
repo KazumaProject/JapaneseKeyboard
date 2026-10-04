@@ -2141,7 +2141,10 @@ class SuggestionAdapter internal constructor(
         )
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
-        holder.yomiText.textSize = yomiPresentation.textSize
+        holder.yomiText.textSize = if (yomiPresentation.isVisible) {
+            CandidateReadingSizeLimits.clamp(
+                holder.itemView.context, yomiPresentation.textSize)
+        } else yomiPresentation.textSize
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
