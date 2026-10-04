@@ -89,6 +89,7 @@ data class ImePreferencesSnapshot(
     val isLiveConversionEnable: Boolean,
     val liveConversionStartLength: Int,
     val showLiveConversionCandidateYomi: Boolean,
+    val liveConversionCandidateYomiTextSize: Int,
     val nBest: Int,
     val conversionBeamWidth: Int,
     val conversionBackend: ConversionBackend,
@@ -403,6 +404,7 @@ data class ImePreferencesSnapshot(
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
                 liveConversionStartLength =
                     appPreference.live_conversion_start_length_preference ?: 1,
+                liveConversionCandidateYomiTextSize = appPreference.live_conversion_candidate_yomi_size,
                 showLiveConversionCandidateYomi =
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
