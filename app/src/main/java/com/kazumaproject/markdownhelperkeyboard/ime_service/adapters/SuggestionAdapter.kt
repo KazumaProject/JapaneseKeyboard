@@ -2133,11 +2133,6 @@ class SuggestionAdapter internal constructor(
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
         holder.yomiText.textSize = yomiPresentation.textSize
-        holder.yomiText.translationX = if (yomiPresentation.isVisible) {
-            holder.text.paint.measureText(" ".repeat(paddingLength))
-        } else {
-            0f
-        }
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
