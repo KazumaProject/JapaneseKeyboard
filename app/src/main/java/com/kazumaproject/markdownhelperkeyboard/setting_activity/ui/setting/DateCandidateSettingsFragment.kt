@@ -7,6 +7,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.StringRes
+import androidx.core.view.AccessibilityDelegateCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -20,6 +23,8 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemDateCandidat
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Calendar
+import java.util.GregorianCalendar
+import java.util.Locale
 
 @AndroidEntryPoint
 class DateCandidateSettingsFragment : Fragment() {
@@ -67,7 +72,11 @@ class DateCandidateSettingsFragment : Fragment() {
     private inner class FormatAdapter(config: DateCandidateConfig) : RecyclerView.Adapter<FormatHolder>() {
         private val formats = config.normalizedOrder.toMutableList()
         private val enabledFormats = config.enabledFormats.toMutableSet()
-        private val previewDate = Calendar.getInstance()
+        // Single-digit month and day make zero padding visible regardless of today's date.
+        private val previewDate = GregorianCalendar(Locale.ROOT).apply {
+            clear()
+            set(2026, Calendar.JANUARY, 4, 12, 0, 0)
+        }
 
         init { setHasStableIds(true) }
 
@@ -92,23 +101,44 @@ class DateCandidateSettingsFragment : Fragment() {
                     if (checked) enabledFormats.add(format) else enabledFormats.remove(format)
                     save()
                 }
-                moveUp.contentDescription = getString(R.string.date_candidate_move_up, name)
-                moveDown.contentDescription = getString(R.string.date_candidate_move_down, name)
-                moveUp.isEnabled = position > 0
-                moveDown.isEnabled = position < formats.lastIndex
-                moveUp.setOnClickListener {
-                    val from = holder.bindingAdapterPosition
-                    move(from, from - 1)
-                }
-                moveDown.setOnClickListener {
-                    val from = holder.bindingAdapterPosition
-                    move(from, from + 1)
-                }
+                dragHandle.contentDescription = getString(R.string.date_candidate_drag_handle, name)
+                ViewCompat.setAccessibilityDelegate(dragHandle, object : AccessibilityDelegateCompat() {
+                    override fun onInitializeAccessibilityNodeInfo(
+                        host: View,
+                        info: AccessibilityNodeInfoCompat,
+                    ) {
+                        super.onInitializeAccessibilityNodeInfo(host, info)
+                        val currentPosition = holder.bindingAdapterPosition
+                        if (currentPosition > 0) {
+                            info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                                R.id.date_candidate_action_move_up,
+                                getString(R.string.date_candidate_move_up, name),
+                            ))
+                        }
+                        if (currentPosition in 0 until formats.lastIndex) {
+                            info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                                R.id.date_candidate_action_move_down,
+                                getString(R.string.date_candidate_move_down, name),
+                            ))
+                        }
+                    }
+
+                    override fun performAccessibilityAction(host: View, action: Int, args: Bundle?): Boolean {
+                        val from = holder.bindingAdapterPosition
+                        return when (action) {
+                            R.id.date_candidate_action_move_up -> move(from, from - 1)
+                            R.id.date_candidate_action_move_down -> move(from, from + 1)
+                            else -> super.performAccessibilityAction(host, action, args)
+                        }
+                    }
+                })
                 dragHandle.setOnTouchListener { _, event ->
                     if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                         touchHelper?.startDrag(holder)
+                        true
+                    } else {
+                        false
                     }
-                    false
                 }
             }
         }

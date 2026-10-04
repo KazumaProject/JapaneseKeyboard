@@ -9,9 +9,10 @@
 
     <ImageView
         android:id="@+id/drag_handle"
-        android:layout_width="32dp"
+        android:layout_width="48dp"
         android:layout_height="48dp"
-        android:contentDescription="@string/drag_handle_description"
+        android:contentDescription="@string/date_candidate_drag_handle"
+        android:focusable="true"
         android:padding="4dp"
         app:srcCompat="@drawable/ic_drag_handle" />
 
@@ -23,13 +24,13 @@
         android:padding="4dp">
 
         <TextView
-            android:id="@+id/format_name"
+            android:id="@+id/format_example"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceListItem" />
 
         <TextView
-            android:id="@+id/format_example"
+            android:id="@+id/format_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
     </LinearLayout>
@@ -39,19 +40,4 @@
         android:layout_width="wrap_content"
         android:layout_height="48dp" />
 
-    <Button
-        android:id="@+id/move_up"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:minWidth="0dp"
-        android:padding="0dp"
-        android:text="↑" />
-
-    <Button
-        android:id="@+id/move_down"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:minWidth="0dp"
-        android:padding="0dp"
-        android:text="↓" />
 </LinearLayout>
