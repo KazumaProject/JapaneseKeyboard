@@ -262,6 +262,8 @@
     <string name="live_conversion_summary_off">Live conversion is disabled</string>
     <string name="live_conversion_start_length_title">Live conversion start length</string>
     <string name="live_conversion_start_length_summary">Start live conversion after this many characters are entered.</string>
+    <string name="live_conversion_candidate_yomi_size_title">Live conversion reading text size (sp)</string>
+    <string name="live_conversion_candidate_yomi_size_summary">Adjust the reading independently of candidate text. When space above the candidate is limited, the reading is reduced to fit. Increase the candidate bar height to display larger readings.</string>
     <string name="live_conversion_candidate_yomi_title">Show reading on live conversion candidates</string>
     <string name="live_conversion_candidate_yomi_summary_on">Displays the reading above live conversion candidates</string>
     <string name="live_conversion_candidate_yomi_summary_off">Does not display the reading above live conversion candidates</string>
