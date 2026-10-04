@@ -253,6 +253,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     private fun applyCandidateAdapterPresentation() {
+        suggestionAdapter.setKeyboardFont(com.kazumaproject.core.ui.font.KeyboardFontApplicator.processSnapshot)
         suggestionAdapter.setCandidateYomiTextSize(appPreference.live_conversion_candidate_yomi_size.toFloat())
         suggestionAdapter.setShowCandidateYomiForLiveConversion(
             (appPreference.live_conversion_preference ?: false) &&

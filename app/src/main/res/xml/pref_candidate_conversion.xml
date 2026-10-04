@@ -136,7 +136,7 @@
             android:max="24"
             android:summary="@string/live_conversion_candidate_yomi_size_summary"
             android:title="@string/live_conversion_candidate_yomi_size_title"
-            app:min="8"
+            app:min="1"
             app:showSeekBarValue="true" />
 
     </PreferenceCategory>
