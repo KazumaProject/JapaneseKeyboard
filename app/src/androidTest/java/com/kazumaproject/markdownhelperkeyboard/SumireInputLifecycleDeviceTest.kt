@@ -230,10 +230,14 @@ class SumireInputLifecycleDeviceTest {
         return result.filter { it.packageName?.toString() == context.packageName && it.isVisibleToUser && it.isClickable }
     }
     private fun key(label: String, rightmost: Boolean = false): Rect = awaitKey {
+        val labels = if (label == "モード") setOf("ABC", "123", "あいう") else setOf(label)
         val candidates = nodes().filter {
-            it.text?.toString()?.lineSequence()?.firstOrNull()?.trim() == label || it.contentDescription?.toString() == label
-        }.map { Rect().also(it::getBoundsInScreen) }.filter { !it.isEmpty }.sortedBy { it.centerX() }
-        if (rightmost) candidates.lastOrNull() else candidates.firstOrNull()
+            it.text?.toString()?.lineSequence()?.firstOrNull()?.trim() in labels || it.contentDescription?.toString() in labels
+        }.map { Rect().also(it::getBoundsInScreen) }.filter { !it.isEmpty }
+        // The English character key is on the first row; the mode switch can now also say ABC.
+        val inputCandidates = if (label == "ABC") candidates.filter { it.centerY() == candidates.minOfOrNull(Rect::centerY) } else candidates
+        val ordered = inputCandidates.sortedBy { it.centerX() }
+        if (rightmost) ordered.lastOrNull() else ordered.firstOrNull()
     }
     private fun keyById(id: String): Rect = awaitKey {
         nodes().firstOrNull { it.viewIdResourceName?.endsWith("/$id") == true }?.let { Rect().also(it::getBoundsInScreen) }
