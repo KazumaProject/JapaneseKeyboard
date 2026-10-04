@@ -1462,6 +1462,8 @@
     <string name="sumire_special_key_input_text">文字を入力</string>
     <string name="sumire_special_key_key_action">特殊アクション</string>
     <string name="sumire_special_key_input_text_hint">入力する文字</string>
+    <string name="live_conversion_candidate_yomi_size_title">読みの文字の大きさ</string>
+    <string name="live_conversion_candidate_yomi_size_summary">候補の上に表示する読みの文字の大きさを変更します。候補欄に収まる大きさまで選べます。候補欄の高さ、段数、フォントによって選べる最大値が変わります。</string>
     <string name="live_conversion_candidate_yomi_title">ライブ変換候補に読みを表示</string>
     <string name="live_conversion_candidate_yomi_summary_on">ライブ変換候補の上部に読みを表示します</string>
     <string name="live_conversion_candidate_yomi_summary_off">ライブ変換候補の上部に読みを表示しません</string>
