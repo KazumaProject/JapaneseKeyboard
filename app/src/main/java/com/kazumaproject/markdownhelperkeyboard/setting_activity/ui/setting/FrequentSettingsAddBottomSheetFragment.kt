@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.app.Dialog
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
@@ -23,6 +25,8 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
     private var _binding: FragmentFrequentSettingsAddBottomSheetBinding? = null
     private val binding get() = _binding!!
 
+    private var loadingUi: SettingsLoadingUi? = null
+    private var loadingJob: kotlinx.coroutines.Job? = null
     private lateinit var candidates: List<SettingDestination>
     private lateinit var adapter: FrequentAddSettingsAdapter
 
@@ -40,7 +44,7 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentFrequentSettingsAddBottomSheetBinding.inflate(inflater, container, false)
-        return binding.root
+        return SettingsLoadingUi(requireContext(), ::loadCandidates).also { loadingUi = it }.wrap(binding.root)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -52,12 +56,7 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
                 ?.getStringArrayList(ARG_SELECTED_KEYS)
                 ?.toMutableSet()
             ?: mutableSetOf()
-        candidates = SettingDestinations.frequentCandidates(requireContext())
-
-        setupAdapter()
-        setupCategoryChips()
-        setupSearch()
-        renderCandidates()
+        loadCandidates()
     }
 
     override fun onStart() {
@@ -81,7 +80,24 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
         super.onSaveInstanceState(outState)
     }
 
+    private fun loadCandidates() {
+        if (loadingJob?.isActive == true) return
+        val context = requireContext()
+        val ui = loadingUi ?: return
+        loadingJob = viewLifecycleOwner.lifecycleScope.launch {
+            ui.load {
+                candidates = settingsIo(SettingsLoadStage.SEARCH) { SettingDestinations.frequentCandidates(context) }
+                setupAdapter()
+                setupCategoryChips()
+                setupSearch()
+                renderCandidates()
+            }
+        }
+    }
+
     override fun onDestroyView() {
+        loadingUi = null
+        loadingJob = null
         binding.frequentSettingsAddRecyclerView.adapter = null
         super.onDestroyView()
         _binding = null

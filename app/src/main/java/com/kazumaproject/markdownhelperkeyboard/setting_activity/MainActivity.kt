@@ -33,11 +33,14 @@ import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Provider
+import android.widget.FrameLayout
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadingUi
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadStage
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.settingsIo
+import kotlinx.coroutines.Job
 import com.kazumaproject.core.R as CoreR
 
 @AndroidEntryPoint
@@ -46,7 +49,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var appPreferenceProvider: Provider<AppPreference>
     @Inject
-    lateinit var localFontRepository: LocalFontRepository
+    lateinit var localFontRepositoryProvider: Provider<LocalFontRepository>
+    private var initializationJob: Job? = null
+    private lateinit var initializationUi: SettingsLoadingUi
     private lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
@@ -111,20 +116,30 @@ class MainActivity : AppCompatActivity() {
         // Configuring it after the Activity has started can leave AppCompat's
         // ActionBar and content with different system-bar insets.
         enableEdgeToEdge()
-        lifecycleScope.launch {
-            appPreference = withContext(Dispatchers.IO) {
-                initializationGateForTest?.invoke()
-                appPreferenceProvider.get().also { it.awaitInitialization() }
-            }
-            val initializedWhileStarted = lifecycle.withStarted {
-                initializeSettingsContentIfSafe()
-            }
-            if (!initializedWhileStarted) {
-                lifecycle.withResumed {
+        initializationUi = SettingsLoadingUi(this, ::loadSettingsContent)
+        setContentView(initializationUi.wrap(FrameLayout(this)))
+        loadSettingsContent()
+    }
+
+    private fun loadSettingsContent() {
+        if (initializationJob?.isActive == true || isSettingsContentReady) return
+        initializationJob = lifecycleScope.launch {
+            initializationUi.load {
+                appPreference = settingsIo(SettingsLoadStage.PREFERENCES) {
+                    initializationGateForTest?.invoke()
+                    appPreferenceProvider.get().also {
+                        it.startInitialization(applicationContext)
+                        it.awaitInitializationSuspending()
+                    }
+                }
+                settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().loadIfNeeded() }
+                val initializedWhileStarted = lifecycle.withStarted {
                     initializeSettingsContentIfSafe()
                 }
+                if (!initializedWhileStarted) {
+                    lifecycle.withResumed { initializeSettingsContentIfSafe() }
+                }
             }
-            localFontRepository.loadIfNeeded()
         }
     }
 
