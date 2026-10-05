@@ -22,9 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingMainBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -34,6 +32,9 @@ class SettingMainFragment : Fragment() {
     private val binding get() = _binding!!
 
     // リーク対策: Mediatorを変数で保持してonDestroyViewで解放できるようにする
+    private var loadingUi: SettingsLoadingUi? = null
+    private var initializationJob: kotlinx.coroutines.Job? = null
+
     private var tabLayoutMediator: TabLayoutMediator? = null
 
     @Inject
@@ -42,20 +43,24 @@ class SettingMainFragment : Fragment() {
     @Inject
     lateinit var settingDataInitializer: SettingDataInitializer
 
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSettingMainBinding.inflate(inflater, container, false)
+        loadingUi = SettingsLoadingUi(requireContext(), ::loadInitialData, blocksContent = false)
+        (binding.settingViewPager.parent as android.widget.FrameLayout).addView(
+            loadingUi!!.overlay, android.widget.FrameLayout.LayoutParams(-1, -1),
+        )
+        binding.settingProgressBar.isVisible = false
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        lifecycleScope.launch { settingDataInitializer.initializeIfNeeded() }
+        loadInitialData()
 
         val adapter = SettingPagerAdapter(this)
         binding.settingViewPager.adapter = adapter
@@ -118,19 +123,32 @@ class SettingMainFragment : Fragment() {
         )
     }
 
+    private fun loadInitialData() {
+        if (initializationJob?.isActive == true) return
+        val ui = loadingUi ?: return
+        val context = requireContext().applicationContext
+        initializationJob = viewLifecycleOwner.lifecycleScope.launch {
+            ui.load {
+                settingsIo(SettingsLoadStage.DATABASE) { settingDataInitializer.initializeIfNeeded() }
+                checkKeyboardEnabled(context)
+            }
+        }
+    }
+
+    private suspend fun checkKeyboardEnabled(context: android.content.Context) {
+        val enabled = settingsIo(SettingsLoadStage.KEYBOARD_STATUS) {
+            getSystemService(context, InputMethodManager::class.java)
+                ?.enabledInputMethodList?.any { it.packageName == context.packageName }
+        }
+        if (enabled == false && isResumed) navigateSafely(R.id.enableKeyboardFragment)
+    }
+
     override fun onResume() {
         super.onResume()
-        viewLifecycleOwner.lifecycleScope.launch {
-            binding.settingProgressBar.isVisible = true
-            val enabled = withContext(Dispatchers.IO) {
-                isKeyboardBoardEnabled()
-            }
-            binding.settingProgressBar.isVisible = false
-            if (enabled == false) {
-                navigateSafely(
-                    R.id.enableKeyboardFragment
-                )
-            }
+        if (initializationJob?.isActive != true) {
+            val ui = loadingUi ?: return
+            val context = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch { ui.load { checkKeyboardEnabled(context) } }
         }
     }
 
@@ -140,12 +158,10 @@ class SettingMainFragment : Fragment() {
         tabLayoutMediator = null
         binding.settingViewPager.adapter = null
 
+        initializationJob = null
+        loadingUi = null
         super.onDestroyView()
         _binding = null
     }
 
-    private fun isKeyboardBoardEnabled(): Boolean? {
-        val imm = getSystemService(requireContext(), InputMethodManager::class.java)
-        return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
-    }
 }

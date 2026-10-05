@@ -1,9 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import android.view.View
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -12,13 +10,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
+class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_dictionary
 
     @Inject
     lateinit var appPreference: AppPreference
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_dictionary, rootKey)
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
         val ngWordSwitchPreference =
             findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")
@@ -109,8 +107,4 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
         applyLegacySearchResultFilterIfNeeded()
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        scrollToHighlightedPreferenceAfterLayout(view)
-    }
 }
