@@ -3,20 +3,20 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.PhysicalToolbarSettings
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class HardwareKeyboardPreferenceFragment : PreferenceFragmentCompat() {
+class HardwareKeyboardPreferenceFragment : AsyncPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_hardware_keyboard
+
     private val requestAudioPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
@@ -31,8 +31,8 @@ class HardwareKeyboardPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_hardware_keyboard, rootKey)
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        setupShortcutPreference()
         val style = findPreference<ListPreference>(PhysicalToolbarSettings.STYLE_KEY)
         val mode = findPreference<SwitchPreferenceCompat>(PhysicalToolbarSettings.MODE_KEY)
         val keyboard = findPreference<SwitchPreferenceCompat>(PhysicalToolbarSettings.KEYBOARD_KEY)
@@ -75,8 +75,7 @@ class HardwareKeyboardPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    private fun setupShortcutPreference() {
         findPreference<Preference>("physical_keyboard_shortcut_setting_preference")
             ?.setOnPreferenceClickListener {
                 navigateSafely(R.id.physicalKeyboardShortcutListFragment)

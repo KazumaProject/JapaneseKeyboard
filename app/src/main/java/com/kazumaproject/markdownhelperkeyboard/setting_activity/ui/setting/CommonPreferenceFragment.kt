@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -19,7 +18,6 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
@@ -80,7 +78,7 @@ internal fun resolveKeyboardTouchEffectPreferenceVisibility(
 }
 
 @AndroidEntryPoint
-open class CommonPreferenceFragment : PreferenceFragmentCompat() {
+open class CommonPreferenceFragment : AsyncPreferenceFragment() {
 
     companion object {
         const val ARG_HIGHLIGHT_PREFERENCE_KEY = "highlightPreferenceKey"
@@ -90,13 +88,22 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     @get:XmlRes
-    protected open val preferencesXmlRes: Int = R.xml.pref_common
+    protected override val preferencesXmlRes: Int = R.xml.pref_common
 
     @Inject
     lateinit var appPreference: AppPreference
 
     @Inject
-    lateinit var localFontRepository: LocalFontRepository
+    lateinit var localFontRepositoryProvider: javax.inject.Provider<LocalFontRepository>
+
+    private lateinit var packageInfo: android.content.pm.PackageInfo
+
+    override suspend fun preparePreferenceData(context: android.content.Context) {
+        packageInfo = settingsIo(SettingsLoadStage.PACKAGE_INFO) {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+        settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().loadIfNeeded() }
+    }
 
     private var count = 0
 
@@ -122,7 +129,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
                     AppPreference.importAllFromJson(json, replaceAll = true)
 
                     // Reset device-local display assets only after the JSON has been applied.
-                    localFontRepository.restoreStandard()
+                    settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().restoreStandard() }
                     AppPreference.migrateSumirePreferenceIfNeeded()
                     AppPreference.migratePredictionLookaheadPreferenceIfNeeded()
                     toast("Backup imported")
@@ -394,10 +401,9 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         )?.isVisible = visibility.showCinematicWaveSettings
     }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
         val guidePreferences = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(guidePreferences)
-        setPreferencesFromResource(preferencesXmlRes, rootKey)
         fun updateGuideModeEnabled(text: Boolean = guideSettings.textEnabled, candidates: Boolean = guideSettings.enabled) {
             findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = text && candidates
         }
@@ -421,17 +427,12 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-
         findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 it.isEnabled = false
                 it.summary = getString(R.string.inline_suggestion_unsupported_summary)
             }
         }
-
-        val packageInfo = requireContext().packageManager.getPackageInfo(
-            requireContext().packageName, 0
-        )
 
         val languageSwitchPreference =
             findPreference<SwitchPreferenceCompat>("app_setting_language_preference")
@@ -1017,11 +1018,6 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         applyLegacySearchResultFilterIfNeeded()
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        scrollToHighlightedPreferenceAfterLayout(view)
-    }
-
     protected open fun onCommonPreferencesCreated() = Unit
 
     private fun setupRoutePreferences() {
@@ -1065,14 +1061,13 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             AppVariantConfig.hasGemma
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onPreferencesResumed() {
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
             androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()))
         findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = guideSettings.textEnabled && guideSettings.enabled
         findPreference<SeekBarPreference>("composing_guide_text_size_setting")?.value = guideSettings.textSize.toInt()
-        lifecycleScope.launch {
-            localFontRepository.loadIfNeeded()
+        launchPreferenceRefresh {
+            settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().loadIfNeeded() }
             syncCandidateReadingSizePreference()
         }
         syncDefaultEmojiSkinTonePreference()
