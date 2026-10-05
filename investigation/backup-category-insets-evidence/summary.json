@@ -1,0 +1,47 @@
+{
+  "base_dev": "75fa7423ce49bfcbe09376314e12260c57b4a694",
+  "parent_pr": 1122,
+  "parent_sha": "e1fad882819810d368d119bd9f0ac55e212e970c",
+  "device": "emulator-5580",
+  "api": 35,
+  "abi": "arm64-v8a",
+  "baseline": {
+    "tests": 3,
+    "failures": 2,
+    "bar_bottom": 296,
+    "tabs_top": 0
+  },
+  "fixed": {
+    "lite": {
+      "suite_tests": 28,
+      "passed": 27,
+      "skipped": 1,
+      "focused_tests": 3,
+      "bar_bottom": 296,
+      "tabs_top": 296
+    },
+    "full": {
+      "suite_tests": 28,
+      "passed": 28,
+      "skipped": 0,
+      "focused_tests": 3,
+      "bar_bottom": 296,
+      "tabs_top": 296
+    }
+  },
+  "unit": {
+    "lite": {
+      "tests": 165,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "full": {
+      "tests": 165,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "enabled_and_default_ime_restored": true
+}
