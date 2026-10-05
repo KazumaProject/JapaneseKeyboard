@@ -2,15 +2,14 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class CustomKeyboardPreferenceFragment : PreferenceFragmentCompat() {
+class CustomKeyboardPreferenceFragment : AsyncPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_custom
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_custom, rootKey)
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
         val customKeyboardSizePreference =
             findPreference<Preference>("custom_keyboard_size_preference")

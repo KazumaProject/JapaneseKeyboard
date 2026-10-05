@@ -44,9 +44,8 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     AppPreference.resetUtilityCandidateConfig()
-                    preferenceScreen.removeAll()
-                    setPreferencesFromResource(preferencesXmlRes, null)
-                    onCommonPreferencesCreated()
+                    preferenceScreen = null
+                    reloadPreferences()
                 }
                 .show()
             true
@@ -54,8 +53,8 @@ class UtilityCandidatePreferenceFragment : CommonPreferenceFragment() {
         updateSummaries()
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onPreferencesResumed() {
+        super.onPreferencesResumed()
         updateSummaries()
     }
 
