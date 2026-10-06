@@ -10,6 +10,9 @@ import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingSearchBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -23,7 +26,9 @@ class SettingSearchFragment : Fragment() {
     private var _binding: FragmentSettingSearchBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var searchableDestinations: List<SettingDestination>
+    private var searchableDestinations: List<SettingDestination>? = null
+    private var loadingUi: SettingsLoadingUi? = null
+    private var searchJob: Job? = null
     private lateinit var searchAdapter: SettingSearchAdapter
     private lateinit var settingCardEditorController: SettingCardEditorController
     private val searchScope: SettingSearchScope by lazy {
@@ -39,13 +44,12 @@ class SettingSearchFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSettingSearchBinding.inflate(inflater, container, false)
-        return binding.root
+        return SettingsLoadingUi(requireContext(), ::loadSearchIndex).also { loadingUi = it }.wrap(binding.root)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         settingCardEditorController = SettingCardEditorController(requireContext())
-        searchableDestinations = SettingSearchIndex.searchable(requireContext(), searchScope)
         searchAdapter = SettingSearchAdapter(
             editorController = settingCardEditorController,
             onClick = ::handleSearchResultClick,
@@ -64,46 +68,69 @@ class SettingSearchFragment : Fragment() {
                 override fun afterTextChanged(s: Editable?) = Unit
             }
         )
-        renderResults("")
+        loadSearchIndex()
+    }
+
+    private fun loadSearchIndex() {
+        val context = requireContext()
+        val scope = searchScope
+        val ui = loadingUi ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            ui.load {
+                searchableDestinations = settingsIo(SettingsLoadStage.SEARCH) {
+                    SettingSearchIndex.searchable(context, scope)
+                }
+                renderResults(binding.settingSearchInput.text?.toString().orEmpty())
+            }
+        }
     }
 
     override fun onDestroyView() {
+        searchJob?.cancel()
+        searchJob = null
+        searchableDestinations = null
+        loadingUi = null
         binding.settingSearchResultRecyclerView.adapter = null
         super.onDestroyView()
         _binding = null
     }
 
     private fun renderResults(query: String) {
-        val normalizedQuery = SettingSearchIndex.normalizeForSearch(query)
-        val touchEffectType = AppPreference.keyboard_touch_effect_type_preference
-        val visibleDestinations = searchableDestinations.filter { destination ->
-            KeyboardTouchEffectSettingVisibility.isVisibleForEffect(
-                destination = destination,
-                effectType = touchEffectType,
-            )
-        }
-        val results = SettingSearchIndex.search(
-            context = requireContext(),
-            destinations = visibleDestinations,
-            query = query,
-        )
-        searchAdapter.submitList(results)
+        val destinations = searchableDestinations ?: return
+        val context = requireContext()
+        searchJob?.cancel()
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
+            loadingUi?.load {
+                val normalizedQuery = SettingSearchIndex.normalizeForSearch(query)
+                val touchEffectType = AppPreference.keyboard_touch_effect_type_preference
+                val visibleDestinations = destinations.filter { destination ->
+                    KeyboardTouchEffectSettingVisibility.isVisibleForEffect(
+                        destination = destination,
+                        effectType = touchEffectType,
+                    )
+                }
+                val results = settingsIo(SettingsLoadStage.SEARCH) {
+                    SettingSearchIndex.search(context, visibleDestinations, query)
+                }
+                searchAdapter.submitList(results)
 
-        when {
-            normalizedQuery.isBlank() -> {
-                binding.settingSearchResultLabel.isVisible = false
-                showEmptyState(getString(R.string.setting_search_initial_empty))
-            }
+                when {
+                    normalizedQuery.isBlank() -> {
+                        binding.settingSearchResultLabel.isVisible = false
+                        showEmptyState(getString(R.string.setting_search_initial_empty))
+                    }
 
-            results.isEmpty() -> {
-                updateResultCount(0)
-                showEmptyState(getString(R.string.setting_search_empty))
-            }
+                    results.isEmpty() -> {
+                        updateResultCount(0)
+                        showEmptyState(getString(R.string.setting_search_empty))
+                    }
 
-            else -> {
-                updateResultCount(results.size)
-                binding.settingSearchEmptyText.isVisible = false
-                binding.settingSearchResultRecyclerView.isVisible = true
+                    else -> {
+                        updateResultCount(results.size)
+                        binding.settingSearchEmptyText.isVisible = false
+                        binding.settingSearchResultRecyclerView.isVisible = true
+                    }
+                }
             }
         }
     }

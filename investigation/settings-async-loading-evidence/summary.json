@@ -1,0 +1,32 @@
+{
+  "base": "be9cccd7e6fef176667a12eb66fa6fe64380c9db",
+  "device": "emulator-5580 / API 35 arm64",
+  "unit": {
+    "tests": 205,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "natural_freeze_reproduced": false,
+  "pixel6_verified": false,
+  "instrumentation": {
+    "lite": {
+      "passed": 50,
+      "skipped": 2,
+      "failed": 0
+    },
+    "full": {
+      "passed": 52,
+      "skipped": 0,
+      "failed": 0
+    }
+  },
+  "default_ime_preserved": true,
+  "apk_sha256": {
+    "lite": "0bcd813c91fcaada37d7b02939d6e6dde7c306f18214cbc316a8ebdbbf4172b8",
+    "full": "6c56d9ba1c2b4a4395d008b396194589e99c8dbfe2f531f9047dc2aafde8ac44"
+  },
+  "excluded_test": "SettingsNavigationLayoutInstrumentedTest#candidatePreviewsKeepNavigationHiddenAcrossRecreationAndRestoreItOnReturn (also stalled with dev production sources)",
+  "default_input_method_preserved": true,
+  "enabled_input_methods_preserved": true
+}

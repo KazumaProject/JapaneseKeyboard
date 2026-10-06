@@ -118,6 +118,7 @@ object SettingDestinations {
         "custom_romaji_preference",
         "shortcut_toolbar_item_preference",
         "candidate_tab_order_preference",
+        "date_candidate_settings_preference",
         "candidate_order_override_preference",
         "ng_word_preference",
         "physical_keyboard_shortcut_setting_preference",
@@ -806,6 +807,7 @@ object SettingDestinations {
             "shortcut_toolbar_size_setting_fragment_preference" ->
                 R.id.shortcutToolbarSizeSettingFragment
             "candidate_tab_order_preference" -> R.id.candidateTabOrderFragment
+            "date_candidate_settings_preference" -> R.id.dateCandidateSettingsFragment
             "keyboard_selection_preference" -> R.id.keyboardSelectionFragment
             "keyboard_key_letter_size_fragment_preference" -> R.id.keyCandidateLetterSizeFragment
             "keyboard_screen_landscape_preference" -> R.id.keyboardSizeLandscapeFragment

@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBack
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -266,6 +267,7 @@ data class ImePreferencesSnapshot(
     val enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean,
     val enableGemmaTranslationPreference: Boolean,
     val utilityCandidateConfig: UtilityCandidateConfig,
+    val dateCandidateConfig: DateCandidateConfig,
     val keyboardSkin: KeyboardSkinId = KeyboardSkinId.DEFAULT,
 ) {
     val keyboardThemeMode get() = appearance.keyboardThemeMode
@@ -799,6 +801,7 @@ data class ImePreferencesSnapshot(
                 enableGemmaTranslationPreference =
                     AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference,
                 utilityCandidateConfig = appPreference.utility_candidate_config,
+                dateCandidateConfig = appPreference.date_candidate_config,
             )
         }
     }
