@@ -8,6 +8,7 @@ class KeyActionMapperSpecialActionTest {
     @Test
     fun newSpecialActionsRoundTripThroughStableStrings() {
         val cases = listOf(
+            KeyAction.SwitchToKanaLayout to "SwitchToKana",
             KeyAction.ToggleDakutenOnly to "ToggleDakutenOnly",
             KeyAction.ToggleHandakutenOnly to "ToggleHandakutenOnly",
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
