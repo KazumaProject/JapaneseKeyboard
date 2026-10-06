@@ -1,0 +1,307 @@
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest:
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=loading cachedInsets=Insets{left=0, top=296, right=0, bottom=63}
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=TabLayout id=2131363157 y=0 padding=0 height=168
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=LinearLayout id=-1 y=0 padding=0 height=2189
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=FragmentContainerView id=2131362884 y=0 padding=0 height=2189
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=FragmentContainerView id=2131362884 y=0 padding=0 height=2189
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=ConstraintLayout id=2131362219 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=ContentFrameLayout id=16908290 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=ActionBarOverlayLayout id=2131362251 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=FrameLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=LinearLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup ancestor=DecorView id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=delayed-startup: Geometry(barBottom=296, tabsTop=0, rootPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: delayed-startup: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:186)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.delayedStartupKeepsLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:62)
+
+INSTRUMENTATION_STATUS: stream=
+Error in delayedStartupKeepsLegacyTabsBelowActionBar(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest):
+java.lang.AssertionError: delayed-startup: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:186)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.delayedStartupKeepsLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:62)
+
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=before-import ancestor=TabLayout id=2131363157 y=296 padding=0 height=168
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=LinearLayout id=-1 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=ConstraintLayout id=2131362219 y=0 padding=296 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=ContentFrameLayout id=16908290 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=ActionBarOverlayLayout id=2131362251 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=FrameLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=LinearLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=DecorView id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=loading cachedInsets=Insets{left=0, top=0, right=0, bottom=0}
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=TabLayout id=2131363157 y=296 padding=0 height=168
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=LinearLayout id=-1 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=ConstraintLayout id=2131362219 y=296 padding=0 height=2041
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=ContentFrameLayout id=16908290 y=296 padding=0 height=2041
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=ActionBarOverlayLayout id=2131362251 y=128 padding=0 height=2209
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=FrameLayout id=-1 y=128 padding=0 height=2209
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=LinearLayout id=-1 y=0 padding=128 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=DecorView id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=TabLayout id=2131363157 y=296 padding=0 height=168
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=LinearLayout id=-1 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=ConstraintLayout id=2131362219 y=296 padding=0 height=2041
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=ContentFrameLayout id=16908290 y=296 padding=0 height=2041
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=ActionBarOverlayLayout id=2131362251 y=128 padding=0 height=2209
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=FrameLayout id=-1 y=128 padding=0 height=2209
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=LinearLayout id=-1 y=0 padding=128 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation ancestor=DecorView id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-second-recreation: Geometry(barBottom=296, tabsTop=296, rootPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=before-import ancestor=TabLayout id=2131363157 y=296 padding=0 height=168
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=LinearLayout id=-1 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=FragmentContainerView id=2131362884 y=296 padding=0 height=1830
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=ConstraintLayout id=2131362219 y=0 padding=296 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=ContentFrameLayout id=16908290 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=ActionBarOverlayLayout id=2131362251 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=FrameLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=LinearLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import ancestor=DecorView id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=loading cachedInsets=Insets{left=0, top=296, right=0, bottom=63}
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=TabLayout id=2131363157 y=0 padding=0 height=168
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=LinearLayout id=-1 y=0 padding=0 height=2189
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=FragmentContainerView id=2131362884 y=0 padding=0 height=2189
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=FragmentContainerView id=2131362884 y=0 padding=0 height=2189
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=ConstraintLayout id=2131362219 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=ContentFrameLayout id=16908290 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=ActionBarOverlayLayout id=2131362251 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=FrameLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=LinearLayout id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import ancestor=DecorView id=-1 y=0 padding=0 height=2400
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=after-import: Geometry(barBottom=296, tabsTop=0, rootPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: after-import: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:186)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.checkBackupImport(SettingsBackupInsetsInstrumentedTest.kt:98)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(SettingsBackupInsetsInstrumentedTest.kt:72)
+
+INSTRUMENTATION_STATUS: stream=
+Error in exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest):
+java.lang.AssertionError: after-import: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:186)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.checkBackupImport(SettingsBackupInsetsInstrumentedTest.kt:98)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(SettingsBackupInsetsInstrumentedTest.kt:72)
+
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 7.559
+There were 2 failures:
+1) delayedStartupKeepsLegacyTabsBelowActionBar(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest)
+java.lang.AssertionError: delayed-startup: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:186)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.delayedStartupKeepsLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:62)
+2) exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest)
+java.lang.AssertionError: after-import: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:186)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.checkBackupImport(SettingsBackupInsetsInstrumentedTest.kt:98)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(SettingsBackupInsetsInstrumentedTest.kt:72)
+
+FAILURES!!!
+Tests run: 3,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1
