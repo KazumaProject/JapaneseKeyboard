@@ -702,6 +702,8 @@
     <string name="keyboard_size_direct_input_invalid_value">Enter a valid number.</string>
     <string name="keyboard_size_direct_input_reset_to_default">Reset to default.</string>
     <string name="keyboard_position_title">Position of Keyboard</string>
+    <string name="keyboard_preview_orientation_portrait">Portrait screen preview (simulated)</string>
+    <string name="keyboard_preview_orientation_landscape">Landscape screen preview (simulated)</string>
     <string name="keyboard_selection_fragment_title">List Keyboards</string>
     <string name="keyboard_selection_add_new_keyboard_title">Add Keyboard</string>
     <string name="custom_keyboard_export_title">Export custom keyboards</string>
@@ -1879,4 +1881,7 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="dictionary_word_registration_category_title">Word registration</string>
     <string name="preserve_dictionary_word_whitespace_title">Preserve leading and trailing whitespace in words</string>
     <string name="preserve_dictionary_word_whitespace_summary">Keep leading and trailing whitespace when adding or editing user dictionary words and templates, including floating registration. Whitespace-only entries are not allowed.</string>
+    <string name="settings_loading">Loading settings…</string>
+    <string name="settings_loading_failed">Settings could not be loaded.</string>
+    <string name="settings_loading_retry">Retry</string>
 </resources>

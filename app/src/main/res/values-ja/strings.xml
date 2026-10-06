@@ -658,6 +658,8 @@
     <string name="keyboard_size_direct_input_invalid_value">正しい数値を入力してください。</string>
     <string name="keyboard_size_direct_input_reset_to_default">初期値に戻しました。</string>
     <string name="keyboard_position_title">キーボードの配置</string>
+    <string name="keyboard_preview_orientation_portrait">縦画面のプレビュー（シミュレーション）</string>
+    <string name="keyboard_preview_orientation_landscape">横画面のプレビュー（シミュレーション）</string>
     <string name="keyboard_selection_fragment_title">キーボード一覧</string>
     <string name="keyboard_selection_add_new_keyboard_title">キーボードを追加</string>
     <string name="custom_keyboard_export_title">カスタムキーボードの書き出し</string>
@@ -1877,4 +1879,7 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="dictionary_word_registration_category_title">単語の登録</string>
     <string name="preserve_dictionary_word_whitespace_title">単語の前後の空白を保持する</string>
     <string name="preserve_dictionary_word_whitespace_summary">ユーザー辞書・定型文の登録や編集で、単語の前後の空白を保持します。フローティング登録にも適用されます。空白だけの単語は登録できません。</string>
+    <string name="settings_loading">設定を読み込んでいます…</string>
+    <string name="settings_loading_failed">設定を読み込めませんでした。</string>
+    <string name="settings_loading_retry">再試行</string>
 </resources>
