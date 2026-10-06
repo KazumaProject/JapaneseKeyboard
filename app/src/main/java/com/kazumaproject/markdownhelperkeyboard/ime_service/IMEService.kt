@@ -951,6 +951,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private lateinit var runtimeInputSharedPreferences: SharedPreferences
     private var runtimeInputPreferenceListenerRegistered = false
     private val runtimeInputPreferenceKeys = setOf(
+        AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY,
         AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
         AppPreference.STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY,
         AppPreference.FLICK_SENSITIVITY_KEY,
@@ -3550,6 +3551,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
 
+        val readingTextSize = appPreference.live_conversion_candidate_yomi_size.toFloat()
+        (listOfNotNull(suggestionAdapter, suggestionAdapterFull) + splitInputs.values.map { it.adapter })
+            .forEach { it.setCandidateYomiTextSize(readingTextSize) }
+
         val previousStabilizeCandidateStripHeight = stabilizeCandidateStripHeightPreference
         stabilizeCandidateStripHeightPreference =
             appPreference.stabilize_candidate_strip_height_preference
@@ -3783,6 +3788,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val shouldShowLiveConversionCandidateYomi =
             preferences.isLiveConversionEnable && preferences.showLiveConversionCandidateYomi
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setCandidateYomiTextSize(preferences.liveConversionCandidateYomiTextSize.toFloat())
             adapter.setShowCandidateYomiForLiveConversion(shouldShowLiveConversionCandidateYomi)
         }
         nBest = preferences.nBest

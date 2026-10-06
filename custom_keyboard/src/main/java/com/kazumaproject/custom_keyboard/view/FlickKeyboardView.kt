@@ -799,7 +799,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (info.keyData == newKeyData) return
 
         val oldView = info.view
-        val newViewIsIcon = KeyIconResolver.hasIcon(newKeyData)
+        val newViewIsIcon = shouldRenderKeyAsImage(newKeyData)
         val newViewIsText = !newViewIsIcon
 
         val oldViewIsIcon = oldView is AppCompatImageButton
@@ -872,7 +872,24 @@ class FlickKeyboardView @JvmOverloads constructor(
         return !keyData.isSpecialKey && keyData.keyType != KeyType.NORMAL
     }
 
+    /** Standard mode labels use the same text sizing as other special keys. */
+    private fun modeSwitchLabelForDisplay(keyData: KeyData): String? {
+        if (!KeyIconResolver.hasIcon(keyData) || KeyIconResolver.hasIconOverride(keyData)) {
+            return null
+        }
+        return when (keyData.drawableResId) {
+            com.kazumaproject.core.R.drawable.input_mode_english_custom -> "ABC"
+            com.kazumaproject.core.R.drawable.input_mode_number_select_custom -> "123"
+            com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom -> "あいう"
+            else -> null
+        }
+    }
+
+    private fun shouldRenderKeyAsImage(keyData: KeyData): Boolean =
+        KeyIconResolver.hasIcon(keyData) && modeSwitchLabelForDisplay(keyData) == null
+
     private fun keyLabelForDisplay(keyData: KeyData): String {
+        modeSwitchLabelForDisplay(keyData)?.let { return it }
         val canonicalLabel = KeyIconResolver.resolvedLabelForRendering(keyData)
         return if (shouldTransformMainLabel(keyData)) {
             transformInputTextForDisplay(canonicalLabel)
@@ -1096,6 +1113,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val targetTextSizeSp = getKeyTextSizeSp(keyData)
         val label = keyLabelForDisplay(keyData)
 
+        button.maxLines = if (modeSwitchLabelForDisplay(keyData) != null) 1 else Int.MAX_VALUE
         button.setDefaultTextSize(targetTextSizeSp)
         button.setFlickGuideTextSizeSp(flickGuideTextSizeSp)
         button.setFlickGuideLabels(null)
@@ -1345,7 +1363,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val commonCornerRadius = dpToPx(8).toFloat()
         val visualPalette = resolveKeyVisualPalette(keyData)
 
-        val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
+        val keyView: View = if (shouldRenderKeyAsImage(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false
                 elevation = 0f
@@ -1422,6 +1440,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 elevation = 0f
 
                 applyButtonText(this, keyData)
+                isPressed = keyData.isHiLighted
 
                 val originalBg: Drawable? = defaultKeyBackgroundDrawable(keyData, isDarkTheme)
 

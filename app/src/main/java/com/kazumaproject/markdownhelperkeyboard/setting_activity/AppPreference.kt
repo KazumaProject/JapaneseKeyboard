@@ -421,6 +421,10 @@ object AppPreference {
         Pair("custom_direct_mode_space_hankaku_preference", true)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
+    const val LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY = "live_conversion_candidate_yomi_size_preference"
+    const val DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 14
+    const val MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 1
+    const val MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 24
     private val LIVE_CONVERSION_CANDIDATE_YOMI =
         Pair("live_conversion_candidate_yomi_preference", false)
     private const val OLD_SUMIRE_PREFERENCE_KEY = "sumire_keyboard_input_type_preference"
@@ -2652,6 +2656,15 @@ object AppPreference {
                 LIVE_CONVERSION_CANDIDATE_YOMI.first,
                 value ?: LIVE_CONVERSION_CANDIDATE_YOMI.second
             )
+        }
+
+    var live_conversion_candidate_yomi_size: Int
+        get() = preferences.getInt(
+            LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY, DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE
+        ).coerceIn(MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE, MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE)
+        set(value) = preferences.edit {
+            it.putInt(LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY,
+                value.coerceIn(MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE, MAX_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE))
         }
 
     var delete_key_high_light_preference: Boolean?

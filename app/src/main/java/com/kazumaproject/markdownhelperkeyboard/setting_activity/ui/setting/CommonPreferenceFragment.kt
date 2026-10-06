@@ -26,6 +26,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
@@ -1070,6 +1071,10 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()))
         findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = guideSettings.textEnabled && guideSettings.enabled
         findPreference<SeekBarPreference>("composing_guide_text_size_setting")?.value = guideSettings.textSize.toInt()
+        lifecycleScope.launch {
+            localFontRepository.loadIfNeeded()
+            syncCandidateReadingSizePreference()
+        }
         syncDefaultEmojiSkinTonePreference()
         updateCursorMoveTargetPairsSummary()
     }
@@ -1082,6 +1087,12 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             // Viewが生成されていない場合などを考慮して例外は無視
         }
         super.onDestroyView()
+    }
+
+    private fun syncCandidateReadingSizePreference() {
+        findPreference<SeekBarPreference>(AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY)?.apply {
+            CandidateReadingSizeLimits.configurePreference(requireContext(), this)
+        }
     }
 
     private fun syncDefaultEmojiSkinTonePreference() {
