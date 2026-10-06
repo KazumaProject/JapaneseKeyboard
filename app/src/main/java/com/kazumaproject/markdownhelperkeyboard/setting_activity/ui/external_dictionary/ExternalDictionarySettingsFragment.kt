@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_di
 
 import android.net.Uri
 import android.os.Bundle
-import android.os.Parcelable
 import android.text.format.DateFormat
 import android.text.format.Formatter
 import android.view.Menu
@@ -17,7 +16,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceFragmentCompat
+import android.content.Context
+import androidx.preference.PreferenceScreen
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadStage
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.settingsIo
 import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -42,13 +45,18 @@ import java.util.Date
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
+class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
 
     @Inject
-    lateinit var store: DictionaryOverrideStore
+    lateinit var storeProvider: javax.inject.Provider<DictionaryOverrideStore>
+    private lateinit var store: DictionaryOverrideStore
 
     @Inject
-    lateinit var compatibilityValidator: DictionaryCompatibilityValidator
+    lateinit var compatibilityValidatorProvider: javax.inject.Provider<DictionaryCompatibilityValidator>
+    private lateinit var compatibilityValidator: DictionaryCompatibilityValidator
+
+    private val hierarchyContext = ThreadLocal<Context>()
+    private fun preferenceContext(): Context = hierarchyContext.get() ?: requireContext()
 
     private var pendingKey: DictionaryFileKey? = null
     private var compatibilityUiState = CompatibilityUiState()
@@ -71,9 +79,15 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             }
         }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        renderPreferences()
-        refreshCompatibilityUiState()
+    override suspend fun preparePreferenceData(context: Context) {
+        store = settingsIo(SettingsLoadStage.DATABASE) { storeProvider.get() }
+        compatibilityValidator = settingsIo(SettingsLoadStage.DATABASE) { compatibilityValidatorProvider.get() }
+        compatibilityUiState = settingsIo(SettingsLoadStage.DATABASE) { buildCompatibilityUiState() }
+    }
+
+    override fun createPreferenceHierarchy(context: Context): PreferenceScreen {
+        hierarchyContext.set(context)
+        return try { renderPreferences() } finally { hierarchyContext.remove() }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -106,21 +120,20 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    private fun renderPreferences() {
-        val screen = preferenceManager.createPreferenceScreen(requireContext())
-        preferenceScreen = screen
+    private fun renderPreferences(): PreferenceScreen {
+        val screen = preferenceManager.createPreferenceScreen(preferenceContext())
 
-        Preference(requireContext()).apply {
-            title = getString(R.string.external_dictionary_apply_timing_title)
-            summary = getString(R.string.external_dictionary_apply_timing_summary)
+        Preference(preferenceContext()).apply {
+            title = preferenceContext().getString(R.string.external_dictionary_apply_timing_title)
+            summary = preferenceContext().getString(R.string.external_dictionary_apply_timing_summary)
             isSelectable = false
             screen.addPreference(this)
         }
 
-        Preference(requireContext()).apply {
-            title = getString(R.string.external_dictionary_reset_all)
-            summary = getString(R.string.external_dictionary_reset_all_summary)
-            setOnPreferenceClickListener {
+        Preference(preferenceContext()).apply {
+            title = preferenceContext().getString(R.string.external_dictionary_reset_all)
+            summary = preferenceContext().getString(R.string.external_dictionary_reset_all_summary)
+            configureClickListener {
                 confirmResetAll()
                 true
             }
@@ -128,30 +141,32 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         }
 
         addSingleFileCategory(
-            title = getString(R.string.external_dictionary_category_common),
+            screen = screen,
+            title = preferenceContext().getString(R.string.external_dictionary_category_common),
             keys = COMMON_REPLACEMENT_KEYS
         )
 
-        DICTIONARY_CATEGORIES.forEach { addDictionaryCategory(it) }
+        DICTIONARY_CATEGORIES.forEach { addDictionaryCategory(screen, it) }
+        return screen
     }
 
-    private fun addSingleFileCategory(title: String, keys: List<DictionaryFileKey>) {
-        val category = PreferenceCategory(requireContext()).apply { this.title = title }
-        preferenceScreen.addPreference(category)
+    private fun addSingleFileCategory(screen: PreferenceScreen, title: String, keys: List<DictionaryFileKey>) {
+        val category = PreferenceCategory(preferenceContext()).apply { this.title = title }
+        screen.addPreference(category)
         keys.forEach { key ->
             val spec = DictionaryFileSpecs.get(key)
             val metadata = store.getOverrideMetadata(key)
             val switchState = displayStateResolver.resolveFileDisplayState(key)
-            category.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+            category.addPreference(SwitchPreferenceCompat(preferenceContext()).apply {
                 val problems = compatibilityUiState.commonKeyProblems[key].orEmpty()
-                this.title = switchTitle(getString(spec.displayNameRes))
+                this.title = switchTitle(preferenceContext().getString(spec.displayNameRes))
                 summary = buildFileSummary(metadata, switchState.displayState, problems)
                 isEnabled = switchState.switchEnabled && problems.isEmpty()
                 isChecked = switchState.switchChecked && problems.isEmpty()
-                setOnPreferenceChangeListener { _, newValue ->
+                configureChangeListener { _, newValue ->
                     if (newValue == true && problems.isNotEmpty()) {
                         showCompatibilityProblemDialog(problems)
-                        return@setOnPreferenceChangeListener false
+                        return@configureChangeListener false
                     }
                     store.setExternalEnabledForKey(key, newValue == true)
                     toastApplyTiming()
@@ -163,25 +178,25 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private fun addDictionaryCategory(dictionaryCategory: DictionaryCategory) {
-        val category = PreferenceCategory(requireContext()).apply {
+    private fun addDictionaryCategory(screen: PreferenceScreen, dictionaryCategory: DictionaryCategory) {
+        val category = PreferenceCategory(preferenceContext()).apply {
             title = categoryTitle(dictionaryCategory)
         }
-        preferenceScreen.addPreference(category)
+        screen.addPreference(category)
 
         val specs = DictionaryFileSpecs.forCategory(dictionaryCategory)
         if (dictionaryCategory in CORE_REPLACEMENT_CATEGORIES) {
             val switchState = displayStateResolver.resolveCategoryDisplayState(dictionaryCategory)
-            category.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+            category.addPreference(SwitchPreferenceCompat(preferenceContext()).apply {
                 val problems = compatibilityUiState.categoryProblems[dictionaryCategory].orEmpty()
                 this.title = switchTitle(categoryTitle(dictionaryCategory))
                 summary = buildCategorySummary(switchState, problems)
                 isEnabled = switchState.switchEnabled && problems.isEmpty()
                 isChecked = switchState.switchChecked && problems.isEmpty()
-                setOnPreferenceChangeListener { _, newValue ->
+                configureChangeListener { _, newValue ->
                     if (newValue == true && problems.isNotEmpty()) {
                         showCompatibilityProblemDialog(problems)
-                        return@setOnPreferenceChangeListener false
+                        return@configureChangeListener false
                     }
                     store.setExternalEnabledForCategory(dictionaryCategory, newValue == true)
                     toastApplyTiming()
@@ -191,13 +206,13 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             })
         } else if (dictionaryCategory.isDisableableBundledDictionary()) {
             val switchState = displayStateResolver.resolveDisableableCategoryDisplayState(dictionaryCategory)
-            category.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+            category.addPreference(SwitchPreferenceCompat(preferenceContext()).apply {
                 val problems = compatibilityUiState.categoryProblems[dictionaryCategory].orEmpty()
-                title = getString(R.string.external_dictionary_use_dictionary_switch_title)
+                title = preferenceContext().getString(R.string.external_dictionary_use_dictionary_switch_title)
                 summary = buildDisableableCategorySummary(dictionaryCategory, switchState, problems)
                 isEnabled = switchState.switchEnabled
                 isChecked = switchState.switchChecked
-                setOnPreferenceChangeListener { _, newValue ->
+                configureChangeListener { _, newValue ->
                     val enabled = newValue == true
                     store.setOptionalBundledEnabled(dictionaryCategory, enabled)
                     if (enabled && problems.isNotEmpty()) {
@@ -220,20 +235,20 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     private fun addFileActions(category: PreferenceCategory, spec: DictionaryFileSpec) {
         val metadata = store.getOverrideMetadata(spec.key)
         val state = displayStateResolver.resolveFileDisplayState(spec)
-        category.addPreference(Preference(requireContext()).apply {
-            title = getString(R.string.external_dictionary_select_file_format, getString(spec.displayNameRes))
+        category.addPreference(Preference(preferenceContext()).apply {
+            title = preferenceContext().getString(R.string.external_dictionary_select_file_format, preferenceContext().getString(spec.displayNameRes))
             summary = buildFileSummary(metadata, state)
-            setOnPreferenceClickListener {
+            configureClickListener {
                 pendingKey = spec.key
                 openDocumentLauncher.launch(arrayOf("*/*"))
                 true
             }
         })
-        category.addPreference(Preference(requireContext()).apply {
-            title = getString(R.string.external_dictionary_remove_file_format, getString(spec.displayNameRes))
-            summary = getString(R.string.external_dictionary_remove_file_summary)
+        category.addPreference(Preference(preferenceContext()).apply {
+            title = preferenceContext().getString(R.string.external_dictionary_remove_file_format, preferenceContext().getString(spec.displayNameRes))
+            summary = preferenceContext().getString(R.string.external_dictionary_remove_file_summary)
             isEnabled = store.hasOverride(spec.key)
-            setOnPreferenceClickListener {
+            configureClickListener {
                 store.removeOverride(spec.key)
                 toastApplyTiming()
                 refreshCompatibilityUiState()
@@ -243,7 +258,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun importOverride(key: DictionaryFileKey, uri: Uri) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val importResult = withContext(Dispatchers.IO) {
                 val result = store.saveOverrideFromUri(key, uri)
                 val spec = DictionaryFileSpecs.get(key)
@@ -265,15 +280,15 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             }
             val message = if (importResult.validationResult.isValid) {
                 if (importResult.disabledProblems.isEmpty()) {
-                    getString(R.string.external_dictionary_import_success)
+                    preferenceContext().getString(R.string.external_dictionary_import_success)
                 } else {
-                    getString(R.string.external_dictionary_import_success_incompatible_not_applied)
+                    preferenceContext().getString(R.string.external_dictionary_import_success_incompatible_not_applied)
                 }
             } else {
-                getString(R.string.external_dictionary_import_failed_format, importResult.validationResult.message)
+                preferenceContext().getString(R.string.external_dictionary_import_failed_format, importResult.validationResult.message)
             }
             if (!isAdded || view == null) return@launch
-            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+            Toast.makeText(preferenceContext(), message, Toast.LENGTH_LONG).show()
             if (importResult.disabledProblems.isNotEmpty()) {
                 showCompatibilityProblemDialog(importResult.disabledProblems)
             }
@@ -282,8 +297,8 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun importDictionaryZip(uri: Uri) {
-        lifecycleScope.launch {
-            val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val appContext = preferenceContext().applicationContext
             val importResult = withContext(Dispatchers.IO) {
                 val result = store.importOverridesFromZipUri(appContext, uri)
                 val importedTokenCategories = result.imported
@@ -316,7 +331,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun confirmResetAll() {
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(preferenceContext())
             .setTitle(R.string.external_dictionary_reset_all)
             .setMessage(R.string.external_dictionary_reset_all_confirm)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -329,16 +344,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun rerenderPreferencesKeepingScroll() {
-        if (!isAdded || view == null) return
-        val savedState: Parcelable? = listView.layoutManager?.onSaveInstanceState()
-        renderPreferences()
-        if (savedState != null) {
-            listView.post {
-                if (isAdded && view != null) {
-                    listView.layoutManager?.onRestoreInstanceState(savedState)
-                }
-            }
-        }
+        if (isAdded && view != null) reloadPreferences()
     }
 
     private fun buildFileSummary(
@@ -349,17 +355,17 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         val compatibilityLines = compatibilitySummaryLines(compatibilityProblems)
         if (metadata == null) {
             return listOf(
-                getString(R.string.external_dictionary_state_format, displayStateText(state)),
+                preferenceContext().getString(R.string.external_dictionary_state_format, displayStateText(state)),
                 *compatibilityLines.toTypedArray(),
             ).filter { it.isNotBlank() }.joinToString("\n")
         }
         val date = DateFormat.format("yyyy-MM-dd HH:mm", Date(metadata.importedAt))
-        val size = Formatter.formatFileSize(requireContext(), metadata.size)
+        val size = Formatter.formatFileSize(preferenceContext(), metadata.size)
         return listOf(
-            getString(R.string.external_dictionary_state_format, displayStateText(state)),
-            getString(R.string.external_dictionary_external_file_selected_format, metadata.originalFileName),
-            getString(R.string.external_dictionary_size_format, size),
-            getString(R.string.external_dictionary_imported_format, date),
+            preferenceContext().getString(R.string.external_dictionary_state_format, displayStateText(state)),
+            preferenceContext().getString(R.string.external_dictionary_external_file_selected_format, metadata.originalFileName),
+            preferenceContext().getString(R.string.external_dictionary_size_format, size),
+            preferenceContext().getString(R.string.external_dictionary_imported_format, date),
             metadata.validationMessage,
             *compatibilityLines.toTypedArray(),
         ).joinToString("\n")
@@ -370,13 +376,13 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         compatibilityProblems: List<DictionaryCompatibilityProblem> = emptyList(),
     ): String {
         val lines = mutableListOf(
-            getString(R.string.external_dictionary_state_format, displayStateText(switchState.displayState))
+            preferenceContext().getString(R.string.external_dictionary_state_format, displayStateText(switchState.displayState))
         )
         when {
             switchState.displayState == ExternalDictionaryDisplayState.BundledInUseWithValidOverride ->
-                lines += getString(R.string.external_dictionary_external_file_selected)
+                lines += preferenceContext().getString(R.string.external_dictionary_external_file_selected)
             !switchState.switchEnabled ->
-                lines += getString(R.string.external_dictionary_no_valid_external_file_selected)
+                lines += preferenceContext().getString(R.string.external_dictionary_no_valid_external_file_selected)
         }
         lines += compatibilitySummaryLines(compatibilityProblems)
         return lines.joinToString("\n")
@@ -388,7 +394,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         compatibilityProblems: List<DictionaryCompatibilityProblem> = emptyList(),
     ): String {
         val lines = mutableListOf(
-            getString(R.string.external_dictionary_state_format, displayStateText(switchState.displayState))
+            preferenceContext().getString(R.string.external_dictionary_state_format, displayStateText(switchState.displayState))
         )
         val specs = DictionaryFileSpecs.forCategory(category)
         val hasInvalidOverride = specs.any { spec ->
@@ -399,24 +405,17 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         val hasAllValidOverrides = specs.all { store.isValidOverride(it.key) }
         when {
             hasInvalidOverride ->
-                lines += getString(R.string.external_dictionary_switch_on_invalid_uses_bundled)
+                lines += preferenceContext().getString(R.string.external_dictionary_switch_on_invalid_uses_bundled)
             hasAnyOverride && !hasAllValidOverrides ->
-                lines += getString(R.string.external_dictionary_switch_on_partial_uses_bundled)
+                lines += preferenceContext().getString(R.string.external_dictionary_switch_on_partial_uses_bundled)
             switchState.displayState == ExternalDictionaryDisplayState.BundledInUseWithValidOverride ->
-                lines += getString(R.string.external_dictionary_external_file_selected)
+                lines += preferenceContext().getString(R.string.external_dictionary_external_file_selected)
         }
         lines += compatibilitySummaryLines(compatibilityProblems)
         return lines.joinToString("\n")
     }
 
-    private fun refreshCompatibilityUiState() {
-        lifecycleScope.launch {
-            val nextState = withContext(Dispatchers.IO) { buildCompatibilityUiState() }
-            if (!isAdded || view == null) return@launch
-            compatibilityUiState = nextState
-            rerenderPreferencesKeepingScroll()
-        }
-    }
+    private fun refreshCompatibilityUiState() = rerenderPreferencesKeepingScroll()
 
     private fun buildCompatibilityUiState(): CompatibilityUiState {
         val categoryProblems = DICTIONARY_CATEGORIES
@@ -484,12 +483,12 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     ): List<String> {
         if (problems.isEmpty()) return emptyList()
         return listOf(
-            getString(R.string.external_dictionary_compat_imported_but_not_usable),
-            getString(R.string.external_dictionary_compat_import_matching_common_files),
-            getString(R.string.external_dictionary_compat_dictionary_not_applied),
+            preferenceContext().getString(R.string.external_dictionary_compat_imported_but_not_usable),
+            preferenceContext().getString(R.string.external_dictionary_compat_import_matching_common_files),
+            preferenceContext().getString(R.string.external_dictionary_compat_dictionary_not_applied),
         ) + problems.map { problem ->
-            val detail = getString(problem.messageResId, *problem.messageArgs.toTypedArray())
-            val fileName = problem.affectedFileKey?.let { getString(DictionaryFileSpecs.get(it).displayNameRes) }
+            val detail = preferenceContext().getString(problem.messageResId, *problem.messageArgs.toTypedArray())
+            val fileName = problem.affectedFileKey?.let { preferenceContext().getString(DictionaryFileSpecs.get(it).displayNameRes) }
             val categoryName = problem.affectedCategory?.takeIf { it != DictionaryCategory.COMMON }?.let { categoryTitle(it) }
             listOfNotNull(categoryName, fileName, detail).joinToString(": ")
         }
@@ -497,7 +496,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
 
     private fun showCompatibilityProblemDialog(problems: List<DictionaryCompatibilityProblem>) {
         if (!isAdded || view == null || problems.isEmpty()) return
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(preferenceContext())
             .setTitle(R.string.external_dictionary_compat_dialog_title)
             .setMessage(compatibilitySummaryLines(problems).joinToString("\n"))
             .setPositiveButton(android.R.string.ok, null)
@@ -506,7 +505,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
 
     private fun showZipImportResultDialog(result: DictionaryZipImportResult) {
         if (!isAdded || view == null) return
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(preferenceContext())
             .setTitle(R.string.external_dictionary_zip_import_result_title)
             .setMessage(buildZipImportResultMessage(result))
             .setPositiveButton(android.R.string.ok, null)
@@ -515,14 +514,14 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
 
     private fun buildZipImportResultMessage(result: DictionaryZipImportResult): String {
         val lines = mutableListOf(
-            getString(R.string.external_dictionary_zip_import_imported_format, result.importedCount),
-            getString(R.string.external_dictionary_zip_import_skipped_format, result.skipped.size),
-            getString(R.string.external_dictionary_zip_import_failed_format, result.failedCount),
-            getString(R.string.external_dictionary_zip_import_total_format, result.totalEntries),
-            getString(R.string.external_dictionary_zip_import_recognized_format, result.recognizedEntries),
+            preferenceContext().getString(R.string.external_dictionary_zip_import_imported_format, result.importedCount),
+            preferenceContext().getString(R.string.external_dictionary_zip_import_skipped_format, result.skipped.size),
+            preferenceContext().getString(R.string.external_dictionary_zip_import_failed_format, result.failedCount),
+            preferenceContext().getString(R.string.external_dictionary_zip_import_total_format, result.totalEntries),
+            preferenceContext().getString(R.string.external_dictionary_zip_import_recognized_format, result.recognizedEntries),
         )
         if (result.incompatible.isNotEmpty()) {
-            lines += getString(R.string.external_dictionary_zip_import_incompatible_format, result.incompatible.size)
+            lines += preferenceContext().getString(R.string.external_dictionary_zip_import_incompatible_format, result.incompatible.size)
         }
         appendResultSection(lines, R.string.external_dictionary_zip_import_imported_section) {
             result.imported.map { "${it.key.name}: ${it.entryName}" }
@@ -550,13 +549,13 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         val sectionValues = values()
         if (sectionValues.isEmpty()) return
         lines += ""
-        lines += getString(titleResId)
+        lines += preferenceContext().getString(titleResId)
         lines += sectionValues.map { "- $it" }
     }
 
     private fun compatibilityProblemDetailLine(problem: DictionaryCompatibilityProblem): String {
-        val detail = getString(problem.messageResId, *problem.messageArgs.toTypedArray())
-        val fileName = problem.affectedFileKey?.let { getString(DictionaryFileSpecs.get(it).displayNameRes) }
+        val detail = preferenceContext().getString(problem.messageResId, *problem.messageArgs.toTypedArray())
+        val fileName = problem.affectedFileKey?.let { preferenceContext().getString(DictionaryFileSpecs.get(it).displayNameRes) }
         val categoryName = problem.affectedCategory
             ?.takeIf { it != DictionaryCategory.COMMON }
             ?.let { categoryTitle(it) }
@@ -577,39 +576,39 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             ExternalDictionaryDisplayState.PartialOverrideBundledFallback ->
                 R.string.external_dictionary_state_partial_bundled_fallback
         }
-        return getString(resId)
+        return preferenceContext().getString(resId)
     }
 
     private fun switchTitle(dictionaryName: String): String =
-        getString(
+        preferenceContext().getString(
             R.string.external_dictionary_switch_title_format,
             dictionaryName,
-            getString(R.string.external_dictionary_replace_with_external_file),
+            preferenceContext().getString(R.string.external_dictionary_replace_with_external_file),
         )
 
     private fun categoryTitle(category: DictionaryCategory): String {
         return when (category) {
-            DictionaryCategory.SYSTEM -> getString(R.string.external_dictionary_category_system)
-            DictionaryCategory.SINGLE_KANJI -> getString(R.string.external_dictionary_category_single_kanji)
-            DictionaryCategory.EMOJI -> getString(R.string.external_dictionary_category_emoji)
-            DictionaryCategory.EMOTICON -> getString(R.string.external_dictionary_category_emoticon)
-            DictionaryCategory.SYMBOL -> getString(R.string.external_dictionary_category_symbol)
+            DictionaryCategory.SYSTEM -> preferenceContext().getString(R.string.external_dictionary_category_system)
+            DictionaryCategory.SINGLE_KANJI -> preferenceContext().getString(R.string.external_dictionary_category_single_kanji)
+            DictionaryCategory.EMOJI -> preferenceContext().getString(R.string.external_dictionary_category_emoji)
+            DictionaryCategory.EMOTICON -> preferenceContext().getString(R.string.external_dictionary_category_emoticon)
+            DictionaryCategory.SYMBOL -> preferenceContext().getString(R.string.external_dictionary_category_symbol)
             DictionaryCategory.READING_CORRECTION -> "reading_correction"
             DictionaryCategory.KOTOWAZA -> "kotowaza"
-            DictionaryCategory.ENGLISH -> getString(R.string.external_dictionary_category_english)
-            DictionaryCategory.ENGLISH_READING -> getString(R.string.external_dictionary_category_english_reading)
-            DictionaryCategory.PERSON_NAME -> getString(R.string.mozc_ut_person_name_title)
-            DictionaryCategory.PLACES -> getString(R.string.mozc_ut_places_title)
-            DictionaryCategory.WIKI -> getString(R.string.mozc_ut_wiki_title)
-            DictionaryCategory.NEOLOGD -> getString(R.string.mozc_ut_neologd_title)
-            DictionaryCategory.WEB -> getString(R.string.mozc_ut_web_title)
-            DictionaryCategory.COMMON -> getString(R.string.external_dictionary_category_common)
+            DictionaryCategory.ENGLISH -> preferenceContext().getString(R.string.external_dictionary_category_english)
+            DictionaryCategory.ENGLISH_READING -> preferenceContext().getString(R.string.external_dictionary_category_english_reading)
+            DictionaryCategory.PERSON_NAME -> preferenceContext().getString(R.string.mozc_ut_person_name_title)
+            DictionaryCategory.PLACES -> preferenceContext().getString(R.string.mozc_ut_places_title)
+            DictionaryCategory.WIKI -> preferenceContext().getString(R.string.mozc_ut_wiki_title)
+            DictionaryCategory.NEOLOGD -> preferenceContext().getString(R.string.mozc_ut_neologd_title)
+            DictionaryCategory.WEB -> preferenceContext().getString(R.string.mozc_ut_web_title)
+            DictionaryCategory.COMMON -> preferenceContext().getString(R.string.external_dictionary_category_common)
         }
     }
 
     private fun toastApplyTiming() {
         Toast.makeText(
-            requireContext(),
+            preferenceContext(),
             R.string.external_dictionary_apply_timing_summary,
             Toast.LENGTH_LONG
         ).show()
