@@ -1,0 +1,60 @@
+
+com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest:.........
+Error in flickThresholdShapeIsClassifiedAsRadialDefaultListPreference(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest):
+java.lang.AssertionError: expected:<2131362941> but was:<2131362781>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.flickThresholdShapeIsClassifiedAsRadialDefaultListPreference(SettingInlinePreferenceClassificationInstrumentedTest.kt:125)
+..
+Error in legacyPreferenceResultFilterKeepsTargetAndDependencyOnly(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest):
+java.lang.IllegalStateException: Dependency "shortcut_toolbar_visibility_preference" not found for preference "shortcut_toolbar_integrated_in_suggestion_preference" (title: "null"
+	at androidx.preference.Preference.registerDependency(Preference.java:1412)
+	at androidx.preference.Preference.setDependency(Preference.java:1550)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.legacyPreferenceResultFilterKeepsTargetAndDependencyOnly(SettingInlinePreferenceClassificationInstrumentedTest.kt:309)
+....
+Error in suminagashiInkEffectIsClassifiedAsSwitchPreference(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest):
+java.util.NoSuchElementException: Collection contains no element matching the predicate.
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.destinationForKey(SettingInlinePreferenceClassificationInstrumentedTest.kt:451)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.suminagashiInkEffectIsClassifiedAsSwitchPreference(SettingInlinePreferenceClassificationInstrumentedTest.kt:83)
+.
+Error in switchPreferenceXmlItemIsClassifiedAsSwitchPreference(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest):
+java.lang.AssertionError: expected:<2131362721> but was:<2131362781>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.switchPreferenceXmlItemIsClassifiedAsSwitchPreference(SettingInlinePreferenceClassificationInstrumentedTest.kt:42)
+.
+
+Time: 0.392
+There were 4 failures:
+1) flickThresholdShapeIsClassifiedAsRadialDefaultListPreference(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest)
+java.lang.AssertionError: expected:<2131362941> but was:<2131362781>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.flickThresholdShapeIsClassifiedAsRadialDefaultListPreference(SettingInlinePreferenceClassificationInstrumentedTest.kt:125)
+2) legacyPreferenceResultFilterKeepsTargetAndDependencyOnly(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest)
+java.lang.IllegalStateException: Dependency "shortcut_toolbar_visibility_preference" not found for preference "shortcut_toolbar_integrated_in_suggestion_preference" (title: "null"
+	at androidx.preference.Preference.registerDependency(Preference.java:1412)
+	at androidx.preference.Preference.setDependency(Preference.java:1550)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.legacyPreferenceResultFilterKeepsTargetAndDependencyOnly(SettingInlinePreferenceClassificationInstrumentedTest.kt:309)
+3) suminagashiInkEffectIsClassifiedAsSwitchPreference(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest)
+java.util.NoSuchElementException: Collection contains no element matching the predicate.
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.destinationForKey(SettingInlinePreferenceClassificationInstrumentedTest.kt:451)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.suminagashiInkEffectIsClassifiedAsSwitchPreference(SettingInlinePreferenceClassificationInstrumentedTest.kt:83)
+4) switchPreferenceXmlItemIsClassifiedAsSwitchPreference(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest)
+java.lang.AssertionError: expected:<2131362721> but was:<2131362781>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingInlinePreferenceClassificationInstrumentedTest.switchPreferenceXmlItemIsClassifiedAsSwitchPreference(SettingInlinePreferenceClassificationInstrumentedTest.kt:42)
+
+FAILURES!!!
+Tests run: 22,  Failures: 4
+
+

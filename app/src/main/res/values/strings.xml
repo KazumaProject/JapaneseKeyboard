@@ -702,6 +702,8 @@
     <string name="keyboard_size_direct_input_invalid_value">Enter a valid number.</string>
     <string name="keyboard_size_direct_input_reset_to_default">Reset to default.</string>
     <string name="keyboard_position_title">Position of Keyboard</string>
+    <string name="keyboard_preview_orientation_portrait">Portrait screen preview (simulated)</string>
+    <string name="keyboard_preview_orientation_landscape">Landscape screen preview (simulated)</string>
     <string name="keyboard_selection_fragment_title">List Keyboards</string>
     <string name="keyboard_selection_add_new_keyboard_title">Add Keyboard</string>
     <string name="custom_keyboard_export_title">Export custom keyboards</string>
@@ -1878,4 +1880,7 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="stabilize_candidate_strip_height_summary">Keep the editor position stable when typing or confirming text. Any extra space stays transparent and allows touches through.</string>
     <string name="flick_editor_preview_delay_title">Text field preview delay (ms)</string>
     <string name="flick_editor_preview_delay_summary">0 sends immediately. Wait after each selection change before showing the preview. Longer delays may prevent a preview from appearing before you lift your finger.</string>
+    <string name="settings_loading">Loading settings…</string>
+    <string name="settings_loading_failed">Settings could not be loaded.</string>
+    <string name="settings_loading_retry">Retry</string>
 </resources>

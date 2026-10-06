@@ -5,6 +5,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunset
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -102,6 +104,67 @@ class KanaKanjiConversionSessionParityTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun requestDateCandidateConfigIsAppliedToFlatAndBunsetsuResults() = runBlocking {
+        val config = DateCandidateConfig(
+            order = listOf(DateCandidateFormat.WEEKDAY_LONG, DateCandidateFormat.YEAR_MONTH_DAY),
+            enabledFormats = setOf(DateCandidateFormat.WEEKDAY_LONG, DateCandidateFormat.YEAR_MONTH_DAY),
+        )
+        val expectedOrder = listOf(DateCandidateFormat.WEEKDAY_LONG, DateCandidateFormat.YEAR_MONTH_DAY)
+        val japaneseModes = listOf(
+            CandidateQueryMode.NO_TAB_DEFAULT,
+            CandidateQueryMode.PREDICTION,
+            CandidateQueryMode.CONVERSION,
+        )
+
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in japaneseModes) {
+                for (bunsetsu in listOf(false, true)) {
+                    val result = session.query(
+                        request("きょう", mode, bunsetsu).copy(dateCandidateConfig = config),
+                    )
+
+                    assertEquals("$backend/$mode/bunsetsu=$bunsetsu flat", expectedOrder,
+                        result.candidates.mapNotNull { it.dateFormat })
+                    if (bunsetsu) {
+                        assertEquals("$backend/$mode bunsetsu result", expectedOrder,
+                            result.bunsetsuResult?.candidates.orEmpty().mapNotNull { it.dateFormat })
+                    } else {
+                        assertEquals("$backend/$mode no bunsetsu result", null, result.bunsetsuResult)
+                    }
+                }
+            }
+
+            val englishKanaResult = session.query(
+                request("きょう", CandidateQueryMode.EISUKANA, bunsetsu = false)
+                    .copy(dateCandidateConfig = config),
+            )
+            assertEquals(expectedOrder, englishKanaResult.candidates.mapNotNull { it.dateFormat })
+            assertEquals(null, englishKanaResult.bunsetsuResult)
+        }
+
+        val incremental = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
+        val firstResult = incremental.query(
+            request("きょう", CandidateQueryMode.PREDICTION, bunsetsu = false)
+                .copy(dateCandidateConfig = config),
+        )
+        assertEquals(expectedOrder, firstResult.candidates.mapNotNull { it.dateFormat })
+
+        val changedConfig = DateCandidateConfig(
+            order = listOf(DateCandidateFormat.MONTH_DAY),
+            enabledFormats = setOf(DateCandidateFormat.MONTH_DAY),
+        )
+        val changedResult = incremental.query(
+            request("きょう", CandidateQueryMode.PREDICTION, bunsetsu = false)
+                .copy(dateCandidateConfig = changedConfig),
+        )
+        assertEquals(
+            listOf(DateCandidateFormat.MONTH_DAY),
+            changedResult.candidates.mapNotNull { it.dateFormat },
+        )
     }
 
     @Test
