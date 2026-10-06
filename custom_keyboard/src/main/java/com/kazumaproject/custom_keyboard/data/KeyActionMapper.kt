@@ -178,6 +178,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.text_select_start_24dp
             ),
             DisplayAction(
+                KeyAction.SwitchToKanaLayout,
+                context.getString(R.string.action_switch_to_hiragana_mode),
+                iconResIdForAction(KeyAction.SwitchToKanaLayout)
+            ),
+            DisplayAction(
                 KeyAction.SwitchToEnglishLayout,
                 context.getString(R.string.switch_qwerty),
                 com.kazumaproject.core.R.drawable.input_mode_english_custom
@@ -233,6 +238,7 @@ object KeyActionMapper {
             KeyAction.MoveCursorDown -> com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
             KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+            KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
             KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
             KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
