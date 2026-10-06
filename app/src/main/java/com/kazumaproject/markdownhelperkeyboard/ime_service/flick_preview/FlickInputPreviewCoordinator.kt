@@ -11,6 +11,8 @@ internal class FlickInputPreviewCoordinator(
         FlickMutationSnapshot,
         FlickTextSelection,
     ) -> FlickTextMutation = FlickTextMutationResolver::resolve,
+    private val schedulePreviewRender: ((Long, () -> Unit) -> (() -> Unit))? = null,
+    private val isContextCurrent: (FlickPreviewContext) -> Boolean = { true },
 ) {
     private data class ActivePreview(
         val gestureId: Long,
@@ -18,13 +20,47 @@ internal class FlickInputPreviewCoordinator(
         val source: FlickPreviewSource,
         val snapshot: FlickMutationSnapshot,
         val composingTail: String,
+        val context: FlickPreviewContext,
         var lastSelection: FlickTextSelection,
         var lastMutation: FlickTextMutation,
+        var lastRenderedInput: String? = null,
         var pendingCommitConsumed: Boolean = false,
         var previewWasReleased: Boolean = false,
     )
 
     private var active: ActivePreview? = null
+    private var pendingRenderToken: Any? = null
+    private var cancelScheduledRender: (() -> Unit)? = null
+
+    private fun cancelPendingRender() {
+        pendingRenderToken = null
+        cancelScheduledRender?.invoke()
+        cancelScheduledRender = null
+    }
+
+    private fun renderOrSchedule(context: FlickPreviewContext) {
+        val current = active ?: return
+        val scheduler = schedulePreviewRender
+        if (context.previewDelayMillis <= 0 || scheduler == null) {
+            renderMutation(current.lastMutation)
+            return
+        }
+        cancelPendingRender()
+        val token = Any()
+        pendingRenderToken = token
+        cancelScheduledRender = scheduler(context.previewDelayMillis) {
+            if (pendingRenderToken === token && active === current) {
+                pendingRenderToken = null
+                cancelScheduledRender = null
+                if (isContextCurrent(context)) {
+                    renderMutation(current.lastMutation)
+                } else {
+                    active = null
+                    composingTextArbiter.resetForEditorSession()
+                }
+            }
+        }
+    }
 
     fun onEvent(event: FlickTextPreviewEvent, context: FlickPreviewContext) {
         when (event) {
@@ -46,8 +82,12 @@ internal class FlickInputPreviewCoordinator(
     }
 
     fun cancel(restore: Boolean) {
+        cancelPendingRender()
         active?.let { current ->
-            if (restore) {
+            if (current.context.previewDelayMillis > 0 && !isContextCurrent(current.context)) {
+                // Never restore text from the previous connection into a replacement editor.
+                composingTextArbiter.resetForEditorSession()
+            } else if (restore) {
                 if (current.previewWasReleased) {
                     composingTextArbiter.restoreCanonical()
                 } else {
@@ -61,6 +101,7 @@ internal class FlickInputPreviewCoordinator(
     }
 
     fun resetForEditorSession() {
+        cancelPendingRender()
         active = null
         composingTextArbiter.resetForEditorSession()
     }
@@ -85,10 +126,11 @@ internal class FlickInputPreviewCoordinator(
             source = context.source,
             snapshot = snapshot,
             composingTail = context.composingTail,
+            context = context,
             lastSelection = event.selection,
             lastMutation = mutation,
         )
-        renderMutation(mutation)
+        renderOrSchedule(context)
     }
 
     private fun update(
@@ -99,7 +141,7 @@ internal class FlickInputPreviewCoordinator(
         val mutation = mutationResolver(current.snapshot, event.selection)
         current.lastSelection = event.selection
         current.lastMutation = mutation
-        renderMutation(mutation)
+        renderOrSchedule(context)
     }
 
     private fun prepareCommit(
@@ -107,7 +149,7 @@ internal class FlickInputPreviewCoordinator(
         context: FlickPreviewContext,
     ) {
         val current = matchingActive(event.gestureId, context) ?: return
-        val previousMutation = current.lastMutation
+        cancelPendingRender()
         val mutation = mutationResolver(current.snapshot, event.selection)
         current.lastSelection = event.selection
         current.lastMutation = mutation
@@ -115,8 +157,7 @@ internal class FlickInputPreviewCoordinator(
 
         when (mutation) {
             is FlickTextMutation.ReplaceComposingInput -> {
-                val previousResult =
-                    (previousMutation as? FlickTextMutation.ReplaceComposingInput)?.resultInput
+                val previousResult = current.lastRenderedInput
                 val needsEditorUpdate = !composingTextArbiter.isPreviewVisible() ||
                         previousResult != mutation.resultInput
                 if (needsEditorUpdate && !showPreview(mutation, current.composingTail)) {
@@ -139,6 +180,7 @@ internal class FlickInputPreviewCoordinator(
         context: FlickPreviewContext,
     ) {
         val current = matchingActive(event.gestureId, context) ?: return
+        cancelPendingRender()
         if (current.previewWasReleased && !current.pendingCommitConsumed) {
             composingTextArbiter.restoreCanonical()
         }
@@ -150,6 +192,7 @@ internal class FlickInputPreviewCoordinator(
         context: FlickPreviewContext,
     ) {
         matchingActive(event.gestureId, context) ?: return
+        cancelPendingRender()
         composingTextArbiter.cancelPreviewAndRestore()
         active = null
     }
@@ -158,7 +201,17 @@ internal class FlickInputPreviewCoordinator(
         gestureId: Long,
         context: FlickPreviewContext,
     ): ActivePreview? {
-        return active?.takeIf {
+        val current = active ?: return null
+        if (current.context.previewDelayMillis > 0 &&
+            (context.inputConnectionToken !== current.context.inputConnectionToken ||
+                    !isContextCurrent(current.context))
+        ) {
+            cancelPendingRender()
+            active = null
+            composingTextArbiter.resetForEditorSession()
+            return null
+        }
+        return current.takeIf {
             it.gestureId == gestureId &&
                     it.editorSessionId == context.editorSessionId &&
                     it.source == context.source
@@ -171,10 +224,15 @@ internal class FlickInputPreviewCoordinator(
                 val current = active ?: return
                 if (!showPreview(mutation, current.composingTail)) {
                     active = null
+                } else {
+                    current.lastRenderedInput = mutation.resultInput
                 }
             }
 
-            FlickTextMutation.NoTextOutput -> composingTextArbiter.suspendPreviewAndRestore()
+            FlickTextMutation.NoTextOutput -> {
+                composingTextArbiter.suspendPreviewAndRestore()
+                active?.lastRenderedInput = null
+            }
         }
     }
 
