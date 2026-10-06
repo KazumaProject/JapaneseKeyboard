@@ -1,0 +1,72 @@
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest:
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=delayed-startup: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=restored-before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=restored-after-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=restored-after-second-recreation: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=stable-before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=stable-after-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=stable-after-second-recreation: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 8.601
+
+OK (3 tests)
+
+
+INSTRUMENTATION_CODE: -1
