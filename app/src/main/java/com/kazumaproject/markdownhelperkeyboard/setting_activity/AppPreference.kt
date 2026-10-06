@@ -18,6 +18,8 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.RegionalUnitProfile
@@ -60,6 +62,8 @@ object AppPreference {
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
     const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    const val DATE_CANDIDATE_ORDER_KEY = "date_candidate_order"
+    const val DATE_CANDIDATE_ENABLED_FORMATS_KEY = "date_candidate_enabled_formats"
     private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
@@ -1950,6 +1954,28 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var date_candidate_config: DateCandidateConfig
+        get() {
+            val formatsByValue = DateCandidateFormat.entries.associateBy { it.preferenceValue }
+            val order = preferences.getString(DATE_CANDIDATE_ORDER_KEY, null)
+                ?.split(',')?.mapNotNull(formatsByValue::get).orEmpty()
+            val enabledValues = preferences.getStringSet(DATE_CANDIDATE_ENABLED_FORMATS_KEY, null)
+            val enabledFormats = enabledValues?.mapNotNull(formatsByValue::get)?.toSet()
+                ?: DateCandidateFormat.entries.toSet()
+            val config = DateCandidateConfig(order = order, enabledFormats = enabledFormats)
+            return config.copy(order = config.normalizedOrder)
+        }
+        set(value) = preferences.edit { editor ->
+            editor.putString(
+                DATE_CANDIDATE_ORDER_KEY,
+                value.normalizedOrder.joinToString(",") { it.preferenceValue },
+            )
+            editor.putStringSet(
+                DATE_CANDIDATE_ENABLED_FORMATS_KEY,
+                value.enabledFormats.mapTo(mutableSetOf()) { it.preferenceValue },
+            )
         }
 
     var utility_candidate_config: UtilityCandidateConfig
