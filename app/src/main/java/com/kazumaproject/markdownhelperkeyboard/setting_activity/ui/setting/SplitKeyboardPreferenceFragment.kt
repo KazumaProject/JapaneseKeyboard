@@ -3,7 +3,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
-import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -14,14 +13,18 @@ import javax.inject.Inject
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class SplitKeyboardPreferenceFragment : PreferenceFragmentCompat() {
-    @Inject lateinit var repository: KeyboardRepository
-    override fun onViewCreated(view: android.view.View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        scrollToHighlightedPreferenceAfterLayout(view)
+class SplitKeyboardPreferenceFragment : AsyncPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_split_keyboard
+
+    @Inject lateinit var repositoryProvider: javax.inject.Provider<KeyboardRepository>
+    private lateinit var repository: KeyboardRepository
+    override suspend fun preparePreferenceData(context: android.content.Context) {
+        settingsIo(SettingsLoadStage.DATABASE) {
+            repository = repositoryProvider.get()
+            repository.getLayoutsNotFlowEnsuringStableIds()
+        }
     }
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_split_keyboard, rootKey)
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
         val types = KeyboardType.entries.filter { it != KeyboardType.SPLIT }
         SplitSlot.entries.forEach { slot ->
             val custom = findPreference<ListPreference>(SplitKeyboardSettings.customKey(slot))!!
@@ -41,8 +44,7 @@ class SplitKeyboardPreferenceFragment : PreferenceFragmentCompat() {
             entryValues = SplitEditPlacement.entries.map { it.name }.toTypedArray()
             value = SplitKeyboardSettings(preferenceManager.sharedPreferences!!).editPlacement.name
         }
-        lifecycleScope.launch {
-            repository.getLayoutsNotFlowEnsuringStableIds()
+        viewLifecycleOwner.lifecycleScope.launch {
             repository.getLayouts().collect { layouts ->
                 SplitSlot.entries.forEach { slot ->
                     findPreference<ListPreference>(SplitKeyboardSettings.customKey(slot))?.apply {
