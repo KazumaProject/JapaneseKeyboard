@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var localFontRepositoryProvider: Provider<LocalFontRepository>
     private var initializationJob: Job? = null
     private lateinit var initializationUi: SettingsLoadingUi
+    private lateinit var contentContainer: FrameLayout
     private lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
@@ -117,7 +118,35 @@ class MainActivity : AppCompatActivity() {
         // ActionBar and content with different system-bar insets.
         enableEdgeToEdge()
         initializationUi = SettingsLoadingUi(this, ::loadSettingsContent)
-        setContentView(initializationUi.wrap(FrameLayout(this)))
+        contentContainer = FrameLayout(this)
+        // Keep the inset receiver attached while replacing loading content. AppCompat
+        // caches its inner insets and need not dispatch them again to a new root.
+        val contentRoot = initializationUi.wrap(contentContainer)
+        // AppCompat's ActionBarOverlayLayout includes the visible ActionBar in the
+        // content insets. Apply those insets once, then consume them for descendants.
+        ViewCompat.setOnApplyWindowInsetsListener(contentRoot) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout(),
+            )
+            view.updatePadding(
+                left = bars.left,
+                top = bars.top,
+                right = bars.right,
+                bottom = bars.bottom,
+            )
+            WindowInsetsCompat.Builder(insets)
+                .setInsets(
+                    WindowInsetsCompat.Type.systemBars() or
+                        WindowInsetsCompat.Type.displayCutout(),
+                    Insets.NONE,
+                )
+                .build()
+        }
+        contentRoot.doOnAttach { root ->
+            root.post { ViewCompat.requestApplyInsets(root) }
+        }
+        setContentView(contentRoot)
         loadSettingsContent()
     }
 
@@ -186,32 +215,8 @@ class MainActivity : AppCompatActivity() {
                 .commitNow()
         }
         binding = ActivityMainBinding.inflate(layoutInflater)
-        // AppCompat's ActionBarOverlayLayout includes the visible ActionBar in the
-        // content insets. Apply those insets once, then consume them for descendants.
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or
-                    WindowInsetsCompat.Type.displayCutout(),
-            )
-            view.updatePadding(
-                left = bars.left,
-                top = bars.top,
-                right = bars.right,
-                bottom = bars.bottom,
-            )
-            WindowInsetsCompat.Builder(insets)
-                .setInsets(
-                    WindowInsetsCompat.Type.systemBars() or
-                        WindowInsetsCompat.Type.displayCutout(),
-                    Insets.NONE,
-                )
-                .build()
-        }
-        setContentView(binding.root)
-        // The content can be attached after the decor's first inset dispatch.
-        binding.root.doOnAttach { root ->
-            root.post { ViewCompat.requestApplyInsets(root) }
-        }
+        contentContainer.removeAllViews()
+        contentContainer.addView(binding.root, FrameLayout.LayoutParams(-1, -1))
 
         mainNavController = findMainNavController()
         val navController = mainNavController
