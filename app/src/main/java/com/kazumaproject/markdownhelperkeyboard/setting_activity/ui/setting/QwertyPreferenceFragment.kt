@@ -1,22 +1,16 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import android.view.View
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-open class QwertyPreferenceFragment : PreferenceFragmentCompat() {
+open class QwertyPreferenceFragment : AsyncPreferenceFragment() {
     protected open val preferenceResource: Int = R.xml.pref_qwerty
+    override val preferencesXmlRes: Int get() = preferenceResource
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(preferenceResource, rootKey)
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
         val qwertyButtonMarginPreference =
             findPreference<Preference>("qwerty_button_size_preference")

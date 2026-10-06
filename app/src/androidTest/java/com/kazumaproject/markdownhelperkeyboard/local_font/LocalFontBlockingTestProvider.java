@@ -21,10 +21,10 @@ public final class LocalFontBlockingTestProvider extends ContentProvider {
     private static ParcelFileDescriptor heldWriter;
     private static boolean blockedOpened;
     private static final Object CURSOR_OPERATION_LOCK = new Object();
-    private static volatile CountDownLatch cursorMoveStarted = new CountDownLatch(0);
+    private static volatile CountDownLatch cursorMoveStarted = new CountDownLatch(1);
     private static volatile CountDownLatch cursorRelease = new CountDownLatch(0);
     private static final AtomicInteger blockedCursorCloseCalls = new AtomicInteger();
-    private static volatile CountDownLatch lateCursorQueryStarted = new CountDownLatch(0);
+    private static volatile CountDownLatch lateCursorQueryStarted = new CountDownLatch(1);
     private static volatile CountDownLatch lateCursorQueryRelease = new CountDownLatch(0);
     private static volatile boolean lateCursorReturned;
     private static final AtomicInteger lateCursorMoveCalls = new AtomicInteger();
