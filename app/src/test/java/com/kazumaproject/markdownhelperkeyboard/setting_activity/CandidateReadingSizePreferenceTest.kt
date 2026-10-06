@@ -36,7 +36,7 @@ class CandidateReadingSizePreferenceTest {
             assertEquals(show.parent, size.parent)
             val group = size.parent!!
             val keys = (0 until group.preferenceCount).map { group.getPreference(it).key }
-            assertEquals(keys.indexOf(show.key) + 1, keys.indexOf(size.key))
+            assertEquals(keys.indexOf(show.key) + 2, keys.indexOf(size.key))
             assertEquals(show.key, size.dependency)
             assertEquals(1, size.min)
             com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits.configurePreference(context, size)
