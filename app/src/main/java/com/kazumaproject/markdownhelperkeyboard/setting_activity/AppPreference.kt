@@ -425,6 +425,9 @@ object AppPreference {
         Pair("custom_direct_mode_space_hankaku_preference", true)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
+    const val LIVE_CONVERSION_CANDIDATE_YOMI_MODE_KEY = "live_conversion_candidate_yomi_mode_preference"
+    const val CANDIDATE_YOMI_MODE_WHOLE = "whole"
+    const val CANDIDATE_YOMI_MODE_RUBY = "ruby"
     const val LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY = "live_conversion_candidate_yomi_size_preference"
     const val DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 14
     const val MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 1
@@ -2692,6 +2695,15 @@ object AppPreference {
                 LIVE_CONVERSION_CANDIDATE_YOMI.first,
                 value ?: LIVE_CONVERSION_CANDIDATE_YOMI.second
             )
+        }
+
+    var live_conversion_candidate_yomi_mode: String
+        get() = preferences.getString(
+            LIVE_CONVERSION_CANDIDATE_YOMI_MODE_KEY, CANDIDATE_YOMI_MODE_WHOLE
+        ).let { if (it == CANDIDATE_YOMI_MODE_RUBY) it else CANDIDATE_YOMI_MODE_WHOLE }
+        set(value) = preferences.edit {
+            it.putString(LIVE_CONVERSION_CANDIDATE_YOMI_MODE_KEY,
+                if (value == CANDIDATE_YOMI_MODE_RUBY) value else CANDIDATE_YOMI_MODE_WHOLE)
         }
 
     var live_conversion_candidate_yomi_size: Int

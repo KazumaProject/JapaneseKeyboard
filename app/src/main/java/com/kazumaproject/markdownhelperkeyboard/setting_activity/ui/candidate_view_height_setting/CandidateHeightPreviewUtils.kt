@@ -50,12 +50,13 @@ import kotlinx.coroutines.withContext
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import timber.log.Timber
 import kotlin.math.roundToInt
 
 internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
     return listOf(
-        "変換" to "へんかん",
+        "学校に行く" to "がっこうにいく",
         "変換候補" to "へんかんこうほ",
         "変換する" to "へんかんする",
         "日本語" to "にほんご",
@@ -75,7 +76,8 @@ internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
             score = 4000 - index,
             yomi = yomi,
             leftId = 0.toShort(),
-            rightId = 0.toShort()
+            rightId = 0.toShort(),
+            conversionSegments = listOf(CandidateConversionSegment(0, yomi.length, text))
         )
     }
 }

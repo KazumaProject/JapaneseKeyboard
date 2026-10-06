@@ -20,6 +20,8 @@ data class Candidate(
     val commitText: String = string,
     /** Optional non-text presentation, currently used by formula candidates. */
     val presentation: FormulaCandidatePresentation? = null,
+    /** Exact conversion path used only to align live candidate readings. */
+    val conversionSegments: List<CandidateConversionSegment> = emptyList(),
     /** Date format identity for daily date candidates that can be reordered or disabled. */
     val dateFormat: DateCandidateFormat? = null,
 )
