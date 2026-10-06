@@ -3,18 +3,17 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 
 @AndroidEntryPoint
-class ZenzPreferenceFragment : PreferenceFragmentCompat() {
+class ZenzPreferenceFragment : AsyncPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_zenz
 
     private val openModelLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -22,8 +21,7 @@ class ZenzPreferenceFragment : PreferenceFragmentCompat() {
             onModelUriSelected(uri)
         }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_zenz, rootKey)
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
         val modelPref = findPreference<Preference>("zenz_model_select_preference")
         modelPref?.setOnPreferenceClickListener {
@@ -33,11 +31,6 @@ class ZenzPreferenceFragment : PreferenceFragmentCompat() {
 
         updateModelPrefSummary()
         applyLegacySearchResultFilterIfNeeded()
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        scrollToHighlightedPreferenceAfterLayout(view)
     }
 
     private fun showModelSelectDialog() {
