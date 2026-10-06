@@ -33,11 +33,14 @@ import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Provider
+import android.widget.FrameLayout
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadingUi
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadStage
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.settingsIo
+import kotlinx.coroutines.Job
 import com.kazumaproject.core.R as CoreR
 
 @AndroidEntryPoint
@@ -46,7 +49,10 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var appPreferenceProvider: Provider<AppPreference>
     @Inject
-    lateinit var localFontRepository: LocalFontRepository
+    lateinit var localFontRepositoryProvider: Provider<LocalFontRepository>
+    private var initializationJob: Job? = null
+    private lateinit var initializationUi: SettingsLoadingUi
+    private lateinit var contentContainer: FrameLayout
     private lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
@@ -111,20 +117,58 @@ class MainActivity : AppCompatActivity() {
         // Configuring it after the Activity has started can leave AppCompat's
         // ActionBar and content with different system-bar insets.
         enableEdgeToEdge()
-        lifecycleScope.launch {
-            appPreference = withContext(Dispatchers.IO) {
-                initializationGateForTest?.invoke()
-                appPreferenceProvider.get().also { it.awaitInitialization() }
-            }
-            val initializedWhileStarted = lifecycle.withStarted {
-                initializeSettingsContentIfSafe()
-            }
-            if (!initializedWhileStarted) {
-                lifecycle.withResumed {
+        initializationUi = SettingsLoadingUi(this, ::loadSettingsContent)
+        contentContainer = FrameLayout(this)
+        // Keep the inset receiver attached while replacing loading content. AppCompat
+        // caches its inner insets and need not dispatch them again to a new root.
+        val contentRoot = initializationUi.wrap(contentContainer)
+        // AppCompat's ActionBarOverlayLayout includes the visible ActionBar in the
+        // content insets. Apply those insets once, then consume them for descendants.
+        ViewCompat.setOnApplyWindowInsetsListener(contentRoot) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout(),
+            )
+            view.updatePadding(
+                left = bars.left,
+                top = bars.top,
+                right = bars.right,
+                bottom = bars.bottom,
+            )
+            WindowInsetsCompat.Builder(insets)
+                .setInsets(
+                    WindowInsetsCompat.Type.systemBars() or
+                        WindowInsetsCompat.Type.displayCutout(),
+                    Insets.NONE,
+                )
+                .build()
+        }
+        contentRoot.doOnAttach { root ->
+            root.post { ViewCompat.requestApplyInsets(root) }
+        }
+        setContentView(contentRoot)
+        loadSettingsContent()
+    }
+
+    private fun loadSettingsContent() {
+        if (initializationJob?.isActive == true || isSettingsContentReady) return
+        initializationJob = lifecycleScope.launch {
+            initializationUi.load {
+                appPreference = settingsIo(SettingsLoadStage.PREFERENCES) {
+                    initializationGateForTest?.invoke()
+                    appPreferenceProvider.get().also {
+                        it.startInitialization(applicationContext)
+                        it.awaitInitializationSuspending()
+                    }
+                }
+                settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().loadIfNeeded() }
+                val initializedWhileStarted = lifecycle.withStarted {
                     initializeSettingsContentIfSafe()
                 }
+                if (!initializedWhileStarted) {
+                    lifecycle.withResumed { initializeSettingsContentIfSafe() }
+                }
             }
-            localFontRepository.loadIfNeeded()
         }
     }
 
@@ -171,32 +215,8 @@ class MainActivity : AppCompatActivity() {
                 .commitNow()
         }
         binding = ActivityMainBinding.inflate(layoutInflater)
-        // AppCompat's ActionBarOverlayLayout includes the visible ActionBar in the
-        // content insets. Apply those insets once, then consume them for descendants.
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or
-                    WindowInsetsCompat.Type.displayCutout(),
-            )
-            view.updatePadding(
-                left = bars.left,
-                top = bars.top,
-                right = bars.right,
-                bottom = bars.bottom,
-            )
-            WindowInsetsCompat.Builder(insets)
-                .setInsets(
-                    WindowInsetsCompat.Type.systemBars() or
-                        WindowInsetsCompat.Type.displayCutout(),
-                    Insets.NONE,
-                )
-                .build()
-        }
-        setContentView(binding.root)
-        // The content can be attached after the decor's first inset dispatch.
-        binding.root.doOnAttach { root ->
-            root.post { ViewCompat.requestApplyInsets(root) }
-        }
+        contentContainer.removeAllViews()
+        contentContainer.addView(binding.root, FrameLayout.LayoutParams(-1, -1))
 
         mainNavController = findMainNavController()
         val navController = mainNavController

@@ -1,0 +1,464 @@
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest:
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=delayed-startup: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=restored-before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=restored-after-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=restored-after-second-recreation: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=stable-before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=stable-after-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=stable-after-second-recreation: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest:
+INSTRUMENTATION_STATUS: test=recreationRestoresThemePreferencesInBothHomeModes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=recreationRestoresThemePreferencesInBothHomeModes
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=returningFromOwnToolbarFragmentKeepsSharedActionBarAligned
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=returningFromOwnToolbarFragmentKeepsSharedActionBarAligned
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=imeSettingsShortcutStartsImmediatelyBelowSharedActionBar
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=imeSettingsShortcutStartsImmediatelyBelowSharedActionBar
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=coldDictionaryIntentSurvivesRecreationDuringInitializationAndRunsOnlyOnce
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=coldDictionaryIntentSurvivesRecreationDuringInitializationAndRunsOnlyOnce
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=switchingHomeModesDoesNotDuplicateLegacyNavigation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=switchingHomeModesDoesNotDuplicateLegacyNavigation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=restoredThemeIsCreatedAfterActivityOnCreate
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=restoredThemeIsCreatedAfterActivityOnCreate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=freshActivityCreationKeepsTheSelectedHomeAndInflatesOnlyItsRequiredNavigation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=freshActivityCreationKeepsTheSelectedHomeAndInflatesOnlyItsRequiredNavigation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=splitQwertyScreensOpenFromBothHomeModes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=splitQwertyScreensOpenFromBothHomeModes
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=restoredDetailAndBackStackSurviveRepeatedRecreationWhileInitializationWaits
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=restoredDetailAndBackStackSurviveRepeatedRecreationWhileInitializationWaits
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=legacyBottomNavigationStaysAboveSystemNavigation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=legacyBottomNavigationStaysAboveSystemNavigation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=returningToEitherHomeClearsDictionaryHistory
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=returningToEitherHomeClearsDictionaryHistory
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=newIntentReceivedDuringInitializationSurvivesRecreationAndRunsOnlyOnce
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=newIntentReceivedDuringInitializationSurvivesRecreationAndRunsOnlyOnce
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=newHomeStartsWithoutLegacyNavigationAndKeepsTheStaticNavHostAnchor
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=newHomeStartsWithoutLegacyNavigationAndKeepsTheStaticNavHostAnchor
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=popupPreviewStartsBelowSharedActionBar
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=popupPreviewStartsBelowSharedActionBar
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=recreationPreservesADetailDestinationInBothHomeModes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsNavigationLayoutInstrumentedTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=recreationPreservesADetailDestinationInBothHomeModes
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest:
+INSTRUMENTATION_STATUS: test=failedXmlLoadShowsRetryAndSuccessfulRetryBindsPreferences
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=failedXmlLoadShowsRetryAndSuccessfulRetryBindsPreferences
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=everyLegacyPreferenceTabBindsItsItemsWithoutLoadingErrors
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=everyLegacyPreferenceTabBindsItsItemsWithoutLoadingErrors
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=startupDisplaysProgressAndAcceptsBackWhilePreferencesAreDelayed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=startupDisplaysProgressAndAcceptsBackWhilePreferencesAreDelayed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=databaseInitializationNeverBlocksMainInEitherHome
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=databaseInitializationNeverBlocksMainInEitherHome
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=gemmaModelDiscoveryNeverBlocksMain
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stack=org.junit.AssumptionViolatedException: got: <false>, expected: is <true>
+	at org.junit.Assume.assumeThat(Assume.java:106)
+	at org.junit.Assume.assumeTrue(Assume.java:50)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest.gemmaModelDiscoveryNeverBlocksMain(SettingsAsyncLoadingInstrumentedTest.kt:169)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at androidx.test.internal.runner.junit4.statement.RunBefores.evaluate(RunBefores.java:80)
+	at androidx.test.internal.runner.junit4.statement.RunAfters.evaluate(RunAfters.java:61)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+	at org.junit.runners.Suite.runChild(Suite.java:128)
+	at org.junit.runners.Suite.runChild(Suite.java:27)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:463)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2594)
+
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=gemmaModelDiscoveryNeverBlocksMain
+INSTRUMENTATION_STATUS_CODE: -4
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=packageInfoLoadingIsOffMainAndCanBeLeftWithBack
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=packageInfoLoadingIsOffMainAndCanBeLeftWithBack
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=startupFontLoadingIsOffMainAndKeepsProgressVisible
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=startupFontLoadingIsOffMainAndKeepsProgressVisible
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=searchIndexLoadingShowsProgressAndAcceptsBack
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=searchIndexLoadingShowsProgressAndAcceptsBack
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=27
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=textMacroInitialReadShowsProgressAndAcceptsBack
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=27
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=textMacroInitialReadShowsProgressAndAcceptsBack
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=28
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=legacyXmlLoadingAllowsSwitchingToReadyTabAndSurvivesRecreation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsAsyncLoadingInstrumentedTest
+INSTRUMENTATION_STATUS: current=28
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=legacyXmlLoadingAllowsSwitchingToReadyTabAndSurvivesRecreation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 81.54
+
+OK (28 tests)
+
+
+INSTRUMENTATION_CODE: -1
