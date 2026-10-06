@@ -34,6 +34,7 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
@@ -150,7 +151,7 @@ internal fun resolveCandidateYomiPresentation(
     showCandidateYomiForLiveConversion: Boolean,
     isFirstCandidate: Boolean,
     suggestion: Candidate,
-    candidateTextSize: Float
+    readingTextSize: Float
 ): CandidateYomiPresentation {
     val yomi = suggestion.yomi
     val shouldShowYomi =
@@ -161,7 +162,7 @@ internal fun resolveCandidateYomiPresentation(
     return CandidateYomiPresentation(
         isVisible = shouldShowYomi,
         text = if (shouldShowYomi) yomi.orEmpty() else "",
-        textSize = candidateTextSize * 0.72f
+        textSize = readingTextSize
     )
 }
 
@@ -392,6 +393,7 @@ class SuggestionAdapter internal constructor(
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
+    private var candidateYomiTextSize: Float = AppPreference.DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE.toFloat()
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
@@ -423,6 +425,7 @@ class SuggestionAdapter internal constructor(
         inlineSuggestionIconBackgroundTint = source.inlineSuggestionIconBackgroundTint
         activeShortcutTypes = source.activeShortcutTypes
         incognitoIconDrawable = source.incognitoIconDrawable
+        candidateYomiTextSize = source.candidateYomiTextSize
         candidateTextSize = source.candidateTextSize
         candidateTextColor = source.candidateTextColor
         candidateDividerColor = source.candidateDividerColor
@@ -2018,6 +2021,12 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setCandidateYomiTextSize(size: Float) {
+        if (candidateYomiTextSize == size) return
+        candidateYomiTextSize = size
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowCandidateYomiForLiveConversion(enabled: Boolean) {
         if (showCandidateYomiForLiveConversion == enabled) return
         showCandidateYomiForLiveConversion = enabled
@@ -2128,16 +2137,14 @@ class SuggestionAdapter internal constructor(
             showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
             isFirstCandidate = position == 0,
             suggestion = suggestion,
-            candidateTextSize = candidateTextSize
+            readingTextSize = candidateYomiTextSize
         )
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
-        holder.yomiText.textSize = yomiPresentation.textSize
-        holder.yomiText.translationX = if (yomiPresentation.isVisible) {
-            holder.text.paint.measureText(" ".repeat(paddingLength))
-        } else {
-            0f
-        }
+        holder.yomiText.textSize = if (yomiPresentation.isVisible) {
+            CandidateReadingSizeLimits.clamp(
+                holder.itemView.context, yomiPresentation.textSize)
+        } else yomiPresentation.textSize
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
