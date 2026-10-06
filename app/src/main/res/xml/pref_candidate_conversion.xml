@@ -129,6 +129,16 @@
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
 
+        <SeekBarPreference
+            android:defaultValue="14"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:key="live_conversion_candidate_yomi_size_preference"
+            android:max="24"
+            android:summary="@string/live_conversion_candidate_yomi_size_summary"
+            android:title="@string/live_conversion_candidate_yomi_size_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/typo_correction_title">
