@@ -2555,9 +2555,11 @@ object AppPreference {
         }
 
     var flick_editor_preview_delay_ms: Int
-        get() = preferences.getInt("flick_editor_preview_delay_ms", 0).coerceIn(0, 500)
+        get() = FlickPreviewDelaySettings.normalize(
+            preferences.getInt(FlickPreviewDelaySettings.KEY, 0)
+        )
         set(value) = preferences.edit {
-            it.putInt("flick_editor_preview_delay_ms", value.coerceIn(0, 500))
+            it.putInt(FlickPreviewDelaySettings.KEY, FlickPreviewDelaySettings.normalize(value))
         }
 
     var undo_enable_preference: Boolean?
