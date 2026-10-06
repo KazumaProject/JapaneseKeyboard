@@ -24,6 +24,7 @@ internal fun groupedSpecialKeyActionOptions(
     categoryTitle: (SpecialKeyActionCategory) -> String
 ): List<SpecialKeyActionOption> = SpecialKeyActionCategory.entries.flatMap { category ->
     val categoryActions = actions.filter { it.action.specialKeyCategory() == category }
+        .sortedBy { it.action.specialKeyOrder() }
     if (categoryActions.isEmpty()) emptyList() else {
         listOf(SpecialKeyActionOption(categoryTitle(category), isHeader = true)) +
             categoryActions.map { SpecialKeyActionOption(it.displayName, action = it) }
@@ -63,6 +64,7 @@ private fun KeyAction.specialKeyCategory(): SpecialKeyActionCategory = when (thi
     KeyAction.SwitchDirectMode,
     KeyAction.SwitchRomajiEnglish -> SpecialKeyActionCategory.TEXT_AND_MODE
 
+    KeyAction.SwitchToKanaLayout,
     KeyAction.SwitchToNextIme,
     KeyAction.ShowEmojiKeyboard,
     KeyAction.MoveCustomKeyboardTab,
@@ -71,4 +73,21 @@ private fun KeyAction.specialKeyCategory(): SpecialKeyActionCategory = when (thi
     KeyAction.SwitchToNumberLayout -> SpecialKeyActionCategory.KEYBOARD
 
     else -> SpecialKeyActionCategory.EDIT_AND_OTHER
+}
+
+// Stable sorting preserves the existing order for categories without a custom order.
+private fun KeyAction.specialKeyOrder(): Int = when (this) {
+    KeyAction.SwitchToKanaLayout -> 0
+    KeyAction.SwitchToEnglishLayout -> 1
+    KeyAction.SwitchToNumberLayout -> 2
+    KeyAction.ShowEmojiKeyboard -> 3
+    KeyAction.MoveCustomKeyboardTab -> 4
+    is KeyAction.MoveToCustomKeyboard -> 5
+    KeyAction.SwitchToNextIme -> 6
+    KeyAction.Cut -> 0
+    KeyAction.Copy -> 1
+    KeyAction.Paste -> 2
+    KeyAction.SelectAll -> 3
+    KeyAction.DoNothing -> Int.MAX_VALUE
+    else -> 4
 }
