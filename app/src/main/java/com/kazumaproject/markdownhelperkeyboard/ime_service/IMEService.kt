@@ -3781,6 +3781,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val shouldShowLiveConversionCandidateYomi =
             preferences.isLiveConversionEnable && preferences.showLiveConversionCandidateYomi
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setCandidateYomiMode(preferences.liveConversionCandidateYomiMode)
             adapter.setCandidateYomiTextSize(preferences.liveConversionCandidateYomiTextSize.toFloat())
             adapter.setShowCandidateYomiForLiveConversion(shouldShowLiveConversionCandidateYomi)
         }
@@ -26789,6 +26790,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return orderedCandidates
     }
 
+    private fun shouldCollectCandidateRubySegments(): Boolean =
+        isLiveConversionEnable == true && showLiveConversionCandidateYomi &&
+            appPreference.live_conversion_candidate_yomi_mode == AppPreference.CANDIDATE_YOMI_MODE_RUBY
+
     private suspend fun applyMergedCandidateOrder(
         input: String,
         candidates: List<Candidate>,
@@ -26884,7 +26889,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 predictionConfig = predictionConfig,
                 collectCandidateSegments =
                     appPreference.candidate_order_override_enable_preference == true ||
-                        shouldUseBunsetsuCursorMoveSession(),
+                        shouldUseBunsetsuCursorMoveSession() || shouldCollectCandidateRubySegments(),
             )
         )
         if (BuildConfig.DEBUG) {
@@ -26901,7 +26906,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        return result
+        // Attach the path before merging other sources, which can have the same display
+        // text but a different reading. Each async result retains its own correspondence.
+        return if (shouldCollectCandidateRubySegments()) {
+            result.copy(candidates = result.candidates.map { candidate ->
+                val segments = result.candidateSegmentsByString[candidate.string].orEmpty()
+                if (segments.isEmpty()) candidate else candidate.copy(conversionSegments = segments)
+            })
+        } else result
     }
 
     private fun List<Candidate>.withoutHentaiganaCandidatesIfNeeded(): List<Candidate> {

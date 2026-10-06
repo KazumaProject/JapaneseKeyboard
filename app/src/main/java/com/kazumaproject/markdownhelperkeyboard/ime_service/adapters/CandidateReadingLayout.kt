@@ -19,6 +19,19 @@ import kotlin.math.ceil
 class CandidateReadingTextView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : MaterialTextView(context, attrs) {
+    internal var annotatedBody: TextView? = null
+    internal var rubyAnnotations: List<CandidateRubyAnnotation>? = null
+        private set
+    private var bodyTextOffset = 0
+
+    internal fun setRubyAnnotations(annotations: List<CandidateRubyAnnotation>?, textOffset: Int) {
+        if (rubyAnnotations == annotations && bodyTextOffset == textOffset) return
+        rubyAnnotations = annotations
+        bodyTextOffset = textOffset
+        requestLayout()
+        invalidate()
+    }
+
     internal var leadingInsetPx = 0f
         set(value) {
             if (field != value) {
@@ -34,7 +47,10 @@ class CandidateReadingTextView @JvmOverloads constructor(
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         val value = text.toString()
         paint.getTextBounds(value, 0, value.length, inkBounds)
-        val width = ceil(leadingInsetPx + maxOf(paint.measureText(value), inkBounds.right.toFloat())).toInt()
+        val width = if (rubyAnnotations != null) {
+            // A ruby reading fits its body range and never widens or shifts the body.
+            ceil(annotatedBody?.let { it.paint.measureText(it.text.toString()) } ?: 0f).toInt()
+        } else ceil(leadingInsetPx + maxOf(paint.measureText(value), inkBounds.right.toFloat())).toInt()
         setMeasuredDimension(resolveSize(width, widthMeasureSpec), 0)
     }
 
@@ -43,6 +59,12 @@ class CandidateReadingTextView @JvmOverloads constructor(
         paint.drawableState = drawableState
         canvas.save()
         canvas.clipRect(0, 0, width, height)
+        val annotations = rubyAnnotations
+        if (annotations != null) {
+            drawRubyAnnotations(canvas, annotations)
+            canvas.restore()
+            return
+        }
         canvas.translate(leadingInsetPx, 0f)
         canvas.scale(inkScale, inkScale)
         val visibleText = if (inkScale > 0f) {
@@ -51,6 +73,32 @@ class CandidateReadingTextView @JvmOverloads constructor(
         } else ""
         canvas.drawText(visibleText.toString(), 0f, -inkBounds.top.toFloat(), paint)
         canvas.restore()
+    }
+
+    private fun drawRubyAnnotations(canvas: Canvas, annotations: List<CandidateRubyAnnotation>) {
+        val body = annotatedBody ?: return
+        val bodyLayout = body.layout ?: return
+        val glyphBounds = Rect()
+        for (annotation in annotations) {
+            val start = annotation.start + bodyTextOffset
+            val end = annotation.end + bodyTextOffset
+            if (start < 0 || end > body.text.length || end <= start) continue
+            val first = bodyLayout.getPrimaryHorizontal(start)
+            val last = bodyLayout.getPrimaryHorizontal(end)
+            val left = minOf(first, last).coerceAtLeast(0f)
+            val right = maxOf(first, last).coerceAtMost(width.toFloat())
+            if (right <= left) continue
+            paint.getTextBounds(annotation.reading, 0, annotation.reading.length, glyphBounds)
+            val inkLeft = minOf(0f, glyphBounds.left.toFloat())
+            val naturalWidth = maxOf(paint.measureText(annotation.reading), glyphBounds.right.toFloat()) - inkLeft
+            if (naturalWidth <= 0f) continue
+            val scaleX = minOf(inkScale, (right - left) / naturalWidth)
+            canvas.save()
+            canvas.translate(left + (right - left - naturalWidth * scaleX) / 2f - inkLeft * scaleX, 0f)
+            canvas.scale(scaleX, inkScale)
+            canvas.drawText(annotation.reading, 0f, -inkBounds.top.toFloat(), paint)
+            canvas.restore()
+        }
     }
 }
 
@@ -91,6 +139,7 @@ class CandidateReadingLayout @JvmOverloads constructor(
         val body = findViewById<TextView>(R.id.suggestion_item_text_view)
         val reading = findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
         val value = body.text.toString()
+        reading.annotatedBody = body
         reading.leadingInsetPx = body.paint.measureText(value.takeWhile(Char::isWhitespace))
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
