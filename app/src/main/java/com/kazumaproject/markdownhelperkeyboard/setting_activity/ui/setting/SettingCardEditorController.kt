@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.FlickPreviewDelaySettings
 import kotlin.math.abs
 
 class SettingCardEditorController(
@@ -369,15 +370,22 @@ class SettingCardEditorController(
     }
 
     private fun readIntPreference(preferenceKey: String, defaultValue: Int): Int =
-        runCatching {
+        normalizeIntPreference(preferenceKey, runCatching {
             preferences.getInt(preferenceKey, defaultValue)
-        }.getOrDefault(defaultValue)
+        }.getOrDefault(defaultValue))
 
     private fun writeIntPreference(preferenceKey: String, value: Int) {
         preferences.edit()
-            .putInt(preferenceKey, value)
+            .putInt(preferenceKey, normalizeIntPreference(preferenceKey, value))
             .apply()
     }
+
+    private fun normalizeIntPreference(preferenceKey: String, value: Int): Int =
+        if (preferenceKey == FlickPreviewDelaySettings.KEY) {
+            FlickPreviewDelaySettings.normalize(value)
+        } else {
+            value
+        }
 
     private fun writeSwitchPreference(
         target: SettingDestinationType.SwitchPreference,

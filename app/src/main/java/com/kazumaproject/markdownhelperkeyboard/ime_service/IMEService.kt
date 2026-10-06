@@ -1725,6 +1725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private var isFlickOnlyMode: Boolean? = false
     private var flickEditorPreviewPreference: Boolean = false
+    private var flickEditorPreviewDelayMillis: Int = 0
     private var flickPreviewEditorSessionId: Long = 0L
     private val composingTextArbiter = ComposingTextArbiter(
         writeComposingText = { text, cursorPosition ->
@@ -1738,6 +1739,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val flickInputPreviewCoordinator = FlickInputPreviewCoordinator(
         composingTextArbiter = composingTextArbiter,
         createPreviewText = ::createFlickPreviewComposingText,
+        schedulePreviewRender = { delayMillis, render ->
+            val handler = Handler(Looper.getMainLooper())
+            val callback = Runnable { render() }
+            handler.postDelayed(callback, delayMillis)
+            val cancel: () -> Unit = { handler.removeCallbacks(callback) }
+            cancel
+        },
+        isContextCurrent = { context ->
+            context.editorSessionId == flickPreviewEditorSessionId &&
+                    context.inputConnectionToken === currentInputConnection
+        },
     )
     private val tenKeyFlickTextPreviewListener = FlickTextPreviewListener { event ->
         flickInputPreviewCoordinator.onEvent(
@@ -3597,6 +3609,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tfbiDiagonalRecognitionMode = diagonalMode
         longPressTimeoutPreferenceValue = longPressTimeout
         flickEditorPreviewPreference = appPreference.flick_editor_preview_preference
+        flickEditorPreviewDelayMillis = appPreference.flick_editor_preview_delay_ms
         deleteLongPressConversionBehavior =
             DeleteLongPressConversionBehavior.fromPreferenceValue(
                 appPreference.delete_long_press_conversion_behavior
@@ -3760,6 +3773,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTWeb = preferences.mozcUTWeb
         isFlickOnlyMode = preferences.isFlickOnlyMode
         flickEditorPreviewPreference = preferences.flickEditorPreviewPreference
+        flickEditorPreviewDelayMillis = preferences.flickEditorPreviewDelayMillis
         isOmissionSearchEnable = preferences.isOmissionSearchEnable
         delayTime = preferences.delayTime
         isLearnDictionaryMode = preferences.isLearnDictionaryMode
@@ -28713,6 +28727,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isFlickOnlyMode = isFlickOnlyMode == true,
             isContinuousTapInputEnabled = isContinuousTapInputEnabled.get(),
             lastFlickConvertedNextHiragana = lastFlickConvertedNextHiragana.get(),
+            previewDelayMillis = flickEditorPreviewDelayMillis.toLong(),
+            inputConnectionToken = currentInputConnection,
         )
     }
 

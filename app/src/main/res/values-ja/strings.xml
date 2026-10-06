@@ -1879,6 +1879,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="dictionary_word_registration_category_title">単語の登録</string>
     <string name="preserve_dictionary_word_whitespace_title">単語の前後の空白を保持する</string>
     <string name="preserve_dictionary_word_whitespace_summary">ユーザー辞書・定型文の登録や編集で、単語の前後の空白を保持します。フローティング登録にも適用されます。空白だけの単語は登録できません。</string>
+    <string name="flick_editor_preview_delay_title">入力欄プレビューの待ち時間（ミリ秒）</string>
+    <string name="flick_editor_preview_delay_summary">0で即時表示します。文字の選択が変わるたびに、指定時間待ってからプレビューを表示します。長くすると、指を離す前に表示されない場合があります。</string>
     <string name="settings_loading">設定を読み込んでいます…</string>
     <string name="settings_loading_failed">設定を読み込めませんでした。</string>
     <string name="settings_loading_retry">再試行</string>
