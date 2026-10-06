@@ -29,6 +29,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.DictionaryWordInput
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserTemplateBinding
 import com.kazumaproject.markdownhelperkeyboard.user_template.adapter.UserTemplateAdapter
@@ -327,10 +329,13 @@ class UserTemplateFragment : Fragment() {
     }
 
     private fun addTemplate() {
-        val word = binding.editTextWord.text.toString().trim()
+        val word = DictionaryWordInput.normalize(
+            binding.editTextWord.text.toString(),
+            AppPreference.preserve_dictionary_word_whitespace_preference,
+        )
         val reading = binding.editTextReading.text.toString().trim()
 
-        if (word.isEmpty() || reading.isEmpty()) {
+        if (word == null || reading.isEmpty()) {
             Toast.makeText(context, getString(R.string.add_template_toast_text), Toast.LENGTH_SHORT)
                 .show()
             return
@@ -385,7 +390,10 @@ class UserTemplateFragment : Fragment() {
             .setTitle(getString(R.string.edit_template_title))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.save_string)) { _, _ ->
-                val updatedWord = editWord.text.toString().trim()
+                val updatedWord = DictionaryWordInput.normalize(
+                    editWord.text.toString(),
+                    AppPreference.preserve_dictionary_word_whitespace_preference,
+                )
                 val updatedReading = editReading.text.toString().trim()
 
                 // [CHANGE] Get the updated values from the dialog views
@@ -393,7 +401,7 @@ class UserTemplateFragment : Fragment() {
                 val updatedPosScore = editPosScore.text.toString().toIntOrNull()
                     ?: UserTemplateViewModel.DEFAULT_SCORE // Use default if input is invalid
 
-                if (updatedWord.isNotEmpty() && updatedReading.isNotEmpty()) {
+                if (updatedWord != null && updatedReading.isNotEmpty()) {
                     // [CHANGE] Create the updated object with all new values
                     val updatedTemplate =
                         userTemplate.copy(
