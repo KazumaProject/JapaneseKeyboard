@@ -37,6 +37,34 @@ class SumireSpecialKeyActionEditorViewModelTest {
     }
 
     @Test
+    fun hiraganaActionSavesReloadsAndResetsForEveryDirection() = runTest(dispatcher) {
+        val repository = FakeSumireSpecialKeyDataSource()
+        val editor = viewModel(repository)
+        advanceUntilIdle()
+        SumireSpecialKeyDirection.entries.forEach {
+            editor.setKeyAction(it, KeyAction.SwitchToKanaLayout)
+        }
+        assertTrue(repository.upserts.isEmpty())
+        editor.save()
+        advanceUntilIdle()
+        assertEquals(SumireSpecialKeyDirection.entries.map { it.name }, repository.upserts.map { it.direction })
+        assertTrue(repository.upserts.all { it.actionString == "SwitchToKana" })
+        repository.keyOverrides.value = repository.upserts.toList()
+        val reloaded = viewModel(repository)
+        advanceUntilIdle()
+        SumireSpecialKeyDirection.entries.forEach {
+            val draft = reloaded.uiState.value.drafts.getValue(it)
+            assertEquals(SumireSpecialKeyOverrideType.KEY_ACTION, draft.overrideType)
+            assertEquals("SwitchToKana", draft.actionString)
+            reloaded.setDefault(it)
+        }
+        reloaded.save()
+        advanceUntilIdle()
+        assertEquals(SumireSpecialKeyDirection.entries, repository.deletedDirections.map { it.direction })
+        assertEquals(5, repository.upserts.size)
+    }
+
+    @Test
     fun draftSelectionDoesNotPersistUntilSaveAndSaveWritesEachDirection() = runTest(dispatcher) {
         val repository = FakeSumireSpecialKeyDataSource()
         val viewModel = viewModel(repository)
