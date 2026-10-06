@@ -1,0 +1,118 @@
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest:
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=delayed-startup: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: delayed-startup: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:183)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.delayedStartupKeepsLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:61)
+
+INSTRUMENTATION_STATUS: stream=
+Error in delayedStartupKeepsLegacyTabsBelowActionBar(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest):
+java.lang.AssertionError: delayed-startup: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:183)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.delayedStartupKeepsLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:61)
+
+INSTRUMENTATION_STATUS: test=delayedStartupKeepsLegacyTabsBelowActionBar
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=restored-before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=296, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=restored-after-import: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=restored-after-second-recreation: Geometry(barBottom=296, tabsTop=296, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarAfterDelayedRecreation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=stable-before-import: Geometry(barBottom=296, tabsTop=296, rootPadding=296, contentPadding=296)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=stable-after-import: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0)
+
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: stable-after-import: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:183)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.checkBackupImport(SettingsBackupInsetsInstrumentedTest.kt:98)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(SettingsBackupInsetsInstrumentedTest.kt:71)
+
+INSTRUMENTATION_STATUS: stream=
+Error in exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest):
+java.lang.AssertionError: stable-after-import: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:183)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.checkBackupImport(SettingsBackupInsetsInstrumentedTest.kt:98)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(SettingsBackupInsetsInstrumentedTest.kt:71)
+
+INSTRUMENTATION_STATUS: test=exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 9.498
+There were 2 failures:
+1) delayedStartupKeepsLegacyTabsBelowActionBar(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest)
+java.lang.AssertionError: delayed-startup: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:183)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.delayedStartupKeepsLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:61)
+2) exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest)
+java.lang.AssertionError: stable-after-import: tabs must start immediately below ActionBar: Geometry(barBottom=296, tabsTop=0, rootPadding=0, contentPadding=0) expected:<296> but was:<0>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.assertLegacyTabsBelowActionBar(SettingsBackupInsetsInstrumentedTest.kt:183)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.checkBackupImport(SettingsBackupInsetsInstrumentedTest.kt:98)
+	at com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupInsetsInstrumentedTest.exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout(SettingsBackupInsetsInstrumentedTest.kt:71)
+
+FAILURES!!!
+Tests run: 3,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1
