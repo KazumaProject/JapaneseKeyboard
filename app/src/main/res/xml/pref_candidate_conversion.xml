@@ -129,6 +129,15 @@
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
 
+        <ListPreference
+            android:defaultValue="whole"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:entries="@array/live_conversion_candidate_yomi_mode_entries"
+            android:entryValues="@array/live_conversion_candidate_yomi_mode_values"
+            android:key="live_conversion_candidate_yomi_mode_preference"
+            android:title="@string/live_conversion_candidate_yomi_mode_title"
+            app:useSimpleSummaryProvider="true" />
+
         <SeekBarPreference
             android:defaultValue="14"
             android:dependency="live_conversion_candidate_yomi_preference"

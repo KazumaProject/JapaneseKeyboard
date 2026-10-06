@@ -38,7 +38,7 @@ class CandidateReadingLayoutTest {
 
     @Test fun fixedFrameHeadroomMakesReadingLargerWithoutMovingAnyCandidate() {
         val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
-        for ((rows, heightDp, wrapped) in listOf(Triple(1, 60, false), Triple(2, 80, false),
+        for (ruby in listOf(false, true)) for ((rows, heightDp, wrapped) in listOf(Triple(1, 60, false), Triple(2, 80, false),
             Triple(3, 100, false), Triple(1, 60, true))) {
             val prefs = com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
             prefs.setCandidateColumnAndSyncHeight(false, rows.toString())
@@ -63,6 +63,7 @@ class CandidateReadingLayoutTest {
                     holder.itemView.findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view).apply {
                         text = "かんじ"
                         textSize = CandidateReadingSizeLimits.maximumSp(context).toFloat()
+                        setRubyAnnotations(if (ruby) listOf(CandidateRubyAnnotation(0, 2, "かんじ")) else null, 4)
                         visibility = if (showReading && position == 0) View.VISIBLE else View.GONE
                     }
                 }
@@ -110,6 +111,15 @@ class CandidateReadingLayoutTest {
                 (annotation.left until annotation.right).any { x -> with.getPixel(x, y) != without.getPixel(x, y) }
             }
             assertTrue("annotation actually draws in fixed frame: rows=$rows ink=$inkRows height=${reading.height} bounds=$annotation", inkRows >= reading.height * .8f)
+            reading.visibility = View.VISIBLE
+            val body = first.findViewById<TextView>(R.id.suggestion_item_text_view)
+            val relativeLeft = bounds(frame, reading).left - bounds(frame, body).left
+            recycler.scrollBy(dp(12), 0)
+            measureFrame()
+            assertEquals("reading follows its body when scrolling", relativeLeft,
+                bounds(frame, reading).left - bounds(frame, body).left)
+            assertEquals(0, recycler.clipBounds!!.left)
+            assertTrue(recycler.clipBounds!!.right in 1..recycler.width)
         }
         activity.finish()
     }
@@ -330,6 +340,102 @@ class CandidateReadingLayoutTest {
                 assertEquals(before, bounds(view, body))
             }
         }
+    }
+
+    @Test fun rubyInkStaysOverItsKanjiAndDoesNotMoveBodyAcrossFontsAndSizes() {
+        for ((fontIndex, font) in listOf(Typeface.DEFAULT, Typeface.MONOSPACE, Typeface.SERIF).withIndex()) {
+            for ((bodySize, readingSize) in listOf(28f to 14f, 16f to 24f, 32f to 1f)) {
+                val root = create()
+                val body = root.findViewById<TextView>(R.id.suggestion_item_text_view)
+                val reading = root.findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
+                body.text = "    学校に行く    "
+                body.textSize = bodySize
+                body.typeface = font
+                reading.typeface = font
+                reading.textSize = readingSize
+                reading.text = "がっこう い"
+                val annotations = listOf(CandidateRubyAnnotation(0, 2, "がっこう"), CandidateRubyAnnotation(3, 4, "い"))
+                reading.setRubyAnnotations(annotations, 4)
+                reading.visibility = View.GONE
+                layout(root, dp(100))
+                val before = bounds(root, body)
+                val beforeWidth = root.width
+                val without = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+                root.draw(Canvas(without))
+                reading.visibility = View.VISIBLE
+                layout(root, dp(100))
+                assertEquals(before, bounds(root, body))
+                assertEquals(beforeWidth, root.width)
+                val with = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+                root.draw(Canvas(with))
+                val ranges = annotations.map {
+                    (before.left + body.compoundPaddingLeft + body.layout.getPrimaryHorizontal(it.start + 4)) to
+                        (before.left + body.compoundPaddingLeft + body.layout.getPrimaryHorizontal(it.end + 4))
+                }
+                val changed = (0 until root.width).filter { x ->
+                    (0 until root.height).any { y -> with.getPixel(x, y) != without.getPixel(x, y) }
+                }
+                assertTrue("ruby should draw", changed.isNotEmpty())
+                assertTrue("ruby ink must stay within kanji ranges", changed.all { x -> ranges.any { x >= it.first - 1 && x <= it.second + 1 } })
+                for (range in ranges) assertTrue("each kanji run has a reading", changed.any { it >= range.first && it <= range.second })
+                if (bodySize == 28f) {
+                    val file = java.io.File("build/reports/candidate-ruby/font-$fontIndex.png")
+                    file.parentFile!!.mkdirs()
+                    file.outputStream().use { with.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                }
+            }
+        }
+    }
+
+    @Test fun rubyModeMirrorsToSplitCandidatesAndClearsAnnotationsWhenRebound() {
+        val candidate = Candidate("学校に行く", 1, 7u, 0, "がっこうにいく",
+            conversionSegments = listOf(com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment(0, 7, "学校に行く")))
+        val ime = SuggestionAdapter()
+        val preview = SuggestionAdapter2()
+        val split = SuggestionAdapter()
+        ime.setShowCandidateYomiForLiveConversion(true)
+        preview.setShowCandidateYomiForLiveConversion(true)
+        ime.setCandidateYomiMode("ruby")
+        preview.setCandidateYomiMode("ruby")
+        ime.submitContent(com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent.Candidates(listOf(candidate)))
+        preview.suggestions = listOf(candidate)
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while ((ime.itemCount != 1 || preview.itemCount != 1) && System.nanoTime() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        split.mirrorSplitContentFrom(ime)
+        val splitDeadline = System.nanoTime() + 2_000_000_000L
+        while (split.itemCount != 1 && System.nanoTime() < splitDeadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        val parent = FrameLayout(context)
+        for (adapter in listOf(ime, preview, split)) {
+            assertEquals(1, adapter.itemCount)
+            val holder = adapter.createViewHolder(parent, adapter.getItemViewType(0))
+            adapter.onBindViewHolder(holder, 0)
+            val reading = holder.itemView.findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
+            assertEquals(2, reading.rubyAnnotations!!.size)
+            assertEquals("がっこう い", reading.text.toString())
+            when (adapter) {
+                is SuggestionAdapter -> adapter.setCandidateYomiMode("whole")
+                is SuggestionAdapter2 -> adapter.setCandidateYomiMode("whole")
+            }
+            adapter.onBindViewHolder(holder, 0)
+            assertNull(reading.rubyAnnotations)
+            assertEquals("がっこうにいく", reading.text.toString())
+            when (adapter) {
+                is SuggestionAdapter -> adapter.setShowCandidateYomiForLiveConversion(false)
+                is SuggestionAdapter2 -> adapter.setShowCandidateYomiForLiveConversion(false)
+            }
+            adapter.onBindViewHolder(holder, 0)
+            assertEquals(View.GONE, reading.visibility)
+            assertNull(reading.rubyAnnotations)
+        }
+        ime.release()
+        preview.release()
+        split.release()
     }
 
     private fun create() = LayoutInflater.from(context).inflate(R.layout.suggestion_item, null) as CandidateReadingLayout
