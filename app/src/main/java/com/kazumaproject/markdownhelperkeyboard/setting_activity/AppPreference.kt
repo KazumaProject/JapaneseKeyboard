@@ -132,7 +132,8 @@ object AppPreference {
     private const val CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION = 1
 
     private val initializationLock = Any()
-    private val initialization = CompletableFuture<Unit>()
+    @Volatile private var initialization = CompletableFuture<Unit>()
+    private val initializationStartLock = Any()
     private val initializationStarted = AtomicBoolean(false)
     @Volatile private var initialized = false
     @Volatile private var initializingThread: Thread? = null
@@ -950,14 +951,31 @@ object AppPreference {
         Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
 
     fun startInitialization(context: Context) {
-        if (!initializationStarted.compareAndSet(false, true)) return
-        Thread({
-            try {
-                init(context)
-            } catch (failure: Throwable) {
-                initialization.completeExceptionally(failure)
+        synchronized(initializationStartLock) {
+            if (initialization.isCompletedExceptionally) {
+                initialization = CompletableFuture()
+                initializationStarted.set(false)
             }
-        }, "AppPreferenceInit").start()
+            if (!initializationStarted.compareAndSet(false, true)) return
+            Thread({
+                try {
+                    init(context)
+                } catch (_: Throwable) {
+                    // init completed its future exceptionally; the loading UI owns retry.
+                }
+            }, "AppPreferenceInit").start()
+        }
+    }
+
+    suspend fun awaitInitializationSuspending() = kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
+        // A cancelled screen must not remain retained by a slow initialization future.
+        val waiting = java.util.concurrent.atomic.AtomicReference(continuation)
+        continuation.invokeOnCancellation { waiting.set(null) }
+        initialization.whenComplete { _, error ->
+            waiting.getAndSet(null)?.resumeWith(
+                if (error == null) Result.success(Unit) else Result.failure(error),
+            )
+        }
     }
 
     fun awaitInitialization() {
@@ -970,6 +988,8 @@ object AppPreference {
             initializingThread = Thread.currentThread()
             try {
                 appContext = context.applicationContext
+                // This startup filesystem maintenance used to run in Application.onCreate on main.
+                appContext.codeCacheDir.setReadOnly()
                 isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
                 loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 migrateCandidateHeightDefaultsIfNeeded()
@@ -1618,7 +1638,6 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_ENABLE_FLICK_DOWN_WINDOW.first, value ?: false)
         }
-
 
     var qwerty_enable_zenkaku_space_preference: Boolean?
         get() = preferences.getBoolean(
@@ -4049,7 +4068,6 @@ object AppPreference {
         )
         set(value) = preferences.edit { it.putInt(CUSTOM_THEME_POST_EDIT_TEXT.first, value) }
 
-
     var sumire_english_qwerty_preference: Boolean
         get() = preferences.getBoolean(
             SUMIRE_ENGLISH_QWERTY_PREFERENCE.first,
@@ -4121,7 +4139,6 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.first, value)
         }
-
 
     var learn_first_candidate_dictionary_preference: Boolean
         get() = preferences.getBoolean(
@@ -4278,7 +4295,6 @@ object AppPreference {
                 value
             )
         }
-
 
     var keyboard_margin_start_dp: Int?
         get() = preferences.getInt(KEYBOARD_MARGIN_START_DP.first, KEYBOARD_MARGIN_START_DP.second)
