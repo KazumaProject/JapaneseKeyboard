@@ -2554,6 +2554,12 @@ object AppPreference {
             it.putBoolean(FLICK_EDITOR_PREVIEW.first, value)
         }
 
+    var flick_editor_preview_delay_ms: Int
+        get() = preferences.getInt("flick_editor_preview_delay_ms", 0).coerceIn(0, 500)
+        set(value) = preferences.edit {
+            it.putInt("flick_editor_preview_delay_ms", value.coerceIn(0, 500))
+        }
+
     var undo_enable_preference: Boolean?
         get() = preferences.getBoolean(UNDO_ENABLE.first, UNDO_ENABLE.second)
         set(value) = preferences.edit {
