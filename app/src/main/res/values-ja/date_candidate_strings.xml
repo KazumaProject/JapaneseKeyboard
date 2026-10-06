@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="date_candidate_settings_title">日付候補</string>
+    <string name="date_candidate_settings_summary">「きょう・きのう・あした」の日付形式と優先順を設定します</string>
+    <string name="date_candidate_order_hint">表示する形式をオンにし、左のハンドルをドラッグして日付候補の優先順を変更します。\n表示例：2026年1月4日（日）。1桁の月日でゼロ埋めの違いを確認できます。</string>
+    <string name="date_candidate_drag_handle">%1$sの表示順を変更</string>
+    <string name="date_candidate_format_year_month_day">西暦（年/月/日）</string>
+    <string name="date_candidate_format_month_day">月/日</string>
+    <string name="date_candidate_format_month_day_weekday">月日と曜日</string>
+    <string name="date_candidate_format_reiwa_date">和暦の年月日</string>
+    <string name="date_candidate_format_reiwa_short_date">和暦の省略表記</string>
+    <string name="date_candidate_format_weekday_short">曜日（省略）</string>
+    <string name="date_candidate_format_weekday_long">曜日（正式）</string>
+    <string name="date_candidate_move_up">%1$sを上に移動</string>
+    <string name="date_candidate_move_down">%1$sを下に移動</string>
+    <string name="date_candidate_reset">形式と順序を初期状態に戻す</string>
+</resources>

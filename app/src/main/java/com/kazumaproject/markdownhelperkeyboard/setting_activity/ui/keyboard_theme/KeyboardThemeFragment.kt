@@ -3,14 +3,14 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_th
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
-import android.view.View
 import androidx.navigation.fragment.findNavController
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceFragmentCompat
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment
+import androidx.preference.PreferenceScreen
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
@@ -19,12 +19,11 @@ import com.google.android.material.color.DynamicColors
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class KeyboardThemeFragment : PreferenceFragmentCompat() {
+class KeyboardThemeFragment : AsyncPreferenceFragment() {
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -84,27 +83,22 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val MODE_CUSTOM = "custom"
     }
 
-    private var pendingHighlightPreferenceKey: String? = null
-
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        val context = preferenceManager.context
+    override fun createPreferenceHierarchy(context: Context): PreferenceScreen {
         val screen = preferenceManager.createPreferenceScreen(context)
-        pendingHighlightPreferenceKey =
-            arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
 
         // -------------------------------------------------------
         // System Category
         // -------------------------------------------------------
         val systemCategory = PreferenceCategory(context).apply {
-            title = getString(R.string.theme_category_system)
+            title = context.getString(R.string.theme_category_system)
         }
         screen.addPreference(systemCategory)
 
         // Round Corner Preference
         val roundCornerPref = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_ROUND_CORNER
-            title = getString(R.string.pref_round_corner_keyboard_title)
-            summary = getString(R.string.pref_round_corner_keyboard_summary)
+            title = context.getString(R.string.pref_round_corner_keyboard_title)
+            summary = context.getString(R.string.pref_round_corner_keyboard_summary)
             setDefaultValue(false)
         }
         systemCategory.addPreference(roundCornerPref)
@@ -112,15 +106,15 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // Liquid Glass Settings
         val liquidGlassSwitch = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_LIQUID_GLASS
-            title = getString(R.string.liquid_glass_effect)
-            summary = getString(R.string.enable_glass_blur_effect)
+            title = context.getString(R.string.liquid_glass_effect)
+            summary = context.getString(R.string.enable_glass_blur_effect)
             setDefaultValue(false)
         }
         systemCategory.addPreference(liquidGlassSwitch)
 
         val liquidGlassBlurPref = SeekBarPreference(context).apply {
             key = PREF_KEY_LIQUID_GLASS_BLUR
-            title = getString(R.string.blur_radius)
+            title = context.getString(R.string.blur_radius)
             min = 0
             max = 255
             setDefaultValue(220)
@@ -130,7 +124,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
         val liquidGlassKeyAlphaPref = SeekBarPreference(context).apply {
             key = PREF_KEY_LIQUID_GLASS_KEY_ALPHA
-            title = getString(R.string.key_transparency)
+            title = context.getString(R.string.key_transparency)
             min = 0
             max = 255
             setDefaultValue(255)
@@ -143,7 +137,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         liquidGlassBlurPref.isEnabled = isLiquidGlassEnabled
         liquidGlassKeyAlphaPref.isEnabled = isLiquidGlassEnabled
 
-        liquidGlassSwitch.setOnPreferenceChangeListener { _, newValue ->
+        liquidGlassSwitch.configureChangeListener { _, newValue ->
             val isEnabled = newValue as Boolean
             liquidGlassBlurPref.isEnabled = isEnabled
             liquidGlassKeyAlphaPref.isEnabled = isEnabled
@@ -153,8 +147,8 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // Default Theme Checkbox
         val defaultPref = CheckBoxPreference(context).apply {
             key = PREF_KEY_DEFAULT
-            title = getString(R.string.theme_default)
-            summary = getString(R.string.keyboard_theme_summary)
+            title = context.getString(R.string.theme_default)
+            summary = context.getString(R.string.keyboard_theme_summary)
             onPreferenceClickListener = Preference.OnPreferenceClickListener {
                 handleThemeSelection(MODE_DEFAULT)
                 if (DynamicColors.isDynamicColorAvailable()) {
@@ -175,14 +169,14 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // Custom Category (Keyboard Appearance)
         // -------------------------------------------------------
         val customCategory = PreferenceCategory(context).apply {
-            title = getString(R.string.theme_category_custom)
+            title = context.getString(R.string.theme_category_custom)
         }
         screen.addPreference(customCategory)
 
         // Custom Theme Mode Selection
         val customPref = CheckBoxPreference(context).apply {
             key = PREF_KEY_CUSTOM
-            title = getString(R.string.theme_custom)
+            title = context.getString(R.string.theme_custom)
             onPreferenceClickListener = Preference.OnPreferenceClickListener {
                 handleThemeSelection(MODE_CUSTOM)
                 true
@@ -194,7 +188,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_BG,
-            getString(R.string.theme_custom_bg_color)
+            context.getString(R.string.theme_custom_bg_color)
         ) { appPreference.custom_theme_bg_color }
         customCategory.addPreference(customBgPref)
 
@@ -202,7 +196,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customKeyPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_KEY,
-            getString(R.string.theme_custom_key_color)
+            context.getString(R.string.theme_custom_key_color)
         ) { appPreference.custom_theme_key_color }
         customCategory.addPreference(customKeyPref)
 
@@ -210,7 +204,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customSpecialKeyPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SPECIAL_KEY,
-            getString(R.string.theme_custom_special_key_color)
+            context.getString(R.string.theme_custom_special_key_color)
         ) { appPreference.custom_theme_special_key_color }
         customCategory.addPreference(customSpecialKeyPref)
 
@@ -218,7 +212,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_TEXT,
-            getString(R.string.theme_custom_key_text_color)
+            context.getString(R.string.theme_custom_key_text_color)
         ) { appPreference.custom_theme_key_text_color }
         customCategory.addPreference(customTextPref)
 
@@ -226,15 +220,15 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customSpecialTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SPECIAL_TEXT,
-            getString(R.string.theme_custom_special_key_text_color)
+            context.getString(R.string.theme_custom_special_key_text_color)
         ) { appPreference.custom_theme_special_key_text_color }
         customCategory.addPreference(customSpecialTextPref)
 
         val popupUseCustomColorPref = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_POPUP_USE_CUSTOM_COLOR
-            title = getString(R.string.key_popup_use_custom_color_title)
-            summaryOn = getString(R.string.key_popup_use_custom_color_summary_on)
-            summaryOff = getString(R.string.key_popup_use_custom_color_summary_off)
+            title = context.getString(R.string.key_popup_use_custom_color_title)
+            summaryOn = context.getString(R.string.key_popup_use_custom_color_summary_on)
+            summaryOff = context.getString(R.string.key_popup_use_custom_color_summary_off)
             setDefaultValue(false)
         }
         customCategory.addPreference(popupUseCustomColorPref)
@@ -242,14 +236,14 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val popupBackgroundColorPref = createColorPreference(
             context,
             PREF_KEY_POPUP_BACKGROUND_COLOR,
-            getString(R.string.key_popup_background_color_title)
+            context.getString(R.string.key_popup_background_color_title)
         ) { appPreference.key_popup_background_color }
         customCategory.addPreference(popupBackgroundColorPref)
 
         val popupTextColorPref = createColorPreference(
             context,
             PREF_KEY_POPUP_TEXT_COLOR,
-            getString(R.string.key_popup_text_color_title)
+            context.getString(R.string.key_popup_text_color_title)
         ) { appPreference.key_popup_text_color }
         customCategory.addPreference(popupTextColorPref)
 
@@ -260,7 +254,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
         updatePopupColorPrefsState(appPreference.key_popup_use_custom_color)
 
-        popupUseCustomColorPref.setOnPreferenceChangeListener { _, newValue ->
+        popupUseCustomColorPref.configureChangeListener { _, newValue ->
             updatePopupColorPrefsState(newValue as Boolean)
             true
         }
@@ -268,21 +262,21 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customCandidateTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_CANDIDATE_TEXT,
-            getString(R.string.theme_custom_candidate_text_color)
+            context.getString(R.string.theme_custom_candidate_text_color)
         ) { appPreference.custom_theme_candidate_text_color }
         customCategory.addPreference(customCandidateTextPref)
 
         val customCandidateItemBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG,
-            getString(R.string.theme_custom_candidate_item_bg_color)
+            context.getString(R.string.theme_custom_candidate_item_bg_color)
         ) { appPreference.custom_theme_candidate_item_bg_color }
         customCategory.addPreference(customCandidateItemBgPref)
 
         val customCandidateItemPressedBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG,
-            getString(R.string.theme_custom_candidate_item_pressed_bg_color)
+            context.getString(R.string.theme_custom_candidate_item_pressed_bg_color)
         ) {
             appPreference.getCustomThemeCandidateItemPressedBgColor(
                 ContextCompat.getColor(context, com.kazumaproject.core.R.color.qwety_key_bg_color)
@@ -293,28 +287,28 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customCandidateEmptyPopupBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG,
-            getString(R.string.theme_custom_candidate_empty_popup_bg_color)
+            context.getString(R.string.theme_custom_candidate_empty_popup_bg_color)
         ) { appPreference.custom_theme_candidate_empty_popup_bg_color }
         customCategory.addPreference(customCandidateEmptyPopupBgPref)
 
         val customCandidateEmptyPopupTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT,
-            getString(R.string.theme_custom_candidate_empty_popup_text_color)
+            context.getString(R.string.theme_custom_candidate_empty_popup_text_color)
         ) { appPreference.custom_theme_candidate_empty_popup_text_color }
         customCategory.addPreference(customCandidateEmptyPopupTextPref)
 
         val customShortcutIconPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SHORTCUT_ICON,
-            getString(R.string.theme_custom_shortcut_icon_color)
+            context.getString(R.string.theme_custom_shortcut_icon_color)
         ) { appPreference.custom_theme_shortcut_icon_color }
         customCategory.addPreference(customShortcutIconPref)
 
         // Custom Border Settings
         val customBorderEnablePref = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_CUSTOM_BORDER_ENABLE
-            title = getString(R.string.custom_border_enable)
+            title = context.getString(R.string.custom_border_enable)
             setDefaultValue(false)
         }
         customCategory.addPreference(customBorderEnablePref)
@@ -322,14 +316,14 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val customBorderColorPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_BORDER_COLOR,
-            getString(R.string.custom_border_color)
+            context.getString(R.string.custom_border_color)
         ) { appPreference.custom_theme_border_color }
         customCategory.addPreference(customBorderColorPref)
 
         // Custom Border Width (修正: 初期値の設定とリスナーの追加)
         val customBorderWidthPref = SeekBarPreference(context).apply {
             key = PREF_KEY_CUSTOM_BORDER_WIDTH
-            title = getString(R.string.custom_border_width)
+            title = context.getString(R.string.custom_border_width)
             min = 1
             max = 8
             showSeekBarValue = true
@@ -351,27 +345,26 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         customBorderColorPref.isEnabled = isBorderEnabled
         customBorderWidthPref.isEnabled = isBorderEnabled
 
-        customBorderEnablePref.setOnPreferenceChangeListener { _, newValue ->
+        customBorderEnablePref.configureChangeListener { _, newValue ->
             val isEnabled = newValue as Boolean
             customBorderColorPref.isEnabled = isEnabled
             customBorderWidthPref.isEnabled = isEnabled
             true
         }
 
-
         // -------------------------------------------------------
         // Input Text Category
         // -------------------------------------------------------
         val inputCategory = PreferenceCategory(context).apply {
             key = CATEGORY_KEY_CUSTOM_INPUT
-            title = getString(R.string.composing_text)
+            title = context.getString(R.string.composing_text)
         }
         screen.addPreference(inputCategory)
 
         // 0. Enable Custom Input Colors
         val inputColorEnablePref = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_CUSTOM_INPUT_ENABLE
-            title = getString(R.string.custom_input_color_enable_title)
+            title = context.getString(R.string.custom_input_color_enable_title)
             setDefaultValue(false)
         }
         inputCategory.addPreference(inputColorEnablePref)
@@ -380,7 +373,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val preEditBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_PRE_EDIT_BG,
-            getString(R.string.pre_edit)
+            context.getString(R.string.pre_edit)
         ) { appPreference.custom_theme_pre_edit_bg_color }
         inputCategory.addPreference(preEditBgPref)
 
@@ -388,7 +381,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val preEditTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_PRE_EDIT_TEXT,
-            getString(R.string.pre_edit_text)
+            context.getString(R.string.pre_edit_text)
         ) { appPreference.custom_theme_pre_edit_text_color }
         inputCategory.addPreference(preEditTextPref)
 
@@ -396,7 +389,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val postEditBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_POST_EDIT_BG,
-            getString(R.string.conversion_text_color)
+            context.getString(R.string.conversion_text_color)
         ) { appPreference.custom_theme_post_edit_bg_color }
         inputCategory.addPreference(postEditBgPref)
 
@@ -404,7 +397,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         val postEditTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_POST_EDIT_TEXT,
-            getString(R.string.conversion_text_color_)
+            context.getString(R.string.conversion_text_color_)
         ) { appPreference.custom_theme_post_edit_text_color }
         inputCategory.addPreference(postEditTextPref)
 
@@ -420,7 +413,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         updateInputColorPrefsState(inputColorEnablePref.isChecked)
 
         // Listener
-        inputColorEnablePref.setOnPreferenceChangeListener { _, newValue ->
+        inputColorEnablePref.configureChangeListener { _, newValue ->
             val enabled = newValue as Boolean
             updateInputColorPrefsState(enabled)
             true
@@ -428,9 +421,9 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
         val skinPreference = Preference(context).apply {
             key = KeyboardSkinId.PREFERENCE_KEY
-            title = getString(R.string.keyboard_skin_choose)
+            title = context.getString(R.string.keyboard_skin_choose)
             order = -2
-            setOnPreferenceClickListener {
+            configureClickListener {
                 findNavController().navigate(R.id.keyboardSkinSelectionFragment)
                 true
             }
@@ -438,24 +431,24 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         screen.addPreference(skinPreference)
         val localFontPreference = Preference(context).apply {
             key = PREF_KEY_LOCAL_FONT
-            title = getString(R.string.local_font_title)
-            summary = getString(R.string.local_font_settings_summary)
+            title = context.getString(R.string.local_font_title)
+            summary = context.getString(R.string.local_font_settings_summary)
             order = -1
-            setOnPreferenceClickListener {
+            configureClickListener {
                 findNavController().navigate(R.id.localFontSettingsFragment)
                 true
             }
         }
         screen.addPreference(localFontPreference)
-        preferenceScreen = screen
+        return screen
+    }
 
-        // Initialize state based on current preference
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onPreferencesResumed() {
         val selected = appPreference.keyboardSkin
         findPreference<Preference>(KeyboardSkinId.PREFERENCE_KEY)?.summary =
             getString(KeyboardThemeCatalog.find(selected).titleRes)
@@ -467,17 +460,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
                 preference.key != CATEGORY_KEY_CUSTOM_INPUT
             ) {
                 preference.isEnabled = selected == KeyboardSkinId.DEFAULT
-            }
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        pendingHighlightPreferenceKey?.let { key ->
-            listView.post {
-                findPreference<Preference>(key)?.let { preference ->
-                    scrollToPreference(preference)
-                }
             }
         }
     }

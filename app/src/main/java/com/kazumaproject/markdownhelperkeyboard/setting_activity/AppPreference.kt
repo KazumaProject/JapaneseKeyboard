@@ -18,6 +18,8 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.RegionalUnitProfile
@@ -60,6 +62,8 @@ object AppPreference {
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
     const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    const val DATE_CANDIDATE_ORDER_KEY = "date_candidate_order"
+    const val DATE_CANDIDATE_ENABLED_FORMATS_KEY = "date_candidate_enabled_formats"
     private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
@@ -128,7 +132,8 @@ object AppPreference {
     private const val CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION = 1
 
     private val initializationLock = Any()
-    private val initialization = CompletableFuture<Unit>()
+    @Volatile private var initialization = CompletableFuture<Unit>()
+    private val initializationStartLock = Any()
     private val initializationStarted = AtomicBoolean(false)
     @Volatile private var initialized = false
     @Volatile private var initializingThread: Thread? = null
@@ -946,14 +951,31 @@ object AppPreference {
         Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
 
     fun startInitialization(context: Context) {
-        if (!initializationStarted.compareAndSet(false, true)) return
-        Thread({
-            try {
-                init(context)
-            } catch (failure: Throwable) {
-                initialization.completeExceptionally(failure)
+        synchronized(initializationStartLock) {
+            if (initialization.isCompletedExceptionally) {
+                initialization = CompletableFuture()
+                initializationStarted.set(false)
             }
-        }, "AppPreferenceInit").start()
+            if (!initializationStarted.compareAndSet(false, true)) return
+            Thread({
+                try {
+                    init(context)
+                } catch (_: Throwable) {
+                    // init completed its future exceptionally; the loading UI owns retry.
+                }
+            }, "AppPreferenceInit").start()
+        }
+    }
+
+    suspend fun awaitInitializationSuspending() = kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
+        // A cancelled screen must not remain retained by a slow initialization future.
+        val waiting = java.util.concurrent.atomic.AtomicReference(continuation)
+        continuation.invokeOnCancellation { waiting.set(null) }
+        initialization.whenComplete { _, error ->
+            waiting.getAndSet(null)?.resumeWith(
+                if (error == null) Result.success(Unit) else Result.failure(error),
+            )
+        }
     }
 
     fun awaitInitialization() {
@@ -966,6 +988,8 @@ object AppPreference {
             initializingThread = Thread.currentThread()
             try {
                 appContext = context.applicationContext
+                // This startup filesystem maintenance used to run in Application.onCreate on main.
+                appContext.codeCacheDir.setReadOnly()
                 isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
                 loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 migrateCandidateHeightDefaultsIfNeeded()
@@ -1615,7 +1639,6 @@ object AppPreference {
             it.putBoolean(QWERTY_ENABLE_FLICK_DOWN_WINDOW.first, value ?: false)
         }
 
-
     var qwerty_enable_zenkaku_space_preference: Boolean?
         get() = preferences.getBoolean(
             QWERTY_ZENKAKU_SPACE_PREFERENCE.first, QWERTY_ZENKAKU_SPACE_PREFERENCE.second
@@ -1931,6 +1954,28 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var date_candidate_config: DateCandidateConfig
+        get() {
+            val formatsByValue = DateCandidateFormat.entries.associateBy { it.preferenceValue }
+            val order = preferences.getString(DATE_CANDIDATE_ORDER_KEY, null)
+                ?.split(',')?.mapNotNull(formatsByValue::get).orEmpty()
+            val enabledValues = preferences.getStringSet(DATE_CANDIDATE_ENABLED_FORMATS_KEY, null)
+            val enabledFormats = enabledValues?.mapNotNull(formatsByValue::get)?.toSet()
+                ?: DateCandidateFormat.entries.toSet()
+            val config = DateCandidateConfig(order = order, enabledFormats = enabledFormats)
+            return config.copy(order = config.normalizedOrder)
+        }
+        set(value) = preferences.edit { editor ->
+            editor.putString(
+                DATE_CANDIDATE_ORDER_KEY,
+                value.normalizedOrder.joinToString(",") { it.preferenceValue },
+            )
+            editor.putStringSet(
+                DATE_CANDIDATE_ENABLED_FORMATS_KEY,
+                value.enabledFormats.mapTo(mutableSetOf()) { it.preferenceValue },
+            )
         }
 
     var utility_candidate_config: UtilityCandidateConfig
@@ -4023,7 +4068,6 @@ object AppPreference {
         )
         set(value) = preferences.edit { it.putInt(CUSTOM_THEME_POST_EDIT_TEXT.first, value) }
 
-
     var sumire_english_qwerty_preference: Boolean
         get() = preferences.getBoolean(
             SUMIRE_ENGLISH_QWERTY_PREFERENCE.first,
@@ -4095,7 +4139,6 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.first, value)
         }
-
 
     var learn_first_candidate_dictionary_preference: Boolean
         get() = preferences.getBoolean(
@@ -4252,7 +4295,6 @@ object AppPreference {
                 value
             )
         }
-
 
     var keyboard_margin_start_dp: Int?
         get() = preferences.getInt(KEYBOARD_MARGIN_START_DP.first, KEYBOARD_MARGIN_START_DP.second)

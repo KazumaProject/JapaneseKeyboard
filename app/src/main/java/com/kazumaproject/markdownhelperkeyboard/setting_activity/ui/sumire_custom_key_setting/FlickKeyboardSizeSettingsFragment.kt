@@ -45,7 +45,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        AppPreference.init(requireContext())
+        // MainActivity completes preference initialization before opening settings destinations.
 
         previewKeyboardView = view.findViewById(R.id.previewFlickKeyboardView)
         widthSeekBar = view.findViewById(R.id.seekBarKeyWidth)
