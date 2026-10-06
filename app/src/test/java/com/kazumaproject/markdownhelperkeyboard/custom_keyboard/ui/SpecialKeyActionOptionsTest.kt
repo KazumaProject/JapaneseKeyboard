@@ -21,6 +21,33 @@ import kotlin.math.roundToInt
 @Config(sdk = [35])
 class SpecialKeyActionOptionsTest {
     @Test
+    fun categoriesAndKeyboardActionsHavePredictableOrder() {
+        val actions = KeyActionMapper.getDisplayActions(ApplicationProvider.getApplicationContext())
+            .map { DisplayActionUi(it.displayName, it.action, it.iconResId) }
+        val options = groupedSpecialKeyActionOptions(actions) { it.name }
+        assertEquals(SpecialKeyActionCategory.entries.map { it.name },
+            options.filter { it.isHeader }.map { it.label })
+        val keyboardHeader = options.indexOfFirst { it.label == SpecialKeyActionCategory.KEYBOARD.name }
+        val keyboardActions = options.drop(keyboardHeader + 1).takeWhile { !it.isHeader }
+        assertEquals(listOf(
+            KeyAction.SwitchToKanaLayout, KeyAction.SwitchToEnglishLayout,
+            KeyAction.SwitchToNumberLayout, KeyAction.ShowEmojiKeyboard,
+            KeyAction.MoveCustomKeyboardTab, KeyAction.MoveToCustomKeyboard(""),
+            KeyAction.SwitchToNextIme
+        ), keyboardActions.map { it.action?.action })
+        val editHeader = options.indexOfFirst { it.label == SpecialKeyActionCategory.EDIT_AND_OTHER.name }
+        assertEquals(listOf(KeyAction.Cut, KeyAction.Copy, KeyAction.Paste, KeyAction.SelectAll),
+            options.drop(editHeader + 1).take(4).map { it.action?.action })
+        assertEquals(KeyAction.DoNothing, options.last().action?.action)
+        for (category in listOf(SpecialKeyActionCategory.INPUT,
+            SpecialKeyActionCategory.DELETE_AND_CURSOR, SpecialKeyActionCategory.TEXT_AND_MODE)) {
+            val header = options.indexOfFirst { it.label == category.name }
+            val actual = options.drop(header + 1).takeWhile { !it.isHeader }.mapNotNull { it.action }
+            assertEquals(actions.filter { it in actual }, actual)
+        }
+    }
+
+    @Test
     fun everyAvailableActionAppearsOnceUnderASelectableCategory() {
         val actions = KeyActionMapper.getDisplayActions(ApplicationProvider.getApplicationContext())
             .map { DisplayActionUi(it.displayName, it.action, it.iconResId) }

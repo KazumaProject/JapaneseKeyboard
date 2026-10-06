@@ -24,6 +24,26 @@ import org.junit.Test
  */
 class SumireSpecialKeyRuntimeDispatchForActiveLayoutTest {
     @Test
+    fun hiraganaOverridesDispatchFromEnglishAndNumberForEveryDirection() {
+        for (mode in listOf(KeyboardInputMode.ENGLISH, KeyboardInputMode.SYMBOLS)) {
+            val key = layoutFor("toggle", mode).requireKey("enter_key")
+            for (direction in listOf(FlickDirection.TAP, FlickDirection.UP,
+                FlickDirection.UP_RIGHT_FAR, FlickDirection.DOWN, FlickDirection.UP_LEFT_FAR)) {
+                val isFlick = direction != FlickDirection.TAP
+                val dispatched = mutableListOf<Pair<KeyAction, Boolean>>()
+                val result = dispatchSumireSpecialKeyRuntimeAction(
+                    keyData = key, flickDirection = direction, fallbackAction = key.action,
+                    isFlick = isFlick,
+                    resolve = { _, _ -> ResolvedSumireSpecialKeyAction.Action(KeyAction.SwitchToKanaLayout) }
+                ) { action, flick -> dispatched += action to flick }
+                assertTrue(result.handled)
+                assertEquals(direction.toSumireSpecialKeyDirectionOrNull(), result.sumireDirection)
+                assertEquals(listOf(KeyAction.SwitchToKanaLayout to isFlick), dispatched)
+            }
+        }
+    }
+
+    @Test
     fun targetSpecialKeysAreCrossFlickAndHaveBaseFlickMapForControllerAttach() {
         TARGET_KEY_IDS.forEach { keyId ->
             val layout = layoutFor("switch-mode-effective", KeyboardInputMode.HIRAGANA)
