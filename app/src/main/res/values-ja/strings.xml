@@ -1876,4 +1876,7 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="independent_multi_touch_summary">異なるキーを指ごとに操作し、指を離した順に入力を確定します。同じキーへの二本目のタッチは無視します。</string>
     <string name="stabilize_candidate_strip_height_title">変換候補欄の高さを安定させる</string>
     <string name="stabilize_candidate_strip_height_summary">入力・確定時に入力欄の位置が変わりにくくなります。高さの差分は透明にし、背後へのタッチを通します。</string>
+    <string name="settings_loading">設定を読み込んでいます…</string>
+    <string name="settings_loading_failed">設定を読み込めませんでした。</string>
+    <string name="settings_loading_retry">再試行</string>
 </resources>

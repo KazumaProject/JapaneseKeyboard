@@ -32,10 +32,8 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingHomeBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -53,6 +51,8 @@ class SettingHomeFragment : Fragment() {
     private lateinit var settingCardEditorController: SettingCardEditorController
     private var frequentCandidates: List<SettingDestination>? = null
     private var frequentCandidatesJob: Job? = null
+    private var initialDataJob: Job? = null
+    private var loadingUi: SettingsLoadingUi? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,13 +60,14 @@ class SettingHomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSettingHomeBinding.inflate(inflater, container, false)
-        return binding.root
+        binding.settingHomeProgressBar.isVisible = false
+        return SettingsLoadingUi(requireContext(), ::loadInitialData).also { loadingUi = it }.wrap(binding.root)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         settingCardEditorController = SettingCardEditorController(requireContext(), appPreference)
-        lifecycleScope.launch { settingDataInitializer.initializeIfNeeded() }
+        loadInitialData()
         loadAndRenderFrequentCards()
         renderCategoryRows()
         renderManagementRows()
@@ -88,24 +89,33 @@ class SettingHomeFragment : Fragment() {
         )
     }
 
+    private fun loadInitialData() {
+        if (initialDataJob?.isActive == true) return
+        val ui = loadingUi ?: return
+        val context = requireContext().applicationContext
+        initialDataJob = viewLifecycleOwner.lifecycleScope.launch {
+            ui.load {
+                settingsIo(SettingsLoadStage.DATABASE) { settingDataInitializer.initializeIfNeeded() }
+                val enabled = settingsIo(SettingsLoadStage.KEYBOARD_STATUS) {
+                    ContextCompat.getSystemService(context, InputMethodManager::class.java)
+                        ?.enabledInputMethodList?.any { it.packageName == context.packageName }
+                }
+                if (enabled == false && isResumed) navigateSafely(R.id.enableKeyboardFragment)
+            }
+        }
+        loadAndRenderFrequentCards()
+    }
+
     override fun onResume() {
         super.onResume()
-        if (_binding != null) {
-            loadAndRenderFrequentCards()
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            binding.settingHomeProgressBar.isVisible = true
-            val enabled = withContext(Dispatchers.IO) {
-                isKeyboardBoardEnabled()
-            }
-            binding.settingHomeProgressBar.isVisible = false
-            if (enabled == false) {
-                navigateSafely(R.id.enableKeyboardFragment)
-            }
-        }
+        loadAndRenderFrequentCards()
+        if (initialDataJob?.isActive != true) loadInitialData()
     }
 
     override fun onDestroyView() {
+        frequentCandidatesJob = null
+        initialDataJob = null
+        loadingUi = null
         super.onDestroyView()
         _binding = null
     }
@@ -119,11 +129,11 @@ class SettingHomeFragment : Fragment() {
 
         val context = requireContext()
         frequentCandidatesJob = viewLifecycleOwner.lifecycleScope.launch {
-            val candidates = withContext(Dispatchers.Default) {
-                SettingDestinations.frequentCandidates(context)
-            }
-            frequentCandidates = candidates
-            if (_binding != null) {
+            loadingUi?.load {
+                val candidates = settingsIo(SettingsLoadStage.SEARCH) {
+                    SettingDestinations.frequentCandidates(context)
+                }
+                frequentCandidates = candidates
                 renderFrequentCards(candidates)
             }
         }
