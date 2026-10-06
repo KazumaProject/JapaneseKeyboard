@@ -14,7 +14,7 @@ class CandidateYomiPresentationTest {
             showCandidateYomiForLiveConversion = false,
             isFirstCandidate = true,
             suggestion = candidate(string = "候補", yomi = "よみ"),
-            candidateTextSize = 14f
+            readingTextSize = 14f
         )
 
         assertFalse(presentation.isVisible)
@@ -27,7 +27,7 @@ class CandidateYomiPresentationTest {
             showCandidateYomiForLiveConversion = true,
             isFirstCandidate = true,
             suggestion = candidate(string = "候補", yomi = "よみ"),
-            candidateTextSize = 14f
+            readingTextSize = 14f
         )
 
         assertTrue(presentation.isVisible)
@@ -40,7 +40,7 @@ class CandidateYomiPresentationTest {
             showCandidateYomiForLiveConversion = true,
             isFirstCandidate = false,
             suggestion = candidate(string = "候補", yomi = "よみ"),
-            candidateTextSize = 14f
+            readingTextSize = 14f
         )
 
         assertFalse(presentation.isVisible)
@@ -53,7 +53,7 @@ class CandidateYomiPresentationTest {
             showCandidateYomiForLiveConversion = true,
             isFirstCandidate = true,
             suggestion = candidate(string = "候補", yomi = null),
-            candidateTextSize = 14f
+            readingTextSize = 14f
         )
 
         assertFalse(presentation.isVisible)
@@ -66,7 +66,7 @@ class CandidateYomiPresentationTest {
             showCandidateYomiForLiveConversion = true,
             isFirstCandidate = true,
             suggestion = candidate(string = "候補", yomi = ""),
-            candidateTextSize = 14f
+            readingTextSize = 14f
         )
 
         assertFalse(presentation.isVisible)
@@ -79,7 +79,7 @@ class CandidateYomiPresentationTest {
             showCandidateYomiForLiveConversion = true,
             isFirstCandidate = true,
             suggestion = candidate(string = "候補", yomi = "候補"),
-            candidateTextSize = 14f
+            readingTextSize = 14f
         )
 
         assertFalse(presentation.isVisible)
@@ -87,15 +87,15 @@ class CandidateYomiPresentationTest {
     }
 
     @Test
-    fun yomiTextSizeIsSeventyTwoPercentOfCandidateTextSize() {
+    fun yomiTextSizeUsesTheIndependentReadingSize() {
         val presentation = resolveCandidateYomiPresentation(
             showCandidateYomiForLiveConversion = true,
             isFirstCandidate = true,
             suggestion = candidate(string = "候補", yomi = "よみ"),
-            candidateTextSize = 20f
+            readingTextSize = 20f
         )
 
-        assertEquals(20f * 0.72f, presentation.textSize, 0.001f)
+        assertEquals(20f, presentation.textSize, 0.001f)
     }
 
     private fun candidate(

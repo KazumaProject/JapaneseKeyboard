@@ -658,6 +658,8 @@
     <string name="keyboard_size_direct_input_invalid_value">正しい数値を入力してください。</string>
     <string name="keyboard_size_direct_input_reset_to_default">初期値に戻しました。</string>
     <string name="keyboard_position_title">キーボードの配置</string>
+    <string name="keyboard_preview_orientation_portrait">縦画面のプレビュー（シミュレーション）</string>
+    <string name="keyboard_preview_orientation_landscape">横画面のプレビュー（シミュレーション）</string>
     <string name="keyboard_selection_fragment_title">キーボード一覧</string>
     <string name="keyboard_selection_add_new_keyboard_title">キーボードを追加</string>
     <string name="custom_keyboard_export_title">カスタムキーボードの書き出し</string>
@@ -1462,6 +1464,8 @@
     <string name="sumire_special_key_input_text">文字を入力</string>
     <string name="sumire_special_key_key_action">特殊アクション</string>
     <string name="sumire_special_key_input_text_hint">入力する文字</string>
+    <string name="live_conversion_candidate_yomi_size_title">読みの文字の大きさ</string>
+    <string name="live_conversion_candidate_yomi_size_summary">候補の上に表示する読みの文字の大きさを変更します。候補欄に収まる大きさまで選べます。候補欄の高さ、段数、フォントによって選べる最大値が変わります。</string>
     <string name="live_conversion_candidate_yomi_title">ライブ変換候補に読みを表示</string>
     <string name="live_conversion_candidate_yomi_summary_on">ライブ変換候補の上部に読みを表示します</string>
     <string name="live_conversion_candidate_yomi_summary_off">ライブ変換候補の上部に読みを表示しません</string>
