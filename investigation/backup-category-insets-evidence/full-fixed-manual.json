@@ -1,0 +1,9 @@
+{
+  "device": "emulator-5580",
+  "api": 35,
+  "flow": "MainActivity -> Common -> Export settings -> DocumentsUI SAVE -> Import settings -> DocumentsUI select exported JSON -> Activity recreation",
+  "observed": {
+    "action_bar_container": "[0,128][1080,296]",
+    "setting_tab_layout": "[0,296][1080,464]"
+  }
+}
