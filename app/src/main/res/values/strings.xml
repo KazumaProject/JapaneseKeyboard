@@ -1878,6 +1878,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="independent_multi_touch_summary">Operate different keys independently and commit each input when its finger is lifted. A second touch on the same key is ignored.</string>
     <string name="stabilize_candidate_strip_height_title">Stabilize candidate area height</string>
     <string name="stabilize_candidate_strip_height_summary">Keep the editor position stable when typing or confirming text. Any extra space stays transparent and allows touches through.</string>
+    <string name="flick_editor_preview_delay_title">Text field preview delay (ms)</string>
+    <string name="flick_editor_preview_delay_summary">0 sends immediately. Wait after each selection change before showing the preview. Longer delays may prevent a preview from appearing before you lift your finger.</string>
     <string name="settings_loading">Loading settings…</string>
     <string name="settings_loading_failed">Settings could not be loaded.</string>
     <string name="settings_loading_retry">Retry</string>

@@ -548,6 +548,17 @@
             android:title="@string/flick_editor_preview_title" />
 
         <SeekBarPreference
+            android:defaultValue="0"
+            android:dependency="flick_editor_preview_preference"
+            android:key="flick_editor_preview_delay_ms"
+            android:max="500"
+            android:title="@string/flick_editor_preview_delay_title"
+            android:summary="@string/flick_editor_preview_delay_summary"
+            app:min="0"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
             android:defaultValue="100"
             android:key="flick_sensitivity_preference"
             android:max="200"
