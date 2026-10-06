@@ -49,6 +49,9 @@ internal object CustomThemeColorPreferenceKeys {
 
 object AppPreference {
 
+    const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =
+        "preserve_dictionary_word_whitespace_preference"
+
     internal const val GOJUON_KEYBOARD_TYPE_MIGRATION_KEY =
         "gojuon_keyboard_type_migrated_v1"
 
@@ -2318,6 +2321,12 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.first, value)
+        }
+
+    var preserve_dictionary_word_whitespace_preference: Boolean
+        get() = preferences.getBoolean(PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY, value)
         }
 
     var show_dictionary_candidate_labels_preference: Boolean

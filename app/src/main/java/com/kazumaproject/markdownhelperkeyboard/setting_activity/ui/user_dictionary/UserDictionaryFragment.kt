@@ -28,6 +28,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.DictionaryWordInput
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserDictionaryBinding
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWordAdapter
@@ -434,10 +436,13 @@ class UserDictionaryFragment : Fragment() {
     }
 
     private fun addWord() {
-        val word = binding.editTextWord.text.toString().trim()
+        val word = DictionaryWordInput.normalize(
+            binding.editTextWord.text.toString(),
+            AppPreference.preserve_dictionary_word_whitespace_preference,
+        )
         val reading = binding.editTextReading.text.toString().trim()
 
-        if (word.isEmpty() || reading.isEmpty()) {
+        if (word == null || reading.isEmpty()) {
             Toast.makeText(
                 context,
                 getString(R.string.enter_word_and_yomi_string),
@@ -489,13 +494,16 @@ class UserDictionaryFragment : Fragment() {
             .setTitle(getString(R.string.edit_word))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.save_string)) { _, _ ->
-                val updatedWord = editWord.text.toString().trim()
+                val updatedWord = DictionaryWordInput.normalize(
+                    editWord.text.toString(),
+                    AppPreference.preserve_dictionary_word_whitespace_preference,
+                )
                 val updatedReading = editReading.text.toString().trim()
                 val updatedPosIndex = spinnerPosDialog.selectedItemPosition
                 val updatedPosScore = editPosScore.text.toString().toIntOrNull()
                     ?: UserDictionaryViewModel.DEFAULT_SCORE
 
-                if (updatedWord.isNotEmpty() && updatedReading.isNotEmpty()) {
+                if (updatedWord != null && updatedReading.isNotEmpty()) {
                     val updatedUserWord = userWord.copy(
                         word = updatedWord,
                         reading = updatedReading,

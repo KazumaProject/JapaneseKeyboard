@@ -47,6 +47,11 @@ class UserTemplateCandidateMapperTest {
         assertEquals(null, candidate.sourceId)
     }
 
+    @Test fun candidatePreservesLeadingAndTrailingWhitespace() {
+        val candidate = template("　き ", "き").toUserTemplateCandidate()
+        assertEquals("　き ", candidate.string)
+    }
+
     private fun template(
         word: String,
         reading: String,
