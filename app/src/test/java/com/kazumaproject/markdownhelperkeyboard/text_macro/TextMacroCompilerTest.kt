@@ -30,7 +30,7 @@ class TextMacroCompilerTest {
     @Test
     fun localizedDefaultsUseProvidedLocaleAndTimeZone() {
         val expanded = TextMacroCompiler.compile("{date} {time}").expand(fixedContext)
-        assertEquals("8/30/26 10:05 AM", expanded.text.replace('\u202f', ' ').replace('\u00a0', ' '))
+        assertEquals("8/30/26 10:05 AM", expanded.text)
     }
 
     @Test

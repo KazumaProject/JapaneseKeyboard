@@ -99,13 +99,14 @@ class KeyboardSkinViewLifecycleTest {
             val modeSwitch = view.findViewById<InputModeSwitch>(modeSwitchId)
 
             apply(view, KeyboardSkinId.CUPERTINO_LIGHT)
-            val skinIcon = modeSwitch.drawable
-            assertTrue("${view.javaClass.simpleName} should use the layered mode icon",
-                skinIcon?.javaClass?.simpleName == "InputModeSwitchIconDrawable")
+            assertEquals(
+                "${view.javaClass.simpleName} should draw separately colored labels",
+                null,
+                modeSwitch.drawable,
+            )
 
             apply(view, KeyboardSkinId.DEFAULT)
-            assertTrue("${view.javaClass.simpleName} should restore its mode icon",
-                modeSwitch.drawable != null && modeSwitch.drawable !== skinIcon)
+            assertTrue("${view.javaClass.simpleName} should restore its mode icon", modeSwitch.drawable != null)
         }
     }
 

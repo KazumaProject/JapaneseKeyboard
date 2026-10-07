@@ -22,7 +22,6 @@ import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class NumberCandidateSettingsInstrumentedTest {
@@ -84,16 +83,7 @@ class NumberCandidateSettingsInstrumentedTest {
                         val list = resumed<NumberCandidateSettingsFragment>(activity)?.view?.findViewById<RecyclerView>(R.id.number_formats)
                         list?.isLaidOut == true && list.childCount == 3
                     }
-                    InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-                    // Wait for the recreated window's first frame to reach SurfaceFlinger.
-                    SystemClock.sleep(150)
                     assertEquals(NumberCandidateFormat.KANJI, AppPreference.number_candidate_config.order[1])
-                    InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { bitmap ->
-                        val directory = File(context.filesDir, "conversion-perf").apply { mkdirs() }
-                        File(directory, "number-order-${if (newHome) "new" else "legacy"}.png").outputStream().use {
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                        }
-                    }
                     scenario.onActivity { activity ->
                         resumed<NumberCandidateSettingsFragment>(activity)!!.requireView().findViewById<View>(R.id.reset_formats).performClick()
                     }
