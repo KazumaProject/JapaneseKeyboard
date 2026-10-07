@@ -36,6 +36,8 @@ data class Node(
     val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
+    /** Kept separate from candidateSource to preserve legacy candidate type resolution. */
+    val isSystemUserDictionary: Boolean = false,
 ) {
     override fun toString(): String {
         return this.tango

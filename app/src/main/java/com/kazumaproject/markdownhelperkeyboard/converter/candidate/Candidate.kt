@@ -24,4 +24,5 @@ data class Candidate(
     val conversionSegments: List<CandidateConversionSegment> = emptyList(),
     /** Date format identity for daily date candidates that can be reordered or disabled. */
     val dateFormat: DateCandidateFormat? = null,
+    val numberVariant: com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateVariant? = null,
 )

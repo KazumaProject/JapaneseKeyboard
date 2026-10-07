@@ -169,6 +169,11 @@
         android:label="@string/utility_conversion_targets_title" />
 
     <fragment
+        android:id="@+id/numberCandidateSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.NumberCandidateSettingsFragment"
+        android:label="@string/number_candidate_order_title" />
+
+    <fragment
         android:id="@+id/dateCandidateSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.DateCandidateSettingsFragment"
         android:label="@string/date_candidate_settings_title" />

@@ -31,6 +31,25 @@ class CandidateConversionPreferenceFragment : CommonPreferenceFragment() {
 @AndroidEntryPoint
 class ConversionEnginePreferenceFragment : CommonPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_conversion_engine
+
+    override fun onCommonPreferencesCreated() {
+        findPreference<Preference>("number_candidate_order_preference")?.setOnPreferenceClickListener {
+            findNavController().navigate(R.id.numberCandidateSettingsFragment)
+            true
+        }
+        refreshNumberSummary()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshNumberSummary()
+    }
+
+    private fun refreshNumberSummary() {
+        findPreference<Preference>("number_candidate_order_preference")?.summary =
+            com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.number_candidate_config.normalizedOrder
+                .joinToString(" → ") { getString(it.numberTitleResource()) }
+    }
 }
 
 @AndroidEntryPoint

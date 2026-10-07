@@ -2591,6 +2591,10 @@ class FindPath(
                         inputStart = currentPosition,
                         inputEnd = nextPosition,
                         output = node.tango,
+                        leftId = node.l,
+                        rightId = node.r,
+                        source = node.candidateSource,
+                        isSystemUserDictionary = node.isSystemUserDictionary,
                     ),
                 )
                 currentPosition = nextPosition

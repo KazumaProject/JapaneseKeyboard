@@ -65,6 +65,8 @@ private val japaneseNumberReadings = listOf(
     JapaneseNumberReading("ちょう", JapaneseNumberReadingType.BIG_PLACE, 1_000_000_000_000L, 13),
 ).sortedByDescending { it.reading.length }
 
+internal val japaneseNumberReadingTokens = japaneseNumberReadings.map { it.reading }
+
 private fun parseJapaneseNumberValue(input: String): Long? {
     if (input.isEmpty()) return null
 
@@ -141,6 +143,12 @@ private fun parseJapaneseNumberValue(input: String): Long? {
 
     if (!hasNumber) return null
     return if (section >= 0L) Math.addExact(total, section) else total
+}
+
+internal fun String.toJapaneseNumberValue(): Long? = try {
+    parseJapaneseNumberValue(this)
+} catch (_: ArithmeticException) {
+    null
 }
 
 fun String.toNumber(): Pair<String, String>? {

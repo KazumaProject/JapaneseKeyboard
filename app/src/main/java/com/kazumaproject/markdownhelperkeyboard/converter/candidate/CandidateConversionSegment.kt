@@ -11,5 +11,9 @@ data class CandidateConversionSegment(
     val inputStart: Int,
     val inputEnd: Int,
     val output: String,
+    val leftId: Short? = null,
+    val rightId: Short? = null,
+    val source: com.kazumaproject.graph.CandidateSource? = null,
+    val isSystemUserDictionary: Boolean = false,
 )
 

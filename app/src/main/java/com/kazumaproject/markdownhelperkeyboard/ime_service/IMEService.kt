@@ -230,6 +230,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQuery
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryResult
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateProvider
@@ -986,6 +988,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.UTILITY_CALCULATION_PRECISION_KEY,
         AppPreference.UTILITY_REGIONAL_PROFILE_KEY,
         AppPreference.UTILITY_UNIT_TARGETS_JSON_KEY,
+        AppPreference.NUMBER_COUNTER_CANDIDATES_ENABLED_KEY,
+        AppPreference.NUMBER_CANDIDATE_ORDER_KEY,
         AppPreference.DATE_CANDIDATE_ORDER_KEY,
         AppPreference.DATE_CANDIDATE_ENABLED_FORMATS_KEY,
     )
@@ -1981,6 +1985,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val utilityCandidateProvider = UtilityCandidateProvider()
     private var utilityCandidateConfig: UtilityCandidateConfig = UtilityCandidateConfig()
     private var dateCandidateConfig: DateCandidateConfig = DateCandidateConfig()
+    private var numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig()
     private var predictionConfig: PredictionConfig = PredictionConfig()
     @Volatile
     private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
@@ -3593,6 +3598,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             requestCandidateRefresh(CandidateShowFlag.Updating)
         }
         updateDateCandidateConfig(appPreference.date_candidate_config)
+        updateNumberCandidateConfig(appPreference.number_candidate_config)
 
         val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
         val thresholdShape = FlickThresholdShape.fromPreferenceValue(
@@ -3765,6 +3771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
         updateDateCandidateConfig(preferences.dateCandidateConfig)
+        updateNumberCandidateConfig(preferences.numberCandidateConfig)
         predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
@@ -20636,13 +20643,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             it.length.toInt() == input.length &&
                 !NgWordMatcher.matchesAny(input, it.string, ngWords)
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
-        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
-            candidateOrderOverrideRepository.applyOrderFromSnapshot(
-                input = input,
-                candidates = candidates,
-                candidateSegmentsByString = result.candidateSegmentsByString,
-            )
-        } else candidates
+        val orderedCandidates = applyMergedCandidateOrder(input, candidates, result.candidateSegmentsByString)
         return result.copy(candidates = orderedCandidates)
     }
 
@@ -26819,6 +26820,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isLiveConversionEnable == true && showLiveConversionCandidateYomi &&
             appPreference.live_conversion_candidate_yomi_mode == AppPreference.CANDIDATE_YOMI_MODE_RUBY
 
+    private fun updateNumberCandidateConfig(config: NumberCandidateConfig) {
+        if (numberCandidateConfig == config) return
+        numberCandidateConfig = config
+        beginZenzRerankRequest()
+        synchronized(zenzRerankCache) { zenzRerankCache.clear() }
+        candidateRequestTracker.invalidate()
+        candidateRefreshCoordinator.invalidate()
+        if (isInputViewActive && inputString.value.isNotEmpty()) {
+            requestCandidateRefresh(CandidateShowFlag.Updating)
+        }
+    }
+
     private fun updateDateCandidateConfig(config: DateCandidateConfig) {
         if (dateCandidateConfig == config) return
         dateCandidateConfig = config
@@ -26842,6 +26855,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidates = DateCandidateComposer.compose(input, candidates, dateCandidateConfig),
             )
         }
+        val numericCandidates = NumberCandidateComposer.reorder(input, promotedCandidates, numberCandidateConfig)
         return if (appPreference.candidate_order_override_enable_preference == true) {
             if (candidateSegmentsByString.isNotEmpty()) {
                 latestCandidateSegmentInput = input
@@ -26850,12 +26864,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
-                    candidates = promotedCandidates,
+                    candidates = numericCandidates,
                     candidateSegmentsByString = candidateSegmentsByString,
                 )
             }
         } else {
-            promotedCandidates
+            numericCandidates
         }
     }
 
@@ -26865,7 +26879,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * behavior for ordinary conversion candidates.
      */
     private fun List<Candidate>.distinctIncludingTextMacroActions(): List<Candidate> =
-        distinctBy { candidate ->
+        NumberCandidateComposer.inheritVariantIdentity(this).distinctBy { candidate ->
             if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
                 "text-macro:${candidate.sourceId}"
             } else {
@@ -26883,7 +26897,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 learnRepository = null,
             ).candidates
         }
-        return engineCandidates.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        val filtered = engineCandidates.filter { !NgWordMatcher.matchesAny(insertString, it.string, ngWords) }
+            .withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        return applyMergedCandidateOrder(insertString, filtered)
     }
 
     private suspend fun queryKanaKanjiCore(
@@ -26928,6 +26945,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     appPreference.candidate_order_override_enable_preference == true ||
                         shouldUseBunsetsuCursorMoveSession() || shouldCollectCandidateRubySegments(),
                 dateCandidateConfig = dateCandidateConfig,
+                numberCandidateConfig = numberCandidateConfig,
             )
         )
         if (BuildConfig.DEBUG) {

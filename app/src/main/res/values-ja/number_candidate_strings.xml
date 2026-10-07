@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="number_counter_candidates_title">助数詞付き数値候補を統一</string>
+    <string name="number_counter_candidates_summary">「いちまんえん」「はつか」などに半角数字・全角数字・漢数字の候補を補完します。文中の数値にも適用します。</string>
+    <string name="number_candidate_order_title">数字の表記順</string>
+    <string name="number_candidate_order_hint">ドラッグして表記順を変更できます。助数詞の有無にかかわらず適用します。カンマ区切りや「1万」などは半角数字にまとめます。</string>
+    <string name="number_candidate_reset">表記順をリセット</string>
+    <string name="number_candidate_half_width">半角数字</string>
+    <string name="number_candidate_full_width">全角数字</string>
+    <string name="number_candidate_kanji">漢数字</string>
+    <string name="number_candidate_drag_handle">%1$sを並べ替え</string>
+    <string name="number_candidate_move_up">%1$sを上へ移動</string>
+    <string name="number_candidate_move_down">%1$sを下へ移動</string>
+</resources>

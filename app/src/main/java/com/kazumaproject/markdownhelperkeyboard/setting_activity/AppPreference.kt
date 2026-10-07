@@ -18,6 +18,8 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
@@ -65,6 +67,8 @@ object AppPreference {
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
     const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    const val NUMBER_COUNTER_CANDIDATES_ENABLED_KEY = "number_counter_candidates_enabled"
+    const val NUMBER_CANDIDATE_ORDER_KEY = "number_candidate_order"
     const val DATE_CANDIDATE_ORDER_KEY = "date_candidate_order"
     const val DATE_CANDIDATE_ENABLED_FORMATS_KEY = "date_candidate_enabled_formats"
     private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
@@ -1960,6 +1964,21 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var number_candidate_config: NumberCandidateConfig
+        get() {
+            val byValue = NumberCandidateFormat.entries.associateBy { it.preferenceValue }
+            val config = NumberCandidateConfig(
+                enhanceCounterCandidates = preferences.getBoolean(NUMBER_COUNTER_CANDIDATES_ENABLED_KEY, true),
+                order = preferences.getString(NUMBER_CANDIDATE_ORDER_KEY, null)
+                    ?.split(',')?.mapNotNull(byValue::get).orEmpty(),
+            )
+            return config.copy(order = config.normalizedOrder)
+        }
+        set(value) = preferences.edit { editor ->
+            editor.putBoolean(NUMBER_COUNTER_CANDIDATES_ENABLED_KEY, value.enhanceCounterCandidates)
+            editor.putString(NUMBER_CANDIDATE_ORDER_KEY, value.normalizedOrder.joinToString(",") { it.preferenceValue })
         }
 
     var date_candidate_config: DateCandidateConfig

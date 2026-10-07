@@ -5,6 +5,18 @@
     <PreferenceCategory android:title="@string/conversion_engine_category_title">
 
         <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="number_counter_candidates_enabled"
+            android:title="@string/number_counter_candidates_title"
+            android:summary="@string/number_counter_candidates_summary"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="number_candidate_order_preference"
+            android:title="@string/number_candidate_order_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="incremental_conversion_session_preference"
             android:summaryOff="@string/incremental_conversion_session_summary_off"

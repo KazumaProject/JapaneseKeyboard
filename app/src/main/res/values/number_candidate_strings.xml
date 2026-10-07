@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="number_counter_candidates_title">Consistent number and counter candidates</string>
+    <string name="number_counter_candidates_summary">Suggest half-width digits, full-width digits and kanji for counters, including irregular readings such as はつか. Also applies within sentences.</string>
+    <string name="number_candidate_order_title">Number format order</string>
+    <string name="number_candidate_order_hint">Drag to change the order. Applies to numbers with or without counters. Comma-separated and abbreviated forms are grouped with half-width digits.</string>
+    <string name="number_candidate_reset">Reset order</string>
+    <string name="number_candidate_half_width">Half-width digits</string>
+    <string name="number_candidate_full_width">Full-width digits</string>
+    <string name="number_candidate_kanji">Kanji numerals</string>
+    <string name="number_candidate_drag_handle">Reorder %1$s</string>
+    <string name="number_candidate_move_up">Move %1$s up</string>
+    <string name="number_candidate_move_down">Move %1$s down</string>
+</resources>

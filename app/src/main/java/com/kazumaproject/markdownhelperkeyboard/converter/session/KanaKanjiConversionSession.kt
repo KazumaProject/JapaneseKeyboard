@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -46,6 +48,7 @@ data class KanaKanjiQueryRequest(
     val predictionConfig: PredictionConfig = PredictionConfig(),
     val collectCandidateSegments: Boolean = false,
     val dateCandidateConfig: DateCandidateConfig = DateCandidateConfig(),
+    val numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
 )
 
 data class KanaKanjiQueryResult(
@@ -93,6 +96,7 @@ class KanaKanjiConversionSession(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
                         predictionConfig = request.predictionConfig,
+                        numberCandidateConfig = request.numberCandidateConfig,
                     ),
                 )
 
@@ -152,6 +156,7 @@ class KanaKanjiConversionSession(
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
+                numberCandidateConfig = request.numberCandidateConfig,
                 candidateSegmentCollector = segmentCollector,
             ).asQueryResult(segmentCollector)
         } else {
@@ -174,6 +179,7 @@ class KanaKanjiConversionSession(
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
+                    numberCandidateConfig = request.numberCandidateConfig,
                     candidateSegmentCollector = segmentCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
@@ -202,6 +208,7 @@ class KanaKanjiConversionSession(
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
+                numberCandidateConfig = request.numberCandidateConfig,
                 candidateSegmentCollector = segmentCollector,
             ).asQueryResult(segmentCollector)
         } else {
@@ -224,6 +231,7 @@ class KanaKanjiConversionSession(
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
+                    numberCandidateConfig = request.numberCandidateConfig,
                     candidateSegmentCollector = segmentCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
@@ -252,6 +260,7 @@ class KanaKanjiConversionSession(
                     japanesePredictionEnabled = false,
                     englishPredictionEnabled = false,
                 ),
+                numberCandidateConfig = request.numberCandidateConfig,
                 candidateSegmentCollector = segmentCollector,
             ).asQueryResult(segmentCollector)
         } else {
@@ -274,6 +283,7 @@ class KanaKanjiConversionSession(
                         japanesePredictionEnabled = false,
                         englishPredictionEnabled = false,
                     ),
+                    numberCandidateConfig = request.numberCandidateConfig,
                     candidateSegmentCollector = segmentCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
@@ -283,7 +293,8 @@ class KanaKanjiConversionSession(
 
     private fun KanaKanjiQueryRequest.newCandidateSegmentCollector():
         MutableMap<String, List<CandidateConversionSegment>>? =
-        if (collectCandidateSegments) LinkedHashMap() else null
+        if (collectCandidateSegments || (numberCandidateConfig.enhanceCounterCandidates &&
+                NumberCandidateProvider.mightContainCounter(input))) LinkedHashMap() else null
 
     private fun BunsetsuCandidateResult.asQueryResult(
         segmentCollector: Map<String, List<CandidateConversionSegment>>?,

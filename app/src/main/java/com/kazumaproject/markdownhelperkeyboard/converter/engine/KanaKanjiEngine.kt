@@ -24,6 +24,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
@@ -1138,6 +1141,53 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): List<Candidate> {
+        val numberSegments = candidateSegmentCollector ?: if (
+            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
+        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val result = getCandidatesOriginalRaw(
+            input = input,
+            n = n,
+            mozcUtPersonName = mozcUtPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
+            beamWidth = beamWidth,
+            incrementalSessionState = incrementalSessionState,
+            predictionConfig = predictionConfig,
+            candidateSegmentCollector = numberSegments,
+        )
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments)
+    }
+
+    private suspend fun getCandidatesOriginalRaw(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -1633,6 +1683,58 @@ class KanaKanjiEngine {
     }
 
     suspend fun getCandidatesOriginalWithBunsetsu(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): BunsetsuCandidateResult {
+        val numberSegments = candidateSegmentCollector ?: if (
+            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
+        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val result = getCandidatesOriginalWithBunsetsuRaw(
+            input = input,
+            n = n,
+            mozcUtPersonName = mozcUtPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
+            beamWidth = beamWidth,
+            incrementalSessionState = incrementalSessionState,
+            predictionConfig = predictionConfig,
+            candidateSegmentCollector = numberSegments,
+        )
+        val splits = result.splitPatternByCandidateString.toMutableMap()
+        return result.copy(
+            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits),
+            splitPatternByCandidateString = splits,
+            splitPatterns = (result.splitPatterns + splits.values).distinct(),
+        )
+    }
+
+    private suspend fun getCandidatesOriginalWithBunsetsuRaw(
         input: String,
         n: Int,
         mozcUtPersonName: Boolean?,
@@ -2194,6 +2296,58 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): BunsetsuCandidateResult {
+        val numberSegments = candidateSegmentCollector ?: if (
+            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
+        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val result = getCandidatesWithBunsetsuSeparationRaw(
+            input = input,
+            n = n,
+            mozcUtPersonName = mozcUtPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
+            beamWidth = beamWidth,
+            incrementalSessionState = incrementalSessionState,
+            predictionConfig = predictionConfig,
+            candidateSegmentCollector = numberSegments,
+        )
+        val splits = result.splitPatternByCandidateString.toMutableMap()
+        return result.copy(
+            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits),
+            splitPatternByCandidateString = splits,
+            splitPatterns = (result.splitPatterns + splits.values).distinct(),
+        )
+    }
+
+    private suspend fun getCandidatesWithBunsetsuSeparationRaw(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -2720,6 +2874,53 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): List<Candidate> {
+        val numberSegments = candidateSegmentCollector ?: if (
+            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
+        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val result = getCandidatesRaw(
+            input = input,
+            n = n,
+            mozcUtPersonName = mozcUtPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
+            beamWidth = beamWidth,
+            incrementalSessionState = incrementalSessionState,
+            predictionConfig = predictionConfig,
+            candidateSegmentCollector = numberSegments,
+        )
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments)
+    }
+
+    private suspend fun getCandidatesRaw(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3227,6 +3428,47 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): List<Candidate> {
+        val numberSegments = candidateSegmentCollector ?: if (
+            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
+        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val result = getCandidatesWithoutPredictionRaw(
+            input = input,
+            n = n,
+            mozcUtPersonName = mozcUtPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
+            beamWidth = beamWidth,
+            incrementalSessionState = incrementalSessionState,
+            predictionConfig = predictionConfig,
+            candidateSegmentCollector = numberSegments,
+        )
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments)
+    }
+
+    private suspend fun getCandidatesWithoutPredictionRaw(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3712,6 +3954,52 @@ class KanaKanjiEngine {
     }
 
     suspend fun getCandidatesWithoutPredictionWithBunsetsu(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): BunsetsuCandidateResult {
+        val numberSegments = candidateSegmentCollector ?: if (
+            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
+        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val result = getCandidatesWithoutPredictionWithBunsetsuRaw(
+            input = input,
+            n = n,
+            mozcUtPersonName = mozcUtPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
+            beamWidth = beamWidth,
+            incrementalSessionState = incrementalSessionState,
+            predictionConfig = predictionConfig,
+            candidateSegmentCollector = numberSegments,
+        )
+        val splits = result.splitPatternByCandidateString.toMutableMap()
+        return result.copy(
+            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits),
+            splitPatternByCandidateString = splits,
+            splitPatterns = (result.splitPatterns + splits.values).distinct(),
+        )
+    }
+
+    private suspend fun getCandidatesWithoutPredictionWithBunsetsuRaw(
         input: String,
         n: Int,
         mozcUtPersonName: Boolean?,
@@ -4261,6 +4549,18 @@ class KanaKanjiEngine {
     }
 
     fun getCandidatesEnglishKana(
+        input: String,
+        predictionConfig: PredictionConfig = PredictionConfig(),
+        numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+    ): List<Candidate> {
+        val result = getCandidatesEnglishKanaRaw(
+            input = input,
+            predictionConfig = predictionConfig,
+        )
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig)
+    }
+
+    private fun getCandidatesEnglishKanaRaw(
         input: String,
         predictionConfig: PredictionConfig = PredictionConfig(),
     ): List<Candidate> {
@@ -5496,7 +5796,7 @@ class KanaKanjiEngine {
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
-                    string = newString, type = 31, score = candidate.score + 6000
+                    string = newString, commitText = newString, type = 31, score = candidate.score + 6000
                     // type, length, score など他のプロパティはそのままコピーされます
                 )
 
@@ -5547,7 +5847,7 @@ class KanaKanjiEngine {
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
-                    string = newString, type = 31, score = candidate.score + 6000
+                    string = newString, commitText = newString, type = 31, score = candidate.score + 6000
                     // type, length, score など他のプロパティはそのままコピーされます
                 )
 

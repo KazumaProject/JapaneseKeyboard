@@ -713,6 +713,7 @@ class GraphBuilder {
                             graph,
                             endIndex,
                             Node(
+                                isSystemUserDictionary = true,
                                 l = leftId,
                                 r = localSystemUserTokenArray.rightIds[posTableIndex.toInt()],
                                 score = wordCost.toInt(),
@@ -779,6 +780,7 @@ class GraphBuilder {
                                 graph,
                                 endIndex,
                                 Node(
+                                    isSystemUserDictionary = true,
                                     l = localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
                                     r = localSystemUserTokenArray.rightIds[posTableIndex.toInt()],
                                     score = cost,
@@ -845,6 +847,7 @@ class GraphBuilder {
                                 graph,
                                 endIndex,
                                 Node(
+                                    isSystemUserDictionary = true,
                                     l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
                                     r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
                                     score = token.wordCost.toInt() + scoreOffset,
