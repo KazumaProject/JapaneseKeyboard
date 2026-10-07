@@ -75,9 +75,20 @@ class DateCandidatePreferenceTest {
             R.id.dateCandidateSettingsFragment,
             SettingDestinations.routeDestinationId("date_candidate_settings_preference"),
         )
-        val result = SettingSearchIndex.searchable(context)
+        val results = SettingSearchIndex.searchable(context)
+            .filter { it.key == "date_candidate_settings_preference" }
+        assertEquals(
+            setOf(SettingCategory.CANDIDATE_CONVERSION, SettingCategory.CONVERSION_ENGINE),
+            results.map { it.category }.toSet(),
+        )
+        results.forEach { result ->
+            assertEquals(R.id.dateCandidateSettingsFragment, SettingDestinations.destinationId(result.destination))
+        }
+
+        val legacyResult = SettingSearchIndex.legacySearchable(context)
             .single { it.key == "date_candidate_settings_preference" }
-        assertEquals(SettingCategory.CANDIDATE_CONVERSION, result.category)
-        assertEquals(R.id.dateCandidateSettingsFragment, SettingDestinations.destinationId(result.destination))
+        assertEquals(SettingCategory.CONVERSION_ENGINE, legacyResult.category)
+        assertEquals(SettingTabRegistry.TAB_CONVERSION_ENGINE, legacyResult.legacyTarget?.tabKey)
+        assertEquals(R.id.conversionEnginePreferenceFragment, SettingDestinations.destinationId(legacyResult.destination))
     }
 }
