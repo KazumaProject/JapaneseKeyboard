@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Context
 import android.os.SystemClock
+import android.os.ParcelFileDescriptor
+import android.view.inputmethod.InputMethodManager
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.NavHostFragment
@@ -29,12 +31,23 @@ class NumberCandidateSettingsInstrumentedTest {
         assumeTrue(context.packageName.endsWith(".freezeprobe"))
         AppPreference.awaitInitialization()
         val backup = AppPreference.exportAllToJson()
+        val inputMethods = context.getSystemService(InputMethodManager::class.java)
+        val testIme = inputMethods.inputMethodList.single { it.packageName == context.packageName }.id
+        val wasEnabled = inputMethods.enabledInputMethodList.any { it.id == testIme }
         try {
+            // The legacy settings home redirects to onboarding until this test IME is enabled.
+            // Enable only the isolated package; keep the user's selected keyboard unchanged.
+            if (!wasEnabled) shell("ime enable $testIme")
             for (newHome in listOf(false, true)) {
                 AppPreference.setting_use_new_home_screen_preference = newHome
                 AppPreference.number_candidate_config = NumberCandidateConfig()
                 ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                     scenario.awaitSettingsContentReady()
+                    // The activity becomes ready before its asynchronous child fragment view.
+                    await(scenario) { activity ->
+                        if (newHome) navHost(activity).childFragmentManager.primaryNavigationFragment?.isResumed == true
+                        else activity.findViewById<ViewPager2>(R.id.setting_view_pager)?.adapter != null
+                    }
                     scenario.onActivity { activity ->
                         if (newHome) {
                             navHost(activity).navController.navigate(R.id.conversionEnginePreferenceFragment)
@@ -88,7 +101,14 @@ class NumberCandidateSettingsInstrumentedTest {
                     assertFalse(AppPreference.number_candidate_config.enhanceCounterCandidates)
                 }
             }
-        } finally { AppPreference.importAllFromJson(backup) }
+        } finally {
+            AppPreference.importAllFromJson(backup)
+            if (!wasEnabled) shell("ime disable $testIme")
+        }
+    }
+    private fun shell(command: String) {
+        val result = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+        ParcelFileDescriptor.AutoCloseInputStream(result).use { it.readBytes() }
     }
     private fun navHost(activity: MainActivity) = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
     private inline fun <reified T : Fragment> resumed(activity: MainActivity): T? =

@@ -127,7 +127,7 @@ class NumberCandidateConversionTest {
 
     @Test fun typingDeletingAndTogglingNumericalUnitsMatchesFreshConversions() = runBlocking {
         val incremental = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
-        for (input in listOf("にじゅっぷんまって", "にかげつかかる", "はつかにいちまんえんはらう")) {
+        for (input in listOf("にじゅっぷんまって", "にかげつかかる", "はつかにいちまんえんはらう", "はつかにせんえんはらう", "１，２３４えん")) {
             val edits = (1..input.length).map { input.take(it) } + (input.length - 1 downTo 1).map { input.take(it) }
             for (text in edits) for (enabled in listOf(true, false, true)) {
                 val query = request(text, CandidateQueryMode.CONVERSION, true).copy(n = 4,

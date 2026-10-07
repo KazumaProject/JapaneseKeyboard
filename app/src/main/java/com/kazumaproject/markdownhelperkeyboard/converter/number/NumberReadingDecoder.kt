@@ -39,12 +39,23 @@ internal object NumberReadingDecoder {
         val digit = input[start].digit()
         if (digit != null) {
             var end = start + 1
-            while (end < input.length && input[end].digit() != null) end++
+            while (end < input.length && (input[end].digit() != null || input[end] in ",，")) end++
             val text = input.substring(start, end)
-            return Token(text, if (text.length > 96) -1L else text.map { it.digit()!! }.joinToString("").toLongOrNull() ?: -1L)
+            val digits = literalDigits(text)
+            return Token(text, digits?.takeIf { it.length <= 96 }?.toLongOrNull() ?: -1L)
         }
         return readings.firstOrNull { input.startsWith(it.text, start) }
     }
+    private val groupedDigits = Regex("[0-9]{1,3}(,[0-9]{3})+")
+
+    /** Keep the normalized digit spelling separate from its numeric value. */
+    internal fun literalDigits(input: String): String? {
+        val normalized = input.map { ch -> ch.digit()?.let { '0' + it } ?: ch }.joinToString("").replace('，', ',')
+        if (normalized.isEmpty()) return null
+        if (',' in normalized && !groupedDigits.matches(normalized)) return null
+        return normalized.replace(",", "").takeIf { it.all { ch -> ch in '0'..'9' } }
+    }
+
     private fun Char.digit(): Int? = when (this) {
         in '0'..'9' -> this - '0'
         in '０'..'９' -> this - '０'
@@ -68,7 +79,8 @@ internal object NumberReadingDecoder {
         var pending: Long? = null
         var small = 10000L
         var big = Long.MAX_VALUE
-        for (token in tokens) {
+        for ((index, token) in tokens.withIndex()) {
+            if (index > 0 && token.text in setOf("ぜろ", "れい")) return null
             if (!token.place) {
                 if (pending != null || section > 0L && token.value >= small) return null
                 pending = token.value
@@ -110,13 +122,22 @@ internal object NumberReadingDecoder {
                     else if (next !in setOf("ぴゃく", "ぴゃっ")) return false
                 "はっ" -> if (next == null) { if (!allowContractedTail) return false }
                     else if (next !in setOf("ぴゃく", "ぴゃっ", "せん", "ちょう", "けい")) return false
-                "じゅっ", "じっ", "ひゃっ", "びゃっ", "ぴゃっ" ->
+                "じゅっ", "じっ" ->
                     if (next != null || !allowContractedTail) return false
                 "おっ" -> if (next != "ちょう") return false
-                "びゃく", "びゃっ" -> if (previous != "さん") return false
-                "ぴゃく", "ぴゃっ" -> if (previous !in setOf("ろっ", "はっ")) return false
+                "びゃく", "びゃっ" -> {
+                    if (previous != "さん") return false
+                    if (token.text == "びゃっ" && (next != null || !allowContractedTail)) return false
+                }
+                "ぴゃく", "ぴゃっ" -> {
+                    if (previous !in setOf("ろっ", "はっ")) return false
+                    if (token.text == "ぴゃっ" && (next != null || !allowContractedTail)) return false
+                }
                 "じゅう", "じゅー" -> if (previous == "いち") return false
-                "ひゃく", "ひゃっ" -> if (previous in setOf("いち", "さん", "ろく", "ろっ", "はち", "はっ")) return false
+                "ひゃく", "ひゃっ" -> {
+                    if (previous in setOf("いち", "さん", "ろく", "ろっ", "はち", "はっ")) return false
+                    if (token.text == "ひゃっ" && (next != null || !allowContractedTail)) return false
+                }
                 "ぜん" -> if (previous != "さん") return false
                 "せん" -> if (previous in setOf("さん", "いち", "はち")) return false
                 "よ", "く" -> if (next != null) return false

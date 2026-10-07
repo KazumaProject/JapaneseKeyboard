@@ -230,6 +230,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQuery
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryResult
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserDictionaryCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
@@ -26461,12 +26462,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 userDictionaryRepository.searchByReadingPrefixSuspend(
                     prefix = insertString, limit = userDictionaryPredictionCandidateLimit
                 ).map {
-                    Candidate(
-                        string = it.word,
-                        type = CANDIDATE_TYPE_USER_DICTIONARY,
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
+                    it.toUserDictionaryCandidate()
                 }.sortedBy { it.score }
             }
         } else {
@@ -26735,12 +26731,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 userDictionaryRepository.searchByReadingPrefixSuspend(
                     prefix = insertString, limit = userDictionaryPredictionCandidateLimit
                 ).map {
-                    Candidate(
-                        string = it.word,
-                        type = CANDIDATE_TYPE_USER_DICTIONARY,
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
+                    it.toUserDictionaryCandidate()
                 }.sortedBy { it.score }
             }
         } else {

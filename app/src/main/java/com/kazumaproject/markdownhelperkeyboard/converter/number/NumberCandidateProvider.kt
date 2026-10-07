@@ -66,53 +66,72 @@ internal object NumberCandidateProvider {
     fun counterIdentity(surface: String): String = aliases[surface] ?: surface
     internal data class ReadingSpan(val start: Int, val end: Int, val numbers: List<ParsedNumber>, val canSupplement: Boolean = true)
 
-    /** Scan maximal numeric runs once. A failed whole run is never retried from its suffix. */
+    /** Scan a whole run once; invalid expressions are not retried from their suffix. */
     fun spans(input: String): List<ReadingSpan> {
         val spans = mutableListOf<ReadingSpan>()
         var start = 0
         while (start < input.length) {
+            val previousNumeric = spans.lastOrNull()?.end == start
             val irregularReading = irregularReadings.firstOrNull { input.startsWith(it, start) }
-            if (irregularReading != null) {
-                val end = start + irregularReading.length
-                spans.add(ReadingSpan(start, end, listOf(irregular.getValue(irregularReading))))
-                start = end
-                continue
-            }
-            // 「…日に一万円…」 has a particle between two independent numeric units.
-            if (input[start] == 'に' && spans.lastOrNull()?.end == start &&
-                NumberReadingDecoder.tokenAt(input, start + 1)?.place != true) { start++; continue }
             var end = start
             var matched: ReadingSpan? = null
             var tokenCount = 0
-            while (end < input.length) {
-                val token = NumberReadingDecoder.tokenAt(input, end) ?: break
-                end += token.text.length
-                tokenCount++
-                val nextToken = NumberReadingDecoder.tokenAt(input, end)
-                val suffix = counters.firstOrNull { input.startsWith(it.reading, end) &&
-                    (nextToken == null || nextToken.text.length < it.reading.length) }
-                if (suffix != null) {
-                    val suffixEnd = end + suffix.reading.length
-                    val numbers = if (tokenCount <= 96) parse(input.substring(start, suffixEnd), false) else emptyList()
-                    if (numbers.isNotEmpty()) matched = ReadingSpan(start, suffixEnd, numbers)
-                    // Counter syllables can also be number tokens (こ / にち / じ). Consume them atomically.
-                    end = suffixEnd
-                    break
+            if (irregularReading != null) {
+                end = start + irregularReading.length
+                matched = ReadingSpan(start, end, listOf(irregular.getValue(irregularReading)))
+            } else {
+                while (end < input.length) {
+                    val token = NumberReadingDecoder.tokenAt(input, end) ?: break
+                    end += token.text.length
+                    tokenCount++
+                    val nextToken = NumberReadingDecoder.tokenAt(input, end)
+                    val suffix = counters.firstOrNull { input.startsWith(it.reading, end) &&
+                        (nextToken == null || nextToken.text.length < it.reading.length) }
+                    if (suffix != null) {
+                        end += suffix.reading.length
+                        val numbers = if (tokenCount <= 96) parse(input.substring(start, end), false) else emptyList()
+                        if (numbers.isNotEmpty()) matched = ReadingSpan(start, end, numbers)
+                        break
+                    }
                 }
             }
-            val unsupportedBoundary = (start > 0 && input[start - 1] in ".．-−+") ||
-                (end + 1 < input.length && input[end] in ".．" &&
-                    (input[end + 1] in '0'..'9' || input[end + 1] in '０'..'９'))
+            // Skip both sides of a decimal, including a spoken decimal point.
+            val decimalLength = when {
+                input.startsWith("てん", end) -> 2
+                end < input.length && input[end] in ".．" -> 1
+                else -> 0
+            }
+            if (end > start && decimalLength > 0 && NumberReadingDecoder.tokenAt(input, end + decimalLength) != null) {
+                var tail = end + decimalLength
+                while (tail < input.length) {
+                    val token = NumberReadingDecoder.tokenAt(input, tail) ?: break
+                    tail += token.text.length
+                }
+                val suffix = counters.firstOrNull { input.startsWith(it.reading, tail) }
+                start = tail + (suffix?.reading?.length ?: 0)
+                continue
+            }
+            val unsupportedBoundary = (start > 0 && input[start - 1] in ".．-−+－＋,，") ||
+                (start >= 4 && input.startsWith("まいなす", start - 4)) ||
+                (start >= 3 && input.startsWith("ぷらす", start - 3))
             if (matched != null && !unsupportedBoundary) spans.add(matched)
             else if (matched == null && !unsupportedBoundary && end > start && tokenCount <= 96) {
                 val numbers = parse(input.substring(start, end))
                 if (numbers.isNotEmpty()) spans.add(ReadingSpan(start, end, numbers,
-                    canSupplement = start == 0 && end == input.length || tokenCount > 1 ||
-                        input.substring(start, end).all { it in '0'..'9' || it in '０'..'９' }))
+                    canSupplement = input.substring(start, end) !in setOf("に", "し", "ご", "よ", "く") &&
+                        (start == 0 && end == input.length || tokenCount > 1 ||
+                            NumberReadingDecoder.literalDigits(input.substring(start, end)) != null)))
+            }
+            // Keep the particle interpretation as an alternative. The lexical path decides
+            // whether this is 「日に千円」 or 「日二千円」, not the next number token.
+            if (previousNumeric && input[start] == 'に' && end > start + 1 && !unsupportedBoundary) {
+                spans.addAll(this.spans(input.substring(start + 1, end)).map {
+                    it.copy(start = it.start + start + 1, end = it.end + start + 1)
+                })
             }
             start = if (end > start) end else start + 1
         }
-        return spans
+        return spans.distinct()
     }
     fun analyze(input: String): NumberReadingAnalysis = NumberReadingAnalysis(input,
         spans(input).flatMap { span -> span.numbers.map { number ->
@@ -138,9 +157,7 @@ internal object NumberCandidateProvider {
         return listOf(ParsedNumber(value, digits = numericDigits(input) ?: value.toString()))
     }
 
-    private fun numericDigits(input: String): String? = input.takeIf {
-        it.isNotEmpty() && it.all { ch -> ch in '0'..'9' || ch in '０'..'９' }
-    }?.map { if (it in '０'..'９') it - 0xfee0 else it }?.joinToString("")
+    private fun numericDigits(input: String): String? = NumberReadingDecoder.literalDigits(input)
 
     private fun validCounter(tail: NumberReadingDecoder.Token, counter: CounterReading, value: Long): Boolean {
         val reading = tail.text
@@ -187,7 +204,7 @@ internal object NumberCandidateProvider {
         val suffix = if (number.counter.isEmpty()) "" else orderedCounterSurfaces.firstOrNull {
             text.endsWith(it) && counterIdentity(it) == counterIdentity(number.counter)
         } ?: return null
-        val numeric = text.dropLast(suffix.length)
+        val numeric = text.dropLast(suffix.length).replace('，', ',')
         if (',' in numeric && !commaNumber.matches(numeric)) return null
         val value = NumberReadingDecoder.surfaceValue(numeric.replace(",", "")) ?: return null
         return if (value == number.value) number.copy(counter = suffix) else null

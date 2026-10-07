@@ -80,6 +80,7 @@ class KanaKanjiConversionSession(
         val userRevision: Long,
         val learnedRevision: Long?,
         val day: LocalDate,
+        val environment: KanaKanjiEngine.ConversionEnvironment,
     )
     private var orderedNumberResult: OrderedNumberResult? = null
 
@@ -106,6 +107,7 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
+            val environment = engine.conversionEnvironment()
             val userRevision = request.userDictionaryRepository.conversionRevision
             val learnedRevision = request.learnRepository?.conversionRevision
             val cached = orderedNumberResult?.takeIf {
@@ -113,7 +115,7 @@ class KanaKanjiConversionSession(
                     it.request.numberCandidateConfig.order != request.numberCandidateConfig.order &&
                     it.request.copy(numberCandidateConfig = request.numberCandidateConfig) == request &&
                     it.userRevision == userRevision && it.learnedRevision == learnedRevision &&
-                    it.day == LocalDate.now() &&
+                    it.day == LocalDate.now() && environment.cacheable && it.environment == environment &&
                     (incrementalState == null || incrementalState.committedInput() == request.input)
             }
             val result = if (cached != null) {
@@ -152,9 +154,10 @@ class KanaKanjiConversionSession(
             currentCoroutineContext().ensureActive()
             incrementalState?.commitQueryTransaction()
             orderedNumberResult = if (result.candidates.any { it.numberVariant != null } &&
+                environment.cacheable && environment == engine.conversionEnvironment() &&
                 userRevision == request.userDictionaryRepository.conversionRevision &&
                 learnedRevision == request.learnRepository?.conversionRevision) {
-                OrderedNumberResult(request, result, userRevision, learnedRevision, LocalDate.now())
+                OrderedNumberResult(request, result, userRevision, learnedRevision, LocalDate.now(), environment)
             } else null
             composedResult
         } catch (cancellation: CancellationException) {

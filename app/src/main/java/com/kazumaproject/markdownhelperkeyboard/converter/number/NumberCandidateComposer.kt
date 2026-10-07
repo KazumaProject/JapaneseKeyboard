@@ -41,11 +41,14 @@ object NumberCandidateComposer {
         }
         if (segmentsByString.isNullOrEmpty()) return reorderTagged(candidates, config)
 
-        val readingSpans = numericSpans?.groupBy { it.start to it.end }?.map { (range, spans) ->
+        val reference = candidates.firstOrNull { it.yomi == input && segmentsByString[it.string]?.isNotEmpty() == true }
+            ?.let { segmentsByString[it.string] }.orEmpty()
+        val resolvedSpans = resolveNumericSpans(input, numericSpans ?: NumberCandidateProvider.analyze(input).spans, reference)
+        val readingSpans = resolvedSpans.groupBy { it.start to it.end }.map { (range, spans) ->
             NumberCandidateProvider.ReadingSpan(range.first, range.second, spans.map {
                 ParsedNumber(it.identity.value, it.identity.counter, it.rightId, it.identity.digits)
             })
-        } ?: NumberCandidateProvider.spans(input)
+        }
         val parsedSpans = HashMap<Long, List<ParsedNumber>>()
         val expanded = ArrayList<Candidate>(candidates.size)
         val existing = candidates.filterNot(::isSpecial).mapTo(hashSetOf()) { it.string }
@@ -181,6 +184,31 @@ object NumberCandidateComposer {
             }
         }
     }
+
+    /** A lexical path, not a kana prefix, supplies sentence boundaries. */
+    internal fun resolveNumericSpans(input: String, spans: List<NumericSpan>, segments: List<CandidateConversionSegment>): List<NumericSpan> =
+        spans.filter { span ->
+            if (!span.canSupplement) false
+            else if (span.start == 0 && span.end == input.length) true
+            else {
+                val parts = segments.filter { it.inputStart < span.end && it.inputEnd > span.start }
+                parts.isNotEmpty() && parts.first().inputStart == span.start && parts.last().inputEnd == span.end &&
+                    (NumberCandidateProvider.matchSurface(parts.joinToString("") { it.output },
+                        ParsedNumber(span.identity.value, span.identity.counter, span.rightId, span.identity.digits)) != null ||
+                        // A low-N-best path can leave the coefficient as kana (「に十分」).
+                        // Only a validated counter at the start of the input may complete it.
+                        span.start == 0 && span.identity.counter.isNotEmpty() && parts.all { part ->
+                            NumberReadingDecoder.surfaceValue(part.output) != null ||
+                                part.output in NumberCandidateProvider.counterSurfaces ||
+                                NumberCandidateProvider.matchSurface(part.output,
+                                    ParsedNumber(span.identity.value, span.identity.counter, span.rightId)) != null ||
+                                part.output == input.substring(part.inputStart, part.inputEnd) &&
+                                    part.output in setOf("に", "し", "ご", "よ", "く") ||
+                                NumberCandidateProvider.parse(input.substring(part.inputStart, part.inputEnd), false)
+                                    .any { NumberCandidateProvider.matchSurface(part.output, it) != null }
+                        })
+            }
+        }
 
     internal fun coversNumericSpans(segments: List<CandidateConversionSegment>, numericSpans: List<NumericSpan>): Boolean =
         numericSpans.groupBy { it.start to it.end }.all { (range, alternatives) ->

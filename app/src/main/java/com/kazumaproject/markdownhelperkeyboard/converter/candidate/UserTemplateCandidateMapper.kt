@@ -7,7 +7,8 @@ internal fun UserTemplate.toUserTemplateCandidate(): Candidate {
         string = word,
         type = CANDIDATE_TYPE_USER_TEMPLATE,
         length = reading.length.toUByte(),
-        score = posScore
+        score = posScore,
+        yomi = reading
     )
 }
 

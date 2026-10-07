@@ -23,6 +23,8 @@ class NumberReadingDecoderTest {
             "9223372036854775807えん" to Long.MAX_VALUE, "０００２えん" to 2L)
         valid.forEach { (reading, value) -> assertEquals(reading, value, NumberCandidateProvider.parse(reading).single().value) }
         assertEquals("0002", NumberCandidateProvider.parse("０００２えん").single().digits)
+        val grouped = NumberCandidateProvider.parse("１，２３４えん").single()
+        assertEquals(1234L, NumberCandidateProvider.matchSurface("１，２３４円", grouped)?.value)
         listOf("9223372036854775808えん", "1000けいえん", "1おく2ちょうえん", "-2えん", "1.5えん")
             .forEach { assertTrue(it, NumberCandidateProvider.parse(it).isEmpty()) }
     }
@@ -42,6 +44,16 @@ class NumberReadingDecoderTest {
                 assertEquals("$value/$style", value, NumberReadingDecoder.surfaceValue(number.render(style)))
             }
         }
+    }
+    @Test fun reviewedSoundZeroAndSeparatorRegressions() {
+        listOf("にびゃっぷん", "さんひゃっこ", "さんぴゃっぷん", "じゅうぜろえん", "ひゃくれいえん", "いちまんぜろえん")
+            .forEach { assertTrue(it, NumberCandidateProvider.parse(it).isEmpty()) }
+        mapOf("にひゃっこ" to 200L, "さんびゃっぷん" to 300L, "ろっぴゃっぷん" to 600L,
+            "1,000えん" to 1000L, "１，２３４えん" to 1234L, "ぜろえん" to 0L)
+            .forEach { (input,value) -> assertEquals(input,value,NumberCandidateProvider.parse(input).single().value) }
+        listOf("1,00えん", "1,,000えん", "－２えん", "＋２えん", "-ついたち", "-ふたり", "+はつか", "1.5えん", "１．５えん")
+            .forEach { assertTrue(it,NumberCandidateProvider.spans(it).isEmpty()) }
+        listOf("に", "し", "ご", "よ", "く").forEach { assertTrue(it,NumberCandidateProvider.spans(it).none { span -> span.canSupplement }) }
     }
     @Test fun maximalInvalidRunsNeverProduceNumericSuffixes() {
         for (input in listOf("にじゅっふんまつ", "いちまんにまんえんはらう", "9".repeat(1000) + "えん", "に".repeat(1000), "0".repeat(1000) + "1えん", "-2えん", "1.5えん")) {

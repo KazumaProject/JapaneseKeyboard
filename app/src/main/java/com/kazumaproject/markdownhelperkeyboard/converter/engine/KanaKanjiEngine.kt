@@ -17,6 +17,7 @@ import com.kazumaproject.domain.sortByEmojiCategory
 import com.kazumaproject.domain.toEmoticonCategory
 import com.kazumaproject.domain.toSymbolCategory
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.markdownhelperkeyboard.converter.ConversionCacheIdentity
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
@@ -181,6 +182,35 @@ class KanaKanjiEngine {
     private var initialOptionalDictionaryStateLoaded: Boolean = false
 
     private lateinit var connectionMatrix: ConnectionMatrix.CostTable
+
+    internal data class ConversionEnvironment(
+        val generation: Long,
+        val matrix: ConversionCacheIdentity?,
+        val systemTokens: ConversionCacheIdentity?,
+        val systemReadings: ConversionCacheIdentity?,
+        val scoring: FindPath.ScoringEnvironment?,
+        val cacheable: Boolean,
+    )
+    private var dictionaryGeneration = 0L
+    private var dictionaryUpdatesInProgress = 0
+
+    private inline fun updateDictionaryState(block: () -> Unit) {
+        synchronized(this) { dictionaryUpdatesInProgress++; dictionaryGeneration++ }
+        try { block() } finally {
+            synchronized(this) { dictionaryUpdatesInProgress--; dictionaryGeneration++ }
+        }
+    }
+
+    internal fun conversionEnvironment(): ConversionEnvironment = synchronized(this) {
+        ConversionEnvironment(
+            generation = dictionaryGeneration,
+            matrix = if (::connectionMatrix.isInitialized) ConversionCacheIdentity(connectionMatrix) else null,
+            systemTokens = if (::systemTokenArray.isInitialized) ConversionCacheIdentity(systemTokenArray) else null,
+            systemReadings = if (::systemYomiTrie.isInitialized) ConversionCacheIdentity(systemYomiTrie) else null,
+            scoring = if (::findPath.isInitialized) findPath.conversionScoringIdentity() else null,
+            cacheable = dictionaryUpdatesInProgress == 0,
+        )
+    }
 
     fun createIncrementalSessionState(): IncrementalSessionState = IncrementalSessionState(
         graphState = graphBuilder.createSessionState(),
@@ -459,7 +489,7 @@ class KanaKanjiEngine {
         )
     }
 
-    fun applyDictionaryOverrideState(context: Context) {
+    fun applyDictionaryOverrideState(context: Context) = updateDictionaryState {
         val reader = dictionaryReader(context)
         val appContext = context.applicationContext
         val store = DictionaryOverrideStore(appContext, DictionaryOverrideValidator())
@@ -501,6 +531,7 @@ class KanaKanjiEngine {
             reader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
 
         synchronized(this) {
+            dictionaryGeneration++
             connectionMatrix = newConnectionMatrix
             assignSystemDictionary(newSystem)
             assignSingleKanjiDictionary(newSingleKanji)
@@ -538,7 +569,7 @@ class KanaKanjiEngine {
      * the already-loaded core dictionaries. The IME starts this once in the background instead
      * of racing the first input against a redundant full dictionary reload.
      */
-    fun initializeOptionalDictionaryStateFromCurrentSources() {
+    fun initializeOptionalDictionaryStateFromCurrentSources() = updateDictionaryState {
         val reader = checkNotNull(dictionaryBinaryReader) {
             "DictionaryBinaryReader must be configured before optional dictionaries"
         }
@@ -549,6 +580,7 @@ class KanaKanjiEngine {
         val newWeb = loadOptionalTripleDictionary(reader, DictionaryCategory.WEB)
         val newEnglishReading = loadEnglishReadingDictionary(reader)
         synchronized(this) {
+            dictionaryGeneration++
             assignEnglishReadingDictionary(newEnglishReading)
             assignPersonDictionary(newPerson)
             assignPlacesDictionary(newPlaces)
@@ -775,7 +807,9 @@ class KanaKanjiEngine {
         this.englishEngine = engineEngine
     }
 
+    @Synchronized
     private fun assignSystemDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         systemTangoTrie = data.tangoTrie
         systemYomiTrie = data.yomiTrie
         systemTokenArray = data.tokenArray
@@ -785,7 +819,9 @@ class KanaKanjiEngine {
         systemSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignSingleKanjiDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         singleKanjiTangoTrie = data.tangoTrie
         singleKanjiYomiTrie = data.yomiTrie
         singleKanjiTokenArray = data.tokenArray
@@ -795,7 +831,9 @@ class KanaKanjiEngine {
         singleKanjiSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignEmojiDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         emojiTangoTrie = data.tangoTrie
         emojiYomiTrie = data.yomiTrie
         emojiTokenArray = data.tokenArray
@@ -805,7 +843,9 @@ class KanaKanjiEngine {
         emojiSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignEmoticonDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         emoticonTangoTrie = data.tangoTrie
         emoticonYomiTrie = data.yomiTrie
         emoticonTokenArray = data.tokenArray
@@ -815,7 +855,9 @@ class KanaKanjiEngine {
         emoticonSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignSymbolDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         symbolTangoTrie = data.tangoTrie
         symbolYomiTrie = data.yomiTrie
         symbolTokenArray = data.tokenArray
@@ -825,7 +867,9 @@ class KanaKanjiEngine {
         symbolSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignReadingCorrectionDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         readingCorrectionTangoTrie = data.tangoTrie
         readingCorrectionYomiTrie = data.yomiTrie
         readingCorrectionTokenArray = data.tokenArray
@@ -835,7 +879,9 @@ class KanaKanjiEngine {
         readingCorrectionSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignKotowazaDictionary(data: TripleDictionaryData) {
+        dictionaryGeneration++
         kotowazaTangoTrie = data.tangoTrie
         kotowazaYomiTrie = data.yomiTrie
         kotowazaTokenArray = data.tokenArray
@@ -845,7 +891,9 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignEnglishReadingDictionary(data: TripleDictionaryData?) {
+        dictionaryGeneration++
         englishReadingDictionary = data
         if (!::graphBuilder.isInitialized) return
         graphBuilder.updateEnglishReadingDictionary(
@@ -859,7 +907,9 @@ class KanaKanjiEngine {
         )
     }
 
+    @Synchronized
     private fun assignPersonDictionary(data: TripleDictionaryData?) {
+        dictionaryGeneration++
         personTangoTrie = data?.tangoTrie
         personYomiTrie = data?.yomiTrie
         personTokenArray = data?.tokenArray
@@ -869,7 +919,9 @@ class KanaKanjiEngine {
         personSuccinctBitVectorLBSTango = data?.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignPlacesDictionary(data: TripleDictionaryData?) {
+        dictionaryGeneration++
         placesTangoTrie = data?.tangoTrie
         placesYomiTrie = data?.yomiTrie
         placesTokenArray = data?.tokenArray
@@ -879,7 +931,9 @@ class KanaKanjiEngine {
         placesSuccinctBitVectorLBSTango = data?.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignWikiDictionary(data: TripleDictionaryData?) {
+        dictionaryGeneration++
         wikiTangoTrie = data?.tangoTrie
         wikiYomiTrie = data?.yomiTrie
         wikiTokenArray = data?.tokenArray
@@ -889,7 +943,9 @@ class KanaKanjiEngine {
         wikiSuccinctBitVectorLBSTango = data?.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignNeologdDictionary(data: TripleDictionaryData?) {
+        dictionaryGeneration++
         neologdTangoTrie = data?.tangoTrie
         neologdYomiTrie = data?.yomiTrie
         neologdTokenArray = data?.tokenArray
@@ -899,7 +955,9 @@ class KanaKanjiEngine {
         neologdSuccinctBitVectorLBSTango = data?.succinctBitVectorTangoLBS
     }
 
+    @Synchronized
     private fun assignWebDictionary(data: TripleDictionaryData?) {
+        dictionaryGeneration++
         webTangoTrie = data?.tangoTrie
         webYomiTrie = data?.yomiTrie
         webTokenArray = data?.tokenArray
@@ -909,7 +967,7 @@ class KanaKanjiEngine {
         webSuccinctBitVectorLBSTango = data?.succinctBitVectorTangoLBS
     }
 
-    fun loadSystemUserDictionaryFromFiles(context: Context) {
+    fun loadSystemUserDictionaryFromFiles(context: Context) = updateDictionaryState {
         val baseDir = File(context.filesDir, "system_user_dictionary")
         val yomiFile = File(baseDir, "yomi_system_user_dictionary.dat")
         val tangoFile = File(baseDir, "tango_system_user_dictionary.dat")
@@ -917,7 +975,7 @@ class KanaKanjiEngine {
         val posTableFile = File(baseDir, "pos_table_system_user_dictionary.dat")
         if (!yomiFile.exists() || !tangoFile.exists() || !tokenFile.exists() || !posTableFile.exists()) {
             releaseSystemUserDictionary()
-            return
+            return@updateDictionaryState
         }
 
         ObjectInputStream(BufferedInputStream(FileInputStream(tangoFile))).use {
@@ -951,7 +1009,7 @@ class KanaKanjiEngine {
         )
     }
 
-    fun releaseSystemUserDictionary() {
+    fun releaseSystemUserDictionary() = updateDictionaryState {
         this.systemUserTangoTrie = null
         this.systemUserYomiTrie = null
         this.systemUserTokenArray = null
@@ -975,14 +1033,14 @@ class KanaKanjiEngine {
     }
 
 
-    fun buildPersonNamesDictionary(context: Context) {
+    fun buildPersonNamesDictionary(context: Context) = updateDictionaryState {
         val reader = dictionaryReader(context)
         if (readerCategoryState(
                 context, DictionaryCategory.PERSON_NAME
             ) !in loadableOptionalStates
         ) {
             releasePersonNamesDictionary()
-            return
+            return@updateDictionaryState
         }
         this.personTangoTrie = reader.loadLouds(DictionaryFileKey.PERSON_NAME_TANGO)
         this.personYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.PERSON_NAME_YOMI)
@@ -996,11 +1054,11 @@ class KanaKanjiEngine {
         this.personSuccinctBitVectorLBSTango = SuccinctBitVector(personTangoTrie!!.LBS)
     }
 
-    fun buildPlaceDictionary(context: Context) {
+    fun buildPlaceDictionary(context: Context) = updateDictionaryState {
         val reader = dictionaryReader(context)
         if (readerCategoryState(context, DictionaryCategory.PLACES) !in loadableOptionalStates) {
             releasePlacesDictionary()
-            return
+            return@updateDictionaryState
         }
         this.placesTangoTrie = reader.loadLouds(DictionaryFileKey.PLACES_TANGO)
         this.placesYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.PLACES_YOMI)
@@ -1011,11 +1069,11 @@ class KanaKanjiEngine {
         this.placesSuccinctBitVectorLBSTango = SuccinctBitVector(placesTangoTrie!!.LBS)
     }
 
-    fun buildWikiDictionary(context: Context) {
+    fun buildWikiDictionary(context: Context) = updateDictionaryState {
         val reader = dictionaryReader(context)
         if (readerCategoryState(context, DictionaryCategory.WIKI) !in loadableOptionalStates) {
             releaseWikiDictionary()
-            return
+            return@updateDictionaryState
         }
         this.wikiTangoTrie = reader.loadLouds(DictionaryFileKey.WIKI_TANGO)
         this.wikiYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.WIKI_YOMI)
@@ -1026,11 +1084,11 @@ class KanaKanjiEngine {
         this.wikiSuccinctBitVectorLBSTango = SuccinctBitVector(wikiTangoTrie!!.LBS)
     }
 
-    fun buildNeologdDictionary(context: Context) {
+    fun buildNeologdDictionary(context: Context) = updateDictionaryState {
         val reader = dictionaryReader(context)
         if (readerCategoryState(context, DictionaryCategory.NEOLOGD) !in loadableOptionalStates) {
             releaseNeologdDictionary()
-            return
+            return@updateDictionaryState
         }
         this.neologdTangoTrie = reader.loadLouds(DictionaryFileKey.NEOLOGD_TANGO)
         this.neologdYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.NEOLOGD_YOMI)
@@ -1041,11 +1099,11 @@ class KanaKanjiEngine {
         this.neologdSuccinctBitVectorLBSTango = SuccinctBitVector(neologdTangoTrie!!.LBS)
     }
 
-    fun buildWebDictionary(context: Context) {
+    fun buildWebDictionary(context: Context) = updateDictionaryState {
         val reader = dictionaryReader(context)
         if (readerCategoryState(context, DictionaryCategory.WEB) !in loadableOptionalStates) {
             releaseWebDictionary()
-            return
+            return@updateDictionaryState
         }
         this.webTangoTrie = reader.loadLouds(DictionaryFileKey.WEB_TANGO)
         this.webYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.WEB_YOMI)
@@ -1056,7 +1114,7 @@ class KanaKanjiEngine {
         this.webSuccinctBitVectorLBSTango = SuccinctBitVector(webTangoTrie!!.LBS)
     }
 
-    fun releasePersonNamesDictionary() {
+    fun releasePersonNamesDictionary() = updateDictionaryState {
         this.personTangoTrie = null
         this.personYomiTrie = null
         this.personTokenArray = null
@@ -1066,7 +1124,7 @@ class KanaKanjiEngine {
         this.personSuccinctBitVectorLBSTango = null
     }
 
-    fun releasePlacesDictionary() {
+    fun releasePlacesDictionary() = updateDictionaryState {
         this.placesTangoTrie = null
         this.placesYomiTrie = null
         this.placesTokenArray = null
@@ -1076,7 +1134,7 @@ class KanaKanjiEngine {
         this.placesSuccinctBitVectorLBSTango = null
     }
 
-    fun releaseWikiDictionary() {
+    fun releaseWikiDictionary() = updateDictionaryState {
         this.wikiTangoTrie = null
         this.wikiYomiTrie = null
         this.wikiTokenArray = null
@@ -1086,7 +1144,7 @@ class KanaKanjiEngine {
         this.wikiSuccinctBitVectorLBSTango = null
     }
 
-    fun releaseNeologdDictionary() {
+    fun releaseNeologdDictionary() = updateDictionaryState {
         this.neologdTangoTrie = null
         this.neologdYomiTrie = null
         this.neologdTokenArray = null
@@ -1096,7 +1154,7 @@ class KanaKanjiEngine {
         this.neologdSuccinctBitVectorLBSTango = null
     }
 
-    fun releaseWebDictionary() {
+    fun releaseWebDictionary() = updateDictionaryState {
         this.webTangoTrie = null
         this.webYomiTrie = null
         this.webTokenArray = null
@@ -4614,24 +4672,26 @@ class KanaKanjiEngine {
         val result = getCandidatesEnglishKanaRaw(
             input = input,
             predictionConfig = predictionConfig,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         return NumberCandidateComposer.prepare(input, result, numberCandidateConfig)
     }
 
     private fun getCandidatesEnglishKanaRaw(
         input: String,
-        predictionConfig: PredictionConfig = PredictionConfig(),
+        predictionConfig: PredictionConfig,
+        enhanceNumbers: Boolean,
     ): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
         val explicitDigitInput = input.takeIf { value ->
             value.isNotEmpty() && value.all { it in '0'..'9' || it in '０'..'９' }
         }
         val directJapaneseNumber = input.toNumber()
-        val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input)
+        val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input, enhanceNumbers)
         val preferredNumberCandidate = when {
+            explicitDigitInput != null -> explicitDigitInput.convertFullWidthNumbersToHalfWidth()
             numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
             directJapaneseNumber != null -> directJapaneseNumber.second
-            explicitDigitInput != null -> explicitDigitInput.convertFullWidthNumbersToHalfWidth()
             else -> null
         }
         val listJapaneseCandidates = buildList {
@@ -4679,15 +4739,12 @@ class KanaKanjiEngine {
         }
 
         val digitCandidates = when {
+            explicitDigitInput != null -> createDigitCandidates(explicitDigitInput.convertFullWidthNumbersToHalfWidth(), input.length.toUByte())
             directJapaneseNumber != null -> createDigitCandidates(
                 directJapaneseNumber.second, input.length.toUByte()
             )
 
             numberUnitCandidates.isNotEmpty() -> emptyList()
-            explicitDigitInput != null -> createDigitCandidates(
-                explicitDigitInput,
-                input.length.toUByte(),
-            )
             else -> emptyList()
         }
 
@@ -4881,8 +4938,11 @@ class KanaKanjiEngine {
         return listOf(fullWidth, halfWidth) + timeConversion + dateConversion + numberCandidates
     }
 
-    private fun createCandidatesForJapaneseNumberWithUnit(input: String): List<Candidate> =
-        NumberCandidateProvider.parse(input, allowBareNumber = false).filter { it.counter in setOf("人", "円", "分", "時") }
+    private fun createCandidatesForJapaneseNumberWithUnit(input: String, enhanceNumbers: Boolean): List<Candidate> =
+        NumberCandidateProvider.parse(input, allowBareNumber = false).filter {
+            it.counter in setOf("人", "円", "分", "時") && (enhanceNumbers || input.endsWith("にん") ||
+                input.endsWith("えん") || input.endsWith("ぷん") || input.endsWith("ふん") || input.endsWith("じ"))
+        }
             .flatMap { number -> listOf(NumberStyle.HALF, NumberStyle.FULL).map { style ->
                 Candidate(string = number.render(style), type = if (number.counter in setOf("分", "時")) {
                     if (style == NumberStyle.HALF) CANDIDATE_TYPE_TIME else 30
@@ -4906,24 +4966,32 @@ class KanaKanjiEngine {
         withBunsetsu: Boolean,
     ): BunsetsuCandidateResult {
         val collector = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap() else null
-        // A* prunes/mutates the graph. Keep an isolated copy only when numeric constraints are needed.
-        val constrained = if (numericSpans.isEmpty()) null else (graph + completePrefix.orEmpty()).mapValuesTo(LinkedHashMap()) { (_, nodes) ->
-            nodes.filter { node ->
-                node.tango == "BOS" || node.tango == "EOS" || numericSpans.none { span ->
-                    node.sPos < span.end && node.sPos + node.len > span.start &&
-                        !(node.sPos == span.start && node.sPos + node.len == span.end && node.numericIdentity != null)
-                }
-            }.mapTo(mutableListOf()) { it.copy(prev = null, next = null, adjustedScore = it.score, f = it.score, g = it.score) }
+        // Keep semantic nodes out of normal lexical ranking. They are used only after
+        // a normal path has confirmed the sentence's numeric and particle boundaries.
+        val complete = if (numericSpans.isEmpty()) null else (graph + completePrefix.orEmpty()).mapValues { (_, nodes) ->
+            nodes.map { it.copy(prev = null, next = null, adjustedScore = it.score, f = it.score, g = it.score) }
         }
+        graph.values.forEach { nodes -> nodes.removeAll { it.numericIdentity != null } }
         val normal = if (withBunsetsu) findPath.backwardAStarWithBunsetsu(
             graph, input.length, connectionMatrix, n, beamWidth,
             cancellationCheck = cancellationCheck, sessionState = sessionState, candidateSegmentCollector = collector)
         else BunsetsuCandidateResult(findPath.backwardAStar(graph, input.length, connectionMatrix, n, beamWidth,
             cancellationCheck, sessionState, collector), emptyList())
-        if (constrained == null || normal.candidates.any { candidate ->
-            val segments = collector?.get(candidate.string).orEmpty()
-            NumberCandidateComposer.coversNumericSpans(segments, numericSpans)
+        if (complete == null) return normal
+        val reference = normal.candidates.firstOrNull()?.let { collector?.get(it.string) }.orEmpty()
+        val resolved = NumberCandidateComposer.resolveNumericSpans(input, numericSpans, reference)
+        if (resolved.isEmpty() || normal.candidates.any { candidate ->
+            NumberCandidateComposer.coversNumericSpans(collector?.get(candidate.string).orEmpty(), resolved)
         }) return normal
+        val constrained = complete.mapValuesTo(LinkedHashMap()) { (_, nodes) ->
+            nodes.filter { node ->
+                if (node.numericIdentity != null && resolved.none { it.start == node.sPos && it.end == node.sPos + node.len && it.identity == node.numericIdentity }) false
+                else node.tango == "BOS" || node.tango == "EOS" || resolved.none { span ->
+                    node.sPos < span.end && node.sPos + node.len > span.start &&
+                        !(node.sPos == span.start && node.sPos + node.len == span.end && node.numericIdentity != null)
+                }
+            }.mapTo(mutableListOf()) { it.copy(prev = null, next = null, adjustedScore = it.score, f = it.score, g = it.score) }
+        }
         cancellationCheck()
         val extraSegments = LinkedHashMap<String, List<CandidateConversionSegment>>()
         val supplemental = findPath.backwardAStarWithBunsetsu(constrained, input.length, connectionMatrix, 1, beamWidth,

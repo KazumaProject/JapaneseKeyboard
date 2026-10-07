@@ -150,6 +150,7 @@ internal object TestEngineFactory {
 
     fun create(
         connectionMatrix: ConnectionMatrix.CostTable = ConnectionMatrix.fromShortArray(readConnectionIds()),
+        findPath: FindPath = FindPath(),
     ): KanaKanjiEngine {
         val englishEngine = mock<EnglishEngine>()
         whenever(englishEngine.getCandidates(any(), any())).thenReturn(emptyList<Candidate>())
@@ -187,7 +188,7 @@ internal object TestEngineFactory {
         return KanaKanjiEngine().also {
             it.buildEngine(
                 graphBuilder = GraphBuilder(),
-                findPath = FindPath(),
+                findPath = findPath,
                 connectionMatrix = connectionMatrix,
                 systemTangoTrie = system.tangoTrie,
                 systemYomiTrie = system.yomiTrie,

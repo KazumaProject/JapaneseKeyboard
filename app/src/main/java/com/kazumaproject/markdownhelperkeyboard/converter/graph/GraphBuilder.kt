@@ -1332,7 +1332,7 @@ class GraphBuilder {
                     yomiUsed = counterReading, sPos = i, mozcAttributes = mozcAttributesFor(2044), numericIdentity = identity)
                 // The semantic node must survive even if a dictionary row has the same display/POS.
                 graph.computeIfAbsent(span.end) { mutableListOf() }.add(node)
-                foundInAnyDictionary = true
+                // A synthetic node must not suppress the normal unknown-word fallback.
             }
 
             // An append can complete a dictionary word that did not exist in the previous

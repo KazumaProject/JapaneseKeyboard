@@ -4,6 +4,7 @@ import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeType
+import com.kazumaproject.markdownhelperkeyboard.converter.ConversionCacheIdentity
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
@@ -33,6 +34,18 @@ class FindPath(
     private var mozcSegmenterProvider: () -> MozcSegmenter? = { null },
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
 ) {
+
+    internal data class ScoringEnvironment(
+        val rules: ConversionCacheIdentity,
+        val systemNgram: ConversionCacheIdentity,
+        val segmenter: ConversionCacheIdentity?,
+        val boundaryMode: MozcBoundaryMode,
+    )
+
+    internal fun conversionScoringIdentity(): ScoringEnvironment = ScoringEnvironment(
+        ConversionCacheIdentity(ngramRuleScorerProvider()), ConversionCacheIdentity(systemNgramDictionaryProvider()),
+        mozcSegmenterProvider()?.let(::ConversionCacheIdentity), mozcBoundaryModeProvider(),
+    )
 
     internal data class ForwardDpCache(
         val inputLength: Int,
