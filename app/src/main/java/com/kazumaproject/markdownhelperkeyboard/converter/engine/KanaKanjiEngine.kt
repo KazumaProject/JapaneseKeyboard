@@ -27,6 +27,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateCon
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberReadingAnalysis
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumericSpan
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberStyle
+import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
@@ -1142,10 +1146,10 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+        numberAnalysis: NumberReadingAnalysis? = null,
     ): List<Candidate> {
-        val numberSegments = candidateSegmentCollector ?: if (
-            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
-        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val numericSpans = (numberAnalysis?.takeIf { it.input == input } ?: NumberCandidateProvider.analyze(input)).spans
+        val numberSegments = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
         val result = getCandidatesOriginalRaw(
             input = input,
             n = n,
@@ -1165,8 +1169,10 @@ class KanaKanjiEngine {
             incrementalSessionState = incrementalSessionState,
             predictionConfig = predictionConfig,
             candidateSegmentCollector = numberSegments,
+            numericSpans = numericSpans,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments)
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
     }
 
     private suspend fun getCandidatesOriginalRaw(
@@ -1188,6 +1194,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -1238,6 +1246,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            numericSpans = numericSpans.filter { it.canSupplement },
+            enhanceNumbers = enhanceNumbers,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1251,16 +1261,19 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStar(
+            findNumberAwarePaths(
                 graph = graph,
-                length = input.length,
+                input = input,
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
-            )
+                numericSpans = if (enhanceNumbers) numericSpans.filter { it.canSupplement } else emptyList(),
+                completePrefix = incrementalSessionState?.graphState?.cachedGraph?.unprunedPositions,
+                withBunsetsu = false,
+            ).candidates
         }
         conversionContext.ensureActive()
 
@@ -1702,10 +1715,10 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+        numberAnalysis: NumberReadingAnalysis? = null,
     ): BunsetsuCandidateResult {
-        val numberSegments = candidateSegmentCollector ?: if (
-            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
-        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val numericSpans = (numberAnalysis?.takeIf { it.input == input } ?: NumberCandidateProvider.analyze(input)).spans
+        val numberSegments = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
         val result = getCandidatesOriginalWithBunsetsuRaw(
             input = input,
             n = n,
@@ -1725,12 +1738,14 @@ class KanaKanjiEngine {
             incrementalSessionState = incrementalSessionState,
             predictionConfig = predictionConfig,
             candidateSegmentCollector = numberSegments,
+            numericSpans = numericSpans,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
         return result.copy(
-            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits),
+            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans),
             splitPatternByCandidateString = splits,
-            splitPatterns = (result.splitPatterns + splits.values).distinct(),
+            splitPatterns = splits.values.distinct(),
         )
     }
 
@@ -1753,6 +1768,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1803,6 +1820,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            numericSpans = numericSpans.filter { it.canSupplement },
+            enhanceNumbers = enhanceNumbers,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1818,15 +1837,18 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStarWithBunsetsu(
+            findNumberAwarePaths(
                 graph = graph,
-                length = input.length,
+                input = input,
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                numericSpans = if (enhanceNumbers) numericSpans.filter { it.canSupplement } else emptyList(),
+                completePrefix = incrementalSessionState?.graphState?.cachedGraph?.unprunedPositions,
+                withBunsetsu = true,
             )
         }
         conversionContext.ensureActive()
@@ -2297,10 +2319,10 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+        numberAnalysis: NumberReadingAnalysis? = null,
     ): BunsetsuCandidateResult {
-        val numberSegments = candidateSegmentCollector ?: if (
-            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
-        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val numericSpans = (numberAnalysis?.takeIf { it.input == input } ?: NumberCandidateProvider.analyze(input)).spans
+        val numberSegments = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
         val result = getCandidatesWithBunsetsuSeparationRaw(
             input = input,
             n = n,
@@ -2320,12 +2342,14 @@ class KanaKanjiEngine {
             incrementalSessionState = incrementalSessionState,
             predictionConfig = predictionConfig,
             candidateSegmentCollector = numberSegments,
+            numericSpans = numericSpans,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
         return result.copy(
-            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits),
+            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans),
             splitPatternByCandidateString = splits,
-            splitPatterns = (result.splitPatterns + splits.values).distinct(),
+            splitPatterns = splits.values.distinct(),
         )
     }
 
@@ -2348,6 +2372,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -2398,6 +2424,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            numericSpans = numericSpans.filter { it.canSupplement },
+            enhanceNumbers = enhanceNumbers,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2413,15 +2441,18 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStarWithBunsetsu(
+            findNumberAwarePaths(
                 graph = graph,
-                length = input.length,
+                input = input,
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                numericSpans = if (enhanceNumbers) numericSpans.filter { it.canSupplement } else emptyList(),
+                completePrefix = incrementalSessionState?.graphState?.cachedGraph?.unprunedPositions,
+                withBunsetsu = true,
             )
         }
         conversionContext.ensureActive()
@@ -2875,10 +2906,10 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+        numberAnalysis: NumberReadingAnalysis? = null,
     ): List<Candidate> {
-        val numberSegments = candidateSegmentCollector ?: if (
-            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
-        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val numericSpans = (numberAnalysis?.takeIf { it.input == input } ?: NumberCandidateProvider.analyze(input)).spans
+        val numberSegments = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
         val result = getCandidatesRaw(
             input = input,
             n = n,
@@ -2898,8 +2929,10 @@ class KanaKanjiEngine {
             incrementalSessionState = incrementalSessionState,
             predictionConfig = predictionConfig,
             candidateSegmentCollector = numberSegments,
+            numericSpans = numericSpans,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments)
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
     }
 
     private suspend fun getCandidatesRaw(
@@ -2921,6 +2954,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2971,6 +3006,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            numericSpans = numericSpans.filter { it.canSupplement },
+            enhanceNumbers = enhanceNumbers,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2984,16 +3021,19 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStar(
+            findNumberAwarePaths(
                 graph = graph,
-                length = input.length,
+                input = input,
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
-            )
+                numericSpans = if (enhanceNumbers) numericSpans.filter { it.canSupplement } else emptyList(),
+                completePrefix = incrementalSessionState?.graphState?.cachedGraph?.unprunedPositions,
+                withBunsetsu = false,
+            ).candidates
         }
         conversionContext.ensureActive()
 
@@ -3429,10 +3469,10 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+        numberAnalysis: NumberReadingAnalysis? = null,
     ): List<Candidate> {
-        val numberSegments = candidateSegmentCollector ?: if (
-            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
-        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val numericSpans = (numberAnalysis?.takeIf { it.input == input } ?: NumberCandidateProvider.analyze(input)).spans
+        val numberSegments = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
         val result = getCandidatesWithoutPredictionRaw(
             input = input,
             n = n,
@@ -3449,8 +3489,10 @@ class KanaKanjiEngine {
             incrementalSessionState = incrementalSessionState,
             predictionConfig = predictionConfig,
             candidateSegmentCollector = numberSegments,
+            numericSpans = numericSpans,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments)
+        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
     }
 
     private suspend fun getCandidatesWithoutPredictionRaw(
@@ -3469,6 +3511,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3518,6 +3562,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            numericSpans = numericSpans.filter { it.canSupplement },
+            enhanceNumbers = enhanceNumbers,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -3531,16 +3577,19 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStar(
+            findNumberAwarePaths(
                 graph = graph,
-                length = input.length,
+                input = input,
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
-            )
+                numericSpans = if (enhanceNumbers) numericSpans.filter { it.canSupplement } else emptyList(),
+                completePrefix = incrementalSessionState?.graphState?.cachedGraph?.unprunedPositions,
+                withBunsetsu = false,
+            ).candidates
         }
         conversionContext.ensureActive()
 
@@ -3970,10 +4019,10 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
+        numberAnalysis: NumberReadingAnalysis? = null,
     ): BunsetsuCandidateResult {
-        val numberSegments = candidateSegmentCollector ?: if (
-            numberCandidateConfig.enhanceCounterCandidates && NumberCandidateProvider.mightContainCounter(input)
-        ) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
+        val numericSpans = (numberAnalysis?.takeIf { it.input == input } ?: NumberCandidateProvider.analyze(input)).spans
+        val numberSegments = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap<String, List<CandidateConversionSegment>>() else null
         val result = getCandidatesWithoutPredictionWithBunsetsuRaw(
             input = input,
             n = n,
@@ -3990,12 +4039,14 @@ class KanaKanjiEngine {
             incrementalSessionState = incrementalSessionState,
             predictionConfig = predictionConfig,
             candidateSegmentCollector = numberSegments,
+            numericSpans = numericSpans,
+            enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
         return result.copy(
-            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits),
+            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans),
             splitPatternByCandidateString = splits,
-            splitPatterns = (result.splitPatterns + splits.values).distinct(),
+            splitPatterns = splits.values.distinct(),
         )
     }
 
@@ -4015,6 +4066,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -4064,6 +4117,8 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            numericSpans = numericSpans.filter { it.canSupplement },
+            enhanceNumbers = enhanceNumbers,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -4079,15 +4134,18 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStarWithBunsetsu(
+            findNumberAwarePaths(
                 graph = graph,
-                length = input.length,
+                input = input,
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                numericSpans = if (enhanceNumbers) numericSpans.filter { it.canSupplement } else emptyList(),
+                completePrefix = incrementalSessionState?.graphState?.cachedGraph?.unprunedPositions,
+                withBunsetsu = true,
             )
         }
         conversionContext.ensureActive()
@@ -4823,69 +4881,59 @@ class KanaKanjiEngine {
         return listOf(fullWidth, halfWidth) + timeConversion + dateConversion + numberCandidates
     }
 
-    private fun createCandidatesForJapaneseNumberWithUnit(input: String): List<Candidate> {
-        val unitMappings = listOf(
-            "にん" to "人", "えん" to "円", "ぷん" to "分", "ふん" to "分", "じ" to "時"
-        )
+    private fun createCandidatesForJapaneseNumberWithUnit(input: String): List<Candidate> =
+        NumberCandidateProvider.parse(input, allowBareNumber = false).filter { it.counter in setOf("人", "円", "分", "時") }
+            .flatMap { number -> listOf(NumberStyle.HALF, NumberStyle.FULL).map { style ->
+                Candidate(string = number.render(style), type = if (number.counter in setOf("分", "時")) {
+                    if (style == NumberStyle.HALF) CANDIDATE_TYPE_TIME else 30
+                } else if (style == NumberStyle.HALF) 18 else 22,
+                    length = input.length.toUByte(), score = if (style == NumberStyle.HALF) 8000 else 8001,
+                    leftId = POS_ID_NUMBER_ARABIC, rightId = number.rightId)
+            } }
 
-        for ((readingSuffix, unit) in unitMappings) {
-            if (!input.endsWith(readingSuffix) || input.length <= readingSuffix.length) continue
-
-            val numberReading = normalizeJapaneseNumberReadingForCounter(
-                input.removeSuffix(readingSuffix),
-                readingSuffix,
-            ) ?: continue
-            val number = numberReading.toNumber() ?: continue
-            val isTimeLike = unit == "時" || unit == "分"
-            val rightId = if (unit == "時") POS_ID_COUNTER_TIME else POS_ID_COUNTER_GENERIC
-
-            return listOf(
-                Candidate(
-                    string = "${number.second}$unit",
-                    type = if (isTimeLike) CANDIDATE_TYPE_TIME else 18,
-                    length = input.length.toUByte(),
-                    score = 8000,
-                    leftId = POS_ID_NUMBER_ARABIC,
-                    rightId = rightId
-                ), Candidate(
-                    string = "${number.first}$unit",
-                    type = if (isTimeLike) 30 else 22,
-                    length = input.length.toUByte(),
-                    score = 8001,
-                    leftId = POS_ID_NUMBER_ARABIC,
-                    rightId = rightId
-                )
-            )
+    /** Normal lexical paths retain their rank. Only a missing complete numeric path needs a second search. */
+    private fun findNumberAwarePaths(
+        graph: MutableMap<Int, MutableList<Node>>,
+        input: String,
+        connectionMatrix: ConnectionMatrix.CostTable,
+        n: Int,
+        beamWidth: Int,
+        cancellationCheck: () -> Unit,
+        sessionState: FindPath.SessionState?,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>?,
+        numericSpans: List<NumericSpan>,
+        completePrefix: Map<Int, List<Node>>?,
+        withBunsetsu: Boolean,
+    ): BunsetsuCandidateResult {
+        val collector = candidateSegmentCollector ?: if (numericSpans.isNotEmpty()) LinkedHashMap() else null
+        // A* prunes/mutates the graph. Keep an isolated copy only when numeric constraints are needed.
+        val constrained = if (numericSpans.isEmpty()) null else (graph + completePrefix.orEmpty()).mapValuesTo(LinkedHashMap()) { (_, nodes) ->
+            nodes.filter { node ->
+                node.tango == "BOS" || node.tango == "EOS" || numericSpans.none { span ->
+                    node.sPos < span.end && node.sPos + node.len > span.start &&
+                        !(node.sPos == span.start && node.sPos + node.len == span.end && node.numericIdentity != null)
+                }
+            }.mapTo(mutableListOf()) { it.copy(prev = null, next = null, adjustedScore = it.score, f = it.score, g = it.score) }
         }
-
-        return emptyList()
+        val normal = if (withBunsetsu) findPath.backwardAStarWithBunsetsu(
+            graph, input.length, connectionMatrix, n, beamWidth,
+            cancellationCheck = cancellationCheck, sessionState = sessionState, candidateSegmentCollector = collector)
+        else BunsetsuCandidateResult(findPath.backwardAStar(graph, input.length, connectionMatrix, n, beamWidth,
+            cancellationCheck, sessionState, collector), emptyList())
+        if (constrained == null || normal.candidates.any { candidate ->
+            val segments = collector?.get(candidate.string).orEmpty()
+            NumberCandidateComposer.coversNumericSpans(segments, numericSpans)
+        }) return normal
+        cancellationCheck()
+        val extraSegments = LinkedHashMap<String, List<CandidateConversionSegment>>()
+        val supplemental = findPath.backwardAStarWithBunsetsu(constrained, input.length, connectionMatrix, 1, beamWidth,
+            cancellationCheck = cancellationCheck, sessionState = findPath.createSessionState(), candidateSegmentCollector = extraSegments)
+        val newCandidates = supplemental.candidates.filter { extra -> normal.candidates.none { it.string == extra.string } }
+        for (extra in newCandidates) extraSegments[extra.string]?.let { collector?.set(extra.string, it) }
+        val splits = normal.splitPatternByCandidateString + supplemental.splitPatternByCandidateString.filterKeys { key -> newCandidates.any { it.string == key } }
+        return normal.copy(candidates = normal.candidates + newCandidates,
+            splitPatternByCandidateString = splits, splitPatterns = splits.values.distinct())
     }
-
-    private fun normalizeJapaneseNumberReadingForCounter(
-        numberReading: String,
-        counterReading: String,
-    ): String? {
-        fun isStandaloneOrAfterPlace(alias: String): Boolean {
-            if (numberReading == alias) return true
-            val prefix = numberReading.dropLast(alias.length)
-            return listOf("じゅう", "ひゃく", "せん", "まん", "おく", "ちょう")
-                .any(prefix::endsWith)
-        }
-
-        // 「し」は単独の四としては有効だが、現在扱っている助数詞の
-        // 直前では通常語との衝突が大きい（しじ、しえん、しにん等）。
-        if (numberReading.endsWith("し") && isStandaloneOrAfterPlace("し")) return null
-        if (counterReading != "じ") return numberReading
-
-        return when {
-            numberReading.endsWith("よ") && isStandaloneOrAfterPlace("よ") ->
-                numberReading.dropLast(1) + "よん"
-            numberReading.endsWith("く") && isStandaloneOrAfterPlace("く") ->
-                numberReading.dropLast(1) + "きゅう"
-            else -> numberReading
-        }
-    }
-
 
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray.getNodeIds().map { nodeId ->
         emojiTangoTrie.getLetterShortArray(nodeId, emojiSuccinctBitVectorTangoLBS)

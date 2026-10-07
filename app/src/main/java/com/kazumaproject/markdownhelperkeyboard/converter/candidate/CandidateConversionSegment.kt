@@ -15,5 +15,6 @@ data class CandidateConversionSegment(
     val rightId: Short? = null,
     val source: com.kazumaproject.graph.CandidateSource? = null,
     val isSystemUserDictionary: Boolean = false,
+    val numericIdentity: com.kazumaproject.markdownhelperkeyboard.converter.number.NumericIdentity? = null,
 )
 

@@ -38,6 +38,7 @@ data class Node(
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
     /** Kept separate from candidateSource to preserve legacy candidate type resolution. */
     val isSystemUserDictionary: Boolean = false,
+    val numericIdentity: com.kazumaproject.markdownhelperkeyboard.converter.number.NumericIdentity? = null,
 ) {
     override fun toString(): String {
         return this.tango

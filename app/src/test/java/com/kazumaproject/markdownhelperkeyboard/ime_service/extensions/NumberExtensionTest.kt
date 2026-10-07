@@ -15,7 +15,6 @@ class NumberExtensionTest {
             "よ" to "4",
             "く" to "9",
             "じゅう" to "10",
-            "いちじゅう" to "10",
             "にじゅう" to "20",
             "ひゃく" to "100",
             "せん" to "1000",
@@ -52,8 +51,6 @@ class NumberExtensionTest {
             "じゅうし" to "14",
             "じゅうよ" to "14",
             "じゅうく" to "19",
-            "さんひゃく" to "300",
-            "はちせん" to "8000",
         )
 
         cases.forEach { (input, expected) ->

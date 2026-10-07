@@ -5,6 +5,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
+import java.time.LocalDate
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -12,6 +14,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfi
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -49,7 +53,9 @@ data class KanaKanjiQueryRequest(
     val collectCandidateSegments: Boolean = false,
     val dateCandidateConfig: DateCandidateConfig = DateCandidateConfig(),
     val numberCandidateConfig: NumberCandidateConfig = NumberCandidateConfig(),
-)
+) {
+    internal val numberAnalysis by lazy { NumberCandidateProvider.analyze(input) }
+}
 
 data class KanaKanjiQueryResult(
     val candidates: List<Candidate>,
@@ -68,6 +74,15 @@ class KanaKanjiConversionSession(
     private val engine: KanaKanjiEngine,
     val backend: ConversionBackend,
 ) {
+    private data class OrderedNumberResult(
+        val request: KanaKanjiQueryRequest,
+        val result: KanaKanjiQueryResult,
+        val userRevision: Long,
+        val learnedRevision: Long?,
+        val day: LocalDate,
+    )
+    private var orderedNumberResult: OrderedNumberResult? = null
+
     private val mutex = Mutex()
     private val incrementalState = if (backend == ConversionBackend.INCREMENTAL_SESSION) {
         engine.createIncrementalSessionState()
@@ -91,7 +106,21 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
-            val result = when (request.mode) {
+            val userRevision = request.userDictionaryRepository.conversionRevision
+            val learnedRevision = request.learnRepository?.conversionRevision
+            val cached = orderedNumberResult?.takeIf {
+                it.request.numberCandidateConfig.enhanceCounterCandidates == request.numberCandidateConfig.enhanceCounterCandidates &&
+                    it.request.numberCandidateConfig.order != request.numberCandidateConfig.order &&
+                    it.request.copy(numberCandidateConfig = request.numberCandidateConfig) == request &&
+                    it.userRevision == userRevision && it.learnedRevision == learnedRevision &&
+                    it.day == LocalDate.now() &&
+                    (incrementalState == null || incrementalState.committedInput() == request.input)
+            }
+            val result = if (cached != null) {
+                val reordered = NumberCandidateComposer.reorder(request.input, cached.result.candidates, request.numberCandidateConfig)
+                cached.result.copy(candidates = reordered,
+                    bunsetsuResult = cached.result.bunsetsuResult?.copy(candidates = reordered))
+            } else when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
@@ -120,7 +149,13 @@ class KanaKanjiConversionSession(
                     )
                 },
             )
+            currentCoroutineContext().ensureActive()
             incrementalState?.commitQueryTransaction()
+            orderedNumberResult = if (result.candidates.any { it.numberVariant != null } &&
+                userRevision == request.userDictionaryRepository.conversionRevision &&
+                learnedRevision == request.learnRepository?.conversionRevision) {
+                OrderedNumberResult(request, result, userRevision, learnedRevision, LocalDate.now())
+            } else null
             composedResult
         } catch (cancellation: CancellationException) {
             // A completed graph has its own staged commit. Keep that newest frontier when only the
@@ -131,6 +166,7 @@ class KanaKanjiConversionSession(
             // Unexpected engine/repository failures may violate invariants outside the tracked
             // append delta. Prefer a clean rebuild for those rare failures.
             incrementalState?.reset()
+            orderedNumberResult = null
             throw throwable
         }
     }
@@ -157,6 +193,7 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 numberCandidateConfig = request.numberCandidateConfig,
+                numberAnalysis = request.numberAnalysis,
                 candidateSegmentCollector = segmentCollector,
             ).asQueryResult(segmentCollector)
         } else {
@@ -180,6 +217,7 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     numberCandidateConfig = request.numberCandidateConfig,
+                    numberAnalysis = request.numberAnalysis,
                     candidateSegmentCollector = segmentCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
@@ -209,6 +247,7 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 numberCandidateConfig = request.numberCandidateConfig,
+                numberAnalysis = request.numberAnalysis,
                 candidateSegmentCollector = segmentCollector,
             ).asQueryResult(segmentCollector)
         } else {
@@ -232,6 +271,7 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     numberCandidateConfig = request.numberCandidateConfig,
+                    numberAnalysis = request.numberAnalysis,
                     candidateSegmentCollector = segmentCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
@@ -261,6 +301,7 @@ class KanaKanjiConversionSession(
                     englishPredictionEnabled = false,
                 ),
                 numberCandidateConfig = request.numberCandidateConfig,
+                numberAnalysis = request.numberAnalysis,
                 candidateSegmentCollector = segmentCollector,
             ).asQueryResult(segmentCollector)
         } else {
@@ -284,6 +325,7 @@ class KanaKanjiConversionSession(
                         englishPredictionEnabled = false,
                     ),
                     numberCandidateConfig = request.numberCandidateConfig,
+                    numberAnalysis = request.numberAnalysis,
                     candidateSegmentCollector = segmentCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
@@ -293,8 +335,7 @@ class KanaKanjiConversionSession(
 
     private fun KanaKanjiQueryRequest.newCandidateSegmentCollector():
         MutableMap<String, List<CandidateConversionSegment>>? =
-        if (collectCandidateSegments || (numberCandidateConfig.enhanceCounterCandidates &&
-                NumberCandidateProvider.mightContainCounter(input))) LinkedHashMap() else null
+        if (collectCandidateSegments || numberAnalysis.spans.isNotEmpty()) LinkedHashMap() else null
 
     private fun BunsetsuCandidateResult.asQueryResult(
         segmentCollector: Map<String, List<CandidateConversionSegment>>?,

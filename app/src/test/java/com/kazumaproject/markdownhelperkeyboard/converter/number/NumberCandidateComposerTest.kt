@@ -42,14 +42,15 @@ class NumberCandidateComposerTest {
     }
 
     @Test fun allSupportedCountersAndAmbiguousKaiKeepCanonicalSurfaces() {
-        val cases = mapOf("えん" to "円", "にん" to "人", "ほん" to "本", "まい" to "枚", "にち" to "日",
-            "にちかん" to "日間", "こ" to "個", "ひき" to "匹", "さつ" to "冊", "はい" to "杯", "かい" to "回",
-            "がい" to "階", "ねん" to "年", "ねんかん" to "年間", "がつ" to "月", "かげつ" to "か月",
+        val cases = mapOf("えん" to "円", "ほん" to "本", "まい" to "枚",
+            "こ" to "個", "ひき" to "匹", "さつ" to "冊", "はい" to "杯", "かい" to "回",
+            "ねん" to "年", "ねんかん" to "年間", "がつ" to "月", "かげつ" to "か月",
             "さい" to "歳", "ふん" to "分", "じ" to "時", "じかん" to "時間", "びょう" to "秒", "めい" to "名")
         cases.forEach { (reading, surface) ->
             assertTrue(reading, NumberCandidateComposer.prepare("に" + reading, emptyList()).any { it.string == "2$surface" })
         }
         assertTrue(NumberCandidateComposer.prepare("にかい", emptyList()).any { it.string == "2階" })
+        assertTrue(NumberCandidateComposer.prepare("さんがい", emptyList()).any { it.string == "3階" })
     }
 
     @Test fun disabledEnhancementRetainsExistingRowsAndStillReordersNumbers() {
@@ -130,6 +131,58 @@ class NumberCandidateComposerTest {
         assertEquals(learned.type, preserved.type)
         assertEquals(learned.score, preserved.score)
         assertEquals(learned.commitText, preserved.commitText)
+    }
+
+    @Test fun maximalNumericSurfaceCannotBeReinterpretedFromItsSuffix() {
+        val input = "にじゅっぷんまって"
+        val text = "2十分待って"
+        val segments = listOf(segment(0, 1, "2"), segment(1, 4, "十"), segment(4, 6, "分"), segment(6, 9, "待って"))
+        val paths = mutableMapOf(text to segments)
+        val splits = mutableMapOf(text to listOf(1, 4, 6))
+        val result = NumberCandidateComposer.prepare(input, listOf(candidate(text, input.length).copy(yomi = input)),
+            segmentsByString = paths, splitPatternsByString = splits)
+        assertTrue(result.any { it.string == "20分待って" })
+        assertFalse(result.any { it.string == "210分待って" })
+        result.forEach { assertEquals(listOf(6), splits.getValue(it.string)) }
+        assertEquals(20L, paths.getValue(text).first().numericIdentity?.value)
+    }
+
+    @Test fun monthAliasesPreserveTheirSpellingAndRespectDisabledFormatOrder() {
+        val input = "にかげつかかる"
+        val texts = listOf("二ヶ月かかる", "2ヶ月かかる", "２か月かかる")
+        val paths = texts.associateWith { text -> listOf(segment(0, 4, text.removeSuffix("かかる")), segment(4, 7, "かかる")) }.toMutableMap()
+        val candidates = texts.map { candidate(it, input.length).copy(yomi = input) }
+        val config = NumberCandidateConfig(false, listOf(NumberCandidateFormat.FULL_WIDTH, NumberCandidateFormat.HALF_WIDTH, NumberCandidateFormat.KANJI))
+        assertEquals(listOf(texts[2], texts[1], texts[0]), NumberCandidateComposer.prepare(input, candidates, config, paths).map { it.string })
+        val enhanced = NumberCandidateComposer.prepare(input, candidates, config.copy(enhanceCounterCandidates = true), paths)
+        assertTrue(enhanced.any { it.string == "２ヶ月かかる" })
+        assertTrue(enhanced.any { it.string == "２か月かかる" })
+    }
+
+    @Test fun financialNumeralsAndStandalonePathsAreCoalescedAtomically() {
+        val input = "さんじゅっぷん"
+        val text = "参拾分"
+        val paths = mutableMapOf(text to listOf(segment(0, 2, "参"), segment(2, 5, "拾"), segment(5, 7, "分")))
+        val splits = mutableMapOf(text to listOf(2, 5))
+        val result = NumberCandidateComposer.prepare(input, listOf(candidate(text, input.length)), segmentsByString = paths, splitPatternsByString = splits)
+        assertTrue(result.any { it.string == "30分" })
+        result.forEach {
+            assertTrue(splits.getValue(it.string).isEmpty())
+            assertEquals(1, paths.getValue(it.string).size)
+            assertEquals(it.conversionSegments, paths.getValue(it.string))
+        }
+    }
+
+    @Test fun mixedSentenceFormatsAndDifferentPredictionReadingsDoNotBorrowAnIdentity() {
+        val input = "さんにんとよにん"
+        val text = "3人と四人"
+        val paths = mutableMapOf(text to listOf(segment(0, 4, "3人"), segment(4, 5, "と"), segment(5, 8, "四人")))
+        val result = NumberCandidateComposer.prepare(input, listOf(candidate(text, input.length).copy(yomi = input)), segmentsByString = paths)
+        assertNull(result.first { it.string == text }.numberVariant)
+        assertTrue(result.any { it.string == "3人と4人" })
+        val donor = result.first { it.string == "3人と4人" }
+        val prediction = donor.copy(yomi = "さんにんとよにんで", length = 9u, numberVariant = null)
+        assertNull(NumberCandidateComposer.inheritVariantIdentity(listOf(prediction, donor)).first().numberVariant)
     }
 
     private fun candidate(text: String, length: Int) = Candidate(text, 1, length.toUByte(), 1000)

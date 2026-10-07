@@ -42,6 +42,40 @@ class CounterNumberConversionInstrumentedTest {
         }
     }
 
+    @Test fun verifyReviewedRegressionsAndSmallNBestOnDevice() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entry = EntryPointAccessors.fromApplication(context, KanaKanjiEngineEntryPoint::class.java)
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), backend)
+            for (mode in listOf(CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.PREDICTION, CandidateQueryMode.CONVERSION)) {
+                for (bunsetsu in listOf(false, true)) for (n in listOf(1, 4, 8)) {
+                    for (order in permutations(NumberCandidateFormat.entries.toList())) for (enabled in listOf(false, true)) {
+                        for (input in listOf("にじゅっぷんまって", "にかげつかかる", "さんにんでいく", "いちまんはらう")) {
+                            val result = session.query(request(input, mode, bunsetsu, entry.userDictionaryRepository()).copy(
+                                n = n, numberCandidateConfig = NumberCandidateConfig(enabled, order)))
+                            val label = "$backend/$mode/$bunsetsu/$n/$order/$enabled/$input"
+                            assertFalse(label, result.candidates.any { it.string.contains("210分") })
+                            val variants = result.candidates.filter { it.numberVariant != null }
+                            if (enabled) assertTrue(label, variants.any { it.numberVariant!!.format == NumberCandidateFormat.FULL_WIDTH })
+                            variants.groupBy { it.numberVariant!!.group }.values.forEach { group ->
+                                val ranks = group.map { order.indexOf(it.numberVariant!!.format) }
+                                assertEquals(label, ranks.sorted(), ranks)
+                            }
+                            variants.forEach { candidate ->
+                                val segments = result.candidateSegmentsByString.getValue(candidate.string)
+                                assertEquals(label, candidate.string, segments.joinToString("") { it.output })
+                                assertEquals(label, segments, candidate.conversionSegments)
+                                result.bunsetsuResult?.splitPatternByCandidateString?.get(candidate.string).orEmpty().forEach { split ->
+                                    assertTrue(label, segments.any { it.inputStart == split })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun request(input: String, mode: CandidateQueryMode, bunsetsu: Boolean, repository: UserDictionaryRepository) = KanaKanjiQueryRequest(
         input = input, mode = mode, bunsetsuSeparation = bunsetsu, n = 8,
         mozcUtPersonName = false, mozcUtPlaces = false, mozcUtWiki = false, mozcUtNeologd = false, mozcUtWeb = false,

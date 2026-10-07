@@ -8,6 +8,7 @@ import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeAttributes
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.number.NumericSpan
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
@@ -343,6 +344,8 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
         sessionState: SessionState? = null,
+        numericSpans: List<NumericSpan> = emptyList(),
+        enhanceNumbers: Boolean = false,
     ): MutableMap<Int, MutableList<Node>> {
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
@@ -374,6 +377,8 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
+            enhanceNumbers = enhanceNumbers,
+            numericSpanSignature = if (enhanceNumbers) numericSpans.hashCode() else 0,
         )
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
@@ -1316,6 +1321,20 @@ class GraphBuilder {
                 }
             }
 
+            if (enhanceNumbers) for (span in numericSpans) {
+                if (span.start != i || span.end <= reusablePrefixLength) continue
+                val identity = span.identity
+                val counterReading = str.substring(i, span.end)
+                // Finalize the counter cost after suffix dictionary lookups below.
+                val cost = 1000 * (1 + identity.value.toString().length)
+                val node = Node(l = 2044, r = span.rightId, score = cost, f = cost, g = cost,
+                    tango = identity.digits + identity.counter, len = (span.end - i).toShort(),
+                    yomiUsed = counterReading, sPos = i, mozcAttributes = mozcAttributesFor(2044), numericIdentity = identity)
+                // The semantic node must survive even if a dictionary row has the same display/POS.
+                graph.computeIfAbsent(span.end) { mutableListOf() }.add(node)
+                foundInAnyDictionary = true
+            }
+
             // An append can complete a dictionary word that did not exist in the previous
             // prefix. Remove the now-invalid unknown fallback retained by the incremental graph.
             if (foundInAnyDictionary && reusablePrefixLength >= 0) {
@@ -1380,6 +1399,25 @@ class GraphBuilder {
                 // 未知語は重複を考慮せずそのまま追加する
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(unknownNode)
                 graphNodeTrace?.add(unknownNode.toTrace(str, endIndex, "UNKNOWN", "ADDED"))
+            }
+        }
+        if (enhanceNumbers && numericSpans.isNotEmpty()) {
+            val allNodes = graph.values.flatten()
+            for (node in allNodes) {
+                val identity = node.numericIdentity ?: continue
+                if (node.sPos + node.len <= reusablePrefixLength) continue
+                val counterCost = if (identity.counter.isEmpty()) 0 else allNodes.asSequence().filter {
+                    it.numericIdentity == null && it.sPos >= node.sPos &&
+                        it.sPos + it.len == node.sPos + node.len && it.tango == identity.counter && it.r == node.r
+                }.minOfOrNull { it.score } ?: 8000
+                val cost = (1000 * (1 + identity.value.toString().length) + counterCost).coerceAtMost(32767)
+                if (node.score != cost) {
+                    node.score = cost
+                    node.adjustedScore = cost
+                    node.f = cost
+                    node.g = cost
+                }
+                graphNodeTrace?.add(node.toTrace(str, node.sPos + node.len, "NUMBER", "ADDED"))
             }
         }
         val updatedCache = CachedGraph(
@@ -1473,6 +1511,8 @@ class GraphBuilder {
         beamWidth: Int,
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
+        enhanceNumbers: Boolean,
+        numericSpanSignature: Int,
     ): Int {
         var result = System.identityHashCode(yomiTrie)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
@@ -1489,6 +1529,8 @@ class GraphBuilder {
         result = 31 * result + enableTypoCorrectionJapaneseFlick.hashCode()
         result = 31 * result + typoCorrectionOffsetScore
         result = 31 * result + omissionSearchOffSetScore
+        result = 31 * result + numericSpanSignature
+        result = 31 * result + enhanceNumbers.hashCode()
         result = 31 * result + beamWidth
         result = 31 * result + graphNodeDedupMode.hashCode()
         result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)

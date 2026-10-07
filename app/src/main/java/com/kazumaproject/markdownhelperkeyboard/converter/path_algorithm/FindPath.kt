@@ -2595,6 +2595,7 @@ class FindPath(
                         rightId = node.r,
                         source = node.candidateSource,
                         isSystemUserDictionary = node.isSystemUserDictionary,
+                        numericIdentity = node.numericIdentity,
                     ),
                 )
                 currentPosition = nextPosition

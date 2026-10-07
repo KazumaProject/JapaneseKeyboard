@@ -11,13 +11,24 @@ object NumberCandidateComposer {
         config: NumberCandidateConfig = NumberCandidateConfig(),
         segmentsByString: MutableMap<String, List<CandidateConversionSegment>>? = null,
         splitPatternsByString: MutableMap<String, List<Int>>? = null,
+        numericSpans: List<NumericSpan>? = null,
     ): List<Candidate> {
-        val numbers = NumberCandidateProvider.parse(input)
+        val numbers = if (numericSpans == null) NumberCandidateProvider.parse(input) else numericSpans
+            .filter { it.start == 0 && it.end == input.length }.map {
+                ParsedNumber(it.identity.value, it.identity.counter, it.rightId, it.identity.digits)
+            }
         if (numbers.isNotEmpty()) {
-            val tagged = tagStandalone(input, candidates, numbers)
+            val tagged = tagStandalone(input, candidates, numbers, segmentsByString)
+            tagged.filter { it.numberVariant != null }.forEach {
+                segmentsByString?.set(it.string, it.conversionSegments)
+                splitPatternsByString?.set(it.string, emptyList())
+            }
             val expanded = if (config.enhanceCounterCandidates && numbers.any { it.counter.isNotEmpty() }) {
                 val existing = tagged.filterNot(::isSpecial).mapTo(hashSetOf()) { it.string }
-                tagged + numbers.flatMap { number ->
+                val spellings = (numbers + tagged.mapNotNull { candidate -> numbers.firstNotNullOfOrNull {
+                    NumberCandidateProvider.matchSurface(candidate.string, it)
+                } }).distinctBy { it.counter }
+                tagged + spellings.flatMap { number ->
                     number.renderings().mapNotNull { (text, style) ->
                         if (!existing.add(text)) null else standalone(input, text, number, style).also {
                             segmentsByString?.set(text, it.conversionSegments)
@@ -28,8 +39,13 @@ object NumberCandidateComposer {
             } else tagged
             return reorderTagged(expanded, config)
         }
-        if (!config.enhanceCounterCandidates || segmentsByString.isNullOrEmpty()) return reorderTagged(candidates, config)
+        if (segmentsByString.isNullOrEmpty()) return reorderTagged(candidates, config)
 
+        val readingSpans = numericSpans?.groupBy { it.start to it.end }?.map { (range, spans) ->
+            NumberCandidateProvider.ReadingSpan(range.first, range.second, spans.map {
+                ParsedNumber(it.identity.value, it.identity.counter, it.rightId, it.identity.digits)
+            })
+        } ?: NumberCandidateProvider.spans(input)
         val parsedSpans = HashMap<Long, List<ParsedNumber>>()
         val expanded = ArrayList<Candidate>(candidates.size)
         val existing = candidates.filterNot(::isSpecial).mapTo(hashSetOf()) { it.string }
@@ -40,18 +56,19 @@ object NumberCandidateComposer {
                 continue
             }
             val splits = splitPatternsByString?.get(candidate.string).orEmpty()
-            val spans = findSpans(input, segments, parsedSpans)
+            val spans = findSpans(segments, parsedSpans, readingSpans)
             if (spans.isEmpty()) {
                 expanded.add(candidate)
                 continue
             }
-            val group = renderSegments(segments, spans, NumberStyle.HALF).joinToString("") { it.output }
+            val group = renderSegments(segments, spans.map { it.copy(number = it.number.copy(counter = NumberCandidateProvider.counterIdentity(it.number.counter))) }, NumberStyle.HALF).joinToString("") { it.output }
             val originalStyle = NumberStyle.entries.firstOrNull { style ->
                 renderSegments(segments, spans, style).joinToString("") { it.output } == candidate.string
             }
-            val firstSpan = spans.first()
-            val firstOutput = segments.subList(firstSpan.first, firstSpan.last + 1).joinToString("") { it.output }
-            val firstStyle = firstSpan.number.renderings().getValue(firstOutput)
+            val styles = spans.map { span -> NumberCandidateProvider.styleOf(
+                segments.subList(span.first, span.last + 1).joinToString("") { it.output }, span.number)
+            }
+            val uniformStyle = originalStyle ?: styles.firstOrNull()?.takeIf { style -> styles.all { it?.format == style.format } }
             val coherentSplits = splits.filterNot { position -> spans.any { span ->
                 position > segments[span.first].inputStart && position < segments[span.last].inputEnd
             } }
@@ -60,10 +77,9 @@ object NumberCandidateComposer {
             splitPatternsByString?.set(candidate.string, coherentSplits)
             expanded.add(candidate.copy(
                 conversionSegments = originalSegments,
-                numberVariant = NumberCandidateVariant(group, originalStyle?.format ?: firstStyle.format,
-                    originalStyle?.priority ?: 3),
+                numberVariant = uniformStyle?.let { NumberCandidateVariant(group, it.format, originalStyle?.priority ?: 3) },
             ))
-            for (style in NumberStyle.entries) {
+            for (style in if (config.enhanceCounterCandidates) NumberStyle.entries else emptyList()) {
                 val transformed = renderSegments(segments, spans, style)
                 val text = transformed.joinToString("") { it.output }
                 if (!existing.add(text)) continue
@@ -90,10 +106,10 @@ object NumberCandidateComposer {
     fun inheritVariantIdentity(candidates: List<Candidate>): List<Candidate> {
         if (candidates.none { it.numberVariant != null }) return candidates
         val identities = candidates.mapNotNull { candidate ->
-            candidate.numberVariant?.let { candidate.string to it }
+            candidate.numberVariant?.let { Triple(candidate.string, candidate.yomi, candidate.length) to it }
         }.toMap()
         return candidates.map { candidate ->
-            val identity = identities[candidate.string]
+            val identity = identities[Triple(candidate.string, candidate.yomi, candidate.length)]
             if (candidate.numberVariant != null || identity == null || isSpecial(candidate)) candidate
             else candidate.copy(numberVariant = identity)
         }
@@ -108,7 +124,8 @@ object NumberCandidateComposer {
             NumberStyle.KANJI -> 32
         }
         val leftId: Short = if (style == NumberStyle.KANJI || style == NumberStyle.MIXED) 2046 else 2044
-        val segment = CandidateConversionSegment(0, input.length, text, leftId, number.rightId, CandidateSource.SYSTEM)
+        val segment = CandidateConversionSegment(0, input.length, text, leftId, number.rightId, CandidateSource.SYSTEM,
+            numericIdentity = NumericIdentity(number.value, NumberCandidateProvider.counterIdentity(number.counter), number.digits))
         return Candidate(
             string = text, type = type, length = input.length.toUByte(), score = 8000,
             yomi = input, leftId = leftId, rightId = number.rightId,
@@ -117,18 +134,24 @@ object NumberCandidateComposer {
         )
     }
 
-    private fun standaloneGroup(number: ParsedNumber) = "number:${number.value}:${number.counter}"
+    private fun standaloneGroup(number: ParsedNumber) = "number:${number.value}:${NumberCandidateProvider.counterIdentity(number.counter)}"
 
-    private fun tagStandalone(input: String, candidates: List<Candidate>, numbers: List<ParsedNumber>): List<Candidate> {
-        val identities = buildMap {
-            numbers.forEach { number -> number.renderings().forEach { (text, style) ->
-                put(text, NumberCandidateVariant(standaloneGroup(number), style.format, style.priority))
-            } }
-        }
+    private fun tagStandalone(input: String, candidates: List<Candidate>, numbers: List<ParsedNumber>, paths: Map<String, List<CandidateConversionSegment>>? = null): List<Candidate> {
         return candidates.map { candidate ->
-            val identity = identities[candidate.string]
-            if (identity == null || isSpecial(candidate) || candidate.length.toInt() != input.length ||
-                candidate.numberVariant == identity) candidate else candidate.copy(numberVariant = identity)
+            if (isSpecial(candidate) || candidate.length.toInt() != input.length ||
+                candidate.yomi != null && candidate.yomi != input) return@map candidate
+            val number = numbers.firstNotNullOfOrNull { NumberCandidateProvider.matchSurface(candidate.string, it) }
+                ?: return@map candidate
+            val style = NumberCandidateProvider.styleOf(candidate.string, number)
+            val oldSegments = paths?.get(candidate.string) ?: candidate.conversionSegments
+            val identity = NumericIdentity(number.value, NumberCandidateProvider.counterIdentity(number.counter), number.digits)
+            val segment = oldSegments.firstOrNull()?.copy(inputStart = 0, inputEnd = input.length,
+                output = candidate.string, rightId = oldSegments.last().rightId, numericIdentity = identity)
+                ?: CandidateConversionSegment(0, input.length, candidate.string,
+                    candidate.leftId ?: 2044, candidate.rightId ?: number.rightId, CandidateSource.SYSTEM,
+                    numericIdentity = identity)
+            candidate.copy(conversionSegments = listOf(segment),
+                numberVariant = NumberCandidateVariant(standaloneGroup(number), style.format, style.priority))
         }
     }
 
@@ -159,6 +182,17 @@ object NumberCandidateComposer {
         }
     }
 
+    internal fun coversNumericSpans(segments: List<CandidateConversionSegment>, numericSpans: List<NumericSpan>): Boolean =
+        numericSpans.groupBy { it.start to it.end }.all { (range, alternatives) ->
+            val parts = segments.filter { it.inputStart >= range.first && it.inputEnd <= range.second }
+            if (parts.isEmpty() || parts.first().inputStart != range.first || parts.last().inputEnd != range.second ||
+                parts.any { !eligible(it) }) false else {
+                val text = parts.joinToString("") { it.output }
+                alternatives.any { NumberCandidateProvider.matchSurface(text,
+                    ParsedNumber(it.identity.value, it.identity.counter, it.rightId, it.identity.digits)) != null }
+            }
+        }
+
     private data class Span(val first: Int, val last: Int, val number: ParsedNumber)
 
     private fun isExactPath(input: String, candidate: Candidate, segments: List<CandidateConversionSegment>): Boolean {
@@ -172,32 +206,35 @@ object NumberCandidateComposer {
         }
     }
 
-    private val numericCharacters = "0123456789０１２３４５６７８９〇零一二三四五六七八九十百千万億兆京"
+    private val numericCharacters = "0123456789０１２３４５６７８９〇零一二三四五六七八九十百千万億兆京壱弐参拾萬"
     private fun beginsWithNumber(output: String): Boolean = output.isNotEmpty() && output.first() in numericCharacters
 
     private fun eligible(segment: CandidateConversionSegment): Boolean = segment.leftId != null && segment.rightId != null &&
         segment.leftId.toInt() !in 1920..1929 && segment.rightId.toInt() !in 1920..1929 &&
         (segment.source == CandidateSource.SYSTEM || segment.source == CandidateSource.UNKNOWN) && !segment.isSystemUserDictionary
 
-    private fun findSpans(input: String, segments: List<CandidateConversionSegment>, parsed: MutableMap<Long, List<ParsedNumber>>): List<Span> {
+    private fun findSpans(segments: List<CandidateConversionSegment>, parsed: MutableMap<Long, List<ParsedNumber>>, readingSpans: List<NumberCandidateProvider.ReadingSpan>): List<Span> {
         val spans = mutableListOf<Span>()
         var first = 0
         while (first < segments.size) {
             if (!eligible(segments[first]) || !beginsWithNumber(segments[first].output)) { first++; continue }
+            val readingSpan = readingSpans.firstOrNull { it.start == segments[first].inputStart }
+            if (readingSpan == null) { first++; continue }
             var best: Span? = null
             val output = StringBuilder()
             for (last in first until segments.size) {
                 val segment = segments[last]
                 if (!eligible(segment) || (last > first && !beginsWithNumber(segment.output) &&
                     segment.output !in NumberCandidateProvider.counterSurfaces)) break
+                if (segment.inputEnd > readingSpan.end) break
                 output.append(segment.output)
                 val start = segments[first].inputStart
                 val key = (start.toLong() shl 32) or segment.inputEnd.toLong()
                 val numbers = parsed.getOrPut(key) {
-                    NumberCandidateProvider.parse(input.substring(start, segment.inputEnd), allowBareNumber = false)
+                    if (segment.inputEnd == readingSpan.end) readingSpan.numbers else emptyList()
                 }
                 val text = output.toString()
-                val number = numbers.firstOrNull { text in it.renderings() } ?: continue
+                val number = numbers.firstNotNullOfOrNull { NumberCandidateProvider.matchSurface(text, it) } ?: continue
                 best = Span(first, last, number)
             }
             if (best == null) first++ else { spans.add(best); first = best.last + 1 }
@@ -211,7 +248,8 @@ object NumberCandidateComposer {
             while (next < span.first) add(segments[next++])
             val first = segments[span.first]
             val last = segments[span.last]
-            add(first.copy(inputEnd = last.inputEnd, output = if (style == null) segments.subList(span.first, span.last + 1).joinToString("") { it.output } else span.number.render(style), rightId = last.rightId))
+            add(first.copy(inputEnd = last.inputEnd, output = if (style == null) segments.subList(span.first, span.last + 1).joinToString("") { it.output } else span.number.render(style), rightId = last.rightId,
+                numericIdentity = NumericIdentity(span.number.value, NumberCandidateProvider.counterIdentity(span.number.counter), span.number.digits)))
             next = span.last + 1
         }
         while (next < segments.size) add(segments[next++])
