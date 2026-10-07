@@ -1,7 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
-import androidx.navigation.fragment.findNavController
-import androidx.preference.Preference
 import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -18,14 +16,6 @@ class InputMethodPreferenceFragment : CommonPreferenceFragment() {
 @AndroidEntryPoint
 class CandidateConversionPreferenceFragment : CommonPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_candidate_conversion
-
-    override fun onCommonPreferencesCreated() {
-        findPreference<Preference>("date_candidate_settings_preference")
-            ?.setOnPreferenceClickListener {
-                findNavController().navigate(R.id.dateCandidateSettingsFragment)
-                true
-            }
-    }
 }
 
 @AndroidEntryPoint
