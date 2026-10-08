@@ -129,10 +129,10 @@ class FastInputMatrixInstrumentedTest {
                         ensureTargetImeSelected(session)
                         restartInput(scenario)
                         SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
-                        "sannindeiku".forEach { letter ->
+                        "sannnindeiku".forEach { letter ->
                             assertTrue(injectTap(awaitVisibleNodeBounds("key_$letter").center))
                         }
-                        awaitEditorText(scenario) { it == reading }
+                        assertEquals(reading, awaitEditorText(scenario) { it == reading })
                         val expected = listOf("３人で行く", "3人で行く", word)
                         for (label in listOf("予測", "変換")) {
                             val tabs = findVisibleNodeById("candidate_tab_layout")
@@ -146,9 +146,10 @@ class FastInputMatrixInstrumentedTest {
                                 SystemClock.sleep(50)
                                 actual = findCandidateState().texts.filter { it in expected }
                             }
-                            assertEquals("$incremental/$label", expected, actual)
+                            val tabName = if (label == "予測") "prediction" else "conversion"
+                            saveScreenshot(session, "incremental-$incremental-tab-$tabName")
+                            assertEquals("$incremental/$label candidates=${findCandidateState().texts}", expected, actual)
                             assertEquals(reading, readText(scenario))
-                            saveScreenshot(session, "incremental-$incremental-tab-$label")
                         }
                     } finally {
                         scenario.close()
