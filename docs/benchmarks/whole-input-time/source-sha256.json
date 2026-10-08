@@ -1,0 +1,7 @@
+{
+  "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/engine/KanaKanjiEngine.kt": "c70eda9a2be6a5dc1d8e9471bb251474440fda8ca9c22c59f5190ccdb4782029",
+  "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/session/KanaKanjiConversionSession.kt": "ebf5fa6212d0b063b09b329dd3121a79ab086db6fca97eb188eb84c9f11c9163",
+  "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/number/WholeInputTimeCandidateComposer.kt": "fd9f65db5a8ca7dc4070f41f17cfe94129b74bbccf7b802c4b30b84f1cff1ef5",
+  "app/src/test/java/com/kazumaproject/markdownhelperkeyboard/converter/number/WholeInputTimeCandidateComposerTest.kt": "629451d3ddbef773189958df42046c339ca06a8555efcdeb740c1a95538955dd",
+  "app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/converter/WholeInputTimeConversionInstrumentedTest.kt": "b767f7626d3304382bc395c4f3ebba7573eafceabe2fc6bfaf5191bfef0e3fc5"
+}

@@ -67,6 +67,56 @@ class FastInputMatrixInstrumentedTest {
         get() = instrumentation.uiAutomation
 
     @Test
+    fun wholeInputTimesArePrioritizedAndCommittedInActualIme() {
+        assumeTrue(instrumentation.targetContext.packageName.endsWith(".pr1131review"))
+        runPhysicalDeviceSession("latest-review-adjacent-time") { session ->
+            val failures = mutableListOf<String>()
+            for (incremental in listOf(false, true)) for ((keys, reading, full) in listOf(
+                Triple("kujigofunn", "くじごふん", "９時５分"),
+                Triple("yojigofunn", "よじごふん", "４時５分"),
+                Triple("yojikyuufunn", "よじきゅうふん", "４時９分"),
+            )) {
+                configureCounterReviewPreferences(session.preferences, incremental, false, true)
+                val scenario = launchHost(session.context)
+                try {
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    keys.forEach { letter -> assertTrue(injectTap(awaitVisibleNodeBounds("key_$letter").center)) }
+                    assertEquals(reading, awaitEditorText(scenario) { it == reading })
+                    for ((index, label) in listOf("予測", "変換", "英数カナ").withIndex()) {
+                        val tabs = findVisibleNodeById("candidate_tab_layout") ?: throw SetupException("Candidate tabs missing")
+                        val tab = findDescendant(tabs) { it.isVisibleToUser && it.text?.toString() == label }
+                            ?: throw SetupException("Missing $label tab")
+                        assertTrue(injectTap(tab.screenRect().center))
+                        SystemClock.sleep(600)
+                        if (findVisibleNodeById("candidates_row_view") == null)
+                            assertTrue(injectTap(awaitVisibleNodeBounds("suggestion_visibility").center))
+                        SystemClock.sleep(300)
+                        val actual = mutableListOf<String>()
+                        listOfNotNull(findVisibleNodeById("suggestion_recycler_view"), findVisibleNodeById("candidates_row_view")).forEach { recycler ->
+                            forEachDescendant(recycler) { node ->
+                                node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() && it !in actual }?.let { actual.add(it) }
+                            }
+                        }
+                        val line = "$incremental/$reading/$label expected=$full actual=$actual"
+                        File(session.outputDirectory, "candidates.txt").appendText(line+"\n")
+                        saveScreenshot(session, "incremental-$incremental-$keys-tab-$index")
+                        if (actual.firstOrNull() != full) failures.add(line)
+                    }
+                    val selected = listOfNotNull(findVisibleNodeById("suggestion_recycler_view"),
+                        findVisibleNodeById("candidates_row_view")).firstNotNullOfOrNull { candidates ->
+                        findDescendant(candidates) { it.isVisibleToUser && it.text?.toString()?.trim() == full }
+                    } ?: throw SetupException("Time candidate missing")
+                    assertTrue(injectTap(selected.screenRect().center))
+                    assertEquals(full, awaitEditorText(scenario) { it == full })
+                } finally { scenario.close() }
+            }
+            assertEquals(failures.joinToString("\n"), emptyList<String>(), failures)
+        }
+    }
+
+    @Test
     fun counterNumberChangesKeepOrdinaryBunsetsuLongPressAlternatives() {
         assumeTrue(instrumentation.targetContext.packageName.endsWith(".freezeprobe"))
         runPhysicalDeviceSession("counter-number-bunsetsu-alternatives") { session ->

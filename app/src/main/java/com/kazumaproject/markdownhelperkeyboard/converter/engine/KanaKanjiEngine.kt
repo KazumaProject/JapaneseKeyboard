@@ -27,6 +27,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
+import com.kazumaproject.markdownhelperkeyboard.converter.number.WholeInputTimeCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberReadingAnalysis
@@ -1231,7 +1232,23 @@ class KanaKanjiEngine {
             numericSpans = numericSpans,
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
+        return prepareNumberCandidates(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
+    }
+
+    private fun prepareNumberCandidates(
+        input: String,
+        candidates: List<Candidate>,
+        config: NumberCandidateConfig,
+        segmentsByString: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        splitPatternsByString: MutableMap<String, List<Int>>? = null,
+        numericSpans: List<NumericSpan>? = null,
+    ): List<Candidate> {
+        val prepared = NumberCandidateComposer.prepare(
+            input, candidates, config, segmentsByString, splitPatternsByString, numericSpans,
+        )
+        return WholeInputTimeCandidateComposer.promote(
+            input, prepared, config, numericSpans, segmentsByString, splitPatternsByString,
+        )
     }
 
     private suspend fun getCandidatesOriginalRaw(
@@ -1801,7 +1818,7 @@ class KanaKanjiEngine {
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
-        val candidates = NumberCandidateComposer.prepare(
+        val candidates = prepareNumberCandidates(
             input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans,
         )
         return result.withUpdatedCandidatePaths(candidates, splits)
@@ -2404,7 +2421,7 @@ class KanaKanjiEngine {
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
-        val candidates = NumberCandidateComposer.prepare(
+        val candidates = prepareNumberCandidates(
             input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans,
         )
         return result.withUpdatedCandidatePaths(candidates, splits)
@@ -2989,7 +3006,7 @@ class KanaKanjiEngine {
             numericSpans = numericSpans,
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
+        return prepareNumberCandidates(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
     }
 
     private suspend fun getCandidatesRaw(
@@ -3549,7 +3566,7 @@ class KanaKanjiEngine {
             numericSpans = numericSpans,
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
+        return prepareNumberCandidates(input, result, numberCandidateConfig, numberSegments, numericSpans = numericSpans)
     }
 
     private suspend fun getCandidatesWithoutPredictionRaw(
@@ -4100,7 +4117,7 @@ class KanaKanjiEngine {
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
-        val candidates = NumberCandidateComposer.prepare(
+        val candidates = prepareNumberCandidates(
             input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans,
         )
         return result.withUpdatedCandidatePaths(candidates, splits)
@@ -4672,7 +4689,7 @@ class KanaKanjiEngine {
             predictionConfig = predictionConfig,
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
-        return NumberCandidateComposer.prepare(input, result, numberCandidateConfig)
+        return prepareNumberCandidates(input, result, numberCandidateConfig)
     }
 
     private fun getCandidatesEnglishKanaRaw(

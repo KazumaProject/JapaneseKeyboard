@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateCon
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.number.NumberCandidateComposer
+import com.kazumaproject.markdownhelperkeyboard.converter.number.WholeInputTimeCandidateComposer
 import java.time.LocalDate
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
@@ -119,7 +120,12 @@ class KanaKanjiConversionSession(
                     (incrementalState == null || incrementalState.committedInput() == request.input)
             }
             val result = if (cached != null) {
-                val reordered = NumberCandidateComposer.reorder(request.input, cached.result.candidates, request.numberCandidateConfig)
+                // An order-only cache hit must apply the same whole-time priority as an engine exit.
+                val reordered = WholeInputTimeCandidateComposer.promote(
+                    request.input,
+                    NumberCandidateComposer.reorder(request.input, cached.result.candidates, request.numberCandidateConfig),
+                    request.numberCandidateConfig, request.numberAnalysis.spans,
+                )
                 cached.result.copy(candidates = reordered,
                     bunsetsuResult = cached.result.bunsetsuResult?.copy(candidates = reordered))
             } else when (request.mode) {

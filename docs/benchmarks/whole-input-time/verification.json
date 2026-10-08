@@ -1,0 +1,59 @@
+{
+  "baseHead": "c192b23096a6952fd125add5e634ea074f9e9f26",
+  "pr": "https://github.com/KazumaProject/JapaneseKeyboard/pull/1131",
+  "build": "LiteStandardDebug; applicationIdSuffix=.pr1131review; R8 disabled; same settings for both APKs",
+  "unitTests": {
+    "count": 82,
+    "failures": 0,
+    "worktree": "counter-number-candidates"
+  },
+  "candidateCasesPerDevice": 3408,
+  "candidateAssertions": "Untargeted/OFF complete candidate rows unchanged; time inputs preserve non-time rows, paths, split maps and original time row attributes; six format orders; legacy/incremental; four modes; n=1,4,8; bunsetsu off/on",
+  "imeCasesPerDevice": 18,
+  "imeCommitsPerDevice": 6,
+  "imeResults": {
+    "Pixel6": "PASS",
+    "API35Emulator": "PASS on retry; initial UI run failed waiting for key_o visibility after successful time checks; no converter assertion failure"
+  },
+  "protocol": {
+    "workloads": 12,
+    "warmup": 100,
+    "iterations": 300,
+    "rounds": 5,
+    "roundOrder": "before1,after1,after2,before2,before3,after3,after4,before4,before5,after5",
+    "retentionQueriesOutsideTiming": 1000,
+    "forcedGcInsideTiming": false,
+    "gcMemorySnapshots": "two GC requests + finalization +100ms settling, outside timed calls",
+    "conversionSettings": {
+      "n": 8,
+      "bunsetsu": false,
+      "collectCandidateSegments": true,
+      "optionalMozcUtDictionaries": false,
+      "learnRepository": null,
+      "numberFormats": "HALF_WIDTH,FULL_WIDTH,KANJI",
+      "queryModes": "NO_TAB_DEFAULT plus EISUKANA workloads",
+      "freshSessionMeaning": "new incremental session, shared warmed dictionary/engine singleton"
+    }
+  },
+  "additionalWarmupExperiment": "Pixel6; 1000 warmups; one paired run; stored separately from primary five rounds",
+  "limitations": [
+    "Debug measurements do not establish optimized release performance.",
+    "Memory allocation counters cover all application threads; background/JIT activity can contribute.",
+    "Emulator latency varies substantially; no arbitrary acceptance threshold has been applied.",
+    "No statistical claim of zero overhead or absence of all future leaks.",
+    "IME rendering latency is not included in the conversion-core timer."
+  ],
+  "apkSha256": {
+    "before.apk": "cd459f0e47c3ee0e3eb1364a2ab1702e6937e3d3ff53c52a979943a56f983f70",
+    "after.apk": "bd84ee3eff3c24f9f3c429cc6e945a09500a6faac5f39386e0b0388422824f00",
+    "ui-test.apk": "9f4d4867f0288ffb25f49b7acd28c008a4070e1c3d37317c85d9569333fdcfc7",
+    "test.apk": "cf3bb01b7238c39e7b9335f14dc21eba2304ad9da1da2ead72cbbb4183ab8fee"
+  },
+  "productionAndFocusedTestSourcesMatch": {
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/engine/KanaKanjiEngine.kt": "c70eda9a2be6a5dc1d8e9471bb251474440fda8ca9c22c59f5190ccdb4782029",
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/session/KanaKanjiConversionSession.kt": "ebf5fa6212d0b063b09b329dd3121a79ab086db6fca97eb188eb84c9f11c9163",
+    "app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/number/WholeInputTimeCandidateComposer.kt": "fd9f65db5a8ca7dc4070f41f17cfe94129b74bbccf7b802c4b30b84f1cff1ef5",
+    "app/src/test/java/com/kazumaproject/markdownhelperkeyboard/converter/number/WholeInputTimeCandidateComposerTest.kt": "629451d3ddbef773189958df42046c339ca06a8555efcdeb740c1a95538955dd",
+    "app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/converter/WholeInputTimeConversionInstrumentedTest.kt": "b767f7626d3304382bc395c4f3ebba7573eafceabe2fc6bfaf5191bfef0e3fc5"
+  }
+}
