@@ -169,10 +169,12 @@ internal object NumberCandidateProvider {
             "本", "匹", "杯" -> {
                 val expected = when { p -> 2; reading == "さん" -> 1; else -> 0 }
                 val actual = when (counter.reading.first()) { 'ぽ', 'ぴ', 'ぱ' -> 2; 'ぼ', 'び', 'ば' -> 1; else -> 0 }
-                expected == actual && reading !in setOf("いち", "ろく", "はち", "じゅう", "じゅー", "し", "よ", "く")
+                (expected == actual || reading in setOf("せん", "ぜん", "まん") && actual == 1) &&
+                    reading !in setOf("いち", "ろく", "はち", "じゅう", "じゅー", "し", "よ", "く")
             }
             "分" -> when (counter.reading) {
-                "ぷん" -> (contracted || reading in setOf("さん", "よん")) && reading !in setOf("いち", "ろく", "はち", "じゅう")
+                "ぷん" -> (contracted || reading in setOf("さん", "よん", "せん", "ぜん", "まん")) &&
+                    reading !in setOf("いち", "ろく", "はち", "じゅう")
                 else -> !contracted && reading !in setOf("いち", "さん", "し", "よ", "よん", "ろく", "じゅう", "じゅー", "く")
             }
             "回", "階", "個", "か月" -> reading !in setOf("いち", "ろく", "じゅう", "じゅー", "し", "よ", "く") &&

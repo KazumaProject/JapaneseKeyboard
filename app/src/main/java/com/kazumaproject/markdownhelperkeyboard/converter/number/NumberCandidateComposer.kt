@@ -23,7 +23,8 @@ object NumberCandidateComposer {
                 segmentsByString?.set(it.string, it.conversionSegments)
                 splitPatternsByString?.set(it.string, emptyList())
             }
-            val expanded = if (config.enhanceCounterCandidates && numbers.any { it.counter.isNotEmpty() }) {
+            val expanded = if (config.enhanceCounterCandidates &&
+                (numbers.any { it.counter.isNotEmpty() } || NumberReadingDecoder.literalDigits(input) != null)) {
                 val existing = tagged.filterNot(::isSpecial).mapTo(hashSetOf()) { it.string }
                 val spellings = (numbers + tagged.mapNotNull { candidate -> numbers.firstNotNullOfOrNull {
                     NumberCandidateProvider.matchSurface(candidate.string, it)

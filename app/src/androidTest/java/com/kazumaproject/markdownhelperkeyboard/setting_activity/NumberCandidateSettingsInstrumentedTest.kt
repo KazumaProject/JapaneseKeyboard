@@ -70,10 +70,16 @@ class NumberCandidateSettingsInstrumentedTest {
                         val pref = fragment.findPreference<Preference>("number_candidate_order_preference")!!
                         assertTrue(pref.onPreferenceClickListener!!.onPreferenceClick(pref))
                     }
-                    await(scenario) { resumed<NumberCandidateSettingsFragment>(it)?.view?.findViewById<RecyclerView>(R.id.number_formats)?.childCount == 3 }
+                    await(scenario) { activity ->
+                        val list = resumed<NumberCandidateSettingsFragment>(activity)?.view?.findViewById<RecyclerView>(R.id.number_formats)
+                        if (list?.adapter?.itemCount != 3) false else {
+                            if (list.findViewHolderForAdapterPosition(2) == null) list.scrollToPosition(2)
+                            list.findViewHolderForAdapterPosition(2)?.itemView?.isLaidOut == true
+                        }
+                    }
                     scenario.onActivity { activity ->
                         val list = resumed<NumberCandidateSettingsFragment>(activity)!!.requireView().findViewById<RecyclerView>(R.id.number_formats)
-                        val handle = list.getChildAt(2).findViewById<View>(R.id.drag_handle)
+                        val handle = list.findViewHolderForAdapterPosition(2)!!.itemView.findViewById<View>(R.id.drag_handle)
                         assertTrue(handle.performAccessibilityAction(R.id.number_candidate_action_move_up, null))
                         assertEquals(listOf(NumberCandidateFormat.HALF_WIDTH, NumberCandidateFormat.KANJI, NumberCandidateFormat.FULL_WIDTH), AppPreference.number_candidate_config.order)
                     }
@@ -81,7 +87,7 @@ class NumberCandidateSettingsInstrumentedTest {
                     scenario.awaitSettingsContentReady()
                     await(scenario) { activity ->
                         val list = resumed<NumberCandidateSettingsFragment>(activity)?.view?.findViewById<RecyclerView>(R.id.number_formats)
-                        list?.isLaidOut == true && list.childCount == 3
+                        list?.isLaidOut == true && list.adapter?.itemCount == 3
                     }
                     assertEquals(NumberCandidateFormat.KANJI, AppPreference.number_candidate_config.order[1])
                     scenario.onActivity { activity ->

@@ -25,6 +25,26 @@ class NumberCandidateComposerTest {
         }
     }
 
+    @Test fun groupedBareLiteralsGainCanonicalFormatsOnlyWhenEnhancementIsEnabled() {
+        for (input in listOf("1,234", "１，２３４", "１,２３４")) {
+            val paths = mutableMapOf<String, List<CandidateConversionSegment>>()
+            val result = NumberCandidateComposer.prepare(input, emptyList(), segmentsByString = paths)
+            assertEquals(listOf("1234", "1,234", "１２３４", "千二百三十四"), result.map { it.string })
+            result.forEach { candidate ->
+                assertEquals(candidate.string, candidate.commitText)
+                assertEquals(candidate.string, paths.getValue(candidate.string).single().output)
+                assertEquals(input.length, paths.getValue(candidate.string).single().inputEnd)
+            }
+            val existing = candidate(input, input.length)
+            assertEquals(listOf(input), NumberCandidateComposer.prepare(input, listOf(existing),
+                NumberCandidateConfig(false)).map { it.string })
+        }
+        val zeros = NumberCandidateComposer.prepare("０００２", emptyList())
+        assertTrue(zeros.map { it.string }.containsAll(listOf("0002", "０００２")))
+        for (input in listOf("1,00", "１，２３", "1,,234", "-1,234", "１．２３４"))
+            assertTrue(input, NumberCandidateComposer.prepare(input, emptyList()).isEmpty())
+    }
+
     @Test fun daysAndIrregularCountersHaveAllThreeCanonicalForms() {
         val cases = mapOf(
             "ついたち" to "1日", "ふつか" to "2日", "みっか" to "3日", "よっか" to "4日",

@@ -166,6 +166,64 @@ class FastInputMatrixInstrumentedTest {
         }
     }
 
+    @Test
+    fun nasalCounterFormatsCanBeSelectedAndCommittedInActualIme() {
+        assumeTrue(instrumentation.targetContext.packageName.endsWith(".freezeprobe"))
+        runPhysicalDeviceSession("counter-number-nasal-readings") { session ->
+            val cases = listOf(
+                Triple("senbonn", "せんぼん", listOf("１０００本", "1000本", "千本")),
+                Triple("sanzenbiki", "さんぜんびき", listOf("３０００匹", "3000匹", "三千匹")),
+                Triple("ichimanbonn", "いちまんぼん", listOf("１００００本", "10000本", "一万本")),
+            )
+            for (incremental in listOf(false, true)) for ((keys, reading, expected) in cases) {
+                configureCounterReviewPreferences(session.preferences, incremental, false, true)
+                val scenario = launchHost(session.context)
+                try {
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    keys.forEach { letter -> assertTrue(injectTap(awaitVisibleNodeBounds("key_$letter").center)) }
+                    assertEquals(reading, awaitEditorText(scenario) { it == reading })
+                    fun candidateViews() = listOfNotNull(
+                        findVisibleNodeById("suggestion_recycler_view"),
+                        findVisibleNodeById("candidates_row_view"),
+                    )
+                    fun displayedFormats(): List<String> {
+                        val formats = mutableListOf<String>()
+                        candidateViews().forEach { recycler -> forEachDescendant(recycler) { node ->
+                            val text = node.text?.toString()?.trim()
+                            if (text in expected && text !in formats) formats.add(text!!)
+                        } }
+                        return formats
+                    }
+                    for ((index, label) in listOf("予測", "変換", "英数カナ").withIndex()) {
+                        val tabs = findVisibleNodeById("candidate_tab_layout") ?: throw SetupException("Candidate tabs missing")
+                        val tab = findDescendant(tabs) { it.isVisibleToUser && it.text?.toString() == label }
+                            ?: throw SetupException("Missing $label tab")
+                        assertTrue(injectTap(tab.screenRect().center))
+                        SystemClock.sleep(500)
+                        if (findVisibleNodeById("candidates_row_view") == null)
+                            assertTrue(injectTap(awaitVisibleNodeBounds("suggestion_visibility").center))
+                        val deadline = SystemClock.uptimeMillis() + 5_000
+                        var actual = displayedFormats()
+                        while (actual != expected && SystemClock.uptimeMillis() < deadline) {
+                            SystemClock.sleep(50)
+                            actual = displayedFormats()
+                        }
+                        saveScreenshot(session, "incremental-$incremental-$keys-tab-$index")
+                        assertEquals("$incremental/$reading/$label candidates=${findCandidateState().texts}", expected, actual)
+                        assertEquals(reading, readText(scenario))
+                    }
+                    val selected = candidateViews().firstNotNullOfOrNull { candidates ->
+                        findDescendant(candidates) { it.isVisibleToUser && it.text?.toString()?.trim() == expected.first() }
+                    } ?: throw SetupException("Full-width candidate missing")
+                    assertTrue(injectTap(selected.screenRect().center))
+                    assertEquals(expected.first(), awaitEditorText(scenario) { it == expected.first() })
+                } finally { scenario.close() }
+            }
+        }
+    }
+
     private fun configureCounterReviewPreferences(
         preferences: SharedPreferences,
         incremental: Boolean,

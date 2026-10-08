@@ -17,6 +17,66 @@ class NumberReadingDecoderTest {
             "にじゅうがつ", "いちじゅうえん", "いちひゃくえん", "じゅう20えん", "1まん20000えん", "1おく20000まんえん", "にがい", "ひゃっさつ", "いちいち", "いちまんにまんえん")
         invalid.forEach { assertTrue(it, NumberCandidateProvider.parse(it).isEmpty()) }
     }
+    @Test fun allCountersAcceptCanonicalReadingsAcrossDigitAndPlaceBoundaries() {
+        val numbers = listOf(
+            0L to "れい", 1L to "いち", 2L to "に", 3L to "さん", 4L to "よん",
+            5L to "ご", 6L to "ろく", 7L to "なな", 8L to "はち", 9L to "きゅう",
+            10L to "じゅう", 11L to "じゅういち", 12L to "じゅうに", 20L to "にじゅう",
+            100L to "ひゃく", 200L to "にひゃく", 300L to "さんびゃく",
+            600L to "ろっぴゃく", 800L to "はっぴゃく", 1000L to "せん",
+            3000L to "さんぜん", 8000L to "はっせん", 10000L to "いちまん",
+            100000L to "じゅうまん", 100000000L to "いちおく",
+            1000000000000L to "いっちょう", 10000000000000000L to "いっけい",
+        )
+        val contracted = mapOf(1L to "いっ", 6L to "ろっ", 8L to "はっ", 10L to "じゅっ",
+            11L to "じゅういっ", 20L to "にじゅっ", 100L to "ひゃっ", 200L to "にひゃっ",
+            300L to "さんびゃっ", 600L to "ろっぴゃっ", 800L to "はっぴゃっ")
+        val voiced = setOf(3L, 1000L, 3000L, 8000L, 10000L, 100000L)
+        val cases = mutableListOf<Triple<String, Long, String>>()
+        fun add(reading: String, value: Long, surface: String) { cases.add(Triple(reading, value, surface)) }
+        for ((value, reading) in numbers) {
+            for ((suffix, surface) in mapOf("えん" to "円", "まい" to "枚", "ねん" to "年",
+                "ねんかん" to "年間", "びょう" to "秒", "めい" to "名")) add(reading + suffix, value, surface)
+            val people = when (value) { 1L -> "ひとり"; 2L -> "ふたり"; 4L -> "よにん"; else -> reading + "にん" }
+            add(people, value, "人")
+            for ((plain, voicedSuffix, contractedSuffix, surface) in listOf(
+                listOf("ほん", "ぼん", "ぽん", "本"), listOf("ひき", "びき", "ぴき", "匹"),
+                listOf("はい", "ばい", "ぱい", "杯"))) {
+                val prefix = contracted[value] ?: reading
+                val suffix = when { value in contracted -> contractedSuffix; value in voiced -> voicedSuffix; else -> plain }
+                add(prefix + suffix, value, surface)
+            }
+            add((contracted[value] ?: reading) + if (value in contracted || value in voiced || value == 4L) "ぷん" else "ふん", value, "分")
+            for ((suffix, surface) in mapOf("かい" to "回", "こ" to "個", "かげつ" to "か月"))
+                add((contracted[value] ?: reading) + suffix, value, surface)
+            add((contracted[value] ?: reading) + "かい", value, "階")
+            val sPrefix = if (value in setOf(1L, 8L, 10L, 11L, 20L)) contracted.getValue(value) else reading
+            add(sPrefix + "さつ", value, "冊")
+            add(if (value == 20L) "はたち" else sPrefix + "さい", value, "歳")
+            val time = if (value % 10 == 4L) reading.removeSuffix("よん") + "よ"
+                else if (value % 10 == 9L) reading.removeSuffix("きゅう") + "く" else reading
+            add(time + "じ", value, "時")
+            add(time + "じかん", value, "時間")
+        }
+        listOf("いち", "に", "さん", "し", "ご", "ろく", "しち", "はち", "く", "じゅう", "じゅういち", "じゅうに")
+            .forEachIndexed { index, reading -> add(reading + "がつ", (index + 1).toLong(), "月") }
+        val days = listOf("いちにち", "ふつか", "みっか", "よっか", "いつか", "むいか", "なのか", "ようか",
+            "ここのか", "とおか", "じゅういちにち", "じゅうににち", "じゅうさんにち", "じゅうよっか",
+            "じゅうごにち", "じゅうろくにち", "じゅうしちにち", "じゅうはちにち", "じゅうくにち", "はつか",
+            "にじゅういちにち", "にじゅうににち", "にじゅうさんにち", "にじゅうよっか", "にじゅうごにち",
+            "にじゅうろくにち", "にじゅうしちにち", "にじゅうはちにち", "にじゅうくにち", "さんじゅうにち", "さんじゅういちにち")
+        days.forEachIndexed { index, reading ->
+            add(reading, (index + 1).toLong(), "日")
+            add(reading + "かん", (index + 1).toLong(), "日間")
+        }
+        val failures = cases.filter { (reading, value, surface) ->
+            NumberCandidateProvider.parse(reading).none { it.value == value && it.counter == surface }
+        }
+        assertEquals("Canonical counter readings rejected: $failures", emptyList<Triple<String, Long, String>>(), failures)
+        for (reading in listOf("せんぽん", "さんぜんぴき", "いちまんぱい", "せんがつ", "せんっぷん", "ぜんぷん"))
+            assertTrue(reading, NumberCandidateProvider.parse(reading).isEmpty())
+    }
+
     @Test fun literalMagnitudeMixesAndLongRangeUseCheckedArithmetic() {
         val valid = mapOf("1まんえん" to 10000L, "１まんえん" to 10000L,
             "12おく3せんまん4えん" to 1230000004L,

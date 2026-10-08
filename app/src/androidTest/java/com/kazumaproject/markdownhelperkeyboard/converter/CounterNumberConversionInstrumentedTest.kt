@@ -100,6 +100,32 @@ class CounterNumberConversionInstrumentedTest {
         assertFalse(engine.getCandidatesEnglishKana("ふたり", numberCandidateConfig = NumberCandidateConfig(false)).any { it.string == "2人" })
     }
 
+    @Test fun verifyNasalCountersAndGroupedLiteralsAcrossModes() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entry = EntryPointAccessors.fromApplication(context, KanaKanjiEngineEntryPoint::class.java)
+        val expected = mapOf("せんぷん" to "1000分",
+            "せんぼん" to "1000本", "さんぜんびき" to "3000匹", "いちまんぼん" to "10000本",
+            "いちまんびき" to "10000匹", "いちまんばい" to "10000杯",
+            "１，２３４" to "1234", "1,234" to "1234", "０002" to "0002", "０００２" to "0002")
+        val failures = mutableListOf<String>()
+        for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries) {
+            val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), backend)
+            for ((input, half) in expected) {
+                val q = request(input, mode, true, entry.userDictionaryRepository()).copy(n = 4)
+                val result = session.query(q)
+                val texts = result.candidates.map { it.string }
+                val full = half.map { if (it in '0'..'9') it + 0xFEE0 else it }.joinToString("")
+                val label = "$backend/$mode/$input"
+                if (!texts.containsAll(listOf(half, full))) failures.add("$label missing=$half/$full actual=$texts")
+                if (mode == CandidateQueryMode.EISUKANA && input == "せんぷん") {
+                    val off = session.query(q.copy(numberCandidateConfig = NumberCandidateConfig(false))).candidates.map { it.string }
+                    if (!off.containsAll(listOf(half, full))) failures.add("$label OFF missing=$half/$full actual=$off")
+                }
+            }
+        }
+        assertEquals(failures.joinToString("\n"), emptyList<String>(), failures)
+    }
+
     private fun request(input: String, mode: CandidateQueryMode, bunsetsu: Boolean, repository: UserDictionaryRepository) = KanaKanjiQueryRequest(
         input = input, mode = mode, bunsetsuSeparation = bunsetsu, n = 8,
         mozcUtPersonName = false, mozcUtPlaces = false, mozcUtWiki = false, mozcUtNeologd = false, mozcUtWeb = false,
