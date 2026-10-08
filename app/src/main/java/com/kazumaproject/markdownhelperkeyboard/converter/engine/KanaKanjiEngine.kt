@@ -21,6 +21,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.ConversionCacheIdentit
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withUpdatedCandidatePaths
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -1800,11 +1801,10 @@ class KanaKanjiEngine {
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
-        return result.copy(
-            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans),
-            splitPatternByCandidateString = splits,
-            splitPatterns = splits.values.distinct(),
+        val candidates = NumberCandidateComposer.prepare(
+            input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans,
         )
+        return result.withUpdatedCandidatePaths(candidates, splits)
     }
 
     private suspend fun getCandidatesOriginalWithBunsetsuRaw(
@@ -2404,11 +2404,10 @@ class KanaKanjiEngine {
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
-        return result.copy(
-            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans),
-            splitPatternByCandidateString = splits,
-            splitPatterns = splits.values.distinct(),
+        val candidates = NumberCandidateComposer.prepare(
+            input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans,
         )
+        return result.withUpdatedCandidatePaths(candidates, splits)
     }
 
     private suspend fun getCandidatesWithBunsetsuSeparationRaw(
@@ -4101,11 +4100,10 @@ class KanaKanjiEngine {
             enhanceNumbers = numberCandidateConfig.enhanceCounterCandidates,
         )
         val splits = result.splitPatternByCandidateString.toMutableMap()
-        return result.copy(
-            candidates = NumberCandidateComposer.prepare(input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans),
-            splitPatternByCandidateString = splits,
-            splitPatterns = splits.values.distinct(),
+        val candidates = NumberCandidateComposer.prepare(
+            input, result.candidates, numberCandidateConfig, numberSegments, splits, numericSpans,
         )
+        return result.withUpdatedCandidatePaths(candidates, splits)
     }
 
     private suspend fun getCandidatesWithoutPredictionWithBunsetsuRaw(
@@ -4999,8 +4997,7 @@ class KanaKanjiEngine {
         val newCandidates = supplemental.candidates.filter { extra -> normal.candidates.none { it.string == extra.string } }
         for (extra in newCandidates) extraSegments[extra.string]?.let { collector?.set(extra.string, it) }
         val splits = normal.splitPatternByCandidateString + supplemental.splitPatternByCandidateString.filterKeys { key -> newCandidates.any { it.string == key } }
-        return normal.copy(candidates = normal.candidates + newCandidates,
-            splitPatternByCandidateString = splits, splitPatterns = splits.values.distinct())
+        return normal.withUpdatedCandidatePaths(normal.candidates + newCandidates, splits)
     }
 
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray.getNodeIds().map { nodeId ->

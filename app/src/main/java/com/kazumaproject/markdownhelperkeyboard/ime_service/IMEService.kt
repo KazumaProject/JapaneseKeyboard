@@ -26571,12 +26571,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             prefix = insertString,
                             limit = userDictionaryPredictionCandidateLimit,
                         ).map {
-                            Candidate(
-                                string = it.word,
-                                type = CANDIDATE_TYPE_USER_DICTIONARY,
-                                length = it.reading.length.toUByte(),
-                                score = it.posScore,
-                            )
+                            it.toUserDictionaryCandidate()
                         }.sortedBy { it.score }
                     }
                 }

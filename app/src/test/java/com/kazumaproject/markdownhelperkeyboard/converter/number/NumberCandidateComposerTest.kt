@@ -4,6 +4,8 @@ import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withUpdatedCandidatePaths
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -145,6 +147,38 @@ class NumberCandidateComposerTest {
         assertFalse(result.any { it.string == "210分待って" })
         result.forEach { assertEquals(listOf(6), splits.getValue(it.string)) }
         assertEquals(20L, paths.getValue(text).first().numericIdentity?.value)
+    }
+
+    @Test fun numericCoalescingRetainsIndependentlySearchedSplitAlternatives() {
+        val input = "にじゅっぷんまって"
+        val text = "2十分待って"
+        val original = candidate(text, input.length).copy(yomi = input)
+        val paths = mutableMapOf(text to listOf(segment(0, 1, "2"), segment(1, 4, "十"),
+            segment(4, 6, "分"), segment(6, 9, "待って")))
+        val raw = BunsetsuCandidateResult(listOf(original),
+            listOf(listOf(1, 4, 6), emptyList(), listOf(1, 6)), mapOf(text to listOf(1, 4, 6)))
+        val splits = raw.splitPatternByCandidateString.toMutableMap()
+        val candidates = NumberCandidateComposer.prepare(input, raw.candidates,
+            segmentsByString = paths, splitPatternsByString = splits)
+        val result = raw.withUpdatedCandidatePaths(candidates, splits)
+        assertEquals(listOf(listOf(6), emptyList(), listOf(1, 6)), result.splitPatterns)
+        candidates.forEach { assertEquals(listOf(6), result.splitPatternByCandidateString.getValue(it.string)) }
+    }
+
+    @Test fun rewritingOnePathKeepsUnchangedRowsAndTheSplitSearchLimit() {
+        val old = listOf(1, 4, 6)
+        val raw = BunsetsuCandidateResult(emptyList(), listOf(old, emptyList(), listOf(1, 6)),
+            mapOf("numeric" to old, "protected" to old))
+        val updated = raw.splitPatternByCandidateString + mapOf("numeric" to listOf(6),
+            "supplemental" to listOf(7), "another" to listOf(8))
+        val result = raw.withUpdatedCandidatePaths(emptyList(), updated)
+        assertEquals(listOf(listOf(6), old, emptyList(), listOf(1, 6)), result.splitPatterns)
+        assertEquals(updated, result.splitPatternByCandidateString)
+
+        val unchanged = raw.copy(splitPatternByCandidateString =
+            (0..31).associate { "candidate-$it" to listOf(it + 1) })
+        assertEquals(unchanged.splitPatterns,
+            unchanged.withUpdatedCandidatePaths(emptyList(), unchanged.splitPatternByCandidateString).splitPatterns)
     }
 
     @Test fun monthAliasesPreserveTheirSpellingAndRespectDisabledFormatOrder() {

@@ -9,6 +9,7 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.MAX_BUNSETSU_SPLIT_PATTERNS
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -1034,7 +1035,6 @@ class FindPath(
     companion object {
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
         private val bosNodes: List<Node> = listOf(BOS)
-        private const val MAX_BUNSETSU_SPLIT_PATTERNS = 4
     }
 
     private var forwardDpTraceSink: MutableList<ForwardDpTrace>? = null

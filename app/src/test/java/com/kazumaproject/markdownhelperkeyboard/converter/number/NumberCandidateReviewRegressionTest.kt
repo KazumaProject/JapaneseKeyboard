@@ -5,6 +5,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPat
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.NgramRuleScorer
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.CompositeSystemNgramDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.PackedSystemNgramDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
 import com.kazumaproject.markdownhelperkeyboard.converter.session.*
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -18,10 +20,29 @@ import org.junit.runner.RunWith
 import org.mockito.kotlin.*
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class NumberCandidateReviewRegressionTest {
+    @Test fun ordinarySentenceKeepsSplitSearchAlternativesWithProductionNgramData() = runBlocking {
+        val assets = listOf(File("app/src/main/assets"), File("src/main/assets")).first { it.exists() }
+        val ngram = CompositeSystemNgramDictionary(listOf("system_ngram.dat", "system_ngram_unigram.dat")
+            .map { PackedSystemNgramDictionary.read(File(assets, "ngram/$it").readBytes()) })
+        val productionEngine = TestEngineFactory.create(findPath = FindPath(systemNgramDictionaryProvider = { ngram }))
+        for (backend in ConversionBackend.entries) for (mode in japaneseModes) {
+            val session = KanaKanjiConversionSession(productionEngine, backend)
+            for (n in listOf(1, 4, 8)) for (enabled in listOf(false, true)) {
+                val result = session.query(request("もちをやく", mode, n).copy(
+                    numberCandidateConfig = NumberCandidateConfig(enabled)))
+                val bunsetsu = requireNotNull(result.bunsetsuResult)
+                assertEquals("$backend/$mode/$n/$enabled", listOf(listOf(3), emptyList(), listOf(1, 3)),
+                    bunsetsu.splitPatterns)
+                assertEquals(listOf(3), bunsetsu.primarySplitPositions)
+            }
+        }
+    }
+
     @Test fun ordinaryWordsInvalidReadingsAndUnsupportedExpressionsDoNotGainNumberPaths() = runBlocking {
         val inputs = listOf("じゅうしょ", "きゅうじゅうみん", "にほんご", "じゅうじつ", "いつから",
             "ふつかよい", "ひとりじめ", "に", "し", "ご", "よ", "く", "－２えん", "＋２えん",

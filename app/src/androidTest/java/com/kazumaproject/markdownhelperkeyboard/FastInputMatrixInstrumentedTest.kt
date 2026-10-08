@@ -39,12 +39,14 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -63,6 +65,130 @@ class FastInputMatrixInstrumentedTest {
 
     private val uiAutomation: UiAutomation
         get() = instrumentation.uiAutomation
+
+    @Test
+    fun counterNumberChangesKeepOrdinaryBunsetsuLongPressAlternatives() {
+        assumeTrue(instrumentation.targetContext.packageName.endsWith(".freezeprobe"))
+        runPhysicalDeviceSession("counter-number-bunsetsu-alternatives") { session ->
+            for (incremental in listOf(false, true)) for (enhance in listOf(false, true)) {
+                configureCounterReviewPreferences(session.preferences, incremental, true, enhance)
+                val scenario = launchHost(session.context)
+                try {
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    "mochiwoyaku".forEach { letter ->
+                        assertTrue(injectTap(awaitVisibleNodeBounds("key_$letter").center))
+                    }
+                    awaitEditorText(scenario) { it == "もちをやく" }
+                    val space = awaitVisibleNodeBounds("key_space").center
+                    assertTrue(injectTap(space))
+                    awaitEditorText(scenario) { it == "持ちを焼く" }
+                    assertEquals(3, readEditorDecoration(scenario).backgrounds.single().end)
+                    val down = SystemClock.uptimeMillis()
+                    assertTrue(injectSinglePointerEvent(down, MotionEvent.ACTION_DOWN, space))
+                    SystemClock.sleep(900)
+                    assertTrue(injectSinglePointerEvent(down, MotionEvent.ACTION_UP, space))
+                    val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+                    var decoration = readEditorDecoration(scenario)
+                    while (decoration.backgrounds.singleOrNull()?.end != decoration.text.length &&
+                        SystemClock.uptimeMillis() < deadline) {
+                        SystemClock.sleep(50)
+                        decoration = readEditorDecoration(scenario)
+                    }
+                    assertEquals("$incremental/$enhance: $decoration", decoration.text.length,
+                        decoration.backgrounds.single().end)
+                    assertEquals(1, decoration.underlines.size)
+                    saveScreenshot(session, "incremental-$incremental-enhance-$enhance-switched")
+                } finally {
+                    scenario.close()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun predictionAndConversionTabsRespectNumberOrderForRegisteredSentences() {
+        assumeTrue(instrumentation.targetContext.packageName.endsWith(".freezeprobe"))
+        runPhysicalDeviceSession("counter-number-user-dictionary-order") { session ->
+            val repository = EntryPointAccessors.fromApplication(session.context,
+                KanaKanjiEngineEntryPoint::class.java).userDictionaryRepository()
+            val reading = "さんにんでいく"
+            val word = "三人で行く"
+            val original = runBlocking { repository.searchByReadingExactMatchSuspend(reading).filter { it.word == word } }
+            try {
+                runBlocking {
+                    if (original.isEmpty()) repository.insertStrict(UserWord(word = word, reading = reading,
+                        posIndex = 0, posScore = 32767))
+                    else original.forEach { repository.update(it.copy(posIndex = 0, posScore = 32767)) }
+                }
+                for (incremental in listOf(false, true)) {
+                    configureCounterReviewPreferences(session.preferences, incremental, false, true)
+                    val scenario = launchHost(session.context)
+                    try {
+                        ensureTargetImeSelected(session)
+                        restartInput(scenario)
+                        SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                        "sannindeiku".forEach { letter ->
+                            assertTrue(injectTap(awaitVisibleNodeBounds("key_$letter").center))
+                        }
+                        awaitEditorText(scenario) { it == reading }
+                        val expected = listOf("３人で行く", "3人で行く", word)
+                        for (label in listOf("予測", "変換")) {
+                            val tabs = findVisibleNodeById("candidate_tab_layout")
+                                ?: throw SetupException("Candidate tabs are missing")
+                            val tab = findDescendant(tabs) { it.isVisibleToUser && it.text?.toString() == label }
+                                ?: throw SetupException("Missing $label tab")
+                            assertTrue(injectTap(tab.screenRect().center))
+                            val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+                            var actual = findCandidateState().texts.filter { it in expected }
+                            while (actual != expected && SystemClock.uptimeMillis() < deadline) {
+                                SystemClock.sleep(50)
+                                actual = findCandidateState().texts.filter { it in expected }
+                            }
+                            assertEquals("$incremental/$label", expected, actual)
+                            assertEquals(reading, readText(scenario))
+                            saveScreenshot(session, "incremental-$incremental-tab-$label")
+                        }
+                    } finally {
+                        scenario.close()
+                    }
+                }
+            } finally {
+                runBlocking {
+                    val originalIds = original.mapTo(hashSetOf()) { it.id }
+                    repository.searchByReadingExactMatchSuspend(reading)
+                        .filter { it.word == word && it.id !in originalIds }.forEach { repository.delete(it.id) }
+                    original.forEach { repository.update(it) }
+                }
+            }
+        }
+    }
+
+    private fun configureCounterReviewPreferences(
+        preferences: SharedPreferences,
+        incremental: Boolean,
+        bunsetsu: Boolean,
+        enhance: Boolean,
+    ) {
+        check(preferences.edit()
+            .putString("keyboard_order_preference", "[\"ROMAJI\"]")
+            .putBoolean("save_last_used_keyboard", false)
+            .putBoolean("keyboard_floating_preference", false)
+            .putBoolean("live_conversion_preference", false)
+            .putBoolean("candidate_tab_visibility_preference", true)
+            .putBoolean("candidate_order_override_enable_preference", false)
+            .putBoolean("learn_dictionary_preference", false)
+            .putBoolean("user_dictionary_preference", true)
+            .putBoolean("system_ngram_dictionary_enable_preference", true)
+            .putBoolean("incremental_conversion_session_preference", incremental)
+            .putBoolean("conversion_bunsetsu_separation_preference", bunsetsu)
+            .putBoolean("conversion_bunsetsu_cursor_move_preference", bunsetsu)
+            .putBoolean("number_counter_candidates_enabled", enhance)
+            .putString("number_candidate_order", "full_width,half_width,kanji")
+            .putInt("n_best_preference", 4)
+            .commit())
+    }
 
     @Test
     fun qwertyRomajiCapsLockOffResumesRomajiConversionOnPhysicalDevice() {
