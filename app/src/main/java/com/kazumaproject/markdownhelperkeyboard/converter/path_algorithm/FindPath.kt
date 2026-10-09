@@ -309,6 +309,7 @@ class FindPath(
                 if (comparison == 0) comparison = a.r.compareTo(b.r)
                 if (comparison == 0) comparison = a.yomiUsed.compareTo(b.yomiUsed)
                 if (comparison == 0) comparison = a.candidateSource.ordinal.compareTo(b.candidateSource.ordinal)
+                if (comparison == 0) comparison = (a.counter?.counterId ?: "").compareTo(b.counter?.counterId ?: "")
                 if (comparison != 0) return comparison
                 left = left.next
                 right = right.next
@@ -1185,7 +1186,7 @@ class FindPath(
             if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
-                for (surface in counterSurfaces(element)) {
+                for (surface in counterSurfaces(element, candidateSegmentCollector != null)) {
                     val stringFromNode = surface.text
                     val yomiUsedFromNode = getYomiUsedFromPath(element)
 
@@ -1502,7 +1503,7 @@ class FindPath(
             scratch.prependOutput(previousNode.counter?.forms?.firstOrNull()?.value ?: previousNode.tango, element.outputPathId)
         }
         val sourceMask = element.sourceMask or previousNode.candidateSource.toMask() or
-            if (previousNode.counter == null && previousNode.tango.any { it.isDigit() }) 8 else 0
+            (if (previousNode.counter != null) 4 else if (previousNode.tango.any { it.isDigit() }) 8 else 0)
         val nodeIds = scratch.nodeIds
         if (
             !scratch.bestBackwardCostByState.putIfLower(
@@ -1827,6 +1828,7 @@ class FindPath(
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
         val systemNgramDictionary = systemNgramDictionaryProvider()
+        val counterNgramViews = IdentityHashMap<Node, List<Node>>()
         val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
         val systemNgramMayAffectCandidates =
             systemNgramDictionary.ruleCount != 0 &&
@@ -1834,6 +1836,7 @@ class FindPath(
                     graph = graph,
                     length = length,
                     dictionary = systemNgramDictionary,
+                    views = counterNgramViews,
                 )
         val systemNgramSafetyCandidateCount = if (systemNgramDictionary.ruleCount == 0) {
             n
@@ -1881,8 +1884,8 @@ class FindPath(
             if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
-                val semanticNgramMatch = pathMatchesSystemNgram(element, systemNgramDictionary)
-                for (surface in counterSurfaces(element)) {
+                val semanticNgramMatch = pathMatchesSystemNgram(element, systemNgramDictionary, counterNgramViews)
+                for (surface in counterSurfaces(element, candidateSegmentCollector != null)) {
                     val stringFromNode = surface.text
                     val yomiUsedFromNode = getYomiUsedFromPath(element)
                     val totalCost = element.priorityCost + surface.rank
@@ -2276,21 +2279,23 @@ class FindPath(
         compareByDescending<Candidate> { it.string in matched }.thenBy { it.score },
     ).take(requested)
 
-    private fun ngramViews(node: Node): List<Node> {
+    private fun ngramViews(node: Node, views: IdentityHashMap<Node, List<Node>>): List<Node> {
         val meaning = node.counter ?: return listOf(node)
-        return listOf(node) + meaning.forms.filter { it.value != node.tango }.map { node.copy(tango=it.value,counter=null) }
+        return views.getOrPut(node) {
+            listOf(node) + meaning.forms.filter { it.value != node.tango }.map { node.copy(tango=it.value,counter=null) }
+        }
     }
 
     /** Keep packed word rules observable after presentation is moved outside the lattice. */
-    private fun systemNgramMatches(dictionary: SystemNgramDictionary, nodes: List<Node?>): Boolean {
+    private fun systemNgramMatches(dictionary: SystemNgramDictionary, nodes: List<Node?>, views: IdentityHashMap<Node, List<Node>>): Boolean {
         if (dictionary.matches(nodes[0]!!,nodes[1]!!,nodes[2],nodes[3],nodes[4])) return true
         if (nodes.none { it?.counter != null }) return false
         val selected = arrayOfNulls<Node>(5)
         fun visit(index: Int): Boolean {
             if (index == 5) return dictionary.matches(selected[0]!!,selected[1]!!,selected[2],selected[3],selected[4])
             val original = nodes[index]
-            val views = original?.let(::ngramViews) ?: listOf(null)
-            for (view in views) {
+            val variants = original?.let { ngramViews(it, views) } ?: listOf(null)
+            for (view in variants) {
                 selected[index] = view
                 if (index == 0 && view != null && !dictionary.mayMatchFirstNode(view)) continue
                 if (index == 1 && view != null && !dictionary.mayMatchFirstPair(selected[0]!!,view)) continue
@@ -2304,16 +2309,17 @@ class FindPath(
     private fun pathMatchesSystemNgram(
         path: PathQueueElement,
         dictionary: SystemNgramDictionary,
+        views: IdentityHashMap<Node, List<Node>>,
     ): Boolean {
         if (dictionary.ruleCount == 0) return false
         var start = path.next
         while (start != null && start.node.tango != "EOS") {
             if (dictionary.matchesSingleNode(start.node) ||
-                (start.node.counter != null && ngramViews(start.node).any(dictionary::matchesSingleNode))) return true
+                (start.node.counter != null && ngramViews(start.node, views).any(dictionary::matchesSingleNode))) return true
             val second = start.next
             if (second == null || second.node.tango == "EOS") return false
             if (systemNgramMatches(dictionary, listOf(start.node,second.node,second.next?.node,
-                    second.next?.next?.node,second.next?.next?.next?.node))) return true
+                    second.next?.next?.node,second.next?.next?.next?.node),views)) return true
             start = start.next
         }
         return false
@@ -2331,13 +2337,14 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         dictionary: SystemNgramDictionary,
+        views: IdentityHashMap<Node, List<Node>>,
     ): Boolean {
         for (leftEnd in 1 until length) {
             val leftNodes = graph[leftEnd] ?: continue
             for (leftNode in leftNodes) {
                 if (leftNode.sPos + leftNode.len.toInt() != leftEnd) continue
                 if (dictionary.mayMatchFirstNode(leftNode) ||
-                    (leftNode.counter != null && ngramViews(leftNode).any(dictionary::mayMatchFirstNode))) return true
+                    (leftNode.counter != null && ngramViews(leftNode, views).any(dictionary::mayMatchFirstNode))) return true
                 for (rightEnd in leftEnd + 1..length) {
                     val rightNodes = graph[rightEnd] ?: continue
                     for (rightNode in rightNodes) {
@@ -2345,8 +2352,8 @@ class FindPath(
                             rightNode.sPos == leftEnd &&
                             (if (leftNode.counter == null && rightNode.counter == null)
                                 dictionary.mayMatchFirstPair(leftNode, rightNode)
-                            else ngramViews(leftNode).any { left ->
-                                ngramViews(rightNode).any { right -> dictionary.mayMatchFirstPair(left, right) }
+                            else ngramViews(leftNode, views).any { left ->
+                                ngramViews(rightNode, views).any { right -> dictionary.mayMatchFirstPair(left, right) }
                             })
                         ) return true
                     }
@@ -2658,7 +2665,11 @@ class FindPath(
     private data class CounterSurfacePath(val text: String, val segments: List<CandidateConversionSegment>, val rank: Int)
 
     /** Bounded presentation: consistent ASCII/kanji/fullwidth styles, never a Cartesian product. */
-    private fun counterSurfaces(path: PathQueueElement): List<CounterSurfacePath> {
+    private fun counterSurfaces(path: PathQueueElement, collectSegments: Boolean): List<CounterSurfacePath> {
+        if (path.sourceMask and 4 == 0) {
+            val segments = if (collectSegments) getConversionSegmentsFromPath(path) else emptyList()
+            return listOf(CounterSurfacePath(getStringFromPath(path), segments, 0))
+        }
         val nodes = generateSequence(path) { it.next }.map { it.node }
             .filter { it.tango != "BOS" && it.tango != "EOS" }.toList()
         if (nodes.none { it.counter != null }) {

@@ -68,15 +68,22 @@ class NgramRuleScorer(
         if (prevNode.tango == "BOS" || currentNode.tango == "EOS") return 0
         if (maxOrderWithRules == 0) return 0
 
-        val words = currentNode.counter?.forms?.map { it.value }?.plus(currentNode.tango)?.distinct()
-            ?: listOf(currentNode.tango)
+        var aliasWords: MutableSet<String>? = null
+        currentNode.counter?.forms?.forEach { form ->
+            if (form.value != currentNode.tango && form.value in relevantWordClasses) {
+                val words = aliasWords ?: LinkedHashSet<String>().also { aliasWords = it }
+                words.add(form.value)
+            }
+        }
         var total = 0L
         for (order in NgramRule.MIN_NODE_COUNT..maxOrderWithRules) {
             if (order >= 3 && (nextNode1 == null || nextNode1.tango == "EOS")) continue
             if (order >= 4 && (nextNode2 == null || nextNode2.tango == "EOS")) continue
             if (order >= 5 && (nextNode3 == null || nextNode3.tango == "EOS")) continue
 
-            for (word in words) {
+            total += scoreBucket(rulesByOrderAndCurrentWord[order][currentNode.tango],
+                prevNode,currentNode,nextNode1,nextNode2,nextNode3)
+            aliasWords?.forEach { word ->
                 total += scoreBucket(
                     rulesByOrderAndCurrentWord[order][word],
                     prevNode,
@@ -105,9 +112,15 @@ class NgramRuleScorer(
 
     internal fun wordClass(node: Node): Int {
         if (node.counter == null) return relevantWordClasses[node.tango] ?: 0
-        val classes = (node.counter.forms.mapNotNull { relevantWordClasses[it.value] } +
-            listOfNotNull(relevantWordClasses[node.tango])).distinct().sorted()
-        if (classes.isEmpty()) return 0
+        var matched: MutableSet<Int>? = null
+        fun add(word: String) {
+            val id = relevantWordClasses[word] ?: return
+            val classes = matched ?: LinkedHashSet<Int>().also { matched = it }
+            classes.add(id)
+        }
+        add(node.tango)
+        node.counter.forms.forEach { add(it.value) }
+        val classes = matched?.sorted() ?: return 0
         if (classes.size == 1) return classes.single()
         return counterWordClasses.computeIfAbsent(classes) { nextCounterWordClass.getAndIncrement() }
     }

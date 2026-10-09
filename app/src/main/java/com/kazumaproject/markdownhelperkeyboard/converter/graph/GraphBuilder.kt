@@ -925,9 +925,12 @@ class GraphBuilder {
                             )
                         }
                         val leftId = tokenArray.leftIds[posTableIndex.toInt()]
+                        val rightId = tokenArray.rightIds[posTableIndex.toInt()]
+                        val numericValue = if (leftId.toInt() in 2043..2053 && rightId.toInt() in 2043..2053)
+                            counterConverter?.numberValue(yomiStr) else null
                         val node = Node(
                             l = leftId,
-                            r = tokenArray.rightIds[posTableIndex.toInt()],
+                            r = rightId,
                             score = wordCost.toInt(),
                             f = wordCost.toInt(),
                             g = wordCost.toInt(),
@@ -936,9 +939,10 @@ class GraphBuilder {
                             len = yomiStr.length.toShort(),
                             sPos = i,
                             mozcAttributes = mozcAttributesFor(leftId),
+                            numberValue = numericValue,
+                            counterBoundary = counterBoundary.takeIf { numericValue != null },
                         )
-                        val numericValue = counterConverter?.let { CounterNodePolicy.isPureNumber(node, it) }
-                        addOrUpdateNode(graph, endIndex, node.copy(numberValue = numericValue, counterBoundary = counterBoundary), graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
+                        addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
                     }
                 }
             }
@@ -954,7 +958,7 @@ class GraphBuilder {
                         val numeric = lexical.filter { CounterNodePolicy.represents(meaning, it.tango) }
                         val numericCost = numeric.minOfOrNull { it.score }
                         val alternatives = CounterNodePolicy.lexicalAlternatives(meaning, lexical)
-                        val composed = if (alternatives.isEmpty()) emptyList() else CounterNodePolicy.composedNumericEntries(meaning,counterConnectionMatrix,::counterEntries)
+                        val composed = if (alternatives.isEmpty() || numeric.isNotEmpty()) emptyList() else CounterNodePolicy.composedNumericEntries(meaning,counterConnectionMatrix,::counterEntries)
                         val cost = minOf(numericCost ?: CounterNodePolicy.WORD_COST, CounterNodePolicy.WORD_COST)
                         addOrUpdateNode(
                             graph, end,

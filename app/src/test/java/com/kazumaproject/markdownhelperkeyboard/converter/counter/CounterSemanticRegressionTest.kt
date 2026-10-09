@@ -44,6 +44,9 @@ class CounterSemanticRegressionTest {
         val hour = node("3時","さんじ",0).copy(counter=converter.analyze("さんじ").first())
         val minute = node("60分","ろくじゅっぷん",3).copy(counter=converter.analyze("ろくじゅっぷん").first())
         assertFalse(boundary.canFollow(hour,minute))
+        val half = node("3時半", "さんじはん", 0).copy(counter=converter.analyze("さんじはん").first())
+        val extraMinute = node("15分", "じゅうごふん",5).copy(counter=converter.analyze("じゅうごふん").first())
+        assertFalse(boundary.canFollow(half,extraMinute))
     }
 
     @Test fun numericSpellingAliasesMatchOneMeaningAndNgramFeatureClass() {

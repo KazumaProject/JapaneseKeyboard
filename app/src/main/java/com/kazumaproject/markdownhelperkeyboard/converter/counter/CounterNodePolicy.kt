@@ -121,10 +121,6 @@ internal object CounterNodePolicy {
         } }
     }
 
-    fun isPureNumber(node: Node, converter: CounterConverter): Long? =
-        if (node.l.toInt() in 2043..2053 && node.r.toInt() in 2043..2053)
-            converter.numberValue(node.yomiUsed) else null
-
     fun lexicalAlternatives(meaning: CounterInterpretation, nodes: List<Node>): List<CounterLexicalAlternative> =
         nodes.filter { !represents(meaning, it.tango) }.map {
             CounterLexicalAlternative(it.tango, it.l, it.r, it.score)

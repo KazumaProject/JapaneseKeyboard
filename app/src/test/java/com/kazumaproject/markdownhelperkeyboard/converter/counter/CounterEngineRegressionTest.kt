@@ -49,7 +49,7 @@ class CounterEngineRegressionTest {
         whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
         whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
         val incremental = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
-        for (phrase in listOf("ひゃくにじゅうさんぼんをかう", "ねこがさんびきいる", "ごごさんじはんにあう", "にほんにいく", "さんごがきれい", "いっぱいのむ")) {
+        for (phrase in listOf("ひゃくにじゅうさんぼんをかう", "ねこがさんびきいる", "ごごさんじはんにあう", "ちょうさんど", "にほんにいく", "さんごがきれい", "いっぱいのむ")) {
             for (input in (1..phrase.length).map(phrase::take) + phrase.dropLast(1) + phrase + phrase.replace("さん", "よん")) {
                 val request=request(input,repository)
                 val fresh=KanaKanjiConversionSession(engine,ConversionBackend.LEGACY).query(request)
@@ -136,6 +136,7 @@ class CounterEngineRegressionTest {
             "にじゅうよじ" to listOf("214時", "214:00"),
             "さんじろくじゅっぷん" to listOf("3時60分", "03:60"),
             "さんじろくじゅうびょう" to listOf("3時60秒"),
+            "さんじはんじゅうごふん" to listOf("3時半15分", "03:3015分"),
         )
         for (bunsetsu in listOf(false,true)) for ((input, invalid) in forbidden) {
             val result = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(request(input, repository).copy(n=32,bunsetsuSeparation=bunsetsu))

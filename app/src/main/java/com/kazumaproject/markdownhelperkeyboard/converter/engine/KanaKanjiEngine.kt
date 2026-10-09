@@ -4449,10 +4449,10 @@ class KanaKanjiEngine {
                 score = minOf(numericCost ?: CounterNodePolicy.WORD_COST, CounterNodePolicy.WORD_COST), f = 0,
                 tango = meaning.forms.first().value, len = input.length.toShort(), yomiUsed = input, sPos = 0,
                 counter = meaning, counterAlternatives = ordinary, counterNumericSupports = lexical.filter { CounterNodePolicy.represents(meaning, it.surface) } +
-                    CounterNodePolicy.composedNumericEntries(meaning,connectionMatrix) { reading ->
+                    (if (numericCost != null || ordinary.isEmpty()) emptyList() else CounterNodePolicy.composedNumericEntries(meaning,connectionMatrix) { reading ->
                         CounterNodePolicy.dictionaryEntries(reading,systemYomiTrie,systemTangoTrie,systemTokenArray,
                             systemSuccinctBitVectorLBSYomi,systemSuccinctBitVectorIsLeafYomi,systemSuccinctBitVectorTokenArray,systemSuccinctBitVectorTangoLBS)
-                    })
+                    }))
             val eos = Node(0,0,0,0,tango="EOS",len=0,yomiUsed="",sPos=input.length)
             val segmenter = mozcSegmenter.takeIf { isMozcParityEnabled() }
             node.adjustedScore += (segmenter?.getPrefixPenalty(node.l.toInt()) ?: 0) + (segmenter?.getSuffixPenalty(node.r.toInt()) ?: 0)

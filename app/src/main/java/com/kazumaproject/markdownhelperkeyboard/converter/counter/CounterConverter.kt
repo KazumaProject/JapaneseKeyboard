@@ -51,6 +51,23 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
         readings
     }
 
+    // A generated surface can end only in a unit/alias ending, a numeral, or 半.
+    // A compact character index rejects ordinary word tails before quantity parsing.
+    private val surfaceEndBits = LongArray(1024).also { bits ->
+        fun add(letter: Char) {
+            bits[letter.code ushr 6] = bits[letter.code ushr 6] or (1L shl (letter.code and 63))
+        }
+        dictionary.units.forEach { it.surface.lastOrNull()?.let(::add) }
+        dictionary.surfaces.forEach { it.surface.lastOrNull()?.let(::add) }
+        dictionary.exceptions.forEach { it.suffix.lastOrNull()?.let(::add) }
+        "0123456789０１２３４５６７８９〇零一二三四五六七八九十百千万億兆京半".forEach(::add)
+    }
+
+    fun mayEndQuantitySurface(surface: String): Boolean {
+        val letter = surface.lastOrNull() ?: return false
+        return surfaceEndBits[letter.code ushr 6] and (1L shl (letter.code and 63)) != 0L
+    }
+
     fun convert(input: String, includeAliases: Boolean = true, limit: Int = Int.MAX_VALUE): CounterConversion {
         require(limit >= 0) { "Candidate limit must be nonnegative" }
         if (input.isEmpty() || input.length > 128) return CounterConversion(input, emptyList(), null, emptyList())
@@ -176,7 +193,11 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
     }
 
     /** Includes syntactically complete quantities outside their permitted range. */
-    fun hasQuantitySyntax(input: String): Boolean = analyze(input, includeOutOfRange = true).isNotEmpty()
+    fun hasQuantitySyntax(input: String): Boolean {
+        if (input.isEmpty() || input.length > 128) return false
+        val reading = normalize(input)
+        return matchQuantity(reading, 0, reading.length, validateRange = false).isNotEmpty() || parseTime(reading) != null
+    }
 
     fun forEachAnalysis(
         input: String, startIndex: Int, minimumEndExclusive: Int = startIndex,
