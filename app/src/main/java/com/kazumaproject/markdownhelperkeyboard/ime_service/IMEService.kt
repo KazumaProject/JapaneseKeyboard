@@ -2911,6 +2911,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val engine = kanaKanjiEngineProvider.get()
                 withContext(Dispatchers.Main.immediate) {
                     kanaKanjiEngine = engine
+                    applyCounterDictionaryPreference(appPreference.counter_dictionary_enable_preference)
                 }
                 kanaKanjiEngineReady.complete(engine)
                 Timber.d(
@@ -3545,8 +3546,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyEnglishDirectInputPreference = appPreference.qwerty_english_direct_input_preference
     }
 
+    private fun applyCounterDictionaryPreference(enabled: Boolean) {
+        if (::kanaKanjiEngine.isInitialized) {
+            kanaKanjiEngine.setCounterDictionaryEnabled(enabled)
+        }
+    }
+
     private fun syncConversionDictionaryPreferences() {
-        kanaKanjiEngine.setCounterDictionaryEnabled(
+        applyCounterDictionaryPreference(
             appPreference.counter_dictionary_enable_preference,
         )
         SystemNgramRuntime.setEnabled(
@@ -3786,7 +3793,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
         isTextMacroCandidateEnable = preferences.isTextMacroCandidateEnable
-        kanaKanjiEngine.setCounterDictionaryEnabled(preferences.counterDictionaryEnabled)
+        applyCounterDictionaryPreference(preferences.counterDictionaryEnabled)
         SystemNgramRuntime.setEnabled(this, preferences.systemNgramDictionaryEnabled)
         ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
