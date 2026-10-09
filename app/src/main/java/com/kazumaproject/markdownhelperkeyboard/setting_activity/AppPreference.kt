@@ -51,6 +51,8 @@ internal object CustomThemeColorPreferenceKeys {
 
 object AppPreference {
 
+    const val COUNTER_DICTIONARY_ENABLE_KEY = "counter_dictionary_enable_preference"
+
     const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =
         "preserve_dictionary_word_whitespace_preference"
 
@@ -191,6 +193,8 @@ object AppPreference {
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val TEXT_MACRO_CANDIDATE_PREFERENCE = Pair("text_macro_candidate_preference", true)
+    private val COUNTER_DICTIONARY_ENABLE_PREFERENCE =
+        Pair(COUNTER_DICTIONARY_ENABLE_KEY, true)
     private val SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
         Pair("system_ngram_dictionary_enable_preference", true)
     private val CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
@@ -2351,6 +2355,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TEXT_MACRO_CANDIDATE_PREFERENCE.first, value)
+        }
+
+    var counter_dictionary_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            COUNTER_DICTIONARY_ENABLE_PREFERENCE.first,
+            COUNTER_DICTIONARY_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(COUNTER_DICTIONARY_ENABLE_PREFERENCE.first, value)
         }
 
     var system_ngram_dictionary_enable_preference: Boolean

@@ -3545,7 +3545,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyEnglishDirectInputPreference = appPreference.qwerty_english_direct_input_preference
     }
 
-    private fun syncNgramDictionaryPreferences() {
+    private fun syncConversionDictionaryPreferences() {
+        kanaKanjiEngine.setCounterDictionaryEnabled(
+            appPreference.counter_dictionary_enable_preference,
+        )
         SystemNgramRuntime.setEnabled(
             this,
             appPreference.system_ngram_dictionary_enable_preference,
@@ -3783,6 +3786,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
         isTextMacroCandidateEnable = preferences.isTextMacroCandidateEnable
+        kanaKanjiEngine.setCounterDictionaryEnabled(preferences.counterDictionaryEnabled)
         SystemNgramRuntime.setEnabled(this, preferences.systemNgramDictionaryEnabled)
         ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
@@ -5753,7 +5757,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncRuntimeInputPreferences()
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
-        syncNgramDictionaryPreferences()
+        syncConversionDictionaryPreferences()
         isInputViewActive = true
         startComposingGuide()
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }

@@ -28,14 +28,23 @@ class NgramDictionaryTogglePreferenceTest {
 
     @Test
     fun defaultsToEnabledAndPersistsBothSettings() {
+        assertTrue(AppPreference.counter_dictionary_enable_preference)
+        assertTrue(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
         assertTrue(AppPreference.system_ngram_dictionary_enable_preference)
         assertTrue(AppPreference.custom_ngram_dictionary_enable_preference)
         assertTrue(ImePreferencesSnapshot.from(AppPreference).systemNgramDictionaryEnabled)
         assertTrue(ImePreferencesSnapshot.from(AppPreference).customNgramDictionaryEnabled)
 
+        AppPreference.counter_dictionary_enable_preference = false
         AppPreference.system_ngram_dictionary_enable_preference = false
         AppPreference.custom_ngram_dictionary_enable_preference = false
 
+        assertFalse(AppPreference.counter_dictionary_enable_preference)
+        assertFalse(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
+        AppPreference.init(context)
+        assertFalse(AppPreference.counter_dictionary_enable_preference)
+        AppPreference.counter_dictionary_enable_preference = true
+        assertTrue(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
         assertFalse(AppPreference.system_ngram_dictionary_enable_preference)
         assertFalse(AppPreference.custom_ngram_dictionary_enable_preference)
         assertFalse(ImePreferencesSnapshot.from(AppPreference).systemNgramDictionaryEnabled)
@@ -44,7 +53,7 @@ class NgramDictionaryTogglePreferenceTest {
 
     @Test
     fun switchesAreAvailableInNewAndLegacyDictionarySettings() {
-        for (key in listOf(SYSTEM_KEY, CUSTOM_KEY)) {
+        for (key in listOf(AppPreference.COUNTER_DICTIONARY_ENABLE_KEY, SYSTEM_KEY, CUSTOM_KEY)) {
             val newSetting = SettingSearchIndex.searchable(context, SettingSearchScope.NEW_HOME)
                 .first { it.key == key }
             val legacySetting = SettingSearchIndex.searchable(context, SettingSearchScope.LEGACY_TABS)

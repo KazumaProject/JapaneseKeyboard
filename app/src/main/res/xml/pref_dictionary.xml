@@ -2,6 +2,18 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <PreferenceCategory android:title="@string/counter_dictionary_category_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="counter_dictionary_enable_preference"
+            android:title="@string/counter_dictionary_enable_title"
+            android:summaryOn="@string/counter_dictionary_enable_summary_on"
+            android:summaryOff="@string/counter_dictionary_enable_summary_off"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:title="@string/system_user_dictionary">
 

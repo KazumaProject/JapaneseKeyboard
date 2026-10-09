@@ -168,7 +168,17 @@ class KanaKanjiEngine {
         internal fun committedInput(): String? = graphState.committedInput()
     }
 
-    private var counterConverter: CounterConverter? = null
+    private var bundledCounterConverter: CounterConverter? = null
+    private var counterRulesEnabled: Boolean = true
+    private val counterConverter: CounterConverter?
+        get() = if (counterRulesEnabled) bundledCounterConverter else null
+
+    fun setCounterDictionaryEnabled(enabled: Boolean) {
+        if (counterRulesEnabled == enabled) return
+        counterRulesEnabled = enabled
+        // Changing the converter identity also invalidates retained incremental lattices.
+        graphBuilder.updateCounterDictionary(counterConverter)
+    }
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
@@ -668,8 +678,8 @@ class KanaKanjiEngine {
         counterConverter: CounterConverter? = null,
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
-        this@KanaKanjiEngine.counterConverter = counterConverter
-        graphBuilder.updateCounterDictionary(counterConverter)
+        this@KanaKanjiEngine.bundledCounterConverter = counterConverter
+        graphBuilder.updateCounterDictionary(this@KanaKanjiEngine.counterConverter)
         this@KanaKanjiEngine.findPath = findPath
         this@KanaKanjiEngine.mozcSegmenter = mozcSegmenter
         this@KanaKanjiEngine.mozcNodeAttributeTable = mozcNodeAttributeTable

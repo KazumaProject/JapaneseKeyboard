@@ -59,6 +59,32 @@ class CounterEngineRegressionTest {
             }
         }
     }
+    @Test fun dictionaryToggleRestoresLegacyPathsAndInvalidatesRetainedLattices() = runBlocking {
+        val repository = mock<UserDictionaryRepository>()
+        whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+        whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
+        val toggleEngine = TestEngineFactory.create()
+        val baseline = TestEngineFactory.create(counterConverter = null)
+        val inputs = listOf("ひゃくにじゅうさんぼんをかう", "ごごさんじはん", "いちへいほうめーとる")
+        assertTrue(toggleEngine.getCandidatesEnglishKana("ごごさんじはん").any { it.string == "15:30" })
+        for (backend in ConversionBackend.entries) {
+            for (mode in CandidateQueryMode.entries) {
+                for (bunsetsu in listOf(false, true)) {
+                    val session = KanaKanjiConversionSession(toggleEngine, backend)
+                    val requests = inputs.map { request(it, repository).copy(mode = mode, bunsetsuSeparation = bunsetsu) }
+                    val enabled = requests.map { session.query(it) }
+                    toggleEngine.setCounterDictionaryEnabled(false)
+                    for (query in requests.flatMap { listOf(it, it.copy(input = it.input + "よ")) }) {
+                        val expected = KanaKanjiConversionSession(baseline, ConversionBackend.LEGACY).query(query)
+                        assertEquals("$backend/$mode/$bunsetsu/${query.input}", expected, session.query(query))
+                    }
+                    toggleEngine.setCounterDictionaryEnabled(true)
+                    assertEquals("$backend/$mode/$bunsetsu", enabled, requests.map { session.query(it) })
+                }
+            }
+        }
+    }
+
     private fun request(input: String, repo: UserDictionaryRepository) = KanaKanjiQueryRequest(input, CandidateQueryMode.CONVERSION, true, 8, false, false, false, false, false, repo, null, false, false, false, 3000, 3000, 20, collectCandidateSegments=true)
     companion object {
         private lateinit var engine: KanaKanjiEngine

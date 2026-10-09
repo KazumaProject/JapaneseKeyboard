@@ -1,10 +1,12 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import android.content.Context
+import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.converter.session.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
@@ -118,6 +120,36 @@ class CounterConversionInstrumentedTest {
         }.joinToString("")
         assertEquals("百二十三本を買う", changed)
         println("COUNTER_PROJECTION ${segments.map { it.reading to it.displayText }} changed=$changed")
+    }
+
+    @Test fun dictionarySettingDisablesAndReenablesRulesInRetainedSessions() = runBlocking {
+        val entry = entry()
+        val engine = entry.kanaKanjiEngine()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val key = AppPreference.COUNTER_DICTIONARY_ENABLE_KEY
+        val wasPresent = preferences.contains(key)
+        val wasEnabled = preferences.getBoolean(key, true)
+        val session = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
+        val query = request("ごごさんじはん", entry.userDictionaryRepository())
+        try {
+            preferences.edit().putBoolean(key, true).commit()
+            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, true))
+            val enabled = session.query(query)
+            assertTrue(enabled.candidates.any { it.string == "15:30" })
+            preferences.edit().putBoolean(key, false).commit()
+            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, true))
+            assertFalse(session.query(query).candidates.any { it.string == "15:30" })
+            assertFalse(engine.getCandidatesEnglishKana(query.input).any { it.string == "15:30" })
+            preferences.edit().putBoolean(key, true).commit()
+            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, true))
+            assertEquals(enabled, session.query(query))
+        } finally {
+            preferences.edit().apply {
+                if (wasPresent) putBoolean(key, wasEnabled) else remove(key)
+            }.commit()
+            engine.setCounterDictionaryEnabled(wasEnabled)
+        }
     }
 
     @Test fun ordinaryWordsAndMultipleCountersRemainConvertible() = runBlocking {
