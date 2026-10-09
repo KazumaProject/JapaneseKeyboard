@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.converter.session.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
@@ -14,6 +15,21 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CounterConversionInstrumentedTest {
+    private fun request(
+        input: String,
+        repository: UserDictionaryRepository,
+        mode: CandidateQueryMode = CandidateQueryMode.CONVERSION,
+        bunsetsu: Boolean = true,
+    ) = KanaKanjiQueryRequest(
+        input = input, mode = mode, bunsetsuSeparation = bunsetsu, n = 8,
+        mozcUtPersonName = false, mozcUtPlaces = false, mozcUtWiki = false,
+        mozcUtNeologd = false, mozcUtWeb = false, userDictionaryRepository = repository,
+        learnRepository = null, omissionSearchEnabled = false,
+        typoCorrectionJapaneseFlickEnabled = false, typoCorrectionQwertyEnglishEnabled = false,
+        typoCorrectionOffsetScore = 3000, omissionSearchOffsetScore = 3000,
+        beamWidth = 20, collectCandidateSegments = true,
+    )
+
     private fun entry() = EntryPointAccessors.fromApplication(ApplicationProvider.getApplicationContext<Context>(), KanaKanjiEngineEntryPoint::class.java)
     @Test fun wholeReadingsAndSentencesUseRulesInEveryProductionPath() = runBlocking {
         val entry = entry()
@@ -29,7 +45,7 @@ class CounterConversionInstrumentedTest {
             for (bunsetsu in listOf(false, true)) {
                 val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
                 for ((input, expected) in cases) {
-                    val result = session.query(CounterConversionPerformanceInstrumentedTest.request(input, entry.userDictionaryRepository(), mode, bunsetsu))
+                    val result = session.query(request(input, entry.userDictionaryRepository(), mode, bunsetsu))
                     println("COUNTER_CASE $mode bunsetsu=$bunsetsu $input => ${result.candidates.take(12).joinToString("|"){it.string}}")
                     assertEquals("$mode/$bunsetsu/$input", expected, result.candidates.first().string)
                     val segments = result.candidateSegmentsByString[expected] ?: result.candidates.first().conversionSegments
@@ -56,7 +72,7 @@ class CounterConversionInstrumentedTest {
         for (phrase in listOf("ひゃくにじゅうさんぼんをかう", "ねこがさんびきいる", "ごごさんじはんにあう", "ほんをさんさつとえんぴつをにほんかう")) {
             val inputs = (1..phrase.length).map(phrase::take) + phrase.dropLast(1) + phrase + phrase.replace("さん", "よん") + phrase
             for (input in inputs) {
-                val request = CounterConversionPerformanceInstrumentedTest.request(input, entry.userDictionaryRepository())
+                val request = request(input, entry.userDictionaryRepository())
                 val fresh = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(request)
                 val actual = incremental.query(request)
                 assertEquals(input, fresh.candidates.map { it.string to it.score }, actual.candidates.map { it.string to it.score })
@@ -66,10 +82,10 @@ class CounterConversionInstrumentedTest {
         }
         val input = "ごごさんじはんにあう"
         incremental.setAfterForwardDpForTest { throw CancellationException("counter cancellation probe") }
-        try { incremental.query(CounterConversionPerformanceInstrumentedTest.request(input + "よ", entry.userDictionaryRepository())); fail("Cancellation was not observed") }
+        try { incremental.query(request(input + "よ", entry.userDictionaryRepository())); fail("Cancellation was not observed") }
         catch (_: CancellationException) { }
         finally { incremental.setAfterForwardDpForTest(null) }
-        val request = CounterConversionPerformanceInstrumentedTest.request(input, entry.userDictionaryRepository())
+        val request = request(input, entry.userDictionaryRepository())
         assertEquals(KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(request).candidates, incremental.query(request).candidates)
     }
     @Test fun bunsetsuProjectionKeepsCounterTextAndSupportsChangingItsNotation() = runBlocking {
@@ -77,7 +93,7 @@ class CounterConversionInstrumentedTest {
         val engine = entry.kanaKanjiEngine()
         val input = "ひゃくにじゅうさんぼんをかう"
         val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
-        val result = session.query(CounterConversionPerformanceInstrumentedTest.request(input, entry.userDictionaryRepository()))
+        val result = session.query(request(input, entry.userDictionaryRepository()))
         val bunsetsu = result.bunsetsuResult!!
         val snapshot = com.kazumaproject.markdownhelperkeyboard.ime_service.BunsetsuConversionSnapshot(
             input, result.candidates, result.candidateSegmentsByString,
@@ -91,7 +107,7 @@ class CounterConversionInstrumentedTest {
         val counterIndex = segments.indexOfFirst { it.displayText.contains("123本") }
         assertTrue(counterIndex >= 0)
         val counter = segments[counterIndex]
-        val alternatives = session.query(CounterConversionPerformanceInstrumentedTest.request(counter.reading, entry.userDictionaryRepository())).candidates
+        val alternatives = session.query(request(counter.reading, entry.userDictionaryRepository())).candidates
         val merged = com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates(counter, alternatives)
         assertEquals(counter.displayText, merged.displayText)
         assertTrue(merged.candidates.any { it.string.contains("百二十三本") })
@@ -108,11 +124,11 @@ class CounterConversionInstrumentedTest {
         val entry = entry()
         val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), ConversionBackend.LEGACY)
         for ((input, expected) in mapOf("にほんご" to "日本語", "きょう" to "今日", "よしよし" to "よしよし", "にほん" to "日本", "ごご" to "午後", "さんご" to "産後", "いっぱい" to "いっぱい")) {
-            val result = session.query(CounterConversionPerformanceInstrumentedTest.request(input, entry.userDictionaryRepository()))
+            val result = session.query(request(input, entry.userDictionaryRepository()))
             println("COUNTER_ORDINARY $input => ${result.candidates.take(8).joinToString("|"){it.string}}")
             assertEquals(input, expected, result.candidates.first().string)
         }
-        val result = session.query(CounterConversionPerformanceInstrumentedTest.request("ほんをさんさつとえんぴつをにほんかう", entry.userDictionaryRepository()))
+        val result = session.query(request("ほんをさんさつとえんぴつをにほんかう", entry.userDictionaryRepository()))
         assertTrue(result.candidates.take(8).joinToString { it.string }, result.candidates.any { it.string.contains("3冊") && it.string.contains("2本") })
     }
 }

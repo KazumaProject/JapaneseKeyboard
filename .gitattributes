@@ -1,3 +1,0 @@
-# Golden TSV fixtures have intentional empty trailing fields.
-app/src/test/resources/counter/cases.tsv whitespace=-blank-at-eol
-app/src/androidTest/assets/counter/cases.tsv whitespace=-blank-at-eol
