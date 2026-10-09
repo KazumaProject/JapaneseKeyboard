@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
+import com.kazumaproject.counter.CounterConverter
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterNodePolicy
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
@@ -168,6 +170,13 @@ class GraphBuilder {
     private var cachedGraph: CachedGraph? = null
 
     fun createSessionState(): SessionState = SessionState()
+
+    private var counterConverter: CounterConverter? = null
+
+    fun updateCounterDictionary(converter: CounterConverter?) {
+        counterConverter = converter
+        cachedGraph = null
+    }
 
     private var systemUserYomiTrie: LOUDSWithTermId? = null
     private var systemUserTangoTrie: LOUDS? = null
@@ -407,6 +416,7 @@ class GraphBuilder {
         val personPrefixStates = LinkedHashMap<Int, Int>()
         val neologdPrefixStates = LinkedHashMap<Int, Int>()
         val typoTopTokenScratch = IntArray(5)
+        val normalizedCounterReading = counterConverter?.normalizedReading(str)
 
         fun prefixSearch(
             trie: LOUDSWithTermId,
@@ -914,6 +924,27 @@ class GraphBuilder {
                 }
             }
 
+            // Quantity/time readings participate in DP and preserve their complete reading span.
+            if (normalizedCounterReading != null) {
+                counterConverter?.forEachPrefix(normalizedCounterReading, i, reusablePrefixLength) { end, result ->
+                    foundInAnyDictionary = true
+                    result.candidates.forEachIndexed { index, candidate ->
+                        val leftId = CounterNodePolicy.leftId(candidate)
+                        val cost = CounterNodePolicy.wordCost(index, candidate)
+                        addOrUpdateNode(
+                            graph, end,
+                            Node(
+                                l = leftId, r = CounterNodePolicy.rightId(candidate),
+                                score = cost, f = cost, g = cost, tango = candidate.value,
+                                yomiUsed = str.substring(i, end), len = (end - i).toShort(), sPos = i,
+                                mozcAttributes = mozcAttributesFor(leftId),
+                            ),
+                            graphNodeDedupMode, graphNodeTrace, str, "COUNTER_RULE",
+                        )
+                    }
+                }
+            }
+
             // 3.1 英語読み辞書
             val localEnglishReadingYomiTrie = englishReadingYomiTrie
             val localEnglishReadingTangoTrie = englishReadingTangoTrie
@@ -1379,6 +1410,11 @@ class GraphBuilder {
                 graphNodeTrace?.add(unknownNode.toTrace(str, endIndex, "UNKNOWN", "ADDED"))
             }
         }
+        if (counterConverter != null) {
+            // A new counter span can join nodes retained from an earlier append. Canonical order
+            // keeps equal-cost K-best cutoffs identical to a fresh lattice (including its paths).
+            graph.values.forEach { nodes -> nodes.sortWith(COUNTER_GRAPH_ORDER) }
+        }
         val updatedCache = CachedGraph(
             input = str,
             signature = signature,
@@ -1473,6 +1509,7 @@ class GraphBuilder {
     ): Int {
         var result = System.identityHashCode(yomiTrie)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
+        result = 31 * result + System.identityHashCode(counterConverter)
         result = 31 * result + System.identityHashCode(wikiYomiTrie)
         result = 31 * result + System.identityHashCode(webYomiTrie)
         result = 31 * result + System.identityHashCode(personYomiTrie)
@@ -1493,6 +1530,10 @@ class GraphBuilder {
     }
 
     private companion object {
+        val COUNTER_GRAPH_ORDER = compareBy<Node> { it.sPos }
+            .thenBy { it.tango }.thenBy { it.l }.thenBy { it.r }.thenBy { it.score }
+            .thenBy { it.candidateSource.ordinal }
+
         // app/src/main/assets/id.def: 名詞,サ変接続,*,*,*,*,*
         const val MOZC_UNKNOWN_POS_ID: Short = 1841
         const val MOZC_MAX_WORD_COST = 32767

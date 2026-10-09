@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.di
 
+import com.kazumaproject.counter.CounterDictionary
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.view.inputmethod.InputMethodManager
@@ -776,6 +777,9 @@ object AppModule {
             kotowazaSuccinctBitVectorTokenArray = kotowazaSuccinctBitVectorTokenArray,
             kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS,
             engineEngine = englishEngine,
+            counterConverter = context.assets.open("counter/counter_rules.dat").use {
+                CounterDictionary.read(it).converter()
+            },
             mozcSegmenter = mozcSegmenter,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
             mozcDictionaryActive = bundledMozcDictionaryActive &&

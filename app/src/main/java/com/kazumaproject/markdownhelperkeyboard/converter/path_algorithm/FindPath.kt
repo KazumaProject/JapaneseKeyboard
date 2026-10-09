@@ -293,11 +293,28 @@ class FindPath(
             var comparison = first.priorityCost.compareTo(second.priorityCost)
             if (comparison == 0) comparison = first.node.sPos.compareTo(second.node.sPos)
             if (comparison == 0) comparison = first.node.len.compareTo(second.node.len)
-            if (comparison == 0) {
-                comparison = System.identityHashCode(first.node)
-                    .compareTo(System.identityHashCode(second.node))
+            if (comparison != 0) return comparison
+            // Object identity changes when a lattice is rebuilt. Compare the complete suffix
+            // structurally so equal-cost variants have the same K-best cutoff in every session.
+            var left: PathQueueElement? = first
+            var right: PathQueueElement? = second
+            while (left != null && right != null) {
+                val a = left.node
+                val b = right.node
+                comparison = a.sPos.compareTo(b.sPos)
+                if (comparison == 0) comparison = a.len.compareTo(b.len)
+                if (comparison == 0) comparison = a.tango.compareTo(b.tango)
+                if (comparison == 0) comparison = a.l.compareTo(b.l)
+                if (comparison == 0) comparison = a.r.compareTo(b.r)
+                if (comparison == 0) comparison = a.yomiUsed.compareTo(b.yomiUsed)
+                if (comparison == 0) comparison = a.candidateSource.ordinal.compareTo(b.candidateSource.ordinal)
+                if (comparison != 0) return comparison
+                left = left.next
+                right = right.next
             }
-            return comparison
+            if (left != null) return 1
+            if (right != null) return -1
+            return first.sourceMask.compareTo(second.sourceMask)
         }
     }
 

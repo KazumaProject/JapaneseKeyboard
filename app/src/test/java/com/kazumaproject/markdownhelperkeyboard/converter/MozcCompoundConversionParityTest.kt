@@ -239,6 +239,9 @@ internal object TestEngineFactory {
                 kotowazaSuccinctBitVectorTokenArray = kotowaza.succinctBitVectorTokenArray,
                 kotowazaSuccinctBitVectorTangoLBS = kotowaza.succinctBitVectorTangoLBS,
                 engineEngine = englishEngine,
+                counterConverter = com.kazumaproject.counter.CounterDictionary.read(
+                    File(assetsDir, "counter/counter_rules.dat").inputStream().buffered()
+                ).converter(),
                 mozcSegmenter = segmenter,
                 mozcNodeAttributeTable = nodeAttributeTable,
                 mozcDictionaryActive = true,

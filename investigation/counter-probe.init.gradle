@@ -1,0 +1,7 @@
+// Install a separate package so measurements do not alter the user’s normal IME.
+allprojects {
+    plugins.withId('com.android.application') {
+        android.buildTypes.debug.applicationIdSuffix = '.counterprobe'
+        android.sourceSets.androidTest.manifest.srcFile(rootProject.file('investigation/counter-probe-androidTest-manifest.xml'))
+    }
+}
