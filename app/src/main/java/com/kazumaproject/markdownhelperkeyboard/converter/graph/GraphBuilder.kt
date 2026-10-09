@@ -1,7 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterLexicalAlternative
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterCompetitor
 import com.kazumaproject.counter.CounterConverter
 import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterNodePolicy
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterBoundaryPolicy
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
@@ -173,8 +176,13 @@ class GraphBuilder {
 
     private var counterConverter: CounterConverter? = null
 
-    fun updateCounterDictionary(converter: CounterConverter?) {
+    private var counterBoundary: CounterBoundaryPolicy? = null
+    private var counterConnectionMatrix: com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix.CostTable? = null
+
+    fun updateCounterDictionary(converter: CounterConverter?, matrix: com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix.CostTable? = counterConnectionMatrix) {
+        counterConnectionMatrix = matrix
         counterConverter = converter
+        counterBoundary = converter?.let(::CounterBoundaryPolicy)
         cachedGraph = null
     }
 
@@ -245,12 +253,16 @@ class GraphBuilder {
     private fun addOrUpdateNode(
         graph: MutableMap<Int, MutableList<Node>>,
         endIndex: Int,
-        newNode: Node,
+        rawNode: Node,
         mode: GraphNodeDedupMode,
         trace: MutableList<GraphNodeTrace>?,
         input: String,
         source: String,
     ) {
+        val newNode = if (rawNode.numberValue == null && rawNode.counter == null && rawNode.tango.isNotEmpty() &&
+            rawNode.tango.all { it in '0'..'9' || it in '０'..'９' }) {
+            rawNode.copy(numberValue = counterConverter?.numberValue(rawNode.yomiUsed),counterBoundary = counterBoundary)
+        } else rawNode
         val reusedThroughEndIndex = (graph as? IncrementalGraph)?.reusedThroughEndIndex ?: -1
         if (endIndex <= reusedThroughEndIndex) return
         val nodes = graph.computeIfAbsent(endIndex) { mutableListOf() }
@@ -263,7 +275,8 @@ class GraphBuilder {
             GraphNodeDedupMode.EXISTING_BY_TANGO_L_R -> {
                 // tango, l, r の3つがすべて一致するノードを探す
                 val existingNodeIndex = nodes.indexOfFirst {
-                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r
+                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r &&
+                        it.sPos == newNode.sPos && it.len == newNode.len && it.counter == newNode.counter
                 }
 
                 if (existingNodeIndex != -1) {
@@ -367,12 +380,11 @@ class GraphBuilder {
         fun mozcAttributesFor(leftId: Short): Int =
             mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
 
-        val wholeCounterCandidates = counterConverter?.convert(str)?.candidates.orEmpty()
-        val wholeCounterLexicalPenalty = CounterNodePolicy.wholeReadingLexicalPenalty(
-            str, wholeCounterCandidates, yomiTrie, tangoTrie, tokenArray,
-            succinctBitVectorLBSYomi, succinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray, succinctBitVectorTangoLBS,
-        )
+        val counterEntryCache = HashMap<String, List<CounterLexicalAlternative>>()
+        fun counterEntries(reading: String) = counterEntryCache.getOrPut(reading) {
+            CounterNodePolicy.dictionaryEntries(reading,yomiTrie,tangoTrie,tokenArray,
+                succinctBitVectorLBSYomi,succinctBitVectorIsLeafYomi,succinctBitVectorTokenArray,succinctBitVectorTangoLBS)
+        }
         val signature = conversionSignature(
             yomiTrie = yomiTrie,
             englishReadingYomiTrie = englishReadingYomiTrie,
@@ -389,7 +401,7 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
-        ) * 31 + wholeCounterLexicalPenalty
+        )
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
@@ -925,29 +937,57 @@ class GraphBuilder {
                             sPos = i,
                             mozcAttributes = mozcAttributesFor(leftId),
                         )
-                        addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
+                        val numericValue = counterConverter?.let { CounterNodePolicy.isPureNumber(node, it) }
+                        addOrUpdateNode(graph, endIndex, node.copy(numberValue = numericValue, counterBoundary = counterBoundary), graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
                     }
                 }
             }
 
-            // Quantity/time readings participate in DP and preserve their complete reading span.
+            // One node per meaning. Surface variants are rendered after path search.
             if (normalizedCounterReading != null) {
-                counterConverter?.forEachPrefix(normalizedCounterReading, i, reusablePrefixLength) { end, result ->
+                counterConverter?.forEachAnalysis(normalizedCounterReading, i, reusablePrefixLength) { end, meanings ->
                     foundInAnyDictionary = true
-                    result.candidates.forEachIndexed { index, candidate ->
-                        val leftId = CounterNodePolicy.leftId(candidate)
-                        val cost = CounterNodePolicy.wordCost(index, candidate) +
-                            if (i == 0 && end == str.length) wholeCounterLexicalPenalty else 0
+                    val lexical = graph[end].orEmpty().filter {
+                        it.sPos == i && it.counter == null && it.candidateSource == CandidateSource.SYSTEM
+                    }
+                    for (meaning in meanings) {
+                        val numeric = lexical.filter { CounterNodePolicy.represents(meaning, it.tango) }
+                        val numericCost = numeric.minOfOrNull { it.score }
+                        val alternatives = CounterNodePolicy.lexicalAlternatives(meaning, lexical)
+                        val composed = if (alternatives.isEmpty()) emptyList() else CounterNodePolicy.composedNumericEntries(meaning,counterConnectionMatrix,::counterEntries)
+                        val cost = minOf(numericCost ?: CounterNodePolicy.WORD_COST, CounterNodePolicy.WORD_COST)
                         addOrUpdateNode(
                             graph, end,
                             Node(
-                                l = leftId, r = CounterNodePolicy.rightId(candidate),
-                                score = cost, f = cost, g = cost, tango = candidate.value,
+                                l = CounterNodePolicy.leftId(meaning), r = CounterNodePolicy.rightId(meaning),
+                                score = cost, f = cost, g = cost, tango = meaning.forms.first().value,
                                 yomiUsed = str.substring(i, end), len = (end - i).toShort(), sPos = i,
-                                mozcAttributes = mozcAttributesFor(leftId),
-                            ),
-                            graphNodeDedupMode, graphNodeTrace, str, "COUNTER_RULE",
+                                mozcAttributes = mozcAttributesFor(CounterNodePolicy.leftId(meaning)),
+                                candidateSource = CandidateSource.COUNTER_RULE,
+                                counter = meaning, counterAlternatives = alternatives,
+                                counterNumericSupports = numeric.map { CounterLexicalAlternative(it.tango,it.l,it.r,it.score) } + composed,
+                                counterBoundary = counterBoundary,
+                            ), graphNodeDedupMode, graphNodeTrace, str, "COUNTER_RULE",
                         )
+                    }
+                    // Existing 七日/廿三日/ふた粒 nodes must obey the same meaning/boundary rules.
+                    val nodes = graph[end] ?: return@forEachAnalysis
+                    for (index in nodes.indices) {
+                        val node = nodes[index]
+                        if (node.sPos != i || node.counter != null || node.candidateSource != CandidateSource.SYSTEM) continue
+                        val meaning = meanings.firstOrNull { CounterNodePolicy.represents(it, node.tango) }
+                        if (meaning == null) {
+                            if (node.candidateSource == CandidateSource.SYSTEM) {
+                                val peer = meanings.first()
+                                val peerCost = minOf(lexical.filter { CounterNodePolicy.represents(peer, it.tango) }.minOfOrNull { it.score } ?: CounterNodePolicy.WORD_COST, CounterNodePolicy.WORD_COST)
+                                nodes[index] = node.copy(counterCompetitor = CounterCompetitor(peer, peerCost))
+                            }
+                            continue
+                        }
+                        nodes[index] = node.copy(counter = meaning,
+                            counterAlternatives = CounterNodePolicy.lexicalAlternatives(meaning, lexical),
+                            counterBoundary = counterBoundary,
+                            counterNumericSupports = nodes.firstOrNull { it.sPos == i && it.counter == meaning && it.candidateSource == CandidateSource.COUNTER_RULE }?.counterNumericSupports.orEmpty())
                     }
                 }
             }
@@ -1514,7 +1554,7 @@ class GraphBuilder {
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
     ): Int {
-        var result = System.identityHashCode(yomiTrie)
+        var result = 31 * System.identityHashCode(yomiTrie) + System.identityHashCode(counterConnectionMatrix)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
         result = 31 * result + System.identityHashCode(counterConverter)
         result = 31 * result + System.identityHashCode(wikiYomiTrie)

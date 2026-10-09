@@ -5,6 +5,7 @@ import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterNodePolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
@@ -340,6 +341,8 @@ class FindPath(
         private val queueElementPool = ArrayList<PathQueueElement>()
         private var queueElementCount = 0
         var requiredSuffixNodeCount: Int = 0
+        var counterSegmenter: MozcSegmenter? = null
+        lateinit var counterMatrix: ConnectionMatrix.CostTable
             private set
         var stateRejectionCount: Int = 0
             private set
@@ -378,7 +381,9 @@ class FindPath(
                 mozcSegmenter = mozcSegmenter,
                 boundaryMode = boundaryMode,
             )
-            requiredSuffixNodeCount = ngramRuleScorer.requiredSuffixNodeCount
+            requiredSuffixNodeCount = maxOf(1, ngramRuleScorer.requiredSuffixNodeCount)
+            counterSegmenter = mozcSegmenter
+            counterMatrix = connectionMatrix
             if (!nodeIds.containsKey(BOS)) nodeIds[BOS] = nodeIds.size
             graph.values.forEach { nodes ->
                 nodes.forEach { node ->
@@ -464,6 +469,7 @@ class FindPath(
                     ngramWordClass = ngramRuleScorer.wordClass(node),
                     ngramLeftIdClass = ngramRuleScorer.leftIdClass(node),
                     ngramRightIdClass = ngramRuleScorer.rightIdClass(node),
+                    counterIdentity = node.counter, numericValue = node.numberValue, counterCompetitor = node.counterCompetitor, lexicalAlternatives = node.counterAlternatives, numericSupports = node.counterNumericSupports,
                     startsWithAsciiAlphabet = firstYomi != null &&
                         (firstYomi in 'a'..'z' || firstYomi in 'A'..'Z'),
                 )
@@ -484,6 +490,11 @@ class FindPath(
         val ngramLeftIdClass: Int,
         val ngramRightIdClass: Int,
         val startsWithAsciiAlphabet: Boolean,
+        val counterIdentity: com.kazumaproject.counter.CounterInterpretation? = null,
+        val numericValue: Long? = null,
+        val counterCompetitor: com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterCompetitor? = null,
+        val lexicalAlternatives: List<com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterLexicalAlternative> = emptyList(),
+        val numericSupports: List<com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterLexicalAlternative> = emptyList(),
     )
 
     internal class ExpansionList(
@@ -1174,29 +1185,31 @@ class FindPath(
             if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
-                val stringFromNode = searchScratch.outputString(element.outputPathId)
-                val yomiUsedFromNode = getYomiUsedFromPath(element)
+                for (surface in counterSurfaces(element)) {
+                    val stringFromNode = surface.text
+                    val yomiUsedFromNode = getYomiUsedFromPath(element)
 
-                if (foundStrings.add(stringFromNode)) {
-                    candidateSegmentCollector?.set(
-                        stringFromNode,
-                        getConversionSegmentsFromPath(element),
-                    )
-                    val candidate = Candidate(
-                        string = stringFromNode,
-                        type = resolveCandidateType(
+                    if (foundStrings.add(stringFromNode)) {
+                        candidateSegmentCollector?.set(
+                            stringFromNode,
+                            surface.segments,
+                        )
+                        val candidate = Candidate(
                             string = stringFromNode,
-                            sources = candidateSourcesFromMask(element.sourceMask),
-                        ),
-                        yomi = yomiUsedFromNode,
-                        length = length.toUByte(),
-                        score = element.priorityCost,
-                        leftId = element.next?.node?.l,
-                        rightId = element.next?.node?.r,
-                    )
-                    resultFinal.add(candidate)
-                }
+                            type = resolveCandidateType(
+                                string = stringFromNode,
+                                sources = candidateSourcesFromMask(element.sourceMask),
+                            ),
+                            yomi = yomiUsedFromNode,
+                            length = length.toUByte(),
+                            score = element.priorityCost + surface.rank,
+                            leftId = element.next?.node?.l,
+                            rightId = element.next?.node?.r,
+                        )
+                        resultFinal.add(candidate)
+                    }
 
+                }
                 if (resultFinal.size >= n) {
                     return resultFinal
                 }
@@ -1225,6 +1238,7 @@ class FindPath(
                         startPosition = currentNode.sPos,
                     )
                     for (prevNode in prevNodes) {
+                        if (!counterEdgeAllowed(prevNode, currentNode)) continue
                         val localCost = getEdgeCost(
                             rid = prevNode.r.toInt(),
                             lid = currentNode.l.toInt(),
@@ -1264,6 +1278,7 @@ class FindPath(
                 val prevNodes = getPrevNodes(graph, node, i)
 
                 for (prev in prevNodes) {
+                    if (prev.f == Int.MAX_VALUE || !counterEdgeAllowed(prev, node)) continue
                     val edgeCost = getEdgeCost(
                         rid = prev.r.toInt(),
                         lid = node.l.toInt(),
@@ -1284,7 +1299,14 @@ class FindPath(
             val beforePruning = traceSink?.let { nodes.toList() }
             if (i <= length && nodes.size > beamWidth) {
                 nodes.sortBy { it.f }
-                nodes.subList(beamWidth, nodes.size).clear()
+                val protected = if (nodes.any { it.counter != null }) listOfNotNull(
+                    nodes.firstOrNull { it.counter == null },
+                    nodes.firstOrNull { it.counter != null },
+                    nodes.firstOrNull { it.counter == null && it.l.toInt() in 0..169 && it.r.toInt() in 170..340 },
+                ) else emptyList()
+                val kept = nodes.take(beamWidth).toMutableList()
+                protected.forEach { node -> if (kept.none { it === node }) kept.add(node) }
+                nodes.clear(); nodes.addAll(kept)
             }
             traceSink?.add(
                 ForwardDpTrace(
@@ -1318,6 +1340,7 @@ class FindPath(
                 val prevNodes = getPrevNodes(graph, node, i)
 
                 for (prev in prevNodes) {
+                    if (prev.f == Int.MAX_VALUE || !counterEdgeAllowed(prev, node)) continue
                     val edgeCost = getEdgeCost(
                         rid = prev.r.toInt(),
                         lid = node.l.toInt(),
@@ -1427,6 +1450,7 @@ class FindPath(
         val localCosts = IntArray(previousNodes.size)
         var count = 0
         previousNodes.forEach { previousNode ->
+            if (!counterEdgeAllowed(previousNode, currentNode)) return@forEach
             if (boundaryChecker != null) {
                 val isEdge = previousNode.mozcNodeType == MozcNodeType.BOS ||
                     currentNode.mozcNodeType == MozcNodeType.EOS
@@ -1468,13 +1492,17 @@ class FindPath(
         element: PathQueueElement,
         scratch: BackwardSearchScratch,
     ) {
-        val backwardCost = element.backwardCost + localCost
+        if (previousNode.f == Int.MAX_VALUE || !counterEdgeAllowed(previousNode, element.node)) return
+        val counterPenalty = CounterNodePolicy.contextualPenalty(previousNode, element.node, element.next?.node,
+            scratch.counterMatrix, scratch.counterSegmenter)
+        val backwardCost = element.backwardCost + localCost + counterPenalty
         val outputPathId = if (previousNode.tango == "BOS") {
             element.outputPathId
         } else {
-            scratch.prependOutput(previousNode.tango, element.outputPathId)
+            scratch.prependOutput(previousNode.counter?.forms?.firstOrNull()?.value ?: previousNode.tango, element.outputPathId)
         }
-        val sourceMask = element.sourceMask or previousNode.candidateSource.toMask()
+        val sourceMask = element.sourceMask or previousNode.candidateSource.toMask() or
+            if (previousNode.counter == null && previousNode.tango.any { it.isDigit() }) 8 else 0
         val nodeIds = scratch.nodeIds
         if (
             !scratch.bestBackwardCostByState.putIfLower(
@@ -1494,7 +1522,7 @@ class FindPath(
             scratch.queueElement(
                 node = previousNode,
                 priorityCost = backwardCost + previousNode.f +
-                    if (scratch.outputContainsDigit(outputPathId)) 2000 else 0,
+                    if (sourceMask and 8 != 0) 2000 else 0,
                 backwardCost = backwardCost,
                 next = element,
                 outputPathId = outputPathId,
@@ -1519,6 +1547,9 @@ class FindPath(
             cost = element.backwardCost,
         )
     }
+
+    private fun counterEdgeAllowed(previous: Node, current: Node): Boolean =
+        (current.counterBoundary ?: previous.counterBoundary)?.canFollow(previous, current) != false
 
     private fun getEdgeCost(
         rid: Int,
@@ -1559,6 +1590,7 @@ class FindPath(
     private fun CandidateSource.toMask(): Int = when (this) {
         CandidateSource.LEARNED_DICTIONARY -> 1
         CandidateSource.USER_DICTIONARY -> 2
+        CandidateSource.COUNTER_RULE -> 4
         CandidateSource.SYSTEM, CandidateSource.UNKNOWN -> 0
     }
 
@@ -1578,7 +1610,7 @@ class FindPath(
                     return CANDIDATE_TYPE_LEARNED_DICTIONARY
 
                 CandidateSource.USER_DICTIONARY -> containsUserDictionary = true
-                CandidateSource.SYSTEM, CandidateSource.UNKNOWN -> Unit
+                CandidateSource.SYSTEM, CandidateSource.UNKNOWN, CandidateSource.COUNTER_RULE -> Unit
             }
         }
         if (containsUserDictionary) return CANDIDATE_TYPE_USER_DICTIONARY
@@ -1849,50 +1881,53 @@ class FindPath(
             if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
-                val stringFromNode = searchScratch.outputString(element.outputPathId)
-                val yomiUsedFromNode = getYomiUsedFromPath(element)
-                val totalCost = element.priorityCost
-                candidateTrace?.add(
-                    CandidateTrace(
-                        candidate = stringFromNode,
-                        yomi = yomiUsedFromNode,
-                        totalCost = totalCost,
-                        path = getPathStringsFromPath(element),
-                    ),
-                )
-
-                if (foundStrings.add(stringFromNode)) {
-                    candidateSegmentCollector?.set(
-                        stringFromNode,
-                        getConversionSegmentsFromPath(element),
-                    )
-                    if (pathMatchesSystemNgram(element, systemNgramDictionary)) {
-                        systemNgramMatchedCandidates.add(stringFromNode)
-                    }
-                    val bunsetsuPositions = getBunsetsuPositionsFromPath(element)
-                    if (
-                        splitPatterns.none { it == bunsetsuPositions } &&
-                        splitPatterns.size < MAX_BUNSETSU_SPLIT_PATTERNS
-                    ) {
-                        splitPatterns.add(bunsetsuPositions)
-                    }
-                    splitPatternByCandidateString[stringFromNode] = bunsetsuPositions
-
-                    val candidate = Candidate(
-                        string = stringFromNode,
-                        type = resolveCandidateType(
-                            string = stringFromNode,
-                            sources = candidateSourcesFromMask(element.sourceMask),
+                val semanticNgramMatch = pathMatchesSystemNgram(element, systemNgramDictionary)
+                for (surface in counterSurfaces(element)) {
+                    val stringFromNode = surface.text
+                    val yomiUsedFromNode = getYomiUsedFromPath(element)
+                    val totalCost = element.priorityCost + surface.rank
+                    candidateTrace?.add(
+                        CandidateTrace(
+                            candidate = stringFromNode,
+                            yomi = yomiUsedFromNode,
+                            totalCost = totalCost,
+                            path = getPathStringsFromPath(element),
                         ),
-                        length = length.toUByte(),
-                        yomi = yomiUsedFromNode,
-                        score = totalCost,
-                        leftId = element.next?.node?.l,
-                        rightId = element.next?.node?.r,
                     )
-                    resultFinal.add(candidate)
-                }
 
+                    if (foundStrings.add(stringFromNode)) {
+                        candidateSegmentCollector?.set(
+                            stringFromNode,
+                            surface.segments,
+                        )
+                        if (semanticNgramMatch) {
+                            systemNgramMatchedCandidates.add(stringFromNode)
+                        }
+                        val bunsetsuPositions = getBunsetsuPositionsFromPath(element)
+                        if (
+                            splitPatterns.none { it == bunsetsuPositions } &&
+                            splitPatterns.size < MAX_BUNSETSU_SPLIT_PATTERNS
+                        ) {
+                            splitPatterns.add(bunsetsuPositions)
+                        }
+                        splitPatternByCandidateString[stringFromNode] = bunsetsuPositions
+
+                        val candidate = Candidate(
+                            string = stringFromNode,
+                            type = resolveCandidateType(
+                                string = stringFromNode,
+                                sources = candidateSourcesFromMask(element.sourceMask),
+                            ),
+                            length = length.toUByte(),
+                            yomi = yomiUsedFromNode,
+                            score = totalCost,
+                            leftId = element.next?.node?.l,
+                            rightId = element.next?.node?.r,
+                        )
+                        resultFinal.add(candidate)
+                    }
+
+                }
                 val enoughCandidates = resultFinal.size >= n
                 val systemRuleAlreadyMatched = systemNgramMatchedCandidates.isNotEmpty()
                 if (
@@ -2241,6 +2276,31 @@ class FindPath(
         compareByDescending<Candidate> { it.string in matched }.thenBy { it.score },
     ).take(requested)
 
+    private fun ngramViews(node: Node): List<Node> {
+        val meaning = node.counter ?: return listOf(node)
+        return listOf(node) + meaning.forms.filter { it.value != node.tango }.map { node.copy(tango=it.value,counter=null) }
+    }
+
+    /** Keep packed word rules observable after presentation is moved outside the lattice. */
+    private fun systemNgramMatches(dictionary: SystemNgramDictionary, nodes: List<Node?>): Boolean {
+        if (dictionary.matches(nodes[0]!!,nodes[1]!!,nodes[2],nodes[3],nodes[4])) return true
+        if (nodes.none { it?.counter != null }) return false
+        val selected = arrayOfNulls<Node>(5)
+        fun visit(index: Int): Boolean {
+            if (index == 5) return dictionary.matches(selected[0]!!,selected[1]!!,selected[2],selected[3],selected[4])
+            val original = nodes[index]
+            val views = original?.let(::ngramViews) ?: listOf(null)
+            for (view in views) {
+                selected[index] = view
+                if (index == 0 && view != null && !dictionary.mayMatchFirstNode(view)) continue
+                if (index == 1 && view != null && !dictionary.mayMatchFirstPair(selected[0]!!,view)) continue
+                if (visit(index + 1)) return true
+            }
+            return false
+        }
+        return visit(0)
+    }
+
     private fun pathMatchesSystemNgram(
         path: PathQueueElement,
         dictionary: SystemNgramDictionary,
@@ -2248,18 +2308,12 @@ class FindPath(
         if (dictionary.ruleCount == 0) return false
         var start = path.next
         while (start != null && start.node.tango != "EOS") {
-            if (dictionary.matchesSingleNode(start.node)) return true
+            if (dictionary.matchesSingleNode(start.node) ||
+                (start.node.counter != null && ngramViews(start.node).any(dictionary::matchesSingleNode))) return true
             val second = start.next
             if (second == null || second.node.tango == "EOS") return false
-            if (
-                dictionary.matches(
-                    node0 = start.node,
-                    node1 = second.node,
-                    node2 = second.next?.node,
-                    node3 = second.next?.next?.node,
-                    node4 = second.next?.next?.next?.node,
-                )
-            ) return true
+            if (systemNgramMatches(dictionary, listOf(start.node,second.node,second.next?.node,
+                    second.next?.next?.node,second.next?.next?.next?.node))) return true
             start = start.next
         }
         return false
@@ -2282,13 +2336,18 @@ class FindPath(
             val leftNodes = graph[leftEnd] ?: continue
             for (leftNode in leftNodes) {
                 if (leftNode.sPos + leftNode.len.toInt() != leftEnd) continue
-                if (dictionary.mayMatchFirstNode(leftNode)) return true
+                if (dictionary.mayMatchFirstNode(leftNode) ||
+                    (leftNode.counter != null && ngramViews(leftNode).any(dictionary::mayMatchFirstNode))) return true
                 for (rightEnd in leftEnd + 1..length) {
                     val rightNodes = graph[rightEnd] ?: continue
                     for (rightNode in rightNodes) {
                         if (
                             rightNode.sPos == leftEnd &&
-                            dictionary.mayMatchFirstPair(leftNode, rightNode)
+                            (if (leftNode.counter == null && rightNode.counter == null)
+                                dictionary.mayMatchFirstPair(leftNode, rightNode)
+                            else ngramViews(leftNode).any { left ->
+                                ngramViews(rightNode).any { right -> dictionary.mayMatchFirstPair(left, right) }
+                            })
                         ) return true
                     }
                 }
@@ -2458,7 +2517,10 @@ class FindPath(
         element: PathQueueElement,
         scratch: BackwardSearchScratch,
     ) {
-        val backwardCost = element.backwardCost + localCost
+        if (previousNode.f == Int.MAX_VALUE || !counterEdgeAllowed(previousNode, element.node)) return
+        val counterPenalty = CounterNodePolicy.contextualPenalty(previousNode, element.node, element.next?.node,
+            scratch.counterMatrix, scratch.counterSegmenter)
+        val backwardCost = element.backwardCost + localCost + counterPenalty
         val currentNode = element.node
         val splitPathId = if (
             currentNode.tango != "EOS" &&
@@ -2591,6 +2653,40 @@ class FindPath(
             current = current.next
         }
         return result
+    }
+
+    private data class CounterSurfacePath(val text: String, val segments: List<CandidateConversionSegment>, val rank: Int)
+
+    /** Bounded presentation: consistent ASCII/kanji/fullwidth styles, never a Cartesian product. */
+    private fun counterSurfaces(path: PathQueueElement): List<CounterSurfacePath> {
+        val nodes = generateSequence(path) { it.next }.map { it.node }
+            .filter { it.tango != "BOS" && it.tango != "EOS" }.toList()
+        if (nodes.none { it.counter != null }) {
+            val segments = getConversionSegmentsFromPath(path)
+            return listOf(CounterSurfacePath(segments.joinToString("") { it.output }, segments, 0))
+        }
+        val result = LinkedHashMap<String, CounterSurfacePath>()
+        fun add(style: String?, alias: Int = 0) {
+            val segments = nodes.map { node ->
+                val forms = node.counter?.forms.orEmpty()
+                val surface = if (style == null) node.tango else
+                    forms.filter { it.notation == style }.getOrNull(alias)?.value ?: forms.firstOrNull()?.value ?: node.tango
+                CandidateConversionSegment(node.sPos, node.sPos + node.len.toInt(), surface)
+            }
+            val text = segments.joinToString("") { it.output }
+            result.putIfAbsent(text, CounterSurfacePath(text, segments, result.size))
+        }
+        for (style in listOf("ascii", "kanji", "fullwidth")) add(style)
+        if (nodes.any { it.counter?.time != null }) add("clock")
+        // A single quantity can expose every registered unit spelling without exponential mixing.
+        if (nodes.count { it.counter != null } == 1) {
+            val meaning = nodes.first { it.counter != null }.counter!!
+            for (style in listOf("ascii", "kanji", "fullwidth")) {
+                for (alias in 1 until meaning.forms.count { it.notation == style }) add(style, alias)
+            }
+        }
+        add(null)
+        return result.values.toList()
     }
 
     private fun getConversionSegmentsFromPath(

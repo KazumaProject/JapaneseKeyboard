@@ -1,5 +1,9 @@
 package com.kazumaproject.graph
 
+import com.kazumaproject.counter.CounterInterpretation
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterCompetitor
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterLexicalAlternative
+import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterBoundaryPolicy
 enum class MozcNodeType {
     NOR,
     BOS,
@@ -13,6 +17,7 @@ enum class CandidateSource {
     UNKNOWN,
     USER_DICTIONARY,
     LEARNED_DICTIONARY,
+    COUNTER_RULE,
 }
 
 object MozcNodeAttributes {
@@ -36,6 +41,12 @@ data class Node(
     val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
+    val counter: CounterInterpretation? = null,
+    val numberValue: Long? = null,
+    val counterCompetitor: CounterCompetitor? = null,
+    val counterAlternatives: List<CounterLexicalAlternative> = emptyList(),
+    val counterNumericSupports: List<CounterLexicalAlternative> = emptyList(),
+    val counterBoundary: CounterBoundaryPolicy? = null,
 ) {
     override fun toString(): String {
         return this.tango

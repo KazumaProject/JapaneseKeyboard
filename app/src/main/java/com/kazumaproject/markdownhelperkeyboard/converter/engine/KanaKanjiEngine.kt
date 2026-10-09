@@ -1,5 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.counter.CounterConverter
 import com.kazumaproject.markdownhelperkeyboard.converter.counter.CounterNodePolicy
 import android.content.Context
@@ -177,7 +181,7 @@ class KanaKanjiEngine {
         if (counterRulesEnabled == enabled) return
         counterRulesEnabled = enabled
         // Changing the converter identity also invalidates retained incremental lattices.
-        graphBuilder.updateCounterDictionary(counterConverter)
+        graphBuilder.updateCounterDictionary(counterConverter,connectionMatrix)
     }
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
@@ -508,6 +512,7 @@ class KanaKanjiEngine {
 
         synchronized(this) {
             connectionMatrix = newConnectionMatrix
+            graphBuilder.updateCounterDictionary(counterConverter,newConnectionMatrix)
             assignSystemDictionary(newSystem)
             assignSingleKanjiDictionary(newSingleKanji)
             assignEmojiDictionary(newEmoji)
@@ -679,7 +684,7 @@ class KanaKanjiEngine {
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.bundledCounterConverter = counterConverter
-        graphBuilder.updateCounterDictionary(this@KanaKanjiEngine.counterConverter)
+        graphBuilder.updateCounterDictionary(this@KanaKanjiEngine.counterConverter,connectionMatrix)
         this@KanaKanjiEngine.findPath = findPath
         this@KanaKanjiEngine.mozcSegmenter = mozcSegmenter
         this@KanaKanjiEngine.mozcNodeAttributeTable = mozcNodeAttributeTable
@@ -4288,7 +4293,7 @@ class KanaKanjiEngine {
             value.isNotEmpty() && value.all { it in '0'..'9' || it in '０'..'９' }
         }
         val directJapaneseNumber = input.toNumber()
-        val numberUnitCandidates = if (counterConverter != null) createCounterCandidates(input)
+        val numberUnitCandidates = if (counterConverter != null) createCounterCandidates(input, kanaMode = true)
             else createCandidatesForJapaneseNumberWithUnit(input)
         val preferredNumberCandidate = when {
             numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
@@ -4393,34 +4398,77 @@ class KanaKanjiEngine {
         val clearCounterCandidates = numberUnitCandidates.takeIf {
             counterConverter == null || it.firstOrNull()?.score == CounterNodePolicy.WORD_COST
         }.orEmpty()
-        return (clearCounterCandidates + listJapaneseCandidates + numbersConverted + temporalCandidates).distinctBy { it.string }
+        return preferStandaloneGrammar(input, (clearCounterCandidates + listJapaneseCandidates + numbersConverted + temporalCandidates).distinctBy { it.string })
     }
 
-    private fun deduplicateCounterCandidates(input: String, candidates: List<Candidate>): List<Candidate> =
-        if (counterConverter?.convert(input)?.candidates?.isNotEmpty() == true) {
-            candidates.distinctBy { it.string }
-        } else candidates
+    private fun preferStandaloneGrammar(input: String, candidates: List<Candidate>): List<Candidate> {
+        if (!::systemYomiTrie.isInitialized || !::systemTangoTrie.isInitialized || !::systemTokenArray.isInitialized) return candidates
+        val exact = candidates.firstOrNull { it.string == input } ?: return candidates
+        if (candidates.firstOrNull()?.type in listOf(
+                CANDIDATE_TYPE_USER_DICTIONARY,
+                CANDIDATE_TYPE_LEARNED_DICTIONARY)) return candidates
+        if (exact === candidates.firstOrNull()) return candidates
+        val entries = CounterNodePolicy.dictionaryEntries(input,systemYomiTrie,systemTangoTrie,systemTokenArray,
+            systemSuccinctBitVectorLBSYomi,systemSuccinctBitVectorIsLeafYomi,systemSuccinctBitVectorTokenArray,systemSuccinctBitVectorTangoLBS)
+        if (entries.none { it.surface == input && it.leftId.toInt() in 0..169 && it.rightId.toInt() in 170..340 }) return candidates
+        return listOf(exact) + candidates.filterNot { it === exact }
+    }
+
+    private fun deduplicateCounterCandidates(input: String, candidates: List<Candidate>): List<Candidate> {
+        val meanings = counterConverter?.analyze(input).orEmpty()
+        if (meanings.isEmpty()) return preferStandaloneGrammar(input,candidates)
+        val rendered = candidates.flatMap { candidate ->
+            if (candidate.type == CANDIDATE_TYPE_USER_DICTIONARY || candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY ||
+                candidate.commitText != candidate.string || candidate.presentation != null || candidate.sourceId != null) return@flatMap listOf(candidate)
+            val meaning = meanings.firstOrNull { CounterNodePolicy.represents(it, candidate.string) }
+            if (meaning == null) listOf(candidate) else meaning.forms.mapIndexed { index, form ->
+                candidate.copy(string = form.value, commitText = form.value, score = candidate.score + index,
+                    conversionSegments = listOf(CandidateConversionSegment(0, input.length, form.value)))
+            }
+        }.distinctBy { it.string }
+        return preferStandaloneGrammar(input,rendered)
+    }
 
     private fun createCounterCandidates(
         input: String,
         collector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        kanaMode: Boolean = false,
     ): List<Candidate> {
-        val conversion = counterConverter?.convert(input) ?: return emptyList()
-        val lexicalPenalty = CounterNodePolicy.wholeReadingLexicalPenalty(
-            input, conversion.candidates, systemYomiTrie, systemTangoTrie, systemTokenArray,
+        val meanings = counterConverter?.analyze(input) ?: return emptyList()
+        if (meanings.isEmpty()) return emptyList()
+        val lexical = CounterNodePolicy.dictionaryEntries(
+            input, systemYomiTrie, systemTangoTrie, systemTokenArray,
             systemSuccinctBitVectorLBSYomi, systemSuccinctBitVectorIsLeafYomi,
             systemSuccinctBitVectorTokenArray, systemSuccinctBitVectorTangoLBS,
         )
-        return conversion.candidates.mapIndexed { index, candidate ->
-            val segments = listOf(CandidateConversionSegment(0, input.length, candidate.value))
-            collector?.put(candidate.value, segments)
-            Candidate(
-                string = candidate.value, type = 1, length = input.length.toUByte(),
-                score = CounterNodePolicy.cost(index) + lexicalPenalty, yomi = input,
-                leftId = CounterNodePolicy.leftId(candidate), rightId = CounterNodePolicy.rightId(candidate),
-                conversionSegments = segments,
-            )
-        }
+        return meanings.flatMap { meaning ->
+            val numericCost = lexical.filter { CounterNodePolicy.represents(meaning, it.surface) }.minOfOrNull { it.cost }
+            val ordinary = lexical.filterNot { CounterNodePolicy.represents(meaning, it.surface) }
+            val node = Node(
+                l = CounterNodePolicy.leftId(meaning), r = CounterNodePolicy.rightId(meaning),
+                score = minOf(numericCost ?: CounterNodePolicy.WORD_COST, CounterNodePolicy.WORD_COST), f = 0,
+                tango = meaning.forms.first().value, len = input.length.toShort(), yomiUsed = input, sPos = 0,
+                counter = meaning, counterAlternatives = ordinary, counterNumericSupports = lexical.filter { CounterNodePolicy.represents(meaning, it.surface) } +
+                    CounterNodePolicy.composedNumericEntries(meaning,connectionMatrix) { reading ->
+                        CounterNodePolicy.dictionaryEntries(reading,systemYomiTrie,systemTangoTrie,systemTokenArray,
+                            systemSuccinctBitVectorLBSYomi,systemSuccinctBitVectorIsLeafYomi,systemSuccinctBitVectorTokenArray,systemSuccinctBitVectorTangoLBS)
+                    })
+            val eos = Node(0,0,0,0,tango="EOS",len=0,yomiUsed="",sPos=input.length)
+            val segmenter = mozcSegmenter.takeIf { isMozcParityEnabled() }
+            node.adjustedScore += (segmenter?.getPrefixPenalty(node.l.toInt()) ?: 0) + (segmenter?.getSuffixPenalty(node.r.toInt()) ?: 0)
+            val penalty = CounterNodePolicy.contextualPenalty(BOS,node,eos,connectionMatrix,segmenter)
+            val score = if (kanaMode) {
+                if (penalty == 0) CounterNodePolicy.WORD_COST else 3001
+            } else node.adjustedScore + connectionMatrix.cost(0,node.l.toInt()) + connectionMatrix.cost(node.r.toInt(),0) + penalty
+            meaning.forms.mapIndexed { index, form ->
+                val segments = listOf(CandidateConversionSegment(0, input.length, form.value))
+                collector?.putIfAbsent(form.value, segments)
+                Candidate(string = form.value, type = 1, length = input.length.toUByte(),
+                    score = score + index, yomi = input,
+                    leftId = CounterNodePolicy.leftId(meaning), rightId = CounterNodePolicy.rightId(meaning),
+                    conversionSegments = segments)
+            }
+        }.distinctBy { it.string }
     }
 
     private fun createTemporalDictionaryCandidates(input: String): List<Candidate> = when (input) {

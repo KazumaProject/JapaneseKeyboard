@@ -14,7 +14,7 @@ data class NodeFeature(
     val rightId: Short? = null,
 ) {
     fun matches(node: Node): Boolean {
-        if (word != null && node.tango != word) return false
+        if (word != null && node.tango != word && node.counter?.forms?.none { it.value == word } != false) return false
         if (leftId != null && node.l != leftId) return false
         if (rightId != null && node.r != rightId) return false
         return true

@@ -150,6 +150,7 @@ internal object TestEngineFactory {
 
     fun create(
         connectionMatrix: ConnectionMatrix.CostTable = ConnectionMatrix.fromShortArray(readConnectionIds()),
+        findPath: FindPath = FindPath(),
         counterConverter: com.kazumaproject.counter.CounterConverter? =
             File(assetsDir, "counter/counter_rules.dat").inputStream().buffered().use {
                 com.kazumaproject.counter.CounterDictionary.read(it).converter()
@@ -191,7 +192,7 @@ internal object TestEngineFactory {
         return KanaKanjiEngine().also {
             it.buildEngine(
                 graphBuilder = GraphBuilder(),
-                findPath = FindPath(),
+                findPath = findPath,
                 connectionMatrix = connectionMatrix,
                 systemTangoTrie = system.tangoTrie,
                 systemYomiTrie = system.yomiTrie,

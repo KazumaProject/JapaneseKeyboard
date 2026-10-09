@@ -3,12 +3,27 @@ package com.kazumaproject.counter
 data class QuantityAnalysis(val counterId: String, val number: Long, val category: String, val source: String)
 data class TimeAnalysis(val hour: Int, val minute: Int, val second: Int?, val period: String, val originalHour: Int, val half: Boolean, val hasMinute: Boolean)
 data class CounterCandidate(val value: String, val notation: String, val counterId: String)
+/** A meaning survives independently of ASCII/kanji/fullwidth presentation. */
+data class CounterInterpretation(
+    val counterId: String,
+    val number: Long,
+    val category: String,
+    val suffix: String,
+    val source: String,
+    val forms: List<CounterCandidate>,
+    val time: TimeAnalysis? = null,
+    val inRange: Boolean = true,
+    val reading: String = "",
+    val numberReading: String = "",
+    val unitReading: String = "",
+)
+
 data class CounterConversion(val input: String, val quantities: List<QuantityAnalysis>, val time: TimeAnalysis?, val candidates: List<CounterCandidate>)
 
 /** Thread-safe quantity/time reader. Upstream exact parsing is shared by sentence prefix lookup. */
 class CounterConverter internal constructor(private val dictionary: CounterDictionary) {
     private data class Numeric(val value: Long, val terminal: Int, val literal: Boolean = false)
-    private data class Match(val unit: Int, val number: Long, val suffix: String, val source: String)
+    private data class Match(val unit: Int, val number: Long, val suffix: String, val source: String, val numberReading: String = "")
     private val aliases = dictionary.units.indices.map { unit -> dictionary.surfaces.filter { it.unit == unit } }
     private val replaced = dictionary.units.indices.map { unit -> dictionary.exceptions.filter { it.unit == unit && it.replace }.map { it.number }.distinct().toLongArray() }
     // A restored numeric tail can begin with a character absent from the number trie (くじ/よじ).
@@ -21,6 +36,20 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
     private val hourId = dictionary.units.indexOfFirst { it.id == "clock_hour" }
     private val minuteId = dictionary.units.indexOfFirst { it.id == "minute" }
     private val secondId = dictionary.units.indexOfFirst { it.id == "second" }
+
+    private val regularUnitReadings: Array<String> by lazy {
+        val readings = Array(dictionary.units.size) { "" }
+        fun visit(state: Int, reversed: String) {
+            val trie = dictionary.endingTrie
+            for (posting in trie.postings[state] until trie.postings[state + 1]) {
+                val ending = dictionary.endings[trie.outputs[posting]]
+                if (ending.restored.isEmpty() && ending.terminal < 0) readings[ending.unit] = reversed.reversed()
+            }
+            for (edge in trie.edges[state] until trie.edges[state + 1]) visit(trie.targets[edge], reversed + trie.labels[edge])
+        }
+        visit(0, "")
+        readings
+    }
 
     fun convert(input: String, includeAliases: Boolean = true, limit: Int = Int.MAX_VALUE): CounterConversion {
         require(limit >= 0) { "Candidate limit must be nonnegative" }
@@ -69,6 +98,16 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
         minimumEndExclusive: Int = startIndex,
         action: (endIndex: Int, conversion: CounterConversion) -> Unit,
     ) {
+        forEachPossibleEnd(input, startIndex, minimumEndExclusive) { end ->
+            val result = convert(input.substring(startIndex, end))
+            if (result.candidates.isNotEmpty()) action(end, result)
+        }
+    }
+
+    private inline fun forEachPossibleEnd(
+        input: String, startIndex: Int, minimumEndExclusive: Int,
+        action: (Int) -> Unit,
+    ) {
         if (startIndex !in input.indices) return
         val first = input[startIndex]
         if (first !in '0'..'9' && dictionary.numberTrie.next(0, first) < 0 &&
@@ -93,9 +132,58 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
             // Half hours terminate in はん, which is a grammar token, not a counter ending.
             val halfEnd = end - startIndex >= 2 && input[end - 2] == 'は' && input[end - 1] == 'ん'
             if (!exceptionEnd && !ending && !halfEnd) continue
-            val result = convert(input.substring(startIndex, end))
-            if (result.candidates.isNotEmpty()) action(end, result)
+            action(end)
         }
+    }
+
+    /** Range failures remain available for boundary validation, but never become candidates. */
+    fun analyze(input: String, includeOutOfRange: Boolean = false): List<CounterInterpretation> {
+        if (input.isEmpty() || input.length > 128) return emptyList()
+        val reading = normalize(input)
+        val matches = matchQuantity(reading, 0, reading.length, validateRange = !includeOutOfRange)
+            .sortedWith(compareBy({ dictionary.units[it.unit].priority }, { it.unit }, { it.number }))
+        val time = parseTime(reading)
+        return buildList {
+            if (time != null) {
+                val forms = (0..2).map { CounterCandidate(timeText(time, it), NOTATIONS[it], "time") } +
+                    CounterCandidate(pad(time.hour) + ":" + pad(time.minute) +
+                        (time.second?.let { ":" + pad(it) } ?: ""), "clock", "time")
+                add(CounterInterpretation("time", time.originalHour.toLong(), "clock", "時", "time", forms, time, reading = reading))
+            }
+            for (match in matches) {
+                if (time != null && match.unit == hourId) continue
+                val unit = dictionary.units[match.unit]
+                val valid = match.number in unit.min..unit.max
+                val forms = if (!valid) emptyList() else buildList {
+                    for (style in 0..2) {
+                        val number = numberText(match.number, style)
+                        add(CounterCandidate(number + match.suffix, NOTATIONS[style], unit.id))
+                        if (match.suffix == unit.surface) aliases[match.unit].forEach {
+                            add(CounterCandidate(number + it.surface, NOTATIONS[style], unit.id))
+                        }
+                    }
+                }.distinctBy { it.value }
+                add(CounterInterpretation(unit.id, match.number, unit.category, match.suffix, match.source, forms, inRange = valid, reading = reading,
+                    numberReading = match.numberReading.ifEmpty { dictionary.numbers.firstOrNull { it.value == match.number && it.kind in 0..2 }?.reading.orEmpty() },
+                    unitReading = regularUnitReadings[match.unit]))
+            }
+        }
+    }
+
+    fun numberValue(input: String): Long? {
+        val reading = normalize(input)
+        return parseNumber(reading, 0, reading.length, "")?.value
+    }
+
+    /** Includes syntactically complete quantities outside their permitted range. */
+    fun hasQuantitySyntax(input: String): Boolean = analyze(input, includeOutOfRange = true).isNotEmpty()
+
+    fun forEachAnalysis(
+        input: String, startIndex: Int, minimumEndExclusive: Int = startIndex,
+        action: (Int, List<CounterInterpretation>) -> Unit,
+    ) = forEachPossibleEnd(input, startIndex, minimumEndExclusive) { end ->
+        val meanings = analyze(input.substring(startIndex, end))
+        if (meanings.isNotEmpty()) action(end, meanings)
     }
 
     fun normalizedReading(input: String): String = normalize(input)
@@ -105,7 +193,7 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
         return buildString(input.length) { input.forEach { append(when (it) { in 'ァ'..'ヶ' -> (it.code - 0x60).toChar(); in '０'..'９' -> (it.code - '０'.code + '0'.code).toChar(); else -> it }) } }
     }
 
-    private fun matchQuantity(input: String, start: Int, end: Int, onlyUnit: Int = -1): List<Match> {
+    private fun matchQuantity(input: String, start: Int, end: Int, onlyUnit: Int = -1, validateRange: Boolean = true): List<Match> {
         if (start >= end) return emptyList()
         val result = mutableListOf<Match>()
         fun add(match: Match) { if (result.none { it.unit == match.unit && it.number == match.number && it.suffix == match.suffix }) result += match }
@@ -132,13 +220,13 @@ class CounterConverter internal constructor(private val dictionary: CounterDicti
                 }
                 if (numeric == null) continue
                 val unit = dictionary.units[ending.unit]
-                if (numeric.value !in unit.min..unit.max) continue
+                if (validateRange && numeric.value !in unit.min..unit.max) continue
                 if (ending.terminal >= 0 && numeric.terminal != ending.terminal) continue
                 if (!numeric.literal) {
                     if (ending.terminal < 0 && unit.blocked and terminalBit(numeric.terminal) != 0) continue
                     if (replaced[ending.unit].binarySearch(numeric.value) >= 0) continue
                 }
-                add(Match(ending.unit, numeric.value, unit.surface, if (ending.terminal < 0) "regular" else "tail-rule"))
+                add(Match(ending.unit, numeric.value, unit.surface, if (ending.terminal < 0) "regular" else "tail-rule", input.substring(start,position) + ending.restored))
             }
         }
         return result

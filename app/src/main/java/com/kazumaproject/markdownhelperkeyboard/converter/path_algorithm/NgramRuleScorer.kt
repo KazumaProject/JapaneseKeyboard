@@ -68,20 +68,24 @@ class NgramRuleScorer(
         if (prevNode.tango == "BOS" || currentNode.tango == "EOS") return 0
         if (maxOrderWithRules == 0) return 0
 
+        val words = currentNode.counter?.forms?.map { it.value }?.plus(currentNode.tango)?.distinct()
+            ?: listOf(currentNode.tango)
         var total = 0L
         for (order in NgramRule.MIN_NODE_COUNT..maxOrderWithRules) {
             if (order >= 3 && (nextNode1 == null || nextNode1.tango == "EOS")) continue
             if (order >= 4 && (nextNode2 == null || nextNode2.tango == "EOS")) continue
             if (order >= 5 && (nextNode3 == null || nextNode3.tango == "EOS")) continue
 
-            total += scoreBucket(
-                rulesByOrderAndCurrentWord[order][currentNode.tango],
-                prevNode,
-                currentNode,
-                nextNode1,
-                nextNode2,
-                nextNode3,
-            )
+            for (word in words) {
+                total += scoreBucket(
+                    rulesByOrderAndCurrentWord[order][word],
+                    prevNode,
+                    currentNode,
+                    nextNode1,
+                    nextNode2,
+                    nextNode3,
+                )
+            }
             total += scoreBucket(
                 wildcardRulesByOrder[order],
                 prevNode,
@@ -96,7 +100,17 @@ class NgramRuleScorer(
     }
 
     /** Exact equivalence classes for every node feature observable by this scorer. */
-    internal fun wordClass(node: Node): Int = relevantWordClasses[node.tango] ?: 0
+    private val counterWordClasses = java.util.concurrent.ConcurrentHashMap<List<Int>, Int>()
+    private val nextCounterWordClass = java.util.concurrent.atomic.AtomicInteger(relevantWordClasses.size + 1)
+
+    internal fun wordClass(node: Node): Int {
+        if (node.counter == null) return relevantWordClasses[node.tango] ?: 0
+        val classes = (node.counter.forms.mapNotNull { relevantWordClasses[it.value] } +
+            listOfNotNull(relevantWordClasses[node.tango])).distinct().sorted()
+        if (classes.isEmpty()) return 0
+        if (classes.size == 1) return classes.single()
+        return counterWordClasses.computeIfAbsent(classes) { nextCounterWordClass.getAndIncrement() }
+    }
 
     internal fun leftIdClass(node: Node): Int = relevantLeftIdClasses[node.l] ?: 0
 
