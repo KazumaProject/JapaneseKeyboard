@@ -150,6 +150,10 @@ internal object TestEngineFactory {
 
     fun create(
         connectionMatrix: ConnectionMatrix.CostTable = ConnectionMatrix.fromShortArray(readConnectionIds()),
+        counterConverter: com.kazumaproject.counter.CounterConverter? =
+            File(assetsDir, "counter/counter_rules.dat").inputStream().buffered().use {
+                com.kazumaproject.counter.CounterDictionary.read(it).converter()
+            },
     ): KanaKanjiEngine {
         val englishEngine = mock<EnglishEngine>()
         whenever(englishEngine.getCandidates(any(), any())).thenReturn(emptyList<Candidate>())
@@ -239,9 +243,7 @@ internal object TestEngineFactory {
                 kotowazaSuccinctBitVectorTokenArray = kotowaza.succinctBitVectorTokenArray,
                 kotowazaSuccinctBitVectorTangoLBS = kotowaza.succinctBitVectorTangoLBS,
                 engineEngine = englishEngine,
-                counterConverter = com.kazumaproject.counter.CounterDictionary.read(
-                    File(assetsDir, "counter/counter_rules.dat").inputStream().buffered()
-                ).converter(),
+                counterConverter = counterConverter,
                 mozcSegmenter = segmenter,
                 mozcNodeAttributeTable = nodeAttributeTable,
                 mozcDictionaryActive = true,

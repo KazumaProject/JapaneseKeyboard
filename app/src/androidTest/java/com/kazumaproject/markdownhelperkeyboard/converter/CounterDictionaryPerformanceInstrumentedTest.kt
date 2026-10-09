@@ -19,6 +19,7 @@ class CounterDictionaryPerformanceInstrumentedTest {
         val label=args.getString("counterPerfLabel") ?: "rules"
         val context=ApplicationProvider.getApplicationContext<Context>()
         val report=StringBuilder()
+        report.appendLine("includeAliases=true limit=Int.MAX_VALUE goldenCases=106")
         CounterConversionPerformanceInstrumentedTest.gc()
         val before=CounterConversionPerformanceInstrumentedTest.memory()
         val begin=System.nanoTime()

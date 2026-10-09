@@ -9,6 +9,7 @@ import json
 import pathlib
 import subprocess
 import gzip
+import re
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--label", required=True)
@@ -26,7 +27,12 @@ def shell(*parts):
 for index in range(1, args.rounds + 1):
     label = f"{args.label}-{index}"
     shell("am", "force-stop", package)
-    environment = {"fingerprint": shell("getprop", "ro.build.fingerprint").strip(), "battery": shell("dumpsys", "battery"), "thermal": shell("dumpsys", "thermalservice")}
+    battery = shell("dumpsys", "battery")
+    thermal = shell("dumpsys", "thermalservice")
+    def field(text, pattern):
+        match = re.search(pattern, text)
+        return match.group(1) if match else None
+    environment = {"fingerprint": shell("getprop", "ro.build.fingerprint").strip(), "batteryLevelPercent": field(battery, r"level: (\d+)"), "batteryTemperatureTenthsC": field(battery, r"temperature: (\d+)"), "thermalStatus": field(thermal, r"Thermal Status: (\d+)")}
     args.output.joinpath(label + "-environment.json").write_text(json.dumps(environment, ensure_ascii=False, indent=2))
     command = ["adb", "shell", "am", "instrument", "-w", "-r", "-e", "class", "com.kazumaproject.markdownhelperkeyboard.converter." + class_name, "-e", "counterPerf", "true", "-e", "counterPerfLabel", label, package + ".test/androidx.test.runner.AndroidJUnitRunner"]
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True)

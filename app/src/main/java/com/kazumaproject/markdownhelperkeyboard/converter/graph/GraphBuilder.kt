@@ -367,6 +367,12 @@ class GraphBuilder {
         fun mozcAttributesFor(leftId: Short): Int =
             mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
 
+        val wholeCounterCandidates = counterConverter?.convert(str)?.candidates.orEmpty()
+        val wholeCounterLexicalPenalty = CounterNodePolicy.wholeReadingLexicalPenalty(
+            str, wholeCounterCandidates, yomiTrie, tangoTrie, tokenArray,
+            succinctBitVectorLBSYomi, succinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray, succinctBitVectorTangoLBS,
+        )
         val signature = conversionSignature(
             yomiTrie = yomiTrie,
             englishReadingYomiTrie = englishReadingYomiTrie,
@@ -383,7 +389,7 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
-        )
+        ) * 31 + wholeCounterLexicalPenalty
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
@@ -930,7 +936,8 @@ class GraphBuilder {
                     foundInAnyDictionary = true
                     result.candidates.forEachIndexed { index, candidate ->
                         val leftId = CounterNodePolicy.leftId(candidate)
-                        val cost = CounterNodePolicy.wordCost(index, candidate)
+                        val cost = CounterNodePolicy.wordCost(index, candidate) +
+                            if (i == 0 && end == str.length) wholeCounterLexicalPenalty else 0
                         addOrUpdateNode(
                             graph, end,
                             Node(

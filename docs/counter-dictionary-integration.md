@@ -39,6 +39,7 @@ normalized for parsing. A quantity uses number-left/counter-right Mozc context I
 adverbial noun context. The IDs are documented in the bundled `id.def`.
 
 Candidates preserve upstream ASCII → kanji → fullwidth ordering, aliases and 24-hour clock outputs.
+A stronger nonnumeric whole-reading dictionary entry keeps ambiguous readings such as 日本/午後/産後/いっぱい ahead of their new numeric interpretations. Changes in that whole-reading preference invalidate the append cache. Sentence spans retain ordinary contextual scoring.
 Exact matches also enter the final candidate list, so alternatives remain available beyond the
 K-best graph cutoff. Whole-rule candidates carry one exact input/output segment and an empty
 internal bunsetsu split pattern. Longer sentence paths use existing segment collection and projection.
@@ -49,6 +50,8 @@ English/kana mode uses the same exact converter rather than the legacy small cou
 1文字追加では新しい終了位置のみを生成し、削除・途中編集・キャンセルは既存のセッション処理に従います。
 カタカナ・全角数字を正規化しても、元の入力区間・読みは保持します。
 
+単独の読みが日本・午後・産後・いっぱいなどの強い一般語と競合する場合は、既存辞書の一般語を優先します。
+この優先度が入力追加で変わる場合はキャッシュを再構築し、連文節の区間は通常の文脈評価を使います。
 半角数字・漢数字・全角数字・別表記・時計表記を候補に含めます。完全一致の候補は最終候補にも追加し、
 グラフの候補数上限による別表記の欠落を防ぎます。数量・時刻の内部では文節を分割しません。
 長い文章は既存の読み区間に基づく文節表示を利用します。英数かなモードも同じ辞書を使用します。

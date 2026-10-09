@@ -107,7 +107,7 @@ class CounterConversionInstrumentedTest {
     @Test fun ordinaryWordsAndMultipleCountersRemainConvertible() = runBlocking {
         val entry = entry()
         val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), ConversionBackend.LEGACY)
-        for ((input, expected) in mapOf("にほんご" to "日本語", "きょう" to "今日", "よしよし" to "よしよし")) {
+        for ((input, expected) in mapOf("にほんご" to "日本語", "きょう" to "今日", "よしよし" to "よしよし", "にほん" to "日本", "ごご" to "午後", "さんご" to "産後", "いっぱい" to "いっぱい")) {
             val result = session.query(CounterConversionPerformanceInstrumentedTest.request(input, entry.userDictionaryRepository()))
             println("COUNTER_ORDINARY $input => ${result.candidates.take(8).joinToString("|"){it.string}}")
             assertEquals(input, expected, result.candidates.first().string)

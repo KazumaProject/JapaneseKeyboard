@@ -34,7 +34,7 @@ for path in sorted(args.directory.glob("*.txt.gz")):
         elif not line.startswith("latency "):
             runs[label]["metadata"].append(line)
 
-summary={"percentile":"nearest rank; three equally sized fresh-process runs pooled; timings in ms", "runs":runs,"pooled":{}}
+summary={"percentile":"nearest rank; equal-sized fresh-process runs pooled; timings in ms", "runs":runs,"pooled":{}}
 for (group,mode,reading),samples in sorted(pools.items()):
     summary["pooled"].setdefault(group,{}).setdefault(mode,{})[reading]=stats(samples)
 args.output.write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n")

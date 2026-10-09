@@ -4380,7 +4380,10 @@ class KanaKanjiEngine {
             digitCandidates + numberUnitCandidates + (englishDeferred + englishZenkaku).sortedBy { it.score }
         val temporalCandidates = createTemporalDictionaryCandidates(input)
 
-        return (numberUnitCandidates + listJapaneseCandidates + numbersConverted + temporalCandidates).distinctBy { it.string }
+        val clearCounterCandidates = numberUnitCandidates.takeIf {
+            counterConverter == null || it.firstOrNull()?.score == CounterNodePolicy.WORD_COST
+        }.orEmpty()
+        return (clearCounterCandidates + listJapaneseCandidates + numbersConverted + temporalCandidates).distinctBy { it.string }
     }
 
     private fun deduplicateCounterCandidates(input: String, candidates: List<Candidate>): List<Candidate> =
@@ -4393,12 +4396,17 @@ class KanaKanjiEngine {
         collector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversion = counterConverter?.convert(input) ?: return emptyList()
+        val lexicalPenalty = CounterNodePolicy.wholeReadingLexicalPenalty(
+            input, conversion.candidates, systemYomiTrie, systemTangoTrie, systemTokenArray,
+            systemSuccinctBitVectorLBSYomi, systemSuccinctBitVectorIsLeafYomi,
+            systemSuccinctBitVectorTokenArray, systemSuccinctBitVectorTangoLBS,
+        )
         return conversion.candidates.mapIndexed { index, candidate ->
             val segments = listOf(CandidateConversionSegment(0, input.length, candidate.value))
             collector?.put(candidate.value, segments)
             Candidate(
                 string = candidate.value, type = 1, length = input.length.toUByte(),
-                score = CounterNodePolicy.cost(index), yomi = input,
+                score = CounterNodePolicy.cost(index) + lexicalPenalty, yomi = input,
                 leftId = CounterNodePolicy.leftId(candidate), rightId = CounterNodePolicy.rightId(candidate),
                 conversionSegments = segments,
             )

@@ -27,12 +27,28 @@ class CounterEngineRegressionTest {
             assertEquals(input.length, segments.last().inputEnd)
         }
     }
+    @Test fun ambiguousOrdinaryReadingsKeepTheirExistingFirstCandidate() = runBlocking {
+        val repository = mock<UserDictionaryRepository>()
+        whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+        val baseline = KanaKanjiConversionSession(TestEngineFactory.create(counterConverter = null), ConversionBackend.LEGACY)
+        val integrated = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
+        val failures = mutableListOf<String>()
+        for (input in listOf("にほん", "ごご", "さんご", "いっぱい", "しせん")) {
+            val before = baseline.query(request(input, repository)).candidates.first().string
+            val candidates = integrated.query(request(input, repository)).candidates
+            val after = candidates.first().string
+            println("COUNTER_AMBIGUITY $input before=$before after=$after candidates=${candidates.take(8).map { it.string to it.score }}")
+            if (before != after) failures += "$input: $before -> $after"
+        }
+        assertTrue(failures.joinToString(), failures.isEmpty())
+    }
+
     @Test fun appendAndEditMatchFreshLattice() = runBlocking {
         val repository = mock<UserDictionaryRepository>()
         whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
         whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
         val incremental = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
-        for (phrase in listOf("ひゃくにじゅうさんぼんをかう", "ねこがさんびきいる", "ごごさんじはんにあう")) {
+        for (phrase in listOf("ひゃくにじゅうさんぼんをかう", "ねこがさんびきいる", "ごごさんじはんにあう", "にほんにいく", "さんごがきれい", "いっぱいのむ")) {
             for (input in (1..phrase.length).map(phrase::take) + phrase.dropLast(1) + phrase + phrase.replace("さん", "よん")) {
                 val request=request(input,repository)
                 val fresh=KanaKanjiConversionSession(engine,ConversionBackend.LEGACY).query(request)
