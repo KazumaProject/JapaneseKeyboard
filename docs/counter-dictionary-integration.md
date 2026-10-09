@@ -96,3 +96,5 @@ names. Build Lite Debug + its AndroidTest APK, install them, then run
 Use `--rules --label rules` for isolated dictionary measurements. Full and Lite share the runtime asset/code.
 
 詳細な測定結果・実行条件・再現手順は、この変更の実測報告を参照してください。
+
+Detailed measurements / 詳細実測：[2026-10-09 report](reports/counter-integration-2026-10-09.md).

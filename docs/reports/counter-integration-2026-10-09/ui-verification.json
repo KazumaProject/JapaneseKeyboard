@@ -1,0 +1,10 @@
+{
+  "input": "hyakunijuusanbonwokau (physical romaji input)",
+  "conversion": "123本を買う",
+  "selectedAndCommitted": "百二十三本を買う",
+  "candidateNavigation": "Space, Down, Enter",
+  "manualUiVerified": true,
+  "originalImeRestored": true,
+  "isolatedPreferencesRestored": true,
+  "automatedBunsetsuProjectionAndSelection": "PASS (CounterConversionInstrumentedTest)"
+}
