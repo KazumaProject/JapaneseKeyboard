@@ -1,14 +1,13 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    id 'dagger.hilt.android.plugin'
+    id 'com.google.dagger.hilt.android'
     id 'com.google.devtools.ksp'
     id "androidx.navigation.safeargs.kotlin"
 }
 
 android {
     namespace 'com.kazumaproject.markdownhelperkeyboard'
-    compileSdk 36
+    compileSdk = 37
 
     def localProperties = new Properties()
     def localPropertiesFile = rootProject.file("local.properties")
@@ -30,9 +29,9 @@ android {
     defaultConfig {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
-        targetSdk 36
-        versionCode 821
-        versionName "1.7.128"
+        targetSdk 37
+        versionCode 822
+        versionName "1.7.129"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -112,9 +111,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
     buildFeatures {
         aidl true
         buildConfig true
@@ -140,8 +136,8 @@ android {
     }
 
     sourceSets {
-        main.assets.srcDir(layout.buildDirectory.dir("generated/compactConnectionMatrix/assets"))
-        main.assets.srcDir(layout.buildDirectory.dir("generated/compactSystemDictionary/assets"))
+        main.assets.srcDir(layout.buildDirectory.dir("generated/compactConnectionMatrix/assets").get().asFile)
+        main.assets.srcDir(layout.buildDirectory.dir("generated/compactSystemDictionary/assets").get().asFile)
     }
 
     applicationVariants.configureEach { variant ->
@@ -1090,10 +1086,10 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.5.1'
 
     //Dagger - Hilt
-    def hilt_version = "2.50"
+    def hilt_version = "2.59.2"
     implementation "com.google.dagger:hilt-android:$hilt_version"
     ksp "com.google.dagger:hilt-android-compiler:$hilt_version"
-    ksp "androidx.hilt:hilt-compiler:1.2.0"
+    ksp "androidx.hilt:hilt-compiler:1.3.0"
 
     testImplementation("com.google.dagger:hilt-android-testing:$hilt_version")
     kspTest("com.google.dagger:hilt-android-compiler:$hilt_version")
@@ -1102,19 +1098,19 @@ dependencies {
     implementation 'com.jakewharton.timber:timber:5.0.1'
 
     // Room
-    implementation "androidx.room:room-runtime:2.6.1"
-    ksp "androidx.room:room-compiler:2.6.1"
+    implementation "androidx.room:room-runtime:2.8.4"
+    ksp "androidx.room:room-compiler:2.8.4"
     // Kotlin Extensions and Coroutines support for Room
-    implementation "androidx.room:room-ktx:2.6.1"
+    implementation "androidx.room:room-ktx:2.8.4"
 
     // Room testing
-    testImplementation "androidx.room:room-testing:2.6.1"
+    testImplementation "androidx.room:room-testing:2.8.4"
 
     // AndroidX Test dependencies
-    androidTestImplementation "androidx.test.ext:junit:1.2.1"
-    androidTestImplementation "androidx.test:core:1.6.1"
-    androidTestImplementation "androidx.test:runner:1.6.2"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.6.1"
+    androidTestImplementation "androidx.test.ext:junit:1.3.0"
+    androidTestImplementation "androidx.test:core:1.7.0"
+    androidTestImplementation "androidx.test:runner:1.7.0"
+    androidTestImplementation "androidx.test.espresso:espresso-core:3.7.0"
 
     // Kotlin Coroutines test
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3"
@@ -1123,14 +1119,14 @@ dependencies {
     testImplementation "junit:junit:4.13.2"
 
     // Mockito for mocking objects
-    testImplementation "org.mockito:mockito-core:5.5.0"
+    testImplementation "org.mockito:mockito-core:5.24.0"
 
     // Mockito-Kotlin for better Kotlin support
     testImplementation "org.mockito.kotlin:mockito-kotlin:5.0.0"
 
-    testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
-    testImplementation "androidx.test:core:1.6.1"
-    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation 'androidx.test.ext:junit-ktx:1.3.0'
+    testImplementation "androidx.test:core:1.7.0"
+    testImplementation "org.robolectric:robolectric:4.17"
 
     implementation 'com.google.code.gson:gson:2.13.1'
     fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.14.0') {
