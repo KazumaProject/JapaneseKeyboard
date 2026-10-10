@@ -12,6 +12,7 @@ internal object FlickCorrectionRanking {
             .sortedBy { it.score }
             .mapIndexed { rank, candidate ->
                 val info = checkNotNull(candidate.flickCorrection)
+                val scored = candidate.copy(flickCorrection = info.copy(scoreBeforeRanking = candidate.score))
                 val trailingInsertion = info.edits.any {
                     it.kind == FlickCorrectionKind.MISSING &&
                         it.inputStart == candidate.length.toInt()
@@ -30,11 +31,11 @@ internal object FlickCorrectionRanking {
                 val showNearTop = !trailingInsertion && info.edits.size == 1 && info.costUnits <= 2800 &&
                     candidate.score.toLong() <= best.score.toLong() + 4500
                 when {
-                    canPromote -> candidate
-                    showNearTop -> candidate.copy(score = candidate.score.coerceAtMost(suggestionCeiling + rank)
+                    canPromote -> scored
+                    showNearTop -> scored.copy(score = candidate.score.coerceAtMost(suggestionCeiling + rank)
                         .coerceAtLeast(best.score + 1 + rank))
-                    candidate.score <= best.score -> candidate.copy(score = best.score + 1 + rank)
-                    else -> candidate
+                    candidate.score <= best.score -> scored.copy(score = best.score + 1 + rank)
+                    else -> scored
                 }
             }
         return (literal + corrections)
@@ -50,9 +51,25 @@ internal object FlickCorrectionRanking {
         for (candidate in candidates) if (candidate.flickCorrection == null) {
             literals.putIfAbsent(candidate.commitText to candidate.length.toInt().coerceAtMost(inputLength), candidate)
         }
-        return candidates.map { candidate ->
+        val unique = candidates.map { candidate ->
             if (candidate.flickCorrection == null) candidate else
                 literals[candidate.commitText to candidate.length.toInt().coerceAtMost(inputLength)] ?: candidate
         }.distinctBy { it.commitText to it.length }
+        return diversifyCorrections(unique, inputLength)
+    }
+
+    /** Keep the first two literal spellings; offer a distinct reading in the third slot. */
+    private fun diversifyCorrections(candidates: List<Candidate>, inputLength: Int): List<Candidate> {
+        val first = candidates.firstOrNull() ?: return candidates
+        if (candidates.size < 3 || first.flickCorrection != null || first.yomi == null ||
+            candidates.take(3).any { it.flickCorrection != null || it.yomi != first.yomi }) return candidates
+        val correction = candidates.drop(3).firstOrNull { candidate ->
+            val info = candidate.flickCorrection ?: return@firstOrNull false
+            val rawScore = info.scoreBeforeRanking ?: candidate.score
+            candidate.length.toInt() == inputLength && info.edits.size == 1 && info.costUnits <= 2800 &&
+                rawScore.toLong() <= first.score.toLong() + 4500 &&
+                info.edits.none { it.kind == FlickCorrectionKind.MISSING && it.inputStart == inputLength }
+        } ?: return candidates
+        return candidates.take(2) + correction + candidates.drop(2).filterNot { it === correction }
     }
 }

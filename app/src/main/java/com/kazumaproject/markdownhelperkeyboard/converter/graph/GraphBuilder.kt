@@ -191,6 +191,18 @@ class GraphBuilder {
         private val words = object : LinkedHashMap<Int, List<FlickWordToken>>(128, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, List<FlickWordToken>>): Boolean = size > 1024
         }
+        private val costs = object : LinkedHashMap<Int, Int>(128, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Int>): Boolean = size > 1024
+        }
+
+        @Synchronized fun lowestCost(hit: TypoCorrectionResult): Int = costs.getOrPut(hit.nodeIndex) {
+            val term = readingTrie.getTermId(hit.nodeIndex, leafVector)
+            var lowest = Int.MAX_VALUE
+            if (term >= 0) tokens.forEachLowestCostDictionaryByYomiTermId(term, tokenVector, IntArray(1)) { _, cost, _ ->
+                lowest = cost.toInt()
+            }
+            lowest
+        }
 
         @Synchronized fun get(hit: TypoCorrectionResult): List<FlickWordToken> {
             words[hit.nodeIndex]?.let { return it }
@@ -529,12 +541,13 @@ class GraphBuilder {
             bitVector: SuccinctBitVector,
             start: Int,
             previous: LOUDSWithTermId.TypoSearchProgress?,
+            wordCache: FlickDictionaryCache? = null,
         ): LOUDSWithTermId.TypoSearchProgress {
             if (standardCorrection != null) {
                 if (start + 12 < reusablePrefixLength && previous?.flickProgress != null) return previous
                 val frontier = previous?.flickProgress
                 if (reusable != null && frontier != null && frontier.terminalStates.isEmpty() &&
-                    frontier.swapPrefixStates.isEmpty()) {
+                    frontier.swapPrefixStates.isEmpty() && frontier.leadingStates.isEmpty()) {
                     var end = start
                     while (end < str.length && end < start + 12 && (str[end] in 'ぁ'..'ゖ' || str[end] == 'ー')) end++
                     val window = str.substring(start, end)
@@ -550,6 +563,11 @@ class GraphBuilder {
                     str, start, bitVector, standardCorrection, isOmissionSearchEnable,
                     previous = previous?.flickProgress,
                     cancellationCheck = { conversionContext.ensureActive() },
+                    resultScore = wordCache?.let { cache -> { hit ->
+                        (cache.lowestCost(hit).toLong() + typoCorrectionOffsetScore.toLong().coerceAtLeast(0) *
+                            hit.costUnits / 1000 + if (hit.modifierOmissionOccurred) omissionSearchOffSetScore else 0)
+                            .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                    } },
                 )
             }
             if (sessionState == null || reusable == null || previous == null) {
@@ -782,12 +800,16 @@ class GraphBuilder {
             val localSystemUserTangoLBS = systemUserSuccinctBitVectorTangoLBS
 
             val standardSystemTypo = if (standardCorrection != null && str.length - i > 2)
-                typoSearch(yomiTrie, succinctBitVectorLBSYomi, i, reusable?.systemTypoProgress?.get(i)) else null
+                typoSearch(yomiTrie, succinctBitVectorLBSYomi, i, reusable?.systemTypoProgress?.get(i),
+                    flickDictionaryCache(yomiTrie, tangoTrie, tokenArray, succinctBitVectorIsLeafYomi,
+                        succinctBitVectorTokenArray, succinctBitVectorTangoLBS, false)) else null
             val standardUserTypo = if (standardCorrection != null && str.length - i > 2 &&
                 localSystemUserYomiTrie != null && localSystemUserLBSYomi != null &&
                 localSystemUserTangoTrie != null && localSystemUserTokenArray != null &&
                 localSystemUserIsLeaf != null && localSystemUserTokenBitVector != null && localSystemUserTangoLBS != null)
-                typoSearch(localSystemUserYomiTrie, localSystemUserLBSYomi, i, reusable?.systemUserTypoProgress?.get(i)) else null
+                typoSearch(localSystemUserYomiTrie, localSystemUserLBSYomi, i, reusable?.systemUserTypoProgress?.get(i),
+                    flickDictionaryCache(localSystemUserYomiTrie, localSystemUserTangoTrie, localSystemUserTokenArray,
+                        localSystemUserIsLeaf, localSystemUserTokenBitVector, localSystemUserTangoLBS, true)) else null
             val removedCorrectionKeys = if (standardCorrection != null && reusable != null) {
                 (reusable.systemTypoProgress[i]?.results.orEmpty().filterNot { it in standardSystemTypo?.results.orEmpty() } +
                     reusable.systemUserTypoProgress[i]?.results.orEmpty().filterNot { it in standardUserTypo?.results.orEmpty() })

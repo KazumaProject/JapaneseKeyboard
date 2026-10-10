@@ -5235,6 +5235,7 @@ class KanaKanjiEngine {
                             type = 9,
                             length = yomi.length.toUByte(),
                             score = score,
+                            yomi = yomi,
                             leftId = tokenArray.leftIds[posTableIndex.toInt()],
                             rightId = tokenArray.rightIds[posTableIndex.toInt()],
                         )

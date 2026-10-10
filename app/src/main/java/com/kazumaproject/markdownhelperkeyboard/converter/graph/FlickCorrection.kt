@@ -17,6 +17,7 @@ data class FlickCorrectionEdit(
 data class FlickCorrectionInfo(
     val edits: List<FlickCorrectionEdit>,
     val originalType: Byte = 1,
+    val scoreBeforeRanking: Int? = null,
 ) {
     val costUnits: Int get() = edits.sumOf { it.costUnits }
 }

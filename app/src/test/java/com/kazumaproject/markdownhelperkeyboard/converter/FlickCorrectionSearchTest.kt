@@ -114,6 +114,35 @@ class FlickCorrectionSearchTest {
         }
     }
 
+    @Test fun leadingOmissionSurvivesCompetingPrefixesAndKeepsLexicalRankingAcrossAppends() {
+        val input = "はるあきふゆ"
+        val expected = "ん" + input
+        val characters = ('ぁ'..'ゔ').toList() + 'ー'
+        val alternatives = characters.map { it + input } + input.indices.flatMap { index ->
+            characters.map { input.replaceRange(index, index + 1, it.toString()) }
+        }
+        val dictionary = trie(*alternatives.toTypedArray())
+        val vector = SuccinctBitVector(dictionary.LBS)
+        val lexicalCost: (TypoCorrectionResult) -> Int = { if (it.yomi == expected) 0 else 20000 + it.costUnits }
+        var previous: LOUDSWithTermId.FlickSearchProgress? = null
+        for (length in 3..input.length) {
+            val typed = input.take(length)
+            val warm = dictionary.commonPrefixSearchWithFlickCorrectionProgress(typed, 0, vector,
+                FlickCorrectionInput(typed), false, maxResults = 6, previous = previous, resultScore = lexicalCost)
+            val cold = dictionary.commonPrefixSearchWithFlickCorrectionProgress(typed, 0, vector,
+                FlickCorrectionInput(typed), false, maxResults = 6, resultScore = lexicalCost)
+            assertEquals(cold.results, warm.results)
+            assertTrue(warm.results.size <= 6)
+            previous = warm.flickProgress
+            if (length == input.length) {
+                assertEquals(expected, warm.results.first().yomi)
+                assertEquals(FlickCorrectionKind.MISSING, warm.results.first().edits.single().kind)
+                assertEquals(0, warm.results.first().edits.single().inputStart)
+                assertEquals(input.length, warm.results.first().consumedLength)
+            }
+        }
+    }
+
     @Test fun waKeyIsBelowYaAndMatchesRuntimeCharacters() {
         assertEquals(1, KanaFlickLayout.manhattan(KeyGroup.WA, KeyGroup.YA))
         assertEquals(2, KanaFlickLayout.manhattan(KeyGroup.WA, KeyGroup.MA))

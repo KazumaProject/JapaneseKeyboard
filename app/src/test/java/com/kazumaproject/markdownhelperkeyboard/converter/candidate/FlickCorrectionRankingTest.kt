@@ -48,4 +48,27 @@ class FlickCorrectionRankingTest {
         assertEquals(listOf(prediction), FlickCorrectionRanking.preferLiteralDuplicates(listOf(correction, prediction), 4))
         assertEquals(listOf(partial, prediction), FlickCorrectionRanking.preferLiteralDuplicates(listOf(partial, prediction), 4))
     }
+
+    @Test fun tiedLiteralSpellingsKeepTheFirstTwoAndExposeOnePlausibleCorrection() {
+        val literals = (0..3).map { Candidate("表記$it", 1, 4u, 5000, yomi = "こんちは") }
+        val correction = corrected("こんにちは", 9000)
+        val merged = FlickCorrectionRanking.merge(literals, listOf(correction), 8)
+        val ranked = FlickCorrectionRanking.preferLiteralDuplicates(merged, 4)
+        assertEquals(literals.take(2), ranked.take(2))
+        assertEquals("こんにちは", ranked[2].string)
+        assertEquals(9000, ranked[2].flickCorrection!!.scoreBeforeRanking)
+        assertTrue(ranked.contains(literals[2]))
+    }
+
+    @Test fun diversityDoesNotBoostWeakTrailingOrPartialCorrectionsOrHideDistinctLiteralReadings() {
+        val literals = (0..3).map { Candidate("表記$it", 1, 4u, 5000, yomi = "こんちは") }
+        for (correction in listOf(corrected("弱い補正", 16000),
+            corrected("末尾追加", 6000, trailing = true), corrected("部分補正", 6000).copy(length = 3u))) {
+            val merged = FlickCorrectionRanking.merge(literals, listOf(correction), 8)
+            assertEquals(literals.take(3), FlickCorrectionRanking.preferLiteralDuplicates(merged, 4).take(3))
+        }
+        val diverse = literals.mapIndexed { i,c -> c.copy(yomi = "読み$i") }
+        val merged = FlickCorrectionRanking.merge(diverse, listOf(corrected("補正", 9000)), 8)
+        assertEquals(diverse.take(3), FlickCorrectionRanking.preferLiteralDuplicates(merged, 4).take(3))
+    }
 }

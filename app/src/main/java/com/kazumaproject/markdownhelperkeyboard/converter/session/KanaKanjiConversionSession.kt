@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfi
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInput
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -104,7 +105,8 @@ class KanaKanjiConversionSession(
                 CandidateQueryMode.CONVERSION -> queryConversion(request)
             }
             val result = if (request.flickCorrectionInput == null) rawResult else {
-                val candidates = FlickCorrectionRanking.preferLiteralDuplicates(rawResult.candidates, request.input.length)
+                val candidates = prioritizeRememberedCorrection(request,
+                    FlickCorrectionRanking.preferLiteralDuplicates(rawResult.candidates, request.input.length))
                 val replaced = rawResult.candidates.filter { it.flickCorrection != null }.filter { corrected ->
                     candidates.none { it == corrected }
                 }.mapTo(HashSet()) { it.string }
@@ -143,6 +145,37 @@ class KanaKanjiConversionSession(
             incrementalState?.reset()
             throw throwable
         }
+    }
+
+    private suspend fun prioritizeRememberedCorrection(
+        request: KanaKanjiQueryRequest,
+        candidates: List<Candidate>,
+    ): List<Candidate> {
+        val repository = request.learnRepository ?: return candidates
+        val first = candidates.firstOrNull() ?: return candidates
+        val eligible = candidates.drop(1).filter { candidate ->
+            val correction = candidate.flickCorrection ?: return@filter false
+            candidate.yomi != null && candidate.length.toInt() == request.input.length &&
+                correction.edits.size in 1..2 &&
+                correction.costUnits.toLong() * request.typoCorrectionOffsetScore.coerceAtLeast(0) / 1000 <= 9000
+        }.take(8)
+        if (eligible.isEmpty()) return candidates
+        // Conversion buckets are cached by the repository and invalidated when learning
+        // changes. Query canonical readings, since the composing input still contains
+        // the mistake. Keep lookups bounded and leave the current first choice in place.
+        val remembered = LinkedHashMap<String, List<LearnEntity>>()
+        for (candidate in eligible) {
+            val reading = checkNotNull(candidate.yomi)
+            if (reading !in remembered) remembered[reading] = repository.findExactMatchesForConversion(reading)
+        }
+        val selected = eligible.mapNotNull { candidate ->
+            remembered[checkNotNull(candidate.yomi)].orEmpty().firstOrNull { it.out == candidate.commitText }
+                ?.let { candidate to it }
+        }.sortedWith(compareByDescending<Pair<Candidate, LearnEntity>> { it.second.usageCount }
+            .thenByDescending { it.second.lastUsedAt }.thenBy { it.second.score }
+            .thenBy { it.first.flickCorrection?.scoreBeforeRanking ?: it.first.score })
+            .firstOrNull()?.first ?: return candidates
+        return listOf(first, selected) + candidates.drop(1).filterNot { it === selected }
     }
 
     private suspend fun queryOriginal(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {

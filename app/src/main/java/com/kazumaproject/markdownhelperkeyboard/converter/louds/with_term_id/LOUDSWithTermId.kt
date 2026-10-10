@@ -895,6 +895,7 @@ class LOUDSWithTermId {
         internal val allowModifierOmission: Boolean,
         internal val maxStates: Int,
         internal val evidence: List<FlickInputEvidence?>,
+        internal val leadingStates: List<FlickSearchState> = emptyList(),
     )
 
     private data class FlickSubstitution(val edit: FlickCorrectionEdit, val modifierOmission: Boolean) {
@@ -927,6 +928,7 @@ class LOUDSWithTermId {
         maxResults: Int = 32,
         previous: FlickSearchProgress? = null,
         cancellationCheck: () -> Unit = {},
+        resultScore: ((TypoCorrectionResult) -> Int)? = null,
     ): TypoSearchProgress {
         fun emptyProgress() = TypoSearchProgress(emptyList(), emptyList(), emptyMap())
         if (startIndex !in str.indices || maxStates <= 0 || maxResults <= 0) return emptyProgress()
@@ -995,6 +997,35 @@ class LOUDSWithTermId {
             add(char)
             forEachCharVariation(char) { if (it != char) add(it) }
         } else listOf(char)
+        // A missing first character has no exact prefix to anchor it. Keep its small
+        // exact suffix frontier separately so cheap substitutions cannot erase it.
+        // This frontier also survives appends, without looking ahead or changing a
+        // previously pruned beam based on characters that have not been typed yet.
+        var leadingStates = reusable?.leadingStates ?: buildList {
+            forEachFlickChild(0, succinctBitVector) { node, first ->
+                if (isFlickKana(first)) add(FlickSearchState(node, 1,
+                    listOf(FlickCorrectionEdit(FlickCorrectionKind.MISSING, startIndex,
+                        startIndex, first.toString(), 1200)), 1200))
+            }
+        }
+        for (used in firstUsed..limit) {
+            cancellationCheck()
+            for (state in leadingStates) if (used >= 3 && isLeaf[state.nodeIndex]) {
+                val result = TypoCorrectionResult(flickReading(state.nodeIndex, state.depth, succinctBitVector),
+                    1, state.nodeIndex, used, state.edits, state.modifierOmission, state.costUnits)
+                accepted[state.nodeIndex to used] = result
+            }
+            if (used == limit || leadingStates.isEmpty()) break
+            val character = str[startIndex + used]
+            val next = ArrayList<FlickSearchState>()
+            val seen = HashSet<Int>()
+            for (state in leadingStates) for (alternative in variants(character)) {
+                val node = traverseFlick(state.nodeIndex, alternative, succinctBitVector)
+                if (node >= 0 && seen.add(node)) next.add(state.copy(nodeIndex = node,
+                    depth = state.depth + 1, modifierOmission = state.modifierOmission || alternative != character))
+            }
+            leadingStates = next.take(maxStates.coerceAtMost(128))
+        }
         // A transposition can skip the previous last-character frontier. Retain its exact
         // prefixes separately so an append only processes the new character and this edge.
         if (reusable != null && firstUsed < limit) {
@@ -1028,7 +1059,7 @@ class LOUDSWithTermId {
                 if (state.edits.isNotEmpty()) continue
                 forEachFlickChild(state.nodeIndex, succinctBitVector) { node, char ->
                     if (isFlickKana(char)) {
-                        val units = if (used == 0) 2800 else 1200
+                        val units = 1200
                         expanded.add(FlickSearchState(node, state.depth + 1,
                             edit(state, FlickCorrectionKind.MISSING, used, used, char.toString(), units),
                             units, state.modifierOmission))
@@ -1048,6 +1079,13 @@ class LOUDSWithTermId {
                 if (used == limit) continue
                 val canSubstitute = state.edits.isEmpty() || (limit >= 6 && state.edits.size == 1 &&
                     state.edits.first().kind in SUBSTITUTION_KINDS)
+                // An exhausted edit budget can only follow this exact character. Avoid
+                // inspecting every sibling, preserving the same state and insertion order.
+                if (!canSubstitute && !allowModifierOmission) {
+                    val node = traverseFlick(state.nodeIndex, char, succinctBitVector)
+                    if (node >= 0) add(used + 1, state.copy(nodeIndex = node, depth = state.depth + 1))
+                    continue
+                }
                 forEachFlickChild(state.nodeIndex, succinctBitVector) { node, candidate ->
                     if (candidate in exactVariants) {
                         add(used + 1, state.copy(nodeIndex = node, depth = state.depth + 1,
@@ -1116,22 +1154,30 @@ class LOUDSWithTermId {
                 }
             }
         }
-        val resultOrder = compareBy<TypoCorrectionResult> { it.costUnits }
-            .thenByDescending { it.consumedLength }.thenBy { it.yomi }
-        val ordered = accepted.values.map { result ->
+        val weightedResults = accepted.values.map { result ->
             val last = result.edits.singleOrNull()?.takeIf { it.kind == FlickCorrectionKind.MISSING &&
                 it.inputStart == str.length && result.consumedLength == limit }
             if (last == null) result else result.copy(edits = listOf(last.copy(costUnits = 2800)),
                 costUnits = result.costUnits + 2800 - last.costUnits)
-        }.sortedWith(resultOrder)
+        }
+        val scores = resultScore?.let { score -> weightedResults.associate { result ->
+            (result.nodeIndex to result.consumedLength) to score(result)
+        } }
+        val resultOrder = compareBy<TypoCorrectionResult> {
+            scores?.get(it.nodeIndex to it.consumedLength) ?: it.costUnits
+        }
+            .thenByDescending { it.consumedLength }.thenBy { it.yomi }
+        val ordered = weightedResults.sortedWith(resultOrder)
         val results = if (ordered.size <= maxResults) ordered else {
             val reserved = ordered.filter { it.consumedLength == limit }
-                .groupBy { it.edits.first().kind to it.edits.size }.values.flatMap { it.take(2) }
+                .groupBy { Triple(it.edits.first().kind, it.edits.size,
+                    it.edits.first().kind == FlickCorrectionKind.MISSING && it.edits.first().inputStart == startIndex) }
+                .values.flatMap { it.take(2) }
             (reserved + ordered).distinctBy { it.nodeIndex to it.consumedLength }.take(maxResults).sortedWith(resultOrder)
         }
         return TypoSearchProgress(results, emptyList(), emptyMap(), FlickSearchProgress(input, startIndex,
             slots[limit].toList(), swapPrefixStates, accepted.values.toList(), allowModifierOmission, maxStates,
-            correctionInput.evidence.drop(startIndex).take(limit)))
+            correctionInput.evidence.drop(startIndex).take(limit), leadingStates))
     }
 
     private inline fun forEachFlickChild(node: Int, vector: SuccinctBitVector, block: (Int, Char) -> Unit) {

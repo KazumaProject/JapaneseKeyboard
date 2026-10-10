@@ -5,9 +5,15 @@ import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInput
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionKind
 import com.kazumaproject.markdownhelperkeyboard.converter.session.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.*
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.learning.session.ConversionLearningSession
+import com.kazumaproject.markdownhelperkeyboard.learning.session.LearningFragment
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -100,6 +106,61 @@ class FlickCorrectionEngineTest {
             FlickCorrectionInput("こんちは"), false)
         assertTrue("Missing greeting was discarded: ${results.map { it.yomi }}",
             results.any { it.yomi == "こんにちは" && it.consumedLength == 4 })
+    }
+
+    @Test fun completionKeepsItsReadingWithoutAcquiringACorrectionLabel() = runBlocking {
+        val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
+        val input = "こんにち"
+        for (enabled in listOf(false, true)) {
+            val candidates = session.query(request(input, enabled)).candidates
+            val completion = candidates.firstOrNull { it.yomi == "こんにちは" }
+            assertNotNull("Completion reading is missing: $candidates", completion)
+            assertNull(completion!!.flickCorrection)
+            assertEquals(9.toByte(), completion.type)
+        }
+    }
+
+    @Test fun selectingACorrectionImprovesItsNextRankWithoutChangingTheLiteralFirstChoice() = runBlocking {
+        val stored = mutableListOf<LearnEntity>()
+        val dao = mock<LearnDao>()
+        org.mockito.kotlin.whenever(dao.findByInputPrefix(org.mockito.kotlin.any(), org.mockito.kotlin.any()))
+            .thenAnswer { invocation -> stored.filter { it.input.startsWith(invocation.getArgument<String>(0)) } }
+        org.mockito.kotlin.whenever(dao.insertAll(org.mockito.kotlin.any())).thenAnswer { invocation ->
+            stored.addAll(invocation.getArgument<List<LearnEntity>>(0))
+            Unit
+        }
+        org.mockito.kotlin.whenever(dao.deleteAll()).thenAnswer { stored.clear(); Unit }
+        val memory = LearnRepository(dao)
+        val session = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
+        val input = "かした"
+        val query = request(input, true).copy(learnRepository = memory)
+        val before = session.query(query).candidates
+        val selected = before.drop(3).first { candidate ->
+            candidate.length.toInt() == input.length && candidate.flickCorrection?.edits?.singleOrNull()?.kind in
+                setOf(FlickCorrectionKind.KEY, FlickCorrectionKind.DIRECTION) &&
+                candidate.flickCorrection!!.costUnits <= 3000
+        }
+        val learning = ConversionLearningSession().apply {
+            beginIfNeeded(input)
+            record(LearningFragment(checkNotNull(selected.yomi), selected.commitText, selected.score,
+                before.indexOf(selected), corrected = true))
+        }
+        val entries = learning.finish(false, 123L)
+        assertTrue(entries.all { it.input == selected.yomi })
+        memory.insertAll(entries)
+        val after = session.query(query).candidates
+        assertEquals(before.first(), after.first())
+        assertEquals(selected, after[1])
+        assertEquals(CANDIDATE_TYPE_FLICK_TYPO_CORRECTION, after[1].type)
+        assertEquals(input.length, after[1].length.toInt())
+
+        val off = session.query(request(input, false).copy(learnRepository = memory)).candidates
+        assertTrue(off.none { it.flickCorrection != null })
+
+        memory.deleteAll()
+        assertEquals(before, session.query(query).candidates)
+        memory.insertAll(listOf(entries.single().copy(out = "別の表記")))
+        assertEquals(before, session.query(query).candidates)
     }
 
     @Test fun incrementalAppendDeleteReplacementAndGestureRevisionMatchColdQueries() = runBlocking {
