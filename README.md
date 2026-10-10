@@ -283,9 +283,16 @@ Sumireは、**プライバシーを絶対に妥協しない**
 
 | Tool           | Version                    |
 |:---------------|:---------------------------|
-| Android Studio | Compatible with Android Gradle Plugin 8.10.1 |
-| Gradle Plugin  | 8.10.1                     |
-| JDK            | 17                         |
+| Android Studio | Rabbit 1 (2026.2.1) or newer |
+| Gradle Plugin  | 9.4.1                      |
+| Gradle         | 9.6.0                      |
+| Android SDK    | API 37 (Android 17)        |
+| Gradle JDK     | JetBrains Runtime 25 (Android Studio) |
+
+SDK Manager で Android 17（API 37）の SDK Platform をインストールしてください。
+Kotlin は AGP の組み込みサポートを使用します。Java/Kotlin のコンパイル対象は 17 です。
+ABI ごとのバージョン番号と APK ファイル名を維持するため、現在は
+`android.newDsl=false` で旧 Variant API を使用しています。AGP 10 への更新前に移行が必要です。
 
 #### ビルド手順
 

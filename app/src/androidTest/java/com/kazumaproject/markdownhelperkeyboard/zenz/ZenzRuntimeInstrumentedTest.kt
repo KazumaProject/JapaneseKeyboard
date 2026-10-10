@@ -170,7 +170,7 @@ class ZenzRuntimeInstrumentedTest {
         this.connection = connection
         val intent = Intent().setClassName(
             context.packageName,
-            "${context.packageName}.zenz.runtime.ZenzRuntimeService",
+            "com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeService",
         )
         assertTrue(
             "Zenz runtime service could not be bound",
