@@ -20090,6 +20090,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+            updateSumireDakutenKeyForCurrentInput()
+        }
         physicalCandidateCompositionSession?.let { session ->
             if (session.queryText != string) {
                 clearPhysicalCandidateCompositionSession("reading edited")
