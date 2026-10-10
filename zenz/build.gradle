@@ -47,9 +47,7 @@ def zenzDebugOptimizedNative = providers.gradleProperty("zenzDebugOptimizedNativ
 
 android {
     namespace 'com.kazumaproject.zenz'
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     ndkVersion "29.0.14206865"
 

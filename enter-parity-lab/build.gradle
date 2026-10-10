@@ -4,9 +4,7 @@ plugins {
 }
 android {
     namespace 'com.kazumaproject.enterparity'
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
     defaultConfig {
         applicationId 'com.kazumaproject.enterparity'
         minSdk 26
