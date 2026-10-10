@@ -71,12 +71,18 @@ internal object CounterCandidateComposer {
             return if (segments.isNotEmpty()) segments else
                 listOf(CandidateConversionSegment(0, input.length, candidate.string))
         }
-        fun validPath(candidate: Candidate, segments: List<CandidateConversionSegment>): Boolean =
-            candidate.length.toInt() == input.length && segments.firstOrNull()?.inputStart == 0 &&
-                segments.lastOrNull()?.inputEnd == input.length &&
-                segments.all { it.inputStart >= 0 && it.inputStart < it.inputEnd && it.inputEnd <= input.length } &&
-                segments.zipWithNext().all { (a, b) -> a.inputEnd == b.inputStart } &&
-                segments.joinToString("") { it.output } == candidate.string
+        fun validPath(candidate: Candidate, segments: List<CandidateConversionSegment>): Boolean {
+            if (candidate.length.toInt() != input.length) return false
+            var end = 0
+            var outputOffset = 0
+            for (segment in segments) {
+                if (segment.inputStart != end || segment.inputEnd <= end || segment.inputEnd > input.length ||
+                    !candidate.string.regionMatches(outputOffset, segment.output, 0, segment.output.length)) return false
+                end = segment.inputEnd
+                outputOffset += segment.output.length
+            }
+            return end == input.length && outputOffset == candidate.string.length
+        }
         val first = ordinary.candidates.firstOrNull()
         val firstPath = first?.let(::path).orEmpty()
         val fullWord = entries(input)
@@ -132,6 +138,19 @@ internal object CounterCandidateComposer {
                 }
             }
             for (values in variants.distinct()) {
+                if (values.any { !converter.mayEndQuantitySurface(it) }) continue
+                // Reject duplicate text before allocating its segment objects and metadata.
+                val surface = buildString {
+                    var segmentIndex = 0
+                    for ((index, span) in selected.withIndex()) {
+                        while (segmentIndex < segments.size && segments[segmentIndex].inputEnd <= span.start)
+                            append(segments[segmentIndex++].output)
+                        append(values[index])
+                        while (segmentIndex < segments.size && segments[segmentIndex].inputEnd <= span.end) segmentIndex++
+                    }
+                    while (segmentIndex < segments.size) append(segments[segmentIndex++].output)
+                }
+                if (surface in additions || (!promote && surface in ordinaryStrings)) continue
                 val replaced = buildList {
                     var segmentIndex = 0
                     for ((index, span) in selected.withIndex()) {
@@ -142,9 +161,6 @@ internal object CounterCandidateComposer {
                     }
                     while (segmentIndex < segments.size) add(segments[segmentIndex++])
                 }
-                if (values.any { !converter.mayEndQuantitySurface(it) }) continue
-                val surface = replaced.joinToString("") { it.output }
-                if (surface in additions || (!promote && surface in ordinaryStrings)) continue
                 val splits = ordinary.bunsetsuResult?.splitPatternByCandidateString?.get(basis.string).orEmpty()
                     .filter { split -> selected.none { split > it.start && split < it.end } }
                 val existing = ordinary.candidates.firstOrNull { it.string == surface }

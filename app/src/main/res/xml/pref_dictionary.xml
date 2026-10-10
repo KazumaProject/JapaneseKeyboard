@@ -206,7 +206,7 @@
     <PreferenceCategory android:title="@string/counter_dictionary_category_title">
 
         <SwitchPreferenceCompat
-            android:defaultValue="true"
+            android:defaultValue="false"
             android:key="counter_dictionary_enable_preference"
             android:title="@string/counter_dictionary_enable_title"
             android:summaryOn="@string/counter_dictionary_enable_summary_on"

@@ -787,7 +787,7 @@ object AppModule {
                 mozcNodeAttributeTable != null,
         )
         kanaKanjiEngine.setCounterDictionaryEnabled(
-            preferences.getBoolean(AppPreference.COUNTER_DICTIONARY_ENABLE_KEY, true),
+            preferences.getBoolean(AppPreference.COUNTER_DICTIONARY_ENABLE_KEY, false),
         )
         kanaKanjiEngine.setDictionaryBinaryReader(dictionaryBinaryReader)
 

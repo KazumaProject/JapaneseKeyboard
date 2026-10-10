@@ -27,9 +27,9 @@ class NgramDictionaryTogglePreferenceTest {
     }
 
     @Test
-    fun defaultsToEnabledAndPersistsBothSettings() {
-        assertTrue(AppPreference.counter_dictionary_enable_preference)
-        assertTrue(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
+    fun countersDefaultToDisabledWhileNgramsDefaultToEnabledAndPersist() {
+        assertFalse(AppPreference.counter_dictionary_enable_preference)
+        assertFalse(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
         assertTrue(AppPreference.system_ngram_dictionary_enable_preference)
         assertTrue(AppPreference.custom_ngram_dictionary_enable_preference)
         assertTrue(ImePreferencesSnapshot.from(AppPreference).systemNgramDictionaryEnabled)
@@ -45,6 +45,9 @@ class NgramDictionaryTogglePreferenceTest {
         assertFalse(AppPreference.counter_dictionary_enable_preference)
         AppPreference.counter_dictionary_enable_preference = true
         assertTrue(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
+        AppPreference.init(context)
+        assertTrue(AppPreference.counter_dictionary_enable_preference)
+        assertTrue(ImePreferencesSnapshot.from(AppPreference).counterDictionaryEnabled)
         assertFalse(AppPreference.system_ngram_dictionary_enable_preference)
         assertFalse(AppPreference.custom_ngram_dictionary_enable_preference)
         assertFalse(ImePreferencesSnapshot.from(AppPreference).systemNgramDictionaryEnabled)
@@ -59,7 +62,9 @@ class NgramDictionaryTogglePreferenceTest {
             val legacySetting = SettingSearchIndex.searchable(context, SettingSearchScope.LEGACY_TABS)
                 .first { it.key == key }
             assertTrue(newSetting.destination is SettingDestinationType.SwitchPreference)
-            assertTrue((newSetting.destination as SettingDestinationType.SwitchPreference).defaultValue)
+            val defaultValue = (newSetting.destination as SettingDestinationType.SwitchPreference).defaultValue
+            if (key == AppPreference.COUNTER_DICTIONARY_ENABLE_KEY) assertFalse(defaultValue)
+            else assertTrue(defaultValue)
             assertTrue(legacySetting.legacyTarget?.tabKey == SettingTabRegistry.TAB_DICTIONARY)
         }
     }

@@ -1058,6 +1058,8 @@ class FindPath(
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
         private val bosNodes: List<Node> = listOf(BOS)
         private const val MAX_BUNSETSU_SPLIT_PATTERNS = 4
+        // The legacy renderer omits a lexical EOS spelling as well as the actual end node.
+        private const val LEXICAL_EOS_MASK = 16
     }
 
     private var forwardDpTraceSink: MutableList<ForwardDpTrace>? = null
@@ -1193,14 +1195,13 @@ class FindPath(
             if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
-                for (surface in counterSurfaces(element, candidateSegmentCollector != null)) {
+                for (surface in counterSurfaces(element, searchScratch)) {
                     val stringFromNode = surface.text
-                    val yomiUsedFromNode = getYomiUsedFromPath(element)
 
                     if (foundStrings.add(stringFromNode)) {
                         candidateSegmentCollector?.set(
                             stringFromNode,
-                            surface.segments,
+                            if (element.sourceMask and 4 == 0) getConversionSegmentsFromPath(element) else surface.segments,
                         )
                         val candidate = Candidate(
                             string = stringFromNode,
@@ -1208,7 +1209,7 @@ class FindPath(
                                 string = stringFromNode,
                                 sources = candidateSourcesFromMask(element.sourceMask),
                             ),
-                            yomi = yomiUsedFromNode,
+                            yomi = getYomiUsedFromPath(element),
                             length = length.toUByte(),
                             score = element.priorityCost + surface.rank,
                             leftId = element.next?.node?.l,
@@ -1510,7 +1511,8 @@ class FindPath(
             scratch.prependOutput(previousNode.counter?.forms?.firstOrNull()?.value ?: previousNode.tango, element.outputPathId)
         }
         val sourceMask = element.sourceMask or previousNode.candidateSource.toMask() or
-            (if (previousNode.counter != null) 4 else if (previousNode.tango.any { it.isDigit() }) 8 else 0)
+            (if (previousNode.counter != null) 4 else if (previousNode.tango.any { it.isDigit() }) 8 else 0) or
+            (if (previousNode.tango == "EOS") LEXICAL_EOS_MASK else 0)
         val nodeIds = scratch.nodeIds
         if (
             !scratch.bestBackwardCostByState.putIfLower(
@@ -1891,15 +1893,13 @@ class FindPath(
             if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
-                val semanticNgramMatch = pathMatchesSystemNgram(element, systemNgramDictionary, counterNgramViews)
-                for (surface in counterSurfaces(element, candidateSegmentCollector != null)) {
+                for (surface in counterSurfaces(element, searchScratch)) {
                     val stringFromNode = surface.text
-                    val yomiUsedFromNode = getYomiUsedFromPath(element)
                     val totalCost = element.priorityCost + surface.rank
                     candidateTrace?.add(
                         CandidateTrace(
                             candidate = stringFromNode,
-                            yomi = yomiUsedFromNode,
+                            yomi = getYomiUsedFromPath(element),
                             totalCost = totalCost,
                             path = getPathStringsFromPath(element),
                         ),
@@ -1908,9 +1908,9 @@ class FindPath(
                     if (foundStrings.add(stringFromNode)) {
                         candidateSegmentCollector?.set(
                             stringFromNode,
-                            surface.segments,
+                            if (element.sourceMask and 4 == 0) getConversionSegmentsFromPath(element) else surface.segments,
                         )
-                        if (semanticNgramMatch) {
+                        if (pathMatchesSystemNgram(element, systemNgramDictionary, counterNgramViews)) {
                             systemNgramMatchedCandidates.add(stringFromNode)
                         }
                         val bunsetsuPositions = getBunsetsuPositionsFromPath(element)
@@ -1929,7 +1929,7 @@ class FindPath(
                                 sources = candidateSourcesFromMask(element.sourceMask),
                             ),
                             length = length.toUByte(),
-                            yomi = yomiUsedFromNode,
+                            yomi = getYomiUsedFromPath(element),
                             score = totalCost,
                             leftId = element.next?.node?.l,
                             rightId = element.next?.node?.r,
@@ -2325,8 +2325,13 @@ class FindPath(
                 (start.node.counter != null && ngramViews(start.node, views).any(dictionary::matchesSingleNode))) return true
             val second = start.next
             if (second == null || second.node.tango == "EOS") return false
-            if (systemNgramMatches(dictionary, listOf(start.node,second.node,second.next?.node,
-                    second.next?.next?.node,second.next?.next?.next?.node),views)) return true
+            val third = second.next?.node
+            val fourth = second.next?.next?.node
+            val fifth = second.next?.next?.next?.node
+            if (dictionary.matches(start.node, second.node, third, fourth, fifth)) return true
+            if ((start.node.counter != null || second.node.counter != null || third?.counter != null ||
+                    fourth?.counter != null || fifth?.counter != null) &&
+                systemNgramMatches(dictionary, listOf(start.node, second.node, third, fourth, fifth), views)) return true
             start = start.next
         }
         return false
@@ -2672,10 +2677,12 @@ class FindPath(
     private data class CounterSurfacePath(val text: String, val segments: List<CandidateConversionSegment>, val rank: Int)
 
     /** Bounded presentation: consistent ASCII/kanji/fullwidth styles, never a Cartesian product. */
-    private fun counterSurfaces(path: PathQueueElement, collectSegments: Boolean): List<CounterSurfacePath> {
+    private fun counterSurfaces(path: PathQueueElement, scratch: BackwardSearchScratch): List<CounterSurfacePath> {
         if (path.sourceMask and 4 == 0) {
-            val segments = if (collectSegments) getConversionSegmentsFromPath(path) else emptyList()
-            return listOf(CounterSurfacePath(getStringFromPath(path), segments, 0))
+            // Reuse the interned output. Build reading segments only after string deduplication.
+            val text = if (path.sourceMask and LEXICAL_EOS_MASK != 0) getStringFromPath(path) else
+                scratch.outputString(path.outputPathId)
+            return listOf(CounterSurfacePath(text, emptyList(), 0))
         }
         val nodes = generateSequence(path) { it.next }.map { it.node }
             .filter { it.tango != "BOS" && it.tango != "EOS" }.toList()

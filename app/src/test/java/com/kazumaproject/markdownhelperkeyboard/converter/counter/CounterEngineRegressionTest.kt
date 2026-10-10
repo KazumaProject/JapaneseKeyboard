@@ -13,6 +13,22 @@ import org.mockito.kotlin.*
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35])
 class CounterEngineRegressionTest {
+    @Test fun lexicalEndMarkerSpellingPreservesCandidateSegmentAlignment() = runBlocking {
+        val repository = mock<UserDictionaryRepository>()
+        whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+        whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
+        for (backend in ConversionBackend.entries) for (mode in CandidateQueryMode.entries)
+            for (bunsetsu in listOf(false, true)) for (n in listOf(8, 32)) {
+                val query = request("いおす", repository).copy(mode = mode, bunsetsuSeparation = bunsetsu, n = n)
+                val session = KanaKanjiConversionSession(engine, backend)
+                val result = session.query(query)
+                for ((text, segments) in result.candidateSegmentsByString) {
+                    assertEquals("$backend/$mode/$bunsetsu/$n/$text", text, segments.joinToString("") { it.output })
+                }
+                assertEquals(result.candidates, session.query(query.copy(collectCandidateSegments = false)).candidates)
+            }
+    }
+
     @Test fun rulesRankCompleteSpansAndPreserveOrdinaryWords() = runBlocking {
         val repository = mock<UserDictionaryRepository>()
         whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())

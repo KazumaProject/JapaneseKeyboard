@@ -12,11 +12,21 @@ import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CounterConversionInstrumentedTest {
+    @Before fun enableRulesForConversionTests() {
+        entry().kanaKanjiEngine().setCounterDictionaryEnabled(true)
+    }
+
+    @After fun restoreRulesFromSavedPreference() {
+        entry().kanaKanjiEngine().setCounterDictionaryEnabled(AppPreference.counter_dictionary_enable_preference)
+    }
+
     private fun request(
         input: String,
         repository: UserDictionaryRepository,
@@ -129,20 +139,20 @@ class CounterConversionInstrumentedTest {
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val key = AppPreference.COUNTER_DICTIONARY_ENABLE_KEY
         val wasPresent = preferences.contains(key)
-        val wasEnabled = preferences.getBoolean(key, true)
+        val wasEnabled = preferences.getBoolean(key, false)
         val session = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
         val query = request("ごごさんじはん", entry.userDictionaryRepository())
         try {
             preferences.edit().putBoolean(key, true).commit()
-            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, true))
+            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, false))
             val enabled = session.query(query)
             assertTrue(enabled.candidates.any { it.string == "15:30" })
             preferences.edit().putBoolean(key, false).commit()
-            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, true))
+            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, false))
             assertFalse(session.query(query).candidates.any { it.string == "15:30" })
             assertFalse(engine.getCandidatesEnglishKana(query.input).any { it.string == "15:30" })
             preferences.edit().putBoolean(key, true).commit()
-            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, true))
+            engine.setCounterDictionaryEnabled(preferences.getBoolean(key, false))
             assertEquals(enabled, session.query(query))
         } finally {
             preferences.edit().apply {

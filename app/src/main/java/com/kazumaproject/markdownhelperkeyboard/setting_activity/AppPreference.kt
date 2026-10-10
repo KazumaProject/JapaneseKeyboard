@@ -194,7 +194,7 @@ object AppPreference {
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val TEXT_MACRO_CANDIDATE_PREFERENCE = Pair("text_macro_candidate_preference", true)
     private val COUNTER_DICTIONARY_ENABLE_PREFERENCE =
-        Pair(COUNTER_DICTIONARY_ENABLE_KEY, true)
+        Pair(COUNTER_DICTIONARY_ENABLE_KEY, false)
     private val SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
         Pair("system_ngram_dictionary_enable_preference", true)
     private val CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
