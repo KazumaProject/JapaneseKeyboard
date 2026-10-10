@@ -30,7 +30,8 @@ class TextMacroCompilerTest {
     @Test
     fun localizedDefaultsUseProvidedLocaleAndTimeZone() {
         val expanded = TextMacroCompiler.compile("{date} {time}").expand(fixedContext)
-        assertEquals("8/30/26 10:05 AM", expanded.text)
+        // CLDR versions differ in whether the AM separator is a narrow no-break space.
+        assertEquals("8/30/26 10:05 AM", expanded.text.replace('\u202f', ' '))
     }
 
     @Test
