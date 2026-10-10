@@ -4,9 +4,7 @@ plugins {
 
 android {
     namespace 'com.kazumaproject.qwerty_keyboard'
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
         minSdk 24

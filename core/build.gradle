@@ -5,9 +5,7 @@ plugins {
 
 android {
     namespace 'com.kazumaproject.core'
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
         minSdk 24

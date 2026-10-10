@@ -4,9 +4,7 @@ plugins {
 
 android {
     namespace 'com.kazumaproject.gojuon_keyboard'
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
         minSdk 24
