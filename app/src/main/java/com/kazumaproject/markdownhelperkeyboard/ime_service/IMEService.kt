@@ -11797,7 +11797,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         request: KeyboardPopupRequest,
         items: List<String>,
         source: String,
-        placement: ImeSelectionPopupPlacement = ImeSelectionPopupPlacement.SCREEN_CENTER,
         maxVisibleItems: Int = 5,
         onSelected: (Int) -> Unit,
     ): Boolean {
@@ -11807,12 +11806,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             choiceMode = ListView.CHOICE_MODE_SINGLE
             adapter = createKeyboardFontArrayAdapter(this@IMEService, R.layout.list_item_layout, items)
         }
-        val reference = when (placement) {
-            ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN -> resolveSelectionToolbarAnchor(request.mainView)
-            ImeSelectionPopupPlacement.KEYBOARD_CENTER -> requireActiveKeyboardSurface()?.rootView
-            else -> null
-        }
-        val popup = ImeSelectionPopupWindow(this, popupView, placement, reference, maxVisibleItems)
+        val popup = ImeSelectionPopupWindow(
+            this, popupView, ImeSelectionPopupPlacement.KEYBOARD_CENTER,
+            maxVisibleItems = maxVisibleItems,
+            referenceViews = resolveKeyboardSelectionReferenceViews(request.mainView),
+        )
         list.setOnItemClickListener { _, _, position, _ ->
             val valid = isKeyboardPopupRequestCurrent(request)
             popup.dismiss()
@@ -11831,15 +11829,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val visible = listOf(mainView.keyboardBackgroundContainer, mainView.suggestionViewParent,
             mainView.candidateTabLayout, mainView.shortcutToolbarRecyclerview).filter { it.isShown }
         return visible.ifEmpty { listOf(surface?.rootView ?: mainView.root) }
-    }
-
-    private fun resolveSelectionToolbarAnchor(mainView: MainLayoutBinding): View {
-        val toolbar = mainView.shortcutToolbarRecyclerview
-        val visible = Rect()
-        if (toolbar.isShown && toolbar.getGlobalVisibleRect(visible)) return toolbar
-        return requireActiveKeyboardSurface()?.suggestionRecyclerView?.takeIf {
-            it.isShown && it.getGlobalVisibleRect(visible)
-        } ?: requireActiveKeyboardSurface()?.rootView ?: mainView.root
     }
 
     private fun showKeyboardSelectionPopup(
@@ -13097,7 +13086,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showToastMessage(getString(R.string.ime_no_templates_registered))
                         return@withContext
                     }
-                    showKeyboardSelectionList(request, templates.map { it.word }, "templates", ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN) { position ->
+                    showKeyboardSelectionList(request, templates.map { it.word }, "templates") { position ->
                         commitText(templates[position].word, 1)
                     }
                 }
@@ -13113,7 +13102,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.value.isNotEmpty()) return
         val request = beginKeyboardPopupRequest() ?: return
         val dates = createDateStrings(Calendar.getInstance())
-        showKeyboardSelectionList(request, dates, "dates", ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN) { position -> commitText(dates[position], 1) }
+        showKeyboardSelectionList(request, dates, "dates") { position -> commitText(dates[position], 1) }
     }
 
     private fun createDateStrings(calendar: Calendar): List<String> {
