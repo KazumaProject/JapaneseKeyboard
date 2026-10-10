@@ -1,6 +1,5 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
 }
 
 def localProperties = new Properties()
@@ -48,13 +47,13 @@ def zenzDebugOptimizedNative = providers.gradleProperty("zenzDebugOptimizedNativ
 
 android {
     namespace 'com.kazumaproject.zenz'
-    compileSdk 36
+    compileSdk = 37
 
     ndkVersion "29.0.14206865"
 
     defaultConfig {
         minSdk 24
-        targetSdk 36
+        targetSdk 37
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
     }
@@ -95,9 +94,6 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = '17'
     }
 
     // ViewBinding等の機能を有効化
