@@ -9,12 +9,13 @@ import java.util.zip.CRC32
 
 internal data class EndingRecord(val unit: Int, val restored: String, val terminal: Int)
 
-/** Immutable JKCR v1 dictionary. Android runtime uses only standard Java/Kotlin APIs. */
-class CounterDictionary internal constructor(
+/** JKCR v1, with an optional precompiled output-ending index. */
+class CounterDictionary private constructor(
     internal val numbers: List<NumberPart>, internal val units: List<CounterUnit>,
     internal val endings: List<EndingRecord>, internal val exceptions: List<CounterException>,
     internal val surfaces: List<CounterSurface>, internal val numberTrie: CounterTrie,
     internal val endingTrie: CounterTrie, internal val exceptionTrie: CounterTrie, val byteSize: Int,
+    private val surfaceEndBits: LongArray?,
 ) {
     val counterCount: Int get() = units.size
     val numberPartCount: Int get() = numbers.size
@@ -27,11 +28,20 @@ class CounterDictionary internal constructor(
     }
     fun converter(): CounterConverter = CounterConverter(this)
 
+    internal fun mayEndQuantitySurface(surface: String): Boolean {
+        if (surface.isEmpty()) return false
+        val bits = surfaceEndBits ?: return true // Legacy dictionaries conservatively use detailed parsing.
+        val code = surface[surface.lastIndex].code
+        return bits[code ushr 6] and (1L shl (code and 63)) != 0L
+    }
+
     companion object {
         const val FORMAT_VERSION = 1
         const val MAX_BYTES = 128 * 1024
         private const val MAGIC = 0x52434b4a // bytes: JKCR
         private const val HEADER_SIZE = 16
+        private const val SURFACE_END_WORDS = 1024
+        private const val SURFACE_END_BYTES = 4 + SURFACE_END_WORDS * 8
 
         internal fun compile(source: CounterSource): ByteArray {
             val pool = (source.numbers.map { it.reading } + source.units.flatMap { listOf(it.id, it.surface, it.category) } +
@@ -110,7 +120,17 @@ class CounterDictionary internal constructor(
                 return CounterTrie(edges, labels, ints(), ints(), ints())
             }
             val numberTrie = trie(); val endingTrie = trie(); val exceptionTrie = trie()
-            require(!data.hasRemaining()) { "Unexpected trailing data" }
+            val surfaceEndBits = when (data.remaining()) {
+                0 -> null
+                SURFACE_END_BYTES -> {
+                    require(int() == SURFACE_END_WORDS) { "Invalid surface ending index count" }
+                    LongArray(SURFACE_END_WORDS).also { bits ->
+                        data.asLongBuffer().get(bits)
+                        data.position(data.position() + SURFACE_END_WORDS * 8)
+                    }
+                }
+                else -> throw IllegalArgumentException("Invalid surface ending index length")
+            }
             require(numbers.isNotEmpty() && numbers.all(::validNumber) && numbers.map { it.reading }.distinct().size == numbers.size)
             require(units.isNotEmpty() && units.map { it.id }.distinct().size == units.size)
             units.forEach { require(it.id.isNotEmpty() && it.surface.isNotEmpty() && it.min >= 0 && it.max >= it.min && it.priority >= 0) }
@@ -124,7 +144,7 @@ class CounterDictionary internal constructor(
                 val node = numberTrie.exact(part.reading)
                 require(node >= 0 && numberTrie.postings[node + 1] - numberTrie.postings[node] == 1 && numberTrie.outputs[numberTrie.postings[node]] == i) { "Mismatched number index" }
             }
-            return CounterDictionary(numbers, units, endings, exceptions, surfaces, numberTrie, endingTrie, exceptionTrie, bytes.size)
+            return CounterDictionary(numbers, units, endings, exceptions, surfaces, numberTrie, endingTrie, exceptionTrie, bytes.size, surfaceEndBits)
         }
     }
 }

@@ -10,8 +10,8 @@ class CounterDictionaryIntegrationTest {
     private fun bytes() = listOf(File("src/main/assets/counter/counter_rules.dat"), File("app/src/main/assets/counter/counter_rules.dat")).first { it.exists() }.readBytes()
     private fun converter() = CounterDictionary.read(bytes()).converter()
     @Test fun publishedAssetAndRepresentativeRuleCasesMatch() {
-        // Pinned upstream source: KazumaProject/kotlin-kana-kanji-converter@333c338bbbcf9feada95796cf1e88e3aa6473bc4.
-        assertEquals("7decaa2574df37bd341898f08a655afed0a7987f956ce7fef3bfa5a42f732e08", MessageDigest.getInstance("SHA-256").digest(bytes()).joinToString("") { "%02x".format(it) })
+        // Pinned upstream source: KazumaProject/kotlin-kana-kanji-converter@3bf65dfbd25504cbacb33ede451ad86920f3a53d.
+        assertEquals("c1a470c655692ed3eb95ece7a16c6babf7916fef69192b2601498b931417a4c0", MessageDigest.getInstance("SHA-256").digest(bytes()).joinToString("") { "%02x".format(it) })
         val converter = converter()
         val cases = listOf(
             Triple("いっぽん", "hon", listOf("1本", "一本", "１本")),
