@@ -1,5 +1,7 @@
 package com.kazumaproject.graph
 
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionEdit
+
 enum class MozcNodeType {
     NOR,
     BOS,
@@ -36,6 +38,7 @@ data class Node(
     val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
+    val flickCorrectionEdits: List<FlickCorrectionEdit> = emptyList(),
 ) {
     override fun toString(): String {
         return this.tango

@@ -11,6 +11,7 @@ data class LearningFragment(
     val leftId: Short? = null,
     val rightId: Short? = null,
     val explicitlySelected: Boolean = false,
+    val corrected: Boolean = false,
 )
 
 /** Collects every committed fragment until the original reading has been fully committed. */
@@ -36,8 +37,8 @@ class ConversionLearningSession {
         learnFirstCandidate: Boolean,
         timestamp: Long = System.currentTimeMillis(),
     ): List<LearnEntity> {
-        val reading = originalReading
         val recorded = fragments.toList()
+        val reading = if (recorded.any { it.corrected }) recorded.joinToString("") { it.reading } else originalReading
         cancel()
         if (reading.isNullOrEmpty() || recorded.isEmpty()) return emptyList()
 

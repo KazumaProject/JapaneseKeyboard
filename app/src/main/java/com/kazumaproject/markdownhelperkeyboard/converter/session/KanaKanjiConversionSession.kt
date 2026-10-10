@@ -3,10 +3,12 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.FlickCorrectionRanking
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInput
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.CancellationException
@@ -46,6 +48,7 @@ data class KanaKanjiQueryRequest(
     val predictionConfig: PredictionConfig = PredictionConfig(),
     val collectCandidateSegments: Boolean = false,
     val dateCandidateConfig: DateCandidateConfig = DateCandidateConfig(),
+    val flickCorrectionInput: FlickCorrectionInput? = null,
 )
 
 data class KanaKanjiQueryResult(
@@ -88,7 +91,7 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
-            val result = when (request.mode) {
+            val rawResult = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
@@ -99,6 +102,17 @@ class KanaKanjiConversionSession(
                 CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
                 CandidateQueryMode.PREDICTION -> queryPrediction(request)
                 CandidateQueryMode.CONVERSION -> queryConversion(request)
+            }
+            val result = if (request.flickCorrectionInput == null) rawResult else {
+                val candidates = FlickCorrectionRanking.preferLiteralDuplicates(rawResult.candidates, request.input.length)
+                val replaced = rawResult.candidates.filter { it.flickCorrection != null }.filter { corrected ->
+                    candidates.none { it == corrected }
+                }.mapTo(HashSet()) { it.string }
+                rawResult.copy(candidates = candidates,
+                    bunsetsuResult = rawResult.bunsetsuResult?.copy(candidates = candidates),
+                    candidateSegmentsByString = rawResult.candidateSegmentsByString.filterNot { (text, path) ->
+                        text in replaced && path.any { it.flickCorrection != null }
+                    })
             }
             val composedResult = result.copy(
                 candidates = DateCandidateComposer.compose(
@@ -153,6 +167,7 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 candidateSegmentCollector = segmentCollector,
+                flickCorrectionInput = request.flickCorrectionInput,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -175,6 +190,7 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     candidateSegmentCollector = segmentCollector,
+                    flickCorrectionInput = request.flickCorrectionInput,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
@@ -203,6 +219,7 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 candidateSegmentCollector = segmentCollector,
+                flickCorrectionInput = request.flickCorrectionInput,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -225,6 +242,7 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     candidateSegmentCollector = segmentCollector,
+                    flickCorrectionInput = request.flickCorrectionInput,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
@@ -253,6 +271,8 @@ class KanaKanjiConversionSession(
                     englishPredictionEnabled = false,
                 ),
                 candidateSegmentCollector = segmentCollector,
+                flickCorrectionInput = request.flickCorrectionInput,
+                isOmissionSearchEnable = request.flickCorrectionInput != null && request.omissionSearchEnabled,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -275,6 +295,8 @@ class KanaKanjiConversionSession(
                         englishPredictionEnabled = false,
                     ),
                     candidateSegmentCollector = segmentCollector,
+                    flickCorrectionInput = request.flickCorrectionInput,
+                    isOmissionSearchEnable = request.flickCorrectionInput != null && request.omissionSearchEnabled,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )

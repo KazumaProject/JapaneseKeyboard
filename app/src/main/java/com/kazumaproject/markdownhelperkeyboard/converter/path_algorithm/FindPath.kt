@@ -12,7 +12,11 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FLICK_TYPO_CORRECTION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.FlickCorrectionRanking
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInfo
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.IncrementalGraphMetadata
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheckResult
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryChecker
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
@@ -62,12 +66,15 @@ class FindPath(
         internal var lastExpansionCacheMissCount: Int = 0
         internal var lastForwardDpReused: Boolean = false
         internal var afterForwardDpForTest: (() -> Unit)? = null
+        private var flickLiteralState: SessionState? = null
+        internal var flickLiteralGraph: MutableMap<Int, MutableList<Node>>? = null
 
         private var queryCheckpoint: QueryCheckpoint? = null
 
         private data class QueryCheckpoint(
             val forwardDpCache: ForwardDpCache?,
             val penaltyCache: PenaltyCache?,
+            val literalGraph: MutableMap<Int, MutableList<Node>>?,
         )
 
         internal fun beginQueryTransaction() {
@@ -75,10 +82,13 @@ class FindPath(
             queryCheckpoint = QueryCheckpoint(
                 forwardDpCache = forwardDpCache,
                 penaltyCache = penaltyCache,
+                literalGraph = flickLiteralGraph,
             )
+            flickLiteralState?.beginQueryTransaction()
         }
 
         internal fun commitQueryTransaction() {
+            flickLiteralState?.commitQueryTransaction()
             queryCheckpoint = null
         }
 
@@ -86,6 +96,8 @@ class FindPath(
             val checkpoint = queryCheckpoint ?: return
             forwardDpCache = checkpoint.forwardDpCache
             penaltyCache = checkpoint.penaltyCache
+            flickLiteralGraph = checkpoint.literalGraph
+            flickLiteralState?.rollbackQueryTransaction()
             queryCheckpoint = null
             // Queue/path arenas are query-local. They are cleared at the next begin(), while
             // node ids and expansion entries for the committed prefix remain reusable.
@@ -93,6 +105,9 @@ class FindPath(
         }
 
         internal fun reset() {
+            flickLiteralState?.reset()
+            flickLiteralState = null
+            flickLiteralGraph = null
             queryCheckpoint = null
             forwardDpCache = null
             penaltyCache = null
@@ -106,6 +121,15 @@ class FindPath(
             lastExpansionCacheMissCount = 0
             lastForwardDpReused = false
             afterForwardDpForTest = null
+        }
+
+        internal fun literalStateForFlick(): SessionState {
+            val state = flickLiteralState ?: SessionState().also {
+                if (queryCheckpoint != null) it.beginQueryTransaction()
+                flickLiteralState = it
+            }
+            state.performanceProbeEnabled = performanceProbeEnabled
+            return state
         }
     }
 
@@ -319,6 +343,7 @@ class FindPath(
         val bestSplitCostsByState = KBestStateCostTable(MAX_BUNSETSU_SPLIT_PATTERNS)
         val expansionCache = ExpansionCache()
         val charPathArena = CharPathArena()
+        var requiredFlickForwardCosts: IdentityHashMap<Node, Int>? = null
 
         private val queueElementPool = ArrayList<PathQueueElement>()
         private var queueElementCount = 0
@@ -345,6 +370,7 @@ class FindPath(
             stateRejectionCount = 0
             expansionCacheHitCount = 0
             expansionCacheMissCount = 0
+            requiredFlickForwardCosts = null
             if (!preserveNodeIds) {
                 nodeIds.clear()
                 expansionCache.reset()
@@ -382,6 +408,7 @@ class FindPath(
             stateRejectionCount = 0
             expansionCacheHitCount = 0
             expansionCacheMissCount = 0
+            requiredFlickForwardCosts = null
         }
 
         fun discardInFlightWork() {
@@ -393,6 +420,7 @@ class FindPath(
             stateRejectionCount = 0
             expansionCacheHitCount = 0
             expansionCacheMissCount = 0
+            requiredFlickForwardCosts = null
         }
 
         fun queueElementCount(): Int = queueElementCount
@@ -1022,6 +1050,7 @@ class FindPath(
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
         private val bosNodes: List<Node> = listOf(BOS)
         private const val MAX_BUNSETSU_SPLIT_PATTERNS = 4
+        private const val MAX_FLICK_CORRECTION_EXPANSIONS = 4096
     }
 
     private var forwardDpTraceSink: MutableList<ForwardDpTrace>? = null
@@ -1064,8 +1093,25 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        guardFlickCorrections: Boolean = true,
+        requireFlickCorrection: Boolean = false,
     ): MutableList<Candidate> {
         cancellationCheck()
+        if (guardFlickCorrections && graph.values.any { nodes -> nodes.any { it.flickCorrectionEdits.isNotEmpty() } }) {
+            val literalSegments = candidateSegmentCollector?.let { LinkedHashMap<String, List<CandidateConversionSegment>>() }
+            val mixedSegments = candidateSegmentCollector?.let { LinkedHashMap<String, List<CandidateConversionSegment>>() }
+            val literalState = sessionState?.literalStateForFlick()
+            val literalGraph = withoutFlickCorrections(graph, length, literalState)
+            val literal = backwardAStar(literalGraph, length, connectionMatrix, n,
+                beamWidth, cancellationCheck, sessionState = literalState,
+                candidateSegmentCollector = literalSegments, guardFlickCorrections = false)
+            retainFlickLiteralBeam(graph, literalGraph)
+            val mixed = backwardAStar(graph, length, connectionMatrix, n.coerceIn(4, 8), beamWidth,
+                cancellationCheck, sessionState, mixedSegments, guardFlickCorrections = false, requireFlickCorrection = true)
+            candidateSegmentCollector?.putAll(mixedSegments.orEmpty())
+            candidateSegmentCollector?.putAll(literalSegments.orEmpty())
+            return FlickCorrectionRanking.merge(literal, mixed, n + 4)
+        }
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
         val incrementalMetadata = graph as? IncrementalGraphMetadata
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache
@@ -1088,12 +1134,14 @@ class FindPath(
         } else {
             1
         }
+        val correctionForwardCosts = if (requireFlickCorrection) IdentityHashMap<Node, Int>() else null
         forwardDp(
             graph = graph,
             length = length,
             connectionMatrix = connectionMatrix,
             beamWidth = effectiveBeamWidth,
             startPosition = forwardDpStartPosition,
+            correctionForwardCosts = correctionForwardCosts,
             cancellationCheck = cancellationCheck,
         )
         sessionState?.afterForwardDpForTest?.invoke()
@@ -1123,6 +1171,7 @@ class FindPath(
 
         val resultFinal = mutableListOf<Candidate>()
         val foundStrings = HashSet<String>()
+        val correctedReadings = if (requireFlickCorrection) HashSet<String>() else null
         val ngramRuleScorer = ngramRuleScorerProvider()
 
         val searchScratch = sessionState?.backwardSearchScratch ?: BackwardSearchScratch()
@@ -1134,6 +1183,7 @@ class FindPath(
             mozcSegmenter = null,
             boundaryMode = null,
         )
+        searchScratch.requiredFlickForwardCosts = correctionForwardCosts
         val pQueue = searchScratch.queue
 
         graph[length + 1]?.get(0)?.let { eos ->
@@ -1151,6 +1201,7 @@ class FindPath(
 
         var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
+            if (requireFlickCorrection && cancellationPollCounter >= MAX_FLICK_CORRECTION_EXPANSIONS) break
             if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
@@ -1159,18 +1210,20 @@ class FindPath(
             if (currentNode.tango == "BOS") {
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
+                if (requireFlickCorrection && (element.sourceMask and 4 == 0 ||
+                    correctedReadings?.add(yomiUsedFromNode) != true)) continue
 
                 if (foundStrings.add(stringFromNode)) {
                     candidateSegmentCollector?.set(
                         stringFromNode,
                         getConversionSegmentsFromPath(element),
                     )
+                    val originalType = resolveCandidateType(stringFromNode, candidateSourcesFromMask(element.sourceMask))
+                    val correction = if (element.sourceMask and 4 != 0) correctionInfoFromPath(element, originalType) else null
                     val candidate = Candidate(
                         string = stringFromNode,
-                        type = resolveCandidateType(
-                            string = stringFromNode,
-                            sources = candidateSourcesFromMask(element.sourceMask),
-                        ),
+                        type = if (correction != null) CANDIDATE_TYPE_FLICK_TYPO_CORRECTION else originalType,
+                        flickCorrection = correction,
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = element.priorityCost,
@@ -1228,6 +1281,9 @@ class FindPath(
         return resultFinal
     }
 
+    private class FlickForwardPredecessor(var node: Node, var correctedCost: Int, var order: Int)
+    private data class FlickForwardTransition(val cost: Int, val previous: Node?, val correctedCost: Int)
+
     private fun forwardDp(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
@@ -1235,18 +1291,78 @@ class FindPath(
         beamWidth: Int = 20,
         startPosition: Int = 1,
         cancellationCheck: () -> Unit = {},
+        correctionForwardCosts: IdentityHashMap<Node, Int>? = null,
     ) {
+        val minimumPrefixCosts = if (correctionForwardCosts != null) IntArray(length + 2) { Int.MAX_VALUE }
+            .also { it[0] = bosNodes.minOf { node -> node.f } } else null
+        val flickPredecessors = if (correctionForwardCosts != null)
+            arrayOfNulls<List<FlickForwardPredecessor>>(length + 2) else null
+        val flickTransitions = if (correctionForwardCosts != null) HashMap<Long, FlickForwardTransition>() else null
         for (i in startPosition..length + 1) {
             cancellationCheck()
             val nodes = graph[i] ?: continue
+            if (i <= length && minimumPrefixCosts != null) {
+                val corrections = nodes.filter { it.flickCorrectionEdits.isNotEmpty() }
+                val budget = (beamWidth * 3).coerceAtLeast(12)
+                if (corrections.size > budget) {
+                    fun estimate(node: Node): Int {
+                        val prefix = minimumPrefixCosts[node.sPos]
+                        return if (prefix == Int.MAX_VALUE) Int.MAX_VALUE else
+                            (prefix.toLong() + node.adjustedScore).coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+                    }
+                    val ordered = corrections.sortedWith(compareBy<Node> { estimate(it) }.thenBy { it.yomiUsed })
+                    val diverse = ordered.distinctBy { it.sPos to it.yomiUsed }.take(beamWidth)
+                    val kept = java.util.Collections.newSetFromMap(IdentityHashMap<Node, Boolean>())
+                    kept.addAll(diverse)
+                    for (node in ordered) { if (kept.size >= budget) break; kept.add(node) }
+                    nodes.removeAll { it.flickCorrectionEdits.isNotEmpty() && it !in kept }
+                }
+            }
 
             for (node in nodes) {
                 val nodeScore = node.adjustedScore
                 var score = Int.MAX_VALUE
+                var correctedScore = Int.MAX_VALUE
                 var bestPrev: Node? = null
+                var bestPrevOrder = Int.MAX_VALUE
                 val prevNodes = getPrevNodes(graph, node, i)
-
-                for (prev in prevNodes) {
+                if (flickPredecessors != null && correctionForwardCosts != null) {
+                    val previousPosition = if (node.tango == "EOS") i - 1 else i - node.len.toInt()
+                    val predecessors = flickPredecessors.getOrNull(previousPosition) ?: run {
+                        val byRightId = LinkedHashMap<Short, FlickForwardPredecessor>()
+                        for ((order, prev) in prevNodes.withIndex()) {
+                            val corrected = correctionForwardCosts[prev] ?: Int.MAX_VALUE
+                            val group = byRightId[prev.r]
+                            if (group == null) byRightId[prev.r] = FlickForwardPredecessor(prev, corrected, order)
+                            else {
+                                if (prev.f < group.node.f) { group.node = prev; group.order = order }
+                                group.correctedCost = minOf(group.correctedCost, corrected)
+                            }
+                        }
+                        byRightId.values.toList().also {
+                            if (previousPosition in flickPredecessors.indices) flickPredecessors[previousPosition] = it
+                        }
+                    }
+                    val transitionKey = (previousPosition.toLong() shl 32) or (node.l.toLong() and 0xffffL)
+                    val transition = checkNotNull(flickTransitions).getOrPut(transitionKey) {
+                        var minimum = Int.MAX_VALUE
+                        var correctedMinimum = Int.MAX_VALUE
+                        var previous: Node? = null
+                        for (prev in predecessors) {
+                            val edgeCost = getEdgeCost(prev.node.r.toInt(), node.l.toInt(), connectionMatrix)
+                            val tempCost = prev.node.f + edgeCost
+                            if (tempCost < minimum || tempCost == minimum && prev.order < bestPrevOrder) {
+                                minimum = tempCost; previous = prev.node; bestPrevOrder = prev.order
+                            }
+                            if (prev.correctedCost != Int.MAX_VALUE) correctedMinimum = minOf(correctedMinimum,
+                                prev.correctedCost + edgeCost)
+                        }
+                        FlickForwardTransition(minimum, previous, correctedMinimum)
+                    }
+                    if (transition.cost != Int.MAX_VALUE) score = transition.cost + nodeScore
+                    bestPrev = transition.previous
+                    if (transition.correctedCost != Int.MAX_VALUE) correctedScore = transition.correctedCost + nodeScore
+                } else for (prev in prevNodes) {
                     val edgeCost = getEdgeCost(
                         rid = prev.r.toInt(),
                         lid = node.l.toInt(),
@@ -1257,18 +1373,37 @@ class FindPath(
                         score = tempCost
                         bestPrev = prev
                     }
+                    if (correctionForwardCosts != null) {
+                        val correctedPrefix = correctionForwardCosts[prev]
+                        if (correctedPrefix != null) correctedScore = minOf(correctedScore,
+                            correctedPrefix + nodeScore + edgeCost)
+                    }
                 }
 
                 node.prev = bestPrev
                 node.f = score
+                if (correctionForwardCosts != null) {
+                    if (node.flickCorrectionEdits.isNotEmpty()) correctedScore = score
+                    if (correctedScore != Int.MAX_VALUE) correctionForwardCosts[node] = correctedScore
+                }
             }
 
             val traceSink = forwardDpTraceSink
             val beforePruning = traceSink?.let { nodes.toList() }
-            if (i <= length && nodes.size > beamWidth) {
+            if (i <= length && nodes.any { it.flickCorrectionEdits.isNotEmpty() }) {
+                val literals = nodes.filter { it.flickCorrectionEdits.isEmpty() }.sortedBy { it.f }.take(beamWidth)
+                val corrections = nodes.filter { it.flickCorrectionEdits.isNotEmpty() }
+                    .sortedWith(compareBy<Node> { it.f }.thenBy { it.yomiUsed }.thenBy { it.tango }
+                        .thenBy { it.l }.thenBy { it.r })
+                    .distinctBy { it.sPos to it.yomiUsed }.take(beamWidth)
+                nodes.clear()
+                nodes.addAll(literals)
+                nodes.addAll(corrections)
+            } else if (i <= length && nodes.size > beamWidth) {
                 nodes.sortBy { it.f }
                 nodes.subList(beamWidth, nodes.size).clear()
             }
+            minimumPrefixCosts?.set(i, nodes.minOfOrNull { it.f } ?: Int.MAX_VALUE)
             traceSink?.add(
                 ForwardDpTrace(
                     position = i,
@@ -1452,12 +1587,18 @@ class FindPath(
         scratch: BackwardSearchScratch,
     ) {
         val backwardCost = element.backwardCost + localCost
+        val sourceMask = element.sourceMask or previousNode.candidateSource.toMask() or
+            if (previousNode.flickCorrectionEdits.isNotEmpty()) 4 else 0
+        // Until the suffix contains a correction, require one in the forward prefix. This
+        // avoids expanding thousands of cheaper ordinary paths just to discard them at BOS.
+        val prefixCost = if (sourceMask and 4 == 0 && scratch.requiredFlickForwardCosts != null) {
+            scratch.requiredFlickForwardCosts!![previousNode] ?: return
+        } else previousNode.f
         val outputPathId = if (previousNode.tango == "BOS") {
             element.outputPathId
         } else {
             scratch.prependOutput(previousNode.tango, element.outputPathId)
         }
-        val sourceMask = element.sourceMask or previousNode.candidateSource.toMask()
         val nodeIds = scratch.nodeIds
         if (
             !scratch.bestBackwardCostByState.putIfLower(
@@ -1476,7 +1617,7 @@ class FindPath(
         scratch.queue.add(
             scratch.queueElement(
                 node = previousNode,
-                priorityCost = backwardCost + previousNode.f +
+                priorityCost = backwardCost + prefixCost +
                     if (scratch.outputContainsDigit(outputPathId)) 2000 else 0,
                 backwardCost = backwardCost,
                 next = element,
@@ -1628,8 +1769,40 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        guardFlickCorrections: Boolean = true,
+        requireFlickCorrection: Boolean = false,
     ): BunsetsuCandidateResult {
         cancellationCheck()
+        if (guardFlickCorrections && graph.values.any { nodes -> nodes.any { it.flickCorrectionEdits.isNotEmpty() } }) {
+            val literalSegments = candidateSegmentCollector?.let { LinkedHashMap<String, List<CandidateConversionSegment>>() }
+            val mixedSegments = candidateSegmentCollector?.let { LinkedHashMap<String, List<CandidateConversionSegment>>() }
+            val literalState = sessionState?.literalStateForFlick()
+            val literalGraph = withoutFlickCorrections(graph, length, literalState)
+            val literal = backwardAStarWithBunsetsu(literalGraph, length, connectionMatrix, n,
+                beamWidth, cancellationCheck = cancellationCheck, sessionState = literalState,
+                candidateSegmentCollector = literalSegments,
+                guardFlickCorrections = false)
+            retainFlickLiteralBeam(graph, literalGraph)
+            val mixed = backwardAStarWithBunsetsu(graph, length, connectionMatrix, n.coerceIn(4, 8), beamWidth,
+                penaltyTrace, forwardDpTrace, boundaryTrace, candidateTrace, cancellationCheck,
+                sessionState, mixedSegments, guardFlickCorrections = false, requireFlickCorrection = true)
+            if (sessionState?.performanceProbeEnabled == true && literalState != null) {
+                sessionState.lastPenaltyNs += literalState.lastPenaltyNs
+                sessionState.lastForwardDpNs += literalState.lastForwardDpNs
+                sessionState.lastBackwardSearchNs += literalState.lastBackwardSearchNs
+                sessionState.lastQueueElementCount += literalState.lastQueueElementCount
+            }
+            candidateSegmentCollector?.putAll(mixedSegments.orEmpty())
+            candidateSegmentCollector?.putAll(literalSegments.orEmpty())
+            val ranked = FlickCorrectionRanking.merge(literal.candidates, mixed.candidates, n + 4)
+            val splits = mixed.splitPatternByCandidateString + literal.splitPatternByCandidateString
+            return mixed.copy(candidates = ranked, splitPatternByCandidateString = splits,
+                splitPatterns = (ranked.mapNotNull { splits[it.string] } + literal.splitPatterns + mixed.splitPatterns).distinct(),
+                systemNgramMatchedCandidates = literal.systemNgramMatchedCandidates +
+                    mixed.systemNgramMatchedCandidates.filter { text -> ranked.any {
+                        it.string == text && it.score < (literal.candidates.firstOrNull()?.score ?: Int.MAX_VALUE)
+                    } })
+        }
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
         val penaltyStartNs = if (performanceState != null) System.nanoTime() else 0L
         val incrementalMetadata = graph as? IncrementalGraphMetadata
@@ -1698,6 +1871,7 @@ class FindPath(
         }
 
         val forwardDpStartNs = if (performanceState != null) System.nanoTime() else 0L
+        val correctionForwardCosts = if (requireFlickCorrection) IdentityHashMap<Node, Int>() else null
         forwardDpTraceSink = forwardDpTrace
         try {
             forwardDp(
@@ -1706,6 +1880,7 @@ class FindPath(
                 connectionMatrix = connectionMatrix,
                 beamWidth = effectiveBeamWidth,
                 startPosition = forwardDpStartPosition,
+                correctionForwardCosts = correctionForwardCosts,
                 cancellationCheck = cancellationCheck,
             )
         } finally {
@@ -1776,6 +1951,7 @@ class FindPath(
         val splitPatterns = mutableListOf<List<Int>>()
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
+        val correctedReadings = if (requireFlickCorrection) HashSet<String>() else null
         val ngramRuleScorer = ngramRuleScorerProvider()
         val systemNgramDictionary = systemNgramDictionaryProvider()
         val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
@@ -1791,7 +1967,7 @@ class FindPath(
         } else {
             maxOf(n * 4, 32).coerceAtMost(64)
         }
-        val internalCandidateCount = if (!systemNgramMayAffectCandidates) {
+        val internalCandidateCount = if (requireFlickCorrection || !systemNgramMayAffectCandidates) {
             n
         } else {
             systemNgramSafetyCandidateCount
@@ -1806,6 +1982,7 @@ class FindPath(
             mozcSegmenter = mozcSegmenter,
             boundaryMode = boundaryMode,
         )
+        searchScratch.requiredFlickForwardCosts = correctionForwardCosts
         val pQueue = searchScratch.queue
 
         graph[length + 1]?.get(0)?.let {
@@ -1826,6 +2003,7 @@ class FindPath(
 
         var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
+            if (requireFlickCorrection && cancellationPollCounter >= MAX_FLICK_CORRECTION_EXPANSIONS) break
             if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
@@ -1834,6 +2012,8 @@ class FindPath(
             if (currentNode.tango == "BOS") {
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
+                if (requireFlickCorrection && (element.sourceMask and 4 == 0 ||
+                    correctedReadings?.add(yomiUsedFromNode) != true)) continue
                 val totalCost = element.priorityCost
                 candidateTrace?.add(
                     CandidateTrace(
@@ -1861,12 +2041,12 @@ class FindPath(
                     }
                     splitPatternByCandidateString[stringFromNode] = bunsetsuPositions
 
+                    val originalType = resolveCandidateType(stringFromNode, candidateSourcesFromMask(element.sourceMask))
+                    val correction = if (element.sourceMask and 4 != 0) correctionInfoFromPath(element, originalType) else null
                     val candidate = Candidate(
                         string = stringFromNode,
-                        type = resolveCandidateType(
-                            string = stringFromNode,
-                            sources = candidateSourcesFromMask(element.sourceMask),
-                        ),
+                        type = if (correction != null) CANDIDATE_TYPE_FLICK_TYPO_CORRECTION else originalType,
+                        flickCorrection = correction,
                         length = length.toUByte(),
                         yomi = yomiUsedFromNode,
                         score = totalCost,
@@ -1879,7 +2059,7 @@ class FindPath(
                 val enoughCandidates = resultFinal.size >= n
                 val systemRuleAlreadyMatched = systemNgramMatchedCandidates.isNotEmpty()
                 if (
-                    systemNgramDictionary.ruleCount != 0 && !systemNgramMayAffectCandidates
+                    !requireFlickCorrection && systemNgramDictionary.ruleCount != 0 && !systemNgramMayAffectCandidates
                 ) {
                     if (enoughCandidates) {
                         retainCurrentSearchCounters(searchScratch)
@@ -2064,12 +2244,13 @@ class FindPath(
                         bestBunsetsuPositions = bunsetsuPositions
                     }
 
+                    val originalType = resolveCandidateType(stringFromNode, candidateSourcesFromNode(node.first))
+                    val correctionEdits = generateSequence(node.first) { it.next }.flatMap { it.flickCorrectionEdits }.toList()
+                    val correction = correctionEdits.takeIf { it.isNotEmpty() }?.let { FlickCorrectionInfo(it, originalType) }
                     val candidate = Candidate(
                         string = stringFromNode,
-                        type = resolveCandidateType(
-                            string = stringFromNode,
-                            sources = candidateSourcesFromNode(node.first),
-                        ),
+                        type = if (correction != null) CANDIDATE_TYPE_FLICK_TYPO_CORRECTION else originalType,
+                        flickCorrection = correction,
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
@@ -2576,6 +2757,44 @@ class FindPath(
         return result
     }
 
+    private fun withoutFlickCorrections(graph: MutableMap<Int, MutableList<Node>>, length: Int,
+        state: SessionState?): MutableMap<Int, MutableList<Node>> {
+        val metadata = graph as? IncrementalGraphMetadata
+        val previous = state?.forwardDpCache?.takeIf { cache -> metadata != null &&
+            metadata.reusedThroughEndIndex == cache.inputLength && length == cache.inputLength + 1 &&
+            metadata.conversionSignature == cache.conversionSignature && state.flickLiteralGraph != null }
+        val result: MutableMap<Int, MutableList<Node>> = if (metadata != null && state != null) {
+            GraphBuilder.IncrementalGraph(previous?.inputLength ?: -1, metadata.conversionSignature)
+        } else LinkedHashMap()
+        for ((position, nodes) in graph) {
+            val retained = if (previous != null && position < previous.inputLength) state?.flickLiteralGraph?.get(position) else null
+            result[position] = retained ?: nodes.filter { it.flickCorrectionEdits.isEmpty() }.mapTo(ArrayList()) {
+                it.copy(f = it.score, g = it.score, prev = null, next = null, adjustedScore = it.score)
+            }
+        }
+        state?.flickLiteralGraph = result
+        return result
+    }
+
+    private data class FlickLiteralNodeKey(val text: String, val start: Int, val length: Short,
+        val reading: String, val leftId: Short, val rightId: Short)
+
+    private fun retainFlickLiteralBeam(graph: MutableMap<Int, MutableList<Node>>,
+        literalGraph: MutableMap<Int, MutableList<Node>>) {
+        fun key(node: Node) = FlickLiteralNodeKey(node.tango, node.sPos, node.len, node.yomiUsed, node.l, node.r)
+        for ((position, nodes) in graph) {
+            val kept = literalGraph[position].orEmpty().mapTo(HashSet()) { key(it) }
+            // Share the ordinary beam between the two decoders. Corrected paths get their
+            // own beam, while literal homonyms no longer repeat the full connection DP.
+            nodes.removeAll { it.flickCorrectionEdits.isEmpty() && key(it) !in kept }
+        }
+    }
+
+    private fun correctionInfoFromPath(path: PathQueueElement, originalType: Byte): FlickCorrectionInfo? {
+        val edits = generateSequence(path) { it.next }.flatMap { it.node.flickCorrectionEdits }.toList()
+        return edits.takeIf { it.isNotEmpty() }?.let { FlickCorrectionInfo(it, originalType) }
+    }
+
     private fun getConversionSegmentsFromPath(
         path: PathQueueElement,
     ): List<CandidateConversionSegment> {
@@ -2591,6 +2810,8 @@ class FindPath(
                         inputStart = currentPosition,
                         inputEnd = nextPosition,
                         output = node.tango,
+                        correctedReading = node.yomiUsed.takeIf { path.sourceMask and 4 != 0 },
+                        flickCorrection = node.flickCorrectionEdits.takeIf { it.isNotEmpty() }?.let { FlickCorrectionInfo(it) },
                     ),
                 )
                 currentPosition = nextPosition

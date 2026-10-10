@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FLICK_TYPO_CORRECTION
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInfo
 
 /** Candidates and their paths belong to the same whole-input query. */
 internal data class BunsetsuConversionSnapshot(
@@ -20,6 +22,7 @@ internal data class BunsetsuSegmentState(
     val overrideDisplayCandidate: Candidate? = null,
     val hasConvertedDisplay: Boolean = false,
     val candidatesLoaded: Boolean = false,
+    val initialCandidate: Candidate? = null,
 )
 
 /** Project entire lattice nodes onto reading ranges; never slice the converted output by length. */
@@ -55,8 +58,19 @@ internal fun buildConvertedBunsetsuSegments(
         val output = wholeCandidate ?: path?.takeIf { nodes ->
             nodes.any { it.inputStart == start } && nodes.any { it.inputEnd == end }
         }?.filter { it.inputStart >= start && it.inputEnd <= end }?.joinToString("") { it.output }
+        val rangeNodes = path?.filter { it.inputStart >= start && it.inputEnd <= end }.orEmpty()
+        val edits = rangeNodes.flatMap { it.flickCorrection?.edits.orEmpty() }.map {
+            it.copy(inputStart = it.inputStart - start, inputEnd = it.inputEnd - start)
+        }
+        val corrected = if (output != null && edits.isNotEmpty()) Candidate(
+            string = output, type = CANDIDATE_TYPE_FLICK_TYPO_CORRECTION,
+            length = reading.length.toUByte(), score = current?.candidates?.firstOrNull()?.score ?: 3000,
+            yomi = rangeNodes.joinToString("") { it.correctedReading ?: input.substring(it.inputStart, it.inputEnd) },
+            flickCorrection = FlickCorrectionInfo(edits),
+        ) else null
         BunsetsuSegmentState(
             reading = reading,
+            initialCandidate = corrected,
             displayText = output ?: reading,
             hasConvertedDisplay = output != null,
         )
@@ -73,6 +87,7 @@ internal fun mergeBunsetsuCandidates(
         candidates.firstOrNull()?.let(displayText) ?: segment.reading
     }
     val initialCandidate = candidates.firstOrNull { displayText(it) == initialText }
+        ?: segment.initialCandidate
         ?: Candidate(
             string = initialText,
             type = if (initialText == segment.reading) 3 else 1,

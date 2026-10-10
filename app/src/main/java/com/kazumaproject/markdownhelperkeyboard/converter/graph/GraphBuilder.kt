@@ -25,6 +25,7 @@ class GraphBuilder {
     internal data class CachedGraph(
         val input: String,
         val signature: Int,
+        val correctionInput: FlickCorrectionInput? = null,
         val graph: MutableMap<Int, MutableList<Node>>,
         val systemOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
         val systemUserOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
@@ -162,10 +163,67 @@ class GraphBuilder {
         override var reusedThroughEndIndex: Int,
         override val conversionSignature: Int,
         override var forwardDpReusableThroughEndIndex: Int = reusedThroughEndIndex,
-    ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata
+    ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata {
+        internal var flickNodeIndexes: MutableMap<Int, FlickNodeIndex>? = null
+    }
+
+    internal data class FlickNodeKey(
+        val tango: String, val leftId: Short, val rightId: Short,
+        val start: Int, val length: Short, val reading: String,
+        val edits: List<FlickCorrectionEdit>,
+    )
+
+    internal class FlickNodeIndex(val nodes: MutableList<Node>) {
+        val indices = HashMap<FlickNodeKey, Int>()
+        init { nodes.forEachIndexed { index, node -> indices.putIfAbsent(node.flickNodeKey(), index) } }
+    }
 
     @Volatile
     private var cachedGraph: CachedGraph? = null
+
+    private data class FlickWordToken(val leftId: Short, val rightId: Short, val cost: Int, val text: String)
+
+    private class FlickDictionaryCache(
+        val readingTrie: LOUDSWithTermId, val outputTrie: LOUDS, val tokens: TokenArray,
+        val leafVector: SuccinctBitVector, val tokenVector: SuccinctBitVector,
+        val outputVector: SuccinctBitVector,
+    ) {
+        private val words = object : LinkedHashMap<Int, List<FlickWordToken>>(128, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, List<FlickWordToken>>): Boolean = size > 1024
+        }
+
+        @Synchronized fun get(hit: TypoCorrectionResult): List<FlickWordToken> {
+            words[hit.nodeIndex]?.let { return it }
+            val term = readingTrie.getTermId(hit.nodeIndex, leafVector)
+            val result = ArrayList<FlickWordToken>(5)
+            if (term >= 0) tokens.forEachLowestCostDictionaryByYomiTermId(term, tokenVector, IntArray(5)) { pos, cost, node ->
+                val text = when (node) {
+                    -2 -> hit.yomi
+                    -1 -> hit.yomi.hiraToKata()
+                    else -> outputTrie.getLetter(node, outputVector)
+                }
+                result.add(FlickWordToken(tokens.leftIds[pos.toInt()], tokens.rightIds[pos.toInt()], cost.toInt(), text))
+            }
+            words[hit.nodeIndex] = result
+            return result
+        }
+    }
+
+    private var flickSystemWords: FlickDictionaryCache? = null
+    private var flickSystemUserWords: FlickDictionaryCache? = null
+
+    @Synchronized private fun flickDictionaryCache(
+        reading: LOUDSWithTermId, output: LOUDS, tokens: TokenArray, leaf: SuccinctBitVector,
+        tokenVector: SuccinctBitVector, outputVector: SuccinctBitVector, systemUser: Boolean,
+    ): FlickDictionaryCache {
+        val previous = if (systemUser) flickSystemUserWords else flickSystemWords
+        if (previous != null && previous.readingTrie === reading && previous.outputTrie === output &&
+            previous.tokens === tokens && previous.leafVector === leaf && previous.tokenVector === tokenVector &&
+            previous.outputVector === outputVector) return previous
+        return FlickDictionaryCache(reading, output, tokens, leaf, tokenVector, outputVector).also {
+            if (systemUser) flickSystemUserWords = it else flickSystemWords = it
+        }
+    }
 
     fun createSessionState(): SessionState = SessionState()
 
@@ -243,7 +301,7 @@ class GraphBuilder {
         source: String,
     ) {
         val reusedThroughEndIndex = (graph as? IncrementalGraph)?.reusedThroughEndIndex ?: -1
-        if (endIndex <= reusedThroughEndIndex) return
+        if (endIndex <= reusedThroughEndIndex && newNode.flickCorrectionEdits.isEmpty()) return
         val nodes = graph.computeIfAbsent(endIndex) { mutableListOf() }
 
         when (mode) {
@@ -252,9 +310,17 @@ class GraphBuilder {
                 trace?.add(newNode.toTrace(input, endIndex, source, "ADDED"))
             }
             GraphNodeDedupMode.EXISTING_BY_TANGO_L_R -> {
+                val indexes = (graph as? IncrementalGraph)?.flickNodeIndexes
+                val index = indexes?.get(endIndex)?.takeIf { it.nodes === nodes } ?: indexes?.let {
+                    FlickNodeIndex(nodes).also { created -> it[endIndex] = created }
+                }
+                val key = index?.let { newNode.flickNodeKey() }
                 // tango, l, r の3つがすべて一致するノードを探す
-                val existingNodeIndex = nodes.indexOfFirst {
-                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r
+                val existingNodeIndex = if (index != null) index.indices[key] ?: -1 else nodes.indexOfFirst {
+                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r &&
+                        (it.flickCorrectionEdits.isEmpty() && newNode.flickCorrectionEdits.isEmpty() ||
+                            it.sPos == newNode.sPos && it.len == newNode.len && it.yomiUsed == newNode.yomiUsed &&
+                            it.flickCorrectionEdits == newNode.flickCorrectionEdits)
                 }
 
                 if (existingNodeIndex != -1) {
@@ -270,6 +336,7 @@ class GraphBuilder {
                 } else {
                     // 新しい単語、または、同じ単語だが品詞が異なる場合は、単純に追加する
                     nodes.add(newNode)
+                    if (index != null && key != null) index.indices[key] = nodes.lastIndex
                     trace?.add(newNode.toTrace(input, endIndex, source, "ADDED"))
                 }
             }
@@ -343,7 +410,12 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
         sessionState: SessionState? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
     ): MutableMap<Int, MutableList<Node>> {
+        val standardCorrection = flickCorrectionInput?.let {
+            if (it.input == str) it else FlickCorrectionInput(str)
+        }
+        val conversionContext = currentCoroutineContext()
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
         } else {
@@ -374,6 +446,7 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
+            standardFlickCorrection = standardCorrection != null,
         )
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
@@ -384,6 +457,8 @@ class GraphBuilder {
                         sessionState == null && str.length == it.input.length + 1
                 ) &&
                 str.startsWith(it.input) &&
+                (standardCorrection == null || it.correctionInput?.evidence.orEmpty() ==
+                    standardCorrection.evidence.take(it.input.length)) &&
                 // Appending within an alphabet token changes every maximal-run node that starts
                 // in that token.  The current append cache can only preserve a fully stable
                 // prefix, so rebuild this transition instead of publishing a stale short token.
@@ -455,6 +530,28 @@ class GraphBuilder {
             start: Int,
             previous: LOUDSWithTermId.TypoSearchProgress?,
         ): LOUDSWithTermId.TypoSearchProgress {
+            if (standardCorrection != null) {
+                if (start + 12 < reusablePrefixLength && previous?.flickProgress != null) return previous
+                val frontier = previous?.flickProgress
+                if (reusable != null && frontier != null && frontier.terminalStates.isEmpty() &&
+                    frontier.swapPrefixStates.isEmpty()) {
+                    var end = start
+                    while (end < str.length && end < start + 12 && (str[end] in 'ぁ'..'ゖ' || str[end] == 'ー')) end++
+                    val window = str.substring(start, end)
+                    // A dead frontier cannot produce a later match. Keep its accepted
+                    // prefixes; only crossing six characters can open a new edit budget.
+                    if (window.startsWith(frontier.input) && (frontier.input.length >= 6 || window.length < 6)) {
+                        return previous.copy(flickProgress = LOUDSWithTermId.FlickSearchProgress(window, start,
+                            emptyList(), emptyList(), frontier.accepted, frontier.allowModifierOmission,
+                            frontier.maxStates, standardCorrection.evidence.drop(start).take(window.length)))
+                    }
+                }
+                return trie.commonPrefixSearchWithFlickCorrectionProgress(
+                    str, start, bitVector, standardCorrection, isOmissionSearchEnable,
+                    previous = previous?.flickProgress,
+                    cancellationCheck = { conversionContext.ensureActive() },
+                )
+            }
             if (sessionState == null || reusable == null || previous == null) {
                 return trie.commonPrefixSearchWithTypoCorrectionProgress(
                     str = str,
@@ -550,7 +647,7 @@ class GraphBuilder {
 
                 if (
                     str.length == reusablePrefixLength + 1 &&
-                    !reusable.unprunedPositions.isNullOrEmpty()
+                    standardCorrection == null && !reusable.unprunedPositions.isNullOrEmpty()
                 ) {
                     sessionGraph.forwardDpReusableThroughEndIndex = reusablePrefixLength
                     reusable.unprunedPositions[reusablePrefixLength]?.let { frontierNodes ->
@@ -574,6 +671,18 @@ class GraphBuilder {
             }
         } else {
             IncrementalGraph(-1, signature).apply { put(0, mutableListOf(BOS)) }
+        }
+        (graph as? IncrementalGraph)?.flickNodeIndexes = if (standardCorrection != null) HashMap() else null
+
+        fun addFlickTokens(cache: FlickDictionaryCache, hit: TypoCorrectionResult, start: Int,
+            end: Int, penalty: Int, source: String) {
+            for (token in cache.get(hit)) {
+                val cost = token.cost + penalty
+                addOrUpdateNode(graph, end, Node(l = token.leftId, r = token.rightId, score = cost,
+                    f = cost, g = cost, tango = token.text, yomiUsed = hit.yomi,
+                    len = hit.consumedLength.toShort(), sPos = start, flickCorrectionEdits = hit.edits,
+                    mozcAttributes = mozcAttributesFor(token.leftId)), graphNodeDedupMode, graphNodeTrace, str, source)
+            }
         }
 
         fun invalidateForwardDpReuseAndRestoreCompletePrefix() {
@@ -672,6 +781,28 @@ class GraphBuilder {
             val localSystemUserTokenBitVector = systemUserSuccinctBitVectorTokenArray
             val localSystemUserTangoLBS = systemUserSuccinctBitVectorTangoLBS
 
+            val standardSystemTypo = if (standardCorrection != null && str.length - i > 2)
+                typoSearch(yomiTrie, succinctBitVectorLBSYomi, i, reusable?.systemTypoProgress?.get(i)) else null
+            val standardUserTypo = if (standardCorrection != null && str.length - i > 2 &&
+                localSystemUserYomiTrie != null && localSystemUserLBSYomi != null &&
+                localSystemUserTangoTrie != null && localSystemUserTokenArray != null &&
+                localSystemUserIsLeaf != null && localSystemUserTokenBitVector != null && localSystemUserTangoLBS != null)
+                typoSearch(localSystemUserYomiTrie, localSystemUserLBSYomi, i, reusable?.systemUserTypoProgress?.get(i)) else null
+            val removedCorrectionKeys = if (standardCorrection != null && reusable != null) {
+                (reusable.systemTypoProgress[i]?.results.orEmpty().filterNot { it in standardSystemTypo?.results.orEmpty() } +
+                    reusable.systemUserTypoProgress[i]?.results.orEmpty().filterNot { it in standardUserTypo?.results.orEmpty() })
+                    .mapTo(HashSet()) { Triple(it.yomi, it.consumedLength, it.edits) }
+            } else emptySet()
+            if (removedCorrectionKeys.isNotEmpty()) {
+                // Reweight a former trailing insertion and remove hits displaced by the bounded
+                // search. Replace lists so cancelling this append can restore the old lattice.
+                graph.entries.forEach { entry ->
+                    val kept = entry.value.filterNot { node -> node.sPos == i && node.flickCorrectionEdits.isNotEmpty() &&
+                        Triple(node.yomiUsed, node.len.toInt(), node.flickCorrectionEdits) in removedCorrectionKeys }
+                    if (kept.size != entry.value.size) entry.setValue(kept.toMutableList())
+                }
+            }
+
             if (
                 localSystemUserYomiTrie != null &&
                 localSystemUserTangoTrie != null &&
@@ -735,8 +866,8 @@ class GraphBuilder {
                 }
 
                 // 1.x システムユーザー辞書 (Typo Correction Prefix)
-                if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                    val typoProgress = typoSearch(
+                if ((enableTypoCorrectionJapaneseFlick || standardCorrection != null) && str.length - i > 2) {
+                    val typoProgress = standardUserTypo ?: typoSearch(
                         trie = localSystemUserYomiTrie,
                         bitVector = localSystemUserLBSYomi,
                         start = i,
@@ -744,7 +875,7 @@ class GraphBuilder {
                     )
                     systemUserTypoProgress[i] = typoProgress
                     val typoPrefixResults = typoProgress.results
-                    if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
+                    if (standardCorrection == null && typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
 
                     for (typo in typoPrefixResults) {
                         if (typo.penaltyUsed == 0) continue
@@ -757,9 +888,20 @@ class GraphBuilder {
                             nodeIndex,
                             localSystemUserIsLeaf,
                         )
-                        val endIndex = i + yomiStr.length
-                        if (endIndex <= reusablePrefixLength) continue
-                        val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
+                        val endIndex = i + typo.consumedLength
+                        if (endIndex <= reusablePrefixLength && (standardCorrection == null ||
+                            typo in reusable?.systemUserTypoProgress?.get(i)?.results.orEmpty() &&
+                            Triple(typo.yomi, typo.consumedLength, typo.edits) !in removedCorrectionKeys)) continue
+                        val penalty = (typoCorrectionOffsetScore.toLong().coerceAtLeast(0) * typo.costUnits / 1000).toInt() +
+                            if (typo.modifierOmissionOccurred) omissionSearchOffSetScore else 0
+
+                        if (standardCorrection != null) {
+                            val cache = flickDictionaryCache(localSystemUserYomiTrie, localSystemUserTangoTrie,
+                                localSystemUserTokenArray, localSystemUserIsLeaf, localSystemUserTokenBitVector,
+                                localSystemUserTangoLBS, true)
+                            addFlickTokens(cache, typo, i, endIndex, penalty, "SYSTEM_USER_TYPO")
+                            continue
+                        }
 
                         localSystemUserTokenArray.forEachLowestCostDictionaryByYomiTermId(
                             nodeId = termId,
@@ -786,7 +928,8 @@ class GraphBuilder {
                                     g = cost,
                                     tango = tango,
                                     yomiUsed = yomiStr,
-                                    len = yomiStr.length.toShort(),
+                                    len = typo.consumedLength.toShort(),
+                                    flickCorrectionEdits = typo.edits,
                                     sPos = i,
                                     mozcAttributes = mozcAttributesFor(
                                         localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
@@ -988,8 +1131,8 @@ class GraphBuilder {
             }
 
             // 3.x システム辞書 (Typo Correction Prefix)
-            if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                val typoProgress = typoSearch(
+            if ((enableTypoCorrectionJapaneseFlick || standardCorrection != null) && str.length - i > 2) {
+                val typoProgress = standardSystemTypo ?: typoSearch(
                     trie = yomiTrie,
                     bitVector = succinctBitVectorLBSYomi,
                     start = i,
@@ -999,7 +1142,7 @@ class GraphBuilder {
                 val typoPrefixResults = typoProgress.results
 
                 // 見つかったら辞書ヒット扱いにして未知語フォールバック抑制
-                if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
+                if (standardCorrection == null && typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
 
                 for (typo in typoPrefixResults) {
                     // penaltyUsed==0 は通常検索と重複しやすいのでスキップ推奨
@@ -1010,9 +1153,19 @@ class GraphBuilder {
                     if (nodeIndex <= 0) continue
 
                     val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                    val endIndex = i + yomiStr.length
-                    if (endIndex <= reusablePrefixLength) continue
-                    val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
+                    val endIndex = i + typo.consumedLength
+                    if (endIndex <= reusablePrefixLength && (standardCorrection == null ||
+                        typo in reusable?.systemTypoProgress?.get(i)?.results.orEmpty() &&
+                        Triple(typo.yomi, typo.consumedLength, typo.edits) !in removedCorrectionKeys)) continue
+                    val penalty = (typoCorrectionOffsetScore.toLong().coerceAtLeast(0) * typo.costUnits / 1000).toInt() +
+                        if (typo.modifierOmissionOccurred) omissionSearchOffSetScore else 0
+
+                    if (standardCorrection != null) {
+                        val cache = flickDictionaryCache(yomiTrie, tangoTrie, tokenArray,
+                            succinctBitVectorIsLeafYomi, succinctBitVectorTokenArray, succinctBitVectorTangoLBS, false)
+                        addFlickTokens(cache, typo, i, endIndex, penalty, "SYSTEM_TYPO")
+                        continue
+                    }
 
                     tokenArray.forEachLowestCostDictionaryByYomiTermId(
                         nodeId = termId,
@@ -1038,7 +1191,8 @@ class GraphBuilder {
                                 g = cost,
                                 tango = tango,
                                 yomiUsed = yomiStr,
-                                len = yomiStr.length.toShort(),
+                                len = typo.consumedLength.toShort(),
+                                flickCorrectionEdits = typo.edits,
                                 sPos = i,
                                 mozcAttributes = mozcAttributesFor(
                                     tokenArray.leftIds[posTableIndex.toInt()],
@@ -1382,6 +1536,7 @@ class GraphBuilder {
         val updatedCache = CachedGraph(
             input = str,
             signature = signature,
+            correctionInput = standardCorrection,
             graph = if (sessionState != null) graph else graph.deepCopyForGraphBuild(),
             systemOmissionStates = systemOmissionStates,
             systemUserOmissionStates = systemUserOmissionStates,
@@ -1470,6 +1625,7 @@ class GraphBuilder {
         beamWidth: Int,
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
+        standardFlickCorrection: Boolean = false,
     ): Int {
         var result = System.identityHashCode(yomiTrie)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
@@ -1484,6 +1640,7 @@ class GraphBuilder {
         result = 31 * result + (learnRepository?.conversionRevision?.hashCode() ?: 0)
         result = 31 * result + isOmissionSearchEnable.hashCode()
         result = 31 * result + enableTypoCorrectionJapaneseFlick.hashCode()
+        result = 31 * result + standardFlickCorrection.hashCode()
         result = 31 * result + typoCorrectionOffsetScore
         result = 31 * result + omissionSearchOffSetScore
         result = 31 * result + beamWidth
@@ -1493,6 +1650,10 @@ class GraphBuilder {
     }
 
     private companion object {
+        fun Node.flickNodeKey(): FlickNodeKey = if (flickCorrectionEdits.isEmpty()) {
+            FlickNodeKey(tango, l, r, -1, 0, "", emptyList())
+        } else FlickNodeKey(tango, l, r, sPos, len, yomiUsed, flickCorrectionEdits)
+
         // app/src/main/assets/id.def: 名詞,サ変接続,*,*,*,*,*
         const val MOZC_UNKNOWN_POS_ID: Short = 1841
         const val MOZC_MAX_WORD_COST = 32767

@@ -47,6 +47,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FLICK_TYPO_CORRECTION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
@@ -2179,6 +2180,10 @@ class SuggestionAdapter internal constructor(
         )
 
         holder.typeText.text = when (suggestion.type) {
+            CANDIDATE_TYPE_FLICK_TYPO_CORRECTION -> holder.itemView.context.getString(
+                if (suggestion.flickCorrection?.originalType == 5.toByte())
+                    R.string.candidate_badge_flick_correction_partial else R.string.candidate_badge_flick_correction,
+            )
             (1).toByte() -> ""
             /** 予測 **/
             (9).toByte() -> ""

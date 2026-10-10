@@ -24,89 +24,49 @@ object KanaFlickLayout {
         KeyGroup.YA to KeyPos(1, 2),
         KeyGroup.RA to KeyPos(2, 2),
 
-        KeyGroup.WA to KeyPos(0, 3),
+        KeyGroup.WA to KeyPos(1, 3),
     )
 
     // 各キーグループ内の5方向（CENTER/LEFT/UP/RIGHT/DOWN）
     // ※必要なら拗音/濁点/半濁点は別カテゴリで拡張可能
-    private val table: Map<KeyGroup, Map<FlickDir, Char>> = mapOf(
-        KeyGroup.A to mapOf(
-            FlickDir.CENTER to 'あ',
-            FlickDir.LEFT to 'い',
-            FlickDir.UP to 'う',
-            FlickDir.RIGHT to 'え',
-            FlickDir.DOWN to 'お'
-        ),
-        KeyGroup.KA to mapOf(
-            FlickDir.CENTER to 'か',
-            FlickDir.LEFT to 'き',
-            FlickDir.UP to 'く',
-            FlickDir.RIGHT to 'け',
-            FlickDir.DOWN to 'こ'
-        ),
-        KeyGroup.SA to mapOf(
-            FlickDir.CENTER to 'さ',
-            FlickDir.LEFT to 'し',
-            FlickDir.UP to 'す',
-            FlickDir.RIGHT to 'せ',
-            FlickDir.DOWN to 'そ'
-        ),
-        KeyGroup.TA to mapOf(
-            FlickDir.CENTER to 'た',
-            FlickDir.LEFT to 'ち',
-            FlickDir.UP to 'つ',
-            FlickDir.RIGHT to 'て',
-            FlickDir.DOWN to 'と'
-        ),
-        KeyGroup.NA to mapOf(
-            FlickDir.CENTER to 'な',
-            FlickDir.LEFT to 'に',
-            FlickDir.UP to 'ぬ',
-            FlickDir.RIGHT to 'ね',
-            FlickDir.DOWN to 'の'
-        ),
-        KeyGroup.HA to mapOf(
-            FlickDir.CENTER to 'は',
-            FlickDir.LEFT to 'ひ',
-            FlickDir.UP to 'ふ',
-            FlickDir.RIGHT to 'へ',
-            FlickDir.DOWN to 'ほ'
-        ),
-        KeyGroup.MA to mapOf(
-            FlickDir.CENTER to 'ま',
-            FlickDir.LEFT to 'み',
-            FlickDir.UP to 'む',
-            FlickDir.RIGHT to 'め',
-            FlickDir.DOWN to 'も'
-        ),
-        KeyGroup.YA to mapOf(
-            FlickDir.CENTER to 'や',
-            FlickDir.LEFT to '（',
-            FlickDir.UP to 'ゆ',
-            FlickDir.RIGHT to '）',
-            FlickDir.DOWN to 'よ'
-            // LEFT/RIGHT を実運用の「ゃ/ゅ/ょ」等に合わせたいならここを差し替え
-        ),
-        KeyGroup.RA to mapOf(
-            FlickDir.CENTER to 'ら',
-            FlickDir.LEFT to 'り',
-            FlickDir.UP to 'る',
-            FlickDir.RIGHT to 'れ',
-            FlickDir.DOWN to 'ろ'
-        ),
-        KeyGroup.WA to mapOf(
-            FlickDir.CENTER to 'わ',
-            FlickDir.LEFT to 'を',
-            FlickDir.UP to 'ん',
-            FlickDir.RIGHT to 'ー',
-            FlickDir.DOWN to '〜'
-            // ここもあなたの配列に合わせて調整
-        ),
-    )
+    private val table: Map<KeyGroup, Map<FlickDir, Char>> = listOf(
+        KeyGroup.A to com.kazumaproject.core.domain.key.KeyInfo.KeyAJapanese,
+        KeyGroup.KA to com.kazumaproject.core.domain.key.KeyInfo.KeyKAJapanese,
+        KeyGroup.SA to com.kazumaproject.core.domain.key.KeyInfo.KeySAJapanese,
+        KeyGroup.TA to com.kazumaproject.core.domain.key.KeyInfo.KeyTAJapanese,
+        KeyGroup.NA to com.kazumaproject.core.domain.key.KeyInfo.KeyNAJapanese,
+        KeyGroup.HA to com.kazumaproject.core.domain.key.KeyInfo.KeyHAJapanese,
+        KeyGroup.MA to com.kazumaproject.core.domain.key.KeyInfo.KeyMAJapanese,
+        KeyGroup.YA to com.kazumaproject.core.domain.key.KeyInfo.KeyYAJapanese,
+        KeyGroup.RA to com.kazumaproject.core.domain.key.KeyInfo.KeyRAJapanese,
+        KeyGroup.WA to com.kazumaproject.core.domain.key.KeyInfo.KeyWAJapanese,
+    ).associate { (group, info) ->
+        group to mapOf(
+            FlickDir.CENTER to info.tap, FlickDir.LEFT to info.flickLeft,
+            FlickDir.UP to info.flickTop, FlickDir.RIGHT to info.flickRight,
+            FlickDir.DOWN to info.flickBottom,
+        ).mapNotNull { (direction, value) -> value?.let { direction to it } }.toMap()
+    }
 
     // 逆引き: ひらがな -> (キーグループ,方向)
     private val reverse: Map<Char, KanaKey> = buildMap {
         for ((g, m) in table) for ((d, ch) in m) put(ch, KanaKey(g, d))
+    }
+
+    fun baseChar(ch: Char): Char = when (ch) {
+        'ぁ' -> 'あ'; 'ぃ' -> 'い'; 'ぅ', 'ゔ' -> 'う'; 'ぇ' -> 'え'; 'ぉ' -> 'お'
+        'っ' -> 'つ'; 'ゃ' -> 'や'; 'ゅ' -> 'ゆ'; 'ょ' -> 'よ'; 'ゎ' -> 'わ'
+        'が', 'ぎ', 'ぐ', 'げ', 'ご', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
+        'だ', 'ぢ', 'づ', 'で', 'ど' -> ch - 1
+        'ば', 'び', 'ぶ', 'べ', 'ぼ' -> ch - 1
+        'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ' -> ch - 2
+        else -> ch
+    }
+
+    fun modifierOf(ch: Char): Int = when (ch) {
+        'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ' -> 1
+        'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ' -> 3
+        else -> if (ch != baseChar(ch)) 2 else 0
     }
 
     fun keyOf(ch: Char): KanaKey? = reverse[ch]

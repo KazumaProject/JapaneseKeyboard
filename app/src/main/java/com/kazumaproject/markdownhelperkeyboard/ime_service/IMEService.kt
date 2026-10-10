@@ -149,6 +149,8 @@ import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.flick.TfbiDiagonalRecognitionMode
 import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.flick.FlickInputEvidence
+import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickEvidenceTracker
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
@@ -1964,6 +1966,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var inputConversionBackgroundColor: Int? = "#55FF8800".toColorInt()
     private var inputConversionTextColor: Int? = Color.WHITE
 
+    private val flickEvidenceTracker = FlickEvidenceTracker()
     private var enableTypoCorrectionJapaneseFlickKeyboardPreference: Boolean? = false
     private var enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean? = false
 
@@ -3465,6 +3468,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        flickEvidenceTracker.clear()
         dismissKeyboardSelectionPopups()
         composingGuide?.stop()
         super.onStartInput(attribute, restarting)
@@ -4128,6 +4132,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
         enableTypoCorrectionJapaneseFlickKeyboardPreference =
             preferences.enableTypoCorrectionJapaneseFlickKeyboardPreference
+        mainLayoutBinding?.keyboardView?.setFlickCorrectionEvidenceEnabled(enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
+        floatingKeyboardBinding?.keyboardViewFloating?.setFlickCorrectionEvidenceEnabled(enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
+        if (enableTypoCorrectionJapaneseFlickKeyboardPreference != true) flickEvidenceTracker.clear()
         enableTypoCorrectionQwertyEnglishKeyboardPreference =
             preferences.enableTypoCorrectionQwertyEnglishKeyboardPreference
 
@@ -5911,6 +5918,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setOnQwertyNumberModeRequestedListener {
                     switchTenkeyTwoStateNumberToQwertyNumber()
                 }
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickCorrectionEvidenceEnabled(enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
                     (longPressTimeoutPreferenceValue ?: 300).toLong()
@@ -5920,6 +5928,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
+                        override fun onFlick(gestureType: GestureType, key: Key, char: Char?, evidence: FlickInputEvidence?) {
+                            dispatchFlickWithEvidence(char, evidence) { onFlick(gestureType, key, char) }
+                        }
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                             if (isKeyboardLayoutEditModeActive()) return
                             val insertString = inputString.value
@@ -6150,6 +6161,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        flickEvidenceTracker.clear()
         dismissKeyboardSelectionPopups()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
@@ -7920,6 +7932,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (oldSelStart != newSelStart || oldSelEnd != newSelEnd) {
             horizontalCursorSelectionRevision.incrementAndGet()
         }
+        if ((oldSelStart != newSelStart || oldSelEnd != newSelEnd) &&
+            candidatesEnd != -1 && newSelEnd != candidatesEnd) flickEvidenceTracker.clear()
         forwardDeleteCoordinator.onSelectionChanged(newSelStart, newSelEnd)
         invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
         // Skip if composing text is active
@@ -10718,7 +10732,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             numberEnabled = tenkeyKeymapGuideSettings.number
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
+            setFlickCorrectionEvidenceEnabled(enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
             setOnFlickListener(object : FlickListener {
+                override fun onFlick(gestureType: GestureType, key: Key, char: Char?, evidence: FlickInputEvidence?) {
+                    dispatchFlickWithEvidence(char, evidence) { onFlick(gestureType, key, char) }
+                }
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     activateSplitView(floatingKeyboardLayoutBinding.keyboardViewFloating)
                     if (isKeyboardLayoutEditModeActive()) return
@@ -10822,10 +10840,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return sizeChanged
     }
 
+    private fun dispatchFlickWithEvidence(char: Char?, evidence: FlickInputEvidence?, dispatch: () -> Unit) {
+        val before = inputString.value
+        val acceptsEvidence = enableTypoCorrectionJapaneseFlickKeyboardPreference == true && currentInputType !in passwordTypes
+        // Publish the expected append before StateFlow can launch a converter on another thread.
+        // A toggle/preview mutation that does not match this append receives no stale evidence.
+        if (acceptsEvidence && char != null && evidence?.observedChar == char) {
+            flickEvidenceTracker.record(before, before + char, evidence)
+        }
+        try {
+            dispatch()
+        } finally {
+            // A split surface may activate its Japanese input mode during dispatch.
+            if (acceptsEvidence && qwertyMode.value == TenKeyQWERTYMode.Default &&
+                currentInputModeForSession == InputMode.ModeJapanese) flickEvidenceTracker.record(before, inputString.value, evidence)
+            else flickEvidenceTracker.clear()
+        }
+    }
+
     private fun setTenKeyListeners(
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
+            setFlickCorrectionEvidenceEnabled(enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
             setOnAttachedToWindowListener {
                 rebindMainKeyboardInputListeners(mainView)
             }
@@ -10857,6 +10894,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             })
             setOnFlickListener(object : FlickListener {
+                override fun onFlick(gestureType: GestureType, key: Key, char: Char?, evidence: FlickInputEvidence?) {
+                    dispatchFlickWithEvidence(char, evidence) { onFlick(gestureType, key, char) }
+                }
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Flick: $char $key $gestureType")
@@ -25269,7 +25309,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionLearningSession.beginIfNeeded(originalReading)
         conversionLearningSession.record(
             LearningFragment(
-                reading = segmentReading,
+                reading = if (candidate.flickCorrection != null) candidate.yomi ?: segmentReading else segmentReading,
+                corrected = candidate.flickCorrection != null,
                 output = output,
                 candidateScore = candidate.score,
                 candidateIndex = candidateIndex,
@@ -25293,9 +25334,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         segments.forEach { segment ->
             val candidate = segment.overrideDisplayCandidate
                 ?: segment.candidates.getOrNull(segment.selectedIndex)
+                ?: segment.initialCandidate
             conversionLearningSession.record(
                 LearningFragment(
-                    reading = segment.reading,
+                    reading = if (candidate?.flickCorrection != null) candidate.yomi ?: segment.reading else segment.reading,
+                    corrected = candidate?.flickCorrection != null,
                     output = segment.displayText,
                     candidateScore = candidate?.score ?: 3000,
                     candidateIndex = segment.selectedIndex,
@@ -26868,6 +26911,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         distinctBy { candidate ->
             if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
                 "text-macro:${candidate.sourceId}"
+            } else if (candidate.flickCorrection != null) {
+                "flick:${candidate.string}:${candidate.length}"
             } else {
                 "text:${candidate.string}"
             }
@@ -26894,6 +26939,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         typoCorrectionJapaneseFlickEnabled: Boolean = false,
         typoCorrectionQwertyEnglishEnabled: Boolean = false,
     ): KanaKanjiQueryResult {
+        val standardFlickCorrection = enableTypoCorrectionJapaneseFlickKeyboardPreference == true &&
+            qwertyMode.value == TenKeyQWERTYMode.Default && currentInputModeForSession == InputMode.ModeJapanese &&
+            physicalKeyboardEnable.replayCache.firstOrNull() != true &&
+            currentInputType !in passwordTypes && mode != CandidateQueryMode.EISUKANA
+        val flickCorrectionInput = if (standardFlickCorrection) flickEvidenceTracker.snapshot(input) else null
         val engine = awaitKanaKanjiEngineOrNull()
             ?: return KanaKanjiQueryResult(candidates = emptyList())
         awaitSystemUserDictionaryLoad()
@@ -26916,7 +26966,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUtWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = learnRepository,
-                omissionSearchEnabled = omissionSearchEnabled,
+                omissionSearchEnabled = omissionSearchEnabled || (standardFlickCorrection && isOmissionSearchEnable == true),
                 typoCorrectionJapaneseFlickEnabled = typoCorrectionJapaneseFlickEnabled,
                 typoCorrectionQwertyEnglishEnabled = typoCorrectionQwertyEnglishEnabled,
                 typoCorrectionOffsetScore =
@@ -26928,6 +26978,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     appPreference.candidate_order_override_enable_preference == true ||
                         shouldUseBunsetsuCursorMoveSession() || shouldCollectCandidateRubySegments(),
                 dateCandidateConfig = dateCandidateConfig,
+                flickCorrectionInput = flickCorrectionInput,
             )
         )
         if (BuildConfig.DEBUG) {
@@ -29921,6 +29972,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
+        // A partial commit can leave the same repeated kana with a different input origin.
+        flickEvidenceTracker.clear()
         if (!customToggleEditInProgress) resetCustomToggleState()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)

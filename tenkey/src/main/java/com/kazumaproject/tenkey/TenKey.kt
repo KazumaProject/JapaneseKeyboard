@@ -43,6 +43,9 @@ import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
 import com.kazumaproject.core.domain.key.KeyRect
+import com.kazumaproject.core.domain.flick.FlickEvidenceKey
+import com.kazumaproject.core.domain.flick.FlickEvidenceModel
+import com.kazumaproject.core.domain.flick.FlickInputEvidence
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
@@ -188,6 +191,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // External listeners
     private var flickListener: FlickListener? = null
+    private var flickCorrectionEvidenceEnabled = false
+
+    fun setFlickCorrectionEvidenceEnabled(enabled: Boolean) {
+        flickCorrectionEvidenceEnabled = enabled
+    }
     private var longPressListener: LongPressListener? = null
     private var keyTouchCancelListener: KeyTouchCancelListener? = null
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
@@ -1640,7 +1648,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         val gestureType = getGestureType(event)
                         Log.d("TenKey: ACTION_UP in pointer", "called $pressedKey")
 
-                        dispatchResolvedGesture(pressedKey.key, gestureType)
+                        dispatchResolvedGesture(pressedKey.key, gestureType, event)
                     }
                     Log.d("TenKey: ACTION_UP out", "called $pressedKey")
                     resetAllKeys()
@@ -1759,7 +1767,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
                             setNumberSmallKeyPresentation()
                         }
-                        dispatchResolvedGesture(pressedKey.key, gestureType2)
+                        dispatchResolvedGesture(pressedKey.key, gestureType2, event)
                         (getButtonFromKey(pressedKey.key) as? AppCompatButton)?.let { button ->
                             setTextForMode(button, currentInputMode.value)
                         }
@@ -1792,7 +1800,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 event, event.getPointerId(event.actionIndex)
                             )
                             Log.d("TenKey: ACTION_POINTER_UP", "called [${pressedKey.key}]")
-                            dispatchResolvedGesture(pressedKey.key, gestureType)
+                            dispatchResolvedGesture(pressedKey.key, gestureType, event)
                             val button = getButtonFromKey(pressedKey.key)
                             button?.let {
                                 if (it is AppCompatButton) {
@@ -2373,20 +2381,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         )
     }
 
-    private fun dispatchResolvedGesture(key: Key, gestureType: GestureType) {
+    private fun dispatchResolvedGesture(key: Key, gestureType: GestureType, event: MotionEvent? = null) {
         val keyInfo = currentInputMode.value.next(
             keyMap = keyMap,
             key = key,
             isGojuon = false
         )
         val selection = resolveTextSelection(keyInfo, gestureType)
+        val evidence = selection.text?.firstOrNull()?.let { createFlickInputEvidence(it, event) }
         flickTextPreviewEmitter.commit(selection) {
             when (keyInfo) {
                 KeyInfo.Null -> {
                     flickListener?.onFlick(
                         gestureType = gestureType,
                         key = key,
-                        char = null
+                        char = null,
+                        evidence = null
                     )
                     if (key == Key.SideKeyInputMode) {
                         handleClickInputModeSwitch()
@@ -2400,12 +2410,38 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         flickListener?.onFlick(
                             gestureType = gestureType,
                             key = key,
-                            char = selection.text?.firstOrNull()
+                            char = selection.text?.firstOrNull(),
+                            evidence = evidence
                         )
                     }
                 }
             }
         }
+    }
+
+    private fun createFlickInputEvidence(char: Char, event: MotionEvent?): FlickInputEvidence? {
+        if (!flickCorrectionEvidenceEnabled || currentInputMode.value != InputMode.ModeJapanese || event == null) return null
+        val pointer = event.findPointerIndex(pressedKey.pointer)
+        if (pointer < 0) return null
+        val (x, y) = getRawCoordinates(event, pointer)
+        val keys = listOf(Key.KeyA, Key.KeyKA, Key.KeySA, Key.KeyTA, Key.KeyNA,
+            Key.KeyHA, Key.KeyMA, Key.KeyYA, Key.KeyRA, Key.KeyWA).mapNotNull { key ->
+            val button = getButtonFromKey(key) as? View ?: return@mapNotNull null
+            val rect = android.graphics.Rect()
+            if (!button.getGlobalVisibleRect(rect)) return@mapNotNull null
+            val screenLocation = IntArray(2)
+            button.getLocationOnScreen(screenLocation)
+            val info = currentInputMode.value.next(keyMap = keyMap, key = key, isGojuon = false)
+                as? KeyInfo.KeyTapFlickInfo ?: return@mapNotNull null
+            FlickEvidenceKey(screenLocation[0].toFloat(), screenLocation[1].toFloat(), rect.width().toFloat(), rect.height().toFloat(),
+                mapOf(CoreFlickDirection.Tap to info.tap, CoreFlickDirection.Left to info.flickLeft,
+                    CoreFlickDirection.Top to info.flickTop, CoreFlickDirection.Right to info.flickRight,
+                    CoreFlickDirection.Bottom to info.flickBottom).mapNotNull { (direction, value) ->
+                        value?.let { direction to it }
+                    }.toMap())
+        }
+        return FlickEvidenceModel.create(char, pressedKey.initialX, pressedKey.initialY,
+            x - pressedKey.initialX, y - pressedKey.initialY, flickThresholdPx, flickThresholdShape, keys)
     }
 
     private fun resolveFlickThresholdPx(sensitivity: Int): Float {

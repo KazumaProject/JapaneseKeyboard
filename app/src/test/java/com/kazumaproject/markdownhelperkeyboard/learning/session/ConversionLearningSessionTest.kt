@@ -53,6 +53,17 @@ class ConversionLearningSessionTest {
         assertEquals("紫雲清夏", finished(learnFirst = true).single { it.isPhrase }.out)
     }
 
+    @Test
+    fun correctionNeverStoresMisspelledSegmentOrWholePhrase() {
+        val session = ConversionLearningSession()
+        session.beginIfNeeded("こんちはせんせい")
+        session.record(fragment("こんにちは", "こんにちは", 1).copy(corrected = true))
+        session.record(fragment("せんせい", "先生", 0))
+        val entries = session.finish(learnFirstCandidate = false)
+        assertTrue(entries.any { it.input == "こんにちはせんせい" && it.out == "こんにちは先生" })
+        assertTrue(entries.none { it.input.contains("こんちは") })
+    }
+
     private fun fragment(reading: String, output: String, index: Int) = LearningFragment(
         reading = reading,
         output = output,

@@ -25,6 +25,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FLICK_TYPO_CORRECTION
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInfo
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInput
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
@@ -1119,6 +1122,21 @@ class KanaKanjiEngine {
         return !(this.webYomiTrie == null || this.webTangoTrie == null || this.webTokenArray == null)
     }
 
+    private fun buildFlickPartialCandidates(
+        graph: MutableMap<Int, MutableList<com.kazumaproject.graph.Node>>,
+        input: String,
+        enabled: Boolean,
+    ): List<Candidate> {
+        if (!enabled) return emptyList()
+        return graph.values.asSequence().flatten().filter {
+            it.sPos == 0 && it.len.toInt() in 3 until input.length && it.flickCorrectionEdits.isNotEmpty()
+        }.map { node ->
+            Candidate(node.tango, CANDIDATE_TYPE_FLICK_TYPO_CORRECTION, node.len.toUByte(), node.score,
+                yomi = node.yomiUsed, leftId = node.l, rightId = node.r,
+                flickCorrection = FlickCorrectionInfo(node.flickCorrectionEdits, 5))
+        }.sortedBy { it.score }.distinctBy { it.string to it.length }.take(16).toList()
+    }
+
     suspend fun getCandidatesOriginal(
         input: String,
         n: Int,
@@ -1138,6 +1156,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -1188,8 +1207,10 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            flickCorrectionInput = flickCorrectionInput,
         )
 
+        val flickPartialCandidates = buildFlickPartialCandidates(graph, input, flickCorrectionInput != null)
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
             listOf(
                 Candidate(
@@ -1210,6 +1231,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                guardFlickCorrections = flickCorrectionInput != null,
             )
         }
         conversionContext.ensureActive()
@@ -1628,7 +1650,7 @@ class KanaKanjiEngine {
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
         val englishReadingDeferred = deferredEnglishReadingCandidates(input, resultList)
-        return resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + flickPartialCandidates + singleKanjiListDeferred
 
     }
 
@@ -1651,6 +1673,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1701,8 +1724,10 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            flickCorrectionInput = flickCorrectionInput,
         )
 
+        val flickPartialCandidates = buildFlickPartialCandidates(graph, input, flickCorrectionInput != null)
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
             BunsetsuCandidateResult(
                 candidates = listOf(
@@ -1725,6 +1750,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                guardFlickCorrections = flickCorrectionInput != null,
             )
         }
         conversionContext.ensureActive()
@@ -2164,7 +2190,7 @@ class KanaKanjiEngine {
                 compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
                     .thenBy { it.score }
                     .thenBy { it.string },
-            ) + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            ) + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + flickPartialCandidates + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
@@ -2194,6 +2220,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -2244,8 +2271,10 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            flickCorrectionInput = flickCorrectionInput,
         )
 
+        val flickPartialCandidates = buildFlickPartialCandidates(graph, input, flickCorrectionInput != null)
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
             BunsetsuCandidateResult(
                 candidates = listOf(
@@ -2268,6 +2297,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                guardFlickCorrections = flickCorrectionInput != null,
             )
         }
         conversionContext.ensureActive()
@@ -2690,7 +2720,7 @@ class KanaKanjiEngine {
         )
 
         val finalList =
-            resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+            resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + flickPartialCandidates + symbolListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = finalList,
@@ -2720,6 +2750,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2770,8 +2801,10 @@ class KanaKanjiEngine {
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            flickCorrectionInput = flickCorrectionInput,
         )
 
+        val flickPartialCandidates = buildFlickPartialCandidates(graph, input, flickCorrectionInput != null)
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
             listOf(
                 Candidate(
@@ -2792,6 +2825,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                guardFlickCorrections = flickCorrectionInput != null,
             )
         }
         conversionContext.ensureActive()
@@ -3207,7 +3241,7 @@ class KanaKanjiEngine {
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + flickPartialCandidates + symbolListDeferred + singleKanjiListDeferred
 
     }
 
@@ -3227,6 +3261,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
+        isOmissionSearchEnable: Boolean = false,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3269,15 +3305,17 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = false,
+            isOmissionSearchEnable = isOmissionSearchEnable,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            flickCorrectionInput = flickCorrectionInput,
         )
 
+        val flickPartialCandidates = buildFlickPartialCandidates(graph, input, flickCorrectionInput != null)
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
             listOf(
                 Candidate(
@@ -3298,6 +3336,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                guardFlickCorrections = flickCorrectionInput != null,
             )
         }
         conversionContext.ensureActive()
@@ -3707,7 +3746,7 @@ class KanaKanjiEngine {
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + flickPartialCandidates + singleKanjiListDeferred
 
     }
 
@@ -3727,6 +3766,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        flickCorrectionInput: FlickCorrectionInput? = null,
+        isOmissionSearchEnable: Boolean = false,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -3769,15 +3810,17 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = false,
+            isOmissionSearchEnable = isOmissionSearchEnable,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
+            flickCorrectionInput = flickCorrectionInput,
         )
 
+        val flickPartialCandidates = buildFlickPartialCandidates(graph, input, flickCorrectionInput != null)
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
             BunsetsuCandidateResult(
                 candidates = listOf(
@@ -3800,6 +3843,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                guardFlickCorrections = flickCorrectionInput != null,
             )
         }
         conversionContext.ensureActive()
@@ -4232,7 +4276,7 @@ class KanaKanjiEngine {
                 compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
                     .thenBy { it.score }
                     .thenBy { it.string },
-            ) + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            ) + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + flickPartialCandidates + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = resultListFinal,

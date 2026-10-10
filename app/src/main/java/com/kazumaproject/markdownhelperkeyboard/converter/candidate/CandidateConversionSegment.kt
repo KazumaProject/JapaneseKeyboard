@@ -11,5 +11,7 @@ data class CandidateConversionSegment(
     val inputStart: Int,
     val inputEnd: Int,
     val output: String,
+    val correctedReading: String? = null,
+    val flickCorrection: com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInfo? = null,
 )
 

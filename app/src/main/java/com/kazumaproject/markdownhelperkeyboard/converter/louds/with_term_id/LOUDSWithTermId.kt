@@ -7,11 +7,15 @@ import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.bitset.select1
+import com.kazumaproject.core.domain.flick.FlickInputEvidence
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.PackedCharArray
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.PackedIntArray
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionEdit
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInput
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionKind
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickDir
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.KanaFlickLayout
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
@@ -28,6 +32,7 @@ import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLongArray
 
 
 class LOUDSWithTermId {
@@ -64,6 +69,7 @@ class LOUDSWithTermId {
         val results: List<TypoCorrectionResult>,
         val terminalStates: List<TypoSearchState>,
         val acceptedPenalties: Map<String, Int>,
+        val flickProgress: FlickSearchProgress? = null,
     )
 
     val LBSTemp: MutableList<Boolean> = arrayListOf()
@@ -77,6 +83,10 @@ class LOUDSWithTermId {
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
     private val typoCandidateCache = ConcurrentHashMap<Char, List<TypoCandidate>>(64)
+    private class FlickChildCache(val bits: BitSet, val vector: SuccinctBitVector) {
+        val entries = AtomicLongArray(4096)
+    }
+    @Volatile private var flickChildCache: FlickChildCache? = null
 
     init {
         LBSTemp.apply {
@@ -868,6 +878,305 @@ class LOUDSWithTermId {
         }
     }
 
+    internal data class FlickSearchState(
+        val nodeIndex: Int,
+        val depth: Int,
+        val edits: List<FlickCorrectionEdit> = emptyList(),
+        val costUnits: Int = 0,
+        val modifierOmission: Boolean = false,
+    )
+
+    class FlickSearchProgress internal constructor(
+        internal val input: String,
+        internal val startIndex: Int,
+        internal val terminalStates: List<FlickSearchState>,
+        internal val swapPrefixStates: List<FlickSearchState>,
+        internal val accepted: List<TypoCorrectionResult>,
+        internal val allowModifierOmission: Boolean,
+        internal val maxStates: Int,
+        internal val evidence: List<FlickInputEvidence?>,
+    )
+
+    private data class FlickSubstitution(val edit: FlickCorrectionEdit, val modifierOmission: Boolean) {
+        val singleEdit = listOf(edit)
+    }
+
+    /** Bounded weighted edit search; input offsets and trie depth deliberately differ. */
+    fun commonPrefixSearchWithFlickCorrection(
+        str: String,
+        startIndex: Int,
+        succinctBitVector: SuccinctBitVector,
+        correctionInput: FlickCorrectionInput,
+        allowModifierOmission: Boolean,
+        maxLen: Int = 12,
+        maxStates: Int = 256,
+        maxResults: Int = 32,
+        cancellationCheck: () -> Unit = {},
+    ): List<TypoCorrectionResult> = commonPrefixSearchWithFlickCorrectionProgress(str, startIndex,
+        succinctBitVector, correctionInput, allowModifierOmission, maxLen, maxStates, maxResults,
+        cancellationCheck = cancellationCheck).results
+
+    fun commonPrefixSearchWithFlickCorrectionProgress(
+        str: String,
+        startIndex: Int,
+        succinctBitVector: SuccinctBitVector,
+        correctionInput: FlickCorrectionInput,
+        allowModifierOmission: Boolean,
+        maxLen: Int = 12,
+        maxStates: Int = 256,
+        maxResults: Int = 32,
+        previous: FlickSearchProgress? = null,
+        cancellationCheck: () -> Unit = {},
+    ): TypoSearchProgress {
+        fun emptyProgress() = TypoSearchProgress(emptyList(), emptyList(), emptyMap())
+        if (startIndex !in str.indices || maxStates <= 0 || maxResults <= 0) return emptyProgress()
+        var limit = 0
+        while (limit < maxLen && startIndex + limit < str.length &&
+            isFlickKana(str[startIndex + limit])) limit++
+        if (limit < 3) return emptyProgress()
+        val input = str.substring(startIndex, startIndex + limit)
+        // The sixth character opens the two-substitution search. Rebuild once at that
+        // boundary; shorter requests need not retain paths they cannot return yet.
+        val reusable = previous?.takeIf { it.startIndex == startIndex && input.startsWith(it.input) &&
+            it.allowModifierOmission == allowModifierOmission && it.maxStates == maxStates &&
+            (it.input.length >= 6 || limit < 6) &&
+            it.evidence == correctionInput.evidence.drop(startIndex).take(it.input.length) }
+        val slots = Array(limit + 1) { ArrayList<FlickSearchState>() }
+        if (reusable == null) slots[0].add(FlickSearchState(0, 0))
+        else slots[reusable.input.length].addAll(reusable.terminalStates)
+        val accepted = LinkedHashMap<Pair<Int, Int>, TypoCorrectionResult>()
+        reusable?.accepted?.forEach { accepted[it.nodeIndex to it.consumedLength] = it }
+        val firstUsed = reusable?.input?.length ?: 0
+        var swapPrefixStates = reusable?.swapPrefixStates.orEmpty()
+        accepted.entries.removeAll { it.value.consumedLength >= firstUsed }
+        val order = Comparator<FlickSearchState> { first, second ->
+            var comparison = first.edits.size.compareTo(second.edits.size)
+            if (comparison == 0) comparison = first.costUnits.compareTo(second.costUnits)
+            if (comparison == 0) comparison = first.modifierOmission.compareTo(second.modifierOmission)
+            if (comparison == 0) comparison = first.nodeIndex.compareTo(second.nodeIndex)
+            comparison
+        }
+        fun stateKey(state: FlickSearchState): Long = (state.nodeIndex.toLong() shl 3) or
+            (state.edits.size.toLong() shl 1) or if (state.modifierOmission) 1L else 0L
+        fun bounded(states: List<FlickSearchState>): List<FlickSearchState> {
+            val seen = HashSet<Long>(states.size)
+            val ordered = states.sortedWith(order).filter { seen.add(stateKey(it)) }
+            if (ordered.size <= maxStates) return ordered
+            // Cheaper direction errors must not crowd out every missing/extra/swap path.
+            val groups = ordered.filter { it.edits.size <= 1 }.groupBy { state ->
+                val first = state.edits.firstOrNull()
+                ((first?.kind?.ordinal ?: -1) + 1) * 8 + state.edits.size * 2 +
+                    if (first?.kind == FlickCorrectionKind.MISSING && first.inputStart == startIndex) 1 else 0
+            }
+            val reserved = groups.values.flatMap { it.take((maxStates / (groups.size + 2)).coerceAtLeast(1)) }
+            seen.clear()
+            val retained = ArrayList<FlickSearchState>(maxStates)
+            for (state in reserved) if (seen.add(stateKey(state))) retained.add(state)
+            for (state in ordered) {
+                if (retained.size >= maxStates) break
+                if (seen.add(stateKey(state))) retained.add(state)
+            }
+            return retained.sortedWith(order)
+        }
+        fun add(slot: Int, state: FlickSearchState) {
+            if (state.costUnits > 5000 || state.depth > maxLen + 1) return
+            slots[slot].add(state)
+            if (slots[slot].size >= maxStates * 2) {
+                val retained = bounded(slots[slot])
+                slots[slot].clear()
+                slots[slot].addAll(retained)
+            }
+        }
+        fun edit(state: FlickSearchState, kind: FlickCorrectionKind, from: Int, end: Int,
+                 replacement: String, units: Int, supported: Boolean = false): List<FlickCorrectionEdit> =
+            state.edits + FlickCorrectionEdit(kind, startIndex + from, startIndex + end,
+                replacement, units, supported)
+        fun variants(char: Char): List<Char> = if (allowModifierOmission) buildList {
+            add(char)
+            forEachCharVariation(char) { if (it != char) add(it) }
+        } else listOf(char)
+        // A transposition can skip the previous last-character frontier. Retain its exact
+        // prefixes separately so an append only processes the new character and this edge.
+        if (reusable != null && firstUsed < limit) {
+            val firstChar = str[startIndex + firstUsed - 1]
+            val secondChar = str[startIndex + firstUsed]
+            if (firstChar != secondChar) for (state in swapPrefixStates) {
+                for (second in variants(secondChar)) {
+                    val firstNode = traverseFlick(state.nodeIndex, second, succinctBitVector)
+                    if (firstNode < 0) continue
+                    for (first in variants(firstChar)) {
+                        val secondNode = traverseFlick(firstNode, first, succinctBitVector)
+                        if (secondNode < 0) continue
+                        add(firstUsed + 1, FlickSearchState(secondNode, state.depth + 2,
+                            edit(state, FlickCorrectionKind.TRANSPOSE, firstUsed - 1, firstUsed + 1,
+                                "" + second + first, 1600), 1600,
+                            state.modifierOmission || first != firstChar || second != secondChar))
+                    }
+                }
+            }
+        }
+        for (used in firstUsed..limit) {
+            cancellationCheck()
+            val states = bounded(slots[used])
+            val expanded = ArrayList(states)
+            val char = str.getOrNull(startIndex + used) ?: '\u0000'
+            val exactVariants = variants(char)
+            val fromKey = KanaFlickLayout.keyOf(KanaFlickLayout.baseChar(char))
+            val substitutions = HashMap<Char, FlickSubstitution?>()
+            // Epsilon insertion is allowed once. It stays attached to a positive-length word.
+            for (state in states) {
+                if (state.edits.isNotEmpty()) continue
+                forEachFlickChild(state.nodeIndex, succinctBitVector) { node, char ->
+                    if (isFlickKana(char)) {
+                        val units = if (used == 0) 2800 else 1200
+                        expanded.add(FlickSearchState(node, state.depth + 1,
+                            edit(state, FlickCorrectionKind.MISSING, used, used, char.toString(), units),
+                            units, state.modifierOmission))
+                    }
+                }
+            }
+            val processedStates = bounded(expanded)
+            if (used == limit - 1) swapPrefixStates = processedStates.filter { it.edits.isEmpty() }
+            for (state in processedStates) {
+                if (used >= 3 && state.edits.isNotEmpty() && isLeaf[state.nodeIndex] &&
+                    (state.edits.size == 1 || used >= 6)) {
+                    val result = TypoCorrectionResult(flickReading(state.nodeIndex, state.depth, succinctBitVector), state.edits.size, state.nodeIndex,
+                        used, state.edits, state.modifierOmission, state.costUnits)
+                    val key = state.nodeIndex to used
+                    if (accepted[key]?.costUnits?.let { it <= state.costUnits } != true) accepted[key] = result
+                }
+                if (used == limit) continue
+                val canSubstitute = state.edits.isEmpty() || (limit >= 6 && state.edits.size == 1 &&
+                    state.edits.first().kind in SUBSTITUTION_KINDS)
+                forEachFlickChild(state.nodeIndex, succinctBitVector) { node, candidate ->
+                    if (candidate in exactVariants) {
+                        add(used + 1, state.copy(nodeIndex = node, depth = state.depth + 1,
+                            modifierOmission = state.modifierOmission || candidate != char))
+                    } else if (canSubstitute && isFlickKana(candidate) &&
+                        (allowModifierOmission || KanaFlickLayout.modifierOf(char) == KanaFlickLayout.modifierOf(candidate))) {
+                        // Geometry and evidence are constant for this input position; reuse
+                        // the edit across trie states instead of recalculating every branch.
+                        val substitution = substitutions.getOrPut(candidate) {
+                            val toKey = KanaFlickLayout.keyOf(KanaFlickLayout.baseChar(candidate))
+                            if (fromKey == null || toKey == null || fromKey == toKey) return@getOrPut null
+                            val sameGroup = fromKey.group == toKey.group
+                            val sameDirection = fromKey.dir == toKey.dir
+                            val distance = KanaFlickLayout.manhattan(fromKey.group, toKey.group)
+                            val kind = when {
+                                sameGroup -> FlickCorrectionKind.DIRECTION
+                                sameDirection -> FlickCorrectionKind.KEY
+                                else -> FlickCorrectionKind.KEY_AND_DIRECTION
+                            }
+                            val base = when {
+                                sameGroup && (fromKey.dir == FlickDir.CENTER || toKey.dir == FlickDir.CENTER) -> 900
+                                sameGroup && ((fromKey.dir == FlickDir.LEFT && toKey.dir == FlickDir.RIGHT) ||
+                                    (fromKey.dir == FlickDir.RIGHT && toKey.dir == FlickDir.LEFT) ||
+                                    (fromKey.dir == FlickDir.UP && toKey.dir == FlickDir.DOWN) ||
+                                    (fromKey.dir == FlickDir.DOWN && toKey.dir == FlickDir.UP)) -> 1500
+                                sameGroup -> 1100
+                                sameDirection && distance == 1 -> 1100
+                                sameDirection && distance == 2 -> 2400
+                                sameDirection -> 4000
+                                distance == 1 -> 2300
+                                else -> 4600
+                            }
+                            val factor = correctionInput.evidenceAt(startIndex + used)
+                                ?.costFactor(KanaFlickLayout.baseChar(candidate)) ?: 1f
+                            val units = (base * factor).toInt()
+                            FlickSubstitution(FlickCorrectionEdit(kind, startIndex + used, startIndex + used + 1,
+                                candidate.toString(), units, factor < 0.85f),
+                                KanaFlickLayout.modifierOf(char) != KanaFlickLayout.modifierOf(candidate))
+                        }
+                        if (substitution != null && state.costUnits + substitution.edit.costUnits <= 5000)
+                            add(used + 1, FlickSearchState(node, state.depth + 1,
+                            if (state.edits.isEmpty()) substitution.singleEdit else state.edits + substitution.edit,
+                            state.costUnits + substitution.edit.costUnits, state.modifierOmission || substitution.modifierOmission))
+                    }
+                }
+                if (state.edits.isNotEmpty()) continue
+                val repeated = str.getOrNull(startIndex + used - 1) == char ||
+                    str.getOrNull(startIndex + used + 1) == char
+                val deletionUnits = if (repeated) 1000 else 2400
+                add(used + 1, state.copy(
+                    edits = edit(state, FlickCorrectionKind.EXTRA, used, used + 1, "", deletionUnits),
+                    costUnits = deletionUnits,
+                ))
+                if (used + 1 < limit && char != str[startIndex + used + 1]) {
+                    for (second in variants(str[startIndex + used + 1])) {
+                        val firstNode = traverseFlick(state.nodeIndex, second, succinctBitVector)
+                        if (firstNode < 0) continue
+                        for (first in exactVariants) {
+                            val secondNode = traverseFlick(firstNode, first, succinctBitVector)
+                            if (secondNode < 0) continue
+                            add(used + 2, FlickSearchState(secondNode, state.depth + 2,
+                                edit(state, FlickCorrectionKind.TRANSPOSE, used, used + 2, "" + second + first, 1600),
+                                1600, state.modifierOmission || first != char || second != str[startIndex + used + 1]))
+                        }
+                    }
+                }
+            }
+        }
+        val resultOrder = compareBy<TypoCorrectionResult> { it.costUnits }
+            .thenByDescending { it.consumedLength }.thenBy { it.yomi }
+        val ordered = accepted.values.map { result ->
+            val last = result.edits.singleOrNull()?.takeIf { it.kind == FlickCorrectionKind.MISSING &&
+                it.inputStart == str.length && result.consumedLength == limit }
+            if (last == null) result else result.copy(edits = listOf(last.copy(costUnits = 2800)),
+                costUnits = result.costUnits + 2800 - last.costUnits)
+        }.sortedWith(resultOrder)
+        val results = if (ordered.size <= maxResults) ordered else {
+            val reserved = ordered.filter { it.consumedLength == limit }
+                .groupBy { it.edits.first().kind to it.edits.size }.values.flatMap { it.take(2) }
+            (reserved + ordered).distinctBy { it.nodeIndex to it.consumedLength }.take(maxResults).sortedWith(resultOrder)
+        }
+        return TypoSearchProgress(results, emptyList(), emptyMap(), FlickSearchProgress(input, startIndex,
+            slots[limit].toList(), swapPrefixStates, accepted.values.toList(), allowModifierOmission, maxStates,
+            correctionInput.evidence.drop(startIndex).take(limit)))
+    }
+
+    private inline fun forEachFlickChild(node: Int, vector: SuccinctBitVector, block: (Int, Char) -> Unit) {
+        var child = firstFlickChild(node, vector)
+        var labelIndex = if (child >= 0) vector.rank1(child) else -1
+        while (child >= 0 && LBS[child]) {
+            if (labelIndex !in 0 until labelCount) break
+            block(child, labelAt(labelIndex))
+            child++
+            labelIndex++
+        }
+    }
+
+    private fun firstFlickChild(node: Int, vector: SuccinctBitVector): Int {
+        val cache = flickChildCache?.takeIf { it.bits === LBS && it.vector === vector } ?: synchronized(this) {
+            flickChildCache?.takeIf { it.bits === LBS && it.vector === vector } ?: FlickChildCache(LBS, vector)
+                .also { flickChildCache = it }
+        }
+        val slot = (node * -1640531527) and 4095
+        val saved = cache.entries.get(slot)
+        if (saved ushr 32 == node.toLong() + 1) return saved.toInt() - 1
+        val first = firstChild(node, vector)
+        // The key and value share one atomic cell, including a cached missing child.
+        cache.entries.set(slot, ((node.toLong() + 1) shl 32) or ((first.toLong() + 1) and 0xffffffffL))
+        return first
+    }
+
+    private fun traverseFlick(node: Int, char: Char, vector: SuccinctBitVector): Int {
+        var result = -1
+        forEachFlickChild(node, vector) { child, label -> if (label == char) result = child }
+        return result
+    }
+
+    private fun flickReading(node: Int, depth: Int, vector: SuccinctBitVector): String {
+        val reading = CharArray(depth)
+        var current = node
+        for (index in depth - 1 downTo 0) {
+            reading[index] = labelAt(vector.rank1(current))
+            current = vector.select1(vector.rank0(current))
+        }
+        return String(reading)
+    }
+
+    private fun isFlickKana(char: Char): Boolean = char in 'ぁ'..'ゖ' || char == 'ー'
+
     fun commonPrefixSearchWithTypoCorrectionPrefix(
         str: String,
         succinctBitVector: SuccinctBitVector,
@@ -1033,6 +1342,8 @@ class LOUDSWithTermId {
     }
 
     companion object {
+        private val SUBSTITUTION_KINDS = setOf(FlickCorrectionKind.KEY,
+            FlickCorrectionKind.DIRECTION, FlickCorrectionKind.KEY_AND_DIRECTION)
         private const val PACKED_ARRAY_THRESHOLD = 500_000
 
         fun fromPacked(

@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.candidate
 
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickCorrectionInfo
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.FormulaCandidatePresentation
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 
@@ -24,4 +25,5 @@ data class Candidate(
     val conversionSegments: List<CandidateConversionSegment> = emptyList(),
     /** Date format identity for daily date candidates that can be reordered or disabled. */
     val dateFormat: DateCandidateFormat? = null,
+    val flickCorrection: FlickCorrectionInfo? = null,
 )

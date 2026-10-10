@@ -1,0 +1,56 @@
+# Small shared regression cases for unit/device tests; large accuracy corpus is kept outside the repository.
+normal	わたしはあしたとうきょうにいきます
+normal	わたしはきょうほんをよみます
+normal	わたしはおちゃをのみます
+normal	わたしはがっこうにいます
+normal	わたしはでんしゃにのります
+normal	わたしはあさごはんをたべます
+normal	わたしはにほんごをべんきょうします
+normal	わたしはしごとをしています
+normal	わたしはえいがをみます
+normal	わたしはおんがくをききます
+normal	こんにちは
+normal	よろしく
+normal	おはようございます
+normal	ありがとうございます
+normal	こんばんは
+normal	あした
+normal	きょう
+normal	きのう
+normal	とうきょう
+normal	おおさか
+normal	ほっかいどう
+normal	あおい
+normal	かずま
+normal	なつき
+normal	みなと
+normal	あやか
+normal	すみれ
+normal	ぬるぽ
+normal	ふがほげ
+normal	ふにゃもけ
+normal	すももん
+normal	こんちは
+normal	え
+normal	く
+normal	を
+normal	123
+normal	test@example.com
+normal	https://example.com
+normal	とうきょう、
+normal	こんにちは！
+normal	けきまちおせゆこいやとき
+normal	すはへふにたし
+normal	せゆすて
+key	かした	あした
+direction	あしと	あした
+missing	こんちは	こんにちは
+extra	こんにちちは	こんにちは
+transpose	よしろく	よろしく
+missing	おはよございます	おはようございます
+missing	ありがとございます	ありがとうございます
+missing	よろしおねがいします	よろしくおねがいします
+extra	おはようございいます	おはようございます
+transpose	おはようごいざます	おはようございます
+direction	きのい	きのう
+missing	ときょう	とうきょう

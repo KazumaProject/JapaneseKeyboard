@@ -1886,4 +1886,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="settings_loading">Loading settings…</string>
     <string name="settings_loading_failed">Settings could not be loaded.</string>
     <string name="settings_loading_retry">Retry</string>
+    <string name="candidate_badge_flick_correction">[Correction]</string>
+    <string name="candidate_badge_flick_correction_partial">[Part][Correction]</string>
 </resources>

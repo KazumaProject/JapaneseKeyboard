@@ -12,25 +12,28 @@ internal fun resolveCandidateRubyAnnotations(
     segments: List<CandidateConversionSegment>,
 ): List<CandidateRubyAnnotation>? {
     if (segments.isEmpty() || reading.isEmpty()) return null
+    val corrected = segments.any { it.flickCorrection != null } &&
+        segments.all { it.correctedReading != null } && segments.joinToString("") { it.correctedReading.orEmpty() } == reading
+    val inputLength = if (corrected) segments.last().inputEnd else reading.length
     var inputEnd = 0
     var outputEnd = 0
     for (segment in segments) {
         if (segment.inputStart != inputEnd || segment.inputEnd <= inputEnd ||
-            segment.inputEnd > reading.length || segment.output.isEmpty() ||
-            !reading.isCodePointBoundary(segment.inputStart) ||
-            !reading.isCodePointBoundary(segment.inputEnd) ||
+            segment.inputEnd > inputLength || segment.output.isEmpty() ||
+            (!corrected && (!reading.isCodePointBoundary(segment.inputStart) ||
+                !reading.isCodePointBoundary(segment.inputEnd))) ||
             !output.startsWith(segment.output, outputEnd) ||
             !output.isCodePointBoundary(outputEnd + segment.output.length)
         ) return null
         inputEnd = segment.inputEnd
         outputEnd += segment.output.length
     }
-    if (inputEnd != reading.length || outputEnd != output.length) return null
+    if (inputEnd != inputLength || outputEnd != output.length) return null
 
     val annotations = mutableListOf<CandidateRubyAnnotation>()
     var offset = 0
     for (segment in segments) {
-        val yomi = reading.substring(segment.inputStart, segment.inputEnd)
+        val yomi = if (corrected) checkNotNull(segment.correctedReading) else reading.substring(segment.inputStart, segment.inputEnd)
         annotations += alignSegment(segment.output, yomi).map {
             it.copy(start = it.start + offset, end = it.end + offset)
         }

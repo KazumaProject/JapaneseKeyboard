@@ -1884,4 +1884,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="settings_loading">設定を読み込んでいます…</string>
     <string name="settings_loading_failed">設定を読み込めませんでした。</string>
     <string name="settings_loading_retry">再試行</string>
+    <string name="candidate_badge_flick_correction">[補正]</string>
+    <string name="candidate_badge_flick_correction_partial">[部][補正]</string>
 </resources>
