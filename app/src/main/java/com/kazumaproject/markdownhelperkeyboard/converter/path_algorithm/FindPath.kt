@@ -342,6 +342,7 @@ class FindPath(
         private val queueElementPool = ArrayList<PathQueueElement>()
         private var queueElementCount = 0
         var requiredSuffixNodeCount: Int = 0
+            private set
         var counterSegmenter: MozcSegmenter? = null
         lateinit var counterMatrix: ConnectionMatrix.CostTable
             private set
@@ -382,7 +383,13 @@ class FindPath(
                 mozcSegmenter = mozcSegmenter,
                 boundaryMode = boundaryMode,
             )
-            requiredSuffixNodeCount = maxOf(1, ngramRuleScorer.requiredSuffixNodeCount)
+            // The extra lookahead belongs to quantity penalties, not ordinary conversion.
+            // Ordinary paths use the original rule-required context instead of retaining a
+            // needless successor in every backward-search state.
+            val needsQuantityContext = graph.values.any { nodes ->
+                nodes.any { it.counter != null || it.counterCompetitor != null }
+            }
+            requiredSuffixNodeCount = maxOf(if (needsQuantityContext) 1 else 0, ngramRuleScorer.requiredSuffixNodeCount)
             counterSegmenter = mozcSegmenter
             counterMatrix = connectionMatrix
             if (!nodeIds.containsKey(BOS)) nodeIds[BOS] = nodeIds.size

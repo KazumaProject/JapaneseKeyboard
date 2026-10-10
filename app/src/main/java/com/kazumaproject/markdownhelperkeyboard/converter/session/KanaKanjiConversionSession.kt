@@ -88,6 +88,9 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
+            val counterComposition = if (request.mode == CandidateQueryMode.EISUKANA) null else
+                engine.prepareCounterCandidates(request.input)
+            val queryRequest = if (counterComposition != null) request.copy(collectCandidateSegments = true) else request
             val result = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
@@ -96,9 +99,9 @@ class KanaKanjiConversionSession(
                     ),
                 )
 
-                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
-                CandidateQueryMode.PREDICTION -> queryPrediction(request)
-                CandidateQueryMode.CONVERSION -> queryConversion(request)
+                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(queryRequest)
+                CandidateQueryMode.PREDICTION -> queryPrediction(queryRequest)
+                CandidateQueryMode.CONVERSION -> queryConversion(queryRequest)
             }
             val composedResult = result.copy(
                 candidates = DateCandidateComposer.compose(
@@ -116,8 +119,10 @@ class KanaKanjiConversionSession(
                     )
                 },
             )
+            val withCounters = counterComposition?.invoke(composedResult) ?: composedResult
             incrementalState?.commitQueryTransaction()
-            composedResult
+            if (request.collectCandidateSegments) withCounters else
+                withCounters.copy(candidateSegmentsByString = emptyMap())
         } catch (cancellation: CancellationException) {
             // A completed graph has its own staged commit. Keep that newest frontier when only the
             // later path search was cancelled; an incomplete append still rolls back entirely.

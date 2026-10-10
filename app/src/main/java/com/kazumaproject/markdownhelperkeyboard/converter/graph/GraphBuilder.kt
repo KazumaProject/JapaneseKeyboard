@@ -259,7 +259,7 @@ class GraphBuilder {
         input: String,
         source: String,
     ) {
-        val newNode = if (rawNode.numberValue == null && rawNode.counter == null && rawNode.tango.isNotEmpty() &&
+        val newNode = if (counterConverter != null && rawNode.numberValue == null && rawNode.counter == null && rawNode.tango.isNotEmpty() &&
             rawNode.tango.all { it in '0'..'9' || it in '０'..'９' }) {
             rawNode.copy(numberValue = counterConverter?.numberValue(rawNode.yomiUsed),counterBoundary = counterBoundary)
         } else rawNode
@@ -365,6 +365,7 @@ class GraphBuilder {
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
         sessionState: SessionState? = null,
+        usesBunsetsuPath: Boolean = false,
     ): MutableMap<Int, MutableList<Node>> {
         val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
             System.nanoTime()
@@ -401,6 +402,7 @@ class GraphBuilder {
             beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
+            usesBunsetsuPath = usesBunsetsuPath,
         )
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
@@ -1464,7 +1466,12 @@ class GraphBuilder {
         if (counterConverter != null) {
             // A new counter span can join nodes retained from an earlier append. Canonical order
             // keeps equal-cost K-best cutoffs identical to a fresh lattice (including its paths).
-            graph.values.forEach { nodes -> nodes.sortWith(COUNTER_GRAPH_ORDER) }
+            // Ordinary positions retain dictionary order so enabling counters cannot change ties.
+            graph.values.forEach { nodes ->
+                if (nodes.any { it.counter != null || it.counterCompetitor != null }) {
+                    nodes.sortWith(COUNTER_GRAPH_ORDER)
+                }
+            }
         }
         val updatedCache = CachedGraph(
             input = str,
@@ -1557,6 +1564,7 @@ class GraphBuilder {
         beamWidth: Int,
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
+        usesBunsetsuPath: Boolean,
     ): Int {
         var result = 31 * System.identityHashCode(yomiTrie) + System.identityHashCode(counterConnectionMatrix)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
@@ -1577,6 +1585,8 @@ class GraphBuilder {
         result = 31 * result + beamWidth
         result = 31 * result + graphNodeDedupMode.hashCode()
         result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)
+        // Retained nodes and forward costs include path-specific prefix/suffix penalties.
+        result = 31 * result + usesBunsetsuPath.hashCode()
         return result
     }
 

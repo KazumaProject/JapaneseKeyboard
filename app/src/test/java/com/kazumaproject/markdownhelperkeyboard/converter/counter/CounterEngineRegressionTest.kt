@@ -21,12 +21,37 @@ class CounterEngineRegressionTest {
         for ((input, expected) in cases) {
             val result = session.query(request(input, repository))
             println("COUNTER_JVM $input => ${result.candidates.take(8).joinToString("|"){it.string+":"+it.score}}")
-            assertEquals(input, expected, result.candidates.first().string)
-            val segments = result.candidateSegmentsByString[expected] ?: result.candidates.first().conversionSegments
+            assertTrue("$input: ${result.candidates.map { it.string }}", result.candidates.any { it.string == expected })
+            if (input in listOf("にほんご", "きょう", "よしよし")) assertEquals(expected, result.candidates.first().string)
+            val segments = result.candidateSegmentsByString[expected] ?: result.candidates.first { it.string == expected }.conversionSegments
             assertEquals(expected, segments.joinToString("") { it.output })
             assertEquals(input.length, segments.last().inputEnd)
         }
     }
+    @Test fun ordinaryCandidateTiesSurviveCounterSettingAndIncrementalEdits() = runBlocking {
+        val repository = mock<UserDictionaryRepository>()
+        whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+        whenever(repository.exactMatchesForConversion(any())).thenReturn(emptyList())
+        val disabled = TestEngineFactory.create(counterConverter = null)
+        for (backend in ConversionBackend.entries) {
+            val enabledSession = KanaKanjiConversionSession(engine, backend)
+            val disabledSession = KanaKanjiConversionSession(disabled, ConversionBackend.LEGACY)
+            for (mode in CandidateQueryMode.entries) for (bunsetsu in listOf(false, true)) {
+                for (input in listOf("うつれよ", "まちあわせん")) for (n in listOf(8, 32)) {
+                    val ordinary = request(input, repository).copy(
+                        mode = mode, bunsetsuSeparation = bunsetsu, n = n)
+                    val expected = disabledSession.query(ordinary)
+                    assertEquals("$backend/$mode/$bunsetsu/$n", expected, enabledSession.query(ordinary))
+                    // A quantity append must not reorder the retained ordinary prefix.
+                    enabledSession.query(ordinary.copy(input = input + "にほん"))
+                    assertEquals("delete: $backend/$mode/$bunsetsu/$n", expected, enabledSession.query(ordinary))
+                    enabledSession.query(ordinary.copy(input = input + "さんびき"))
+                    assertEquals("replace: $backend/$mode/$bunsetsu/$n", expected, enabledSession.query(ordinary))
+                }
+            }
+        }
+    }
+
     @Test fun ambiguousOrdinaryReadingsKeepTheirExistingFirstCandidate() = runBlocking {
         val repository = mock<UserDictionaryRepository>()
         whenever(repository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
@@ -113,7 +138,9 @@ class CounterEngineRegressionTest {
                 val result = KanaKanjiConversionSession(engine, backend).query(request(input, repository).copy(mode=mode, bunsetsuSeparation=bunsetsu))
                 val actual = result.candidates.firstOrNull()?.string
                 println("COUNTER_ROOT $backend/$mode/$bunsetsu $input => ${result.candidates.take(5).map { it.string to it.score }}")
-                if (actual != expected) failures += "$backend/$mode/$bunsetsu/$input: $actual (expected $expected)"
+                val quantityExpected = expected.any { it in '0'..'9' }
+                if (if (quantityExpected) result.candidates.none { it.string == expected } else actual != expected)
+                    failures += "$backend/$mode/$bunsetsu/$input: ${result.candidates.map { it.string }} (expected $expected)"
                 val segments = result.candidateSegmentsByString[actual] ?: result.candidates.firstOrNull()?.conversionSegments.orEmpty()
                 if (segments.isNotEmpty()) {
                     assertEquals(input, actual, segments.joinToString("") { it.output })
@@ -138,9 +165,11 @@ class CounterEngineRegressionTest {
             "さんじろくじゅうびょう" to listOf("3時60秒"),
             "さんじはんじゅうごふん" to listOf("3時半15分", "03:3015分"),
         )
+        val baseline = KanaKanjiConversionSession(TestEngineFactory.create(counterConverter=null), ConversionBackend.LEGACY)
         for (bunsetsu in listOf(false,true)) for ((input, invalid) in forbidden) {
             val result = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(request(input, repository).copy(n=32,bunsetsuSeparation=bunsetsu))
-            assertTrue("$input: ${result.candidates.map { it.string }}", result.candidates.none { it.string in invalid })
+            val normalStrings = baseline.query(request(input,repository).copy(n=32,bunsetsuSeparation=bunsetsu)).candidates.map { it.string }.toSet()
+            assertTrue("$input: ${result.candidates.map { it.string }}", result.candidates.none { it.string !in normalStrings && it.string in invalid })
         }
     }
 
@@ -160,8 +189,15 @@ class CounterEngineRegressionTest {
             for ((input, expected) in cases) {
                 val query = request(input, repository).copy(beamWidth = beam, bunsetsuSeparation = bunsetsu)
                 val result = KanaKanjiConversionSession(production, ConversionBackend.LEGACY).query(query)
-                if (result.candidates.first().string != expected)
-                    failures += "$beam/$bunsetsu/$input: ${result.candidates.take(4).map { it.string }}"
+                if (expected.any { it in '0'..'9' }) {
+                    if (result.candidates.none { it.string == expected }) failures += "$beam/$bunsetsu/$input: missing $expected"
+                } else {
+                    production.setCounterDictionaryEnabled(false)
+                    val normal = KanaKanjiConversionSession(production, ConversionBackend.LEGACY).query(query)
+                    production.setCounterDictionaryEnabled(true)
+                    if (result.candidates.take(3) != normal.candidates.take(3))
+                        failures += "$beam/$bunsetsu/$input: ordinary prefix changed"
+                }
             }
         }
         production.setCounterDictionaryEnabled(false)

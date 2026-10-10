@@ -60,6 +60,32 @@ class KanaKanjiConversionSessionParityTest {
     }
 
     @Test
+    fun switchingPathPenaltyPolicyDoesNotReuseAdjustedScores() = runBlocking {
+        try {
+            for (counterEnabled in listOf(false, true)) {
+                engine.setCounterDictionaryEnabled(counterEnabled)
+                for (n in listOf(8, 32)) {
+                    for ((prefix, input) in listOf("いっせん" to "いっせんかい", "いちご" to "いちごう")) {
+                        val incremental = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
+                        incremental.query(request(prefix, CandidateQueryMode.CONVERSION, true).copy(n = n))
+                        incremental.query(request(prefix, CandidateQueryMode.EISUKANA, false).copy(n = n))
+                        val plain = request(input, CandidateQueryMode.NO_TAB_DEFAULT, false).copy(n = n)
+                        val expected = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(plain)
+                        assertEquals("counter=$counterEnabled n=$n input=$input",
+                            expected, incremental.query(plain))
+                        // Re-entering the penalized path must also match a fresh query.
+                        val penalized = plain.copy(mode = CandidateQueryMode.CONVERSION, bunsetsuSeparation = true)
+                        assertEquals(KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(penalized),
+                            incremental.query(penalized))
+                    }
+                }
+            }
+        } finally {
+            engine.setCounterDictionaryEnabled(true)
+        }
+    }
+
+    @Test
     fun incrementalSessionMatchesLegacyAcrossModesAndBunsetsu() = runBlocking {
         val legacy = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
         val incremental = KanaKanjiConversionSession(

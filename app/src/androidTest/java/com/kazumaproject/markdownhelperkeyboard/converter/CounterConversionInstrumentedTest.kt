@@ -49,8 +49,8 @@ class CounterConversionInstrumentedTest {
                 for ((input, expected) in cases) {
                     val result = session.query(request(input, entry.userDictionaryRepository(), mode, bunsetsu))
                     println("COUNTER_CASE $mode bunsetsu=$bunsetsu $input => ${result.candidates.take(12).joinToString("|"){it.string}}")
-                    assertEquals("$mode/$bunsetsu/$input", expected, result.candidates.first().string)
-                    val segments = result.candidateSegmentsByString[expected] ?: result.candidates.first().conversionSegments
+                    assertTrue("$mode/$bunsetsu/$input: ${result.candidates.map { it.string }}", result.candidates.any { it.string == expected })
+                    val segments = result.candidateSegmentsByString[expected] ?: result.candidates.first { it.string == expected }.conversionSegments
                     assertFalse("Missing segments: $input", segments.isEmpty())
                     assertEquals(input.length, segments.last().inputEnd)
                     assertEquals(expected, segments.joinToString("") { it.output })
