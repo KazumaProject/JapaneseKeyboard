@@ -2292,7 +2292,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             InputMode.ModeEnglish -> isEnglishFlickGuideEnabled
             InputMode.ModeNumber -> isNumberFlickGuideEnabled
         }
-        if (!guideEnabled || (mode !in modeLetterSizes && mode !in modeGuideSizes)) return
+        // The Japanese punctuation key always displays its surrounding flick labels.
+        val hasVisibleGuide = guideEnabled || (mode == InputMode.ModeJapanese && button.id == R.id.key_12)
+        if (!hasVisibleGuide || (mode !in modeLetterSizes && mode !in modeGuideSizes)) return
         val label = button.text as? android.text.Spanned ?: return
         val center = label.getSpans(0, label.length, android.text.Annotation::class.java)
             .firstOrNull { it.key == "tenkey" && it.value == "center" } ?: return
@@ -2302,10 +2304,17 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
                 it, resources.displayMetrics)
         } ?: legacyCenterPx * (relativeSpans.firstOrNull()?.sizeChange ?: 0.6f)
-        relativeSpans.forEach { updated.removeSpan(it) }
-        // Size spaces and line breaks too: otherwise the large center font makes every guide row tall.
         val centerStart = label.getSpanStart(center)
         val centerEnd = label.getSpanEnd(center)
+        relativeSpans.forEach {
+            // A guide-only override must preserve the punctuation key's inherited center size.
+            if (mode in modeLetterSizes || label.getSpanStart(it) < centerStart || label.getSpanEnd(it) > centerEnd) {
+                updated.removeSpan(it)
+            }
+        }
+        label.getSpans(0, label.length, com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan::class.java)
+            .forEach { updated.removeSpan(it) }
+        // Size spaces and line breaks too: otherwise the large center font makes every guide row tall.
         if (centerStart > 0) updated.setSpan(android.text.style.AbsoluteSizeSpan(guidePx.toInt()),
             0, centerStart, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         if (centerEnd < label.length) updated.setSpan(android.text.style.AbsoluteSizeSpan(guidePx.toInt()),
