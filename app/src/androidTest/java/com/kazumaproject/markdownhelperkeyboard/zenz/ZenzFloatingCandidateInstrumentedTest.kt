@@ -170,6 +170,8 @@ class ZenzFloatingCandidateInstrumentedTest {
                 }
                 val candidate = label()
                 val generated = candidate.text.toString()
+                assertTrue("Floating panel must not include a zenz title",
+                    nodes().none { it.text?.toString()?.equals("zenz", ignoreCase = true) == true })
                 capture("portrait-generated")
                 val grip = bounds(description(R.string.composing_guide_move))
                 assertTrue("Default zenz panel overlaps the normal candidate strip",
