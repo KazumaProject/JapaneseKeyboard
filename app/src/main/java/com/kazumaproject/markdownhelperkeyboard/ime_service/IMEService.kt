@@ -5919,6 +5919,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.applyPopupViewStyle(
                     currentTenKeyPopupViewStyle()
                 )
+                ModeKeySizing.applyTenkey(floatingKeyboardLayoutBinding.keyboardViewFloating)
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -10740,6 +10741,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             englishEnabled = tenkeyKeymapGuideSettings.english,
             numberEnabled = tenkeyKeymapGuideSettings.number
         )
+        ModeKeySizing.applyTenkey(floatingKeyboardLayoutBinding.keyboardViewFloating)
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
