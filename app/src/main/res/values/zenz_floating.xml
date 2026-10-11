@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="zenz_floating_candidate_text" type="id" />
+    <string name="zenz_floating_category">Candidate display</string>
+    <string name="zenz_floating_title">Show zenz candidates in a floating panel</string>
+    <string name="zenz_floating_summary">Show generated candidates only in the zenz panel. Drag the handle to move; use edit mode to resize.</string>
+    <string name="zenz_floating_reset">Reset floating position and size</string>
+    <string name="zenz_floating_loading">Generating…</string>
+    <string name="zenz_generation_category">Model and generation</string>
+</resources>

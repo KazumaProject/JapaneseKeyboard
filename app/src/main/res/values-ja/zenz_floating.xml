@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zenz_floating_category">候補の表示</string>
+    <string name="zenz_floating_title">zenz の変換候補をフローティングで表示</string>
+    <string name="zenz_floating_summary">生成候補を通常の候補一覧に追加せず、zenz 専用パネルに表示します。ハンドルで移動、編集モードでサイズ変更できます。</string>
+    <string name="zenz_floating_reset">フローティングの位置・サイズをリセット</string>
+    <string name="zenz_floating_loading">生成中…</string>
+    <string name="zenz_generation_category">モデルと生成</string>
+</resources>
