@@ -94,6 +94,9 @@ private fun createFlickSpannable(
     }
 
     val spannable = SpannableString(sb.toString())
+    // Non-visual metadata lets independent sizing preserve the center and guide layout.
+    spannable.setSpan(android.text.Annotation("tenkey", "center"), centerStart,
+        centerStart + center.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
     // 周囲は小さめ
     fun applySideSpan(start: Int, len: Int) {
