@@ -120,6 +120,13 @@ private fun createFlickSpannable(
     return spannable
 }
 
+private fun japanesePunctuationLabel(): SpannableString =
+    getSpannableStringForKigouButtonJapanese().apply {
+        val centerStart = indexOf(',')
+        setSpan(android.text.Annotation("tenkey", "center"), centerStart, centerStart + 1,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+
 private fun AppCompatButton.prepareLabelLayout(maxLabelLines: Int) {
     isSingleLine = maxLabelLines == 1
     maxLines = maxLabelLines
@@ -170,7 +177,7 @@ fun AppCompatButton.setTenKeyTextJapanese(
         R.id.key_8 -> context.getString(com.kazumaproject.core.R.string.string_や)
         R.id.key_9 -> context.getString(com.kazumaproject.core.R.string.string_ら)
         R.id.key_11 -> context.getString(com.kazumaproject.core.R.string.string_わ)
-        R.id.key_12 -> getSpannableStringForKigouButtonJapanese()
+        R.id.key_12 -> japanesePunctuationLabel()
         else -> ""
     }
 }
@@ -311,7 +318,7 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
 
         keyId == R.id.key_12 -> {
             // 記号キーは今までの実装に合わせる
-            getSpannableStringForKigouButtonJapanese()
+            japanesePunctuationLabel()
         }
 
         else -> ""
