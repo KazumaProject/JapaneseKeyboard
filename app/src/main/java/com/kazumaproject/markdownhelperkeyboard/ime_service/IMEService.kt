@@ -3400,6 +3400,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         runtimeInputSharedPreferences.getBoolean("enable_ai_conversion_zenz_preference", false) &&
         runtimeInputSharedPreferences.getBoolean(ComposingGuideSettings.ZENZ_ENABLED, false)
 
+    private fun canUseZenzFloatingPanel(): Boolean = zenzFloatingEnabled &&
+        isInputViewActive && !isFullscreenMode && !currentInputType.isPassword() &&
+        keyboardLayoutEditState.value !is KeyboardLayoutEditState.Enabled
+
     private fun refreshZenzFloatingCandidates() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             mainHandler.post { refreshZenzFloatingCandidates() }
@@ -3407,7 +3411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val state = _zenzLiveSlotState.value
         val valid = ZenzFloatingCandidatePolicy.shouldShow(
-            enabled = zenzFloatingEnabled,
+            enabled = canUseZenzFloatingPanel(),
             suppressed = suppressSuggestions,
             currentRequest = state != null && state.requestToken == zenzLiveRequestToken &&
                 shouldRequestZenzLiveGenerate(state.displayInput, state.source),
@@ -3422,10 +3426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val host = mainLayoutBinding?.root ?: return
         val window = zenzFloatingWindow ?: ComposingGuideWindow(
-            this, eligible = {
-                isInputViewActive && !isFullscreenMode && !currentInputType.isPassword() &&
-                    keyboardLayoutEditState.value !is KeyboardLayoutEditState.Enabled
-            },
+            this, eligible = ::canUseZenzFloatingPanel,
             onSurfaceChanged = { surface ->
                 zenzFloatingLabel = surface?.let {
                     it.removeAllViews()
@@ -17310,7 +17311,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzSlotState: ZenzLiveSlotState?,
         allowBunsetsuTarget: Boolean = false
     ): List<Candidate> {
-        if (zenzFloatingEnabled) return localCandidates.withoutZenzLiveSlot(input)
+        // Keep the regular slot whenever the dedicated panel cannot be displayed.
+        if (canUseZenzFloatingPanel()) return localCandidates.withoutZenzLiveSlot(input)
         if (input.isEmpty()) return localCandidates
         if (zenzSlotState == null) return localCandidates
         if (zenzSlotState.bunsetsuTarget != null && !allowBunsetsuTarget) return localCandidates
