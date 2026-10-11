@@ -111,7 +111,7 @@ internal class ComposingGuideWindow(
         }
         landscape = nextLandscape
         area = nextArea
-        if (profile != GuideProfile.INTEGRATED) settings.prepareCandidatePlacement(landscape)
+        if (profile == GuideProfile.CANDIDATES || profile == GuideProfile.TEXT) settings.prepareCandidatePlacement(landscape)
         if (area.width() < dp(ComposingGuidePlacement.MIN_WIDTH_DP) || area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP)) { dismiss(); return }
         if (editing && area.height() < dp(minimumContentHeight + ComposingGuideView.MOVE_BAND_DP + editExtraDp)) leaveEditing()
         val view = guideView ?: ComposingGuideView(context,
@@ -122,6 +122,7 @@ internal class ComposingGuideWindow(
                 refresh()
             },
             onHandleEvent = ::handleEvent,
+            title = if (profile == GuideProfile.ZENZ) "zenz" else null,
         ).also { view ->
             view.setKeyboardFont(keyboardFontSnapshot)
             guideView = view
@@ -152,6 +153,32 @@ internal class ComposingGuideWindow(
         view.setContent(content.text, previewTextSize ?: settings.textSize, content.visibleReading(profile.hasText, settings.showReading))
         if ((!editing && gesture == null) || bounds == null) {
             var placement = settings.load(landscape, profile)
+            if (profile == GuideProfile.ZENZ && !settings.hasPlacement(landscape, profile)) {
+                val reference = candidateBounds()
+                val keyboardLocation = IntArray(2).also(host::getLocationOnScreen)
+                val gap = dp(8)
+                val moveBand = dp(ComposingGuideView.MOVE_BAND_DP)
+                val minimum = dp(minimumContentHeight) + moveBand
+                val initialSize = placement.resolve(area.left, area.top, area.width(),
+                    (area.height() - moveBand).coerceAtLeast(1), density, minimumContentHeight.toFloat())
+                val spaceAbove = ((reference?.y ?: keyboardLocation[1]) - gap - area.top).coerceAtLeast(0)
+                val height = (initialSize.height + moveBand)
+                    .coerceAtMost(spaceAbove.coerceAtLeast(minimum)).coerceAtMost(area.height())
+                val initial = if (reference != null) {
+                    placeTextGuide(reference, GuideBounds(area.left, area.top, area.width(), area.height()),
+                        height, gap, requestedWidth = initialSize.width)
+                } else {
+                    GuideBounds(area.left + (area.width() - initialSize.width) / 2,
+                        (keyboardLocation[1] - gap - height).coerceIn(area.top, area.bottom - height),
+                        initialSize.width, height)
+                }
+                placement = ComposingGuidePlacement(
+                    (initial.x - area.left).toFloat() / (area.width() - initial.width).coerceAtLeast(1),
+                    (initial.y - area.top).toFloat() / (area.height() - initial.height).coerceAtLeast(1),
+                    initial.width / density, (initial.height - moveBand) / density,
+                )
+                settings.save(landscape, placement, profile)
+            }
             if (profile == GuideProfile.TEXT && !settings.usesScreenCoordinates(landscape, profile)) {
                 val reference = candidateBounds() ?: run {
                     val referenceArea = if (settings.usesScreenCoordinates(landscape, GuideProfile.CANDIDATES)) area else legacyAvailableArea(host)
@@ -309,7 +336,7 @@ internal class ComposingGuideWindow(
         val view = guideView ?: return
         if (!host.isAttachedToWindow) return
         val params = windowParams ?: WindowManager.LayoutParams(target.width, target.height,
-            if (profile == GuideProfile.TEXT) WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL else WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+            if (profile == GuideProfile.TEXT || profile == GuideProfile.ZENZ) WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL else WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
