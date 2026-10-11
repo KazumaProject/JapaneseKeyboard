@@ -122,7 +122,6 @@ internal class ComposingGuideWindow(
                 refresh()
             },
             onHandleEvent = ::handleEvent,
-            title = if (profile == GuideProfile.ZENZ) "zenz" else null,
         ).also { view ->
             view.setKeyboardFont(keyboardFontSnapshot)
             guideView = view
