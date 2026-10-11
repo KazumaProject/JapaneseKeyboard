@@ -101,7 +101,13 @@ class ZenzFloatingCandidateInstrumentedTest {
         do {
             var matches = false
             withEditor { matches = it.resources.configuration.orientation == expected }
-            if (matches) return
+            val screenshot = ui.takeScreenshot()
+            val displayMatches = screenshot?.let {
+                val portrait = it.height > it.width
+                it.recycle()
+                portrait == (expected == android.content.res.Configuration.ORIENTATION_PORTRAIT)
+            } == true
+            if (matches && displayMatches) return
             SystemClock.sleep(150)
         } while (SystemClock.uptimeMillis() < until)
         error("Input host did not reach orientation $expected")
@@ -160,6 +166,7 @@ class ZenzFloatingCandidateInstrumentedTest {
             // Start asynchronously: IME animation callbacks need not become idle to test input.
             ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             run {
+                withEditor { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
                 awaitOrientation(android.content.res.Configuration.ORIENTATION_PORTRAIT)
                 withEditor { it.restartEditorInput(true) }
                 id("key_1")
@@ -219,6 +226,7 @@ class ZenzFloatingCandidateInstrumentedTest {
 
                 shell("settings put system user_rotation 1")
                 check(ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90))
+                withEditor { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                 awaitOrientation(android.content.res.Configuration.ORIENTATION_LANDSCAPE)
                 withEditor { it.restartEditorInput(true) }
                 typeReading(); label()
