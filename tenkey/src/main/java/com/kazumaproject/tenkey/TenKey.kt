@@ -201,6 +201,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
+    private var modeLetterSizes: Map<InputMode, Float> = emptyMap()
+    private var modeGuideSizes: Map<InputMode, Float> = emptyMap()
 
     private var isLanguageIconEnabled = true
     private var useThreeStateKeyboard = true
@@ -830,10 +832,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.isLanguageIconEnabled = state
     }
 
-    /**
-     * Sets the text size for the main keys (key1 to key12).
-     * @param size The new text size in sp.
-     */
+    /** Applies independent center/guide overrides, retaining legacy sizes for missing modes. */
+    fun setModeLetterSizes(letterSizes: Map<InputMode, Float>, guideSizes: Map<InputMode, Float>) {
+        modeLetterSizes = letterSizes.toMap()
+        modeGuideSizes = guideSizes.toMap()
+        handleCurrentInputModeSwitch(currentInputMode.value)
+    }
+
+    /** Sets the shared size for the main keys (key1 to key12), in sp. */
     fun setKeyLetterSize(size: Float) {
         binding.apply {
             val keyButtons = listOf(
@@ -2225,6 +2231,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 colorTextInt = customKeyTextColor
             )
         }
+        applyModeLetterSize(button, InputMode.ModeJapanese)
     }
 
     private fun setEnglishTextFor(button: AppCompatButton) {
@@ -2245,6 +2252,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 colorTextInt = customKeyTextColor
             )
         }
+        applyModeLetterSize(button, InputMode.ModeEnglish)
     }
 
     private fun setNumberTextFor(button: AppCompatButton) {
@@ -2265,6 +2273,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 colorTextInt = customKeyTextColor
             )
         }
+        applyModeLetterSize(button, InputMode.ModeNumber)
     }
 
     private fun setTextForMode(button: AppCompatButton, inputMode: InputMode) {
@@ -2273,6 +2282,35 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             InputMode.ModeEnglish -> setEnglishTextFor(button)
             InputMode.ModeNumber -> setNumberTextFor(button)
         }
+    }
+
+    private fun applyModeLetterSize(button: AppCompatButton, mode: InputMode) {
+        val legacyCenterPx = button.textSize
+        modeLetterSizes[mode]?.let { button.textSize = it }
+        val guideEnabled = when (mode) {
+            InputMode.ModeJapanese -> isJapaneseFlickGuideEnabled
+            InputMode.ModeEnglish -> isEnglishFlickGuideEnabled
+            InputMode.ModeNumber -> isNumberFlickGuideEnabled
+        }
+        if (!guideEnabled || (mode !in modeLetterSizes && mode !in modeGuideSizes)) return
+        val label = button.text as? android.text.Spanned ?: return
+        val center = label.getSpans(0, label.length, android.text.Annotation::class.java)
+            .firstOrNull { it.key == "tenkey" && it.value == "center" } ?: return
+        val updated = android.text.SpannableString(label)
+        val relativeSpans = label.getSpans(0, label.length, android.text.style.RelativeSizeSpan::class.java)
+        val guidePx = modeGuideSizes[mode]?.let {
+            android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
+                it, resources.displayMetrics)
+        } ?: legacyCenterPx * (relativeSpans.firstOrNull()?.sizeChange ?: 0.6f)
+        relativeSpans.forEach { updated.removeSpan(it) }
+        // Size spaces and line breaks too: otherwise the large center font makes every guide row tall.
+        val centerStart = label.getSpanStart(center)
+        val centerEnd = label.getSpanEnd(center)
+        if (centerStart > 0) updated.setSpan(android.text.style.AbsoluteSizeSpan(guidePx.toInt()),
+            0, centerStart, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        if (centerEnd < label.length) updated.setSpan(android.text.style.AbsoluteSizeSpan(guidePx.toInt()),
+            centerEnd, label.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        button.text = updated
     }
 
     /**

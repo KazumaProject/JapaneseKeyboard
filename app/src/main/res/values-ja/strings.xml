@@ -1111,7 +1111,7 @@
     <string name="sumire_keyboard_size_preference_title">文字サイズ</string>
     <string name="sumire_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はカスタムキーボードにも適用されます。</string>
     <string name="preview_custom_keyboard">キーボードのプレビュー</string>
-    <string name="flickKeyboardSizeSettingsFragment_title">カスタマイズ</string>
+    <string name="flickKeyboardSizeSettingsFragment_title">キーのサイズ</string>
     <string name="custom_keyboard_size_preference_title">文字サイズ</string>
     <string name="custom_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はスミレキーボードにも適用されます。</string>
     <string name="system_user_dictionary">システムユーザー辞書</string>
@@ -1884,4 +1884,28 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="settings_loading">設定を読み込んでいます…</string>
     <string name="settings_loading_failed">設定を読み込めませんでした。</string>
     <string name="settings_loading_retry">再試行</string>
+
+    <string name="sizing_mode">入力モード</string>
+    <string name="sizing_hiragana">ひらがな</string>
+    <string name="sizing_english">英語</string>
+    <string name="sizing_numbers">数字</string>
+    <string name="sizing_preview">プレビュー</string>
+    <string name="sizing_show_guides">プレビューにガイドを表示</string>
+    <string name="sizing_letters">文字のサイズ</string>
+    <string name="sizing_center">キー中央の文字</string>
+    <string name="sizing_center_help">「あ」「ABC」「1」など、キー中央の文字です。</string>
+    <string name="sizing_guide">フリックガイドの文字</string>
+    <string name="sizing_guide_help">キーの上下左右に表示する文字です。</string>
+    <string name="sizing_common">その他のサイズ・全モード共通</string>
+    <string name="sizing_width">キーの幅</string>
+    <string name="sizing_height">キーの高さ</string>
+    <string name="sizing_icon">アイコン</string>
+    <string name="sizing_special">特殊キーの文字</string>
+    <string name="sizing_reset_mode">このモードの文字サイズを戻す</string>
+    <string name="sizing_reset_all">すべてのサイズを初期化</string>
+    <string name="sizing_reset_message">すべてのモードの文字サイズと、共通のキーサイズを初期化しますか？</string>
+    <string name="sizing_reset">初期化</string>
+    <string name="sizing_sp">%1$.1f sp</string>
+    <string name="sizing_percent">%1$d%%</string>
+    <string name="sizing_inherited">未変更の項目には、これまでのサイズを使用します。</string>
 </resources>
