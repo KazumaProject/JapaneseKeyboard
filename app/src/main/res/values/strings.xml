@@ -1236,7 +1236,7 @@
     <string name="sumire_keyboard_size_preference_title">Key Text Size</string>
     <string name="sumire_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the custom keyboard.</string>
     <string name="preview_custom_keyboard">Keyboard Preview</string>
-    <string name="flickKeyboardSizeSettingsFragment_title">Customize</string>
+    <string name="flickKeyboardSizeSettingsFragment_title">Key sizes</string>
     <string name="custom_keyboard_size_preference_title">Key Text Size</string>
     <string name="custom_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the Sumire keyboard.</string>
     <string name="system_user_dictionary">System User Dictionary</string>
@@ -1886,4 +1886,28 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="settings_loading">Loading settings…</string>
     <string name="settings_loading_failed">Settings could not be loaded.</string>
     <string name="settings_loading_retry">Retry</string>
+
+    <string name="sizing_mode">Input mode</string>
+    <string name="sizing_hiragana">Hiragana</string>
+    <string name="sizing_english">English</string>
+    <string name="sizing_numbers">Numbers</string>
+    <string name="sizing_preview">Preview</string>
+    <string name="sizing_show_guides">Show guides in preview</string>
+    <string name="sizing_letters">Letter sizes</string>
+    <string name="sizing_center">Center key letters</string>
+    <string name="sizing_center_help">The main letters, such as あ, ABC or 1.</string>
+    <string name="sizing_guide">Flick guide letters</string>
+    <string name="sizing_guide_help">The surrounding letters that show flick directions.</string>
+    <string name="sizing_common">Other sizes · all modes</string>
+    <string name="sizing_width">Key width</string>
+    <string name="sizing_height">Key height</string>
+    <string name="sizing_icon">Icons</string>
+    <string name="sizing_special">Special key letters</string>
+    <string name="sizing_reset_mode">Reset this mode’s letter sizes</string>
+    <string name="sizing_reset_all">Reset all sizes</string>
+    <string name="sizing_reset_message">Reset letter sizes for every mode and the shared key sizes?</string>
+    <string name="sizing_reset">Reset</string>
+    <string name="sizing_sp">%1$.1f sp</string>
+    <string name="sizing_percent">%1$d%%</string>
+    <string name="sizing_inherited">Unchanged sizes use your existing settings.</string>
 </resources>

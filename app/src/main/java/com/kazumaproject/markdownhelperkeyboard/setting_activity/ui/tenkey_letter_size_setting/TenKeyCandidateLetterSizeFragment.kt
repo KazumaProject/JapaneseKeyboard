@@ -1,341 +1,107 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting
 
-import android.annotation.SuppressLint
+import android.content.res.Configuration
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.SeekBar
-import androidx.core.view.MenuHost
-import androidx.core.view.MenuProvider
+import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
-import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentTenkeyCandidateLetterSizeBinding
-import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyTextSizePreviewSizing
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyboardSizingControls
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyboardSizingValues
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.SizingField
+import com.kazumaproject.tenkey.TenKey
 
-@AndroidEntryPoint
-class TenKeyCandidateLetterSizeFragment : Fragment() {
+class TenKeyCandidateLetterSizeFragment : Fragment(R.layout.fragment_tenkey_candidate_letter_size) {
+    private var controls: KeyboardSizingControls? = null
 
-    @Inject
-    lateinit var appPreference: AppPreference
-
-    private var _binding: FragmentTenkeyCandidateLetterSizeBinding? = null
-
-    // レイアウトファイル名が fragment_ten_key_letter_size_setting.xml であると仮定しています
-    private val binding get() = _binding!!
-
-    private lateinit var suggestionAdapter: SuggestionAdapter
-
-    // 定数定義 (KeyCandidateLetterSizeFragmentから引用)
-    private val minKeyTextSize = 12f
-    private val maxKeyTextSize = 40f
-    private val defaultKeyTextSize = 17.0f
-    private val minKeyScalePercent = 60
-    private val maxKeyScalePercent = 140
-    private val defaultKeyScalePercent = 100
-
-    // 候補サイズもプレビュー用に必要であれば定義
-    private val defaultCandidateTextSize = 14.0f
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        suggestionAdapter = SuggestionAdapter()
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentTenkeyCandidateLetterSizeBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        // UI初期化
-        setupRecyclerView()
-        setupPreviewData() // ダミー候補データのセット
-
-        // サイズ調整とリスナー設定
-        setKeyboardSize()
-        binding.tenkeyLetterSizePreview.setUseThreeStateKeyboard(
-            appPreference.tenkey_use_three_state_keyboard_preference,
-            appPreference.tenkey_number_symbol_key_gap_preference,
+        val keyboard = view.findViewById<TenKey>(R.id.tenkeyLetterSizePreview)
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        keyboard.layoutParams = keyboard.layoutParams.apply {
+            val widthPercent = KeyboardLayoutEditConstraints.normalizeWidthPercent(
+                (if (landscape) AppPreference.keyboard_width_landscape else AppPreference.keyboard_width) ?: 100,
+            )
+            width = if (widthPercent == 100) ViewGroup.LayoutParams.MATCH_PARENT
+                else (resources.displayMetrics.widthPixels * widthPercent / 100f).toInt()
+            val alignEnd = (if (landscape) AppPreference.keyboard_position_landscape else AppPreference.keyboard_position) != false
+            (this as? LinearLayout.LayoutParams)?.gravity = if (alignEnd) Gravity.END else Gravity.START
+            height = KeyTextSizePreviewSizing.heightPx(
+                (if (landscape) AppPreference.keyboard_height_landscape else AppPreference.keyboard_height)
+                    ?: if (landscape) 220 else 280, resources.displayMetrics.density,
+            )
+        }
+        keyboard.applyKeyboardTheme(
+            themeMode = AppPreference.theme_mode,
+            currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK,
+            isDynamicColorEnabled = false,
+            customBgColor = AppPreference.custom_theme_bg_color,
+            customKeyColor = AppPreference.custom_theme_key_color,
+            customSpecialKeyColor = AppPreference.custom_theme_special_key_color,
+            customKeyTextColor = AppPreference.custom_theme_key_text_color,
+            customSpecialKeyTextColor = AppPreference.custom_theme_special_key_text_color,
+            liquidGlassEnable = AppPreference.liquid_glass_preference,
+            customBorderEnable = AppPreference.custom_theme_border_enable,
+            customBorderColor = AppPreference.custom_theme_border_color,
+            liquidGlassKeyAlphaEnable = AppPreference.liquid_glass_key_alpha,
+            borderWidth = AppPreference.custom_theme_border_width,
         )
-        binding.tenkeyLetterSizePreview.setUseQwertyNumberWhenThreeStateOff(
-            appPreference.tenkey_switch_number_to_qwerty_number_preference
-        )
-        applySavedPreviewKeyScale()
-        setupKeyLetterSizeSeekBar()
-        setupKeyWidthSeekBar()
-        setupKeyHeightSeekBar()
-        setupMenu()
-
-        // プレビュー用なのでタッチイベントを無効化
-        binding.tenkeyLetterSizePreview.apply {
-            isClickable = false
-            isFocusable = false
-            setOnClickListener { }
-            setOnLongClickListener { false }
-            setOnTouchListener { _, _ -> true }
-        }
-    }
-
-    private fun setKeyboardSize() {
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 280
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-        val positionPref = appPreference.keyboard_position ?: true
-        val heightPx = KeyTextSizePreviewSizing.heightPx(heightPref, density)
-
-        val widthPx = when {
-            widthPref == 100 -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        // 候補ビュー（RecyclerView）のレイアウト調整
-        (binding.suggestionLetterSizeRecyclerview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
-            params.width = widthPx
-            if (positionPref) {
-                params.startToStart = -1
-                params.endToEnd =
-                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            } else {
-                params.endToEnd = -1
-                params.startToStart =
-                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            }
-            binding.suggestionLetterSizeRecyclerview.layoutParams = params
-        }
-
-        // TenKeyプレビューのレイアウト調整
-        (binding.tenkeyLetterSizePreview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
-            params.width = widthPx
-            params.height = heightPx
-            params.bottomMargin = 56
-            params.bottomToBottom =
-                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            if (positionPref) {
-                params.startToStart = -1
-                params.endToEnd =
-                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            } else {
-                params.endToEnd = -1
-                params.startToStart =
-                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            }
-            binding.tenkeyLetterSizePreview.layoutParams = params
-        }
-    }
-
-    private fun setupKeyLetterSizeSeekBar() {
-        binding.keyLetterSizeSeekbar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val newSize =
-                        minKeyTextSize + (progress.toFloat() / 100f) * (maxKeyTextSize - minKeyTextSize)
-                    binding.tenkeyLetterSizePreview.setKeyLetterSize(newSize)
+        keyboard.setUseThreeStateKeyboard(AppPreference.tenkey_use_three_state_keyboard_preference,
+            AppPreference.tenkey_number_symbol_key_gap_preference)
+        // Preview always shows the requested TenKey mode, including its numeric keys.
+        keyboard.setUseQwertyNumberWhenThreeStateOff(false)
+        keyboard.setOnTouchListener { _, _ -> true }
+        controls = KeyboardSizingControls(view, savedInstanceState, tenkey = true,
+            read = { mode, guides -> KeyboardSizingValues(
+                ModeKeySizing.tenkeyCenter(mode, guides), ModeKeySizing.tenkeyGuide(mode),
+                (AppPreference.tenkey_key_width_scale_percent ?: 100).toFloat(),
+                (AppPreference.tenkey_key_height_scale_percent ?: 100).toFloat(),
+                centerOverride = AppPreference.modeKeySize("tenkey", mode, false),
+                guideOverride = AppPreference.modeKeySize("tenkey", mode, true),
+            ) },
+            save = { mode, field, value -> when (field) {
+                SizingField.CENTER -> AppPreference.setModeKeySize("tenkey", mode, false, value)
+                SizingField.GUIDE -> AppPreference.setModeKeySize("tenkey", mode, true, value)
+                SizingField.WIDTH -> AppPreference.tenkey_key_width_scale_percent = value.toInt()
+                SizingField.HEIGHT -> AppPreference.tenkey_key_height_scale_percent = value.toInt()
+                else -> Unit
+            } },
+            render = { mode, guides, values ->
+                keyboard.setKeyLetterSizeDelta((AppPreference.key_letter_size ?: 0f).toInt())
+                keyboard.setCurrentMode(ModeKeySizing.inputMode(mode))
+                keyboard.setFlickGuideEnabled(guides, guides, guides)
+                keyboard.setModeLetterSizes(
+                    values.centerOverride?.let { mapOf(ModeKeySizing.inputMode(mode) to it) } ?: emptyMap(),
+                    values.guideOverride?.let { mapOf(ModeKeySizing.inputMode(mode) to it) } ?: emptyMap(),
+                )
+                keyboard.setKeySizeScale(values.width.toInt(), values.height.toInt())
+            },
+            reset = { mode ->
+                AppPreference.resetModeKeySizes("tenkey", mode)
+                if (mode == null) {
+                    AppPreference.key_letter_size = 0f
+                    AppPreference.tenkey_key_width_scale_percent = 100
+                    AppPreference.tenkey_key_height_scale_percent = 100
                 }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                seekBar?.let {
-                    val newSize =
-                        minKeyTextSize + (it.progress.toFloat() / 100f) * (maxKeyTextSize - minKeyTextSize)
-
-                    // デフォルトサイズとの差分を保存するロジック (KeyCandidateLetterSizeFragmentのロジックを踏襲)
-                    val sizeDelta = newSize - defaultKeyTextSize
-                    appPreference.key_letter_size = sizeDelta
-                }
-            }
-        })
-
-        binding.keyLetterSizeSeekbar.max = 100
-
-        // 保存された設定を読み込む
-        val savedDelta = appPreference.key_letter_size ?: 0.0f
-        val actualSize = defaultKeyTextSize + savedDelta
-
-        val keyProgress =
-            (100 * (actualSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
-
-        binding.keyLetterSizeSeekbar.progress = keyProgress
-
-        // ビューが描画された後にサイズを適用
-        binding.tenkeyLetterSizePreview.post {
-            binding.tenkeyLetterSizePreview.setKeyLetterSize(actualSize)
-        }
-    }
-
-    private fun setupKeyWidthSeekBar() {
-        binding.keyWidthSeekbar.max = maxKeyScalePercent - minKeyScalePercent
-        binding.keyWidthSeekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    updatePreviewKeyScale(widthPercent = progressToScalePercent(progress))
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                appPreference.tenkey_key_width_scale_percent =
-                    progressToScalePercent(seekBar?.progress ?: 0)
-            }
-        })
-
-        val savedWidthPercent =
-            appPreference.tenkey_key_width_scale_percent ?: defaultKeyScalePercent
-        binding.keyWidthSeekbar.progress = scalePercentToProgress(savedWidthPercent)
-    }
-
-    private fun setupKeyHeightSeekBar() {
-        binding.keyHeightSeekbar.max = maxKeyScalePercent - minKeyScalePercent
-        binding.keyHeightSeekbar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    updatePreviewKeyScale(heightPercent = progressToScalePercent(progress))
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                appPreference.tenkey_key_height_scale_percent =
-                    progressToScalePercent(seekBar?.progress ?: 0)
-            }
-        })
-
-        val savedHeightPercent =
-            appPreference.tenkey_key_height_scale_percent ?: defaultKeyScalePercent
-        binding.keyHeightSeekbar.progress = scalePercentToProgress(savedHeightPercent)
-    }
-
-    private fun applySavedPreviewKeyScale() {
-        binding.tenkeyLetterSizePreview.setKeySizeScale(
-            appPreference.tenkey_key_width_scale_percent ?: defaultKeyScalePercent,
-            appPreference.tenkey_key_height_scale_percent ?: defaultKeyScalePercent
+            },
+            inherited = { mode -> AppPreference.modeKeySize("tenkey", mode, false) == null ||
+                AppPreference.modeKeySize("tenkey", mode, true) == null },
         )
     }
 
-    private fun updatePreviewKeyScale(widthPercent: Int? = null, heightPercent: Int? = null) {
-        val currentWidthPercent =
-            widthPercent ?: progressToScalePercent(binding.keyWidthSeekbar.progress)
-        val currentHeightPercent =
-            heightPercent ?: progressToScalePercent(binding.keyHeightSeekbar.progress)
-
-        binding.tenkeyLetterSizePreview.setKeySizeScale(currentWidthPercent, currentHeightPercent)
-    }
-
-    private fun progressToScalePercent(progress: Int): Int {
-        return minKeyScalePercent + progress.coerceIn(0, maxKeyScalePercent - minKeyScalePercent)
-    }
-
-    private fun scalePercentToProgress(scalePercent: Int): Int {
-        return scalePercent.coerceIn(minKeyScalePercent, maxKeyScalePercent) - minKeyScalePercent
-    }
-
-    private fun setupRecyclerView() {
-        binding.suggestionLetterSizeRecyclerview.apply {
-            layoutManager =
-                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-            adapter = suggestionAdapter
-            setHasFixedSize(true)
-        }
-
-        // 候補の文字サイズも現在の設定に合わせておく（プレビューの一貫性のため）
-        val savedCandidateSize = appPreference.candidate_letter_size ?: defaultCandidateTextSize
-        suggestionAdapter.setCandidateTextSize(savedCandidateSize)
-    }
-
-    private fun setupPreviewData() {
-        val previewCandidates = listOf(
-            Candidate(
-                string = "プレビュー",
-                type = 1.toByte(),
-                length = (5).toUByte(),
-                score = 4000
-            ),
-            Candidate(
-                string = "文字サイズ",
-                type = 1.toByte(),
-                length = (5).toUByte(),
-                score = 4001
-            ),
-            Candidate(string = "設定", type = 1.toByte(), length = (2).toUByte(), score = 4002)
-        )
-        suggestionAdapter.suggestions = previewCandidates
-    }
-
-    private fun setupMenu() {
-        val menuHost: MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.fragment_reset_menu, menu)
-                menu.findItem(R.id.action_candidate_default_height)?.isVisible = false
-            }
-
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                return when (menuItem.itemId) {
-                    R.id.action_reset -> {
-                        resetSettings()
-                        true
-                    }
-
-                    android.R.id.home -> {
-                        parentFragmentManager.popBackStack()
-                        true
-                    }
-
-                    else -> false
-                }
-            }
-        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
-    }
-
-    private fun resetSettings() {
-        // キー文字サイズのリセット
-        appPreference.key_letter_size = 0.0f // 差分を0に戻す
-        val keyProgress =
-            (100 * (defaultKeyTextSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
-        appPreference.tenkey_key_width_scale_percent = defaultKeyScalePercent
-        appPreference.tenkey_key_height_scale_percent = defaultKeyScalePercent
-
-        binding.keyLetterSizeSeekbar.progress = keyProgress
-        binding.keyWidthSeekbar.progress = scalePercentToProgress(defaultKeyScalePercent)
-        binding.keyHeightSeekbar.progress = scalePercentToProgress(defaultKeyScalePercent)
-        binding.tenkeyLetterSizePreview.setKeyLetterSize(defaultKeyTextSize)
-        binding.tenkeyLetterSizePreview.setKeySizeScale(
-            defaultKeyScalePercent,
-            defaultKeyScalePercent
-        )
+    override fun onSaveInstanceState(outState: Bundle) {
+        controls?.saveState(outState)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroyView() {
+        controls = null
         super.onDestroyView()
-        binding.suggestionLetterSizeRecyclerview.adapter = null
-        _binding = null
     }
 }

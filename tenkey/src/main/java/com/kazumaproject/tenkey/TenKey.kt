@@ -201,6 +201,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
+    private var modeLetterSizes: Map<InputMode, Float> = emptyMap()
+    private var modeGuideSizes: Map<InputMode, Float> = emptyMap()
 
     private var isLanguageIconEnabled = true
     private var useThreeStateKeyboard = true
@@ -830,10 +832,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.isLanguageIconEnabled = state
     }
 
-    /**
-     * Sets the text size for the main keys (key1 to key12).
-     * @param size The new text size in sp.
-     */
+    /** Applies independent center/guide overrides, retaining legacy sizes for missing modes. */
+    fun setModeLetterSizes(letterSizes: Map<InputMode, Float>, guideSizes: Map<InputMode, Float>) {
+        modeLetterSizes = letterSizes.toMap()
+        modeGuideSizes = guideSizes.toMap()
+        handleCurrentInputModeSwitch(currentInputMode.value)
+    }
+
+    /** Sets the shared size for the main keys (key1 to key12), in sp. */
     fun setKeyLetterSize(size: Float) {
         binding.apply {
             val keyButtons = listOf(
@@ -2225,6 +2231,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 colorTextInt = customKeyTextColor
             )
         }
+        applyModeLetterSize(button, InputMode.ModeJapanese)
     }
 
     private fun setEnglishTextFor(button: AppCompatButton) {
@@ -2245,6 +2252,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 colorTextInt = customKeyTextColor
             )
         }
+        applyModeLetterSize(button, InputMode.ModeEnglish)
     }
 
     private fun setNumberTextFor(button: AppCompatButton) {
@@ -2265,6 +2273,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 colorTextInt = customKeyTextColor
             )
         }
+        applyModeLetterSize(button, InputMode.ModeNumber)
     }
 
     private fun setTextForMode(button: AppCompatButton, inputMode: InputMode) {
@@ -2273,6 +2282,65 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             InputMode.ModeEnglish -> setEnglishTextFor(button)
             InputMode.ModeNumber -> setNumberTextFor(button)
         }
+    }
+
+    private fun applyModeLetterSize(button: AppCompatButton, mode: InputMode) {
+        val legacyCenterPx = button.textSize
+        modeLetterSizes[mode]?.let { button.textSize = it }
+        val guideEnabled = when (mode) {
+            InputMode.ModeJapanese -> isJapaneseFlickGuideEnabled
+            InputMode.ModeEnglish -> isEnglishFlickGuideEnabled
+            InputMode.ModeNumber -> isNumberFlickGuideEnabled
+        }
+        // Japanese punctuation and compact numeric labels show alternatives even without full guides.
+        val hasVisibleGuide = guideEnabled || mode == InputMode.ModeNumber ||
+            (mode == InputMode.ModeJapanese && button.id == R.id.key_12)
+        if (!hasVisibleGuide || (mode !in modeLetterSizes && mode !in modeGuideSizes)) return
+        val label = button.text as? android.text.Spanned ?: return
+        val center = label.getSpans(0, label.length, android.text.Annotation::class.java)
+            .firstOrNull { it.key == "tenkey" && it.value == "center" } ?: return
+        val updated = android.text.SpannableString(label)
+        val relativeSpans = label.getSpans(0, label.length, android.text.style.RelativeSizeSpan::class.java)
+        val explicitGuidePx = modeGuideSizes[mode]?.let {
+            android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
+                it, resources.displayMetrics)
+        }
+        val centerStart = label.getSpanStart(center)
+        val centerEnd = label.getSpanEnd(center)
+        relativeSpans.forEach {
+            // A guide-only override must preserve the punctuation key's inherited center size.
+            if (mode in modeLetterSizes || label.getSpanStart(it) < centerStart || label.getSpanEnd(it) > centerEnd) {
+                updated.removeSpan(it)
+            }
+        }
+        label.getSpans(0, label.length, com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan::class.java)
+            .forEach { updated.removeSpan(it) }
+        // Preserve each inherited glyph's multiplier, including the punctuation ellipsis (.8).
+        // Relative spans retain subpixel legacy sizes while isolating them from a center override.
+        fun sizeGuideRegion(start: Int, end: Int) {
+            var runStart = start
+            var runPx = -1f
+            fun applyRun(runEnd: Int) {
+                if (runEnd <= runStart) return
+                val span = if (explicitGuidePx != null) android.text.style.AbsoluteSizeSpan(runPx.toInt())
+                    else android.text.style.RelativeSizeSpan(runPx / button.textSize)
+                updated.setSpan(span, runStart, runEnd, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            for (index in start until end) {
+                val inherited = label.getSpans(index, index + 1, android.text.style.RelativeSizeSpan::class.java)
+                val px = explicitGuidePx ?: legacyCenterPx *
+                    if (inherited.isEmpty()) 0.6f else inherited.fold(1f) { scale, span -> scale * span.sizeChange }
+                if (px != runPx) {
+                    applyRun(index)
+                    runStart = index
+                    runPx = px
+                }
+            }
+            applyRun(end)
+        }
+        sizeGuideRegion(0, centerStart)
+        sizeGuideRegion(centerEnd, label.length)
+        button.text = updated
     }
 
     /**
@@ -2289,6 +2357,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 cachedNumberSmallDrawable
             },
             keyboardFontSnapshot,
+        )
+        (binding.keySmallLetter.drawable as? KeyboardFontGlyphDrawable)?.setBracketTextSizes(
+            binding.keySmallLetter, modeLetterSizes[InputMode.ModeNumber],
+            modeGuideSizes[InputMode.ModeNumber].takeIf { isNumberFlickGuideEnabled },
         )
     }
 

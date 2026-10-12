@@ -23,6 +23,20 @@
             app:defaultValue="false"
             app:summary="@string/enable_zenz_rerank_preference_summary" />
 
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/zenz_floating_category">
+        <SwitchPreferenceCompat
+            android:key="zenz_floating_candidates_enabled"
+            android:dependency="enable_ai_conversion_zenz_preference"
+            android:defaultValue="false"
+            android:title="@string/zenz_floating_title"
+            android:summary="@string/zenz_floating_summary" />
+        <Preference
+            android:key="zenz_floating_candidates_reset"
+            android:dependency="zenz_floating_candidates_enabled"
+            android:title="@string/zenz_floating_reset" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/zenz_generation_category">
         <Preference
             android:key="zenz_model_select_preference"
             android:title="モデルの読み込み元"
