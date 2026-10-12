@@ -268,6 +268,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateCorrectionPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
@@ -26504,25 +26505,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val ngWords: List<NgWord> =
             if (isNgWordEnable == true) ngWordsList.value else emptyList()
 
-        val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
-        val enableTypoCorrectionJapaneseFlick =
-            enableFlickPref && qwertyMode.value in setOf(
-                TenKeyQWERTYMode.Default,
-                TenKeyQWERTYMode.Gojuon,
-                TenKeyQWERTYMode.Sumire,
-            )
-        val enableTypoCorrectionQwertyEnglish =
-            (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
-                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
-
         val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
                 mode = CandidateQueryMode.NO_TAB_DEFAULT,
                 learnRepository = suggestionLearnRepository,
-                omissionSearchEnabled = isOmissionSearchEnable ?: false,
-                typoCorrectionJapaneseFlickEnabled = enableTypoCorrectionJapaneseFlick,
-                typoCorrectionQwertyEnglishEnabled = enableTypoCorrectionQwertyEnglish,
             )
         }
         val engineResult = coreResult.bunsetsuResult
@@ -26630,23 +26617,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isNgWordEnable == true) ngWordsList.value else emptyList()
         }
 
-        val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
-        val enableTypoCorrectionJapaneseFlick =
-            enableFlickPref && (qwertyMode.value == TenKeyQWERTYMode.Default || qwertyMode.value == TenKeyQWERTYMode.Sumire)
-
-        val enableTypoCorrectionQwertyEnglish =
-            (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
-                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
-
         val coreResultDeferred = async(kanaKanjiConversionDispatcher) {
             measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
                 queryKanaKanjiCore(
                     input = insertString,
                     mode = CandidateQueryMode.PREDICTION,
                     learnRepository = suggestionLearnRepository,
-                    omissionSearchEnabled = isOmissionSearchEnable ?: false,
-                    typoCorrectionJapaneseFlickEnabled = enableTypoCorrectionJapaneseFlick,
-                    typoCorrectionQwertyEnglishEnabled = enableTypoCorrectionQwertyEnglish,
                 )
             }
         }
@@ -26893,9 +26869,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         mode: CandidateQueryMode,
         learnRepository: LearnRepository?,
-        omissionSearchEnabled: Boolean = false,
-        typoCorrectionJapaneseFlickEnabled: Boolean = false,
-        typoCorrectionQwertyEnglishEnabled: Boolean = false,
     ): KanaKanjiQueryResult {
         val engine = awaitKanaKanjiEngineOrNull()
             ?: return KanaKanjiQueryResult(candidates = emptyList())
@@ -26906,6 +26879,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ).also {
             kanaKanjiConversionSession = it
         }
+        val corrections = CandidateCorrectionPolicy.resolve(
+            queryMode = mode,
+            keyboardMode = qwertyMode.value,
+            omissionEnabled = isOmissionSearchEnable == true,
+            japaneseFlickEnabled = enableTypoCorrectionJapaneseFlickKeyboardPreference == true,
+            englishQwertyEnabled = enableTypoCorrectionQwertyEnglishKeyboardPreference == true,
+            qwertyRomajiMode = currentQwertyRomajiModeForSession,
+        )
         val result = session.query(
             KanaKanjiQueryRequest(
                 input = input,
@@ -26919,9 +26900,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUtWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = learnRepository,
-                omissionSearchEnabled = omissionSearchEnabled,
-                typoCorrectionJapaneseFlickEnabled = typoCorrectionJapaneseFlickEnabled,
-                typoCorrectionQwertyEnglishEnabled = typoCorrectionQwertyEnglishEnabled,
+                omissionSearchEnabled = corrections.omissionEnabled,
+                typoCorrectionJapaneseFlickEnabled = corrections.japaneseFlickEnabled,
+                typoCorrectionQwertyEnglishEnabled = corrections.englishQwertyEnabled,
                 typoCorrectionOffsetScore =
                     enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference ?: 3000,
                 omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,

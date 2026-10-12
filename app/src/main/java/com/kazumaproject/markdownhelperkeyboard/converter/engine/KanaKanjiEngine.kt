@@ -3227,6 +3227,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        isOmissionSearchEnable: Boolean = false,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3269,7 +3271,8 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = false,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
@@ -3727,6 +3730,8 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        isOmissionSearchEnable: Boolean = false,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -3769,7 +3774,8 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = false,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
