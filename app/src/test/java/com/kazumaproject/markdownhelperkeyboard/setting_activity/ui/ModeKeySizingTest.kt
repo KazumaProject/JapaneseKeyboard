@@ -75,6 +75,10 @@ class ModeKeySizingTest {
     }
 
     @Test fun explicitSizesUseSupportedBounds() {
+        AppPreference.setModeKeySize("tenkey", japanese, false, 11f)
+        assertEquals(11f, ModeKeySizing.tenkeyCenter(japanese, true), 0f)
+        AppPreference.setModeKeySize("tenkey", japanese, false, 1f)
+        assertEquals(4f, ModeKeySizing.tenkeyCenter(japanese, true), 0f)
         AppPreference.setModeKeySize("tenkey", japanese, false, 99f)
         AppPreference.setModeKeySize("sumire", english, false, 1f)
         AppPreference.setModeKeySize("tenkey", numbers, true, 99f)

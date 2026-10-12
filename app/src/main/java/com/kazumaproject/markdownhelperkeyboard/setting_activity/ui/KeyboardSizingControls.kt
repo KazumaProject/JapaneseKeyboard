@@ -15,6 +15,8 @@ internal enum class SizingField { CENTER, GUIDE, WIDTH, HEIGHT, ICON, SPECIAL }
 internal data class KeyboardSizingValues(
     val center: Float, val guide: Float, val width: Float, val height: Float,
     val icon: Float = 80f, val special: Float = 12f,
+    // Preserve absence of an override, including while a slider has an unsaved touch value.
+    val centerOverride: Float? = null, val guideOverride: Float? = null,
 ) {
     fun value(field: SizingField): Float = when (field) {
         SizingField.CENTER -> center; SizingField.GUIDE -> guide
@@ -22,7 +24,7 @@ internal data class KeyboardSizingValues(
         SizingField.ICON -> icon; SizingField.SPECIAL -> special
     }
     fun with(field: SizingField, value: Float): KeyboardSizingValues = when (field) {
-        SizingField.CENTER -> copy(center = value); SizingField.GUIDE -> copy(guide = value)
+        SizingField.CENTER -> copy(center = value, centerOverride = value); SizingField.GUIDE -> copy(guide = value, guideOverride = value)
         SizingField.WIDTH -> copy(width = value); SizingField.HEIGHT -> copy(height = value)
         SizingField.ICON -> copy(icon = value); SizingField.SPECIAL -> copy(special = value)
     }
@@ -63,7 +65,8 @@ internal class KeyboardSizingControls(
         fields.forEach { (field, ids) ->
             val slider = root.findViewById<Slider>(ids.first)
             val range = when (field) {
-                SizingField.CENTER -> if (tenkey) 12f..40f else 8f..32f
+                // Legacy guide labels start at 11 sp and the old delta could be -7 sp.
+                SizingField.CENTER -> if (tenkey) 4f..40f else 8f..32f
                 SizingField.GUIDE -> 6f..16f
                 SizingField.SPECIAL -> 8f..32f
                 else -> if (tenkey) 60f..140f else 40f..220f
@@ -73,10 +76,15 @@ internal class KeyboardSizingControls(
             slider.stepSize = if (field in listOf(SizingField.WIDTH, SizingField.HEIGHT, SizingField.ICON) ||
                 (field == SizingField.GUIDE && !modeSpecific)) 1f else 0f
             slider.setLabelFormatter { format(field, it) }
+            var touchChanged = false
             slider.addOnChangeListener { _, value, fromUser ->
                 if (fromUser) {
+                    touchChanged = true
                     values = values.with(field, value)
-                    if (!slider.isPressed) save(mode, field, value)
+                    if (!slider.isPressed) {
+                        save(mode, field, value)
+                        touchChanged = false
+                    }
                     updateLabels()
                     render(mode, guideSwitch.isChecked, values)
                 }
@@ -84,8 +92,12 @@ internal class KeyboardSizingControls(
             slider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
                 override fun onStartTrackingTouch(slider: Slider) = Unit
                 override fun onStopTrackingTouch(slider: Slider) {
-                    save(mode, field, slider.value)
-                    updateLabels()
+                    if (touchChanged) {
+                        values = values.with(field, slider.value)
+                        save(mode, field, slider.value)
+                        touchChanged = false
+                        updateLabels()
+                    }
                 }
             })
 

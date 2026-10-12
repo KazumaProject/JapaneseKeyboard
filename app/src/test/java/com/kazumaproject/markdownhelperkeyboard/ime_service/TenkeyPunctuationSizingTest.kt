@@ -46,13 +46,15 @@ class TenkeyPunctuationSizingTest {
         originalGuides.forEach { (glyph, size) -> assertEquals(size, glyphSp(key, glyph), .01f) }
     }
 
-    @Test fun centerOnlyOverrideUsesTheInheritedGuideSize() = withKeyboard { keyboard, key ->
-        keyboard.setFlickGuideEnabled(true, false, false)
-        val inheritedGuide = glyphSp(key, '？')
-        keyboard.setModeLetterSizes(mapOf(InputMode.ModeJapanese to 24f), emptyMap())
-        assertEquals(24f, glyphSp(key, ','), .01f)
-        // AbsoluteSizeSpan stores whole pixels.
-        assertEquals(inheritedGuide, glyphSp(key, '？'), 1f / context.resources.displayMetrics.scaledDensity)
+    @Test fun centerOnlyOverrideUsesEveryInheritedGuideSize() = withKeyboard { keyboard, key ->
+        for (enabled in listOf(false, true)) {
+            keyboard.setModeLetterSizes(emptyMap(), emptyMap())
+            keyboard.setFlickGuideEnabled(enabled, false, false)
+            val guides = listOf('？', '。', '!', '…').associateWith { glyphSp(key, it) }
+            keyboard.setModeLetterSizes(mapOf(InputMode.ModeJapanese to 24f), emptyMap())
+            assertEquals(24f, glyphSp(key, ','), .01f)
+            guides.forEach { (glyph, size) -> assertEquals("Inherited $glyph changed", size, glyphSp(key, glyph), .01f) }
+        }
     }
 
     private fun withKeyboard(block: (TenKey, TextView) -> Unit) {
