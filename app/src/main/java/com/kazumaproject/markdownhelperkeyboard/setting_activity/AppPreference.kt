@@ -5125,7 +5125,7 @@ object AppPreference {
     /**
      * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）
      */
-    fun exportAllToJson(): String {
+    fun exportAllToJson(shortcutIds: List<String>? = null): String {
         val all = preferences.all // Map<String, *>
         val entries = all.entries.map { (k, v) ->
             when (v) {
@@ -5147,14 +5147,21 @@ object AppPreference {
             }
         }
 
-        return gson.toJson(PrefBackup(entries = entries))
+        return gson.toJson(
+            PrefBackup(
+                version = if (shortcutIds == null) 1 else 2,
+                entries = entries,
+                shortcutIds = shortcutIds
+            )
+        )
     }
 
     /**
      * JSON を読み込んで SharedPreferences に反映
      * @param replaceAll true の場合は一旦 clear() してから復元（バックアップ復元向け）
+     * @return バックアップ内のツールバーのID一覧（旧形式では null）。DBへの反映は呼び出し元で行う。
      */
-    fun importAllFromJson(json: String, replaceAll: Boolean = true) {
+    fun importAllFromJson(json: String, replaceAll: Boolean = true): List<String>? {
         val backup = try {
             gson.fromJson(json, PrefBackup::class.java)
         } catch (e: Exception) {
@@ -5185,6 +5192,7 @@ object AppPreference {
         }
         migrateSumireKeymapGuideModesIfNeeded()
         migrateGojuonKeyboardTypeIfNeeded()
+        return backup.shortcutIds
     }
 
     fun migrateSumirePreferenceIfNeeded() {
