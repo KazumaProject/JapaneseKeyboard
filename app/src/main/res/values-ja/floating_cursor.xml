@@ -1,0 +1,13 @@
+<resources>
+    <string name="floating_cursor_title">フローティングカーソル</string>
+    <string name="floating_cursor_summary">方向キー・トラックパッド・選択ボタンを移動可能なパネルに表示します。</string>
+    <string name="floating_cursor_reset">カーソルパネルの位置・サイズをリセット</string>
+    <string name="floating_cursor_trackpad">トラックパッド</string>
+    <string name="floating_cursor_selection_on">選択モード：ON</string>
+    <string name="floating_cursor_selection_off">選択モード：OFF</string>
+    <string name="floating_cursor_selection_unavailable">未確定入力中は選択できません</string>
+    <string name="floating_cursor_left">カーソルを左へ</string>
+    <string name="floating_cursor_right">カーソルを右へ</string>
+    <string name="floating_cursor_up">カーソルを上へ</string>
+    <string name="floating_cursor_down">カーソルを下へ</string>
+</resources>

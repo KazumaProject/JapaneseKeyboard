@@ -469,6 +469,7 @@ object SettingDestinations {
 
     private val frequentCandidatePreferenceKeys = listOf(
         "keyboard_floating_preference",
+        "floating_cursor_enabled",
         "landscape_force_qwerty_preference",
         "keyboard_key_letter_size_fragment_preference",
         "keyboard_background_image_select_preference",

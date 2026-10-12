@@ -405,6 +405,10 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
         val guidePreferences = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(guidePreferences)
+        findPreference<Preference>("floating_cursor_reset")?.setOnPreferenceClickListener {
+            com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings.reset(guidePreferences)
+            true
+        }
         findPreference<SeekBarPreference>(FlickPreviewDelaySettings.KEY)
             ?.configureFlickPreviewDelay()
         fun updateGuideModeEnabled(text: Boolean = guideSettings.textEnabled, candidates: Boolean = guideSettings.enabled) {

@@ -1,0 +1,13 @@
+<resources>
+    <string name="floating_cursor_title">Floating cursor</string>
+    <string name="floating_cursor_summary">Show arrow keys, a trackpad and selection controls in a movable panel.</string>
+    <string name="floating_cursor_reset">Reset floating cursor position and size</string>
+    <string name="floating_cursor_trackpad">Trackpad</string>
+    <string name="floating_cursor_selection_on">Selection: ON</string>
+    <string name="floating_cursor_selection_off">Selection: OFF</string>
+    <string name="floating_cursor_selection_unavailable">Selection unavailable while composing</string>
+    <string name="floating_cursor_left">Move cursor left</string>
+    <string name="floating_cursor_right">Move cursor right</string>
+    <string name="floating_cursor_up">Move cursor up</string>
+    <string name="floating_cursor_down">Move cursor down</string>
+</resources>

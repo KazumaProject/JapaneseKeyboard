@@ -104,6 +104,15 @@
             android:title="@string/composing_guide_integrated_reset" />
 
         <SwitchPreferenceCompat
+            android:key="floating_cursor_enabled"
+            android:defaultValue="false"
+            android:title="@string/floating_cursor_title"
+            android:summary="@string/floating_cursor_summary" />
+        <Preference
+            android:key="floating_cursor_reset"
+            android:title="@string/floating_cursor_reset" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_floating_preference"
             android:summary="@string/keyboard_floating_preference_summary"
