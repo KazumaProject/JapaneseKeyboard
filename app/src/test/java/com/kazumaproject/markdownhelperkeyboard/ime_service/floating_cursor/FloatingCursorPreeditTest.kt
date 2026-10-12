@@ -1,9 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor
 
 import android.content.Context
+import android.os.Looper
+import android.view.MotionEvent
+import android.view.View
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
 import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,11 +16,13 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.util.ReflectionHelpers
 import org.robolectric.util.ReflectionHelpers.ClassParameter
 import org.robolectric.annotation.Config
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -77,5 +83,53 @@ class FloatingCursorPreeditTest {
         arbiter.markCanonicalFinished(); assertFalse(hasPreedit())
         arbiter.showPreview("あ", 1); assertTrue(hasPreedit())
         arbiter.releasePreview(false); assertFalse(hasPreedit())
+    }
+
+    private fun withHeldArrow(action: () -> Unit) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val moves = mutableListOf<CursorDirection>()
+        val panel = FloatingCursorView(context, {}, {}, {}, moves::add, {})
+        val controller = FloatingCursorController(context, { true },
+            { CandidatePanelColors.resolve(context) }, {}, {}, {})
+        ReflectionHelpers.setField(controller, "view", panel)
+        ReflectionHelpers.setField(service, "floatingCursor", controller)
+        val arrows = ReflectionHelpers.getField<Map<CursorDirection, View>>(panel, "arrows")
+        val down = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1f, 1f, 0)
+        arrows.getValue(CursorDirection.LEFT).dispatchTouchEvent(down)
+        down.recycle()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(600))
+        assertTrue(moves.isNotEmpty())
+        val before = moves.size
+        try {
+            assertFalse(selected)
+            action()
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+            assertEquals("Input with selection OFF must stop the old repeat", before, moves.size)
+        } finally { controller.destroy() }
+    }
+
+    @Test fun inputStopsPanelAndQueuedMovesWithSelectionOff() = withHeldArrow {
+        val generation = ReflectionHelpers.getField<Long>(service, "cursorActionGeneration")
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "endCursorSelectionForInput")
+        assertTrue(ReflectionHelpers.getField<Long>(service, "cursorActionGeneration") > generation)
+    }
+
+    @Test fun voiceResultStopsHeldArrowBeforeReplacingPreedit() = withHeldArrow {
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "applyVoiceInputText",
+            ClassParameter.from(String::class.java, "音声"))
+        assertEquals("音声", input.value)
+    }
+
+    @Test fun interruptingCursorRepeatPreservesLongPressUntilRelease() {
+        val left = ReflectionHelpers.getField<AtomicBoolean>(service, "leftCursorKeyLongKeyPressed")
+        val right = ReflectionHelpers.getField<AtomicBoolean>(service, "rightCursorKeyLongKeyPressed")
+        left.set(true); right.set(true)
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "endCursorSelectionForInput")
+        assertTrue(left.get()); assertTrue(right.get())
+        assertTrue(ReflectionHelpers.getField<AtomicBoolean>(service, "onLeftKeyLongPressUp").get())
+        assertTrue(ReflectionHelpers.getField<AtomicBoolean>(service, "onRightKeyLongPressUp").get())
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "cancelLeftLongPress")
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "cancelRightLongPress")
+        assertFalse(left.get()); assertFalse(right.get())
     }
 }

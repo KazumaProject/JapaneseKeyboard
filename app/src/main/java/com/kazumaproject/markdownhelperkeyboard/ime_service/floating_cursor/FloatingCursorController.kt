@@ -74,6 +74,7 @@ internal class FloatingCursorController(
     }
 
     fun destroy() { stop(); routingTouch = false; preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener); view = null }
+    fun cancelInput() { view?.cancelInput() }
     fun setKeyboardFont(snapshot: KeyboardFontSnapshot) { font = snapshot; view?.setKeyboardFont(snapshot) }
     fun updateSelection(selected: Boolean, available: Boolean) {
         this.selected = selected; selectionAvailable = available
