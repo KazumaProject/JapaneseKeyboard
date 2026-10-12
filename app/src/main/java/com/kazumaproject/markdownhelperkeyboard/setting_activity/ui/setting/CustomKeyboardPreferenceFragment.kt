@@ -16,7 +16,7 @@ class CustomKeyboardPreferenceFragment : AsyncPreferenceFragment() {
 
         customKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.flickKeyboardSizeSettingsFragment, Bundle().apply { putString("sizingSurface", "custom") })
                 true
             }
         }
