@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_v
 
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingViewport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -201,6 +202,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateEmptyDrawableColor: Int? = null
     private var candidateEmptyDrawableTextColor: Int? = null
     private var released: Boolean = false
+    private val readingRecyclers = mutableSetOf<RecyclerView>()
     private var displayGeneration: Int = 0
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
     private var candidateSuggestions: List<Candidate> = emptyList()
@@ -316,7 +318,22 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onShowSoftKeyboardClick = listener
     }
 
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        readingRecyclers += recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        CandidateReadingViewport.release(recyclerView)
+        readingRecyclers -= recyclerView
+        super.onDetachedFromRecyclerView(recyclerView)
+    }
+
     fun release() {
+        readingRecyclers.forEach {
+            CandidateReadingViewport.release(it)
+        }
+        readingRecyclers.clear()
         released = true
         onItemClickListener = null
         onItemLongClickListener = null
