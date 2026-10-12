@@ -10312,16 +10312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applySumireModeSizing(flickView: FlickKeyboardView) {
-        flickView.applyKeySizing(
-            keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 160,
-            keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 160,
-            iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 80,
-            textSizeSp = ModeKeySizing.sumireCenter(customKeyboardMode),
-            specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 12f
-        )
-        flickView.setFlickGuideTextSizeSp(
-            ModeKeySizing.sumireGuide(customKeyboardMode)
-        )
+        ModeKeySizing.applySumire(flickView, customKeyboardMode)
     }
 
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {

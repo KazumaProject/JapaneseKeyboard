@@ -4,6 +4,7 @@ import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.TenKey
+import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 
 internal object ModeKeySizing {
     fun inputMode(mode: KeyboardInputMode): InputMode = when (mode) {
@@ -32,6 +33,17 @@ internal object ModeKeySizing {
     fun sumireGuide(mode: KeyboardInputMode): Float =
         AppPreference.modeKeySize("sumire", mode, true)
             ?: (AppPreference.flick_guide_text_size_sp_preference ?: 9).coerceIn(6, 16).toFloat()
+
+    fun applySumire(view: FlickKeyboardView, mode: KeyboardInputMode) {
+        view.applyKeySizing(
+            AppPreference.flick_key_width_scale_percent ?: 160,
+            AppPreference.flick_key_height_scale_percent ?: 160,
+            AppPreference.flick_key_icon_scale_percent ?: 80,
+            sumireCenter(mode),
+            AppPreference.flick_special_key_text_size_sp ?: 12f,
+        )
+        view.setFlickGuideTextSizeSp(sumireGuide(mode))
+    }
 
     fun applyTenkey(view: TenKey) {
         view.setKeyLetterSizeDelta((AppPreference.key_letter_size ?: 0f).toInt())
