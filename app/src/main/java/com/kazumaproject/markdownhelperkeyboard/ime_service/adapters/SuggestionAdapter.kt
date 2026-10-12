@@ -510,6 +510,7 @@ class SuggestionAdapter internal constructor(
 
     fun release() {
         attachedRecyclerViews.keys.toList().forEach { recyclerView ->
+            CandidateReadingViewport.release(recyclerView)
             detachInlineSuggestionViews(recyclerView)
             attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
             inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
@@ -1604,6 +1605,7 @@ class SuggestionAdapter internal constructor(
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        CandidateReadingViewport.release(recyclerView)
         detachInlineSuggestionViews(recyclerView)
         attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
         inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
