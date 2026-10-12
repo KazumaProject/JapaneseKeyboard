@@ -62,6 +62,17 @@ class KeyboardSizingControlsTest {
         assertTrue(writes.isEmpty())
     }
 
+    @Test fun inheritedTenkeySizesRemainInTheSliderRange() {
+        val root = LayoutInflater.from(ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            R.style.Theme_MarkdownKeyboard)).inflate(R.layout.fragment_tenkey_candidate_letter_size, null)
+        KeyboardSizingControls(root, null, true,
+            read = { _, _ -> KeyboardSizingValues(11f, 6.6f, 100f, 100f) },
+            save = { _, _, _ -> fail("Reading inherited size must not save") },
+            render = { _, _, _ -> }, reset = {}, inherited = { true })
+        assertEquals(11f, root.findViewById<Slider>(R.id.sizingCenter).value, 0f)
+        assertEquals("11.0 sp", root.findViewById<android.widget.TextView>(R.id.sizingCenterValue).text.toString())
+    }
+
     @Test fun layoutsSupportLocalesNightModeLargeFontsAndLandscape() {
         val application = ApplicationProvider.getApplicationContext<Context>()
         for (locale in listOf("ja", "en")) for (night in listOf(false, true)) {

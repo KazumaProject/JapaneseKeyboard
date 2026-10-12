@@ -3496,7 +3496,7 @@ object AppPreference {
             if (size == null) it.remove(key)
             else {
                 require(size.isFinite())
-                val range = if (guide) 6f..16f else if (surface == "tenkey") 12f..40f else 8f..32f
+                val range = if (guide) 6f..16f else if (surface == "tenkey") 4f..40f else 8f..32f
                 it.putFloat(key, size.coerceIn(range))
             }
         }

@@ -15,6 +15,8 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.widget.ImageView
+import android.util.TypedValue
+import java.lang.ref.WeakReference
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.PathParser
@@ -43,6 +45,9 @@ class KeyboardFontGlyphDrawable private constructor(
     private var tintList: ColorStateList? = null
     private var tintMode: PorterDuff.Mode = PorterDuff.Mode.SRC_IN
     private var resolvedTintColor: Int? = null
+    private var bracketView: WeakReference<ImageView>? = null
+    private var bracketCenterSp: Float? = null
+    private var bracketGuideSp: Float? = null
 
     /** True while this icon is rendered with the selected local keyboard typeface. */
     val usesCustomFont: Boolean
@@ -56,7 +61,20 @@ class KeyboardFontGlyphDrawable private constructor(
         KeyboardFontApplicator.track(this)
     }
 
+    /** Bracket labels remain font-aware, but explicit sizes use screen sp rather than icon scale. */
+    fun setBracketTextSizes(imageView: ImageView, centerSp: Float?, guideSp: Float?) {
+        require(resourceId == R.drawable.number_small_flick_guide)
+        bracketView = WeakReference(imageView)
+        bracketCenterSp = centerSp
+        bracketGuideSp = guideSp
+        invalidateSelf()
+    }
+
     override fun draw(canvas: Canvas) {
+        if (bracketCenterSp != null || bracketGuideSp != null) {
+            drawSizedBrackets(canvas)
+            return
+        }
         val typeface = snapshot.typeface
         if (typeface == null) {
             drawDelegate(canvas)
@@ -91,6 +109,47 @@ class KeyboardFontGlyphDrawable private constructor(
             drawDecoration(canvas, decoration, color)
         }
         canvas.restoreToCount(save)
+    }
+
+    private fun drawSizedBrackets(canvas: Canvas) {
+        val baseColor = resolvedTintColor ?: spec.defaultColor(context)
+        val color = Color.argb(Color.alpha(baseColor) * alphaValue / 255,
+            Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
+        // ImageView scales its drawable again. Compensate so 16 sp means 16 sp on screen.
+        val imageScale = bracketView?.get()?.imageMatrix?.mapRadius(1f)?.takeIf { it > 0f } ?: 1f
+        val cells = listOf(
+            RectF(.35f, .34f, .65f, 1f), RectF(0f, .34f, .35f, 1f),
+            RectF(0f, 0f, 1f, .34f), RectF(.65f, .34f, 1f, 1f),
+        )
+        val centers = listOf(.5f to .5f, .265f to .5f, .5f to .25f, .75f to .5f)
+        spec.glyphs.forEachIndexed { index, glyph ->
+            val sizeSp = if (index == 0) bracketCenterSp else bracketGuideSp
+            if (sizeSp == null && snapshot.typeface == null) {
+                val cell = cells[index]
+                val save = canvas.save()
+                canvas.clipRect(bounds.left + cell.left * bounds.width(), bounds.top + cell.top * bounds.height(),
+                    bounds.left + cell.right * bounds.width(), bounds.top + cell.bottom * bounds.height())
+                drawDelegate(canvas)
+                canvas.restoreToCount(save)
+            } else if (sizeSp == null) {
+                val region = RectF(bounds.left + glyph.bounds.left * bounds.width(),
+                    bounds.top + glyph.bounds.top * bounds.height(), bounds.left + glyph.bounds.right * bounds.width(),
+                    bounds.top + glyph.bounds.bottom * bounds.height())
+                drawGlyph(canvas, textPaint, glyph.text, region, color, snapshot.typeface!!,
+                    glyph.style, explicitColorFilter)
+            } else {
+                textPaint.color = color
+                textPaint.colorFilter = explicitColorFilter
+                textPaint.typeface = Typeface.create(snapshot.typeface ?: Typeface.DEFAULT, glyph.style)
+                textPaint.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
+                    sizeSp, context.resources.displayMetrics) / imageScale
+                val ink = Rect()
+                textPaint.getTextBounds(glyph.text, 0, glyph.text.length, ink)
+                val (x, y) = centers[index]
+                canvas.drawText(glyph.text, bounds.left + x * bounds.width() - ink.exactCenterX(),
+                    bounds.top + y * bounds.height() - ink.exactCenterY(), textPaint)
+            }
+        }
     }
 
     private fun drawDelegate(canvas: Canvas) {
