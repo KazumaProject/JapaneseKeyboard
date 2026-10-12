@@ -2300,10 +2300,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             .firstOrNull { it.key == "tenkey" && it.value == "center" } ?: return
         val updated = android.text.SpannableString(label)
         val relativeSpans = label.getSpans(0, label.length, android.text.style.RelativeSizeSpan::class.java)
-        val guidePx = modeGuideSizes[mode]?.let {
+        val explicitGuidePx = modeGuideSizes[mode]?.let {
             android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
                 it, resources.displayMetrics)
-        } ?: legacyCenterPx * (relativeSpans.firstOrNull()?.sizeChange ?: 0.6f)
+        }
         val centerStart = label.getSpanStart(center)
         val centerEnd = label.getSpanEnd(center)
         relativeSpans.forEach {
@@ -2314,11 +2314,31 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
         label.getSpans(0, label.length, com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan::class.java)
             .forEach { updated.removeSpan(it) }
-        // Size spaces and line breaks too: otherwise the large center font makes every guide row tall.
-        if (centerStart > 0) updated.setSpan(android.text.style.AbsoluteSizeSpan(guidePx.toInt()),
-            0, centerStart, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        if (centerEnd < label.length) updated.setSpan(android.text.style.AbsoluteSizeSpan(guidePx.toInt()),
-            centerEnd, label.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        // Preserve each inherited glyph's multiplier, including the punctuation ellipsis (.8).
+        // Relative spans retain subpixel legacy sizes while isolating them from a center override.
+        fun sizeGuideRegion(start: Int, end: Int) {
+            var runStart = start
+            var runPx = -1f
+            fun applyRun(runEnd: Int) {
+                if (runEnd <= runStart) return
+                val span = if (explicitGuidePx != null) android.text.style.AbsoluteSizeSpan(runPx.toInt())
+                    else android.text.style.RelativeSizeSpan(runPx / button.textSize)
+                updated.setSpan(span, runStart, runEnd, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            for (index in start until end) {
+                val inherited = label.getSpans(index, index + 1, android.text.style.RelativeSizeSpan::class.java)
+                val px = explicitGuidePx ?: legacyCenterPx *
+                    if (inherited.isEmpty()) 0.6f else inherited.fold(1f) { scale, span -> scale * span.sizeChange }
+                if (px != runPx) {
+                    applyRun(index)
+                    runStart = index
+                    runPx = px
+                }
+            }
+            applyRun(end)
+        }
+        sizeGuideRegion(0, centerStart)
+        sizeGuideRegion(centerEnd, label.length)
         button.text = updated
     }
 
@@ -2337,6 +2357,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             },
             keyboardFontSnapshot,
         )
+        if (isNumberFlickGuideEnabled) {
+            (binding.keySmallLetter.drawable as? KeyboardFontGlyphDrawable)?.setBracketTextSizes(
+                binding.keySmallLetter, modeLetterSizes[InputMode.ModeNumber], modeGuideSizes[InputMode.ModeNumber],
+            )
+        }
     }
 
     private fun keyForCharacterButton(button: AppCompatButton): Key? {
