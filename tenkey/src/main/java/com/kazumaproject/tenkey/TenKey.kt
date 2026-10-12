@@ -2292,8 +2292,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             InputMode.ModeEnglish -> isEnglishFlickGuideEnabled
             InputMode.ModeNumber -> isNumberFlickGuideEnabled
         }
-        // The Japanese punctuation key always displays its surrounding flick labels.
-        val hasVisibleGuide = guideEnabled || (mode == InputMode.ModeJapanese && button.id == R.id.key_12)
+        // Japanese punctuation and compact numeric labels show alternatives even without full guides.
+        val hasVisibleGuide = guideEnabled || mode == InputMode.ModeNumber ||
+            (mode == InputMode.ModeJapanese && button.id == R.id.key_12)
         if (!hasVisibleGuide || (mode !in modeLetterSizes && mode !in modeGuideSizes)) return
         val label = button.text as? android.text.Spanned ?: return
         val center = label.getSpans(0, label.length, android.text.Annotation::class.java)
@@ -2357,11 +2358,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             },
             keyboardFontSnapshot,
         )
-        if (isNumberFlickGuideEnabled) {
-            (binding.keySmallLetter.drawable as? KeyboardFontGlyphDrawable)?.setBracketTextSizes(
-                binding.keySmallLetter, modeLetterSizes[InputMode.ModeNumber], modeGuideSizes[InputMode.ModeNumber],
-            )
-        }
+        (binding.keySmallLetter.drawable as? KeyboardFontGlyphDrawable)?.setBracketTextSizes(
+            binding.keySmallLetter, modeLetterSizes[InputMode.ModeNumber],
+            modeGuideSizes[InputMode.ModeNumber].takeIf { isNumberFlickGuideEnabled },
+        )
     }
 
     private fun keyForCharacterButton(button: AppCompatButton): Key? {

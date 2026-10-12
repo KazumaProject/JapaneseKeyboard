@@ -57,6 +57,27 @@ class TenkeyPunctuationSizingTest {
         }
     }
 
+    @Test fun compactNumericLabelsKeepCenterAndAlternativesIndependent() = withKeyboard { keyboard, _ ->
+        keyboard.setCurrentMode(InputMode.ModeNumber)
+        keyboard.setFlickGuideEnabled(false, false, false)
+        for (id in listOf(com.kazumaproject.tenkey.R.id.key_1, com.kazumaproject.tenkey.R.id.key_2,
+            com.kazumaproject.tenkey.R.id.key_11, com.kazumaproject.tenkey.R.id.key_12)) {
+            keyboard.setModeLetterSizes(emptyMap(), emptyMap())
+            val key = keyboard.findViewById<TextView>(id)
+            val glyphs = key.text.filterNot(Char::isWhitespace)
+            val inherited = glyphs.associateWith { glyphSp(key, it) }
+            val centerGlyph = if (id == com.kazumaproject.tenkey.R.id.key_12) '.' else glyphs.first()
+            for (center in listOf(4f, 40f)) {
+                keyboard.setModeLetterSizes(mapOf(InputMode.ModeNumber to center), emptyMap())
+                glyphs.forEach { assertEquals("Center-only $it", if (it == centerGlyph) center else inherited.getValue(it), glyphSp(key, it), .01f) }
+            }
+            keyboard.setModeLetterSizes(emptyMap(), mapOf(InputMode.ModeNumber to 16f))
+            glyphs.forEach { assertEquals("Guide-only $it", if (it == centerGlyph) inherited.getValue(it) else 16f, glyphSp(key, it), .6f) }
+            keyboard.setModeLetterSizes(emptyMap(), emptyMap())
+            inherited.forEach { (glyph, size) -> assertEquals(size, glyphSp(key, glyph), .01f) }
+        }
+    }
+
     private fun withKeyboard(block: (TenKey, TextView) -> Unit) {
         val keyboard = LayoutInflater.from(context).inflate(R.layout.fragment_tenkey_candidate_letter_size, null)
             .findViewById<TenKey>(R.id.tenkeyLetterSizePreview)

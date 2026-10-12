@@ -63,10 +63,10 @@ class KeyboardFontGlyphDrawable private constructor(
 
     /** Bracket labels remain font-aware, but explicit sizes use screen sp rather than icon scale. */
     fun setBracketTextSizes(imageView: ImageView, centerSp: Float?, guideSp: Float?) {
-        require(resourceId == R.drawable.number_small_flick_guide)
+        require(resourceId == R.drawable.number_small_flick_guide || resourceId == R.drawable.number_small)
         bracketView = WeakReference(imageView)
         bracketCenterSp = centerSp
-        bracketGuideSp = guideSp
+        bracketGuideSp = guideSp.takeIf { resourceId == R.drawable.number_small_flick_guide }
         invalidateSelf()
     }
 
@@ -117,6 +117,21 @@ class KeyboardFontGlyphDrawable private constructor(
             Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
         // ImageView scales its drawable again. Compensate so 16 sp means 16 sp on screen.
         val imageScale = bracketView?.get()?.imageMatrix?.mapRadius(1f)?.takeIf { it > 0f } ?: 1f
+        if (resourceId == R.drawable.number_small) {
+            // The compact icon shows one group of brackets, all at the central label size.
+            val sizeSp = bracketCenterSp ?: return drawDelegate(canvas)
+            textPaint.color = color
+            textPaint.colorFilter = explicitColorFilter
+            textPaint.typeface = Typeface.create(snapshot.typeface ?: Typeface.DEFAULT, Typeface.NORMAL)
+            textPaint.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
+                sizeSp, context.resources.displayMetrics) / imageScale
+            val ink = Rect()
+            val label = "()[]"
+            textPaint.getTextBounds(label, 0, label.length, ink)
+            canvas.drawText(label, bounds.exactCenterX() - ink.exactCenterX(),
+                bounds.exactCenterY() - ink.exactCenterY(), textPaint)
+            return
+        }
         val cells = listOf(
             RectF(.35f, .34f, .65f, 1f), RectF(0f, .34f, .35f, 1f),
             RectF(0f, 0f, 1f, .34f), RectF(.65f, .34f, 1f, 1f),

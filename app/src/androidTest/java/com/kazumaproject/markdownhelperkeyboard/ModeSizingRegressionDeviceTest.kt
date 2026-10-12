@@ -51,12 +51,32 @@ class ModeSizingRegressionDeviceTest {
         record("timeout-diagnostics", main { roots().flatMap(::descendants).filter { it is com.kazumaproject.tenkey.TenKey || it is FlickKeyboardView }.joinToString("\n") { view -> val xy=IntArray(2); view.getLocationOnScreen(xy); val r=Rect(); view.getGlobalVisibleRect(r); "view=${view.javaClass.simpleName} id=${view.resources.getResourceEntryName(view.id)} shown=${view.isShown} attached=${view.isAttachedToWindow} root=${view.rootView.width}x${view.rootView.height} body=${view.width}x${view.height} screen=${xy.toList()} rect=$r" } })
         error("Timed out: $label")
     }
+    private fun imeContext(view: View): Boolean {
+        var context: android.content.Context = view.context
+        repeat(15) {
+            if (context is android.app.Activity) return false
+            if (context is android.inputmethodservice.InputMethodService) return true
+            if (context is android.content.ContextWrapper) {
+                val base = (context as android.content.ContextWrapper).baseContext
+                if (base === context) return false
+                context = base
+            } else return false
+        }
+        return false
+    }
+    private fun openDestination(id: Int): MainActivity {
+        val activity=ins.startActivitySync(Intent(ctx,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+        waitFor("nav") { (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as? NavHostFragment)?.navController?.currentDestination != null }
+        main { (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController.navigate(id) }
+        SystemClock.sleep(250)
+        return activity
+    }
     private fun roots() = WindowInspector.getGlobalWindowViews()
     private fun descendants(root: View): List<View> = listOf(root) + if (root is ViewGroup) (0 until root.childCount).flatMap { descendants(root.getChildAt(it)) } else emptyList()
     private fun shown(view: View): Boolean = view.isShown && view.getGlobalVisibleRect(Rect())
     private fun keyboardShown(view: View): Boolean = view.isShown && Rect().let { view.getGlobalVisibleRect(it) && it.height() > 100 && it.width() > 100 }
-    private fun liveFlicks() = roots().flatMap(::descendants).filterIsInstance<FlickKeyboardView>().filter(::keyboardShown).distinct()
-    private fun liveTenkeys() = roots().flatMap(::descendants).filterIsInstance<com.kazumaproject.tenkey.TenKey>().filter(::keyboardShown).distinct()
+    private fun liveFlicks() = roots().flatMap(::descendants).filterIsInstance<FlickKeyboardView>().filter { imeContext(it) }.filter(::keyboardShown).distinct()
+    private fun liveTenkeys() = roots().flatMap(::descendants).filterIsInstance<com.kazumaproject.tenkey.TenKey>().filter { imeContext(it) }.filter(::keyboardShown).distinct()
     private fun numberField(view: Any, name: String): Float = view.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(view).let { (it as Number).toFloat() }
     private fun metrics(key: TextView, character: String): Float {
         val text = key.text
@@ -216,6 +236,7 @@ class ModeSizingRegressionDeviceTest {
         main { activity.findViewById<MaterialSwitch>(R.id.sizingGuidePreview).isChecked = true }
         slider(activity, R.id.sizingCenter, 20f); slider(activity, R.id.sizingGuide, 12f)
         val preview = main { activity.findViewById<View>(R.id.tenkeyLetterSizePreview).height / activity.resources.displayMetrics.density }
+        waitFor("preview-layout") { previewKey(activity, com.kazumaproject.tenkey.R.id.key_1).layout != null }
         val previewLines = main { val key = previewKey(activity, com.kazumaproject.tenkey.R.id.key_1); "layout=${key.layout.height} available=${key.height - key.compoundPaddingTop - key.compoundPaddingBottom}" }
         previewTop(activity); capture("height-preview")
         openEditor()
@@ -457,6 +478,127 @@ class ModeSizingRegressionDeviceTest {
             main { activity.finish() }
         }
         record("viewing-no-writes", "both-settings=passed mode-changes=passed guide-preview-toggle=passed")
+    }
+
+    @Test fun previewWidthMatchesTheConfiguredLiveKeyboard() {
+        prefs.edit().putInt("keyboard_width_preference", 50).putInt("keyboard_width_landscape_preference", 50)
+            .putBoolean("tenkey_keymap_guide", true).commit()
+        try {
+            for (landscape in listOf(false, true)) {
+                ins.uiAutomation.setRotation(if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90 else android.app.UiAutomation.ROTATION_FREEZE_0)
+                SystemClock.sleep(500)
+                val activity = openSettings()
+                waitFor("width-orientation") { (activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) == landscape }
+                main { activity.findViewById<MaterialSwitch>(R.id.sizingGuidePreview).isChecked = true }
+                slider(activity, R.id.sizingCenter, 24f); slider(activity, R.id.sizingGuide, 16f)
+                previewTop(activity); capture("width50-$landscape-preview")
+                val preview = main { activity.findViewById<View>(R.id.tenkeyLetterSizePreview).width }
+                val host = openEditor()
+                val actual = main { liveTenkeys().first().width }
+                capture("width50-$landscape-live")
+                record("width50-$landscape", "configuredWidth=50% preview=$preview live=$actual")
+                assertEquals("Preview should reflect the configured width, landscape=$landscape", actual, preview)
+                main { host.finish() }
+            }
+        } finally { ins.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE) }
+    }
+    @Test fun numericBracketCenterResizesWithGuidesDisabled() {
+        prefs.edit().putBoolean("tenkey_use_three_state_keyboard_preference",true).commit()
+        for (guided in listOf(false,true)) {
+            prefs.edit().putBoolean("tenkey_keymap_guide_number",guided).commit()
+            val pixels=mutableListOf<IntArray>()
+            for (size in listOf(8f,32f)) {
+                val activity=openSettings()
+                main { activity.findViewById<MaterialButtonToggleGroup>(R.id.sizingModes).check(R.id.sizingNumbers) }
+                slider(activity,R.id.sizingCenter,size)
+                previewTop(activity); capture("review-bracket-preview-guides$guided-size${size.toInt()}")
+                val host=openEditor()
+                repeat(2) { tap(main { liveTenkeys().first().findViewById<View>(com.kazumaproject.tenkey.R.id.key_switch_key_mode) }) }
+                waitFor("numbers") { liveTenkeys().first().currentInputMode.value == com.kazumaproject.core.domain.state.InputMode.ModeNumber }
+                capture("review-bracket-live-guides$guided-size${size.toInt()}")
+                val bitmap=main {
+                    val key=liveTenkeys().first().findViewById<ImageView>(com.kazumaproject.tenkey.R.id.key_small_letter)
+                    Bitmap.createBitmap(key.width,key.height,Bitmap.Config.ARGB_8888).also { key.draw(Canvas(it)) }
+                }
+                File(output,"review-bracket-guides$guided-size${size.toInt()}.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
+                pixels.add(IntArray(bitmap.width*bitmap.height).also { bitmap.getPixels(it,0,bitmap.width,0,0,bitmap.width,bitmap.height) })
+                bitmap.recycle()
+                record("review-bracket-$guided-${size.toInt()}","savedCenter=${prefs.getFloat("tenkey_symbols_key_text_size_sp",-1f)} ordinaryCenter=${main { liveTenkeys().first().findViewById<TextView>(com.kazumaproject.tenkey.R.id.key_1).textSize/ctx.resources.displayMetrics.scaledDensity }}")
+                main { host.finish() }
+            }
+            val changed=pixels[0].indices.count { pixels[0][it]!=pixels[1][it] }
+            record("review-bracket-comparison-$guided","changedPixels=$changed")
+            assertTrue("Bracket center did not resize, guides=$guided", changed > 0)
+        }
+    }
+    @Test fun numericSecondaryLabelsWithGuidesDisabled() {
+        prefs.edit().putBoolean("tenkey_use_three_state_keyboard_preference",true).putBoolean("tenkey_keymap_guide_number",false).commit()
+        for (center in listOf(8f,32f)) {
+            val activity=openSettings()
+            main { activity.findViewById<MaterialButtonToggleGroup>(R.id.sizingModes).check(R.id.sizingNumbers) }
+            slider(activity,R.id.sizingCenter,center); slider(activity,R.id.sizingGuide,16f)
+            previewTop(activity); capture("numeric-guides-off-preview-${center.toInt()}")
+            val host=openEditor()
+            repeat(2) { tap(main { liveTenkeys().first().findViewById<View>(com.kazumaproject.tenkey.R.id.key_switch_key_mode) }) }
+            waitFor("number-mode") { liveTenkeys().first().currentInputMode.value == com.kazumaproject.core.domain.state.InputMode.ModeNumber }
+            main {
+                val keyboard=liveTenkeys().first()
+                for (id in listOf(com.kazumaproject.tenkey.R.id.key_1,com.kazumaproject.tenkey.R.id.key_2,com.kazumaproject.tenkey.R.id.key_11,com.kazumaproject.tenkey.R.id.key_12)) {
+                    val key=keyboard.findViewById<TextView>(id)
+                    val text=key.text.toString()
+                    val visible=text.filterNot(Char::isWhitespace)
+                    visible.forEachIndexed { index, glyph ->
+                        val isCenter = if (id == com.kazumaproject.tenkey.R.id.key_12) glyph == '.' else index == 0
+                        assertEquals("Numeric glyph $glyph", if (isCenter) center else 16f, metrics(key, glyph.toString()), .5f)
+                    }
+                }
+            }
+            capture("numeric-guides-off-live-${center.toInt()}")
+            main { host.finish() }
+        }
+    }
+
+    @Test(timeout=240000) fun otherLiveSettingsPreviewsUseModeOverrides() {
+        val cases=listOf(
+            Triple("TENKEY",R.id.candidateViewHeightSettingFragment,"candidate-height-portrait"),
+            Triple("TENKEY",R.id.candidateHeightLandscapeSettingFragment,"candidate-height-landscape"),
+            Triple("SUMIRE",R.id.candidateViewHeightSettingFragment,"sumire-candidate-height-portrait"),
+            Triple("SUMIRE",R.id.candidateHeightLandscapeSettingFragment,"sumire-candidate-height-landscape"),
+            Triple("SUMIRE",R.id.hierarchicalFlickAngleMarginFragment,"sumire-angle")
+        )
+        prefs.edit().putFloat("tenkey_hiragana_key_text_size_sp",32f).putFloat("tenkey_hiragana_guide_text_size_sp",16f)
+            .putFloat("sumire_hiragana_key_text_size_sp",32f).putFloat("sumire_hiragana_guide_text_size_sp",16f)
+            .putBoolean("tenkey_keymap_guide",true).putBoolean("sumire_keymap_guide_japanese",true).commit()
+        for ((type,destination,name) in cases) {
+            prefs.edit().putString("keyboard_order_preference","[\"$type\"]").commit()
+            val activity=openDestination(destination)
+            val preview=if(type=="TENKEY") {
+                waitFor(name) { descendants(activity.window.decorView).filterIsInstance<com.kazumaproject.tenkey.TenKey>().any { it.isShown && it.width>0 } }
+                main { descendants(activity.window.decorView).filterIsInstance<com.kazumaproject.tenkey.TenKey>().first { it.isShown && it.width>0 } }
+            } else {
+                waitFor(name) { descendants(activity.window.decorView).filterIsInstance<FlickKeyboardView>().any { it.isShown && it.width>0 && it.childCount>0 } }
+                main { descendants(activity.window.decorView).filterIsInstance<FlickKeyboardView>().first { it.isShown && it.width>0 } }
+            }
+            val values=main {
+                if(preview is com.kazumaproject.tenkey.TenKey) {
+                    val key=preview.findViewById<TextView>(com.kazumaproject.tenkey.R.id.key_1)
+                    metrics(key,"あ") to metrics(key,"う")
+                } else numberField(preview,"defaultTextSize") to numberField(preview,"flickGuideTextSizeSp")
+            }
+            capture("$name-preview")
+            main { activity.finish() }
+            val host=openEditor()
+            val live=main {
+                if(type=="TENKEY") {
+                    val key=liveTenkeys().first().findViewById<TextView>(com.kazumaproject.tenkey.R.id.key_1)
+                    metrics(key,"あ") to metrics(key,"う")
+                } else numberField(liveFlicks().first(),"defaultTextSize") to numberField(liveFlicks().first(),"flickGuideTextSizeSp")
+            }
+            assertEquals("$name center", live.first, values.first, .5f)
+            assertEquals("$name guide", live.second, values.second, .5f)
+            record(name, "preview=$values live=$live")
+            capture("$name-live"); main { host.finish() }
+        }
     }
 
 }
