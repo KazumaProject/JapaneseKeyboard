@@ -32,7 +32,7 @@ internal class FloatingCursorView(
     onHide: () -> Unit,
     private val onMove: (CursorDirection) -> Unit,
     onToggleSelection: () -> Unit,
-) : FloatingPanelFrame(context, onEdit, onHandle, context.getString(R.string.floating_cursor_header), onHide) {
+) : FloatingPanelFrame(context, onEdit, onHandle, onHide = onHide) {
     private val repeatHandler = Handler(Looper.getMainLooper())
     private var repeatAction: Runnable? = null
     private var padPointer: Int? = null

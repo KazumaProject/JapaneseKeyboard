@@ -1,6 +1,5 @@
 <resources>
     <string name="floating_cursor_title">フローティングカーソル</string>
-    <string name="floating_cursor_header">カーソル</string>
     <string name="floating_cursor_summary">カーソル・範囲選択の操作パネルを表示します。</string>
     <string name="floating_cursor_reset">カーソルパネルの位置・サイズをリセット</string>
     <string name="floating_cursor_select">選択</string>

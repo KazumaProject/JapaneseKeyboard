@@ -1,6 +1,5 @@
 <resources>
     <string name="floating_cursor_title">Floating cursor</string>
-    <string name="floating_cursor_header">Cursor</string>
     <string name="floating_cursor_summary">Show movable cursor and selection controls.</string>
     <string name="floating_cursor_reset">Reset cursor panel position and size</string>
     <string name="floating_cursor_select">Select</string>
