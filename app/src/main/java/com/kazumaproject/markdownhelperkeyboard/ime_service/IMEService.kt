@@ -1523,6 +1523,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearZeroQueryAllState(refresh = true)
             return
         }
+        endCursorSelectionForInput()
         currentInputConnection?.commitText(candidate.string, 1)
         clearZeroQueryAllState(refresh = true)
     }
@@ -1766,6 +1767,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleFlickTextPreview(event: FlickTextPreviewEvent, source: FlickPreviewSource) {
         if (deferInputUntilSelectionIsCurrent { handleFlickTextPreview(event, source) }) return
+        val text = when (event) {
+            is FlickTextPreviewEvent.Started -> event.selection.text
+            is FlickTextPreviewEvent.Changed -> event.selection.text
+            is FlickTextPreviewEvent.CommitPending -> event.selection.text
+            else -> null
+        }
+        if (!text.isNullOrEmpty()) endCursorSelectionForInput()
         flickInputPreviewCoordinator.onEvent(event, currentFlickPreviewContext(source))
         refreshCursorAfterCompositionChange()
     }
@@ -3141,7 +3149,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val matches =
                             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
+                        applyVoiceInputText(text)
                         setSuggestionProgressVisible(
                             reason = SuggestionProgressReason.VoiceInput,
                             visible = false
@@ -3152,13 +3160,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val matches =
                             partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
+                        applyVoiceInputText(text)
                     }
 
                     override fun onEvent(eventType: Int, params: Bundle?) {}
                 })
             }
         }
+    }
+
+    private fun applyVoiceInputText(text: String) {
+        endCursorSelectionForInput()
+        _inputString.value = text
     }
 
     private fun observeDeleteKeyFlickTargets() {
@@ -3475,8 +3488,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // Stop movement immediately, but let the selection verification finish
                 // before reading local preedit for this input gesture.
                 floatingCursor?.cancelInput()
-                cancelLeftLongPress()
-                cancelRightLongPress()
+                // The deferred release still needs to know this was a hold, not a tap.
+                stopCursorKeyRepeats()
                 cursorInputRevision.advance()
                 cancelCursorActions()
             }
@@ -3484,11 +3497,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun endCursorSelectionForInput() {
-        // Typing invalidates pending movement even when selection is OFF. Keep the editor
-        // range intact so typing/deletion can still replace it through the ordinary path.
+        // Stop held/queued movement even with selection OFF. Preserve a software
+        // arrow's long-press marker until its release, so release cannot become a tap.
         floatingCursor?.cancelInput()
-        cancelLeftLongPress()
-        cancelRightLongPress()
+        stopCursorKeyRepeats()
+        // Keep the editor range intact so ordinary typing/deletion can replace it.
         resetCursorSession()
     }
 
@@ -15468,9 +15481,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onToggleText(keyIdentity: String, values: List<String>) {
                 if (deferInputUntilSelectionIsCurrent { onToggleText(keyIdentity, values) }) return
-                endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
+                endCursorSelectionForInput()
                 handleKeyReleaseFeedback()
                 clearDeleteBufferWithView()
                 val isDirect = isCustomToggleDirectInput()
@@ -15503,6 +15516,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.DoNothing -> Unit
                     is KeyAction.Text -> {
                         val text = action.text
+                        if (text.isNotEmpty()) endCursorSelectionForInput()
                         Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
                         when (qwertyMode.value) {
                             TenKeyQWERTYMode.Custom -> {
@@ -16310,6 +16324,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+    }
+
+    private fun stopCursorKeyRepeats() {
+        onLeftKeyLongPressUp.set(true)
+        leftLongPressJob?.cancel()
+        leftLongPressJob = null
+        onRightKeyLongPressUp.set(true)
+        rightLongPressJob?.cancel()
+        rightLongPressJob = null
     }
 
     private fun cancelLeftLongPress() {
@@ -23409,6 +23432,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ): Boolean {
                     if (inputSessionId != gemmaInputSessionId) return false
                     val inputConnection = currentInputConnection ?: return false
+                    endCursorSelectionForInput()
                     clearZeroQueryAllState(refresh = false)
                     finishComposingText()
                     inputConnection.commitText(text, 1)
@@ -23526,6 +23550,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun insertResult(text: String, inputSessionId: Long): Boolean {
                     if (inputSessionId != gemmaInputSessionId) return false
                     val inputConnection = currentInputConnection ?: return false
+                    endCursorSelectionForInput()
                     finishComposingText()
                     inputConnection.commitText(text, 1)
                     showToastMessage(getString(R.string.gemma_result_ready))
@@ -23854,6 +23879,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
                     },
                     onGlideStarted = {
+                        endCursorSelectionForInput()
                         commitPreviousQwertyGlideCandidateOnNewGlideIfNeeded()
                     },
                     onCancel = {},
@@ -24347,9 +24373,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
                     if (deferInputUntilSelectionIsCurrent { onFlickUPQWERTYKey(qwertyKey, tap, variations) }) return
-                    endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
+                    endCursorSelectionForInput()
                     Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
                     handleKeyReleaseFeedback()
                     val insertString = inputString.value
@@ -24386,9 +24412,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     character: Char
                 ) {
                     if (deferInputUntilSelectionIsCurrent { onFlickDownQWERTYKey(qwertyKey, character) }) return
-                    endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
+                    endCursorSelectionForInput()
                     Timber.d("onFlickDownQWERTYKey: $qwertyKey, $character")
                     handleKeyReleaseFeedback()
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
@@ -24449,6 +24475,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         if (applyFirstCandidate) {
+            endCursorSelectionForInput()
             clearDeletedBuffer()
             refreshEditHistoryUi()
             val first = candidates.first()
@@ -25230,6 +25257,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun performUndo(entry: EditHistoryEntry): Boolean {
+        endCursorSelectionForInput()
         // History edits must invalidate pending reads even when the caret stays unchanged.
         forwardDeleteCoordinator.cancel()
         return when (entry) {
@@ -25275,6 +25303,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun performRedo(entry: EditHistoryEntry): Boolean {
+        endCursorSelectionForInput()
         // History edits must invalidate pending reads even when the caret stays unchanged.
         forwardDeleteCoordinator.cancel()
         return when (entry) {
@@ -27462,6 +27491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         expanded: ExpandedMacro,
         replacedText: String,
     ) {
+        endCursorSelectionForInput()
         connection.beginBatchEdit()
         val committed = try {
             setComposingText("", 0)
@@ -30222,8 +30252,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
         val connection = currentInputConnection ?: return false
         cancelCandidateTranslationIfComposingChanges(p0)
-        // Rendering also happens for deliberate preedit cursor movement. Only an actual
-        // input entry point cancels movement unconditionally; do not cancel its own render.
+        // Cursor movement also renders preedit; do not cancel its own repeat here.
         if (!p0.isNullOrEmpty() && (cursorSelectionMode || cursorSelection.hasAnchor)) {
             endCursorSelectionForInput()
         }
@@ -30278,6 +30307,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun commitCompletion(p0: CompletionInfo?): Boolean {
         val connection = currentInputConnection ?: return false
+        endCursorSelectionForInput()
         flickInputPreviewCoordinator.cancel(restore = true)
         val committed = connection.commitCompletion(p0)
         if (committed) editorMutationRevision.advance()
@@ -30286,6 +30316,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun commitCorrection(p0: CorrectionInfo?): Boolean {
         val connection = currentInputConnection ?: return false
+        endCursorSelectionForInput()
         flickInputPreviewCoordinator.cancel(restore = true)
         val committed = connection.commitCorrection(p0)
         if (committed) editorMutationRevision.advance()
