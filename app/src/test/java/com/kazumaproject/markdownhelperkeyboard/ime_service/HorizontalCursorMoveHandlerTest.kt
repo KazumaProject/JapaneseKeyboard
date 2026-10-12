@@ -45,6 +45,8 @@ class HorizontalCursorMoveHandlerTest {
         var start = start
         var end = end
         var revision = 0L
+        var inputGeneration = 0L
+        var canMove = true
         var selectionRevision = 0L
         var canCollapseSelection = true
         var extractionAvailable = true
@@ -60,6 +62,8 @@ class HorizontalCursorMoveHandlerTest {
             scope = scope,
             currentConnection = { current },
             currentRevision = { revision },
+            inputGeneration = { inputGeneration },
+            canMove = { canMove },
             currentSelectionRevision = { selectionRevision },
             canCollapseSelection = { canCollapseSelection },
             readMutex = Mutex(),
@@ -247,6 +251,34 @@ class HorizontalCursorMoveHandlerTest {
         editor.reads.reply()
         runCurrent()
         assertEquals(emptyList<Pair<Int, Int>>(), editor.selectionWrites)
+        assertEquals(emptyList<HorizontalCursorMoveHandler.Direction>(), editor.dpadEvents)
+    }
+
+    @Test fun typingDuringAPlainCaretReadPreventsLateDpadDispatch() = runTest {
+        val editor = Editor(this, start = 2)
+        editor.handler.move(HorizontalCursorMoveHandler.Direction.Left)
+        runCurrent()
+        editor.inputGeneration++
+        editor.reads.reply(); runCurrent()
+        assertEquals(emptyList<HorizontalCursorMoveHandler.Direction>(), editor.dpadEvents)
+    }
+
+    @Test fun mutationOrPreeditDuringFallbackReadPreventsLateDpadDispatch() = runTest {
+        for (preedit in listOf(false, true)) {
+            val editor = Editor(this, start = 2).apply { extractionAvailable = false }
+            editor.handler.move(HorizontalCursorMoveHandler.Direction.Right)
+            runCurrent()
+            if (preedit) editor.canMove = false else editor.revision++
+            editor.reads.reply(); runCurrent()
+            assertEquals(emptyList<HorizontalCursorMoveHandler.Direction>(), editor.dpadEvents)
+        }
+    }
+
+    @Test fun inputBeforeTheCoroutineStartsInvalidatesTheOriginalRequest() = runTest {
+        val editor = Editor(this, start = 2)
+        editor.handler.move(HorizontalCursorMoveHandler.Direction.Left)
+        editor.inputGeneration++
+        runCurrent(); editor.reads.reply(); runCurrent()
         assertEquals(emptyList<HorizontalCursorMoveHandler.Direction>(), editor.dpadEvents)
     }
 }

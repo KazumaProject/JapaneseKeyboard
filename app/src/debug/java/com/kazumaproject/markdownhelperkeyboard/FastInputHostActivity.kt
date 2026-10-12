@@ -16,7 +16,15 @@ class FastInputHostActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        editText = EditText(this).apply {
+        editText = object : EditText(this) {
+            override fun onCreateInputConnection(outAttrs: android.view.inputmethod.EditorInfo): android.view.inputmethod.InputConnection? {
+                val connection = super.onCreateInputConnection(outAttrs) ?: return null
+                if (!intent.getBooleanExtra("refuseExtraction", false)) return connection
+                return object : android.view.inputmethod.InputConnectionWrapper(connection, false) {
+                    override fun getExtractedText(request: android.view.inputmethod.ExtractedTextRequest?, flags: Int): android.view.inputmethod.ExtractedText? = null
+                }
+            }
+        }.apply {
             id = android.R.id.input
             minLines = 4
             textSize = 22f

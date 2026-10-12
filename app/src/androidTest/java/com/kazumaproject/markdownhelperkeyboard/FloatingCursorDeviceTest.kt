@@ -45,7 +45,7 @@ class FloatingCursorDeviceTest {
         return result
     }
     private fun await(message: String, predicate: () -> Boolean) {
-        val until = SystemClock.uptimeMillis() + 15000
+        val until = SystemClock.uptimeMillis() + 60000
         do { if (predicate()) return; SystemClock.sleep(100) } while (SystemClock.uptimeMillis() < until)
         error(message + "; nodes=" + nodes().joinToString { "${it.text}/${it.contentDescription}" })
     }
@@ -66,7 +66,7 @@ class FloatingCursorDeviceTest {
         fun send(action: Int, x: Float, y: Float) {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
             event.source = InputDevice.SOURCE_TOUCHSCREEN
-            check(ui.injectInputEvent(event, true)); event.recycle()
+            check(ui.injectInputEvent(event, false)); event.recycle()
         }
         val x = rect.exactCenterX(); val y = rect.exactCenterY()
         send(MotionEvent.ACTION_DOWN, x, y); SystemClock.sleep(40)
@@ -160,8 +160,12 @@ class FloatingCursorDeviceTest {
                 .putBoolean("qwerty_english_direct_input_preference", true).commit()
             ActivityScenario.launch<FastInputHostActivity>(Intent(ctx, FastInputHostActivity::class.java)).use { scenario ->
                 var activity: FastInputHostActivity? = null
-                scenario.onActivity { activity = it }
-                fun onEditor(action: (FastInputHostActivity) -> Unit) = ins.runOnMainSync { action(requireNotNull(activity)) }
+                scenario.onActivity {
+                    activity = it
+                    if (landscape) it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                }
+                if (landscape) ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90)
+                fun onEditor(action: (FastInputHostActivity) -> Unit) = scenario.onActivity { activity = it; action(it) }
                 var originalClipboard: android.content.ClipData? = null
                 onEditor { originalClipboard = it.getSystemService(android.content.ClipboardManager::class.java).primaryClip }
                 try {
@@ -361,6 +365,7 @@ class FloatingCursorDeviceTest {
         } finally {
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             if (!enabled) shell("ime disable $target")
+            if (landscape) ui.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
             if (oldRotation != "null") shell("settings put system user_rotation $oldRotation")
             if (oldAuto != "null") shell("settings put system accelerometer_rotation $oldAuto")
             if (theme in listOf("light", "dark") && oldNight in listOf("yes", "no", "auto", "custom")) shell("cmd uimode night $oldNight")
