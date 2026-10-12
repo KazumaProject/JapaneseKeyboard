@@ -87,7 +87,7 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
 
         sumireKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.flickKeyboardSizeSettingsFragment, Bundle().apply { putString("sizingSurface", "sumire") })
                 true
             }
         }
