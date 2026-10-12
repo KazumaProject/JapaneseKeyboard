@@ -373,6 +373,7 @@ import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroContext
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroContextRequirement
 import com.kazumaproject.markdownhelperkeyboard.text_macro.ExpandedMacro
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroInputConnectionExecutor
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.getKeyboardDisplayName
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
@@ -6014,6 +6015,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.applyPopupViewStyle(
                     currentTenKeyPopupViewStyle()
                 )
+                ModeKeySizing.applyTenkey(floatingKeyboardLayoutBinding.keyboardViewFloating)
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -6121,7 +6123,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setKeyLetterSize(
                     (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
                 )
-                keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
+                ModeKeySizing.applyTenkey(keyboardView)
                 keyboardView.setKeySizeScale(
                     appPreference.tenkey_key_width_scale_percent ?: 100,
                     appPreference.tenkey_key_height_scale_percent ?: 100
@@ -10363,6 +10365,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDefinedCustomLayout: Boolean = false
     ) {
         flickView.clearSumireSpecialKeyActionResolver()
+        flickView.applyKeySizing(
+            appPreference.flick_key_width_scale_percent ?: 160,
+            appPreference.flick_key_height_scale_percent ?: 160,
+            appPreference.flick_key_icon_scale_percent ?: 80,
+            appPreference.flick_key_text_size_sp ?: 16f,
+            appPreference.flick_special_key_text_size_sp ?: 12f
+        )
+        flickView.setFlickGuideTextSizeSp((flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat())
         flickView.setKeyboard(
             applyDeleteKeyFlickPreferences(layout),
             if (isUserDefinedCustomLayout) customKeyboardHitTestMode() else KeyHitTestMode.KEY_BOUNDS
@@ -10406,7 +10416,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun applySumireModeSizing(flickView: FlickKeyboardView) {
+        ModeKeySizing.applySumire(flickView, customKeyboardMode)
+    }
+
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
+        applySumireModeSizing(flickView)
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
         applyCurrentFlickGuidePreference(flickView)
@@ -10822,6 +10837,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             englishEnabled = tenkeyKeymapGuideSettings.english,
             numberEnabled = tenkeyKeymapGuideSettings.number
         )
+        ModeKeySizing.applyTenkey(floatingKeyboardLayoutBinding.keyboardViewFloating)
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -14531,6 +14547,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.setFlickGuideMaxCodePoints(
             (flickGuideMaxCharactersPreference ?: 1).coerceIn(1, 4)
         )
+        if (qwertyMode.value == TenKeyQWERTYMode.Sumire) applySumireModeSizing(flickView)
 
         flickView.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
