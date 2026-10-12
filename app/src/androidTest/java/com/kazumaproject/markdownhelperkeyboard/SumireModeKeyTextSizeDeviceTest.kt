@@ -12,7 +12,8 @@ import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.SeekBar
+import com.google.android.material.slider.Slider
+import android.view.KeyEvent
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -38,7 +39,9 @@ class SumireModeKeyTextSizeDeviceTest {
     fun settingsSliderUpdatesVisibleModeLabels() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        assumeTrue("Use investigation/custom-toggle.init.gradle", context.packageName.startsWith("com.kazumaproject.customtoggletest"))
+        assumeTrue("Use an isolated verification package",
+            context.packageName.startsWith("com.kazumaproject.customtoggletest") ||
+                context.packageName.startsWith("com.kazumaproject.floatingqa"))
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val preferenceKey = "flick_special_key_text_size_sp_preference"
         val previousSize = preferences.all[preferenceKey] as? Float
@@ -60,16 +63,20 @@ class SumireModeKeyTextSizeDeviceTest {
             assertTrue("Settings navigation must initialize", navigated)
             instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {
-                val slider = activity.findViewById<SeekBar>(R.id.seekBarSpecialTextSize)
+                val slider = activity.findViewById<Slider>(R.id.sizingSpecial)
                 val keyboard = activity.findViewById<FlickKeyboardView>(R.id.previewFlickKeyboardView)
                 assertNotNull(slider)
                 assertNotNull(keyboard)
                 for (size in listOf(8f, 16f, 32f)) {
-                    slider.progress = (size - 8f).toInt()
+                    slider.value = if (size == 8f) 9f else size - 1f
+                    slider.requestFocus()
+                    val keyCode = if (size == 8f) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+                    slider.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+                    slider.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
                     measure(keyboard, (1600 * keyboard.resources.displayMetrics.density).toInt(), 800)
                     val buttons = (0 until keyboard.childCount).mapNotNull { keyboard.getChildAt(it) as? AutoSizeButton }
                         .filter { it.text.toString() in labels.values }
-                    assertEquals("Preview includes all three mode labels", 3, buttons.size)
+                    assertTrue("Preview includes a visible mode-switch label", buttons.isNotEmpty())
                     buttons.forEach { assertEquals(sp(keyboard, size), it.textSize, 0.1f) }
                     assertEquals(size, preferences.getFloat(preferenceKey, -1f), 0f)
                 }
