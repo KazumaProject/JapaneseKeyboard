@@ -3483,6 +3483,39 @@ object AppPreference {
             )
         }
 
+    /** Null means inherit the existing shared setting; opening a screen must not create overrides. */
+    fun modeKeySize(surface: String, mode: KeyboardInputMode, guide: Boolean): Float? {
+        val key = modeKeySizeKey(surface, mode, guide)
+        return if (preferences.contains(key)) preferences.getFloat(key, 0f).takeIf { it.isFinite() }
+        else null
+    }
+
+    fun setModeKeySize(surface: String, mode: KeyboardInputMode, guide: Boolean, size: Float?) {
+        preferences.edit {
+            val key = modeKeySizeKey(surface, mode, guide)
+            if (size == null) it.remove(key)
+            else {
+                require(size.isFinite())
+                val range = if (guide) 6f..16f else if (surface == "tenkey") 4f..40f else 8f..32f
+                it.putFloat(key, size.coerceIn(range))
+            }
+        }
+    }
+
+    fun resetModeKeySizes(surface: String, mode: KeyboardInputMode? = null) {
+        preferences.edit { editor ->
+            (mode?.let { listOf(it) } ?: KeyboardInputMode.entries).forEach { inputMode ->
+                editor.remove(modeKeySizeKey(surface, inputMode, false))
+                editor.remove(modeKeySizeKey(surface, inputMode, true))
+            }
+        }
+    }
+
+    private fun modeKeySizeKey(surface: String, mode: KeyboardInputMode, guide: Boolean): String {
+        require(surface == "tenkey" || surface == "sumire")
+        return "${surface}_${mode.name.lowercase(java.util.Locale.ROOT)}_${if (guide) "guide" else "key"}_text_size_sp"
+    }
+
     var flick_key_text_size_sp: Float?
         get() = preferences.getFloat(
             FLICK_KEY_TEXT_SIZE_SP.first,
