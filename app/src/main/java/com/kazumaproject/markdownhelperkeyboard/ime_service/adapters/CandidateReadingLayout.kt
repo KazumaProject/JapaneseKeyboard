@@ -10,7 +10,6 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import kotlin.math.ceil
@@ -110,30 +109,7 @@ class CandidateReadingLayout @JvmOverloads constructor(
     private val parentBounds = Rect()
     private val bodyInk = Rect()
 
-    private fun annotationHeadroom(): Int {
-        val recycler = parent as? RecyclerView ?: return 0
-        val manager = recycler.layoutManager as? LinearLayoutManager ?: return 0
-        if (manager.orientation != RecyclerView.HORIZONTAL) return 0
-        var frame = recycler.parent as? ViewGroup ?: return 0
-        var recyclerTop = recycler.top
-        // Previews have a wrap-content area inside their fixed-height frame.
-        // Include that area's offset while retaining the body's original position.
-        while (frame.layoutParams?.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
-            val outer = frame.parent as? ViewGroup ?: break
-            frame.clipChildren = false
-            recyclerTop += frame.top
-            frame = outer
-        }
-        // Both ancestors must allow drawing above the centered RecyclerView. Layout
-        // managers can be installed after attachment, so update this during layout.
-        recycler.clipChildren = false
-        frame.clipChildren = false
-        // Keep horizontal scrolling clipped before the expand button; only the
-        // vertical viewport grows into the existing candidate frame.
-        recycler.clipBounds = Rect(0, frame.paddingTop - recyclerTop,
-            recycler.width, frame.height - frame.paddingBottom - recyclerTop)
-        return (top + recyclerTop - frame.paddingTop).coerceAtLeast(0)
-    }
+    private fun annotationHeadroom(): Int = CandidateReadingViewport.headroom(this)
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val body = findViewById<TextView>(R.id.suggestion_item_text_view)
@@ -148,7 +124,10 @@ class CandidateReadingLayout @JvmOverloads constructor(
         super.onLayout(changed, left, top, right, bottom)
         val body = findViewById<TextView>(R.id.suggestion_item_text_view)
         val reading = findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
-        if (reading.visibility != View.VISIBLE || body.visibility != View.VISIBLE) return
+        if (reading.visibility != View.VISIBLE || body.visibility != View.VISIBLE) {
+            (parent as? RecyclerView)?.let(CandidateReadingViewport::refresh)
+            return
+        }
         val value = body.text.toString()
         body.paint.getTextBounds(value, 0, value.length, bodyInk)
         bodyBounds.set(0, 0, body.width, body.height)
