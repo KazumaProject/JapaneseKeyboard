@@ -449,6 +449,20 @@ fun AppCompatButton.setTenKeyTextNumber(
         R.id.key_11 -> getSpannableStringForNumberButton(context.getString(com.kazumaproject.core.R.string.string_key10_number))
         R.id.key_12 -> context.getString(com.kazumaproject.core.R.string.string_key12_number)
         else -> ""
+    }.let { label ->
+        // Compact numeric labels still contain flick alternatives when the full guide is off.
+        SpannableString(label).apply {
+            val centerStart = if (keyId == R.id.key_12) indexOf('.') else 0
+            if (centerStart >= 0 && isNotEmpty()) {
+                setSpan(android.text.Annotation("tenkey", "center"), centerStart, centerStart + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                if (keyId == R.id.key_12) {
+                    // These legacy punctuation alternatives were full size, not 0.6 of the center.
+                    setSpan(RelativeSizeSpan(1f), 0, centerStart, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    setSpan(RelativeSizeSpan(1f), centerStart + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
+        }
     }
 }
 

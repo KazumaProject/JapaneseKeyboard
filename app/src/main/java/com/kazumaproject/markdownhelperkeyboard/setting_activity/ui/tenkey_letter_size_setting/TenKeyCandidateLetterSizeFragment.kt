@@ -1,10 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting
 
-import android.os.Bundle
 import android.content.res.Configuration
+import android.os.Bundle
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyTextSizePreviewSizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyboardSizingControls
@@ -21,6 +25,13 @@ class TenKeyCandidateLetterSizeFragment : Fragment(R.layout.fragment_tenkey_cand
         val keyboard = view.findViewById<TenKey>(R.id.tenkeyLetterSizePreview)
         val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         keyboard.layoutParams = keyboard.layoutParams.apply {
+            val widthPercent = KeyboardLayoutEditConstraints.normalizeWidthPercent(
+                (if (landscape) AppPreference.keyboard_width_landscape else AppPreference.keyboard_width) ?: 100,
+            )
+            width = if (widthPercent == 100) ViewGroup.LayoutParams.MATCH_PARENT
+                else (resources.displayMetrics.widthPixels * widthPercent / 100f).toInt()
+            val alignEnd = (if (landscape) AppPreference.keyboard_position_landscape else AppPreference.keyboard_position) != false
+            (this as? LinearLayout.LayoutParams)?.gravity = if (alignEnd) Gravity.END else Gravity.START
             height = KeyTextSizePreviewSizing.heightPx(
                 (if (landscape) AppPreference.keyboard_height_landscape else AppPreference.keyboard_height)
                     ?: if (landscape) 220 else 280, resources.displayMetrics.density,

@@ -130,6 +130,37 @@ class KeyboardFontGlyphDrawableTest {
     }
 
     @Test
+    fun compactBracketCenterResizesAndResetRestoresTheOriginalArtwork() {
+        for (typeface in listOf(null, Typeface.MONOSPACE)) {
+            val drawable = KeyboardFontGlyphDrawable.create(context, R.drawable.number_small,
+                KeyboardFontSnapshot(typeface, 1)) as KeyboardFontGlyphDrawable
+            val image = ImageView(context).apply {
+                scaleType = ImageView.ScaleType.MATRIX
+                setImageDrawable(drawable)
+                layout(0, 0, 200, 200)
+            }
+            val original = render(drawable, 200, 200)
+            drawable.setBracketTextSizes(image, 8f, null)
+            val small = render(drawable, 200, 200)
+            drawable.setBracketTextSizes(image, 32f, null)
+            val large = render(drawable, 200, 200)
+            assertTrue("Compact bracket center did not resize", !small.sameAs(large))
+            fun scaledInkHeight(scale: Float): Float {
+                image.imageMatrix = Matrix().apply { setScale(scale, scale) }
+                val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+                drawable.setBounds(0, 0, (200 / scale).toInt(), (200 / scale).toInt())
+                drawable.draw(Canvas(bitmap).apply { scale(scale, scale) })
+                return checkNotNull(inkBounds(bitmap, RectF(0f, 0f, 200f, 200f))).height()
+                    .also { bitmap.recycle() }
+            }
+            assertEquals("Compact bracket sp changed with image scaling", scaledInkHeight(1f), scaledInkHeight(.5f), 1f)
+            image.imageMatrix = Matrix()
+            drawable.setBracketTextSizes(image, null, null)
+            assertTrue("Reset did not restore compact brackets", original.sameAs(render(drawable, 200, 200)))
+        }
+    }
+
+    @Test
     fun bracketGuideSpIsIndependentOfTheImageViewScale() {
         fun guideBounds(scale: Float): RectF {
             val drawable = KeyboardFontGlyphDrawable.create(context, R.drawable.number_small_flick_guide,
