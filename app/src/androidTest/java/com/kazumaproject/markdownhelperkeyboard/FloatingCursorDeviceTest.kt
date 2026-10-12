@@ -164,8 +164,12 @@ class FloatingCursorDeviceTest {
                     activity = it
                     if (landscape) it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                 }
-                if (landscape) ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90)
-                fun onEditor(action: (FastInputHostActivity) -> Unit) = scenario.onActivity { activity = it; action(it) }
+                if (landscape) {
+                    ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90)
+                    SystemClock.sleep(500)
+                    scenario.onActivity { activity = it }
+                }
+                fun onEditor(action: (FastInputHostActivity) -> Unit) = ins.runOnMainSync { action(requireNotNull(activity)) }
                 var originalClipboard: android.content.ClipData? = null
                 onEditor { originalClipboard = it.getSystemService(android.content.ClipboardManager::class.java).primaryClip }
                 try {
@@ -352,6 +356,7 @@ class FloatingCursorDeviceTest {
                     assertTrue(kotlin.math.abs(savedBounds.top - restored.top) <= 2)
                     assertTrue(prefs.contains("floating_cursor_${if (landscape) "landscape" else "portrait"}_width"))
                 } finally {
+                    shell("ime set $oldIme")
                     onEditor {
                         val clipboard = it.getSystemService(android.content.ClipboardManager::class.java)
                         originalClipboard?.let(clipboard::setPrimaryClip) ?: run {

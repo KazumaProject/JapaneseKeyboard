@@ -43,7 +43,8 @@ class EditorSelectionCleanupTest {
             partialStartOffset = -1
         }
         var cleanups = 0
-        val verifier = EditorSelectionCleanup(scope, { active }, { revision }, Mutex(), reads)
+        var composingRange: IntRange? = null
+        val verifier = EditorSelectionCleanup(scope, { active }, { revision }, Mutex(), reads, { composingRange })
         init {
             whenever(connection.getExtractedText(any<ExtractedTextRequest>(), any())).thenAnswer {
                 assertEquals(InputConnection.GET_TEXT_WITH_STYLES, it.getArgument<ExtractedTextRequest>(0).flags)
@@ -156,6 +157,28 @@ class EditorSelectionCleanupTest {
         e.extracted!!.text = SpannableString("abc").apply {
             setSpan(UnderlineSpan(), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE or Spanned.SPAN_COMPOSING)
         }
+        e.verifier.verifyBeforeInput(21, 21) { _, _ -> e.cleanups++ }
+        runCurrent(); e.reply(this)
+        assertEquals(0, e.cleanups)
+    }
+
+    @Test fun editorThatOmitsStylesRetainsItsNativeComposingRangeForNextInput() = runTest {
+        val e = Editor(this)
+        e.composingRange = 20..21
+        e.verifier.verifyBeforeInput(21, 21) { _, _ -> e.cleanups++ }
+        runCurrent(); e.reply(this)
+        assertEquals(0, e.cleanups)
+        e.extracted!!.selectionStart = 3; e.extracted!!.selectionEnd = 3
+        e.verifier.verifyBeforeInput(21, 21) { _, _ -> e.cleanups++ }
+        runCurrent(); e.reply(this)
+        assertEquals(1, e.cleanups)
+    }
+
+    @Test fun plainFallbackWithoutAbsoluteCaretDoesNotEraseNativePreedit() = runTest {
+        val e = Editor(this)
+        e.extracted = null
+        e.composingRange = 20..21
+        whenever(e.connection.getTextBeforeCursor(any(), any())).thenReturn("a")
         e.verifier.verifyBeforeInput(21, 21) { _, _ -> e.cleanups++ }
         runCurrent(); e.reply(this)
         assertEquals(0, e.cleanups)

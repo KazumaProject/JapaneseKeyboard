@@ -20,6 +20,7 @@ internal class EditorSelectionCleanup(
     private val revision: () -> Long,
     private val readMutex: Mutex,
     private val readDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val composingRange: () -> IntRange? = { null },
 ) {
     private data class Snapshot(
         val extracted: ExtractedText?,
@@ -81,6 +82,9 @@ internal class EditorSelectionCleanup(
             if (extracted?.text == null || extracted.partialStartOffset >= 0) {
                 // A completely unreadable editor is not evidence that new input ended.
                 if (snapshot.surrounding.all { it == null } || snapshot.surrounding.any(::isComposing)) return@launch
+                // Plain text does not prove that an existing composing region ended.
+                // With no absolute caret snapshot, retain the native composing range.
+                if (!matchSelection && composingRange() != null && snapshot.surrounding.none { it is Spanned }) return@launch
                 onCurrentSelection(start, end)
                 return@launch
             }
@@ -91,6 +95,11 @@ internal class EditorSelectionCleanup(
                 extracted.startOffset + extracted.selectionEnd != end))
             ) return@launch
             if (isComposing(text)) return@launch
+            val activeRange = composingRange()
+            if (!matchSelection && activeRange != null &&
+                extracted.startOffset + extracted.selectionStart in activeRange &&
+                extracted.startOffset + extracted.selectionEnd in activeRange
+            ) return@launch
             onCurrentSelection(extracted.startOffset + extracted.selectionStart, extracted.startOffset + extracted.selectionEnd)
         }
     }

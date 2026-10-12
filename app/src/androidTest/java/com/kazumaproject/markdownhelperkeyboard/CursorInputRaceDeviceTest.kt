@@ -81,6 +81,7 @@ class CursorInputRaceDeviceTest {
         try {
             shell("input keyevent WAKEUP"); shell("wm dismiss-keyguard")
             ActivityScenario.launch<FastInputHostActivity>(Intent(ctx, FastInputHostActivity::class.java)
+                .putExtra("stripStyles", args.getString("stripStyles") == "true")
                 .putExtra("refuseExtraction", args.getString("refuseExtraction") == "true")).use { scenario ->
                 var host: FastInputHostActivity? = null
                 scenario.onActivity { host = it }

@@ -19,9 +19,21 @@ class FastInputHostActivity : Activity() {
         editText = object : EditText(this) {
             override fun onCreateInputConnection(outAttrs: android.view.inputmethod.EditorInfo): android.view.inputmethod.InputConnection? {
                 val connection = super.onCreateInputConnection(outAttrs) ?: return null
-                if (!intent.getBooleanExtra("refuseExtraction", false)) return connection
+                if (!intent.getBooleanExtra("refuseExtraction", false) && !intent.getBooleanExtra("stripStyles", false)) return connection
                 return object : android.view.inputmethod.InputConnectionWrapper(connection, false) {
-                    override fun getExtractedText(request: android.view.inputmethod.ExtractedTextRequest?, flags: Int): android.view.inputmethod.ExtractedText? = null
+                    override fun getExtractedText(request: android.view.inputmethod.ExtractedTextRequest?, flags: Int): android.view.inputmethod.ExtractedText? {
+                        if (intent.getBooleanExtra("refuseExtraction", false)) return null
+                        val extracted = super.getExtractedText(request, flags) ?: return null
+                        return android.view.inputmethod.ExtractedText().apply {
+                            text = extracted.text?.toString()
+                            startOffset = extracted.startOffset
+                            partialStartOffset = extracted.partialStartOffset
+                            partialEndOffset = extracted.partialEndOffset
+                            selectionStart = extracted.selectionStart
+                            selectionEnd = extracted.selectionEnd
+                            this.flags = extracted.flags
+                        }
+                    }
                 }
             }
         }.apply {

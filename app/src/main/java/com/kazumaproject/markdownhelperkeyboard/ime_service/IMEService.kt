@@ -3396,8 +3396,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val selectionCleanupRevision = EditorMutationRevision()
     private val editorSelectionCleanup by lazy {
         EditorSelectionCleanup(scope, { currentInputConnection },
-            { selectionCleanupRevision.current() }, editorConnectionReadMutex)
+            { selectionCleanupRevision.current() }, editorConnectionReadMutex,
+            composingRange = {
+                if (cursorInputCandidatesStart >= 0 && cursorInputCandidatesEnd >= cursorInputCandidatesStart)
+                    cursorInputCandidatesStart..cursorInputCandidatesEnd else null
+            })
     }
+    private var cursorInputCandidatesStart = -1
+    private var cursorInputCandidatesEnd = -1
     private var cursorInputSelectionStart = -1
     private var cursorInputSelectionEnd = -1
     private var cursorSelectionMode = false
@@ -3663,6 +3669,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         selectionOrderedInput.cancel()
+        cursorInputCandidatesStart = -1
+        cursorInputCandidatesEnd = -1
         cursorInputSelectionStart = attribute?.initialSelStart ?: -1
         cursorInputSelectionEnd = attribute?.initialSelEnd ?: -1
         dismissKeyboardSelectionPopups()
@@ -8139,6 +8147,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (oldSelStart != newSelStart || oldSelEnd != newSelEnd) {
             horizontalCursorSelectionRevision.incrementAndGet()
         }
+        cursorInputCandidatesStart = candidatesStart
+        cursorInputCandidatesEnd = candidatesEnd
         cursorInputSelectionStart = newSelStart
         cursorInputSelectionEnd = newSelEnd
         cursorSelection.onSelectionChanged(newSelStart, newSelEnd)
