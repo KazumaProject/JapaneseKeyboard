@@ -1,20 +1,21 @@
 <?xml version='1.0' encoding='utf-8'?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-        <TextView android:id="@+id/sizingModeLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_mode" android:textAppearance="?attr/textAppearanceTitleMedium" />
-        <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/sizingModes" android:layout_width="match_parent" android:layout_height="wrap_content" app:singleSelection="true" app:selectionRequired="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="16dp" android:paddingBottom="16dp">
+        <TextView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingModeLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_mode" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <com.google.android.material.button.MaterialButtonToggleGroup android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingModes" android:layout_width="match_parent" android:layout_height="wrap_content" app:singleSelection="true" app:selectionRequired="true">
             <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingJapanese" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minWidth="0dp" android:minHeight="48dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:text="@string/sizing_hiragana" />
             <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingEnglish" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minWidth="0dp" android:minHeight="48dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:text="@string/sizing_english" />
             <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingNumbers" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minWidth="0dp" android:minHeight="48dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:text="@string/sizing_numbers" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
         <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_preview" android:textAppearance="?attr/textAppearanceTitleMedium" />
-                <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/sizingGuidePreview" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/sizing_show_guides" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="16dp" android:paddingBottom="16dp">
+                <TextView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_preview" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <com.google.android.material.materialswitch.MaterialSwitch android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingGuidePreview" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/sizing_show_guides" />
+                <!-- Match the IME viewport; horizontal card padding would crop wide keyboards. -->
                 <com.kazumaproject.tenkey.TenKey android:id="@+id/tenkeyLetterSizePreview" android:layout_width="match_parent" android:layout_height="280dp" android:layout_marginTop="12dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
+        <com.google.android.material.card.MaterialCardView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_letters" android:textAppearance="?attr/textAppearanceTitleMedium" />
                 <TextView android:id="@+id/sizingInherited" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_inherited" android:textAppearance="?attr/textAppearanceBodyMedium" />
@@ -33,7 +34,7 @@
                 <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button.TextButton" android:id="@+id/sizingResetMode" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/sizing_reset_mode" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
+        <com.google.android.material.card.MaterialCardView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_common" android:textAppearance="?attr/textAppearanceTitleMedium" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
@@ -48,6 +49,6 @@
                 <com.google.android.material.slider.Slider android:id="@+id/sizingHeight" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_height" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingResetAll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/sizing_reset_all" />
+        <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingResetAll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/sizing_reset_all" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
