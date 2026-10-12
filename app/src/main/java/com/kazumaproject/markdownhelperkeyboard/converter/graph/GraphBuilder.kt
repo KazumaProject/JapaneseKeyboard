@@ -378,6 +378,10 @@ class GraphBuilder {
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
+                // Typo lookup starts only when a suffix has more than two characters. An
+                // append can therefore introduce corrected nodes inside the cached prefix,
+                // which the append frontier would skip. Rebuild this optional lattice.
+                !enableTypoCorrectionJapaneseFlick &&
                 it.signature == signature &&
                 (
                     sessionState != null && str.length > it.input.length ||
