@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPa
 import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.FlickPreviewDelaySettings
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.SettingsBackupRepository
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.BufferedReader
@@ -95,6 +96,9 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     lateinit var appPreference: AppPreference
 
     @Inject
+    lateinit var settingsBackupRepository: SettingsBackupRepository
+
+    @Inject
     lateinit var localFontRepositoryProvider: javax.inject.Provider<LocalFontRepository>
 
     private lateinit var packageInfo: android.content.pm.PackageInfo
@@ -111,13 +115,15 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             if (uri == null) return@registerForActivityResult
-            runCatching {
-                val json = AppPreference.exportAllToJson()
-                writeTextToUri(uri, json)
-            }.onSuccess {
-                toast("Backup exported")
-            }.onFailure {
-                toast("Export failed: ${it.message}")
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val json = settingsBackupRepository.exportAllToJson()
+                    withContext(Dispatchers.IO) { writeTextToUri(uri, json) }
+                    toast("Backup exported")
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    toast("Export failed: ${e.message}")
+                }
             }
         }
 
@@ -127,7 +133,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val json = withContext(Dispatchers.IO) { readTextFromUri(uri) }
-                    AppPreference.importAllFromJson(json, replaceAll = true)
+                    settingsBackupRepository.importAllFromJson(json)
 
                     // Reset device-local display assets only after the JSON has been applied.
                     settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().restoreStandard() }
