@@ -502,6 +502,64 @@ class ModeSizingRegressionDeviceTest {
             }
         } finally { ins.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE) }
     }
+    @Test(timeout = 300000) fun wideTenkeyPreviewShowsTheWholeLiveKeyboard() {
+        val observations = mutableListOf<String>()
+        for (landscape in listOf(false, true)) {
+            val orientation = if (landscape) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            for (percent in listOf(50, 90, 94, 100)) for (alignEnd in listOf(false, true)) {
+                prefs.edit().putInt("keyboard_width_preference", percent)
+                    .putInt("keyboard_width_landscape_preference", percent)
+                    .putBoolean("keyboard_position_preference", alignEnd)
+                    .putBoolean("keyboard_position_landscape_preference", alignEnd).commit()
+                var activity = openSettings()
+                main { activity.requestedOrientation = orientation }
+                // Rotation can recreate the Activity during startup; measure its current view.
+                waitFor("wide-preview-orientation") {
+                    ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                        .filterIsInstance<MainActivity>().firstOrNull()?.let { activity = it }
+                    (activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) == landscape &&
+                        activity.findViewById<View>(R.id.tenkeyLetterSizePreview)?.width?.let { it > 0 } == true
+                }
+                previewTop(activity)
+                SystemClock.sleep(300)
+                val preview = main {
+                    val keyboard = activity.findViewById<View>(R.id.tenkeyLetterSizePreview)
+                    val bounds = Rect().also { assertTrue(keyboard.getGlobalVisibleRect(it)) }
+                    assertEquals("Preview must not crop a wide keyboard", keyboard.width, bounds.width())
+                    for (id in listOf(com.kazumaproject.tenkey.R.id.key_return, com.kazumaproject.tenkey.R.id.key_delete)) {
+                        val key = keyboard.findViewById<View>(id)
+                        val keyBounds = Rect().also { assertTrue(key.getGlobalVisibleRect(it)) }
+                        assertEquals("Side key must be completely visible", key.width, keyBounds.width())
+                    }
+                    keyboard.width to bounds.left
+                }
+                if (percent >= 90) capture("wide-preview-$landscape-$percent-$alignEnd")
+                var host = openEditor()
+                main { host.requestedOrientation = orientation }
+                waitFor("wide-live-orientation") {
+                    ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                        .filterIsInstance<FastInputHostActivity>().firstOrNull()?.let { host = it }
+                    (host.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) == landscape &&
+                        liveTenkeys().isNotEmpty()
+                }
+                SystemClock.sleep(700)
+                val live = main {
+                    val keyboard = liveTenkeys().first()
+                    val bounds = Rect().also { assertTrue(keyboard.getGlobalVisibleRect(it)) }
+                    keyboard.width to bounds.left
+                }
+                val case = "landscape=$landscape width=$percent alignEnd=$alignEnd preview=$preview live=$live"
+                observations.add(case)
+                record("wide-preview-geometry", observations.joinToString("\n"))
+                assertEquals("Preview width must match the live keyboard: $case", live.first, preview.first)
+                assertEquals("Preview alignment must match the live keyboard: $case", live.second, preview.second)
+                main { host.finish() }
+                SystemClock.sleep(250)
+            }
+        }
+    }
+
     @Test fun numericBracketCenterResizesWithGuidesDisabled() {
         prefs.edit().putBoolean("tenkey_use_three_state_keyboard_preference",true).commit()
         for (guided in listOf(false,true)) {
