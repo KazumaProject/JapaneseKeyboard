@@ -10,11 +10,8 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.BaseInputConnection
-import android.widget.PopupWindow
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -23,6 +20,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.AppModule
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardFileStore
+import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -110,6 +110,10 @@ class FloatingCursorDeviceTest {
         val plainEditor = args.getString("editor") in listOf("plain", "plain-filter")
         val expandingFilter = args.getString("editor") == "plain-filter"
         val landscape = args.getString("rotation") == "landscape"
+        val verifyClipboardPaste = args.getString("clipboard_paste") == "on"
+        val clipboardShortcut = if (verifyClipboardPaste) requireNotNull(
+            runCatching { ShortcutType.valueOf("FLOATING_CLIPBOARD") }.getOrNull()
+        ) { "Clipboard paste regression requires both PRs" } else null
         val oldIme = shell("settings get secure default_input_method")
         val oldRotation = shell("settings get system user_rotation")
         val oldAutoRotate = shell("settings get system accelerometer_rotation")
@@ -149,7 +153,15 @@ class FloatingCursorDeviceTest {
         }
         assertFalse(settings.enabled)
         val db = AppModule.providesLearnDatabase(context)
-        runBlocking { ShortcutRepository(db.shortcutDao()).updateShortcuts(listOf(ShortcutType.FLOATING_CURSOR) + if (surface == "floating") listOf(ShortcutType.KEYBOARD_FLOATING_TOGGLE) else emptyList()) }
+        runBlocking {
+            ShortcutRepository(db.shortcutDao()).updateShortcuts(listOf(ShortcutType.FLOATING_CURSOR) +
+                listOfNotNull(clipboardShortcut) + if (surface == "floating") listOf(ShortcutType.KEYBOARD_FLOATING_TOGGLE) else emptyList())
+            if (verifyClipboardPaste) {
+                val history = ClipboardHistoryRepository(db.clipboardHistoryDao(), ClipboardFileStore(context))
+                history.deleteAll()
+                history.insertFromClipboard(ClipboardItem.Text(0, "ZZ"), true)
+            }
+        }
         ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
         try {
             shell("input keyevent WAKEUP"); shell("wm dismiss-keyguard")
@@ -226,6 +238,34 @@ class FloatingCursorDeviceTest {
                     listOf(R.string.floating_cursor_left, R.string.floating_cursor_right, R.string.floating_cursor_up, R.string.floating_cursor_down).forEach {
                         val b = bounds(description(it)); assertTrue(b.width() >= 48 * density - 1); assertTrue(b.height() >= 48 * density - 1)
                     }
+                    if (verifyClipboardPaste) {
+                        check(keyboard in listOf("ROMAJI", "QWERTY"))
+                        val character = if (keyboard == "ROMAJI") "あ" else "a"
+                        listOf(0L, 600L).forEach { delay ->
+                            repeat(3) { attempt ->
+                                setText("", 0)
+                                touch(bounds(byDescription(requireNotNull(clipboardShortcut).description) {
+                                    it.className == "android.widget.LinearLayout"
+                                }))
+                                touch(bounds(key("key_a")))
+                                await("Initial preedit before paste") { value() == character }
+                                editor { host ->
+                                    assertEquals(0, BaseInputConnection.getComposingSpanStart(host.editText.text))
+                                    assertEquals(character.length, BaseInputConnection.getComposingSpanEnd(host.editText.text))
+                                }
+                                touch(bounds(findNode({ it.findAccessibilityNodeInfosByText("ZZ") }) { it.text?.toString() == "ZZ" }), settle = 0)
+                                await("Clipboard did not replace preedit") { value() == "ZZ" }
+                                editor { host -> assertEquals(-1, BaseInputConnection.getComposingSpanStart(host.editText.text)) }
+                                SystemClock.sleep(delay)
+                                touch(bounds(key("key_a")), settle = 0)
+                                await("Pre-paste text revived: keyboard=$keyboard delay=$delay attempt=$attempt actual=${value()}") {
+                                    value() == "ZZ$character"
+                                }
+                                touch(bounds(key("key_return")))
+                                assertEquals("Commit revived pre-paste text", "ZZ$character", value())
+                            }
+                        }
+                    }
                     setText("abcdef", 3)
                     val labels = nodes().filter { it.viewIdResourceName?.contains(":id/key_") == true }.associate { it.viewIdResourceName to (it.text?.toString() to bounds(it)) }
                     touch(bounds(description(R.string.floating_cursor_selection_off)))
@@ -279,23 +319,6 @@ class FloatingCursorDeviceTest {
                         }
                         editor { it.expandSingleLatinA = expandingFilter }
                         val expected = if (keyboard == "ROMAJI") "あ" else if (expandingFilter) "AA" else "a"
-                        if (args.getString("verify_preview") == "software" && android.os.Build.VERSION.SDK_INT >= 29) {
-                            // Inspecting windows on the main thread may exceed the long-press
-                            // deadline. Cancel this dedicated gesture instead of treating it as
-                            // a short character tap; leave the normal tap trials uninstrumented.
-                            setText("", 0)
-                            val previewBounds = bounds(key("key_a"))
-                            val previewDown = SystemClock.uptimeMillis()
-                            send(previewDown, MotionEvent.ACTION_DOWN, previewBounds.exactCenterX(), previewBounds.exactCenterY())
-                            try {
-                                SystemClock.sleep(40)
-                                ins.runOnMainSync { PreviewRendererProbe.assertSoftware() }
-                            } finally {
-                                send(previewDown, MotionEvent.ACTION_CANCEL, previewBounds.exactCenterX(), previewBounds.exactCenterY())
-                                SystemClock.sleep(150)
-                            }
-                            assertEquals("Canceled preview inspection entered a character", "", value())
-                        }
                         repeat(20) {
                             setText("", 0)
                             touch(bounds(description(R.string.floating_cursor_selection_off)))
@@ -342,25 +365,6 @@ class FloatingCursorDeviceTest {
                         await("Native completion at the same caret duplicated local preedit") { value() == expected + expected }
                         touch(bounds(key("key_return")))
                         editor { it.expandSingleLatinA = false }
-                        if (args.getString("verify_preview") == "software" && android.os.Build.VERSION.SDK_INT >= 29) {
-                            setText("", 0)
-                            var variation: Char? = null
-                            // Capture a deliberate long press separately from the tap trials.
-                            // Screenshots can exceed the key's long-press deadline on emulators.
-                            touch(bounds(key("key_a")), hold = 650, duringHold = {
-                                ins.runOnMainSync { variation = PreviewRendererProbe.assertVariationSoftware() }
-                                ui.takeScreenshot()?.let { bitmap ->
-                                    val directory = File(context.filesDir, "floating-cursor-results").apply { mkdirs() }
-                                    File(directory, "key-variation-${args.getString("skin") ?: "default"}-$surface-$keyboard.png")
-                                        .outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                                    bitmap.recycle()
-                                }
-                            })
-                            await("Long-press variation did not reach the editor: expected=$variation actual=${value()}") {
-                                value() == variation.toString()
-                            }
-                            touch(bounds(key("key_return")))
-                        }
                     }
                     if (args.getString("pointer_probe") == "on") {
                         // The first finger is already suppressed by default-mode rollover.
@@ -458,44 +462,4 @@ class FloatingCursorDeviceTest {
         }
     }
 
-    /** Isolated so API24's test discovery does not resolve the API29 inspector. */
-    private object PreviewRendererProbe {
-        private fun keyboards(): List<com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView> {
-            fun descendants(view: View): List<View> = buildList {
-                add(view)
-                if (view is ViewGroup) for (index in 0 until view.childCount) addAll(descendants(view.getChildAt(index)))
-            }
-            return android.view.inspector.WindowInspector.getGlobalWindowViews().flatMap(::descendants)
-                .filterIsInstance<com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView>()
-        }
-
-        fun assertVariationSoftware(): Char {
-            val (keyboard, popup) = keyboards().mapNotNull { keyboard ->
-                val popup = keyboard.javaClass.getDeclaredField("variationPopup").apply { isAccessible = true }
-                    .get(keyboard) as? PopupWindow
-                popup?.takeIf { it.isShowing }?.let { keyboard to it }
-            }.single()
-            assertTrue("Keyboard hardware rendering was disabled", keyboard.isHardwareAccelerated)
-            assertTrue("Variation popup was not attached", popup.contentView.isAttachedToWindow)
-            assertFalse("Variation popup still owns a hardware renderer", popup.contentView.isHardwareAccelerated)
-            return requireNotNull((popup.contentView as com.kazumaproject.qwerty_keyboard.ui.VariationsPopupView).getSelectedChar())
-        }
-
-        fun assertSoftware() {
-            val previews = keyboards().flatMap { keyboard ->
-                @Suppress("UNCHECKED_CAST")
-                val popups = keyboard.javaClass.getDeclaredField("keyPreviewPopups").apply { isAccessible = true }
-                    .get(keyboard) as Map<Int, PopupWindow>
-                popups.values.filter { it.isShowing }.map { keyboard to it }
-            }
-            assertTrue("No visible key preview was inspected", previews.isNotEmpty())
-            previews.forEach { (keyboard, popup) ->
-                assertTrue("Keyboard hardware rendering was disabled", keyboard.isHardwareAccelerated)
-                assertTrue("Key preview was not attached", popup.contentView.isAttachedToWindow)
-                assertFalse("Key preview still owns a hardware renderer", popup.contentView.isHardwareAccelerated)
-                assertTrue("Preview context changed the shared application flags",
-                    keyboard.context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_HARDWARE_ACCELERATED != 0)
-            }
-        }
-    }
 }

@@ -7,6 +7,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
+import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorComposingExpectation
@@ -17,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -84,6 +86,58 @@ class IMEServiceFloatingCursorRegressionTest {
         assertEquals(CursorComposingExpectation(0, "あ"), expectation())
         assertTrue(service.commitText("あ", 1))
         assertNull(expectation())
+    }
+
+    private fun pendingPreedit(): MutableStateFlow<String> {
+        val input = ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString")
+        input.value = "あ"
+        ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail").set("し")
+        ReflectionHelpers.setField(service, "cursorInputTracking", true)
+        whenever(editor.setComposingText(any(), any())).thenReturn(true)
+        assertTrue(service.setComposingText("あし", 1))
+        return input
+    }
+
+    private fun paste(text: String) {
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "pasteClipboardItemContent",
+            ClassParameter.from(ClipboardItem::class.java, ClipboardItem.Text(0, text)))
+    }
+
+    @Test fun acceptedPasteClearsLocalPreeditWithoutWaitingForSelectionNotification() {
+        val input = pendingPreedit()
+        whenever(editor.commitText("ZZ", 1)).thenReturn(true)
+        paste("ZZ")
+        verify(editor).commitText("ZZ", 1)
+        assertEquals("", input.value)
+        assertEquals("", ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail").get())
+        assertNull(expectation())
+        // A key accepted before the editor's selection callback starts a fresh preedit.
+        input.value += "あ"
+        assertTrue(service.setComposingText(input.value, 1))
+        val writes = argumentCaptor<CharSequence>()
+        verify(editor, atLeastOnce()).setComposingText(writes.capture(), eq(1))
+        assertEquals("あ", writes.lastValue.toString())
+        assertEquals("あ", input.value)
+    }
+
+    @Test fun rejectedPasteKeepsLocalPreeditAndTail() {
+        val input = pendingPreedit()
+        val before = expectation()
+        whenever(editor.commitText("ZZ", 1)).thenReturn(false)
+        paste("ZZ")
+        assertEquals("あ", input.value)
+        assertEquals("し", ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail").get())
+        assertEquals(before, expectation())
+        verify(service.appPreference, never()).last_pasted_clipboard_text_preference = any()
+    }
+
+    @Test fun emptyPasteDoesNotReplaceOrDiscardPreedit() {
+        val input = pendingPreedit()
+        val before = expectation()
+        paste("")
+        verify(editor, never()).commitText(any(), any())
+        assertEquals("あ", input.value)
+        assertEquals(before, expectation())
     }
 
     private fun checkVertical(key: QWERTYKey, keyCode: Int) = runTest {
