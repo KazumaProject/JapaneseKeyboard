@@ -178,6 +178,10 @@ class FloatingClipboardDeviceTest {
                 assertFalse(nodes().any { it.text?.toString() == context.getString(R.string.floating_clipboard_title) })
                 val historySwitch = text(R.string.floating_clipboard_history)
                 assertFalse(historySwitch.isChecked)
+                touch(rect(historySwitch))
+                await("Floating history switch did not enable recording") {
+                    prefs.getBoolean("clipboard_history_preference", false)
+                }
                 touch(rect(preview(longItem.preview)))
                 await("The full stored text was not pasted") {
                     var value = ""; onEditor { value = it.editText.text.toString() }; value == fullText
@@ -222,6 +226,15 @@ class FloatingClipboardDeviceTest {
                 touch(rect(icon()))
                 touch(rect(node { it.contentDescription == ShortcutType.CLIP_BOARD.description }))
                 await("Deleted row remained in the original clipboard") { nodes().none { it.text?.toString() == deleteText } }
+                val originalHistorySwitch = node { it.viewIdResourceName?.endsWith(":id/clipboard_tab_switch") == true }
+                assertTrue("Original history switch did not receive the floating switch state", originalHistorySwitch.isChecked)
+                touch(rect(originalHistorySwitch))
+                await("Original history switch did not disable recording") {
+                    !prefs.getBoolean("clipboard_history_preference", true)
+                }
+                touch(rect(node { it.viewIdResourceName?.endsWith(":id/return_jp_keyboard_button") == true }))
+                touch(rect(icon()))
+                assertFalse("Floating history switch did not receive the original switch state", text(R.string.floating_clipboard_history).isChecked)
                 } catch (failure: Throwable) {
                     ui.takeScreenshot()?.let { bitmap ->
                         File(context.filesDir, "clipboard-failure.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
