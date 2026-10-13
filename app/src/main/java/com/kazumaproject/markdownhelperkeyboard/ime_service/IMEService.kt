@@ -5,6 +5,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorDirection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorMovement
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorAnchorCompositionProbe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorInputSynchronization
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorComposingExpectation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorController
@@ -3378,9 +3379,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val cursorWorkGeneration = AtomicLong(0)
     private val cursorInputGeneration = AtomicLong(0)
     private val cursorSnapshotRevision = AtomicLong(0)
+    private var cursorUpdateRequestEditor: InputConnection? = null
+    private var cursorUpdateRequestMode = 0
+    private val cursorAnchorProbe by lazy {
+        CursorAnchorCompositionProbe({ currentInputConnection }, { cursorSnapshotRevision.get() },
+            { if (cursorUpdateRequestEditor === currentInputConnection) cursorUpdateRequestMode else 0 })
+    }
     private val cursorSynchronization by lazy {
         CursorInputSynchronization(scope, { currentInputConnection }, { cursorSnapshotRevision.get() },
-            editorConnectionReadMutex, { cursorNativeComposingRange }, expectedComposing = { cursorWrittenComposing })
+            editorConnectionReadMutex, { cursorNativeComposingRange }, expectedComposing = { cursorWrittenComposing },
+            compositionProbe = { editor, start, end -> cursorAnchorProbe.read(editor, start, end) })
     }
     private val cursorMovement by lazy {
         CursorMovement(editorConnectionReadMutex,
@@ -3455,6 +3463,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stopCursorInputGestures()
         cursorMovement.reset()
         cursorSynchronization.reset()
+        cursorAnchorProbe.reset()
         cursorSnapshotRevision.incrementAndGet()
         cursorSelectionMode = false
         cursorPreviewGesture = null
@@ -7020,6 +7029,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        cursorAnchorProbe.onUpdate(cursorAnchorInfo)
 
         val positions = physicalKeyboardPopupPositions.update(
             anchorInfo = cursorAnchorInfo,
@@ -7036,6 +7046,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             if (shown) modeSwitchAwaitingCursorPosition = false
         }
+        // Cursor verification also requests geometry for on-screen input. Its native
+        // composition reply must not open the physical-keyboard candidate window.
+        if (physicalKeyboardEnable.replayCache.firstOrNull() != true) return
         val candidateAnchor = positions.candidate ?: return
         ensurePhysicalKeyboardPopupWindows()
         floatingCandidateWindow?.let { candidateWindow ->
@@ -30586,7 +30599,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun requestCursorUpdates(p0: Int): Boolean {
         val connection = currentInputConnection ?: return false
-        return connection.requestCursorUpdates(p0)
+        return connection.requestCursorUpdates(p0).also { accepted ->
+            if (accepted) {
+                cursorUpdateRequestEditor = connection
+                cursorUpdateRequestMode = p0
+            }
+        }
     }
 
     override fun getHandler(): Handler? {

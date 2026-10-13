@@ -1525,7 +1525,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             when (event.actionMasked) {
                 MotionEvent.ACTION_MOVE -> {
                     val threshold = 20f
-                    val index = if (independentMultiTouchForCurrentGesture) cursorPointerId?.let(event::findPointerIndex) ?: 0 else 0
+                    val index = cursorPointerId?.let(event::findPointerIndex) ?: 0
                     if (index < 0) return true
                     val currentX = event.getX(index)
                     val currentY = event.getY(index)
@@ -1550,9 +1550,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                     if (event.actionMasked == MotionEvent.ACTION_POINTER_UP &&
-                        (!independentMultiTouchForCurrentGesture || event.getPointerId(event.actionIndex) != cursorPointerId)) return true
+                        event.getPointerId(event.actionIndex) != cursorPointerId) return true
                     setCursorMode(false)
-                    clearAllPressed()
+                    clearAllPressed(clearSuppressedPointers = false)
+                    if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
+                        // Other fingers remain physically down after the space owner lifts.
+                        // They must not re-enter a key on MOVE or turn their final UP into input.
+                        for (index in 0 until event.pointerCount) {
+                            if (index != event.actionIndex) suppressedPointerIds.add(event.getPointerId(index))
+                        }
+                    }
                 }
 
                 MotionEvent.ACTION_CANCEL -> {
@@ -2646,6 +2653,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (isTablet) return
         if (!showPopupView) return
         dismissKeyPreview(pointerId = if (independentMultiTouchForCurrentGesture) pointerId else null)
+        val previewContext = KeyPopupContext(context)
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             val label = (view as? android.widget.TextView)?.text?.toString().orEmpty()
             if (label.isEmpty()) return
@@ -2655,7 +2663,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val w = geometry.width
             val h = geometry.height
             val xOffset = geometry.xOffset
-            val content = android.widget.TextView(context).apply {
+            val content = android.widget.TextView(previewContext).apply {
                 text = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC ||
                     capsLockState.value.capsLockOn || capsLockState.value.shiftOn) label.uppercase() else label
                 setTextColor(skin.palette.text)
@@ -2680,7 +2688,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
-        val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
+        val popupView = LayoutInflater.from(context).cloneInContext(previewContext).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
         tv.setTextSize(
@@ -2993,7 +3001,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun showVariationPopup(anchorView: View, variations: List<Char>) {
         dismissVariationPopup()
-        val context = this.context
+        val context = KeyPopupContext(this.context)
         val skin = KeyboardSkinRegistry.find(keyboardSkinId)
         variationPopupView = VariationsPopupView(context).apply {
             applyPopupViewStyle(if (skin != null) variationPopupStyle.copy(skinId = keyboardSkinId) else variationPopupStyle)
@@ -3103,13 +3111,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
         if (enabled) {
+            cursorPointerId = (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
+                .firstOrNull { pointerButtonMap[it]?.id == binding.keySpace.id }
+            cursorPointerId?.let { pointerStartCoords[it] }?.let { position ->
+                cursorInitialX = position.first
+                cursorInitialY = position.second
+            }
             if (independentMultiTouchForCurrentGesture) {
-                cursorPointerId = (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
-                    .firstOrNull { pointerButtonMap[it]?.id == binding.keySpace.id }
-                cursorPointerId?.let { pointerStartCoords[it] }?.let { position ->
-                    cursorInitialX = position.first
-                    cursorInitialY = position.second
-                }
                 (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
                     .filter { it != cursorPointerId }.forEach { pid ->
                         notifyQwertyTouchCanceledForPointer(pid, KeyTouchCancelReason.PointerInterrupted)

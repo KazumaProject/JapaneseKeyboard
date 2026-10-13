@@ -1,8 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor
 
 import android.text.Spanned
+import android.util.Log
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +26,7 @@ internal class CursorInputSynchronization(
     private val composingRange: () -> IntRange?,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val expectedComposing: () -> CursorComposingExpectation? = { null },
+    private val compositionProbe: suspend (InputConnection, Int, Int) -> Boolean? = { _, _, _ -> null },
 ) {
     private var generation = 0L
     private var checkJob: Job? = null
@@ -84,6 +87,7 @@ internal class CursorInputSynchronization(
         val editor = connection() ?: return
         val token = generation
         val version = revision()
+        trace("verify token=$token version=$version notification=$start,$end match=$matchNotification")
         checkJob = scope.launch {
             val snapshot = mutex.withLock {
                 withContext(dispatcher) {
@@ -110,7 +114,18 @@ internal class CursorInputSynchronization(
             val stylesAvailable = if (snapshot.absolute) snapshot.texts.singleOrNull() is Spanned else
                 snapshot.texts[0] is Spanned && snapshot.texts[2] is Spanned &&
                     (snapshot.texts[1] == null || snapshot.texts[1] is Spanned)
-            if (!stylesAvailable && preservesUnstyledComposition(snapshot)) return@launch
+            trace("snapshot token=$token selection=${snapshot.start},${snapshot.end} offset=${snapshot.offset} styles=$stylesAvailable lengths=${snapshot.texts.map { it?.length }}")
+            if (!stylesAvailable) {
+                val nativeComposing = if (expectedComposing() != null || composingRange() != null)
+                    compositionProbe(editor, snapshot.start, snapshot.end) else null
+                trace("probe token=$token nativeComposing=$nativeComposing current=${token == generation && version == revision() && connection() === editor}")
+                // The probe suspends while an editor callback arrives. A composing write,
+                // newer notification or input-target change may invalidate the earlier read.
+                if (token != generation || version != revision() || connection() !== editor) return@launch
+                if (nativeComposing == true ||
+                    (nativeComposing == null && preservesUnstyledComposition(snapshot))) return@launch
+            }
+            trace("apply token=$token selection=${snapshot.start},${snapshot.end}")
             currentSelection(snapshot.start, snapshot.end)
         }
     }
@@ -132,6 +147,7 @@ internal class CursorInputSynchronization(
             if (localStart < 0 || localEnd > nativeText.length) return true
             // InputFilters can change an accepted write's text without ending native
             // composition. A text mismatch cannot distinguish that from an external edit.
+            if (nativeText.subSequence(localStart.toInt(), localEnd.toInt()).toString() != expected.text) return true
             return snapshot.start.toLong() in expectedStart.toLong()..expectedEnd &&
                 snapshot.end.toLong() in expectedStart.toLong()..expectedEnd
         }
@@ -143,4 +159,8 @@ internal class CursorInputSynchronization(
     }
     private fun hasComposingSpan(text: CharSequence?): Boolean = text is Spanned &&
         text.getSpans(0, text.length, Any::class.java).any { text.getSpanFlags(it) and Spanned.SPAN_COMPOSING != 0 }
+
+    private fun trace(message: String) {
+        if (BuildConfig.DEBUG) Log.d("CursorInputSync", message)
+    }
 }
