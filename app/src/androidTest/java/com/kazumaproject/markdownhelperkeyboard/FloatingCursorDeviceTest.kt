@@ -57,7 +57,7 @@ class FloatingCursorDeviceTest {
     }
     private fun bounds(node: AccessibilityNodeInfo) = Rect().also(node::getBoundsInScreen)
     private fun description(resource: Int) = node { it.contentDescription == context.getString(resource) &&
-        (resource != R.string.floating_cursor_title || it.className != "android.widget.LinearLayout") }
+        (resource != R.string.floating_cursor_title || it.className == "android.widget.FrameLayout") }
     private fun key(id: String) = node { it.viewIdResourceName?.endsWith(":id/$id") == true }
     private fun send(down: Long, action: Int, x: Float, y: Float) {
         val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
