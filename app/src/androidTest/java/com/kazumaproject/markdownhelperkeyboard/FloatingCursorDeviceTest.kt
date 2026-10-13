@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.ParcelFileDescriptor
@@ -19,8 +20,6 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
-import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.AppModule
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
@@ -154,12 +153,10 @@ class FloatingCursorDeviceTest {
         ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
         try {
             shell("input keyevent WAKEUP"); shell("wm dismiss-keyguard")
-            ui.setRotation(if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90 else android.app.UiAutomation.ROTATION_FREEZE_0)
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)
-                .putExtra("plain_editor_snapshots", plainEditor)).use {
-                var host: FastInputHostActivity? = null
-                ins.runOnMainSync { host = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<FastInputHostActivity>().single() }
-                fun editor(action: (FastInputHostActivity) -> Unit) = ins.runOnMainSync { action(requireNotNull(host)) }
+                .putExtra("plain_editor_snapshots", plainEditor)).use { scenario ->
+                // Rotation can recreate the host. Always use the current native editor.
+                fun editor(action: (FastInputHostActivity) -> Unit) { scenario.onActivity { action(it) } }
                 fun selection() : Pair<Int, Int> { var value = -1 to -1; editor { value = minOf(it.editText.selectionStart, it.editText.selectionEnd) to maxOf(it.editText.selectionStart, it.editText.selectionEnd) }; return value }
                 fun value(): String { var result = ""; editor { result = it.editText.text.toString() }; return result }
                 fun setText(text: String, cursor: Int) {
@@ -169,6 +166,21 @@ class FloatingCursorDeviceTest {
                 fun icon() = byDescription(ShortcutType.FLOATING_CURSOR.description) { it.className == "android.widget.LinearLayout" }
                 fun arrow(resource: Int) = touch(bounds(description(resource)))
                 try {
+                    // Leaving a NOSENSOR activity can restore the platform's saved rotation
+                    // lock. Apply ours after the host has resumed and verify the actual display.
+                    check(ui.setRotation(if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
+                        else android.app.UiAutomation.ROTATION_FREEZE_0))
+                    await("Requested screen orientation was not applied to the native activity") {
+                        var actual = Configuration.ORIENTATION_UNDEFINED
+                        editor { actual = it.resources.configuration.orientation }
+                        actual == if (landscape) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
+                    }
+                    requireNotNull(ui.takeScreenshot()).let { bitmap ->
+                        try {
+                            assertEquals("Actual display orientation disagrees with the test argument",
+                                landscape, bitmap.width > bitmap.height)
+                        } finally { bitmap.recycle() }
+                    }
                     shell("ime enable $target"); shell("ime set $target")
                     editor { it.restartEditorInput(true) }
                     SystemClock.sleep(600)
