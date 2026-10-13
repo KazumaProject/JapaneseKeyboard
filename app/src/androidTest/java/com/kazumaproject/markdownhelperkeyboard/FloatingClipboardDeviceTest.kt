@@ -141,7 +141,7 @@ class FloatingClipboardDeviceTest {
                 fun icon() = node { it.contentDescription == ShortcutType.FLOATING_CLIPBOARD.description && it.className == "android.widget.LinearLayout" }
                 fun description(resource: Int) = node {
                     it.contentDescription == context.getString(resource) &&
-                        (resource != R.string.floating_clipboard_title || it.className != "android.widget.LinearLayout")
+                        (resource != R.string.floating_clipboard_title || it.className == "android.widget.FrameLayout")
                 }
                 fun text(resource: Int) = node { it.text?.toString() == context.getString(resource) }
                 fun preview(value: String): AccessibilityNodeInfo {
@@ -207,7 +207,7 @@ class FloatingClipboardDeviceTest {
                 val prefix = "floating_clipboard_${if (landscape) "landscape" else "portrait"}_"
                 assertTrue(prefs.contains(prefix + "width"))
                 touch(rect(description(R.string.floating_dictionary_hide)))
-                await("Close left the panel visible") { nodes().none { it.contentDescription == context.getString(R.string.floating_clipboard_title) && it.className != "android.widget.LinearLayout" } }
+                await("Close left the panel visible") { nodes().none { it.contentDescription == context.getString(R.string.floating_clipboard_title) && it.className == "android.widget.FrameLayout" } }
                 touch(rect(icon()))
                 val restored = rect(description(R.string.floating_clipboard_title))
                 assertTrue("Width was not restored: $saved / $restored", kotlin.math.abs(saved.width() - restored.width()) <= 2)
