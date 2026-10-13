@@ -275,6 +275,16 @@
     <string name="flick_threshold_shape_radial">Uniform in every direction (circular, recommended)</string>
     <string name="flick_threshold_shape_rectangular">Horizontal and vertical threshold (rectangular)</string>
     <string name="tfbi_diagonal_recognition_mode_title">Two/three-step diagonal detection</string>
+    <string name="sumire_flick_rotation_title">Two/three-step flick rotation direction</string>
+    <string name="sumire_flick_input_mode_title">Three-step flick input features</string>
+    <string name="sumire_flick_input_mode_contracted">Contracted sounds and long vowels</string>
+    <string name="sumire_flick_input_mode_voiced">Voiced and semi-voiced kana</string>
+    <string name="sumire_flick_input_mode_all">All (default)</string>
+    <string name="sumire_flick_input_mode_summary">Choose contracted sounds such as きょ and きょう, voiced kana such as が and ぱ, or both.</string>
+    <string name="sumire_flick_rotation_default">Default (current layout)</string>
+    <string name="sumire_flick_rotation_clockwise">Clockwise</string>
+    <string name="sumire_flick_rotation_counterclockwise">Counterclockwise</string>
+    <string name="sumire_flick_rotation_summary">Turn to select voiced or semi-voiced kana. Not applied to contracted sounds only.</string>
     <string name="tfbi_diagonal_recognition_mode_legacy">Legacy</string>
     <string name="tfbi_diagonal_recognition_mode_stable">Stable (require a clear turn)</string>
     <string name="long_press_timeout_preference_title">Long-press Time</string>
