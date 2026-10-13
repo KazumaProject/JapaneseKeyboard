@@ -1439,7 +1439,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -1965,7 +1965,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -2423,7 +2423,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -2938,7 +2938,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3525,7 +3525,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -4042,7 +4042,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -4249,6 +4249,24 @@ class KanaKanjiEngine {
 
     }
 
+    private fun createAlphanumericCaseCandidates(input: String): List<Candidate> {
+        // Mixed ASCII letters/digits need literal variants without English dictionary prediction.
+        if (!input.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } ||
+            input.none { it in 'a'..'z' || it in 'A'..'Z' } ||
+            input.none { it in '0'..'9' }
+        ) return emptyList()
+
+        return listOf(input, input.replaceFirstChar { it.uppercaseChar() }, input.uppercase())
+            .mapIndexed { index, text ->
+                Candidate(
+                    string = text,
+                    type = 29,
+                    length = input.length.toUByte(),
+                    score = 10000 + index,
+                )
+            }.distinctBy { it.string }
+    }
+
     private fun getEnglishCandidates(
         input: String,
         enableTypoCorrection: Boolean = false,
@@ -4350,7 +4368,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            emptyList()
+            createAlphanumericCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
