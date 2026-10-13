@@ -33,6 +33,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
@@ -52,6 +54,35 @@ internal object CustomThemeColorPreferenceKeys {
 }
 
 object AppPreference {
+
+    const val VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY = "voice_input_space_replacement_enabled"
+    const val VOICE_INPUT_SPACE_REPLACEMENT_KEY = "voice_input_space_replacement"
+    const val VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY = "voice_input_space_custom_text"
+
+    var voice_input_space_replacement_enabled: Boolean
+        get() = preferences.getBoolean(VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY, value)
+        }
+
+    var voice_input_space_replacement: String
+        get() = preferences.getString(VOICE_INPUT_SPACE_REPLACEMENT_KEY, "remove") ?: "remove"
+        set(value) = preferences.edit {
+            it.putString(VOICE_INPUT_SPACE_REPLACEMENT_KEY, value)
+        }
+
+    var voice_input_space_custom_text: String
+        get() = preferences.getString(VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY, "") ?: ""
+        set(value) = preferences.edit {
+            it.putString(VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY, value)
+        }
+
+    val voice_input_settings: VoiceInputSettings
+        get() = VoiceInputSettings(
+            enabled = voice_input_space_replacement_enabled,
+            replacement = VoiceInputSpaceReplacement.fromPreference(voice_input_space_replacement),
+            customText = voice_input_space_custom_text,
+        )
 
     const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =
         "preserve_dictionary_word_whitespace_preference"
