@@ -8,8 +8,6 @@ plugins {
 android {
     namespace 'com.kazumaproject.markdownhelperkeyboard'
     compileSdk = 37
-    // Use the same NDK as :zenz for stripping and extracting native symbols.
-    ndkVersion "29.0.14206865"
 
     def localProperties = new Properties()
     def localPropertiesFile = rootProject.file("local.properties")
