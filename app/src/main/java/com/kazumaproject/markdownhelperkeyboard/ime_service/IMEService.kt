@@ -16845,6 +16845,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * @param bitmap 送信するBitmapオブジェクト。
      */
     private fun commitBitmap(bitmap: Bitmap) {
+        endCursorSelectionForInput()
+        floatingCursor?.updateSelection(false, !hasCursorPreedit())
         // ▼▼▼ ログ追加 ▼▼▼
         Timber.d("commitBitmap: 開始")
 
