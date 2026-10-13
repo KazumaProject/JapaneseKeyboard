@@ -10,14 +10,22 @@ object PhysicalKanaMapper {
 
     fun resolve(
         keyCode: Int,
-        isShift: Boolean
+        isShift: Boolean,
+        baseUnicode: Int? = null
     ): String? {
         // Kana input is an IME-level JIS/109A kana arrangement. Normal symbols stay with Android KCM.
+        // Some OS overlays retain US Android key codes for the JIS punctuation keys.
+        val jisKeyCode = when (baseUnicode) {
+            '@'.code -> KeyEvent.KEYCODE_AT
+            '['.code -> KeyEvent.KEYCODE_LEFT_BRACKET
+            ']'.code -> KeyEvent.KEYCODE_RIGHT_BRACKET
+            else -> keyCode
+        }
         val layoutMap = jisKanaMap
         return if (isShift) {
-            layoutMap.shifted[keyCode] ?: layoutMap.base[keyCode]
+            layoutMap.shifted[jisKeyCode] ?: layoutMap.base[jisKeyCode]
         } else {
-            layoutMap.base[keyCode]
+            layoutMap.base[jisKeyCode]
         }
     }
 
@@ -62,8 +70,10 @@ object PhysicalKanaMapper {
             KeyEvent.KEYCODE_COMMA to "ね",
             KeyEvent.KEYCODE_PERIOD to "る",
             KeyEvent.KEYCODE_SLASH to "め",
-            KeyEvent.KEYCODE_LEFT_BRACKET to "゛",
-            KeyEvent.KEYCODE_RIGHT_BRACKET to "゜",
+            // JIS key-code fallback when the event's base character is unavailable.
+            KeyEvent.KEYCODE_AT to "゛",
+            KeyEvent.KEYCODE_LEFT_BRACKET to "゜",
+            KeyEvent.KEYCODE_RIGHT_BRACKET to "む",
             KeyEvent.KEYCODE_YEN to "ー",
             KeyEvent.KEYCODE_RO to "ろ",
         ),
@@ -82,7 +92,8 @@ object PhysicalKanaMapper {
             KeyEvent.KEYCODE_COMMA to "、",
             KeyEvent.KEYCODE_PERIOD to "。",
             KeyEvent.KEYCODE_SLASH to "・",
-            KeyEvent.KEYCODE_RIGHT_BRACKET to "「",
+            KeyEvent.KEYCODE_LEFT_BRACKET to "「",
+            KeyEvent.KEYCODE_RIGHT_BRACKET to "」",
             KeyEvent.KEYCODE_YEN to "ー",
             KeyEvent.KEYCODE_RO to "ろ",
         )
