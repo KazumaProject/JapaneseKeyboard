@@ -251,6 +251,7 @@ fun ShortcutType.summary(context: android.content.Context): String =
         ShortcutType.GEMMA_IMAGE -> context.getString(R.string.shortcut_toolbar_summary_gemma_image)
         ShortcutType.GEMMA_AUDIO -> context.getString(R.string.shortcut_toolbar_summary_gemma_audio)
         ShortcutType.GEMMA_HANDWRITING -> context.getString(R.string.shortcut_toolbar_summary_gemma_handwriting)
+        ShortcutType.FLOATING_CURSOR -> context.getString(R.string.floating_cursor_summary)
         ShortcutType.CLIP_BOARD -> context.getString(R.string.shortcut_toolbar_summary_clip_board)
     }
 

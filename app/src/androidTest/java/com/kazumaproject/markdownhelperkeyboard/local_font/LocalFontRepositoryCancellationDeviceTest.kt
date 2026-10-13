@@ -26,7 +26,7 @@ class LocalFontRepositoryCancellationDeviceTest {
         val repository = LocalFontRepository(context)
         val resolver = context.contentResolver
         val uri = Uri.parse(
-            "content://com.kazumaproject.markdownhelperkeyboard.lite.localfonttest/font/late-blocked-cursor",
+            "content://${InstrumentationRegistry.getInstrumentation().context.packageName}.localfonttest/font/late-blocked-cursor",
         )
         repository.loadIfNeeded()
 
@@ -78,7 +78,7 @@ class LocalFontRepositoryCancellationDeviceTest {
         val repository = LocalFontRepository(context)
         val resolver = context.contentResolver
         val blockedUri = Uri.parse(
-            "content://com.kazumaproject.markdownhelperkeyboard.lite.localfonttest/font/blocked-cursor",
+            "content://${InstrumentationRegistry.getInstrumentation().context.packageName}.localfonttest/font/blocked-cursor",
         )
         repository.loadIfNeeded()
 
@@ -128,7 +128,7 @@ class LocalFontRepositoryCancellationDeviceTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val repository = LocalFontRepository(context)
         val resolver = context.contentResolver
-        val authority = "com.kazumaproject.markdownhelperkeyboard.lite.localfonttest"
+        val authority = "${InstrumentationRegistry.getInstrumentation().context.packageName}.localfonttest"
         val blockedUri = Uri.parse("content://$authority/font/blocked")
         val validUri = Uri.parse("content://$authority/font/valid")
         repository.loadIfNeeded()
