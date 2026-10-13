@@ -179,6 +179,8 @@ class SumireFlickRotationDeviceTest {
 
     private fun key(label: String): Rect {
         val deadline = SystemClock.uptimeMillis() + 15000
+        var previousBounds: Rect? = null
+        var stableSince = 0L
         while (SystemClock.uptimeMillis() < deadline) {
             val nodes = mutableListOf<AccessibilityNodeInfo>()
             fun visit(node: AccessibilityNodeInfo) {
@@ -186,17 +188,27 @@ class SumireFlickRotationDeviceTest {
                 repeat(node.childCount) { node.getChild(it)?.let(::visit) }
             }
             automation.windows.forEach { it.root?.let(::visit) }
-            nodes.firstOrNull { it.packageName?.toString() == context.packageName &&
+            val node = nodes.firstOrNull { it.packageName?.toString() == context.packageName &&
                     it.isVisibleToUser && it.isClickable &&
                     (it.text?.toString()?.lineSequence()?.firstOrNull()?.trim() == label ||
                         it.contentDescription?.toString() == label)
-            }?.let { node ->
-                val bounds = Rect().also(node::getBoundsInScreen)
-                if (!bounds.isEmpty) return bounds
+            }
+            // isVisibleToUser can become true while the IME is still sliding into place.
+            // Refresh cached accessibility coordinates and wait for the key to settle;
+            // otherwise a gesture can hit another row or the system navigation area.
+            val bounds = node?.takeIf { it.refresh() && it.isVisibleToUser }
+                ?.let { Rect().also(it::getBoundsInScreen) }
+                ?.takeUnless { it.isEmpty }
+            val now = SystemClock.uptimeMillis()
+            if (bounds != previousBounds) {
+                previousBounds = bounds
+                stableSince = now
+            } else if (bounds != null && now - stableSince >= 400) {
+                return bounds
             }
             SystemClock.sleep(100)
         }
-        error("Sumire key $label was not visible")
+        error("Sumire key $label did not become visible with stable screen bounds")
     }
 
     private fun awaitLayout(style: String, rotation: TfbiFlickRotation,
