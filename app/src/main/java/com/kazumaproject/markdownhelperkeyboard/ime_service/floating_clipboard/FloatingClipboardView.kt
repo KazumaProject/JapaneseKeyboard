@@ -27,6 +27,7 @@ import com.kazumaproject.listeners.ClipboardItemAction
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.FloatingPanelFrame
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.FloatingWindowCoordinates
 
 /** A history list that never takes the application's input focus. */
 internal class FloatingClipboardView(
@@ -154,7 +155,31 @@ internal class FloatingClipboardView(
         }
         popup.setOnDismissListener { if (menu === popup) menu = null }
         menu = popup
-        popup.showAsDropDown(anchor, 0, 0, Gravity.END)
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            popup.showAsDropDown(anchor, 0, 0, Gravity.END)
+        } else {
+            // Pre-26 drop-downs use the row's sub-window token, which WindowManager
+            // rejects for another sub-window. Attach to the IME's parent window instead.
+            // We clamp to the display ourselves; the old framework otherwise clips
+            // this child to the IME's content frame and moves it away from the row.
+            popup.isClippingEnabled = false
+            val parent = applicationWindowView ?: anchor.rootView
+            // A NO_LIMITS panel can report a ±10000 window frame on old releases;
+            // use the physical display and system insets as the menu's outer bounds.
+            val frame = FloatingWindowCoordinates(context.getSystemService(WindowManager::class.java)).safeArea(anchor)
+            val row = IntArray(2).also(anchor::getLocationOnScreen)
+            val parentScreen = IntArray(2).also(parent::getLocationOnScreen)
+            val parentWindow = IntArray(2).also(parent::getLocationInWindow)
+            val rightAligned = Gravity.getAbsoluteGravity(Gravity.END, anchor.layoutDirection) and
+                Gravity.HORIZONTAL_GRAVITY_MASK == Gravity.RIGHT
+            val x = (if (rightAligned) row[0] + anchor.width - popup.width else row[0])
+                .coerceIn(frame.left, maxOf(frame.left, frame.right - popup.width))
+            val below = row[1] + anchor.height
+            val y = (if (below + popup.height <= frame.bottom) below else row[1] - popup.height)
+                .coerceIn(frame.top, maxOf(frame.top, frame.bottom - popup.height))
+            popup.showAtLocation(parent, Gravity.TOP or Gravity.LEFT,
+                x - (parentScreen[0] - parentWindow[0]), y - (parentScreen[1] - parentWindow[1]))
+        }
     }
 
     override fun setColors(value: CandidatePanelColors) {
