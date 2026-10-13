@@ -16720,10 +16720,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 is ClipboardItem.Text -> {
-                    if (item.text.isNotEmpty()) {
-                        commitText(item.text, 1)
-                        appPreference.last_pasted_clipboard_text_preference = item.text
-                    }
+                    pasteClipboardText(item.text)
                 }
 
                 is ClipboardItem.Empty -> {
@@ -16789,16 +16786,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             is ClipboardItem.Text -> {
-                if (item.text.isNotEmpty()) {
-                    commitText(item.text, 1)
-                    appPreference.last_pasted_clipboard_text_preference = item.text
-                }
+                pasteClipboardText(item.text)
             }
 
             ClipboardItem.Empty -> Unit
         }
         clearDeletedBufferWithoutResetLayout()
         refreshEditHistoryUi()
+    }
+
+    private fun pasteClipboardText(text: String) {
+        if (text.isEmpty() || !commitText(text, 1)) return
+        // The editor replaced its composing region. Clear local preedit before the
+        // next key, without waiting for an asynchronous selection notification.
+        resetFlagsEnterKeyNotHenkan()
+        clearSuggestionStateAfterCommit()
+        floatingCursor?.updateSelection(false, !hasCursorPreedit())
+        appPreference.last_pasted_clipboard_text_preference = text
     }
 
     private fun handleClipboardHistoryItemAction(item: ClipboardItem, action: ClipboardItemAction) {
