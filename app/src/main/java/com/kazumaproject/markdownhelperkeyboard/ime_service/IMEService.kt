@@ -8905,7 +8905,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // not implicitly commit text or tear down the bunsetsu session.
             if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode, e)
             scope.launch {
-                _physicalKeyboardEnable.emit(true)
+                // A queued duplicate mode notification resets conversion/highlight state.
+                // Check here so several character events queued before Space only enable once.
+                if (physicalKeyboardEnable.replayCache.firstOrNull() != true) {
+                    _physicalKeyboardEnable.emit(true)
+                }
             }
             isKeyboardFloatingMode = false
             updateShortcutActiveStates()
