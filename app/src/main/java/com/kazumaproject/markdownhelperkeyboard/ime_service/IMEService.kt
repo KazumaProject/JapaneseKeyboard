@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorDirection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorMovement
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorInputSynchronization
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorComposingExpectation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings
 import com.kazumaproject.core.domain.flick.FlickTextPreviewEvent
@@ -1766,10 +1767,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         writeComposingText = { text, cursorPosition ->
             cursorSnapshotRevision.incrementAndGet()
             cursorSynchronization.invalidateSnapshot()
-            currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+            // A native composing range establishes its start. The last caret can lag
+            // a cursor move, so it must not establish the first write's position.
+            val start = cursorNativeComposingRange?.first ?: cursorWrittenComposing?.start
+            val applied = currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+            if (applied) cursorWrittenComposing = text?.toString()?.takeIf { it.isNotEmpty() }
+                ?.let { CursorComposingExpectation(start, it) }
+            applied
         },
         finishComposingText = {
-            currentInputConnection?.finishComposingText() ?: false
+            val finished = currentInputConnection?.finishComposingText() ?: false
+            if (finished) cursorWrittenComposing = null
+            finished
         },
         copyText = { text -> SpannableString(text) },
     )
@@ -3363,6 +3372,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cursorInputTracking = false
     private var cursorPreviewGesture: Pair<FlickPreviewSource, Long>? = null
     private var cursorNativeComposingRange: IntRange? = null
+    private var cursorWrittenComposing: CursorComposingExpectation? = null
     private var cursorNativeSelectionStart = -1
     private var cursorNativeSelectionEnd = -1
     private val cursorWorkGeneration = AtomicLong(0)
@@ -3370,12 +3380,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val cursorSnapshotRevision = AtomicLong(0)
     private val cursorSynchronization by lazy {
         CursorInputSynchronization(scope, { currentInputConnection }, { cursorSnapshotRevision.get() },
-            editorConnectionReadMutex, { cursorNativeComposingRange })
+            editorConnectionReadMutex, { cursorNativeComposingRange }, expectedComposing = { cursorWrittenComposing })
     }
     private val cursorMovement by lazy {
         CursorMovement(editorConnectionReadMutex,
             { connection, start, end -> if (currentInputConnection === connection) setSelection(start, end) else false },
-            { connection, event -> if (currentInputConnection === connection) connection.sendKeyEvent(event) else false })
+            { connection, event -> if (currentInputConnection === connection) connection.sendKeyEvent(event) else false },
+            selectionRevision = { horizontalCursorSelectionRevision.get() },
+            latestSelection = { cursorNativeSelectionStart to cursorNativeSelectionEnd })
     }
     private enum class CursorOperation { EDITOR, PREEDIT, CONVERSION, SEGMENTS, PREVIEW }
     private data class PendingCursorMove(
@@ -3447,6 +3459,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cursorSelectionMode = false
         cursorPreviewGesture = null
         cursorNativeComposingRange = null
+        cursorWrittenComposing = null
     }
 
     private fun deferCursorInput(action: () -> Unit): Boolean {
@@ -8268,7 +8281,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
         cursorNativeSelectionStart = newSelStart
         cursorNativeSelectionEnd = newSelEnd
-        if (candidatesStart >= 0 && candidatesEnd >= candidatesStart) cursorNativeComposingRange = candidatesStart..candidatesEnd
+        if (candidatesStart >= 0 && candidatesEnd >= candidatesStart) {
+            cursorNativeComposingRange = candidatesStart..candidatesEnd
+            cursorWrittenComposing?.takeIf { it.start == null && candidatesEnd - candidatesStart == it.text.length }
+                ?.let { cursorWrittenComposing = it.copy(start = candidatesStart) }
+        }
         floatingCursor?.updateSelection(cursorSelectionMode, !hasCursorPreedit())
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
@@ -8303,6 +8320,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun applyEditorSelectionUpdate(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int) {
         cursorNativeComposingRange = null
+        cursorWrittenComposing = null
         updateEditorSelectionSnapshot(
             newSelStart = newSelStart,
             newSelEnd = newSelEnd,
@@ -24147,7 +24165,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
-                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift, QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight)) stopCursorInputGestures()
+                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift,
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight,
+                            QWERTYKey.QWERTYKeyCursorUp, QWERTYKey.QWERTYKeyCursorDown)) stopCursorInputGestures()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Pressed Key: $qwertyKey")
@@ -24161,7 +24181,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
                     if (deferCursorInput { onReleasedQWERTYKey(qwertyKey, tap, variations) }) return
-                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift, QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight)) endCursorSelectionForInput()
+                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift,
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight,
+                            QWERTYKey.QWERTYKeyCursorUp, QWERTYKey.QWERTYKeyCursorDown)) endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
@@ -30481,6 +30503,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelCandidateTranslationIfPreEditMutates()
         val committed = connection.commitText(p0, p1)
         if (committed) {
+            cursorWrittenComposing = null
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
             composingGuide?.update(null)
@@ -30494,7 +30517,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         val committed = connection.commitCompletion(p0)
-        if (committed) editorMutationRevision.advance()
+        if (committed) {
+            cursorWrittenComposing = null
+            editorMutationRevision.advance()
+        }
         return committed
     }
 
@@ -30503,7 +30529,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         val committed = connection.commitCorrection(p0)
-        if (committed) editorMutationRevision.advance()
+        if (committed) {
+            cursorWrittenComposing = null
+            editorMutationRevision.advance()
+        }
         return committed
     }
 

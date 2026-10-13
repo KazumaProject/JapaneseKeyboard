@@ -20,8 +20,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [24, 35])
 class CursorInputSynchronizationTest {
-    private fun snapshot(text: CharSequence, caret: Int) = ExtractedText().apply {
-        this.text = text; startOffset = 0; selectionStart = caret; selectionEnd = caret; partialStartOffset = -1
+    private fun snapshot(text: CharSequence, caret: Int, offset: Int = 0) = ExtractedText().apply {
+        this.text = text; startOffset = offset; selectionStart = caret; selectionEnd = caret; partialStartOffset = -1
     }
 
     @Test fun staleSelectionNotificationCannotDiscardNewNativeComposition() = runTest {
@@ -61,6 +61,131 @@ class CursorInputSynchronizationTest {
         whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("abcあ", 4))
         var cleared = false
         val gate = CursorInputSynchronization(this, { editor }, { 0L }, Mutex(), { 3..4 }, StandardTestDispatcher(testScheduler))
+        gate.verifyBeforeInput(4, 4) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun latestComposingWriteAheadOfTheNativeRangePreservesQueuedInput() = runTest {
+        val editor = mock<InputConnection>()
+        // Editors such as Compose return unstyled text. The native range callback can
+        // still describe the previous one-character write when the latest text is read.
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("ああ", 2))
+        var preedit = "ああ"
+        val events = mutableListOf<String>()
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ああ") })
+        gate.verifyBeforeInput(1, 1) { _, _ -> preedit = ""; events += "cleared" }
+        assertTrue(gate.defer({ true }) { events += "input:$preedit" })
+        advanceUntilIdle()
+        assertEquals(listOf("input:ああ"), events)
+    }
+
+    @Test fun staleNoCompositionNotificationMatchingTheLatestCaretPreservesPreedit() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("ああ", 2))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ああ") })
+        gate.verifyNotification(2, 2) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun styledNativeCompletionInsideThePreviousRangeAllowsFreshInput() = runTest {
+        val editor = mock<InputConnection>()
+        // A real styled extraction without composing spans distinguishes completion
+        // from style stripping even if the app moves the caret inside the old range.
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot(SpannableString("ああ"), 0))
+        var preedit = "ああ"
+        val events = mutableListOf<String>()
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ああ") })
+        gate.verifyBeforeInput(2, 2) { start, _ -> preedit = ""; events += "selection:$start" }
+        assertTrue(gate.defer({ true }) { events += "input:$preedit" })
+        advanceUntilIdle()
+        assertEquals(listOf("selection:0", "input:"), events)
+    }
+
+    @Test fun unstyledExternalCaretOutsideTheLatestWriteAllowsFreshInput() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("abcdef", 0))
+        var preedit = "cd"
+        val events = mutableListOf<String>()
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 2..3 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(2, "cd") })
+        gate.verifyBeforeInput(3, 3) { start, _ -> preedit = ""; events += "selection:$start" }
+        assertTrue(gate.defer({ true }) { events += "input:$preedit" })
+        advanceUntilIdle()
+        assertEquals(listOf("selection:0", "input:"), events)
+    }
+
+    @Test fun transformedNativeTextInsideTheLatestWritePreservesPreedit() = runTest {
+        val editor = mock<InputConnection>()
+        // InputFilter.AllCaps can transform an accepted composing write without ending it.
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("AA", 2))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "aa") })
+        gate.verifyBeforeInput(1, 1) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun unpositionedLatestWriteCannotBeDiscardedFromUnstyledText() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("ああ", 2))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { null },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(null, "ああ") })
+        gate.verifyBeforeInput(-1, -1) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun unstyledSurroundingTextCannotConfirmAStaleSelectionNotification() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getTextBeforeCursor(eq(1), eq(InputConnection.GET_TEXT_WITH_STYLES))).thenReturn("あ")
+        whenever(editor.getTextAfterCursor(eq(1), eq(InputConnection.GET_TEXT_WITH_STYLES))).thenReturn("")
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ああ") })
+        gate.verifyNotification(0, 0) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun latestWriteUsesAbsoluteOffsetsInAWindowedExtraction() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("XああY", 3, offset = 10))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 11..12 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(11, "ああ") })
+        gate.verifyBeforeInput(12, 12) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun aFailedSurroundingReadCannotEstablishThatComposingSpansAreAbsent() = runTest {
+        val editor = mock<InputConnection>()
+        // The successful side is styled, but the other read failed rather than proving
+        // that the editor has no composing text on that side of its current caret.
+        whenever(editor.getTextBeforeCursor(eq(1), eq(InputConnection.GET_TEXT_WITH_STYLES)))
+            .thenReturn(SpannableString("あ"))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ああ") })
+        gate.verifyBeforeInput(1, 1) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun incompleteUnstyledExtractionCannotDiscardTheLatestComposingWrite() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("ああ", 2, offset = 3))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..4 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "abcああ") })
         gate.verifyBeforeInput(4, 4) { _, _ -> cleared = true }
         advanceUntilIdle()
         assertFalse(cleared)
