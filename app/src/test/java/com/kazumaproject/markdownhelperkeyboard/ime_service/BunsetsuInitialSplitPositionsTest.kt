@@ -7,6 +7,7 @@ import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateComposit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
+import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,7 +105,11 @@ class BunsetsuInitialSplitPositionsTest {
 
     @Test fun physicalSpaceSplitsTheReadingAndRequestsCandidatesForTheFirstBunsetsu() {
         preparePhysicalSplit()
-        assertTrue(startPhysicalSplit())
+        assertTrue(ReflectionHelpers.callInstanceMethod<Boolean>(service, "handleJapaneseSpaceFloating",
+            ReflectionHelpers.ClassParameter.from(MainLayoutBinding::class.java, mock<MainLayoutBinding>()),
+            ReflectionHelpers.ClassParameter.from(String::class.java, input),
+            ReflectionHelpers.ClassParameter.from(List::class.java, emptyList<Any>()),
+        ))
         assertEquals("あしたは", ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value)
         val session = ReflectionHelpers.getField<PhysicalCandidateCompositionSession>(service, "physicalCandidateCompositionSession")
         assertEquals("あしたは", session.queryText)
