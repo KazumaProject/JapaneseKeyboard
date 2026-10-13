@@ -54,31 +54,42 @@ internal class CursorMovement(
     private val setSelection: (InputConnection, Int, Int) -> Boolean,
     private val sendKey: (InputConnection, KeyEvent) -> Boolean,
     private val readDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val selectionRevision: () -> Long = { 0L },
+    private val latestSelection: () -> Pair<Int, Int>? = { null },
 ) {
     private var fixedEnd: Int? = null
     private var movingEnd: Int? = null
     fun reset() { fixedEnd = null; movingEnd = null }
 
     suspend fun move(editor: InputConnection, direction: CursorDirection, selecting: Boolean, current: () -> Boolean) {
-        val extracted = readMutex.withLock {
-            withContext(readDispatcher) { runCatching { editor.getExtractedText(ExtractedTextRequest(), 0) }.getOrNull() }
+        val (extracted, selectionVersion) = readMutex.withLock {
+            val version = selectionRevision()
+            val text = withContext(readDispatcher) { runCatching { editor.getExtractedText(ExtractedTextRequest(), 0) }.getOrNull() }
+            text to version
         }
         if (!current()) return
         val snapshot = extracted?.validSnapshot()
+        val stillCurrent = {
+            current() && (selectionRevision() == selectionVersion ||
+                (snapshot != null && latestSelection() == (snapshot.start to snapshot.end)))
+        }
+        // A delayed notification for our preceding move is safe only when its actual
+        // endpoints agree with this read. A different external selection invalidates it.
+        if (!stillCurrent()) return
         if (snapshot == null) {
             reset()
-            nativeMove(editor, direction, selecting, current)
+            nativeMove(editor, direction, selecting, stillCurrent)
             return
         }
         val (text, offset, start, end) = snapshot
         if (!selecting && start != end) {
             reset()
             val collapsed = if (direction.towardsStart) minOf(start, end) else maxOf(start, end)
-            if (!setSelection(editor, collapsed, collapsed) && current()) nativeMove(editor, direction, false, current)
+            if (!setSelection(editor, collapsed, collapsed) && stillCurrent()) nativeMove(editor, direction, false, stillCurrent)
             return
         }
         if (direction == CursorDirection.UP || direction == CursorDirection.DOWN) {
-            nativeMove(editor, direction, selecting, current)
+            nativeMove(editor, direction, selecting, stillCurrent)
             // The next read establishes the editor's resulting endpoints after its own line navigation.
             reset()
             return
@@ -96,7 +107,7 @@ internal class CursorMovement(
             (direction == CursorDirection.RIGHT && local == text.length)
         ) {
             reset()
-            nativeMove(editor, direction, selecting, current)
+            nativeMove(editor, direction, selecting, stillCurrent)
             return
         }
         val iterator = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(text) }
@@ -106,14 +117,14 @@ internal class CursorMovement(
         while (boundary in 1 until text.length && isEmojiInternalBoundary(text, boundary)) {
             boundary = if (direction == CursorDirection.LEFT) iterator.preceding(boundary) else iterator.following(boundary)
         }
-        if (boundary == BreakIterator.DONE || !current()) return
+        if (boundary == BreakIterator.DONE || !stillCurrent()) return
         val target = offset + boundary
         val fixed = if (selecting) anchor else target
         if (setSelection(editor, fixed, target)) {
             fixedEnd = fixed; movingEnd = target
-        } else if (current()) {
+        } else if (stillCurrent()) {
             reset()
-            nativeMove(editor, direction, selecting, current)
+            nativeMove(editor, direction, selecting, stillCurrent)
         }
     }
 
