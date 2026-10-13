@@ -3,12 +3,24 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiConversionSession
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryResult
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryRequest
+import com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateCompositionSession
+import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
@@ -18,10 +30,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.coroutineContext
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -130,14 +146,187 @@ class BunsetsuInitialSplitPositionsTest {
         assertFalse(startPhysicalSplit())
         ReflectionHelpers.setField(service, "bunsetsuSeparation", true)
         ReflectionHelpers.setField(service, "bunsetsuPositionList", listOf(0, input.length, 99))
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", snapshot(listOf(0, input.length, 99)))
         assertFalse(startPhysicalSplit())
         assertEquals(input, ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value)
     }
+
+    @Test fun physicalContinuationSplitsWithoutLeavingThePreviousSessionBoundToTheWholeReading() {
+        preparePhysicalSplit()
+        val remaining = "とうきょうにいきます"
+        val candidate = first.copy(string = "東京に行きます", length = remaining.length.toUByte())
+        ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value = remaining
+        ReflectionHelpers.setField(service, "bunsetsuPositionList", listOf(6))
+        ReflectionHelpers.setField(service, "bunsetusMultipleDetect", true)
+        ReflectionHelpers.getField<AtomicBoolean>(service, "isHenkan").set(true)
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", BunsetsuConversionSnapshot(
+            remaining, listOf(candidate), emptyMap(), listOf(listOf(6)), listOf(6)))
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "beginPhysicalCandidateCompositionSession",
+            ReflectionHelpers.ClassParameter.from(String::class.java, remaining))
+        ReflectionHelpers.getField<AtomicBoolean>(service, "isHenkan").set(false)
+        updateContinuation(remaining, candidate)
+        assertEquals("Candidate refresh while typing must not start conversion", remaining, currentInput())
+        ReflectionHelpers.getField<AtomicBoolean>(service, "isHenkan").set(true)
+        updateContinuation(remaining, candidate)
+        assertEquals("とうきょうに", currentInput())
+        val session = currentPhysicalSession()!!
+        assertEquals("とうきょうに", session.queryText)
+        assertEquals("いきます", session.trailingText)
+        assertEquals(remaining, session.sourceText)
+        assertFalse(ReflectionHelpers.getField<Boolean>(service, "bunsetusMultipleDetect"))
+    }
+
+    private fun updateContinuation(remaining: String, candidate: Candidate) {
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "updateBunsetsuSpaceKeyIfNeeded",
+            ReflectionHelpers.ClassParameter.from(MainLayoutBinding::class.java, mock<MainLayoutBinding>()),
+            ReflectionHelpers.ClassParameter.from(List::class.java, listOf(candidate)),
+            ReflectionHelpers.ClassParameter.from(String::class.java, remaining),
+        )
+    }
+
+    @Test fun physicalSpaceQueriesCurrentInputWhenSnapshotBelongsToOlderInput() = runBlocking {
+        preparePhysicalSplit()
+        ReflectionHelpers.setField(service, "bunsetsuPositionList", listOf(2))
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", snapshot(listOf(2)).copy(input = "べつのよみ"))
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<KanaKanjiQueryResult>()
+        installDelayedQuery(started, response)
+        try {
+            pressPhysicalSpace()
+            assertEquals("Old split positions must not shorten the new input", input, currentInput())
+            withTimeout(5000) { started.await() }
+            val jobs = coroutineContext[Job]!!.children.toList()
+            response.complete(KanaKanjiQueryResult(result.candidates, result))
+            withTimeout(5000) { jobs.joinAll() }
+            assertEquals("あしたは", currentInput())
+            assertEquals("とうきょうにいきます", currentPhysicalSession()?.trailingText)
+        } finally { response.cancel() }
+    }
+
+    @Test fun physicalQueryFinishingAfterCancellationDoesNotRestoreConversion() = runBlocking {
+        preparePhysicalSplit()
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", null)
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<KanaKanjiQueryResult>()
+        installDelayedQuery(started, response)
+        try {
+            pressPhysicalSpace()
+            withTimeout(5000) { started.await() }
+            val jobs = coroutineContext[Job]!!.children.toList()
+            ReflectionHelpers.callInstanceMethod<Unit>(service, "clearPhysicalCandidateCompositionSession",
+                ReflectionHelpers.ClassParameter.from(String::class.java, "conversion cancelled"))
+            ReflectionHelpers.getField<AtomicBoolean>(service, "isHenkan").set(false)
+            response.complete(KanaKanjiQueryResult(result.candidates, result))
+            withTimeout(5000) { jobs.joinAll() }
+            assertEquals(input, currentInput())
+            assertEquals(null, currentPhysicalSession())
+            assertEquals("", ReflectionHelpers.getField<AtomicReference<String>>(service, "stringInTail").get())
+        } finally { response.cancel() }
+    }
+
+    @Test fun physicalUnsplitQueryRequestsANormalPreviewWithoutReusingThePreviousHighlight() = runBlocking {
+        preparePhysicalSplit()
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", null)
+        ReflectionHelpers.setField(service, "currentHighlightIndex", 5)
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<KanaKanjiQueryResult>()
+        installDelayedQuery(started, response)
+        try {
+            pressPhysicalSpace()
+            assertEquals(-1, ReflectionHelpers.getField<Int>(service, "currentHighlightIndex"))
+            withTimeout(5000) { started.await() }
+            val jobs = coroutineContext[Job]!!.children.toList()
+            val unsplit = result.copy(splitPatternByCandidateString = result.splitPatternByCandidateString + (first.string to emptyList()))
+            response.complete(KanaKanjiQueryResult(result.candidates, unsplit))
+            withTimeout(5000) { jobs.joinAll() }
+            assertEquals(input, currentInput())
+            assertEquals("", currentPhysicalSession()?.trailingText)
+            assertEquals(currentPhysicalSession()?.generation,
+                ReflectionHelpers.getField<Long>(service, "pendingPhysicalCandidatePreviewGeneration"))
+            val refresh = ReflectionHelpers.getField<CandidateRefreshCoordinator>(service, "candidateRefreshCoordinator").requests.value
+            assertEquals(input, refresh.input)
+            assertEquals(CandidateShowFlag.Updating, refresh.flag)
+        } finally { response.cancel() }
+    }
+
+    @Test fun physicalQueryFromBeforeAnEditorMutationIsNotAppliedToTheSameReading() = runBlocking {
+        preparePhysicalSplit()
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", null)
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<KanaKanjiQueryResult>()
+        installDelayedQuery(started, response)
+        try {
+            pressPhysicalSpace()
+            withTimeout(5000) { started.await() }
+            val jobs = coroutineContext[Job]!!.children.toList()
+            ReflectionHelpers.getField<EditorMutationRevision>(service, "editorMutationRevision").advance()
+            response.complete(KanaKanjiQueryResult(result.candidates, result))
+            withTimeout(5000) { jobs.joinAll() }
+            assertEquals(input, currentInput())
+            assertEquals("", ReflectionHelpers.getField<AtomicReference<String>>(service, "stringInTail").get())
+        } finally { response.cancel() }
+    }
+
+    @Test fun physicalQueryFinishingAfterCandidateNavigationDoesNotOverrideTheSelection() = runBlocking {
+        preparePhysicalSplit()
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", null)
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<KanaKanjiQueryResult>()
+        installDelayedQuery(started, response)
+        try {
+            pressPhysicalSpace()
+            withTimeout(5000) { started.await() }
+            val jobs = coroutineContext[Job]!!.children.toList()
+            ReflectionHelpers.setField(service, "fullSuggestionsList", listOf(CandidateItem(first.string, first.length)))
+            ReflectionHelpers.callInstanceMethod<Unit>(service, "navigatePhysicalCandidate",
+                ReflectionHelpers.ClassParameter.from(String::class.java, input),
+                ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType!!, 1))
+            response.complete(KanaKanjiQueryResult(result.candidates, result))
+            withTimeout(5000) { jobs.joinAll() }
+            assertEquals(input, currentInput())
+            assertEquals(input, currentPhysicalSession()?.queryText)
+            assertEquals(0, ReflectionHelpers.getField<Int>(service, "currentHighlightIndex"))
+            assertEquals("", ReflectionHelpers.getField<AtomicReference<String>>(service, "stringInTail").get())
+        } finally { response.cancel() }
+    }
+
+    private suspend fun installDelayedQuery(started: CompletableDeferred<Unit>, response: CompletableDeferred<KanaKanjiQueryResult>) {
+        service.appPreference = mock()
+        service.userDictionaryRepository = mock()
+        service.userTemplateRepository = mock()
+        ReflectionHelpers.setField(service, "isLearnDictionaryMode", false)
+        ReflectionHelpers.setField(service, "isUserTemplateEnable", false)
+        ReflectionHelpers.setField(service, "scope", CoroutineScope(coroutineContext))
+        ReflectionHelpers.getField<CompletableDeferred<KanaKanjiEngine>>(service, "kanaKanjiEngineReady").complete(mock())
+        val conversion = mock<KanaKanjiConversionSession>()
+        whenever(conversion.query(any())).thenAnswer {
+            val request = it.getArgument<KanaKanjiQueryRequest>(0)
+            assertEquals(input, request.input)
+            assertEquals(CandidateQueryMode.CONVERSION, request.mode)
+            started.complete(Unit)
+            runBlocking { withTimeout(5000) { response.await() } }
+        }
+        ReflectionHelpers.setField(service, "kanaKanjiConversionSession", conversion)
+    }
+
+    private fun snapshot(positions: List<Int> = listOf(4, 10)) = BunsetsuConversionSnapshot(
+        input, result.candidates, emptyMap(), result.splitPatterns, positions)
+
+    private fun currentInput() = ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value
+    private fun currentPhysicalSession(): PhysicalCandidateCompositionSession? =
+        ReflectionHelpers.getField(service, "physicalCandidateCompositionSession")
+
+    private fun pressPhysicalSpace(): Boolean = ReflectionHelpers.callInstanceMethod(service, "handleJapaneseSpaceFloating",
+        ReflectionHelpers.ClassParameter.from(MainLayoutBinding::class.java, mock<MainLayoutBinding>()),
+        ReflectionHelpers.ClassParameter.from(String::class.java, input),
+        ReflectionHelpers.ClassParameter.from(List::class.java, emptyList<Any>()),
+    )
 
     private fun preparePhysicalSplit() {
         ReflectionHelpers.setField(service, "bunsetsuSeparation", true)
         ReflectionHelpers.setField(service, "bunsetsuCursorMove", false)
         ReflectionHelpers.setField(service, "bunsetsuPositionList", listOf(4, 10))
+        ReflectionHelpers.setField(service, "latestBunsetsuConversionSnapshot", snapshot())
         ReflectionHelpers.getField<MutableSharedFlow<Boolean>>(service, "_physicalKeyboardEnable").tryEmit(true)
         ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value = input
         ReflectionHelpers.getField<AtomicReference<String>>(service, "stringInTail").set("")
