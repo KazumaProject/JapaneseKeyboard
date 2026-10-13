@@ -8951,7 +8951,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     romajiConverter?.clear()
                     val newInput = if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
-                        PhysicalKanaMapper.resolve(keyCode, e.isShiftPressed)?.let {
+                        PhysicalKanaMapper.resolve(
+                            keyCode = keyCode,
+                            isShift = e.isShiftPressed,
+                            baseUnicode = e.getUnicodeChar(0)
+                        )?.let {
                             KanaDakutenComposer.append("", it)
                         }
                     } else {
@@ -8976,7 +8980,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
                         PhysicalKanaMapper.resolve(
                             keyCode = keyCode,
-                            isShift = e.isShiftPressed
+                            isShift = e.isShiftPressed,
+                            baseUnicode = e.getUnicodeChar(0)
                         )?.let { kana ->
                             if (dispatchDirectTextIfNeeded(kana)) return@launch
                             _inputString.update { KanaDakutenComposer.append("", kana) }
@@ -8996,7 +9001,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
                 val kana = PhysicalKanaMapper.resolve(
                     keyCode = keyCode,
-                    isShift = e.isShiftPressed
+                    isShift = e.isShiftPressed,
+                    baseUnicode = e.getUnicodeChar(0)
                 )
                 kana?.let {
                     if (dispatchDirectTextIfNeeded(it)) return true
@@ -9134,7 +9140,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingDockView.setText(showInputModeText)
         setCurrentInputModeForSession(inputMode)
         finishComposingText()
-        _inputString.update { "" }
+        resetFlagsEnterKeyNotHenkan()
+        romajiConverter?.clear()
         showFloatingModeSwitchView(showInputModeText)
         return true
     }
@@ -9158,7 +9165,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingDockView.setText(showInputModeText)
         setCurrentInputModeForSession(inputMode)
         finishComposingText()
-        _inputString.update { "" }
+        resetFlagsEnterKeyNotHenkan()
+        romajiConverter?.clear()
         showFloatingModeSwitchView(showInputModeText)
         return true
     }
