@@ -395,6 +395,30 @@
         <item>@string/tfbi_diagonal_recognition_mode_stable</item>
     </string-array>
 
+    <string-array name="sumire_flick_rotation_entries">
+        <item>@string/sumire_flick_rotation_default</item>
+        <item>@string/sumire_flick_rotation_clockwise</item>
+        <item>@string/sumire_flick_rotation_counterclockwise</item>
+    </string-array>
+
+    <string-array name="sumire_flick_rotation_values">
+        <item>default</item>
+        <item>clockwise</item>
+        <item>counterclockwise</item>
+    </string-array>
+
+    <string-array name="sumire_flick_input_mode_entries">
+        <item>@string/sumire_flick_input_mode_contracted</item>
+        <item>@string/sumire_flick_input_mode_voiced</item>
+        <item>@string/sumire_flick_input_mode_all</item>
+    </string-array>
+
+    <string-array name="sumire_flick_input_mode_values">
+        <item>contracted</item>
+        <item>voiced</item>
+        <item>all</item>
+    </string-array>
+
     <string-array name="tfbi_diagonal_recognition_mode_values">
         <item>legacy</item>
         <item>stable</item>

@@ -272,6 +272,16 @@
     <string name="flick_threshold_shape_radial">全方向で均一（円形・推奨）</string>
     <string name="flick_threshold_shape_rectangular">横・縦方向の距離で判定（矩形）</string>
     <string name="tfbi_diagonal_recognition_mode_title">2段・3段フリックの斜め判定</string>
+    <string name="sumire_flick_rotation_title">2段・3段フリックの回転方向</string>
+    <string name="sumire_flick_input_mode_title">3段フリックの入力機能</string>
+    <string name="sumire_flick_input_mode_contracted">拗音・拗長音</string>
+    <string name="sumire_flick_input_mode_voiced">濁音・半濁音</string>
+    <string name="sumire_flick_input_mode_all">すべて（標準）</string>
+    <string name="sumire_flick_input_mode_summary">「きょ・きょう」などの拗音と、「が・ぱ」などの濁音の入力範囲を選びます。</string>
+    <string name="sumire_flick_rotation_default">標準（従来の配置）</string>
+    <string name="sumire_flick_rotation_clockwise">時計回り</string>
+    <string name="sumire_flick_rotation_counterclockwise">反時計回り</string>
+    <string name="sumire_flick_rotation_summary">濁点・半濁点を付ける曲がり方。「拗音・拗長音」では適用されません。</string>
     <string name="tfbi_diagonal_recognition_mode_legacy">従来</string>
     <string name="tfbi_diagonal_recognition_mode_stable">安定（明確な曲がりを要求）</string>
     <string name="long_press_timeout_preference_title">長押し時間</string>
