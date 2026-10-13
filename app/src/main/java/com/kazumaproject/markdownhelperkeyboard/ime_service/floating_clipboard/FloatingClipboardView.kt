@@ -128,8 +128,9 @@ internal class FloatingClipboardView(
         }
         // A focusable menu can restart the application's editor when dismissed.
         // Keep the IME and its target connected while offering the same long-press actions.
-        val popup = PopupWindow(content, dp(200), ViewGroup.LayoutParams.WRAP_CONTENT, false).apply {
+        val popup = PopupWindow(content, dp(200), dp(actions.size * 48 + 8), false).apply {
             isOutsideTouchable = true
+            if (android.os.Build.VERSION.SDK_INT >= 29) setIsClippedToScreen(true)
             inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
             windowLayoutType = WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
