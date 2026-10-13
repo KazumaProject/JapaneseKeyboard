@@ -178,6 +178,8 @@ import com.kazumaproject.custom_keyboard.data.KeyCharacterCase
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
+import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts.DeleteKeyFlickSettings
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
@@ -962,6 +964,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
         AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
+        AppPreference.SUMIRE_FLICK_ROTATION_KEY,
+        AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
@@ -1987,6 +1991,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputKeyType: String? = "flick-default"
     private var sumireInputKeyLayoutType: String? = "toggle"
     private var sumireInputStyle: String? = "default"
+    private var sumireFlickRotation = TfbiFlickRotation.DEFAULT
+    private var sumireFlickInputMode = SumireFlickInputMode.ALL
     private var candidateColumns: String? = "1"
     private var candidateColumnsLandscape: String? = "1"
     private var candidateViewHeight: String? = "2"
@@ -3701,6 +3707,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
         val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
         val tfbiFlickStartPositionMode = appPreference.flick_tfbi_flick_start_position
+        val latestSumireFlickRotation = appPreference.sumire_flick_rotation_preference
+        val sumireFlickRotationChanged = sumireFlickRotation != latestSumireFlickRotation
+        sumireFlickRotation = latestSumireFlickRotation
+        val latestSumireFlickInputMode = appPreference.sumire_flick_input_mode_preference
+        val sumireFlickInputModeChanged = sumireFlickInputMode != latestSumireFlickInputMode
+        sumireFlickInputMode = latestSumireFlickInputMode
 
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
@@ -3797,6 +3809,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         applyIndependentMultiTouchPreference()
         syncCustomKeyboardHitTestPreference()
+        if (sumireFlickRotationChanged ||
+            (sumireFlickInputModeChanged && sumireInputStyle == "third-flick")
+        ) {
+            refreshSumireTfbiLayouts()
+        }
     }
 
     private fun applyIndependentMultiTouchPreference() {
@@ -3977,6 +3994,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputKeyType = preferences.sumireInputKeyType
         sumireInputKeyLayoutType = preferences.sumireInputKeyLayoutType
         sumireInputStyle = preferences.sumireInputStyle
+        sumireFlickRotation = TfbiFlickRotation.fromPreferenceValue(
+            preferences.tfbiFlickRotationPreferenceValue
+        )
+        sumireFlickInputMode = SumireFlickInputMode.fromPreferenceValue(
+            preferences.sumireFlickInputModePreferenceValue
+        )
         candidateColumns = preferences.candidateColumns
         candidateColumnsLandscape = preferences.candidateColumnsLandscape
         candidateTabVisibility = preferences.candidateTabVisibility
@@ -10350,6 +10373,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderDynamicKeysOnActiveSurface()
     }
 
+    private fun refreshSumireTfbiLayouts() {
+        if (splitController != null) {
+            splitInputs.values.filter {
+                it.selection.type == KeyboardType.SUMIRE &&
+                        it.presentedMode == TenKeyQWERTYMode.Sumire &&
+                        it.customMode == KeyboardInputMode.HIRAGANA
+            }.forEach { state ->
+                val apply = {
+                    if (splitInputs[state.slot] === state &&
+                        state.selection.type == KeyboardType.SUMIRE &&
+                        state.presentedMode == TenKeyQWERTYMode.Sumire &&
+                        state.customMode == KeyboardInputMode.HIRAGANA
+                    ) {
+                        setSumireLayoutTo(state.binding.customLayoutFloating, state.customMode)
+                        syncSplitPresentation()
+                    }
+                }
+                if (state.touching) state.pendingLayout = apply else apply()
+            }
+            return
+        }
+        if (qwertyMode.value != TenKeyQWERTYMode.Sumire) return
+        listOfNotNull(
+            mainLayoutBinding?.customLayoutDefault,
+            floatingKeyboardBinding?.customLayoutFloating
+        ).distinct().forEach(::setSumireLayoutTo)
+        renderDynamicKeysOnActiveSurface()
+    }
+
     private fun defaultInputModeFor(inputType: InputTypeForIME): InputMode {
         return when (inputType) {
             InputTypeForIME.TextEmailAddress,
@@ -10373,7 +10425,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun createSumireKeyboardLayout(): KeyboardLayout {
+    private fun createSumireKeyboardLayout(): KeyboardLayout =
+        createSumireKeyboardLayout(customKeyboardMode)
+
+    private fun createSumireKeyboardLayout(mode: KeyboardInputMode): KeyboardLayout {
         val dynamicStates = mapOf(
             "enter_key" to currentEnterKeyIndex,
             "dakuten_toggle_key" to currentDakutenKeyIndex,
@@ -10383,18 +10438,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         return applyCircularSlotActionSettings(
             KeyboardDefaultLayouts.createFinalLayout(
-                mode = customKeyboardMode,
+                mode = mode,
                 dynamicKeyStates = dynamicStates,
                 inputLayoutType = layoutType,
                 inputStyle = sumireInputStyle ?: "default",
-                deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
+                deleteKeyFlickSettings = currentDeleteKeyFlickSettings(),
+                tfbiFlickRotation = sumireFlickRotation,
+                sumireFlickInputMode = sumireFlickInputMode
             ),
-            customKeyboardMode
+            mode
         ).let { baseLayout ->
             SumireSpecialKeyActionDisplayOverrideApplier.apply(
                 layout = baseLayout,
                 layoutType = layoutType,
-                inputMode = customKeyboardMode.name,
+                inputMode = mode.name,
                 overrides = sumireSpecialKeyActionOverrides,
                 displayMetadata = sumireSpecialKeyActionDisplayMetadata()
             )
@@ -10402,7 +10459,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             SumireSpecialKeyPlacementOverrideApplier.apply(
                 layout = layout,
                 layoutType = layoutType,
-                inputMode = customKeyboardMode.name,
+                inputMode = mode.name,
                 overrides = sumireSpecialKeyPlacementOverrides
             )
         }
@@ -10472,15 +10529,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.let { syncCustomKeyboardTogglePresentation(it) }
     }
 
-    private fun applyCurrentFlickGuidePreference(flickView: FlickKeyboardView) {
-        val surface = when (qwertyMode.value) {
+    private fun applyCurrentFlickGuidePreference(
+        flickView: FlickKeyboardView,
+        mode: KeyboardInputMode = customKeyboardMode,
+        surface: FlickGuideSurface = when (qwertyMode.value) {
             TenKeyQWERTYMode.Sumire -> FlickGuideSurface.Sumire
             TenKeyQWERTYMode.Custom -> FlickGuideSurface.Custom
             else -> FlickGuideSurface.Other
         }
+    ) {
         val config = resolveFlickGuideRuntimeConfig(
             surface = surface,
-            mode = customKeyboardMode,
+            mode = mode,
             sumireSettings = sumireKeymapGuideSettings,
             customGuideEnabled = customKeymapGuidePreference
         )
@@ -10490,21 +10550,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private fun applySumireModeSizing(flickView: FlickKeyboardView) {
-        ModeKeySizing.applySumire(flickView, customKeyboardMode)
+    private fun applySumireModeSizing(
+        flickView: FlickKeyboardView,
+        mode: KeyboardInputMode = customKeyboardMode
+    ) {
+        ModeKeySizing.applySumire(flickView, mode)
     }
 
-    private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
-        applySumireModeSizing(flickView)
+    private fun setSumireLayoutTo(flickView: FlickKeyboardView) =
+        setSumireLayoutTo(flickView, customKeyboardMode)
+
+    private fun setSumireLayoutTo(flickView: FlickKeyboardView, mode: KeyboardInputMode) {
+        applySumireModeSizing(flickView, mode)
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
-        applyCurrentFlickGuidePreference(flickView)
+        applyCurrentFlickGuidePreference(flickView, mode, FlickGuideSurface.Sumire)
         flickView.setSumireSpecialKeyActionResolver(
             resolver = SumireSpecialKeyActionResolver(sumireSpecialKeyActionOverrides)::resolve,
             layoutType = layoutType,
-            inputMode = customKeyboardMode.name
+            inputMode = mode.name
         )
-        flickView.setKeyboard(createSumireKeyboardLayout(), KeyHitTestMode.NEAREST_KEY)
+        flickView.setKeyboard(createSumireKeyboardLayout(mode), KeyHitTestMode.NEAREST_KEY)
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
