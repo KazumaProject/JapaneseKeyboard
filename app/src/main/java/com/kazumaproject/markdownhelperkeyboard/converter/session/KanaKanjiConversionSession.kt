@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComposer
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
@@ -43,6 +45,7 @@ data class KanaKanjiQueryRequest(
     val beamWidth: Int,
     val predictionConfig: PredictionConfig = PredictionConfig(),
     val collectCandidateSegments: Boolean = false,
+    val dateCandidateConfig: DateCandidateConfig = DateCandidateConfig(),
 )
 
 data class KanaKanjiQueryResult(
@@ -97,8 +100,24 @@ class KanaKanjiConversionSession(
                 CandidateQueryMode.PREDICTION -> queryPrediction(request)
                 CandidateQueryMode.CONVERSION -> queryConversion(request)
             }
+            val composedResult = result.copy(
+                candidates = DateCandidateComposer.compose(
+                    request.input,
+                    result.candidates,
+                    request.dateCandidateConfig,
+                ),
+                bunsetsuResult = result.bunsetsuResult?.let { bunsetsuResult ->
+                    bunsetsuResult.copy(
+                        candidates = DateCandidateComposer.compose(
+                            request.input,
+                            bunsetsuResult.candidates,
+                            request.dateCandidateConfig,
+                        ),
+                    )
+                },
+            )
             incrementalState?.commitQueryTransaction()
-            result
+            composedResult
         } catch (cancellation: CancellationException) {
             // A completed graph has its own staged commit. Keep that newest frontier when only the
             // later path search was cancelled; an incomplete append still rolls back entirely.
@@ -225,6 +244,8 @@ class KanaKanjiConversionSession(
                 mozcUTWeb = request.mozcUtWeb,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
+                isOmissionSearchEnable = request.omissionSearchEnabled,
+                enableTypoCorrectionJapaneseFlick = request.typoCorrectionJapaneseFlickEnabled,
                 typoCorrectionOffsetScore = request.typoCorrectionOffsetScore,
                 omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                 beamWidth = request.beamWidth,
@@ -247,6 +268,8 @@ class KanaKanjiConversionSession(
                     mozcUTWeb = request.mozcUtWeb,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
+                    isOmissionSearchEnable = request.omissionSearchEnabled,
+                    enableTypoCorrectionJapaneseFlick = request.typoCorrectionJapaneseFlickEnabled,
                     typoCorrectionOffsetScore = request.typoCorrectionOffsetScore,
                     omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                     beamWidth = request.beamWidth,

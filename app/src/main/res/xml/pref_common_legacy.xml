@@ -444,6 +444,12 @@
             android:title="@string/preference_title_num_columns_conversion_landscape" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="hide_candidate_password_preference"
             android:summaryOff="@string/hide_candidate_password_summary_off"
@@ -542,6 +548,17 @@
             android:title="@string/flick_editor_preview_title" />
 
         <SeekBarPreference
+            android:defaultValue="0"
+            android:dependency="flick_editor_preview_preference"
+            android:key="flick_editor_preview_delay_ms"
+            android:max="500"
+            android:title="@string/flick_editor_preview_delay_title"
+            android:summary="@string/flick_editor_preview_delay_summary"
+            app:min="0"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
             android:defaultValue="100"
             android:key="flick_sensitivity_preference"
             android:max="200"
@@ -559,6 +576,14 @@
             android:title="@string/flick_threshold_shape_title"
             app:useSimpleSummaryProvider="true" />
 
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/independent_multi_touch_category_title">
+        <SwitchPreferenceCompat
+            android:key="independent_multi_touch_preference"
+            android:defaultValue="false"
+            android:title="@string/independent_multi_touch_title"
+            android:summary="@string/independent_multi_touch_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_function_title">
@@ -655,6 +680,25 @@
             android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <ListPreference
+            android:defaultValue="whole"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:entries="@array/live_conversion_candidate_yomi_mode_entries"
+            android:entryValues="@array/live_conversion_candidate_yomi_mode_values"
+            android:key="live_conversion_candidate_yomi_mode_preference"
+            android:title="@string/live_conversion_candidate_yomi_mode_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <SeekBarPreference
+            android:defaultValue="14"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:key="live_conversion_candidate_yomi_size_preference"
+            android:max="24"
+            android:summary="@string/live_conversion_candidate_yomi_size_summary"
+            android:title="@string/live_conversion_candidate_yomi_size_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"

@@ -15,11 +15,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.kazumaproject.custom_keyboard.data.DisplayAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.SpecialKeyActionDropdownAdapter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSumireSpecialKeyActionEditorBinding
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyOverrideType
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,16 +34,14 @@ class SumireSpecialKeyActionEditorFragment :
     private val binding get() = _binding!!
 
     private val rows = mutableMapOf<SumireSpecialKeyDirection, DirectionRowViews>()
-    private val displayActions: List<DisplayAction> by lazy {
-        KeyActionMapper.getDisplayActions(requireContext())
-            .filter { displayAction ->
-                displayAction.action !is KeyAction.Text &&
-                        displayAction.action !is KeyAction.InputText &&
-                        KeyActionMapper.fromKeyAction(displayAction.action) != null
-            }
+    private val actionOptions by lazy {
+        sumireSpecialKeyActionOptions(
+            KeyActionMapper.getDisplayActions(requireContext()),
+            getString(R.string.sumire_special_key_use_default)
+        ) { getString(it.titleResId) }
     }
-    private val displayActionsByString: Map<String, DisplayAction> by lazy {
-        displayActions.mapNotNull { action ->
+    private val displayActionsByString: Map<String, DisplayActionUi> by lazy {
+        actionOptions.mapNotNull { it.action }.mapNotNull { action ->
             KeyActionMapper.fromKeyAction(action.action)?.let { it to action }
         }.toMap()
     }
@@ -153,15 +152,17 @@ class SumireSpecialKeyActionEditorFragment :
     }
 
     private fun showActionSelectionDialog(direction: SumireSpecialKeyDirection) {
-        val items = listOf(getString(R.string.sumire_special_key_use_default)) +
-                displayActions.map { it.displayName }
+        val adapter = SpecialKeyActionDropdownAdapter(requireContext(), actionOptions)
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(direction.dialogTitle())
-            .setItems(items.toTypedArray()) { _, which ->
-                if (which == 0) {
+            .setAdapter(adapter) { _, which ->
+                val option = actionOptions[which]
+                if (option.isHeader) return@setAdapter
+                val action = option.action
+                if (action == null) {
                     viewModel.setDefault(direction)
                 } else {
-                    viewModel.setKeyAction(direction, displayActions[which - 1].action)
+                    viewModel.setKeyAction(direction, action.action)
                 }
                 renderRows(viewModel.uiState.value)
             }
@@ -183,7 +184,7 @@ class SumireSpecialKeyActionEditorFragment :
         return KeyActionMapper.toKeyAction(actionString)
     }
 
-    private fun KeyAction.displayAction(): DisplayAction? {
+    private fun KeyAction.displayAction(): DisplayActionUi? {
         val actionString = KeyActionMapper.fromKeyAction(this) ?: return null
         return displayActionsByString[actionString]
     }

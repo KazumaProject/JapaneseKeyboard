@@ -12,6 +12,6 @@
     <string name="keyboard_skin_default_description">保存済みの色や背景の設定を使います。</string>
     <string name="keyboard_skin_light_description">明るいキーと、やわらかなグレーの背景。</string>
     <string name="keyboard_skin_dark_description">暗いキーと、読みやすい明るい文字。</string>
-    <string name="keyboard_skin_classic_description">iOS 6 風の立体的なキーと青みがかった背景。</string>
+    <string name="keyboard_skin_classic_description">立体感のあるキーと青みがかった背景。</string>
     <string name="keyboard_skin_preview_note">プレビューは配色とキーの形のイメージです。</string>
 </resources>

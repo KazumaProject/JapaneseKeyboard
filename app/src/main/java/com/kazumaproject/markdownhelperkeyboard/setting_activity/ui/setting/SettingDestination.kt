@@ -118,6 +118,7 @@ object SettingDestinations {
         "custom_romaji_preference",
         "shortcut_toolbar_item_preference",
         "candidate_tab_order_preference",
+        "date_candidate_settings_preference",
         "candidate_order_override_preference",
         "ng_word_preference",
         "physical_keyboard_shortcut_setting_preference",
@@ -134,6 +135,7 @@ object SettingDestinations {
 
     private val plainPreferenceInlineEditExceptionKeys = setOf(
         "long_press_timeout_preference",
+        "zenz_floating_candidates_reset",
     )
 
     val inlineEditExceptionKeysForTesting: Set<String>
@@ -489,6 +491,7 @@ object SettingDestinations {
         "keyboard_corner_radius_dp_preference",
         "candidate_column_preference",
         "candidate_tab_visibility_preference",
+        "stabilize_candidate_strip_height_preference",
         "candidate_tab_order_preference",
         "live_conversion_preference",
         "live_conversion_start_length_preference",
@@ -506,9 +509,11 @@ object SettingDestinations {
         "setting_route_tablet_preferences",
         "flick_input_only_preference",
         "flick_editor_preview_preference",
+        "flick_editor_preview_delay_ms",
         "flick_sensitivity_preference",
         "flick_threshold_shape_preference",
         "long_press_timeout_preference",
+        "independent_multi_touch_preference",
         "delete_key_flick_left_preference",
         "undo_enable_preference",
         "vibration_preference",
@@ -804,6 +809,7 @@ object SettingDestinations {
             "shortcut_toolbar_size_setting_fragment_preference" ->
                 R.id.shortcutToolbarSizeSettingFragment
             "candidate_tab_order_preference" -> R.id.candidateTabOrderFragment
+            "date_candidate_settings_preference" -> R.id.dateCandidateSettingsFragment
             "keyboard_selection_preference" -> R.id.keyboardSelectionFragment
             "keyboard_key_letter_size_fragment_preference" -> R.id.keyCandidateLetterSizeFragment
             "keyboard_screen_landscape_preference" -> R.id.keyboardSizeLandscapeFragment
@@ -846,6 +852,10 @@ object SettingDestinations {
         highlightPreferenceKey: String?,
     ): SettingDestinationType? =
         when (key) {
+            "zenz_floating_candidates_reset" -> SettingDestinationType.NavDestination(
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
             "long_press_timeout_preference" -> SettingDestinationType.IntPreferenceDialog(
                 preferenceKey = key,
                 min = 100,

@@ -34,6 +34,7 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
@@ -131,7 +132,8 @@ internal fun createCandidateItemBackgroundDrawable(
 internal data class CandidateYomiPresentation(
     val isVisible: Boolean,
     val text: String,
-    val textSize: Float
+    val textSize: Float,
+    val annotations: List<CandidateRubyAnnotation>? = null,
 )
 
 /**
@@ -150,7 +152,8 @@ internal fun resolveCandidateYomiPresentation(
     showCandidateYomiForLiveConversion: Boolean,
     isFirstCandidate: Boolean,
     suggestion: Candidate,
-    candidateTextSize: Float
+    readingTextSize: Float,
+    readingMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE,
 ): CandidateYomiPresentation {
     val yomi = suggestion.yomi
     val shouldShowYomi =
@@ -158,10 +161,18 @@ internal fun resolveCandidateYomiPresentation(
                 isFirstCandidate &&
                 !yomi.isNullOrBlank() &&
                 yomi != suggestion.string
+    val annotations = if (
+        shouldShowYomi && suggestion.type != 15.toByte() &&
+        readingMode == AppPreference.CANDIDATE_YOMI_MODE_RUBY
+    ) {
+        resolveCandidateRubyAnnotations(suggestion.string, yomi.orEmpty(), suggestion.conversionSegments)
+    } else null
+    val visible = shouldShowYomi && (annotations == null || annotations.isNotEmpty())
     return CandidateYomiPresentation(
-        isVisible = shouldShowYomi,
-        text = if (shouldShowYomi) yomi.orEmpty() else "",
-        textSize = candidateTextSize * 0.72f
+        isVisible = visible,
+        text = if (!visible) "" else annotations?.joinToString(" ") { it.reading } ?: yomi.orEmpty(),
+        textSize = readingTextSize,
+        annotations = annotations,
     )
 }
 
@@ -392,6 +403,8 @@ class SuggestionAdapter internal constructor(
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
+    private var candidateYomiTextSize: Float = AppPreference.DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE.toFloat()
+    private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
@@ -420,8 +433,11 @@ class SuggestionAdapter internal constructor(
         showIntegratedShortcutEntry = source.showIntegratedShortcutEntry
         integratedShortcutEntryExpanded = source.integratedShortcutEntryExpanded
         shortcutIconColor = source.shortcutIconColor
+        inlineSuggestionIconBackgroundTint = source.inlineSuggestionIconBackgroundTint
         activeShortcutTypes = source.activeShortcutTypes
         incognitoIconDrawable = source.incognitoIconDrawable
+        candidateYomiTextSize = source.candidateYomiTextSize
+        candidateYomiMode = source.candidateYomiMode
         candidateTextSize = source.candidateTextSize
         candidateTextColor = source.candidateTextColor
         candidateDividerColor = source.candidateDividerColor
@@ -494,6 +510,7 @@ class SuggestionAdapter internal constructor(
 
     fun release() {
         attachedRecyclerViews.keys.toList().forEach { recyclerView ->
+            CandidateReadingViewport.release(recyclerView)
             detachInlineSuggestionViews(recyclerView)
             attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
             inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
@@ -1588,6 +1605,7 @@ class SuggestionAdapter internal constructor(
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        CandidateReadingViewport.release(recyclerView)
         detachInlineSuggestionViews(recyclerView)
         attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
         inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
@@ -2017,6 +2035,18 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setCandidateYomiTextSize(size: Float) {
+        if (candidateYomiTextSize == size) return
+        candidateYomiTextSize = size
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setCandidateYomiMode(mode: String) {
+        if (candidateYomiMode == mode) return
+        candidateYomiMode = mode
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowCandidateYomiForLiveConversion(enabled: Boolean) {
         if (showCandidateYomiForLiveConversion == enabled) return
         showCandidateYomiForLiveConversion = enabled
@@ -2127,16 +2157,18 @@ class SuggestionAdapter internal constructor(
             showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
             isFirstCandidate = position == 0,
             suggestion = suggestion,
-            candidateTextSize = candidateTextSize
+            readingTextSize = candidateYomiTextSize,
+            readingMode = candidateYomiMode
         )
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
-        holder.yomiText.textSize = yomiPresentation.textSize
-        holder.yomiText.translationX = if (yomiPresentation.isVisible) {
-            holder.text.paint.measureText(" ".repeat(paddingLength))
-        } else {
-            0f
-        }
+        (holder.yomiText as CandidateReadingTextView).setRubyAnnotations(
+            yomiPresentation.annotations, paddingLength
+        )
+        holder.yomiText.textSize = if (yomiPresentation.isVisible) {
+            CandidateReadingSizeLimits.clamp(
+                holder.itemView.context, yomiPresentation.textSize)
+        } else yomiPresentation.textSize
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
@@ -2351,6 +2383,14 @@ class SuggestionAdapter internal constructor(
         }
     }
 
+    private var inlineSuggestionIconBackgroundTint: android.content.res.ColorStateList? = null
+
+    internal fun setInlineSuggestionIconBackgroundTint(tint: android.content.res.ColorStateList?) {
+        if (inlineSuggestionIconBackgroundTint == tint) return
+        inlineSuggestionIconBackgroundTint = tint
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     private fun onBindInlineSuggestionToggleViewHolder(
         holder: InlineSuggestionToggleViewHolder,
         item: SuggestionDisplayItem.InlineSuggestionToggleItem,
@@ -2359,10 +2399,15 @@ class SuggestionAdapter internal constructor(
         holder.badgeText.text = item.toggle.badge.orEmpty()
         holder.badgeText.isVisible = !item.toggle.badge.isNullOrEmpty()
         holder.badgeIcon.isVisible = item.toggle.iconResId != null
+        holder.badgeIcon.backgroundTintList = inlineSuggestionIconBackgroundTint
         holder.badgeIcon.background = item.toggle.iconBackgroundResId?.let { backgroundResId ->
             ContextCompat.getDrawable(holder.itemView.context, backgroundResId)
         }
-        item.toggle.iconResId?.let(holder.badgeIcon::setImageResource)
+        // Reload even when the resource is unchanged: clearing ImageView tint on reuse
+        // also clears the vector's XML tint, which setImageResource would otherwise retain.
+        holder.badgeIcon.setImageDrawable(item.toggle.iconResId?.let { iconResId ->
+            ContextCompat.getDrawable(holder.itemView.context, iconResId)?.mutate()
+        })
         holder.itemView.contentDescription = item.toggle.contentDescription
         candidateTextColor?.let { color ->
             holder.badgeText.setTextColor(color)

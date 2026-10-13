@@ -111,6 +111,77 @@ class KeyboardFontGlyphDrawableTest {
     }
 
     @Test
+    fun bracketGuideSizingPreservesTheCenterLegacyArtworkAndFont() {
+        for (typeface in listOf(null, Typeface.MONOSPACE)) {
+            val drawable = KeyboardFontGlyphDrawable.create(context, R.drawable.number_small_flick_guide,
+                KeyboardFontSnapshot(typeface, 1)) as KeyboardFontGlyphDrawable
+            val image = ImageView(context)
+            val original = render(drawable, 200, 200)
+            drawable.setBracketTextSizes(image, null, 6f)
+            val small = render(drawable, 200, 200)
+            drawable.setBracketTextSizes(image, null, 16f)
+            val large = render(drawable, 200, 200)
+            assertTrue("Bracket guides did not resize", !small.sameAs(large))
+            assertTrue("Guide-only sizing changed the center",
+                Bitmap.createBitmap(small, 80, 80, 40, 40).sameAs(Bitmap.createBitmap(large, 80, 80, 40, 40)))
+            drawable.setBracketTextSizes(image, null, null)
+            assertTrue("Reset did not restore legacy artwork", original.sameAs(render(drawable, 200, 200)))
+        }
+    }
+
+    @Test
+    fun compactBracketCenterResizesAndResetRestoresTheOriginalArtwork() {
+        for (typeface in listOf(null, Typeface.MONOSPACE)) {
+            val drawable = KeyboardFontGlyphDrawable.create(context, R.drawable.number_small,
+                KeyboardFontSnapshot(typeface, 1)) as KeyboardFontGlyphDrawable
+            val image = ImageView(context).apply {
+                scaleType = ImageView.ScaleType.MATRIX
+                setImageDrawable(drawable)
+                layout(0, 0, 200, 200)
+            }
+            val original = render(drawable, 200, 200)
+            drawable.setBracketTextSizes(image, 8f, null)
+            val small = render(drawable, 200, 200)
+            drawable.setBracketTextSizes(image, 32f, null)
+            val large = render(drawable, 200, 200)
+            assertTrue("Compact bracket center did not resize", !small.sameAs(large))
+            fun scaledInkHeight(scale: Float): Float {
+                image.imageMatrix = Matrix().apply { setScale(scale, scale) }
+                val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+                drawable.setBounds(0, 0, (200 / scale).toInt(), (200 / scale).toInt())
+                drawable.draw(Canvas(bitmap).apply { scale(scale, scale) })
+                return checkNotNull(inkBounds(bitmap, RectF(0f, 0f, 200f, 200f))).height()
+                    .also { bitmap.recycle() }
+            }
+            assertEquals("Compact bracket sp changed with image scaling", scaledInkHeight(1f), scaledInkHeight(.5f), 1f)
+            image.imageMatrix = Matrix()
+            drawable.setBracketTextSizes(image, null, null)
+            assertTrue("Reset did not restore compact brackets", original.sameAs(render(drawable, 200, 200)))
+        }
+    }
+
+    @Test
+    fun bracketGuideSpIsIndependentOfTheImageViewScale() {
+        fun guideBounds(scale: Float): RectF {
+            val drawable = KeyboardFontGlyphDrawable.create(context, R.drawable.number_small_flick_guide,
+                KeyboardFontSnapshot(null, 1)) as KeyboardFontGlyphDrawable
+            val image = ImageView(context).apply {
+                scaleType = ImageView.ScaleType.MATRIX
+                setImageDrawable(drawable)
+                layout(0, 0, 200, 200)
+                imageMatrix = Matrix().apply { setScale(scale, scale) }
+            }
+            drawable.setBracketTextSizes(image, null, 16f)
+            val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap).apply { scale(scale, scale) }
+            drawable.setBounds(0, 0, (200 / scale).toInt(), (200 / scale).toInt())
+            drawable.draw(canvas)
+            return checkNotNull(inkBounds(bitmap, RectF(70f, 20f, 130f, 80f)))
+        }
+        assertEquals(guideBounds(1f).height(), guideBounds(.5f).height(), 1f)
+    }
+
+    @Test
     fun numberModeGlyphUsesTheOriginalKeyboardIconColor() {
         val spec = checkNotNull(
             KeyboardFontGlyphDrawable.specs[R.drawable.input_mode_number_select_custom]

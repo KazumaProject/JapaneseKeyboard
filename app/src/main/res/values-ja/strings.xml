@@ -272,6 +272,16 @@
     <string name="flick_threshold_shape_radial">全方向で均一（円形・推奨）</string>
     <string name="flick_threshold_shape_rectangular">横・縦方向の距離で判定（矩形）</string>
     <string name="tfbi_diagonal_recognition_mode_title">2段・3段フリックの斜め判定</string>
+    <string name="sumire_flick_rotation_title">2段・3段フリックの回転方向</string>
+    <string name="sumire_flick_input_mode_title">3段フリックの入力機能</string>
+    <string name="sumire_flick_input_mode_contracted">拗音・拗長音</string>
+    <string name="sumire_flick_input_mode_voiced">濁音・半濁音</string>
+    <string name="sumire_flick_input_mode_all">すべて（標準）</string>
+    <string name="sumire_flick_input_mode_summary">「きょ・きょう」などの拗音と、「が・ぱ」などの濁音の入力範囲を選びます。</string>
+    <string name="sumire_flick_rotation_default">標準（従来の配置）</string>
+    <string name="sumire_flick_rotation_clockwise">時計回り</string>
+    <string name="sumire_flick_rotation_counterclockwise">反時計回り</string>
+    <string name="sumire_flick_rotation_summary">濁点・半濁点を付ける曲がり方。「拗音・拗長音」では適用されません。</string>
     <string name="tfbi_diagonal_recognition_mode_legacy">従来</string>
     <string name="tfbi_diagonal_recognition_mode_stable">安定（明確な曲がりを要求）</string>
     <string name="long_press_timeout_preference_title">長押し時間</string>
@@ -658,6 +668,8 @@
     <string name="keyboard_size_direct_input_invalid_value">正しい数値を入力してください。</string>
     <string name="keyboard_size_direct_input_reset_to_default">初期値に戻しました。</string>
     <string name="keyboard_position_title">キーボードの配置</string>
+    <string name="keyboard_preview_orientation_portrait">縦画面のプレビュー（シミュレーション）</string>
+    <string name="keyboard_preview_orientation_landscape">横画面のプレビュー（シミュレーション）</string>
     <string name="keyboard_selection_fragment_title">キーボード一覧</string>
     <string name="keyboard_selection_add_new_keyboard_title">キーボードを追加</string>
     <string name="custom_keyboard_export_title">カスタムキーボードの書き出し</string>
@@ -774,6 +786,11 @@
     <string name="key_action">キーのアクション</string>
     <string name="double_tap_action">ダブルタップのアクション</string>
     <string name="double_tap_disabled">なし</string>
+    <string name="special_key_category_input">入力・変換</string>
+    <string name="special_key_category_delete_cursor">削除・カーソル</string>
+    <string name="special_key_category_text_mode">文字種・入力モード</string>
+    <string name="special_key_category_keyboard">キーボード切替</string>
+    <string name="special_key_category_edit_other">編集・その他</string>
     <string name="setting_flick">フリック設定</string>
     <string name="tap">タップ</string>
     <string name="flick_left">左フリック</string>
@@ -1104,7 +1121,7 @@
     <string name="sumire_keyboard_size_preference_title">文字サイズ</string>
     <string name="sumire_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はカスタムキーボードにも適用されます。</string>
     <string name="preview_custom_keyboard">キーボードのプレビュー</string>
-    <string name="flickKeyboardSizeSettingsFragment_title">カスタマイズ</string>
+    <string name="flickKeyboardSizeSettingsFragment_title">キーのサイズ</string>
     <string name="custom_keyboard_size_preference_title">文字サイズ</string>
     <string name="custom_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はスミレキーボードにも適用されます。</string>
     <string name="system_user_dictionary">システムユーザー辞書</string>
@@ -1457,6 +1474,8 @@
     <string name="sumire_special_key_input_text">文字を入力</string>
     <string name="sumire_special_key_key_action">特殊アクション</string>
     <string name="sumire_special_key_input_text_hint">入力する文字</string>
+    <string name="live_conversion_candidate_yomi_size_title">読みの文字の大きさ</string>
+    <string name="live_conversion_candidate_yomi_size_summary">候補の上に表示する読みの文字の大きさを変更します。候補欄に収まる大きさまで選べます。候補欄の高さ、段数、フォントによって選べる最大値が変わります。</string>
     <string name="live_conversion_candidate_yomi_title">ライブ変換候補に読みを表示</string>
     <string name="live_conversion_candidate_yomi_summary_on">ライブ変換候補の上部に読みを表示します</string>
     <string name="live_conversion_candidate_yomi_summary_off">ライブ変換候補の上部に読みを表示しません</string>
@@ -1471,6 +1490,8 @@
     <string name="tenkey_restore_input_mode_timeout_minutes_summary">TenKey の最後の入力モードを復元できる時間を分単位で設定します。</string>
     <string name="tenkey_use_three_state_keyboard_title">三状態キーボードの使用</string>
     <string name="tenkey_use_three_state_keyboard_summary">TenKey の切り替えキーで、日本語・英字・数字の3つの入力モードを切り替えます。</string>
+    <string name="tenkey_number_symbol_key_gap_title">数字・記号キーの間隔</string>
+    <string name="tenkey_number_symbol_key_gap_summary">三状態キーボードをオフにしたときの数字キーと記号キーの間隔をdp単位で設定します。</string>
     <string name="sumire_restore_input_mode_on_restart_title">キーボード再起動時に入力モードを復元</string>
     <string name="sumire_restore_input_mode_on_restart_summary">Sumire を開き直したとき、最後に使用した日本語・英字・数字の入力モードを復元します。</string>
     <string name="sumire_restore_input_mode_only_within_time_title">指定時間内のみ Sumire の入力モードを復元</string>
@@ -1855,4 +1876,46 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
 ！？（）「」ー〜　é é　😀 👨‍👩‍👧‍👦
 空白　変換　確定　検索　return</string>
     <string name="local_font_preview_small_sample">あいうえお 変換 ABC 123</string>
+    <string name="ime_popup_unavailable">一覧を表示できませんでした。もう一度お試しください。</string>
+    <string name="ime_no_templates_registered">定型文が登録されていません。</string>
+    <string name="custom_direct_input_replace_composing_title">直接入力で未確定文字を置き換える</string>
+    <string name="custom_direct_input_replace_composing_summary_off">直接入力に切り替えると、未確定文字を確定します。</string>
+    <string name="custom_direct_input_replace_composing_summary_on">直接入力に切り替えた後、最初の入力で未確定文字を置き換えます。</string>
+    <string name="independent_multi_touch_category_title">二本指の操作</string>
+    <string name="independent_multi_touch_title">二本指の入力を独立して扱う</string>
+    <string name="independent_multi_touch_summary">異なるキーを指ごとに操作し、指を離した順に入力を確定します。同じキーへの二本目のタッチは無視します。</string>
+    <string name="stabilize_candidate_strip_height_title">変換候補欄の高さを安定させる</string>
+    <string name="stabilize_candidate_strip_height_summary">入力・確定時に入力欄の位置が変わりにくくなります。高さの差分は透明にし、背後へのタッチを通します。</string>
+    <string name="dictionary_word_registration_category_title">単語の登録</string>
+    <string name="preserve_dictionary_word_whitespace_title">単語の前後の空白を保持する</string>
+    <string name="preserve_dictionary_word_whitespace_summary">ユーザー辞書・定型文の登録や編集で、単語の前後の空白を保持します。フローティング登録にも適用されます。空白だけの単語は登録できません。</string>
+    <string name="flick_editor_preview_delay_title">入力欄プレビューの待ち時間（ミリ秒）</string>
+    <string name="flick_editor_preview_delay_summary">0で即時表示します。文字の選択が変わるたびに、指定時間待ってからプレビューを表示します。長くすると、指を離す前に表示されない場合があります。</string>
+    <string name="settings_loading">設定を読み込んでいます…</string>
+    <string name="settings_loading_failed">設定を読み込めませんでした。</string>
+    <string name="settings_loading_retry">再試行</string>
+
+    <string name="sizing_mode">入力モード</string>
+    <string name="sizing_hiragana">ひらがな</string>
+    <string name="sizing_english">英語</string>
+    <string name="sizing_numbers">数字</string>
+    <string name="sizing_preview">プレビュー</string>
+    <string name="sizing_show_guides">プレビューにガイドを表示</string>
+    <string name="sizing_letters">文字のサイズ</string>
+    <string name="sizing_center">キー中央の文字</string>
+    <string name="sizing_center_help">「あ」「ABC」「1」など、キー中央の文字です。</string>
+    <string name="sizing_guide">フリックガイドの文字</string>
+    <string name="sizing_guide_help">キーの上下左右に表示する文字です。</string>
+    <string name="sizing_common">その他のサイズ・全モード共通</string>
+    <string name="sizing_width">キーの幅</string>
+    <string name="sizing_height">キーの高さ</string>
+    <string name="sizing_icon">アイコン</string>
+    <string name="sizing_special">特殊キーの文字</string>
+    <string name="sizing_reset_mode">このモードの文字サイズを戻す</string>
+    <string name="sizing_reset_all">すべてのサイズを初期化</string>
+    <string name="sizing_reset_message">すべてのモードの文字サイズと、共通のキーサイズを初期化しますか？</string>
+    <string name="sizing_reset">初期化</string>
+    <string name="sizing_sp">%1$.1f sp</string>
+    <string name="sizing_percent">%1$d%%</string>
+    <string name="sizing_inherited">未変更の項目には、これまでのサイズを使用します。</string>
 </resources>

@@ -17,56 +17,62 @@ import com.kazumaproject.core.R as CoreR
 class TenKeyInputModeChangedListenerTest {
     @Test
     fun inputModeSwitchNotifiesNewMode() {
-        val tenKey = createTenKey()
-        val notifiedModes = mutableListOf<InputMode>()
-        tenKey.setOnInputModeChangedListener { inputMode ->
-            notifiedModes.add(inputMode)
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val tenKey = createTenKey()
+            val notifiedModes = mutableListOf<InputMode>()
+            tenKey.setOnInputModeChangedListener { inputMode ->
+                notifiedModes.add(inputMode)
+            }
+
+            clickInputModeSwitch(tenKey)
+
+            assertEquals(listOf(InputMode.ModeEnglish), notifiedModes)
         }
-
-        clickInputModeSwitch(tenKey)
-
-        assertEquals(listOf(InputMode.ModeEnglish), notifiedModes)
     }
 
     @Test
     fun twoStateNumberModeReturnsToJapaneseWhenOpenedFromJapanese() {
-        val tenKey = createTenKey()
-        val notifiedModes = mutableListOf<InputMode>()
-        tenKey.setOnInputModeChangedListener { inputMode ->
-            notifiedModes.add(inputMode)
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val tenKey = createTenKey()
+            val notifiedModes = mutableListOf<InputMode>()
+            tenKey.setOnInputModeChangedListener { inputMode ->
+                notifiedModes.add(inputMode)
+            }
+            tenKey.setUseThreeStateKeyboard(false)
+            tenKey.setUseQwertyNumberWhenThreeStateOff(false)
+
+            switchToNumberMode(tenKey)
+            clickInputModeSwitch(tenKey)
+
+            assertEquals(
+                listOf(InputMode.ModeNumber, InputMode.ModeJapanese),
+                notifiedModes
+            )
+            assertEquals(InputMode.ModeJapanese, tenKey.currentInputMode.value)
         }
-        tenKey.setUseThreeStateKeyboard(false)
-        tenKey.setUseQwertyNumberWhenThreeStateOff(false)
-
-        switchToNumberMode(tenKey)
-        clickInputModeSwitch(tenKey)
-
-        assertEquals(
-            listOf(InputMode.ModeNumber, InputMode.ModeJapanese),
-            notifiedModes
-        )
-        assertEquals(InputMode.ModeJapanese, tenKey.currentInputMode.value)
     }
 
     @Test
     fun twoStateNumberModeReturnsToEnglishWhenOpenedFromEnglish() {
-        val tenKey = createTenKey()
-        val notifiedModes = mutableListOf<InputMode>()
-        tenKey.setOnInputModeChangedListener { inputMode ->
-            notifiedModes.add(inputMode)
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val tenKey = createTenKey()
+            val notifiedModes = mutableListOf<InputMode>()
+            tenKey.setOnInputModeChangedListener { inputMode ->
+                notifiedModes.add(inputMode)
+            }
+            tenKey.setUseThreeStateKeyboard(false)
+            tenKey.setUseQwertyNumberWhenThreeStateOff(false)
+
+            clickInputModeSwitch(tenKey)
+            switchToNumberMode(tenKey)
+            clickInputModeSwitch(tenKey)
+
+            assertEquals(
+                listOf(InputMode.ModeEnglish, InputMode.ModeNumber, InputMode.ModeEnglish),
+                notifiedModes
+            )
+            assertEquals(InputMode.ModeEnglish, tenKey.currentInputMode.value)
         }
-        tenKey.setUseThreeStateKeyboard(false)
-        tenKey.setUseQwertyNumberWhenThreeStateOff(false)
-
-        clickInputModeSwitch(tenKey)
-        switchToNumberMode(tenKey)
-        clickInputModeSwitch(tenKey)
-
-        assertEquals(
-            listOf(InputMode.ModeEnglish, InputMode.ModeNumber, InputMode.ModeEnglish),
-            notifiedModes
-        )
-        assertEquals(InputMode.ModeEnglish, tenKey.currentInputMode.value)
     }
 
     @Test
@@ -107,7 +113,9 @@ class TenKeyInputModeChangedListenerTest {
     }
 
     private fun createTenKey(): TenKey {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val context = androidx.appcompat.view.ContextThemeWrapper(
+            ApplicationProvider.getApplicationContext<android.content.Context>(),
+            R.style.Theme_MarkdownKeyboard)
         val root = LayoutInflater.from(context).inflate(R.layout.main_layout, null)
         return root.findViewById(R.id.keyboard_view)
     }

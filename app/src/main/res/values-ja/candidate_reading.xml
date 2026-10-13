@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_conversion_candidate_yomi_mode_title">読みの表示方式</string>
+    <string-array name="live_conversion_candidate_yomi_mode_entries">
+        <item>全体の読み（従来）</item>
+        <item>漢字部分のふりがな</item>
+    </string-array>
+</resources>

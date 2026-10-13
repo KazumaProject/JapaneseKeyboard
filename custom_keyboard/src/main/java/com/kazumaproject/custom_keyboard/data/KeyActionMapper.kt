@@ -78,6 +78,11 @@ object KeyActionMapper {
             ),
             DisplayAction(KeyAction.ForceNewLine, context.getString(R.string.action_new_line)),
             DisplayAction(
+                KeyAction.Cut,
+                context.getString(R.string.action_cut),
+                com.kazumaproject.core.R.drawable.content_cut_24dp
+            ),
+            DisplayAction(
                 KeyAction.Paste,
                 context.getString(R.string.action_paste),
                 com.kazumaproject.core.R.drawable.content_paste_24px
@@ -173,6 +178,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.text_select_start_24dp
             ),
             DisplayAction(
+                KeyAction.SwitchToKanaLayout,
+                context.getString(R.string.action_switch_to_hiragana_mode),
+                iconResIdForAction(KeyAction.SwitchToKanaLayout)
+            ),
+            DisplayAction(
                 KeyAction.SwitchToEnglishLayout,
                 context.getString(R.string.switch_qwerty),
                 com.kazumaproject.core.R.drawable.input_mode_english_custom
@@ -208,6 +218,7 @@ object KeyActionMapper {
             KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
             KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.Cut -> com.kazumaproject.core.R.drawable.content_cut_24dp
             KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
             KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
             KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
@@ -227,6 +238,7 @@ object KeyActionMapper {
             KeyAction.MoveCursorDown -> com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
             KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+            KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
             KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
             KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
@@ -255,6 +267,7 @@ object KeyActionMapper {
             is KeyAction.SelectLeft -> "SelectLeft"
             is KeyAction.SelectRight -> "SelectRight"
             is KeyAction.SelectAll -> "SelectAll"
+            is KeyAction.Cut -> "Cut"
             is KeyAction.Paste -> "Paste"
             is KeyAction.Copy -> "Copy"
             is KeyAction.ChangeInputMode -> "ChangeInputMode"
@@ -318,6 +331,7 @@ object KeyActionMapper {
             "SelectLeft" -> KeyAction.SelectLeft
             "SelectRight" -> KeyAction.SelectRight
             "SelectAll" -> KeyAction.SelectAll
+            "Cut" -> KeyAction.Cut
             "Paste" -> KeyAction.Paste
             "Copy" -> KeyAction.Copy
             "ChangeInputMode" -> KeyAction.ChangeInputMode

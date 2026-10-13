@@ -372,12 +372,12 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     @Test
-    fun exportImport_roundTrip_preservesConfiguredDoubleTapShortcut() {
+    fun exportImport_roundTrip_preservesCutActionAndConfiguredDoubleTapShortcut() {
         val fullLayout = FullKeyboardLayout(
             layout = CustomKeyboardLayout(
                 layoutId = 1,
                 name = "Double Tap",
-                columnCount = 1,
+                columnCount = 2,
                 rowCount = 1,
                 stableId = "double-tap"
             ),
@@ -386,15 +386,33 @@ class KeyboardLayoutJsonImporterTest {
                     key = KeyDefinition(
                         keyId = 1,
                         ownerLayoutId = 1,
-                        label = "Select",
+                        label = "Cut",
                         row = 0,
                         column = 0,
                         keyType = KeyType.NORMAL,
                         isSpecialKey = true,
-                        keyIdentifier = "select",
-                        action = "SelectAll",
+                        keyIdentifier = "cut",
+                        action = "Cut",
                         doubleTapAction = "Copy",
                         doubleTapPolicy = "EXCLUSIVE"
+                    ),
+                    flicks = emptyList(),
+                    circularFlicks = emptyList(),
+                    twoStepFlicks = emptyList(),
+                    longPressFlicks = emptyList(),
+                    twoStepLongPressFlicks = emptyList()
+                ),
+                KeyWithFlicks(
+                    key = KeyDefinition(
+                        keyId = 2,
+                        ownerLayoutId = 1,
+                        label = "Select all",
+                        row = 0,
+                        column = 1,
+                        keyType = KeyType.NORMAL,
+                        isSpecialKey = true,
+                        keyIdentifier = "select-all",
+                        action = "SelectAll"
                     ),
                     flicks = emptyList(),
                     circularFlicks = emptyList(),
@@ -405,12 +423,14 @@ class KeyboardLayoutJsonImporterTest {
             )
         )
 
-        val importedKey = KeyboardLayoutJsonImporter.parse(
+        val importedKeys = KeyboardLayoutJsonImporter.parse(
             KeyboardLayoutJsonExporter.toJson(listOf(fullLayout))
-        ).layoutsOrThrow().single().keysWithFlicks.single().key
+        ).layoutsOrThrow().single().keysWithFlicks.map { it.key }
 
-        assertEquals("Copy", importedKey.doubleTapAction)
-        assertEquals("EXCLUSIVE", importedKey.doubleTapPolicy)
+        assertEquals("Cut", importedKeys[0].action)
+        assertEquals("Copy", importedKeys[0].doubleTapAction)
+        assertEquals("EXCLUSIVE", importedKeys[0].doubleTapPolicy)
+        assertEquals("SelectAll", importedKeys[1].action)
     }
 
     @Test

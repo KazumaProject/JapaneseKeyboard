@@ -19,6 +19,17 @@
             android:title="@string/flick_editor_preview_title" />
 
         <SeekBarPreference
+            android:defaultValue="0"
+            android:dependency="flick_editor_preview_preference"
+            android:key="flick_editor_preview_delay_ms"
+            android:max="500"
+            android:title="@string/flick_editor_preview_delay_title"
+            android:summary="@string/flick_editor_preview_delay_summary"
+            app:min="0"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
             android:defaultValue="100"
             android:key="flick_sensitivity_preference"
             android:max="200"
@@ -36,6 +47,14 @@
             android:title="@string/flick_threshold_shape_title"
             app:useSimpleSummaryProvider="true" />
 
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/independent_multi_touch_category_title">
+        <SwitchPreferenceCompat
+            android:key="independent_multi_touch_preference"
+            android:defaultValue="false"
+            android:title="@string/independent_multi_touch_title"
+            android:summary="@string/independent_multi_touch_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_function_title">

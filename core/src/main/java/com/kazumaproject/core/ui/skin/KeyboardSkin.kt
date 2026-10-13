@@ -35,6 +35,16 @@ interface KeyboardSkin {
     fun clearPopup(view: View)
 }
 
+/** Keeps a physical space/convert toggle visually consistent while its icon changes. */
+data class SpaceConvertKeyStyle(val role: SkinKeyRole, val textColor: Int)
+
+fun KeyboardSkin.spaceConvertKeyStyle(): SpaceConvertKeyStyle =
+    if (id == KeyboardSkinId.CUPERTINO_CLASSIC) {
+        SpaceConvertKeyStyle(SkinKeyRole.MODIFIER, palette.specialText)
+    } else {
+        SpaceConvertKeyStyle(SkinKeyRole.SPACE, palette.spaceText)
+    }
+
 /** Presentation bounds only; the anchor key remains the input target. */
 data class SkinKeyPreview(val width: Int, val height: Int, val xOffset: Int, val yOffset: Int,
                           val background: Drawable)

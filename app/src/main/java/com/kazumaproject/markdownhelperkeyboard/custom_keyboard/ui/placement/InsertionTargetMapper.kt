@@ -44,33 +44,35 @@ class InsertionTargetMapper {
                 )
             }
 
-        rows.firstOrNull { yUnits >= it.topRowUnits && yUnits < it.bottomRowUnits }?.let { row ->
-            row.items.firstOrNull { item ->
-                val p = item.placement
-                xUnits >= p.columnUnits &&
-                        xUnits < p.columnUnits + p.columnSpanUnits &&
-                        yUnits >= p.rowUnits &&
-                        yUnits < p.rowUnits + p.rowSpanUnits
-            }?.let { item ->
-                val p = item.placement
-                val localY = (yUnits - p.rowUnits) / p.rowSpanUnits
-                val localX = (xUnits - p.columnUnits) / p.columnSpanUnits
-                return if (policy == InsertionPolicy.PreferVertical) {
-                    if (localY < 0.5f) {
-                        InsertionTarget.BeforeItem(item.id)
-                    } else {
-                        InsertionTarget.AfterItem(item.id)
-                    }
+        // Row groups can overlap vertically when a key spans multiple rows.
+        // Resolve the actual occupied rectangle before considering row-level gaps.
+        canonicalLayout.items.firstOrNull { item ->
+            val p = item.placement
+            xUnits >= p.columnUnits &&
+                    xUnits < p.columnUnits + p.columnSpanUnits &&
+                    yUnits >= p.rowUnits &&
+                    yUnits < p.rowUnits + p.rowSpanUnits
+        }?.let { item ->
+            val p = item.placement
+            val localY = (yUnits - p.rowUnits) / p.rowSpanUnits
+            val localX = (xUnits - p.columnUnits) / p.columnSpanUnits
+            return if (policy == InsertionPolicy.PreferVertical) {
+                if (localY < 0.5f) {
+                    InsertionTarget.BeforeItem(item.id)
                 } else {
-                    when {
-                        localY < 0.2f -> InsertionTarget.AboveRowGroup(p.rowUnits)
-                        localY >= 0.8f -> InsertionTarget.BelowRowGroup(p.rowUnits)
-                        localX < 0.5f -> InsertionTarget.BeforeItem(item.id)
-                        else -> InsertionTarget.AfterItem(item.id)
-                    }
+                    InsertionTarget.AfterItem(item.id)
+                }
+            } else {
+                when {
+                    localY < 0.2f -> InsertionTarget.AboveRowGroup(p.rowUnits)
+                    localY >= 0.8f -> InsertionTarget.BelowRowGroup(p.rowUnits)
+                    localX < 0.5f -> InsertionTarget.BeforeItem(item.id)
+                    else -> InsertionTarget.AfterItem(item.id)
                 }
             }
+        }
 
+        rows.firstOrNull { yUnits >= it.topRowUnits && yUnits < it.bottomRowUnits }?.let { row ->
             val maxRight = row.items.maxOf { it.placement.columnUnits + it.placement.columnSpanUnits }
             if (xUnits >= maxRight) {
                 return InsertionTarget.RowEnd(row.topRowUnits)

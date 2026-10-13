@@ -51,6 +51,8 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val RESTORED_LEADING_SPACER_ID_PREFIX = "restored_row_"
+
 private data class DbKeyboardLayoutParts(
     val keys: List<KeyDefinition>,
     val flicksMap: Map<String, List<FlickMapping>>,
@@ -998,8 +1000,17 @@ class KeyboardRepository @Inject constructor(
                     )
                 )
             }
+            .flatMap { spacer ->
+                // Earlier versions could save an inferred gap over a spanning key.
+                // Repair only those generated spacers; user-created spacers keep their identity.
+                if (spacer.id.startsWith(RESTORED_LEADING_SPACER_ID_PREFIX)) {
+                    unoccupiedSpacerParts(spacer, keyItems)
+                } else {
+                    listOf(spacer)
+                }
+            }
 
-        val items: List<KeyboardLayoutItem> = if (storedSpacers.isNotEmpty()) {
+        val items: List<KeyboardLayoutItem> = if (dbLayout.spacers.isNotEmpty()) {
             // 完全復元: items 順は (Spacer, Key) を rowUnits → columnUnits でマージ
             (storedSpacers + keyItems).sortedWith(
                 compareBy({ it.placement.rowUnits }, { it.placement.columnUnits })
@@ -1059,6 +1070,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+            KeyAction.Cut -> com.kazumaproject.core.R.drawable.content_cut_24dp
             KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
             KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
@@ -1121,7 +1133,7 @@ class KeyboardRepository @Inject constructor(
                 if (minColumnUnits <= 0) return@mapNotNull null
                 val rowSpanUnits = rowItems.minOfOrNull { it.placement.rowSpanUnits } ?: 2
                 SpacerItem(
-                    id = "restored_row_${rowUnits}_start_spacer",
+                    id = "${RESTORED_LEADING_SPACER_ID_PREFIX}${rowUnits}_start_spacer",
                     placement = GridPlacement(
                         rowUnits = rowUnits,
                         columnUnits = 0,
@@ -1130,6 +1142,49 @@ class KeyboardRepository @Inject constructor(
                     )
                 )
             }
+            .flatMap { spacer -> unoccupiedSpacerParts(spacer, keyItems) }
+    }
+
+    private fun unoccupiedSpacerParts(
+        spacer: SpacerItem,
+        keyItems: List<KeyItem>
+    ): List<SpacerItem> {
+        // A key that starts in an earlier row may cover all or part of this row's
+        // leading gap. Subtract its rectangle rather than treating its lower rows as empty.
+        val freePlacements = keyItems.fold(listOf(spacer.placement)) { regions, key ->
+            regions.flatMap { region ->
+                val regionBottom = region.rowUnits + region.rowSpanUnits
+                val regionRight = region.columnUnits + region.columnSpanUnits
+                val top = maxOf(region.rowUnits, key.placement.rowUnits)
+                val bottom = minOf(regionBottom, key.placement.rowUnits + key.placement.rowSpanUnits)
+                val left = maxOf(region.columnUnits, key.placement.columnUnits)
+                val right = minOf(regionRight, key.placement.columnUnits + key.placement.columnSpanUnits)
+                if (top >= bottom || left >= right) {
+                    listOf(region)
+                } else {
+                    buildList {
+                        if (region.rowUnits < top) {
+                            add(region.copy(rowSpanUnits = top - region.rowUnits))
+                        }
+                        if (bottom < regionBottom) {
+                            add(region.copy(rowUnits = bottom, rowSpanUnits = regionBottom - bottom))
+                        }
+                        if (region.columnUnits < left) {
+                            add(GridPlacement(top, region.columnUnits, bottom - top, left - region.columnUnits))
+                        }
+                        if (right < regionRight) {
+                            add(GridPlacement(top, right, bottom - top, regionRight - right))
+                        }
+                    }
+                }
+            }
+        }
+        return freePlacements.mapIndexed { index, placement ->
+            spacer.copy(
+                id = if (freePlacements.size == 1) spacer.id else "${spacer.id}_part_$index",
+                placement = placement
+            )
+        }
     }
 
     private fun convertToDbModel(

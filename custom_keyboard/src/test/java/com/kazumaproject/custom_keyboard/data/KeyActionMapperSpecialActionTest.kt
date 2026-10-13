@@ -8,6 +8,7 @@ class KeyActionMapperSpecialActionTest {
     @Test
     fun newSpecialActionsRoundTripThroughStableStrings() {
         val cases = listOf(
+            KeyAction.SwitchToKanaLayout to "SwitchToKana",
             KeyAction.ToggleDakutenOnly to "ToggleDakutenOnly",
             KeyAction.ToggleHandakutenOnly to "ToggleHandakutenOnly",
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
@@ -16,6 +17,8 @@ class KeyActionMapperSpecialActionTest {
             KeyAction.CommitAndInsertSpace to "CommitAndInsertSpace",
             KeyAction.MoveCursorUp to "MoveCursorUp",
             KeyAction.MoveCursorDown to "MoveCursorDown",
+            KeyAction.Cut to "Cut",
+            KeyAction.SelectAll to "SelectAll",
             KeyAction.DoNothing to "DoNothing"
         )
 
@@ -38,6 +41,10 @@ class KeyActionMapperSpecialActionTest {
 
     @Test
     fun actionFallbackIconsRemainAvailableForDrawableActions() {
+        assertEquals(
+            com.kazumaproject.core.R.drawable.content_cut_24dp,
+            KeyActionMapper.iconResIdForAction(KeyAction.Cut)
+        )
         assertEquals(
             com.kazumaproject.core.R.drawable.backspace_24px,
             KeyActionMapper.iconResIdForAction(KeyAction.Delete)

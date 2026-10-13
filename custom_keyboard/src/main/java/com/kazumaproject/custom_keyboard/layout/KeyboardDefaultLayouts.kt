@@ -13,6 +13,8 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
+import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -163,7 +165,9 @@ object KeyboardDefaultLayouts {
         dynamicKeyStates: Map<String, Int>,
         inputLayoutType: String,
         inputStyle: String,
-        deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings()
+        deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings(),
+        tfbiFlickRotation: TfbiFlickRotation = TfbiFlickRotation.DEFAULT,
+        sumireFlickInputMode: SumireFlickInputMode = SumireFlickInputMode.ALL
     ): KeyboardLayout {
         val baseLayout = when (inputLayoutType) {
             "toggle" -> {
@@ -263,7 +267,17 @@ object KeyboardDefaultLayouts {
             }
         }
 
-        var finalLayout = baseLayout
+        var finalLayout = if (mode == KeyboardInputMode.HIRAGANA &&
+            (inputStyle == "second-flick" || inputStyle == "third-flick")
+        ) {
+            val effectiveInputMode = if (inputStyle == "third-flick") sumireFlickInputMode
+                else SumireFlickInputMode.ALL
+            val filteredLayout = SumireFlickInputModeMapper.apply(baseLayout, effectiveInputMode)
+            if (effectiveInputMode == SumireFlickInputMode.CONTRACTED) filteredLayout
+            else SumireFlickRotationMapper.apply(filteredLayout, tfbiFlickRotation)
+        } else {
+            baseLayout
+        }
         dynamicKeyStates.forEach { (keyId, stateIndex) ->
             finalLayout = applyKeyState(finalLayout, keyId, stateIndex)
         }
@@ -410,6 +424,7 @@ object KeyboardDefaultLayouts {
 
     private fun stableSpecialKeyBaseId(keyData: KeyData): String {
         return when (keyData.action) {
+            KeyAction.Cut -> "cut_key"
             KeyAction.Paste -> "paste_key"
             KeyAction.MoveCursorLeft -> "cursor_left_key"
             KeyAction.MoveCursorRight -> "cursor_right_key"

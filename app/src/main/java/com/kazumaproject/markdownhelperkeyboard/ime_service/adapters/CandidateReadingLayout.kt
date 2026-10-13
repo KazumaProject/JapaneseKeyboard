@@ -1,0 +1,151 @@
+package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Rect
+import android.text.TextUtils
+import android.util.AttributeSet
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.markdownhelperkeyboard.R
+import kotlin.math.ceil
+
+/** A ruby annotation contributes width, but never moves the candidate's body. */
+class CandidateReadingTextView @JvmOverloads constructor(
+    context: Context, attrs: AttributeSet? = null
+) : MaterialTextView(context, attrs) {
+    internal var annotatedBody: TextView? = null
+    internal var rubyAnnotations: List<CandidateRubyAnnotation>? = null
+        private set
+    private var bodyTextOffset = 0
+
+    internal fun setRubyAnnotations(annotations: List<CandidateRubyAnnotation>?, textOffset: Int) {
+        if (rubyAnnotations == annotations && bodyTextOffset == textOffset) return
+        rubyAnnotations = annotations
+        bodyTextOffset = textOffset
+        requestLayout()
+        invalidate()
+    }
+
+    internal var leadingInsetPx = 0f
+        set(value) {
+            if (field != value) {
+                field = value
+                requestLayout()
+            }
+        }
+    internal val inkBounds = Rect()
+    internal var inkScale = 1f
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        // Keep TextView's Layout so text and font changes retain its remeasurement behavior.
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val value = text.toString()
+        paint.getTextBounds(value, 0, value.length, inkBounds)
+        val width = if (rubyAnnotations != null) {
+            // A ruby reading fits its body range and never widens or shifts the body.
+            ceil(annotatedBody?.let { it.paint.measureText(it.text.toString()) } ?: 0f).toInt()
+        } else ceil(leadingInsetPx + maxOf(paint.measureText(value), inkBounds.right.toFloat())).toInt()
+        setMeasuredDimension(resolveSize(width, widthMeasureSpec), 0)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        paint.color = currentTextColor
+        paint.drawableState = drawableState
+        canvas.save()
+        canvas.clipRect(0, 0, width, height)
+        val annotations = rubyAnnotations
+        if (annotations != null) {
+            drawRubyAnnotations(canvas, annotations)
+            canvas.restore()
+            return
+        }
+        canvas.translate(leadingInsetPx, 0f)
+        canvas.scale(inkScale, inkScale)
+        val visibleText = if (inkScale > 0f) {
+            TextUtils.ellipsize(text, paint,
+                ((width - leadingInsetPx) / inkScale).coerceAtLeast(0f), TextUtils.TruncateAt.END)
+        } else ""
+        canvas.drawText(visibleText.toString(), 0f, -inkBounds.top.toFloat(), paint)
+        canvas.restore()
+    }
+
+    private fun drawRubyAnnotations(canvas: Canvas, annotations: List<CandidateRubyAnnotation>) {
+        val body = annotatedBody ?: return
+        val bodyLayout = body.layout ?: return
+        val glyphBounds = Rect()
+        for (annotation in annotations) {
+            val start = annotation.start + bodyTextOffset
+            val end = annotation.end + bodyTextOffset
+            if (start < 0 || end > body.text.length || end <= start) continue
+            val first = bodyLayout.getPrimaryHorizontal(start)
+            val last = bodyLayout.getPrimaryHorizontal(end)
+            val left = minOf(first, last).coerceAtLeast(0f)
+            val right = maxOf(first, last).coerceAtMost(width.toFloat())
+            if (right <= left) continue
+            paint.getTextBounds(annotation.reading, 0, annotation.reading.length, glyphBounds)
+            val inkLeft = minOf(0f, glyphBounds.left.toFloat())
+            val naturalWidth = maxOf(paint.measureText(annotation.reading), glyphBounds.right.toFloat()) - inkLeft
+            if (naturalWidth <= 0f) continue
+            val scaleX = minOf(inkScale, (right - left) / naturalWidth)
+            canvas.save()
+            canvas.translate(left + (right - left - naturalWidth * scaleX) / 2f - inkLeft * scaleX, 0f)
+            canvas.scale(scaleX, inkScale)
+            canvas.drawText(annotation.reading, 0f, -inkBounds.top.toFloat(), paint)
+            canvas.restore()
+        }
+    }
+}
+
+/** Layout the annotation against the body's ink, independently of font leading. */
+class CandidateReadingLayout @JvmOverloads constructor(
+    context: Context, attrs: AttributeSet? = null
+) : ConstraintLayout(context, attrs) {
+    private val bodyBounds = Rect()
+    private val parentBounds = Rect()
+    private val bodyInk = Rect()
+
+    private fun annotationHeadroom(): Int = CandidateReadingViewport.headroom(this)
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val body = findViewById<TextView>(R.id.suggestion_item_text_view)
+        val reading = findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
+        val value = body.text.toString()
+        reading.annotatedBody = body
+        reading.leadingInsetPx = body.paint.measureText(value.takeWhile(Char::isWhitespace))
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        val body = findViewById<TextView>(R.id.suggestion_item_text_view)
+        val reading = findViewById<CandidateReadingTextView>(R.id.suggestion_item_yomi_text_view)
+        if (reading.visibility != View.VISIBLE || body.visibility != View.VISIBLE) {
+            (parent as? RecyclerView)?.let(CandidateReadingViewport::refresh)
+            return
+        }
+        val value = body.text.toString()
+        body.paint.getTextBounds(value, 0, value.length, bodyInk)
+        bodyBounds.set(0, 0, body.width, body.height)
+        offsetDescendantRectToMyCoords(body, bodyBounds)
+        val parent = reading.parent as ViewGroup
+        parentBounds.set(0, 0, parent.width, parent.height)
+        offsetDescendantRectToMyCoords(parent, parentBounds)
+        val gap = ceil(resources.displayMetrics.density.toDouble()).toInt()
+        val annotationLeft = bodyBounds.left + body.compoundPaddingLeft - parentBounds.left
+        val inkTop = bodyBounds.top + body.baseline + bodyInk.top
+        // Padding belongs to the body; the independent annotation may use that space.
+        val availableHeight = (inkTop + annotationHeadroom() - gap).coerceAtLeast(0)
+        val annotationHeight = reading.inkBounds.height().coerceAtMost(availableHeight)
+        reading.inkScale = if (reading.inkBounds.height() > 0) {
+            annotationHeight.toFloat() / reading.inkBounds.height()
+        } else 1f
+        val annotationTop = inkTop - gap - annotationHeight - parentBounds.top
+        reading.layout(annotationLeft, annotationTop,
+            annotationLeft + reading.measuredWidth, annotationTop + annotationHeight)
+    }
+}

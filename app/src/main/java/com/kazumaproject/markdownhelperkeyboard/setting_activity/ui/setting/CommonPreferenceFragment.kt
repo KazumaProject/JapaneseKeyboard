@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -19,13 +18,13 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
@@ -33,6 +32,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.FlickPreviewDelaySettings
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.SettingsBackupRepository
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.BufferedReader
@@ -79,7 +80,7 @@ internal fun resolveKeyboardTouchEffectPreferenceVisibility(
 }
 
 @AndroidEntryPoint
-open class CommonPreferenceFragment : PreferenceFragmentCompat() {
+open class CommonPreferenceFragment : AsyncPreferenceFragment() {
 
     companion object {
         const val ARG_HIGHLIGHT_PREFERENCE_KEY = "highlightPreferenceKey"
@@ -89,26 +90,40 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     @get:XmlRes
-    protected open val preferencesXmlRes: Int = R.xml.pref_common
+    protected override val preferencesXmlRes: Int = R.xml.pref_common
 
     @Inject
     lateinit var appPreference: AppPreference
 
     @Inject
-    lateinit var localFontRepository: LocalFontRepository
+    lateinit var settingsBackupRepository: SettingsBackupRepository
+
+    @Inject
+    lateinit var localFontRepositoryProvider: javax.inject.Provider<LocalFontRepository>
+
+    private lateinit var packageInfo: android.content.pm.PackageInfo
+
+    override suspend fun preparePreferenceData(context: android.content.Context) {
+        packageInfo = settingsIo(SettingsLoadStage.PACKAGE_INFO) {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+        settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().loadIfNeeded() }
+    }
 
     private var count = 0
 
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             if (uri == null) return@registerForActivityResult
-            runCatching {
-                val json = AppPreference.exportAllToJson()
-                writeTextToUri(uri, json)
-            }.onSuccess {
-                toast("Backup exported")
-            }.onFailure {
-                toast("Export failed: ${it.message}")
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val json = settingsBackupRepository.exportAllToJson()
+                    withContext(Dispatchers.IO) { writeTextToUri(uri, json) }
+                    toast("Backup exported")
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    toast("Export failed: ${e.message}")
+                }
             }
         }
 
@@ -118,10 +133,10 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val json = withContext(Dispatchers.IO) { readTextFromUri(uri) }
-                    AppPreference.importAllFromJson(json, replaceAll = true)
+                    settingsBackupRepository.importAllFromJson(json)
 
                     // Reset device-local display assets only after the JSON has been applied.
-                    localFontRepository.restoreStandard()
+                    settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().restoreStandard() }
                     AppPreference.migrateSumirePreferenceIfNeeded()
                     AppPreference.migratePredictionLookaheadPreferenceIfNeeded()
                     toast("Backup imported")
@@ -393,10 +408,11 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         )?.isVisible = visibility.showCinematicWaveSettings
     }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
         val guidePreferences = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(guidePreferences)
-        setPreferencesFromResource(preferencesXmlRes, rootKey)
+        findPreference<SeekBarPreference>(FlickPreviewDelaySettings.KEY)
+            ?.configureFlickPreviewDelay()
         fun updateGuideModeEnabled(text: Boolean = guideSettings.textEnabled, candidates: Boolean = guideSettings.enabled) {
             findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = text && candidates
         }
@@ -420,17 +436,12 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-
         findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 it.isEnabled = false
                 it.summary = getString(R.string.inline_suggestion_unsupported_summary)
             }
         }
-
-        val packageInfo = requireContext().packageManager.getPackageInfo(
-            requireContext().packageName, 0
-        )
 
         val languageSwitchPreference =
             findPreference<SwitchPreferenceCompat>("app_setting_language_preference")
@@ -1016,15 +1027,11 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         applyLegacySearchResultFilterIfNeeded()
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        scrollToHighlightedPreferenceAfterLayout(view)
-    }
-
     protected open fun onCommonPreferencesCreated() = Unit
 
     private fun setupRoutePreferences() {
         val routeTargets = mapOf(
+            "date_candidate_settings_preference" to R.id.dateCandidateSettingsFragment,
             "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
             "setting_route_input_method" to R.id.inputMethodPreferenceFragment,
             "setting_route_candidate_conversion" to R.id.candidateConversionPreferenceFragment,
@@ -1064,12 +1071,15 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             AppVariantConfig.hasGemma
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onPreferencesResumed() {
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
             androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()))
         findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = guideSettings.textEnabled && guideSettings.enabled
         findPreference<SeekBarPreference>("composing_guide_text_size_setting")?.value = guideSettings.textSize.toInt()
+        launchPreferenceRefresh {
+            settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().loadIfNeeded() }
+            syncCandidateReadingSizePreference()
+        }
         syncDefaultEmojiSkinTonePreference()
         updateCursorMoveTargetPairsSummary()
     }
@@ -1082,6 +1092,12 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             // Viewが生成されていない場合などを考慮して例外は無視
         }
         super.onDestroyView()
+    }
+
+    private fun syncCandidateReadingSizePreference() {
+        findPreference<SeekBarPreference>(AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY)?.apply {
+            CandidateReadingSizeLimits.configurePreference(requireContext(), this)
+        }
     }
 
     private fun syncDefaultEmojiSkinTonePreference() {

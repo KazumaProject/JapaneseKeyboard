@@ -20,6 +20,13 @@ internal class CandidateSurfaceHost(
     private var colors = CandidatePanelColors.resolve(tabs.context)
     private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
     fun setColors(value: CandidatePanelColors) { colors = value; refreshAppearance() }
+    private var panelBackgroundAlpha = 255
+    fun setPanelBackgroundAlpha(value: Int) {
+        val alpha = value.coerceIn(0, 255)
+        if (panelBackgroundAlpha == alpha) return
+        panelBackgroundAlpha = alpha
+        refreshAppearance()
+    }
     fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
         keyboardFontSnapshot = snapshot
         KeyboardFontApplicator.applyToKeyboardViews(tabs, snapshot)
@@ -93,7 +100,7 @@ internal class CandidateSurfaceHost(
 
     private fun styleSurface() {
         scrollbars = candidates.isVerticalScrollBarEnabled to candidates.isHorizontalScrollBarEnabled
-        backgrounds = listOf(toolbar, tabs, strip).map { it to it.background }
+        backgrounds = listOf(toolbar, tabs, strip, fullCandidates).map { it to it.background }
         (candidates as? androidx.recyclerview.widget.RecyclerView)?.addItemDecoration(spacing)
         (tabs as? com.google.android.material.tabs.TabLayout)?.let { layout ->
             tabMode = layout.tabMode
@@ -113,8 +120,8 @@ internal class CandidateSurfaceHost(
                 val chrome = CupertinoClassicCandidateChrome
                 val background = when (view) {
                     toolbar -> chrome.toolbarBackground(view.resources)
-                    tabs -> chrome.tabsBackground()
-                    else -> chrome.panelBackground()
+                    tabs -> chrome.tabsBackground().apply { alpha = panelBackgroundAlpha }
+                    else -> chrome.panelBackground(alpha = panelBackgroundAlpha)
                 }
                 view.background = background
                 classicSurfaceBackgrounds[view] = background

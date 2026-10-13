@@ -97,6 +97,40 @@ class InsertionTargetMapperTest {
         repeat(5) { assertEquals(first, map(3f, 1f)) }
     }
 
+    @Test
+    fun mapper_keyBesideSpanningKey_targetsItsOwnRow() {
+        val spanningLayout = layout.copy(items = listOf(
+            key("tall", GridPlacement(4, 0, 4, 2)),
+            key("upper", GridPlacement(4, 2, 2, 2)),
+            key("lower", GridPlacement(6, 2, 2, 2)),
+            key("upper_right", GridPlacement(4, 4, 2, 2))
+        ))
+
+        for (policy in InsertionPolicy.entries) {
+            assertEquals(
+                InsertionTarget.BeforeItem("lower"),
+                mapper.mapPointer(spanningLayout, 2.4f, 6.8f, 10f, 8f, policy)
+            )
+        }
+        assertEquals(
+            InsertionTarget.BelowRowGroup(6),
+            mapper.mapPointer(spanningLayout, 3f, 7.8f, 10f, 8f)
+        )
+    }
+
+    @Test
+    fun mapper_lowerHalfOfSpanningKey_targetsSpanningKey() {
+        val spanningLayout = layout.copy(items = listOf(
+            key("tall", GridPlacement(4, 0, 4, 2)),
+            key("lower", GridPlacement(6, 2, 2, 2))
+        ))
+
+        assertEquals(
+            InsertionTarget.BeforeItem("tall"),
+            mapper.mapPointer(spanningLayout, 0.4f, 6.8f, 10f, 8f)
+        )
+    }
+
     private fun map(
         xUnits: Float,
         yUnits: Float,

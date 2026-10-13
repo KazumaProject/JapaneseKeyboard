@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,7 +15,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
@@ -29,11 +27,13 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwriti
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class GemmaPreferenceFragment : PreferenceFragmentCompat() {
+class GemmaPreferenceFragment : AsyncPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_gemma
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -47,8 +47,24 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
             importGemmaModel(uri)
         }
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_gemma, rootKey)
+    private var installedModels: List<com.kazumaproject.markdownhelperkeyboard.gemma.InstalledGemmaModel> = emptyList()
+    private var selectedModelPath: String? = null
+    private var modelSummary: String? = null
+
+    override suspend fun preparePreferenceData(context: android.content.Context) {
+        val snapshot = settingsIo(SettingsLoadStage.MODELS) {
+            Triple(
+                gemmaTranslationManager.installedModels(),
+                gemmaTranslationManager.selectedModel()?.file?.absolutePath,
+                gemmaTranslationManager.getModelSummary(),
+            )
+        }
+        installedModels = snapshot.first
+        selectedModelPath = snapshot.second
+        modelSummary = snapshot.third
+    }
+
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
         val gemmaTranslationSwitch =
             findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference")
@@ -227,17 +243,22 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
                     return@setOnPreferenceChangeListener false
                 }
                 val selected = newValue as String
-                if (!gemmaTranslationManager.selectModel(selected)) {
-                    return@setOnPreferenceChangeListener false
-                }
-                refreshInstalledModels()
-                if (appPreference.enable_gemma_translation_preference) {
-                    setGemmaLoadControlsEnabled(false)
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        gemmaTranslationManager.initializeIfEnabled(forceReload = true)
+                launchPreferenceRefresh {
+                    val accepted = settingsIo(SettingsLoadStage.MODELS) {
+                        gemmaTranslationManager.selectModel(selected)
+                    }
+                    if (accepted) {
+                        preparePreferenceData(requireContext())
+                        refreshInstalledModels()
+                        updateGemmaModelSummary()
+                        if (appPreference.enable_gemma_translation_preference) {
+                            setGemmaLoadControlsEnabled(false)
+                            gemmaTranslationManager.initializeIfEnabled(forceReload = true)
+                        }
                     }
                 }
-                true
+                // The worker validates the file before publishing and persisting selection.
+                false
             }
         }
 
@@ -256,7 +277,6 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
-
         findPreference<Preference>("gemma_supported_models_preference")?.setOnPreferenceClickListener {
             AlertDialog.Builder(requireContext())
                 .setTitle(R.string.gemma_supported_models_title)
@@ -269,6 +289,7 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
         refreshInstalledModels()
         updateGemmaModelSummary()
         applyLegacySearchResultFilterIfNeeded()
+        observeGemmaLoadState()
     }
 
     private fun updateAdditionalInstructionSummary(preference: EditTextPreference) {
@@ -317,18 +338,13 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        scrollToHighlightedPreferenceAfterLayout(view)
-        observeGemmaLoadState()
-    }
-
     private fun importGemmaModel(uri: Uri) {
         setGemmaLoadControlsEnabled(false)
         updateGemmaModelSummary(loadingSummary(appPreference.gemma_translation_backend_preference))
         viewLifecycleOwner.lifecycleScope.launch {
             runCatching {
                 gemmaTranslationManager.importModelFromUri(uri)
+                preparePreferenceData(requireContext())
                 refreshInstalledModels()
                 gemmaTranslationManager.initializeIfEnabled(forceReload = true)
             }.onSuccess { initialized ->
@@ -337,7 +353,7 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
                     if (initialized) {
                         getString(R.string.gemma_translation_model_import_success)
                     } else {
-                        gemmaTranslationManager.getModelSummary()
+                        modelSummary ?: getString(R.string.gemma_translation_model_summary_missing)
                     },
                     Toast.LENGTH_SHORT
                 ).show()
@@ -356,17 +372,17 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     private fun updateGemmaModelSummary(summaryOverride: String? = null) {
-        val summary = summaryOverride ?: gemmaTranslationManager.getModelSummary()
+        val summary = summaryOverride ?: modelSummary
         findPreference<Preference>("gemma_translation_model_preference")?.summary = summary
         findPreference<ListPreference>("gemma_model_selection_preference")?.summary = summary
     }
 
     private fun refreshInstalledModels() {
-        val models = gemmaTranslationManager.installedModels()
+        val models = installedModels
         findPreference<ListPreference>("gemma_model_selection_preference")?.apply {
             entries = models.map { it.selectionLabel }.toTypedArray()
             entryValues = models.map { it.file.absolutePath }.toTypedArray()
-            value = gemmaTranslationManager.selectedModel()?.file?.absolutePath
+            value = selectedModelPath
             isEnabled = models.isNotEmpty() &&
                 gemmaTranslationManager.loadState.value !is GemmaLoadState.Loading
         }
@@ -375,14 +391,26 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
     private fun observeGemmaLoadState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                gemmaTranslationManager.loadState.collect { state ->
-                    applyGemmaLoadState(state)
+                gemmaTranslationManager.loadState.collectLatest { state ->
+                    refreshPreferenceData {
+                        preparePreferenceData(requireContext())
+                        refreshInstalledModels()
+                        renderGemmaLoadState(state)
+                    }
                 }
             }
         }
     }
 
     private fun applyGemmaLoadState(state: GemmaLoadState) {
+        launchPreferenceRefresh {
+            preparePreferenceData(requireContext())
+            refreshInstalledModels()
+            renderGemmaLoadState(state)
+        }
+    }
+
+    private fun renderGemmaLoadState(state: GemmaLoadState) {
         val loading = state is GemmaLoadState.Loading
         setGemmaLoadControlsEnabled(!loading)
         updateGemmaModelSummary(summaryForState(state))
@@ -392,7 +420,7 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference")?.isEnabled = enabled
         findPreference<ListPreference>("gemma_translation_backend_preference")?.isEnabled = enabled
         findPreference<ListPreference>("gemma_model_selection_preference")?.isEnabled =
-            enabled && gemmaTranslationManager.installedModels().isNotEmpty()
+            enabled && installedModels.isNotEmpty()
         findPreference<Preference>("gemma_translation_model_preference")?.isEnabled = enabled
     }
 

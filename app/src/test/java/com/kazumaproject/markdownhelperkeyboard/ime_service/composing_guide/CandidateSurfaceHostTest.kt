@@ -122,8 +122,10 @@ class CandidateSurfaceHostTest {
         assertEquals(com.google.android.material.tabs.TabLayout.MODE_FIXED, tabs.tabMode)
         assertEquals(com.google.android.material.tabs.TabLayout.GRAVITY_FILL, tabs.tabGravity)
         assertTrue(toolbar.background is android.graphics.drawable.GradientDrawable)
-        assertTrue(tabs.background is android.graphics.drawable.GradientDrawable)
-        assertTrue(strip.background is android.graphics.drawable.GradientDrawable)
+        assertEquals(CupertinoClassicCandidateChrome.panelColor,
+            (tabs.background as android.graphics.drawable.ColorDrawable).color)
+        assertEquals(CupertinoClassicCandidateChrome.panelColor,
+            (strip.background as android.graphics.drawable.ColorDrawable).color)
 
         host.setColors(CandidatePanelColors.resolve(context))
 
@@ -179,6 +181,34 @@ class CandidateSurfaceHostTest {
         assertEquals(originalMode, tabs.tabMode)
         assertEquals(originalGravity, tabs.tabGravity)
         assertSame(originalRipple, tabs.tabRippleColor)
+    }
+
+    @Test fun relocatedClassicCandidatePanelsKeepLiquidGlassTransparencyWhenRefreshed() {
+        val context = android.view.ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val root = FrameLayout(context)
+        val toolbar = FrameLayout(context)
+        val tabs = com.google.android.material.tabs.TabLayout(context)
+        val strip = FrameLayout(context)
+        val candidates = androidx.recyclerview.widget.RecyclerView(context)
+        strip.addView(candidates)
+        val full = View(context)
+        listOf(toolbar, tabs, strip, full).forEach { root.addView(it) }
+        val host = CandidateSurfaceHost(toolbar, tabs, strip, candidates, full)
+
+        host.setColors(CandidatePanelColors.resolve(context, cupertinoClassic = true))
+        host.setPanelBackgroundAlpha(0)
+        host.attach(LinearLayout(context))
+        host.refreshAppearance()
+
+        assertEquals(0, (tabs.background as android.graphics.drawable.ColorDrawable).alpha)
+        assertEquals(0, (strip.background as android.graphics.drawable.ColorDrawable).alpha)
+        assertEquals(0, (full.background as android.graphics.drawable.ColorDrawable).alpha)
+        assertEquals(255, (toolbar.background as android.graphics.drawable.GradientDrawable).alpha)
+
+        host.setPanelBackgroundAlpha(255)
+        assertEquals(255, (full.background as android.graphics.drawable.ColorDrawable).alpha)
+        host.detach()
     }
 
     @Test fun movesAllExistingViewsAndRestoresOriginalOrderAndParameters() {

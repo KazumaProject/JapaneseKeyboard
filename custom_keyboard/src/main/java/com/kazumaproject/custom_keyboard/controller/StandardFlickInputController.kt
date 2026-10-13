@@ -33,7 +33,7 @@ class StandardFlickInputController(
 ) {
 
     companion object {
-        /** One active standard flick guide per keyboard window, even though each key owns a controller. */
+        /** Legacy input keeps one guide per keyboard window. Independent input bypasses this registry. */
         private val activeSkinGuides = WeakHashMap<ViewGroup, WeakReference<StandardFlickInputController>>()
     }
 
@@ -69,6 +69,11 @@ class StandardFlickInputController(
     private var inputTextTransform: (String) -> String = { it }
     private var skinGuidePopup: SkinGuidePopup? = null
     private var registeredGuideRoot: ViewGroup? = null
+    private var concurrentSkinGuidesProvider: () -> Boolean = { false }
+
+    fun setConcurrentSkinGuidesProvider(provider: () -> Boolean) {
+        concurrentSkinGuidesProvider = provider
+    }
 
     private val popupWindow: PopupWindow
     private val popupView = StandardFlickPopupView(context)
@@ -308,6 +313,10 @@ class StandardFlickInputController(
     }
 
     private fun registerSkinGuide(root: ViewGroup?) {
+        if (concurrentSkinGuidesProvider()) {
+            unregisterSkinGuide()
+            return
+        }
         if (root == null) return
         if (registeredGuideRoot !== root) unregisterSkinGuide()
         registeredGuideRoot = root

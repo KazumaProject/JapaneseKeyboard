@@ -2,163 +2,31 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_cust
 
 import android.content.res.Configuration
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.SeekBar
-import android.widget.TextView
-import androidx.core.view.MenuHost
-import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyboardSizingControls
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.KeyboardSizingValues
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.SizingField
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 
-class FlickKeyboardSizeSettingsFragment : Fragment() {
-
-    private var previewKeyboardView: FlickKeyboardView? = null
-    private var widthSeekBar: SeekBar? = null
-    private var heightSeekBar: SeekBar? = null
-    private var iconSeekBar: SeekBar? = null
-    private var textSeekBar: SeekBar? = null
-    private var specialTextSeekBar: SeekBar? = null
-
-    private var widthValueText: TextView? = null
-    private var heightValueText: TextView? = null
-    private var iconValueText: TextView? = null
-    private var textValueText: TextView? = null
-    private var specialTextValueText: TextView? = null
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.fragment_flick_keyboard_size_settings, container, false)
-    }
+class FlickKeyboardSizeSettingsFragment : Fragment(R.layout.fragment_flick_keyboard_size_settings) {
+    private var controls: KeyboardSizingControls? = null
+    private val isSumire: Boolean
+        get() = arguments?.getString("sizingSurface") != "custom" &&
+            arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY) != "custom_keyboard_size_preference"
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        AppPreference.init(requireContext())
-
-        previewKeyboardView = view.findViewById(R.id.previewFlickKeyboardView)
-        widthSeekBar = view.findViewById(R.id.seekBarKeyWidth)
-        heightSeekBar = view.findViewById(R.id.seekBarKeyHeight)
-        iconSeekBar = view.findViewById(R.id.seekBarIconSize)
-        textSeekBar = view.findViewById(R.id.seekBarTextSize)
-        specialTextSeekBar = view.findViewById(R.id.seekBarSpecialTextSize)
-
-        widthValueText = view.findViewById(R.id.textKeyWidthValue)
-        heightValueText = view.findViewById(R.id.textKeyHeightValue)
-        iconValueText = view.findViewById(R.id.textIconSizeValue)
-        textValueText = view.findViewById(R.id.textTextSizeValue)
-        specialTextValueText = view.findViewById(R.id.textSpecialTextSizeValue)
-
-        val resetButton: Button = view.findViewById(R.id.buttonResetFlickKeyboardSize)
-
-        bindSeekBars()
-        bindResetButton(resetButton)
-        renderPreview()
-        setupMenu()
-    }
-
-    override fun onDestroyView() {
-        previewKeyboardView = null
-        widthSeekBar = null
-        heightSeekBar = null
-        iconSeekBar = null
-        textSeekBar = null
-        specialTextSeekBar = null
-        widthValueText = null
-        heightValueText = null
-        iconValueText = null
-        textValueText = null
-        specialTextValueText = null
-        super.onDestroyView()
-    }
-
-    private fun bindSeekBars() {
-        widthSeekBar?.max = MAX_PERCENT - MIN_PERCENT
-        heightSeekBar?.max = MAX_PERCENT - MIN_PERCENT
-        iconSeekBar?.max = MAX_ICON_PERCENT - MIN_PERCENT
-        textSeekBar?.max = (MAX_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
-        specialTextSeekBar?.max = (MAX_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
-
-        widthSeekBar?.progress =
-            (AppPreference.flick_key_width_scale_percent ?: DEFAULT_WIDTH_PERCENT) - MIN_PERCENT
-        heightSeekBar?.progress =
-            (AppPreference.flick_key_height_scale_percent ?: DEFAULT_HEIGHT_PERCENT) - MIN_PERCENT
-        iconSeekBar?.progress =
-            (AppPreference.flick_key_icon_scale_percent ?: DEFAULT_ICON_PERCENT) - MIN_PERCENT
-        textSeekBar?.progress =
-            ((AppPreference.flick_key_text_size_sp
-                ?: DEFAULT_TEXT_SIZE_SP) - MIN_TEXT_SIZE_SP).toInt()
-        specialTextSeekBar?.progress =
-            ((AppPreference.flick_special_key_text_size_sp
-                ?: DEFAULT_SPECIAL_TEXT_SIZE_SP) - MIN_TEXT_SIZE_SP).toInt()
-
-        val listener = object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                saveCurrentValues()
-                updateValueLabels()
-                renderPreview()
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
-        }
-
-        widthSeekBar?.setOnSeekBarChangeListener(listener)
-        heightSeekBar?.setOnSeekBarChangeListener(listener)
-        iconSeekBar?.setOnSeekBarChangeListener(listener)
-        textSeekBar?.setOnSeekBarChangeListener(listener)
-        specialTextSeekBar?.setOnSeekBarChangeListener(listener)
-
-        updateValueLabels()
-    }
-
-    private fun bindResetButton(button: Button) {
-        button.setOnClickListener {
-            widthSeekBar?.progress = DEFAULT_WIDTH_PERCENT - MIN_PERCENT
-            heightSeekBar?.progress = DEFAULT_HEIGHT_PERCENT - MIN_PERCENT
-            iconSeekBar?.progress = DEFAULT_ICON_PERCENT - MIN_PERCENT
-            textSeekBar?.progress = (DEFAULT_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
-            specialTextSeekBar?.progress = (DEFAULT_SPECIAL_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
-            saveCurrentValues()
-            updateValueLabels()
-            renderPreview()
-        }
-    }
-
-    private fun saveCurrentValues() {
-        AppPreference.flick_key_width_scale_percent = currentWidthPercent
-        AppPreference.flick_key_height_scale_percent = currentHeightPercent
-        AppPreference.flick_key_icon_scale_percent = currentIconPercent
-        AppPreference.flick_key_text_size_sp = currentTextSizeSp
-        AppPreference.flick_special_key_text_size_sp = currentSpecialTextSizeSp
-    }
-
-    private fun updateValueLabels() {
-        widthValueText?.text = "${currentWidthPercent}%"
-        heightValueText?.text = "${currentHeightPercent}%"
-        iconValueText?.text = "${currentIconPercent}%"
-        textValueText?.text = String.format("%.1fsp", currentTextSizeSp)
-        specialTextValueText?.text = String.format("%.1fsp", currentSpecialTextSizeSp)
-    }
-
-    private fun renderPreview() {
-        val keyboardView = previewKeyboardView ?: return
-        val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-
-        keyboardView.applyKeyboardTheme(
+        val keyboard = view.findViewById<FlickKeyboardView>(R.id.previewFlickKeyboardView)
+        keyboard.setOnTouchListener { _, _ -> true }
+        keyboard.applyKeyboardTheme(
             themeMode = AppPreference.theme_mode,
-            currentNightMode = currentNightMode,
+            currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK,
             isDynamicColorEnabled = false,
             customBgColor = AppPreference.custom_theme_bg_color,
             customKeyColor = AppPreference.custom_theme_key_color,
@@ -169,95 +37,68 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
             customBorderEnable = AppPreference.custom_theme_border_enable,
             customBorderColor = AppPreference.custom_theme_border_color,
             liquidGlassKeyAlphaEnable = AppPreference.liquid_glass_key_alpha,
-            borderWidth = AppPreference.custom_theme_border_width
+            borderWidth = AppPreference.custom_theme_border_width,
         )
-
-        keyboardView.applyKeySizing(
-            keyWidthScalePercent = currentWidthPercent,
-            keyHeightScalePercent = currentHeightPercent,
-            iconScalePercent = currentIconPercent,
-            textSizeSp = currentTextSizeSp,
-            specialKeyTextSizeSp = currentSpecialTextSizeSp
-        )
-
-        keyboardView.setOnKeyboardActionListener(object :
-            FlickKeyboardView.OnKeyboardActionListener {
-            override fun onPress(action: com.kazumaproject.custom_keyboard.data.KeyAction) = Unit
-
-            override fun onAction(
-                action: com.kazumaproject.custom_keyboard.data.KeyAction,
-                isFlick: Boolean
-            ) = Unit
-
-            override fun onActionLongPress(action: com.kazumaproject.custom_keyboard.data.KeyAction) =
-                Unit
-
-            override fun onActionUpAfterLongPress(action: com.kazumaproject.custom_keyboard.data.KeyAction) =
-                Unit
-
-            override fun onFlickDirectionChanged(direction: com.kazumaproject.custom_keyboard.data.FlickDirection) =
-                Unit
-
-            override fun onFlickActionLongPress(action: com.kazumaproject.custom_keyboard.data.KeyAction) =
-                Unit
-
-            override fun onFlickActionUpAfterLongPress(
-                action: com.kazumaproject.custom_keyboard.data.KeyAction,
-                isFlick: Boolean
-            ) = Unit
-        })
-
-        keyboardView.setKeyboard(KeyboardDefaultLayouts.defaultLayout())
-    }
-
-    private val currentWidthPercent: Int
-        get() = MIN_PERCENT + (widthSeekBar?.progress ?: 0)
-
-    private val currentHeightPercent: Int
-        get() = MIN_PERCENT + (heightSeekBar?.progress ?: 0)
-
-    private val currentIconPercent: Int
-        get() = MIN_PERCENT + (iconSeekBar?.progress ?: 0)
-
-    private val currentTextSizeSp: Float
-        get() = MIN_TEXT_SIZE_SP + (textSeekBar?.progress ?: 0).toFloat()
-
-    private val currentSpecialTextSizeSp: Float
-        get() = MIN_TEXT_SIZE_SP + (specialTextSeekBar?.progress ?: 0).toFloat()
-
-    private fun setupMenu() {
-        val menuHost: MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-
-            }
-
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                return when (menuItem.itemId) {
-
-                    android.R.id.home -> {
-                        parentFragmentManager.popBackStack()
-                        true
+        controls = KeyboardSizingControls(view, savedInstanceState, tenkey = false, modeSpecific = isSumire,
+            read = { mode, _ -> KeyboardSizingValues(
+                if (isSumire) ModeKeySizing.sumireCenter(mode) else AppPreference.flick_key_text_size_sp ?: 16f,
+                if (isSumire) ModeKeySizing.sumireGuide(mode) else (AppPreference.flick_guide_text_size_sp_preference ?: 9).toFloat(),
+                (AppPreference.flick_key_width_scale_percent ?: 160).toFloat(),
+                (AppPreference.flick_key_height_scale_percent ?: 160).toFloat(),
+                (AppPreference.flick_key_icon_scale_percent ?: 80).toFloat(),
+                AppPreference.flick_special_key_text_size_sp ?: 12f,
+            ) },
+            save = { mode, field, value -> when (field) {
+                SizingField.CENTER -> if (isSumire) AppPreference.setModeKeySize("sumire", mode, false, value)
+                    else AppPreference.flick_key_text_size_sp = value
+                SizingField.GUIDE -> if (isSumire) AppPreference.setModeKeySize("sumire", mode, true, value)
+                    else AppPreference.flick_guide_text_size_sp_preference = value.toInt()
+                SizingField.WIDTH -> AppPreference.flick_key_width_scale_percent = value.toInt()
+                SizingField.HEIGHT -> AppPreference.flick_key_height_scale_percent = value.toInt()
+                SizingField.ICON -> AppPreference.flick_key_icon_scale_percent = value.toInt()
+                SizingField.SPECIAL -> AppPreference.flick_special_key_text_size_sp = value
+            } },
+            render = { mode, guides, values ->
+                keyboard.applyKeySizing(values.width.toInt(), values.height.toInt(), values.icon.toInt(),
+                    values.center, values.special)
+                keyboard.setFlickGuideEnabled(guides, allowMultiCharacterLabels = true)
+                keyboard.setFlickGuideTextSizeSp(values.guide)
+                keyboard.setFlickGuideMaxCodePoints(AppPreference.flick_guide_max_characters_preference ?: 1)
+                keyboard.setKeyboard(if (isSumire) KeyboardDefaultLayouts.createFinalLayout(mode,
+                    emptyMap(), AppPreference.sumire_input_method, AppPreference.sumire_keyboard_style)
+                    else KeyboardDefaultLayouts.defaultLayout())
+            },
+            reset = { mode ->
+                if (isSumire) AppPreference.resetModeKeySizes("sumire", mode)
+                if (mode == null) {
+                    AppPreference.flick_key_width_scale_percent = 160
+                    AppPreference.flick_key_height_scale_percent = 160
+                    AppPreference.flick_key_icon_scale_percent = 80
+                    AppPreference.flick_special_key_text_size_sp = 12f
+                    // Shared legacy text settings also serve custom keyboards.
+                    if (!isSumire) {
+                        AppPreference.flick_key_text_size_sp = 16f
+                        AppPreference.flick_guide_text_size_sp_preference = 9
+                    } else {
+                        com.kazumaproject.custom_keyboard.data.KeyboardInputMode.entries.forEach { inputMode ->
+                            AppPreference.setModeKeySize("sumire", inputMode, false, 16f)
+                            AppPreference.setModeKeySize("sumire", inputMode, true, 9f)
+                        }
                     }
-
-                    else -> false
                 }
-            }
-        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+            },
+            inherited = { mode -> AppPreference.modeKeySize("sumire", mode, false) == null ||
+                AppPreference.modeKeySize("sumire", mode, true) == null },
+        )
     }
 
-    companion object {
-        private const val MIN_PERCENT = 40
-        private const val MAX_PERCENT = 220
-        private const val MAX_ICON_PERCENT = 220
+    override fun onSaveInstanceState(outState: Bundle) {
+        controls?.saveState(outState)
+        super.onSaveInstanceState(outState)
+    }
 
-        private const val DEFAULT_WIDTH_PERCENT = 160
-        private const val DEFAULT_HEIGHT_PERCENT = 160
-        private const val DEFAULT_ICON_PERCENT = 80
-
-        private const val MIN_TEXT_SIZE_SP = 8f
-        private const val MAX_TEXT_SIZE_SP = 32f
-        private const val DEFAULT_TEXT_SIZE_SP = 16f
-        private const val DEFAULT_SPECIAL_TEXT_SIZE_SP = 12f
+    override fun onDestroyView() {
+        controls = null
+        super.onDestroyView()
     }
 }

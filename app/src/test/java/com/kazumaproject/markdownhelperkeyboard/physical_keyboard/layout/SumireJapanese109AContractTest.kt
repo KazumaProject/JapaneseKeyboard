@@ -50,7 +50,7 @@ class SumireJapanese109AContractTest {
     }
 
     @Test
-    fun japanese109AKcm_definesLettersAsLowercaseAndShiftCapsAsUppercase() {
+    fun japanese109AKcm_definesLetterCaseWithShiftAndCapsLock() {
         val keys = readKcmKeys()
 
         ('A'..'Z').forEach { letter ->
@@ -58,7 +58,26 @@ class SumireJapanese109AContractTest {
             assertEquals(letter.lowercase(), key.base)
             assertEquals(letter.toString(), key.shift)
             assertEquals(letter.toString(), key.capslock)
+            assertEquals(letter.lowercase(), key.shiftCapslock)
         }
+    }
+
+    @Test
+    fun japanese109AKcm_definesOverlayAndJisScanCodeMappings() {
+        val text = mainResFile("raw/keyboard_layout_japanese_109a.kcm").readText()
+        val types = Regex("""(?m)^\s*type\s+([A-Z_]+)\s*$""")
+            .findAll(text)
+            .map { it.groupValues[1] }
+            .toList()
+        val mappings = Regex("""(?m)^\s*map\s+key\s+(\d+)\s+([A-Z_]+)\s*$""")
+            .findAll(text)
+            .associate { it.groupValues[1].toInt() to it.groupValues[2] }
+
+        assertEquals(listOf("OVERLAY"), types)
+        assertEquals("AT", mappings[26])
+        assertEquals("LEFT_BRACKET", mappings[27])
+        assertEquals("RIGHT_BRACKET", mappings[43])
+        assertEquals("ZENKAKU_HANKAKU", mappings[41])
     }
 
     @Test
@@ -127,13 +146,14 @@ class SumireJapanese109AContractTest {
                 name to KcmKey(
                     base = attribute(body, "base"),
                     shift = attribute(body, "shift"),
-                    capslock = capslock
+                    capslock = capslock,
+                    shiftCapslock = attribute(body, "shift+capslock")
                 )
             }
     }
 
     private fun attribute(body: String, name: String): String? {
-        val direct = Regex("""\b$name\s*:\s*'((?:\\\\|\\'|[^'])*)'""")
+        val direct = Regex("""(?m)^\s*${Regex.escape(name)}\s*:\s*'((?:\\\\|\\'|[^'])*)'""")
         val combinedShiftCaps = Regex("""\b(?:shift,\s*capslock|capslock,\s*shift)\s*:\s*'((?:\\\\|\\'|[^'])*)'""")
         val match = direct.find(body) ?: if (name == "shift" || name == "capslock") {
             combinedShiftCaps.find(body)
@@ -173,6 +193,7 @@ class SumireJapanese109AContractTest {
     private data class KcmKey(
         val base: String?,
         val shift: String?,
-        val capslock: String?
+        val capslock: String?,
+        val shiftCapslock: String?
     )
 }

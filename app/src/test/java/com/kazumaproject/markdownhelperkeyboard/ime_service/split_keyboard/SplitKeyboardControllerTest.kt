@@ -285,6 +285,9 @@ class SplitKeyboardControllerTest {
             controller.setEditing(true)
             val panel = root(body)
             layout(panel)
+            // Let the legacy window-origin observer apply its posted position update
+            // before recording the bounds that the resize gesture must preserve.
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             val params = panel.layoutParams as android.view.WindowManager.LayoutParams
             val right = params.x + params.width
             val width = params.width
