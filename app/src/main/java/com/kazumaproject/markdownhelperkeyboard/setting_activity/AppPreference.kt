@@ -15,6 +15,8 @@ import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
+import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
@@ -100,6 +102,8 @@ object AppPreference {
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
     const val TFBI_DIAGONAL_RECOGNITION_MODE_KEY = "tfbi_diagonal_recognition_mode_preference"
+    const val SUMIRE_FLICK_ROTATION_KEY = "sumire_flick_rotation_preference"
+    const val SUMIRE_FLICK_INPUT_MODE_KEY = "sumire_flick_input_mode_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
@@ -1901,6 +1905,22 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putString(TFBI_DIAGONAL_RECOGNITION_MODE.first, value.preferenceValue)
+        }
+
+    var sumire_flick_rotation_preference: TfbiFlickRotation
+        get() = TfbiFlickRotation.fromPreferenceValue(
+            preferences.getString(SUMIRE_FLICK_ROTATION_KEY, TfbiFlickRotation.DEFAULT.preferenceValue)
+        )
+        set(value) = preferences.edit {
+            it.putString(SUMIRE_FLICK_ROTATION_KEY, value.preferenceValue)
+        }
+
+    var sumire_flick_input_mode_preference: SumireFlickInputMode
+        get() = SumireFlickInputMode.fromPreferenceValue(
+            preferences.getString(SUMIRE_FLICK_INPUT_MODE_KEY, SumireFlickInputMode.ALL.preferenceValue)
+        )
+        set(value) = preferences.edit {
+            it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
         }
 
     var hierarchical_flick_mode_switch_angle_margin_preference: Int
