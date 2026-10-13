@@ -6958,6 +6958,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
             val recyclerView =
                 popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
+            // Avoid retaining animating holders while this transient candidate list is replaced.
+            recyclerView.itemAnimator = null
             recyclerView.adapter = listAdapter
             recyclerView.layoutManager = LinearLayoutManager(this)
             floatingCandidateWindow = PopupWindow(
