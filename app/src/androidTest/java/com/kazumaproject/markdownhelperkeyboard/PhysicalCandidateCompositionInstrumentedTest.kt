@@ -459,7 +459,7 @@ class PhysicalCandidateCompositionInstrumentedTest {
         val context = instrumentation.targetContext
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val values = mapOf<String, Any>(
-            "conversion_bunsetsu_separation_preference" to true,
+            "conversion_bunsetsu_separation_preference" to bunsetsu,
             "conversion_bunsetsu_cursor_move_preference" to bunsetsu,
             "candidate_order_override_enable_preference" to candidateOrdering,
             "learn_dictionary_preference" to false,
