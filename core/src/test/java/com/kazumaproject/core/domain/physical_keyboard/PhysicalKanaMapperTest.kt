@@ -32,6 +32,26 @@ class PhysicalKanaMapperTest {
     }
 
     @Test
+    fun resolve_jisKanaPunctuationWithAndWithoutShift() {
+        val keys = listOf(
+            Triple(KeyEvent.KEYCODE_MINUS, '-', "ほ"),
+            Triple(KeyEvent.KEYCODE_EQUALS, '^', "へ"),
+            Triple(KeyEvent.KEYCODE_SEMICOLON, ';', "れ"),
+            Triple(KeyEvent.KEYCODE_APOSTROPHE, ':', "け")
+        )
+        for ((keyCode, baseCharacter, kana) in keys) {
+            for (isShift in listOf(false, true)) {
+                assertEquals(kana, PhysicalKanaMapper.resolve(keyCode, isShift))
+                assertEquals(kana, PhysicalKanaMapper.resolve(keyCode, isShift, 0))
+                assertEquals(
+                    kana,
+                    PhysicalKanaMapper.resolve(keyCode, isShift, baseCharacter.code)
+                )
+            }
+        }
+    }
+
+    @Test
     fun resolve_atKeyProducesDakuten() {
         assertEquals("゛", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_AT, false))
         assertEquals("゛", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_AT, true))
