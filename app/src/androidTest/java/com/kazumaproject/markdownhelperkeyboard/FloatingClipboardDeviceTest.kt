@@ -174,6 +174,7 @@ class FloatingClipboardDeviceTest {
                 }
                 fun preview(value: String): AccessibilityNodeInfo {
                     var found: AccessibilityNodeInfo? = null
+                    var scrollDirection = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
                     // RecyclerView can retain an offset past a row moved by pinning.
                     if (Build.VERSION.SDK_INT >= 29) ins.runOnMainSync {
                         fun reset(view: android.view.View, inPanel: Boolean = false) {
@@ -198,8 +199,20 @@ class FloatingClipboardDeviceTest {
                         // gives a visible touch target rather than the full recycled row bounds.
                         found = currentNodes.firstOrNull { it.text?.toString() == value }
                             ?: currentNodes.firstOrNull { it.contentDescription?.toString() == value }
-                        if (found == null) nodes().firstOrNull { it.isScrollable && it.className.toString().contains("RecyclerView") &&
-                            rect(it).top < rect(description(R.string.floating_clipboard_title)).bottom }?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                        if (found == null) {
+                            val panelBounds = rect(description(R.string.floating_clipboard_title))
+                            currentNodes.firstOrNull { it.isScrollable && it.className.toString().contains("RecyclerView") &&
+                                Rect.intersects(rect(it), panelBounds) }?.let { recycler ->
+                                if (!recycler.performAction(scrollDirection)) {
+                                    // The DB assertion can finish before AsyncListDiffer moves a
+                                    // pinned row above the current offset. Search back to the top
+                                    // when forward scrolling reaches the end, then retry both ends.
+                                    scrollDirection = if (scrollDirection == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                                        AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                                    recycler.performAction(scrollDirection)
+                                }
+                            }
+                        }
                         found != null
                     }
                     return requireNotNull(found)
