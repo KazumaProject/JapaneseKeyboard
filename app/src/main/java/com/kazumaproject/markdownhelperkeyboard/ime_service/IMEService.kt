@@ -20669,20 +20669,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mergedCandidates: List<Candidate>,
         engineResult: BunsetsuCandidateResult?
     ): List<Int> {
-        val firstCandidate = mergedCandidates.firstOrNull() ?: return emptyList()
         val result = engineResult ?: return emptyList()
-        if (!result.candidates.contains(firstCandidate)) {
-            return emptyList()
+        for (candidate in mergedCandidates) {
+            if (candidate.length.toInt() != input.length) continue
+            // Merging can attach ruby paths or keep a dictionary duplicate with different
+            // scores/types. Those changes must not discard the engine's reading boundaries.
+            val engineCandidate = result.candidates.firstOrNull {
+                it.string == candidate.string && it.length == candidate.length
+            } ?: continue
+            val candidatePattern = result.splitPatternByCandidateString[engineCandidate.string]
+                ?: if (result.candidates.firstOrNull() == engineCandidate) {
+                    result.primarySplitPositions
+                } else {
+                    continue
+                }
+            // An explicitly empty pattern represents an unsplit path. Only fall back to
+            // another visible engine candidate when this candidate has no split metadata.
+            return sanitizeSplitPositions(input, candidatePattern)
         }
-
-        val candidatePattern = result.splitPatternByCandidateString[firstCandidate.string]
-            ?: if (result.candidates.firstOrNull() == firstCandidate) {
-                result.primarySplitPositions
-            } else {
-                emptyList()
-            }
-
-        return sanitizeSplitPositions(input, candidatePattern)
+        return emptyList()
     }
 
     private fun updateBunsetsuStateAfterCandidateMerge(
