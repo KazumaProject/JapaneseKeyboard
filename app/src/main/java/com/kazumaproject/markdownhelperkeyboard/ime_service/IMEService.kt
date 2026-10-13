@@ -9347,10 +9347,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun startPhysicalBunsetsuConversion(input: String): Boolean {
         if (bunsetsuSeparation != true || !isPhysicalFloatingCandidatePathActive() ||
-            stringInTail.get().isNotEmpty()
+            shouldUseBunsetsuCursorMoveSession() || stringInTail.get().isNotEmpty() ||
+            inputString.value != input
         ) return false
-        val position = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty()).firstOrNull()
-            ?: return false
+        val snapshot = latestBunsetsuConversionSnapshot?.takeIf { it.input == input }
+        if (snapshot != null) {
+            return applyPhysicalBunsetsuSplit(input, snapshot.initialSplitPositions)
+        }
+
+        // Typing or flushing pending romaji can leave the previous query's boundaries here.
+        // Query this reading before splitting, and retain an identity that cancellation clears.
+        beginPhysicalCandidateCompositionSession(input)
+        val requestedSession = physicalCandidateCompositionSession ?: return false
+        val requestedRevision = editorMutationRevision.current()
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        pendingPhysicalCandidatePreviewGeneration = null
+        listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        updateSuggestionsForFloatingCandidate(emptyList())
+        scope.launch {
+            val result = queryBunsetsuConversion(input)
+            if (physicalCandidateCompositionSession !== requestedSession ||
+                inputString.value != input || !isHenkan.get() ||
+                currentHighlightIndex != RecyclerView.NO_POSITION ||
+                pendingPhysicalCandidatePreviewGeneration != null ||
+                !editorMutationRevision.isCurrent(requestedRevision) ||
+                bunsetsuSeparation != true || shouldUseBunsetsuCursorMoveSession() ||
+                !isPhysicalFloatingCandidatePathActive() || stringInTail.get().isNotEmpty()
+            ) return@launch
+            val positions = resolveInitialBunsetsuSplitPositions(input, result.candidates, result.bunsetsuResult)
+            if (!applyPhysicalBunsetsuSplit(input, positions)) {
+                // Use the normal candidate refresh/preview path when the current reading is unsplit.
+                floatingCandidateNextItem(input)
+            }
+        }
+        return true
+    }
+
+    private fun applyPhysicalBunsetsuSplit(input: String, splitPositions: List<Int>): Boolean {
+        val positions = sanitizeSplitPositions(input, splitPositions)
+        val position = positions.firstOrNull() ?: return false
 
         clearPhysicalCandidateCompositionSession("bunsetsu split")
         val head = input.substring(0, position)
@@ -9358,7 +9393,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _inputString.update { head }
         isHenkan.set(true)
         henkanPressedWithBunsetsuDetect = true
-        bunsetusMultipleDetect = bunsetsuPositionList.orEmpty().size > 1
+        bunsetsuPositionList = positions
+        bunsetusMultipleDetect = positions.size > 1
         currentHighlightIndex = RecyclerView.NO_POSITION
         beginPhysicalCandidateCompositionSession(head)
         pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
@@ -19256,6 +19292,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidates: List<Candidate>,
         insertString: String
     ) {
+        if (isPhysicalFloatingCandidatePathActive()) {
+            // Keep the shortened reading and its remaining tail in the same physical session.
+            if (isHenkan.get() && bunsetusMultipleDetect) {
+                startPhysicalBunsetsuConversion(insertString)
+            }
+            return
+        }
         if (bunsetsuSeparation == true) {
             bunsetsuPositionList?.let {
                 if (bunsetusMultipleDetect && it.isNotEmpty()) {
