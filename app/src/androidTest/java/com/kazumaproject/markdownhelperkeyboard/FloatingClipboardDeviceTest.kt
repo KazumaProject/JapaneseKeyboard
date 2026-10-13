@@ -2,9 +2,11 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.InputDevice
@@ -63,7 +65,7 @@ class FloatingClipboardDeviceTest {
         return requireNotNull(found)
     }
     private fun rect(node: AccessibilityNodeInfo) = Rect().also(node::getBoundsInScreen)
-    private fun touch(r: Rect, hold: Long = 50, dx: Float = 0f, dy: Float = 0f) {
+    private fun touch(r: Rect, hold: Long = 50, dx: Float = 0f, dy: Float = 0f, settle: Long = 300) {
         val down = SystemClock.uptimeMillis()
         fun send(action: Int, x: Float, y: Float) {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
@@ -75,10 +77,10 @@ class FloatingClipboardDeviceTest {
         SystemClock.sleep(hold)
         if (dx != 0f || dy != 0f) { send(MotionEvent.ACTION_MOVE, x + dx, y + dy); SystemClock.sleep(100) }
         send(MotionEvent.ACTION_UP, x + dx, y + dy)
-        SystemClock.sleep(300)
+        SystemClock.sleep(settle)
     }
 
-    @Test @SdkSuppress(minSdkVersion = 31) fun pastePinDeleteMoveResizeAndRestore() {
+    @Test @SdkSuppress(minSdkVersion = 24) fun pastePinDeleteMoveResizeAndRestore() {
         org.junit.Assume.assumeTrue("Requires an isolated QA application ID", context.packageName.startsWith("com.kazumaproject.floatingqa"))
         val args = InstrumentationRegistry.getArguments()
         val surface = args.getString("surface") ?: "normal"
@@ -119,23 +121,44 @@ class FloatingClipboardDeviceTest {
         }
         try {
             shell("input keyevent WAKEUP"); shell("wm dismiss-keyguard")
-            ui.setRotation(if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90 else android.app.UiAutomation.ROTATION_FREEZE_0)
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
-                var host: FastInputHostActivity? = null
-                ins.runOnMainSync { host = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<FastInputHostActivity>().single() }
-                fun onEditor(action: (FastInputHostActivity) -> Unit) = ins.runOnMainSync { action(requireNotNull(host)) }
-                var receivedImage = false
-                onEditor { activity ->
-                    activity.editText.setOnReceiveContentListener(arrayOf("image/png")) { _, content ->
-                        val uri = content.clip.getItemAt(0).uri
-                        activity.contentResolver.openInputStream(uri)?.use { stream ->
-                            val bitmap = BitmapFactory.decodeStream(stream)
-                            receivedImage = bitmap?.width == 24 && bitmap.height == 24
+                // Rotation can recreate the host; resolve the current resumed editor.
+                fun onEditor(action: (FastInputHostActivity) -> Unit) {
+                    await("The native editor activity has not resumed") {
+                        var handled = false
+                        var failure: Throwable? = null
+                        ins.runOnMainSync {
+                            val host = ActivityLifecycleMonitorRegistry.getInstance()
+                                .getActivitiesInStage(Stage.RESUMED)
+                                .filterIsInstance<FastInputHostActivity>().singleOrNull()
+                            if (host != null) {
+                                failure = runCatching { action(host) }.exceptionOrNull()
+                                handled = true
+                            }
                         }
-                        null
+                        failure?.let { throw it }
+                        handled
                     }
                 }
+                var receivedImage = false
                 try {
+                // A previous NOSENSOR activity may restore its saved rotation on exit.
+                check(ui.setRotation(if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
+                    else android.app.UiAutomation.ROTATION_FREEZE_0))
+                await("Requested screen orientation was not applied to the native activity") {
+                    var actual = Configuration.ORIENTATION_UNDEFINED
+                    onEditor { actual = it.resources.configuration.orientation }
+                    actual == if (landscape) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
+                }
+                requireNotNull(ui.takeScreenshot()).let { bitmap ->
+                    try {
+                        assertEquals("Actual display orientation disagrees with the test argument",
+                            landscape, bitmap.width > bitmap.height)
+                    } finally { bitmap.recycle() }
+                }
+                if (Build.VERSION.SDK_INT >= 31) onEditor { activity ->
+                    Api31ImageReceiver.install(activity) { receivedImage = it }
+                }
                 shell("ime enable $target"); shell("ime set $target")
                 onEditor { it.restartEditorInput(true) }
                 fun icon() = node { it.contentDescription == ShortcutType.FLOATING_CLIPBOARD.description && it.className == "android.widget.LinearLayout" }
@@ -143,17 +166,30 @@ class FloatingClipboardDeviceTest {
                     it.contentDescription == context.getString(resource) &&
                         (resource != R.string.floating_clipboard_title || it.className == "android.widget.FrameLayout")
                 }
-                fun text(resource: Int) = node { it.text?.toString() == context.getString(resource) }
+                fun text(resource: Int) = node {
+                    val label = context.getString(resource)
+                    val value = it.text?.toString()
+                    value == label || (resource == R.string.floating_clipboard_history &&
+                        Build.VERSION.SDK_INT < 30 && it.isCheckable && value?.startsWith("$label ") == true)
+                }
                 fun preview(value: String): AccessibilityNodeInfo {
                     var found: AccessibilityNodeInfo? = null
                     // RecyclerView can retain an offset past a row moved by pinning.
-                    ins.runOnMainSync {
+                    if (Build.VERSION.SDK_INT >= 29) ins.runOnMainSync {
                         fun reset(view: android.view.View, inPanel: Boolean = false) {
                             val panel = inPanel || view is FloatingClipboardView
                             if (panel && view is RecyclerView) view.scrollToPosition(0)
                             if (view is ViewGroup) for (i in 0 until view.childCount) reset(view.getChildAt(i), panel)
                         }
                         WindowInspector.getGlobalWindowViews().forEach { reset(it) }
+                    } else {
+                        val panelBounds = rect(description(R.string.floating_clipboard_title))
+                        nodes().firstOrNull { it.isScrollable && it.className.toString().contains("RecyclerView") &&
+                            Rect.intersects(rect(it), panelBounds) }?.let { recycler ->
+                            repeat(8) {
+                                if (!recycler.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)) return@let
+                            }
+                        }
                     }
                     SystemClock.sleep(150)
                     await("Missing clipboard item: $value") {
@@ -177,6 +213,7 @@ class FloatingClipboardDeviceTest {
                 preview(longItem.preview)
                 assertFalse(nodes().any { it.text?.toString() == context.getString(R.string.floating_clipboard_title) })
                 val historySwitch = text(R.string.floating_clipboard_history)
+                File(context.filesDir, "clipboard-history-accessibility.txt").writeText(historySwitch.text.toString())
                 assertFalse(historySwitch.isChecked)
                 touch(rect(historySwitch))
                 await("Floating history switch did not enable recording") {
@@ -187,15 +224,50 @@ class FloatingClipboardDeviceTest {
                     var value = ""; onEditor { value = it.editText.text.toString() }; value == fullText
                 }
                 preview(deleteText) // Pasting keeps the panel open.
-                touch(rect(preview(context.getString(R.string.floating_clipboard_image))))
-                await("PNG content did not reach the editor") {
-                    var received = false; onEditor { received = receivedImage }; received
+                if (Build.VERSION.SDK_INT >= 31) {
+                    touch(rect(preview(context.getString(R.string.floating_clipboard_image))))
+                    await("PNG content did not reach the editor") {
+                        var received = false; onEditor { received = receivedImage }; received
+                    }
                 }
-                touch(rect(preview(deleteText)), hold = 800)
-                touch(rect(text(com.kazumaproject.symbol_keyboard.R.string.symbol_clipboard_action_pin)))
+                var menuAnchorBounds = Rect()
+                fun openMenu() {
+                    val label = preview(deleteText)
+                    menuAnchorBounds = rect(node { it.isLongClickable && it.contentDescription?.toString() == deleteText })
+                    touch(rect(label), hold = 800)
+                }
+                fun menuAction(resource: Int, name: String) {
+                    val targetNode = text(resource)
+                    val targetBounds = rect(targetNode)
+                    val menuBounds = rect(requireNotNull(targetNode.parent))
+                    requireNotNull(ui.takeScreenshot()).let { bitmap ->
+                        try {
+                            assertTrue("Menu action is outside the native display: $targetBounds",
+                                Rect(0, 0, bitmap.width, bitmap.height).contains(menuBounds))
+                            if (Build.VERSION.SDK_INT < 26 && menuAnchorBounds.bottom + menuBounds.height() < bitmap.height - 100) {
+                                assertTrue("Legacy menu moved away from its row: $menuAnchorBounds / $menuBounds",
+                                    kotlin.math.abs(menuBounds.top - menuAnchorBounds.bottom) <= 2)
+                            } else if (Build.VERSION.SDK_INT < 26 && menuAnchorBounds.top - menuBounds.height() > 100) {
+                                assertTrue("Legacy menu did not fit above its row: $menuAnchorBounds / $menuBounds",
+                                    kotlin.math.abs(menuBounds.bottom - menuAnchorBounds.top) <= 2)
+                            }
+                            val directory = File(context.filesDir, "floating-clipboard-results").apply { mkdirs() }
+                            File(directory, "menu-$name-api${Build.VERSION.SDK_INT}.png").outputStream().use {
+                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                            }
+                            File(directory, "menu-bounds.txt").appendText("$name row=$menuAnchorBounds menu=$menuBounds action=$targetBounds\n")
+                        } finally { bitmap.recycle() }
+                    }
+                    touch(targetBounds)
+                }
+                openMenu()
+                menuAction(com.kazumaproject.symbol_keyboard.R.string.symbol_clipboard_action_pin, "pin")
                 await("Pin did not reach shared storage") { runBlocking { repository.getHistorySnapshot().first { it.id == deleteItem.id }.isPinned } }
-                touch(rect(preview(deleteText)), hold = 800)
-                touch(rect(text(com.kazumaproject.symbol_keyboard.R.string.symbol_clipboard_action_delete)))
+                openMenu()
+                menuAction(com.kazumaproject.symbol_keyboard.R.string.symbol_clipboard_action_unpin, "unpin")
+                await("Unpin did not reach shared storage") { runBlocking { !repository.getHistorySnapshot().first { it.id == deleteItem.id }.isPinned } }
+                openMenu()
+                menuAction(com.kazumaproject.symbol_keyboard.R.string.symbol_clipboard_action_delete, "delete")
                 await("Delete did not reach shared storage") { runBlocking { repository.getHistorySnapshot().none { it.id == deleteItem.id } } }
                 assertFalse(File(deleteItem.contentPath).exists())
                 await("Deleted row remained visible") { nodes().none { it.text?.toString() == deleteText } }
@@ -217,6 +289,18 @@ class FloatingClipboardDeviceTest {
                 assertTrue("Width was not restored: $saved / $restored", kotlin.math.abs(saved.width() - restored.width()) <= 2)
                 assertTrue(kotlin.math.abs(saved.left - restored.left) <= 2)
                 assertTrue(kotlin.math.abs(saved.top - restored.top) <= 2)
+                if (args.getString("toolbar_reopen_stress") == "on") {
+                    repeat(12) { trial ->
+                        touch(rect(description(R.string.floating_dictionary_hide)), settle = 0)
+                        await("Stress close $trial left the panel visible") {
+                            nodes().none { it.contentDescription == context.getString(R.string.floating_clipboard_title) &&
+                                it.className == "android.widget.FrameLayout" }
+                        }
+                        touch(rect(icon()), settle = 0)
+                        val reopened = rect(description(R.string.floating_clipboard_title))
+                        assertTrue("Stress reopen $trial changed the saved width", kotlin.math.abs(saved.width() - reopened.width()) <= 2)
+                    }
+                }
                 val screenshot = requireNotNull(ui.takeScreenshot())
                 val directory = File(context.filesDir, "floating-clipboard-results").apply { mkdirs() }
                 File(directory, "$surface-$keyboard-${if (landscape) "landscape" else "portrait"}.png").outputStream().use {
@@ -253,6 +337,22 @@ class FloatingClipboardDeviceTest {
             ui.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
             if (oldRotation != "null") shell("settings put system user_rotation $oldRotation")
             if (oldAutoRotate != "null") shell("settings put system accelerometer_rotation $oldAutoRotate")
+        }
+    }
+
+    // Keep the API31 callback signature outside the class JUnit reflects on API24.
+    private object Api31ImageReceiver {
+        fun install(activity: FastInputHostActivity, onReceived: (Boolean) -> Unit) {
+            activity.editText.setOnReceiveContentListener(arrayOf("image/png")) { _, content ->
+                val uri = content.clip.getItemAt(0).uri
+                var received = false
+                activity.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bitmap = BitmapFactory.decodeStream(stream)
+                    received = bitmap?.width == 24 && bitmap.height == 24
+                }
+                onReceived(received)
+                null
+            }
         }
     }
 }
