@@ -77,7 +77,7 @@ class SettingsBackupInsetsInstrumentedTest {
             awaitCommonPreference(scenario, "pref_backup_export")
             val mode = if (reapplyEdgeToEdge) "stable" else "restored"
             recordGeometry(scenario, "$mode-before-import")
-            val uri = Uri.parse("content://com.kazumaproject.markdownhelperkeyboard.settingsbackuptest/backup.json")
+            val uri = Uri.parse("content://${InstrumentationRegistry.getInstrumentation().context.packageName}.settingsbackuptest/backup.json")
             withDocumentResult(Intent.ACTION_CREATE_DOCUMENT, uri) {
                 clickPreference(scenario, "pref_backup_export")
             }
