@@ -268,6 +268,19 @@ class PhysicalCandidateCompositionInstrumentedTest {
         awaitText("だぱ「」")
     }
 
+    @Test fun japanese109AKanaUsesAllPunctuationKanaKeys() = withKeyboard(kana = true) {
+        val keys = listOf(
+            KeyEvent.KEYCODE_MINUS,
+            KeyEvent.KEYCODE_EQUALS,
+            KeyEvent.KEYCODE_SEMICOLON,
+            KeyEvent.KEYCODE_APOSTROPHE
+        )
+        keys.forEach { key(it) }
+        awaitText("ほへれけ")
+        keys.forEach { key(it, KeyEvent.META_SHIFT_ON) }
+        awaitText("ほへれけほへれけ")
+    }
+
     @Test fun narrowedCandidateCanBeCancelledWithoutLosingSource() = withKeyboard {
         selectPartialCandidate()
         key(KeyEvent.KEYCODE_ESCAPE)
