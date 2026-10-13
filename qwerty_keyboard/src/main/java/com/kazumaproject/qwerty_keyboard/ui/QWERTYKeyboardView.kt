@@ -2653,7 +2653,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (isTablet) return
         if (!showPopupView) return
         dismissKeyPreview(pointerId = if (independentMultiTouchForCurrentGesture) pointerId else null)
-        val previewContext = KeyPopupContext(context)
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { skin ->
             val label = (view as? android.widget.TextView)?.text?.toString().orEmpty()
             if (label.isEmpty()) return
@@ -2663,7 +2662,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val w = geometry.width
             val h = geometry.height
             val xOffset = geometry.xOffset
-            val content = android.widget.TextView(previewContext).apply {
+            val content = android.widget.TextView(context).apply {
                 text = if (keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC ||
                     capsLockState.value.capsLockOn || capsLockState.value.shiftOn) label.uppercase() else label
                 setTextColor(skin.palette.text)
@@ -2688,7 +2687,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
-        val popupView = LayoutInflater.from(context).cloneInContext(previewContext).inflate(layoutRes, this, false)
+        val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
         tv.setTextSize(
@@ -3001,7 +3000,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun showVariationPopup(anchorView: View, variations: List<Char>) {
         dismissVariationPopup()
-        val context = KeyPopupContext(this.context)
+        val context = this.context
         val skin = KeyboardSkinRegistry.find(keyboardSkinId)
         variationPopupView = VariationsPopupView(context).apply {
             applyPopupViewStyle(if (skin != null) variationPopupStyle.copy(skinId = keyboardSkinId) else variationPopupStyle)
