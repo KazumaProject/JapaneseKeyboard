@@ -4,10 +4,12 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.InputConnection
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
@@ -132,6 +134,18 @@ class CursorInputSynchronizationTest {
         assertFalse(cleared)
     }
 
+    @Test fun unsupportedAnchorWithLengthChangingNativeTextCannotProveCompletion() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("AAb", 3))
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..2 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ab") },
+            compositionProbe = { _, _, _ -> null })
+        gate.verifyBeforeInput(2, 2) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
     @Test fun unpositionedLatestWriteCannotBeDiscardedFromUnstyledText() = runTest {
         val editor = mock<InputConnection>()
         whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("ああ", 2))
@@ -164,6 +178,105 @@ class CursorInputSynchronizationTest {
         gate.verifyBeforeInput(12, 12) { _, _ -> cleared = true }
         advanceUntilIdle()
         assertFalse(cleared)
+    }
+
+    @Test fun anchorConfirmedCompletionInsideTheOldRangeAllowsQueuedFreshInput() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("あ", 0))
+        var preedit = "あ"
+        val events = mutableListOf<String>()
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "あ") },
+            compositionProbe = { actual, start, end ->
+                assertSame(editor, actual); assertEquals(0, start); assertEquals(0, end)
+                false
+            })
+        gate.verifyBeforeInput(1, 1) { start, _ -> preedit = ""; events += "selection:$start" }
+        gate.defer({ true }) { events += "input:$preedit" }
+        advanceUntilIdle()
+        assertEquals(listOf("selection:0", "input:"), events)
+    }
+
+    @Test fun anchorConfirmedFilteredCompositionOutsideTheProjectedRangePreservesInput() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("AAb", 3))
+        var preedit = "ab"
+        val events = mutableListOf<String>()
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..2 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "ab") },
+            compositionProbe = { _, _, _ -> true })
+        gate.verifyBeforeInput(2, 2) { _, _ -> preedit = ""; events += "cleared" }
+        gate.defer({ true }) { events += "input:$preedit" }
+        advanceUntilIdle()
+        assertEquals(listOf("input:ab"), events)
+    }
+
+    @Test fun unsupportedAnchorProbeKeepsAmbiguousPlainPreedit() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("あ", 0))
+        var probed = false
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "あ") },
+            compositionProbe = { _, _, _ -> probed = true; null })
+        gate.verifyBeforeInput(1, 1) { _, _ -> cleared = true }
+        advanceUntilIdle()
+        assertTrue(probed)
+        assertFalse(cleared)
+    }
+
+    @Test fun aComposingWriteWhileTheAnchorProbeWaitsInvalidatesItsCompletion() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("あ", 0))
+        var revision = 1L
+        val answer = CompletableDeferred<Boolean?>()
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { revision }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "あ") },
+            compositionProbe = { _, _, _ -> answer.await() })
+        gate.verifyBeforeInput(1, 1) { _, _ -> cleared = true }
+        runCurrent()
+        revision++
+        answer.complete(false)
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun anEditorSwitchWhileTheAnchorProbeWaitsInvalidatesItsCompletion() = runTest {
+        val first = mock<InputConnection>()
+        val second = mock<InputConnection>()
+        whenever(first.getExtractedText(any(), eq(0))).thenReturn(snapshot("あ", 0))
+        var editor = first
+        val answer = CompletableDeferred<Boolean?>()
+        var cleared = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "あ") },
+            compositionProbe = { _, _, _ -> answer.await() })
+        gate.verifyBeforeInput(1, 1) { _, _ -> cleared = true }
+        runCurrent()
+        editor = second
+        answer.complete(false)
+        advanceUntilIdle()
+        assertFalse(cleared)
+    }
+
+    @Test fun resetWhileTheAnchorProbeWaitsDiscardsItsCompletionAndQueuedInput() = runTest {
+        val editor = mock<InputConnection>()
+        whenever(editor.getExtractedText(any(), eq(0))).thenReturn(snapshot("あ", 0))
+        val answer = CompletableDeferred<Boolean?>()
+        var cleared = false
+        var inserted = false
+        val gate = CursorInputSynchronization(this, { editor }, { 1L }, Mutex(), { 0..1 },
+            StandardTestDispatcher(testScheduler), { CursorComposingExpectation(0, "あ") },
+            compositionProbe = { _, _, _ -> answer.await() })
+        gate.verifyBeforeInput(1, 1) { _, _ -> cleared = true }
+        gate.defer({ true }) { inserted = true }
+        runCurrent()
+        gate.reset()
+        answer.complete(false)
+        advanceUntilIdle()
+        assertFalse(cleared)
+        assertFalse(inserted)
     }
 
     @Test fun aFailedSurroundingReadCannotEstablishThatComposingSpansAreAbsent() = runTest {
