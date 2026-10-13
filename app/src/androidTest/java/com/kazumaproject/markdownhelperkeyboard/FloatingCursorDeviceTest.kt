@@ -156,7 +156,27 @@ class FloatingCursorDeviceTest {
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)
                 .putExtra("plain_editor_snapshots", plainEditor)).use { scenario ->
                 // Rotation can recreate the host. Always use the current native editor.
-                fun editor(action: (FastInputHostActivity) -> Unit) { scenario.onActivity { action(it) } }
+                fun editor(action: (FastInputHostActivity) -> Unit) {
+                    // onActivity waits for a globally idle queue before dispatching. Split
+                    // windows can keep that wait pending, even with a responsive main thread.
+                    // Resolve the resumed host on the main thread instead of caching the
+                    // pre-rotation activity or waiting for all window work to become idle.
+                    await("The native editor activity has not resumed") {
+                        var handled = false
+                        var failure: Throwable? = null
+                        ins.runOnMainSync {
+                            val host = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+                                .getInstance().getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                                .filterIsInstance<FastInputHostActivity>().singleOrNull()
+                            if (host != null) {
+                                failure = runCatching { action(host) }.exceptionOrNull()
+                                handled = true
+                            }
+                        }
+                        failure?.let { throw it }
+                        handled
+                    }
+                }
                 fun selection() : Pair<Int, Int> { var value = -1 to -1; editor { value = minOf(it.editText.selectionStart, it.editText.selectionEnd) to maxOf(it.editText.selectionStart, it.editText.selectionEnd) }; return value }
                 fun value(): String { var result = ""; editor { result = it.editText.text.toString() }; return result }
                 fun setText(text: String, cursor: Int) {
@@ -191,6 +211,16 @@ class FloatingCursorDeviceTest {
                     check(icon().performAction(AccessibilityNodeInfo.ACTION_CLICK))
                     await("Toolbar did not enable the setting") { settings.enabled }
                     description(R.string.floating_cursor_title)
+                    if (args.getString("toolbar_reopen_stress") == "on") {
+                        repeat(12) { attempt ->
+                            touch(bounds(description(R.string.floating_dictionary_hide)))
+                            await("Close did not disable the setting") { !settings.enabled }
+                            val rectangle = bounds(icon())
+                            touch(rectangle)
+                            await("Toolbar reopen touch was lost at attempt $attempt") { settings.enabled }
+                            description(R.string.floating_cursor_title)
+                        }
+                    }
                     assertFalse(nodes().any { it.text?.toString() == context.getString(R.string.floating_cursor_title) })
                     val density = context.resources.displayMetrics.density
                     listOf(R.string.floating_cursor_left, R.string.floating_cursor_right, R.string.floating_cursor_up, R.string.floating_cursor_down).forEach {
@@ -249,15 +279,30 @@ class FloatingCursorDeviceTest {
                         }
                         editor { it.expandSingleLatinA = expandingFilter }
                         val expected = if (keyboard == "ROMAJI") "あ" else if (expandingFilter) "AA" else "a"
+                        if (args.getString("verify_preview") == "software" && android.os.Build.VERSION.SDK_INT >= 29) {
+                            // Inspecting windows on the main thread may exceed the long-press
+                            // deadline. Cancel this dedicated gesture instead of treating it as
+                            // a short character tap; leave the normal tap trials uninstrumented.
+                            setText("", 0)
+                            val previewBounds = bounds(key("key_a"))
+                            val previewDown = SystemClock.uptimeMillis()
+                            send(previewDown, MotionEvent.ACTION_DOWN, previewBounds.exactCenterX(), previewBounds.exactCenterY())
+                            try {
+                                SystemClock.sleep(40)
+                                ins.runOnMainSync { PreviewRendererProbe.assertSoftware() }
+                            } finally {
+                                send(previewDown, MotionEvent.ACTION_CANCEL, previewBounds.exactCenterX(), previewBounds.exactCenterY())
+                                SystemClock.sleep(150)
+                            }
+                            assertEquals("Canceled preview inspection entered a character", "", value())
+                        }
                         repeat(20) {
                             setText("", 0)
                             touch(bounds(description(R.string.floating_cursor_selection_off)))
                             touch(bounds(description(R.string.floating_cursor_trackpad)), dx = -30 * density, settle = 0)
                             assertFalse("Cursor panel covers the character key", Rect.intersects(
                                 bounds(description(R.string.floating_cursor_title)), bounds(key("key_a"))))
-                            touch(bounds(key("key_a")), settle = 0, duringHold =
-                                if (it == 0 && args.getString("verify_preview") == "software" && android.os.Build.VERSION.SDK_INT >= 29)
-                                    ({ ins.runOnMainSync { PreviewRendererProbe.assertSoftware() } }) else null)
+                            touch(bounds(key("key_a")), settle = 0)
                             await("Unexpected input after trackpad trial $it: expected=$expected actual=${value()}") { value() == expected }
                             if (expandingFilter && keyboard == "QWERTY") editor { host ->
                                 assertEquals("Filter dropped native composing spans", 0,
@@ -357,7 +402,9 @@ class FloatingCursorDeviceTest {
                     val saved = bounds(description(R.string.floating_cursor_title))
                     touch(bounds(description(R.string.floating_dictionary_hide)))
                     await("Close did not disable the setting") { !settings.enabled }
-                    touch(bounds(icon()))
+                    val reopenBounds = bounds(icon())
+                    touch(reopenBounds)
+                    await("Toolbar touch did not enable the cursor setting") { settings.enabled }
                     val restored = bounds(description(R.string.floating_cursor_title))
                     assertTrue(kotlin.math.abs(saved.width() - restored.width()) <= 2)
                     assertTrue(kotlin.math.abs(saved.height() - restored.height()) <= 2)
