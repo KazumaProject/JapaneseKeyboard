@@ -57,7 +57,7 @@ class FloatingClipboardDeviceTest {
     }
     private fun node(check: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo {
         var found: AccessibilityNodeInfo? = null
-        await("Missing control; " + nodes().joinToString { "${it.text}/${it.contentDescription}" }) {
+        await("Missing clipboard control") {
             found = nodes().firstOrNull(check); found != null
         }
         return requireNotNull(found)
@@ -157,7 +157,11 @@ class FloatingClipboardDeviceTest {
                     }
                     SystemClock.sleep(150)
                     await("Missing clipboard item: $value") {
-                        found = nodes().firstOrNull { it.text?.toString() == value || it.contentDescription?.toString() == value }
+                        val currentNodes = nodes()
+                        // A partially clipped image row can extend below the panel. Its label
+                        // gives a visible touch target rather than the full recycled row bounds.
+                        found = currentNodes.firstOrNull { it.text?.toString() == value }
+                            ?: currentNodes.firstOrNull { it.contentDescription?.toString() == value }
                         if (found == null) nodes().firstOrNull { it.isScrollable && it.className.toString().contains("RecyclerView") &&
                             rect(it).top < rect(description(R.string.floating_clipboard_title)).bottom }?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
                         found != null
