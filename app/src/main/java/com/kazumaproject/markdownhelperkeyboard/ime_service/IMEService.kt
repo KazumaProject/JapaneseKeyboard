@@ -18448,7 +18448,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setSymbolsFloating(floatingKeyboardLayoutBinding)
+                        setSymbolsFloating(floatingKeyboardLayoutBinding,
+                            if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) SymbolMode.CLIPBOARD
+                            else symbolKeyboardFirstItem ?: SymbolMode.EMOJI)
                         if (isSymbolKeyboardShow.isShown) {
                             hideKeyboardViews(getFloatingKeyboardSurface() ?: return@let)
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
