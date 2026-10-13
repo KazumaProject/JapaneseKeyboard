@@ -8762,7 +8762,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 floatingCandidateNextItem(normalizedInsertString)
                             }
                         }
-                    } else {
+                    } else if (!startPhysicalBunsetsuConversion(normalizedInsertString)) {
                         beginPhysicalCandidateCompositionSession(normalizedInsertString)
                         floatingCandidateNextItem(normalizedInsertString)
                     }
@@ -9341,6 +9341,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun beginPhysicalCandidateCompositionSession(input: String) {
         ensurePhysicalCandidateCompositionSession(input)
+    }
+
+    private fun startPhysicalBunsetsuConversion(input: String): Boolean {
+        if (bunsetsuSeparation != true || !isPhysicalFloatingCandidatePathActive() ||
+            stringInTail.get().isNotEmpty()
+        ) return false
+        val position = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty()).firstOrNull()
+            ?: return false
+
+        clearPhysicalCandidateCompositionSession("bunsetsu split")
+        val head = input.substring(0, position)
+        stringInTail.set(input.substring(position))
+        _inputString.update { head }
+        isHenkan.set(true)
+        henkanPressedWithBunsetsuDetect = true
+        bunsetusMultipleDetect = bunsetsuPositionList.orEmpty().size > 1
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        beginPhysicalCandidateCompositionSession(head)
+        pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
+        // Whole-input candidates must not be previewed against the shortened reading.
+        updateSuggestionsForFloatingCandidate(emptyList())
+        requestCandidateRefresh(CandidateShowFlag.Updating, head)
+        return true
     }
 
     private fun ensurePhysicalCandidateCompositionSession(

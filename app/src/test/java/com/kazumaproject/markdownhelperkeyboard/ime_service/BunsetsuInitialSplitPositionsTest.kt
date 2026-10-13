@@ -3,14 +3,24 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalCandidateCompositionSession
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -91,6 +101,46 @@ class BunsetsuInitialSplitPositionsTest {
                 buildConvertedBunsetsuSegments(input, snapshot.initialSplitPositions, snapshot).map { it.reading })
         }
     }
+
+    @Test fun physicalSpaceSplitsTheReadingAndRequestsCandidatesForTheFirstBunsetsu() {
+        preparePhysicalSplit()
+        assertTrue(startPhysicalSplit())
+        assertEquals("あしたは", ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value)
+        val session = ReflectionHelpers.getField<PhysicalCandidateCompositionSession>(service, "physicalCandidateCompositionSession")
+        assertEquals("あしたは", session.queryText)
+        assertEquals("とうきょうにいきます", session.trailingText)
+        assertEquals(input, session.sourceText)
+        assertEquals(session.generation, ReflectionHelpers.getField<Long>(service, "pendingPhysicalCandidatePreviewGeneration"))
+        val refresh = ReflectionHelpers.getField<CandidateRefreshCoordinator>(service, "candidateRefreshCoordinator").requests.value
+        assertEquals("あしたは", refresh.input)
+        assertEquals(CandidateShowFlag.Updating, refresh.flag)
+        assertTrue(ReflectionHelpers.getField<Boolean>(service, "henkanPressedWithBunsetsuDetect"))
+        assertFalse(startPhysicalSplit()) // A second press must not split the existing tail again.
+        assertEquals(input, session.sourceText)
+    }
+
+    @Test fun physicalSplitDoesNotRunWhenDisabledOrNoBoundaryExists() {
+        preparePhysicalSplit()
+        ReflectionHelpers.setField(service, "bunsetsuSeparation", false)
+        assertFalse(startPhysicalSplit())
+        ReflectionHelpers.setField(service, "bunsetsuSeparation", true)
+        ReflectionHelpers.setField(service, "bunsetsuPositionList", listOf(0, input.length, 99))
+        assertFalse(startPhysicalSplit())
+        assertEquals(input, ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value)
+    }
+
+    private fun preparePhysicalSplit() {
+        ReflectionHelpers.setField(service, "bunsetsuSeparation", true)
+        ReflectionHelpers.setField(service, "bunsetsuCursorMove", false)
+        ReflectionHelpers.setField(service, "bunsetsuPositionList", listOf(4, 10))
+        ReflectionHelpers.getField<MutableSharedFlow<Boolean>>(service, "_physicalKeyboardEnable").tryEmit(true)
+        ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value = input
+        ReflectionHelpers.getField<AtomicReference<String>>(service, "stringInTail").set("")
+        ReflectionHelpers.setField(service, "listAdapter", mock<FloatingCandidateListAdapter>())
+    }
+
+    private fun startPhysicalSplit(): Boolean = ReflectionHelpers.callInstanceMethod(service,
+        "startPhysicalBunsetsuConversion", ReflectionHelpers.ClassParameter.from(String::class.java, input))
 
     private fun resolve(candidates: List<Candidate>, engineResult: BunsetsuCandidateResult? = result): List<Int> =
         ReflectionHelpers.callInstanceMethod(service, "resolveInitialBunsetsuSplitPositions",
