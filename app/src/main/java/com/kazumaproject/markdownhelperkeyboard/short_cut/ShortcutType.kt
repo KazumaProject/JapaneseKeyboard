@@ -39,6 +39,12 @@ enum class ShortcutType(
         activeIconResId = com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_user_template_active,
         description = "定型文フロート"
     ),
+    FLOATING_CLIPBOARD(
+        "floating_clipboard",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_clipboard,
+        activeIconResId = com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_clipboard_active,
+        description = "クリップボードフロート"
+    ),
     TEXT_MACRO(
         "text_macro",
         com.kazumaproject.core.R.drawable.book_3_24px,
@@ -120,6 +126,12 @@ enum class ShortcutType(
         activeIconResId =
             com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_handwriting_active_24,
         description = "Gemma手書き"
+    ),
+    FLOATING_CURSOR(
+        "floating_cursor",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_cursor,
+        activeIconResId = com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_cursor_active,
+        description = "カーソル・トラックパッドフロート"
     ),
     CLIP_BOARD(
         "clip_board",

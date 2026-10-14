@@ -12,6 +12,7 @@ enum class SettingCategory {
     FREQUENT,
     KEYBOARD_DISPLAY,
     INPUT_METHOD,
+    VOICE_INPUT,
     CANDIDATE_CONVERSION,
     CONVERSION_ENGINE,
     DICTIONARY,
@@ -522,6 +523,9 @@ object SettingDestinations {
         "tenkey_space_flick_preference",
         "qwerty_romaji_space_flick_preference",
         "qwerty_english_space_flick_preference",
+        "voice_input_space_replacement_enabled",
+        "voice_input_space_replacement",
+        "voice_input_space_custom_text",
         "clipboard_history_preference_fragment",
         "clipboard_preview_enable_preference",
         "shortcut_toolbar_visibility_preference",
@@ -578,6 +582,15 @@ object SettingDestinations {
             keywords = listOf("sumire", "kana", "qwerty", "custom"),
             destinationId = R.id.inputMethodPreferenceFragment,
             iconRes = CoreR.drawable.input_24px,
+        ),
+        destination(
+            key = "setting_route_voice_input",
+            title = context.getString(R.string.setting_category_voice_input_title),
+            summary = context.getString(R.string.setting_category_voice_input_summary),
+            category = SettingCategory.VOICE_INPUT,
+            keywords = listOf("voice", "speech", "音声", "スペース", "置換", "区切り"),
+            destinationId = R.id.voiceInputPreferenceFragment,
+            iconRes = CoreR.drawable.settings_voice_24px,
         ),
         destination(
             key = "setting_route_candidate_conversion",
@@ -733,6 +746,7 @@ object SettingDestinations {
             SettingCategory.FREQUENT -> context.getString(R.string.setting_home_frequent_title)
             SettingCategory.KEYBOARD_DISPLAY -> context.getString(R.string.setting_category_keyboard_display_title)
             SettingCategory.INPUT_METHOD -> context.getString(R.string.setting_category_input_method_title)
+            SettingCategory.VOICE_INPUT -> context.getString(R.string.setting_category_voice_input_title)
             SettingCategory.CANDIDATE_CONVERSION -> context.getString(R.string.setting_category_candidate_conversion_title)
             SettingCategory.CONVERSION_ENGINE -> context.getString(R.string.conversion_engine_category_title)
             SettingCategory.DICTIONARY -> context.getString(R.string.category_dictionary)
@@ -752,6 +766,7 @@ object SettingDestinations {
             SettingCategory.FREQUENT -> CoreR.drawable.baseline_check_24
             SettingCategory.KEYBOARD_DISPLAY -> CoreR.drawable.keyboard_24px
             SettingCategory.INPUT_METHOD -> CoreR.drawable.input_24px
+            SettingCategory.VOICE_INPUT -> CoreR.drawable.settings_voice_24px
             SettingCategory.CANDIDATE_CONVERSION -> CoreR.drawable.arrows_output_24px
             SettingCategory.CONVERSION_ENGINE -> CoreR.drawable.swap_horiz_24px
             SettingCategory.DICTIONARY -> CoreR.drawable.dictionary_24px

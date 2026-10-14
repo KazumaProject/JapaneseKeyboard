@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setting_category_voice_input_title">Voice input</string>
+    <string name="setting_category_voice_input_summary">Replace spaces in Japanese speech recognition results</string>
+    <string name="voice_input_space_replacement_enabled_title">Automatically replace spaces</string>
+    <string name="voice_input_space_replacement_enabled_summary">Replace each half-width space in Japanese voice input, including spaces between English words. English voice input is kept unchanged.</string>
+    <string name="voice_input_space_replacement_title">Replace spaces with</string>
+    <string name="voice_input_custom_text_title">Custom replacement text</string>
+    <string name="voice_input_custom_text_empty_summary">Empty: remove spaces</string>
+    <string name="voice_input_custom_text_value_summary">Replacement: “%1$s”</string>
+    <string name="voice_input_space_remove">Remove spaces</string>
+    <string name="voice_input_space_comma">Japanese comma (、)</string>
+    <string name="voice_input_space_period">Japanese period (。)</string>
+    <string name="voice_input_space_newline">Line break</string>
+    <string name="voice_input_space_full_width">Full-width space</string>
+    <string name="voice_input_space_custom">Custom text</string>
+    <string-array name="voice_input_space_replacement_entries">
+        <item>@string/voice_input_space_remove</item>
+        <item>@string/voice_input_space_comma</item>
+        <item>@string/voice_input_space_period</item>
+        <item>@string/voice_input_space_newline</item>
+        <item>@string/voice_input_space_full_width</item>
+        <item>@string/voice_input_space_custom</item>
+    </string-array>
+    <string-array name="voice_input_space_replacement_values" translatable="false">
+        <item>remove</item>
+        <item>comma</item>
+        <item>period</item>
+        <item>newline</item>
+        <item>full_width_space</item>
+        <item>custom</item>
+    </string-array>
+</resources>
