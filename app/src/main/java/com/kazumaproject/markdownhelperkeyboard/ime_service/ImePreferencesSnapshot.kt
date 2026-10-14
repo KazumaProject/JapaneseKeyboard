@@ -14,6 +14,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfi
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
 /** Appearance settings are grouped to keep snapshot copy/default calls within DEX's 255-word limit. */
@@ -271,6 +272,7 @@ data class ImePreferencesSnapshot(
     val enableGemmaTranslationPreference: Boolean,
     val utilityCandidateConfig: UtilityCandidateConfig,
     val dateCandidateConfig: DateCandidateConfig,
+    val voiceInputSettings: VoiceInputSettings = VoiceInputSettings(),
     val keyboardSkin: KeyboardSkinId = KeyboardSkinId.DEFAULT,
 ) {
     val keyboardThemeMode get() = appearance.keyboardThemeMode
@@ -810,6 +812,7 @@ data class ImePreferencesSnapshot(
                     AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference,
                 utilityCandidateConfig = appPreference.utility_candidate_config,
                 dateCandidateConfig = appPreference.date_candidate_config,
+                voiceInputSettings = appPreference.voice_input_settings,
             )
         }
     }

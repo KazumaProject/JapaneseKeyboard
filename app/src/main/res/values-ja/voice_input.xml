@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setting_category_voice_input_title">音声入力</string>
+    <string name="setting_category_voice_input_summary">日本語の音声入力に含まれる半角スペースを置換します</string>
+    <string name="voice_input_space_replacement_enabled_title">半角スペースの自動置換</string>
+    <string name="voice_input_space_replacement_enabled_summary">日本語の音声入力に含まれる半角スペースを置換します。英単語間のスペースも対象です。英語の音声入力はそのまま保持します。</string>
+    <string name="voice_input_space_replacement_title">置換先</string>
+    <string name="voice_input_custom_text_title">指定する文字列</string>
+    <string name="voice_input_custom_text_empty_summary">空欄：半角スペースを削除</string>
+    <string name="voice_input_custom_text_value_summary">置換先：「%1$s」</string>
+    <string name="voice_input_space_remove">削除</string>
+    <string name="voice_input_space_comma">読点「、」</string>
+    <string name="voice_input_space_period">句点「。」</string>
+    <string name="voice_input_space_newline">改行</string>
+    <string name="voice_input_space_full_width">全角スペース</string>
+    <string name="voice_input_space_custom">自由入力</string>
+</resources>
