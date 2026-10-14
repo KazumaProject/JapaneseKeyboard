@@ -1,5 +1,9 @@
 # Dictionary data notices / 辞書データのライセンス
 
+Repository documentation: [license information index / ライセンス情報一覧](docs/licenses/README.md),
+[all dictionaries / 全辞書の対応表](docs/licenses/DICTIONARIES.md),
+[resolved dependencies / 依存ライブラリ](docs/licenses/DEPENDENCIES.md).
+
 The application's source code remains under the MIT license in `LICENSE`.
 Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 アプリのコードはMITですが、辞書データには出典ごとの条件が適用されます。
