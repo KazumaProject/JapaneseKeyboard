@@ -222,12 +222,17 @@ class FeverImeInstrumentedTest {
                     val root = ime()
                     assertCapBindings(floating)
                     var jackpotSeen = false
+                    var lastCharacterAt = 0L
+                    var recordedCombo = 0
                     val cuesSeen = mutableSetOf<FeverCue>()
                     val mode = "${if (floating) "floating" else "docked"}-${if (landscape) "landscape" else "portrait"}-${if (full) "screen" else "keyboard"}"
                     val captured = java.util.concurrent.CountDownLatch(1)
                     val captureFailure = java.util.concurrent.atomic.AtomicReference<Throwable?>()
                     ins.runOnMainSync { root.controller.eventObserver = {
                         println("FEVER event combo=${it.combo} award=${it.award} cue=${it.cue} time=${SystemClock.uptimeMillis()}")
+                        if (it.cue == null && it.combo > recordedCombo) {
+                            recordedCombo = it.combo; lastCharacterAt = SystemClock.uptimeMillis()
+                        }
                         it.cue?.let(cuesSeen::add)
                         if (it.award == FeverAward.JACKPOT) {
                             jackpotSeen = true
@@ -285,9 +290,15 @@ class FeverImeInstrumentedTest {
                         }
                     }
                     ins.runOnMainSync { assertEquals("One combo per real tap", 12, root.controller.combo) }
+                    fun assertEditingDoesNotCount() {
+                        // Shell input can stall for seconds on an emulator under load. Editing must
+                        // not extend the real combo deadline even when the test itself takes longer.
+                        val expected = if (SystemClock.uptimeMillis() - lastCharacterAt >= root.controller.settings.comboTimeoutMillis) 0 else 12
+                        assertEquals("Editing must not count or extend the deadline", expected, root.controller.combo)
+                    }
                     tap("key_delete")
                     ins.runOnMainSync {
-                        assertEquals("Delete must not count", 12, root.controller.combo)
+                        assertEditingDoesNotCount()
                         assertTrue(cuesSeen.contains(FeverCue.DELETE))
                     }
                     tap("key_soft_left"); tap("key_move_cursor_right")
@@ -300,7 +311,7 @@ class FeverImeInstrumentedTest {
                         assertTrue("Conversion should have its own cue", cuesSeen.contains(FeverCue.CONVERSION))
                         assertTrue("Changing a candidate should have its own cue", cuesSeen.contains(FeverCue.CANDIDATE))
                         assertTrue("Showing candidates should have its own cue", cuesSeen.contains(FeverCue.CANDIDATES))
-                        assertEquals(12, root.controller.combo)
+                        assertEditingDoesNotCount()
                     }
                     SystemClock.sleep(160); capture("$mode-candidate")
                     // Exercise both tapping the actual candidate and the enter/confirm key.
