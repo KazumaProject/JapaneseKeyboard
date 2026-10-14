@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.session
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
@@ -30,11 +31,7 @@ data class KanaKanjiQueryRequest(
     val mode: CandidateQueryMode,
     val bunsetsuSeparation: Boolean,
     val n: Int,
-    val mozcUtPersonName: Boolean?,
-    val mozcUtPlaces: Boolean?,
-    val mozcUtWiki: Boolean?,
-    val mozcUtNeologd: Boolean?,
-    val mozcUtWeb: Boolean?,
+    val enabledDictionaryCategories: Set<DictionaryCategory> = emptySet(),
     val userDictionaryRepository: UserDictionaryRepository,
     val learnRepository: LearnRepository?,
     val omissionSearchEnabled: Boolean,
@@ -137,11 +134,7 @@ class KanaKanjiConversionSession(
             engine.getCandidatesOriginalWithBunsetsu(
                 input = request.input,
                 n = request.n,
-                mozcUtPersonName = request.mozcUtPersonName,
-                mozcUTPlaces = request.mozcUtPlaces,
-                mozcUTWiki = request.mozcUtWiki,
-                mozcUTNeologd = request.mozcUtNeologd,
-                mozcUTWeb = request.mozcUtWeb,
+                enabledDictionaryCategories = request.enabledDictionaryCategories,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
                 isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -159,11 +152,7 @@ class KanaKanjiConversionSession(
                 candidates = engine.getCandidatesOriginal(
                     input = request.input,
                     n = request.n,
-                    mozcUtPersonName = request.mozcUtPersonName,
-                    mozcUTPlaces = request.mozcUtPlaces,
-                    mozcUTWiki = request.mozcUtWiki,
-                    mozcUTNeologd = request.mozcUtNeologd,
-                    mozcUTWeb = request.mozcUtWeb,
+                    enabledDictionaryCategories = request.enabledDictionaryCategories,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
                     isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -187,11 +176,7 @@ class KanaKanjiConversionSession(
             engine.getCandidatesWithBunsetsuSeparation(
                 input = request.input,
                 n = request.n,
-                mozcUtPersonName = request.mozcUtPersonName,
-                mozcUTPlaces = request.mozcUtPlaces,
-                mozcUTWiki = request.mozcUtWiki,
-                mozcUTNeologd = request.mozcUtNeologd,
-                mozcUTWeb = request.mozcUtWeb,
+                enabledDictionaryCategories = request.enabledDictionaryCategories,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
                 isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -209,11 +194,7 @@ class KanaKanjiConversionSession(
                 candidates = engine.getCandidates(
                     input = request.input,
                     n = request.n,
-                    mozcUtPersonName = request.mozcUtPersonName,
-                    mozcUTPlaces = request.mozcUtPlaces,
-                    mozcUTWiki = request.mozcUtWiki,
-                    mozcUTNeologd = request.mozcUtNeologd,
-                    mozcUTWeb = request.mozcUtWeb,
+                    enabledDictionaryCategories = request.enabledDictionaryCategories,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
                     isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -237,11 +218,7 @@ class KanaKanjiConversionSession(
             engine.getCandidatesWithoutPredictionWithBunsetsu(
                 input = request.input,
                 n = request.n,
-                mozcUtPersonName = request.mozcUtPersonName,
-                mozcUTPlaces = request.mozcUtPlaces,
-                mozcUTWiki = request.mozcUtWiki,
-                mozcUTNeologd = request.mozcUtNeologd,
-                mozcUTWeb = request.mozcUtWeb,
+                enabledDictionaryCategories = request.enabledDictionaryCategories,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
                 isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -261,11 +238,7 @@ class KanaKanjiConversionSession(
                 candidates = engine.getCandidatesWithoutPrediction(
                     input = request.input,
                     n = request.n,
-                    mozcUtPersonName = request.mozcUtPersonName,
-                    mozcUTPlaces = request.mozcUtPlaces,
-                    mozcUTWiki = request.mozcUtWiki,
-                    mozcUTNeologd = request.mozcUtNeologd,
-                    mozcUTWeb = request.mozcUtWeb,
+                    enabledDictionaryCategories = request.enabledDictionaryCategories,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
                     isOmissionSearchEnable = request.omissionSearchEnabled,

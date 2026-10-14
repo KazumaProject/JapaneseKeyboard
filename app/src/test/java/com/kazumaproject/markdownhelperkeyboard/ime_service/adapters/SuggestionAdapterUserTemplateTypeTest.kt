@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import android.content.Context
 import android.os.Looper
 import android.widget.FrameLayout
@@ -40,6 +41,24 @@ class SuggestionAdapterUserTemplateTypeTest {
                 else assertEquals(color.toInt(), label.currentTextColor)
             }
         }
+        adapter.release()
+    }
+
+    @Test
+    fun taxonomyLabelIsAlwaysVisibleAndClearedOnHolderReuse() {
+        val adapter = SuggestionAdapter()
+        adapter.setShowDictionaryCandidateLabels(false)
+        val holder = createHolder(adapter)
+        adapter.suggestions = listOf(candidate("分類語", 1).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PERSON)))
+        awaitItemCount(adapter, 1)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("[人名]", holder.typeText.text.toString())
+        adapter.suggestions = emptyList()
+        awaitItemCount(adapter, 0)
+        adapter.suggestions = listOf(candidate("123", 23))
+        awaitItemCount(adapter, 1)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("", holder.typeText.text.toString())
         adapter.release()
     }
 

@@ -1,6 +1,12 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.os.Bundle
+import android.content.Intent
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -19,7 +25,6 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBi
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.LicenseDialogLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLicense
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiTextLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.ZenzLicense
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
@@ -164,16 +169,8 @@ class OpenSourceFragment : Fragment() {
             )
         }
 
-        entries += LicenseEntry("jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA") {
-            showLicenseDialog(
-                title = "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
-                notice = Notice(
-                    "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
-                    "https://ja.wikipedia.org/wiki/Wikipedia:%E3%82%A6%E3%82%A3%E3%82%AD%E3%83%9A%E3%83%87%E3%82%A3%E3%82%A2%E3%82%92%E4%BA%8C%E6%AC%A1%E5%88%A9%E7%94%A8%E3%81%99%E3%82%8B",
-                    "Wikipedia CC BY-SA",
-                    WikiLicense()
-                )
-            )
+        entries += LicenseEntry("Japanese Wikipedia / 日本語Wikipedia") {
+            showDictionaryLicense("Japanese Wikipedia / 日本語Wikipedia", "licenses/wiki.html")
         }
 
         entries += LicenseEntry("mecab-ipadic-neologd") {
@@ -269,7 +266,46 @@ class OpenSourceFragment : Fragment() {
             }
         }
 
+        ClassifiedDictionaries.all.forEach { spec ->
+            entries += LicenseEntry(getString(spec.nameRes)) {
+                showDictionaryLicense(getString(spec.nameRes), spec.licenseAssetPath)
+            }
+        }
+        listOf(
+            "Mozc dictionaries / Mozc基本辞書" to "core",
+            "English reading dictionary / 英語読み辞書" to "english-reading",
+            "English word dictionary / 英単語辞書" to "english",
+            "N-gram / Unigram dictionaries" to "ngram",
+            "Reading correction / Proverbs / 読み修正・ことわざ辞書" to "auxiliary",
+        ).forEach { (name, id) ->
+            entries += LicenseEntry(name) { showDictionaryLicense(name, "licenses/$id.html") }
+        }
         return entries
+    }
+
+    private fun showDictionaryLicense(title: String, assetPath: String) {
+        val webView = WebView(requireContext()).apply {
+            settings.javaScriptEnabled = false
+            settings.allowFileAccess = false
+            settings.allowContentAccess = false
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                    val uri = request.url
+                    if (uri.scheme == "https" || uri.scheme == "http") {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    }
+                    return true
+                }
+            }
+            val content = requireContext().assets.open(assetPath).bufferedReader().use { it.readText() }
+            loadDataWithBaseURL("https://dictionary-notices.invalid/", content, "text/html", "UTF-8", null)
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(title)
+            .setView(webView)
+            .setPositiveButton(android.R.string.ok, null)
+            .setOnDismissListener { webView.destroy() }
+            .show()
     }
 
     private fun showLicenseDialog(title: String, notice: Notice) {

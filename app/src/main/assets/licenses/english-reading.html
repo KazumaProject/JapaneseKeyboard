@@ -1,0 +1,878 @@
+<!doctype html><meta charset="utf-8"><style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style><title>English reading dictionary / 英語読み辞書</title><h1>English reading dictionary / 英語読み辞書</h1><p>Distribution / 配布: v1.7.262-pre.1 (574d450c652e42e81713cc1c926a57c3f5310320)</p><p>Classified and converted to IME binaries / 分類・IME辞書バイナリへの変換を行っています。</p><p>Input acquisition revision and per-entry copyright attribution: unconfirmed. 元辞書の取得版・各語の著作権者への対応: 未確認。Below are preserved upstream notices; source-code licenses do not replace data terms. 以下は保持した出典の通知です。プログラムのライセンスはデータの条件を置き換えません。</p><h2>converter</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/THIRD-PARTY-NOTICES.md">Source / 出典</a></p><pre># Third-party notices
+
+This release is a combined work. The project source code is MIT, but the
+generated dictionary data keeps the license and notice requirements of its
+upstream data sources. Do not treat the complete release archive as a single
+MIT-licensed work.
+
+## Project source code
+
+The Kotlin conversion program and project-owned source files are distributed
+under the MIT License. The complete project license is in the repository
+[LICENSE](https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/main/LICENSE).
+
+## JapaneseCorpus / JMdict English data
+
+The hiragana-to-English source is generated from JMdict_e by
+[JapaneseCorpus v2026.0803.6](https://github.com/KazumaProject/JapaneseCorpus/releases/tag/v2026.0803.6).
+The source archive is:
+
+&lt;https://github.com/KazumaProject/JapaneseCorpus/releases/download/v2026.0803.6/mozc-english-unigram-00000.txt.zst&gt;
+
+The JMdict-derived database data is licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The
+file `licenses/JMDICT-LICENSE.html` in this archive is the authoritative
+attribution and license notice for that source data. The corresponding
+JapaneseCorpus release is the fixed source snapshot listed above.
+
+This release is an adapted database. Its modifications include selecting
+English glosses and complete English `lsource` values, converting the selected
+Katakana readings to hiragana, normalizing small `ゕ`/`ゖ` readings, and applying
+the noise filter documented in
+[`docs/english-dictionary.md`](https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/main/docs/english-dictionary.md).
+Only `primary` candidates are included in the runtime English dictionary;
+`review` and `excluded` candidates remain in the quality report for audit.
+Redistribution of the JMdict-derived portion must preserve the CC BY-SA 4.0
+attribution and ShareAlike requirements.
+
+## Google Mozc resources
+
+The Japanese dictionary and related resources are derived from
+[google/mozc](https://github.com/google/mozc). Mozc&#x27;s code license and binary
+redistribution notice are in its
+[`LICENSE`](https://github.com/google/mozc/blob/master/LICENSE). The bundled
+`src/data/dictionary*` resources are mixed-license data; the complete upstream
+notice is included in this archive as `licenses/MOZC-LICENSE`, alongside
+`licenses/IPADIC-COPYING` and `licenses/IPADIC-NOTICE`. The upstream source
+notice is also available at
+[`src/data/dictionary_oss/README.txt`](https://raw.githubusercontent.com/google/mozc/master/src/data/dictionary_oss/README.txt).
+
+The Mozc dictionary notice includes, among other conditions:
+
+- NAIST/IPAdic copyright and attribution requirements;
+- the ICOT Free Software no-warranty and notice requirements; and
+- Okinawa dictionary public-domain terms.
+
+Those upstream conditions continue to apply to the corresponding generated
+dictionary assets in this release. Google/Mozc names are not used to endorse
+this project.
+
+## Practical redistribution rule
+
+When redistributing the release archive or extracted dictionary assets, keep
+this file and the `licenses/` directory with the assets and preserve the
+upstream notices. `licenses/LICENSE-DATA.md` and `licenses/NOTICE.md` document
+the JapaneseCorpus data provenance and terms.
+License questions about a particular downstream use should be reviewed by a
+qualified legal professional.
+</pre><h2>jmdict</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/third-party/JMDICT-LICENSE.html">Source / 出典</a></p><pre>&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot;&gt;
+&lt;HTML&gt;
+&lt;HEAD&gt;
+&lt;META HTTP-EQUIV=&quot;Content-Type&quot; CONTENT=&quot;text/html; charset=iso-8859-1&quot;&gt;
+&lt;META NAME=&quot;Generator&quot; CONTENT=&quot;Jim&#x27;s Markup Program - V0.99&quot;&gt;
+&lt;TITLE&gt;ELECTRONIC DICTIONARY RESEARCH AND DEVELOPMENT GROUP&lt;/TITLE&gt;
+&lt;/HEAD&gt;
+&lt;BODY BGCOLOR=&quot;white&quot;&gt;
+&lt;!-- DO NOT EDIT!!
+This HTML document was generated by the &quot;markup&quot; program.
+Edit the original file instead. --&gt;
+&lt;center&gt;
+&lt;IMG SRC=&quot;edrdg.jpg&quot; ALT=&quot;EDRDG&quot;&gt;&lt;BR&gt;
+&lt;/center&gt;
+&lt;H1 ALIGN=CENTER&gt; ELECTRONIC DICTIONARY RESEARCH AND DEVELOPMENT GROUP&lt;/H1&gt;
+&lt;H1 ALIGN=CENTER&gt; GENERAL DICTIONARY LICENCE STATEMENT&lt;/H1&gt;
+&lt;BASEFONT SIZE=&quot;3&quot;&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+ &lt;a HREF=&quot;index.html&quot;&gt;EDRDG Home Page &lt;/a&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;1. Introduction&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+In March 2000, James William Breen assigned ownership of the copyright
+of the dictionary files assembled, coordinated and edited by him to the
+The Electronic Dictionary Research and Development Group, then at
+Monash University (hereafter &quot;the Group&quot;), on the understanding that
+the Group
+will foster the development of the dictionary files, and will utilize all
+monies received for use of the files for the further
+development of the files, and for research into computer lexicography and
+electronic dictionaries.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+This document outlines the licence arrangement put in place by The
+Group for usage of the files. It replaces all previous copyright and
+licence statements applying to the files.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;2. Application&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+This licence statement and copyright notice applies to the
+following dictionary files, the associated documentation files,
+and any data files which are derived from them.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;UL&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;JMDICT&lt;/B&gt;
+- Japanese-Multilingual Dictionary File - the Japanese and English
+components (the translational equivalents in other languages, e.g.
+German, French, Dutch, etc.
+are covered by separate copyright held by the compilers of that material.)
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;EDICT&lt;/B&gt;
+- Japanese-English Electronic DICTionary File
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;ENAMDICT&lt;/B&gt;
+- Japanese Names File
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;COMPDIC&lt;/B&gt;
+- Japanese-English Computing and Telecommunications Terminology File
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;KANJIDIC2&lt;/B&gt;
+- File of Information about the Kanji in JIS X 0208, JIS X 0212 and JIS X
+0213 in XML format.
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;KANJIDIC&lt;/B&gt;
+- File of Information about the 6,355 Kanji in the JIS X 0208 Standard
+&lt;I&gt;(special conditions apply)&lt;/I&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;KANJD212&lt;/B&gt;
+- File of Information about the 5,801 Supplementary Kanji in the
+JIS X 0212 Standard
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;EDICT-R&lt;/B&gt;
+- romanized version of the EDICT file. (NB: this file has been withdrawn
+from circulation, and all sites carrying it are requested to remove
+their copies.)
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;RADKFILE/KRADFILE&lt;/B&gt;
+- files relating to the decomposition of the 6,355 kanji in JIS X 0208
+into their visible components.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;/UL&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Copyright over the documents covered by this statement is held by James
+William BREEN and The Electronic Dictionary Research and
+Development Group.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;3. Licence Conditions&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;a href=&quot;https://creativecommons.org/licenses/by-sa/4.0/&quot;&gt;&lt;img
+src=&quot;https://creativecommons.org/images/public/somerights20.gif&quot;&gt;&lt;/a&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+The dictionary files are made available under a Creative Commons
+Attribution-ShareAlike Licence (V4.0). The Licence Deed can be viewed
+ &lt;a HREF=&quot;https://creativecommons.org/licenses/by-sa/4.0/&quot;&gt;here, &lt;/a&gt;
+and the full Licence Code is
+ &lt;a HREF=&quot;https://creativecommons.org/licenses/by-sa/4.0/legalcode&quot;&gt;here. &lt;/a&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+In summary (extract from the Licence Deed):
+&lt;center&gt;
+&lt;table border width=&quot;80%&quot;&gt;&lt;tr&gt;&lt;td&gt;
+You are free:
+&lt;ul&gt;
+&lt;li&gt;to Share - to copy, distribute and transmit the work
+&lt;li&gt;to Remix - to adapt the work
+&lt;/ul&gt;
+Under the following conditions:
+&lt;ul&gt;
+&lt;li&gt;Attribution. You must attribute the work in the manner specified by the author or licensor (but not in any way that suggests that they endorse you or your use of the work).
+&lt;li&gt;Share Alike. If you alter, transform, or build upon this work, you may distribute the resulting work only under the same, similar or a compatible licence.
+&lt;/ul&gt;
+&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/center&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+For attribution of these files, you must:
+&lt;/P&gt;
+&lt;OL type=&quot;a&quot;&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;in the case of publishing significant extracts of the files, or
+material based on significant extracts of the files, e.g. in a published
+dictionary or in
+vocabulary lists, clearly acknowledge that you used the files for this purpose;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;in the case of a software package,  WWW server, smartphone app, etc. which uses the
+files or incorporates data from the files, you must:
+&lt;/P&gt;
+&lt;OL type=&quot;i&quot;&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;acknowledge the usage and source of the files in the documentation,
+publicity material, WWW site of the package/server, etc.;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;provide copies of the documentation and licence files (in the case
+of software packages). Where the application packaging does not provide
+for the inclusion of such files (e.g. with iPhone applications), it is
+sufficient to provide links, as per the next point;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;provide links to either local copies of
+the documentation and licence files or to the locations of the files
+at Monash University or at the EDRDG site.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+If a WWW server is providing a dictionary function or an on-screen
+display of words from the files, the acknowledgement must be made on each
+screen display, e.g. in the form of a message at the foot of the screen
+or page. If, however, material from the files is mixed with information from
+other sources, it is sufficient to provide a general acknowledgement of the
+sources as described above.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+For smartphone and tablet apps, acknowledgement must be made, e.g.
+on a separate screen
+accessed from a menu, such as one labelled &quot;About&quot;, &quot;Sources&quot;, etc. It is not
+sufficient just to mention it on a start-up/launch page of the app.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+For the EDICT, JMdict and KANJIDIC files, the
+following URLs may  be used or quoted:
+&lt;/P&gt;
+&lt;UL&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+ &lt;a HREF=&quot;https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project&quot;&gt;https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project &lt;/a&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+ &lt;a HREF=&quot;https://www.edrdg.org/wiki/index.php/KANJIDIC_Project&quot;&gt;https://www.edrdg.org/wiki/index.php/KANJIDIC_Project &lt;/a&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;/UL&gt;
+&lt;/LI&gt;
+&lt;/OL&gt;
+&lt;/LI&gt;
+&lt;/OL&gt;
+See
+ &lt;a HREF=&quot;sample.html&quot;&gt;this page &lt;/a&gt;
+for samples of possible acknowledgement text.
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Note that in all cases, the addition of material to the files or to
+extracts from the files does not remove or in any way diminish the
+Group&#x27;s copyright over the files. Users of material from the files
+must
+&lt;B&gt;NOT&lt;/B&gt;
+claim copyright over that material.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Note also that provided the conditions above are met,
+there is NO restriction placed on commercial use of the files.
+The files can be bundled with software and sold for whatever
+the developer wants to charge.
+Software using these files does not have to be under any form of
+open-source licence.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Where use of the files results in a financial return to the user, it is
+suggested that the user make a donation to the Group to assist with the
+continued development of the files. The only method currently available is to
+make a donation via PayPal using a credit or debit card. Simply click on
+the following button and follow the instructions.
+&lt;form action=&quot;https://www.paypal.com/cgi-bin/webscr&quot; method=&quot;post&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;cmd&quot; value=&quot;_xclick&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;business&quot; value=&quot;jimbreen@gmail.com&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;item_name&quot; value=&quot;Electronic Dictionary Research Group&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;item_number&quot; value=&quot;EDRGDON001&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;no_shipping&quot; value=&quot;2&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;no_note&quot; value=&quot;1&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;currency_code&quot; value=&quot;AUD&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;tax&quot; value=&quot;0&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;bn&quot; value=&quot;PP-DonationsBF&quot;&gt;
+&lt;input type=&quot;image&quot; src=&quot;https://www.paypal.com/en_US/i/btn/x-click-but21.gif&quot; border=&quot;0&quot; name=&quot;submit&quot; alt=&quot;Make payments with PayPal - it&#x27;s fast, free and secure!&quot;&gt;
+&lt;img alt=&quot;&quot; border=&quot;0&quot; src=&quot;https://www.paypal.com/en_AU/i/scr/pixel.gif&quot; width=&quot;1&quot; height=&quot;1&quot;&gt;
+&lt;/form&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+NB: No contract or agreement needs to be signed in order to use the files.
+By using the files, the user implicitly undertakes to abide by the
+conditions of this licence.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;4. Updating Dictionary Versions&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+If a software package,  WWW server, smartphone app, etc. uses the
+files or incorporates data from the files, there must be a procedure for
+regular updating of the data from the most recent versions available. For
+example, WWW-based dictionary servers should update their dictionary
+versions at least once a month. Failure to keep the versions up-to-date is
+a violation of the licence to use the data.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;5. Warranty and Liability&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+While every effort has been made to ensure the accuracy of the information
+in the files, it is possible that errors may still be included. The files
+are made available without any warranty whatsoever as to their accuracy or
+suitability for a particular application.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Any individual or organization making use of the files must agree:
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;OL type=&quot;a&quot;&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;to assume all liability for the use or misuse of the files, and must
+agree not to hold the Group liable for any actions or
+events resulting from use of the files.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;to  refrain from bringing action or suit or claim against
+the Group or any of the Group&#x27;s members on the basis of the use of
+the files, or any information included in the files.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;LI&gt;&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;to indemnify the Group or its members in the case of action by a
+third party on the basis of the use of the files, or any
+information included in the files.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;/LI&gt;
+&lt;/OL&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;6. Copyright&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Every effort has been made in the compilation of these files to ensure
+that the copyright of other compilers of dictionaries and lexicographic
+material
+has not been infringed. The Group asserts its intention to rectify immediately
+any breach of copyright brought to its attention.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Any individual or organization in possession of copies of the files, upon becoming
+aware that a possible copyright infringement may be present in the files,
+must undertake to contact the Group immediately with details of the
+possible infringement.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;7. Prior Permission&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+All permissions for use of the files granted by James William Breen
+prior to March 2000 will be honoured and maintained, however the placing
+of the KANJD212 and EDICTH files under the GNU GPL has been withdrawn as
+of 25 March 2000.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;B&gt;8. Special Conditions for the KANJIDIC, KANJD212 and KANJIDIC2 Files&lt;/B&gt;
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+In addition to licensing arrangements described above, the following
+additional conditions apply to the KANJIDIC, KANJD212 and KANJIDIC2 files.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+The following people have granted permission for material for which they hold
+copyright to be included in the files, and distributed under the above
+conditions, while retaining their copyright over that material:
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Jack HALPERN: The SKIP codes.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Note that the SKIP codes are under their own similar Creative Common
+licence. See Jack Halpern&#x27;s
+ &lt;a HREF=&quot;http://www.kanji.org/kanji/dictionaries/skip_permission.htm&quot;&gt;conditions of use &lt;/a&gt;
+page.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Christian WITTERN and Koichi YASUOKA: The Pinyin information.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Urs APP: the Four Corner codes and the Morohashi information.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Mark SPAHN and Wolfgang HADAMITZKY: the kanji descriptors from their
+dictionary.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Charles MULLER: the Korean readings.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+Joseph DE ROO: the De Roo codes.
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+&lt;/P&gt;
+&lt;/OL&gt;
+&lt;B&gt;9. Enquiries&lt;/B&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+All enquiries to:
+&lt;/P&gt;
+&lt;P ALIGN=&quot;JUSTIFY&quot;&gt;
+The Electronic Dictionary Research and Development Group
+&lt;BR&gt;
+Attn: Dr Jim Breen
+&lt;BR&gt;
+(jimbreen@gmail.com)
+&lt;!-- revised 28 August 2000 to clarify the situation with Linux --&gt;
+&lt;!-- revised 30 September 2000 to clarify the publication of material in other formats --&gt;
+&lt;!-- revised 26 February 2003 to remove commercial use restrictions --&gt;
+&lt;!-- revised 17 January 2004 to clarify acknowledgement details --&gt;
+&lt;!-- revised 20 May     2008 to update the frequency information in KANJIDIC --&gt;
+&lt;!-- revised 21 May     2008 reflected move to EDRDG site --&gt;
+&lt;!-- revised 30 May 2009 reflected the new SKIP licence. --&gt;
+&lt;!-- revised 29 Sep 2021 mention regular updates. --&gt;
+&lt;/P&gt;
+&lt;/BODY&gt;&lt;/HTML&gt;
+</pre><h2>cc-by-sa-4</h2><p><a href="https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt">Source / 出典</a></p><pre>Attribution-ShareAlike 4.0 International
+
+=======================================================================
+
+Creative Commons Corporation (&quot;Creative Commons&quot;) is not a law firm and
+does not provide legal services or legal advice. Distribution of
+Creative Commons public licenses does not create a lawyer-client or
+other relationship. Creative Commons makes its licenses and related
+information available on an &quot;as-is&quot; basis. Creative Commons gives no
+warranties regarding its licenses, any material licensed under their
+terms and conditions, or any related information. Creative Commons
+disclaims all liability for damages resulting from their use to the
+fullest extent possible.
+
+Using Creative Commons Public Licenses
+
+Creative Commons public licenses provide a standard set of terms and
+conditions that creators and other rights holders may use to share
+original works of authorship and other material subject to copyright
+and certain other rights specified in the public license below. The
+following considerations are for informational purposes only, are not
+exhaustive, and do not form part of our licenses.
+
+     Considerations for licensors: Our public licenses are
+     intended for use by those authorized to give the public
+     permission to use material in ways otherwise restricted by
+     copyright and certain other rights. Our licenses are
+     irrevocable. Licensors should read and understand the terms
+     and conditions of the license they choose before applying it.
+     Licensors should also secure all rights necessary before
+     applying our licenses so that the public can reuse the
+     material as expected. Licensors should clearly mark any
+     material not subject to the license. This includes other CC-
+     licensed material, or material used under an exception or
+     limitation to copyright. More considerations for licensors:
+    wiki.creativecommons.org/Considerations_for_licensors
+
+     Considerations for the public: By using one of our public
+     licenses, a licensor grants the public permission to use the
+     licensed material under specified terms and conditions. If
+     the licensor&#x27;s permission is not necessary for any reason--for
+     example, because of any applicable exception or limitation to
+     copyright--then that use is not regulated by the license. Our
+     licenses grant only permissions under copyright and certain
+     other rights that a licensor has authority to grant. Use of
+     the licensed material may still be restricted for other
+     reasons, including because others have copyright or other
+     rights in the material. A licensor may make special requests,
+     such as asking that all changes be marked or described.
+     Although not required by our licenses, you are encouraged to
+     respect those requests where reasonable. More considerations
+     for the public:
+    wiki.creativecommons.org/Considerations_for_licensees
+
+=======================================================================
+
+Creative Commons Attribution-ShareAlike 4.0 International Public
+License
+
+By exercising the Licensed Rights (defined below), You accept and agree
+to be bound by the terms and conditions of this Creative Commons
+Attribution-ShareAlike 4.0 International Public License (&quot;Public
+License&quot;). To the extent this Public License may be interpreted as a
+contract, You are granted the Licensed Rights in consideration of Your
+acceptance of these terms and conditions, and the Licensor grants You
+such rights in consideration of benefits the Licensor receives from
+making the Licensed Material available under these terms and
+conditions.
+
+
+Section 1 -- Definitions.
+
+  a. Adapted Material means material subject to Copyright and Similar
+     Rights that is derived from or based upon the Licensed Material
+     and in which the Licensed Material is translated, altered,
+     arranged, transformed, or otherwise modified in a manner requiring
+     permission under the Copyright and Similar Rights held by the
+     Licensor. For purposes of this Public License, where the Licensed
+     Material is a musical work, performance, or sound recording,
+     Adapted Material is always produced where the Licensed Material is
+     synched in timed relation with a moving image.
+
+  b. Adapter&#x27;s License means the license You apply to Your Copyright
+     and Similar Rights in Your contributions to Adapted Material in
+     accordance with the terms and conditions of this Public License.
+
+  c. BY-SA Compatible License means a license listed at
+     creativecommons.org/compatiblelicenses, approved by Creative
+     Commons as essentially the equivalent of this Public License.
+
+  d. Copyright and Similar Rights means copyright and/or similar rights
+     closely related to copyright including, without limitation,
+     performance, broadcast, sound recording, and Sui Generis Database
+     Rights, without regard to how the rights are labeled or
+     categorized. For purposes of this Public License, the rights
+     specified in Section 2(b)(1)-(2) are not Copyright and Similar
+     Rights.
+
+  e. Effective Technological Measures means those measures that, in the
+     absence of proper authority, may not be circumvented under laws
+     fulfilling obligations under Article 11 of the WIPO Copyright
+     Treaty adopted on December 20, 1996, and/or similar international
+     agreements.
+
+  f. Exceptions and Limitations means fair use, fair dealing, and/or
+     any other exception or limitation to Copyright and Similar Rights
+     that applies to Your use of the Licensed Material.
+
+  g. License Elements means the license attributes listed in the name
+     of a Creative Commons Public License. The License Elements of this
+     Public License are Attribution and ShareAlike.
+
+  h. Licensed Material means the artistic or literary work, database,
+     or other material to which the Licensor applied this Public
+     License.
+
+  i. Licensed Rights means the rights granted to You subject to the
+     terms and conditions of this Public License, which are limited to
+     all Copyright and Similar Rights that apply to Your use of the
+     Licensed Material and that the Licensor has authority to license.
+
+  j. Licensor means the individual(s) or entity(ies) granting rights
+     under this Public License.
+
+  k. Share means to provide material to the public by any means or
+     process that requires permission under the Licensed Rights, such
+     as reproduction, public display, public performance, distribution,
+     dissemination, communication, or importation, and to make material
+     available to the public including in ways that members of the
+     public may access the material from a place and at a time
+     individually chosen by them.
+
+  l. Sui Generis Database Rights means rights other than copyright
+     resulting from Directive 96/9/EC of the European Parliament and of
+     the Council of 11 March 1996 on the legal protection of databases,
+     as amended and/or succeeded, as well as other essentially
+     equivalent rights anywhere in the world.
+
+  m. You means the individual or entity exercising the Licensed Rights
+     under this Public License. Your has a corresponding meaning.
+
+
+Section 2 -- Scope.
+
+  a. License grant.
+
+       1. Subject to the terms and conditions of this Public License,
+          the Licensor hereby grants You a worldwide, royalty-free,
+          non-sublicensable, non-exclusive, irrevocable license to
+          exercise the Licensed Rights in the Licensed Material to:
+
+            a. reproduce and Share the Licensed Material, in whole or
+               in part; and
+
+            b. produce, reproduce, and Share Adapted Material.
+
+       2. Exceptions and Limitations. For the avoidance of doubt, where
+          Exceptions and Limitations apply to Your use, this Public
+          License does not apply, and You do not need to comply with
+          its terms and conditions.
+
+       3. Term. The term of this Public License is specified in Section
+          6(a).
+
+       4. Media and formats; technical modifications allowed. The
+          Licensor authorizes You to exercise the Licensed Rights in
+          all media and formats whether now known or hereafter created,
+          and to make technical modifications necessary to do so. The
+          Licensor waives and/or agrees not to assert any right or
+          authority to forbid You from making technical modifications
+          necessary to exercise the Licensed Rights, including
+          technical modifications necessary to circumvent Effective
+          Technological Measures. For purposes of this Public License,
+          simply making modifications authorized by this Section 2(a)
+          (4) never produces Adapted Material.
+
+       5. Downstream recipients.
+
+            a. Offer from the Licensor -- Licensed Material. Every
+               recipient of the Licensed Material automatically
+               receives an offer from the Licensor to exercise the
+               Licensed Rights under the terms and conditions of this
+               Public License.
+
+            b. Additional offer from the Licensor -- Adapted Material.
+               Every recipient of Adapted Material from You
+               automatically receives an offer from the Licensor to
+               exercise the Licensed Rights in the Adapted Material
+               under the conditions of the Adapter&#x27;s License You apply.
+
+            c. No downstream restrictions. You may not offer or impose
+               any additional or different terms or conditions on, or
+               apply any Effective Technological Measures to, the
+               Licensed Material if doing so restricts exercise of the
+               Licensed Rights by any recipient of the Licensed
+               Material.
+
+       6. No endorsement. Nothing in this Public License constitutes or
+          may be construed as permission to assert or imply that You
+          are, or that Your use of the Licensed Material is, connected
+          with, or sponsored, endorsed, or granted official status by,
+          the Licensor or others designated to receive attribution as
+          provided in Section 3(a)(1)(A)(i).
+
+  b. Other rights.
+
+       1. Moral rights, such as the right of integrity, are not
+          licensed under this Public License, nor are publicity,
+          privacy, and/or other similar personality rights; however, to
+          the extent possible, the Licensor waives and/or agrees not to
+          assert any such rights held by the Licensor to the limited
+          extent necessary to allow You to exercise the Licensed
+          Rights, but not otherwise.
+
+       2. Patent and trademark rights are not licensed under this
+          Public License.
+
+       3. To the extent possible, the Licensor waives any right to
+          collect royalties from You for the exercise of the Licensed
+          Rights, whether directly or through a collecting society
+          under any voluntary or waivable statutory or compulsory
+          licensing scheme. In all other cases the Licensor expressly
+          reserves any right to collect such royalties.
+
+
+Section 3 -- License Conditions.
+
+Your exercise of the Licensed Rights is expressly made subject to the
+following conditions.
+
+  a. Attribution.
+
+       1. If You Share the Licensed Material (including in modified
+          form), You must:
+
+            a. retain the following if it is supplied by the Licensor
+               with the Licensed Material:
+
+                 i. identification of the creator(s) of the Licensed
+                    Material and any others designated to receive
+                    attribution, in any reasonable manner requested by
+                    the Licensor (including by pseudonym if
+                    designated);
+
+                ii. a copyright notice;
+
+               iii. a notice that refers to this Public License;
+
+                iv. a notice that refers to the disclaimer of
+                    warranties;
+
+                 v. a URI or hyperlink to the Licensed Material to the
+                    extent reasonably practicable;
+
+            b. indicate if You modified the Licensed Material and
+               retain an indication of any previous modifications; and
+
+            c. indicate the Licensed Material is licensed under this
+               Public License, and include the text of, or the URI or
+               hyperlink to, this Public License.
+
+       2. You may satisfy the conditions in Section 3(a)(1) in any
+          reasonable manner based on the medium, means, and context in
+          which You Share the Licensed Material. For example, it may be
+          reasonable to satisfy the conditions by providing a URI or
+          hyperlink to a resource that includes the required
+          information.
+
+       3. If requested by the Licensor, You must remove any of the
+          information required by Section 3(a)(1)(A) to the extent
+          reasonably practicable.
+
+  b. ShareAlike.
+
+     In addition to the conditions in Section 3(a), if You Share
+     Adapted Material You produce, the following conditions also apply.
+
+       1. The Adapter&#x27;s License You apply must be a Creative Commons
+          license with the same License Elements, this version or
+          later, or a BY-SA Compatible License.
+
+       2. You must include the text of, or the URI or hyperlink to, the
+          Adapter&#x27;s License You apply. You may satisfy this condition
+          in any reasonable manner based on the medium, means, and
+          context in which You Share Adapted Material.
+
+       3. You may not offer or impose any additional or different terms
+          or conditions on, or apply any Effective Technological
+          Measures to, Adapted Material that restrict exercise of the
+          rights granted under the Adapter&#x27;s License You apply.
+
+
+Section 4 -- Sui Generis Database Rights.
+
+Where the Licensed Rights include Sui Generis Database Rights that
+apply to Your use of the Licensed Material:
+
+  a. for the avoidance of doubt, Section 2(a)(1) grants You the right
+     to extract, reuse, reproduce, and Share all or a substantial
+     portion of the contents of the database;
+
+  b. if You include all or a substantial portion of the database
+     contents in a database in which You have Sui Generis Database
+     Rights, then the database in which You have Sui Generis Database
+     Rights (but not its individual contents) is Adapted Material,
+     including for purposes of Section 3(b); and
+
+  c. You must comply with the conditions in Section 3(a) if You Share
+     all or a substantial portion of the contents of the database.
+
+For the avoidance of doubt, this Section 4 supplements and does not
+replace Your obligations under this Public License where the Licensed
+Rights include other Copyright and Similar Rights.
+
+
+Section 5 -- Disclaimer of Warranties and Limitation of Liability.
+
+  a. UNLESS OTHERWISE SEPARATELY UNDERTAKEN BY THE LICENSOR, TO THE
+     EXTENT POSSIBLE, THE LICENSOR OFFERS THE LICENSED MATERIAL AS-IS
+     AND AS-AVAILABLE, AND MAKES NO REPRESENTATIONS OR WARRANTIES OF
+     ANY KIND CONCERNING THE LICENSED MATERIAL, WHETHER EXPRESS,
+     IMPLIED, STATUTORY, OR OTHER. THIS INCLUDES, WITHOUT LIMITATION,
+     WARRANTIES OF TITLE, MERCHANTABILITY, FITNESS FOR A PARTICULAR
+     PURPOSE, NON-INFRINGEMENT, ABSENCE OF LATENT OR OTHER DEFECTS,
+     ACCURACY, OR THE PRESENCE OR ABSENCE OF ERRORS, WHETHER OR NOT
+     KNOWN OR DISCOVERABLE. WHERE DISCLAIMERS OF WARRANTIES ARE NOT
+     ALLOWED IN FULL OR IN PART, THIS DISCLAIMER MAY NOT APPLY TO YOU.
+
+  b. TO THE EXTENT POSSIBLE, IN NO EVENT WILL THE LICENSOR BE LIABLE
+     TO YOU ON ANY LEGAL THEORY (INCLUDING, WITHOUT LIMITATION,
+     NEGLIGENCE) OR OTHERWISE FOR ANY DIRECT, SPECIAL, INDIRECT,
+     INCIDENTAL, CONSEQUENTIAL, PUNITIVE, EXEMPLARY, OR OTHER LOSSES,
+     COSTS, EXPENSES, OR DAMAGES ARISING OUT OF THIS PUBLIC LICENSE OR
+     USE OF THE LICENSED MATERIAL, EVEN IF THE LICENSOR HAS BEEN
+     ADVISED OF THE POSSIBILITY OF SUCH LOSSES, COSTS, EXPENSES, OR
+     DAMAGES. WHERE A LIMITATION OF LIABILITY IS NOT ALLOWED IN FULL OR
+     IN PART, THIS LIMITATION MAY NOT APPLY TO YOU.
+
+  c. The disclaimer of warranties and limitation of liability provided
+     above shall be interpreted in a manner that, to the extent
+     possible, most closely approximates an absolute disclaimer and
+     waiver of all liability.
+
+
+Section 6 -- Term and Termination.
+
+  a. This Public License applies for the term of the Copyright and
+     Similar Rights licensed here. However, if You fail to comply with
+     this Public License, then Your rights under this Public License
+     terminate automatically.
+
+  b. Where Your right to use the Licensed Material has terminated under
+     Section 6(a), it reinstates:
+
+       1. automatically as of the date the violation is cured, provided
+          it is cured within 30 days of Your discovery of the
+          violation; or
+
+       2. upon express reinstatement by the Licensor.
+
+     For the avoidance of doubt, this Section 6(b) does not affect any
+     right the Licensor may have to seek remedies for Your violations
+     of this Public License.
+
+  c. For the avoidance of doubt, the Licensor may also offer the
+     Licensed Material under separate terms or conditions or stop
+     distributing the Licensed Material at any time; however, doing so
+     will not terminate this Public License.
+
+  d. Sections 1, 5, 6, 7, and 8 survive termination of this Public
+     License.
+
+
+Section 7 -- Other Terms and Conditions.
+
+  a. The Licensor shall not be bound by any additional or different
+     terms or conditions communicated by You unless expressly agreed.
+
+  b. Any arrangements, understandings, or agreements regarding the
+     Licensed Material not stated herein are separate from and
+     independent of the terms and conditions of this Public License.
+
+
+Section 8 -- Interpretation.
+
+  a. For the avoidance of doubt, this Public License does not, and
+     shall not be interpreted to, reduce, limit, restrict, or impose
+     conditions on any use of the Licensed Material that could lawfully
+     be made without permission under this Public License.
+
+  b. To the extent possible, if any provision of this Public License is
+     deemed unenforceable, it shall be automatically reformed to the
+     minimum extent necessary to make it enforceable. If the provision
+     cannot be reformed, it shall be severed from this Public License
+     without affecting the enforceability of the remaining terms and
+     conditions.
+
+  c. No term or condition of this Public License will be waived and no
+     failure to comply consented to unless expressly agreed to by the
+     Licensor.
+
+  d. Nothing in this Public License constitutes or may be interpreted
+     as a limitation upon, or waiver of, any privileges and immunities
+     that apply to the Licensor or You, including from the legal
+     processes of any jurisdiction or authority.
+
+
+=======================================================================
+
+Creative Commons is not a party to its public
+licenses. Notwithstanding, Creative Commons may elect to apply one of
+its public licenses to material it publishes and in those instances
+will be considered the “Licensor.” The text of the Creative Commons
+public licenses is dedicated to the public domain under the CC0 Public
+Domain Dedication. Except for the limited purpose of indicating that
+material is shared under a Creative Commons public license or as
+otherwise permitted by the Creative Commons policies published at
+creativecommons.org/policies, Creative Commons does not authorize the
+use of the trademark &quot;Creative Commons&quot; or any other trademark or logo
+of Creative Commons without its prior written consent including,
+without limitation, in connection with any unauthorized modifications
+to any of its public licenses or any other arrangements,
+understandings, or agreements concerning use of licensed material. For
+the avoidance of doubt, this paragraph does not form part of the
+public licenses.
+
+Creative Commons may be contacted at creativecommons.org.
+
+</pre>

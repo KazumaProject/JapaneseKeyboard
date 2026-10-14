@@ -1,0 +1,3 @@
+[Public Domain](https://www.post.japanpost.jp/zipcode/dl/readme.html)
+
+> 郵便番号データに限っては日本郵便株式会社は著作権を主張しません。
