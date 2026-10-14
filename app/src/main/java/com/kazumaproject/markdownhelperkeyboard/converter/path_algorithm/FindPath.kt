@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.CandidateSource
@@ -1171,6 +1172,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
+                        dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = element.priorityCost,
@@ -1550,6 +1552,22 @@ class FindPath(
         if (mask and 2 != 0) yield(CandidateSource.USER_DICTIONARY)
     }
 
+    private fun categoriesFromPath(path: PathQueueElement): Set<DictionaryCategory> = buildSet {
+        var current: PathQueueElement? = path
+        while (current != null) {
+            addAll(current.node.dictionaryCategories)
+            current = current.next
+        }
+    }
+
+    private fun categoriesFromNode(node: Node): Set<DictionaryCategory> = buildSet {
+        var current: Node? = node
+        while (current != null) {
+            addAll(current.dictionaryCategories)
+            current = current.next
+        }
+    }
+
     private fun resolveCandidateType(
         string: String,
         sources: Sequence<CandidateSource>,
@@ -1868,6 +1886,7 @@ class FindPath(
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
                         length = length.toUByte(),
+                        dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
                         score = totalCost,
                         leftId = element.next?.node?.l,
@@ -2070,6 +2089,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromNode(node.first),
                         ),
+                        dictionaryCategories = categoriesFromNode(node.first),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {

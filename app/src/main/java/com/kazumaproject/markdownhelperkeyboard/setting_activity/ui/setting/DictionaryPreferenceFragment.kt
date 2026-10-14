@@ -1,11 +1,20 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
+import android.content.Context
 import android.os.Bundle
 import androidx.preference.Preference
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityProblem
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityResult
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityValidator
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -16,7 +25,63 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
     @Inject
     lateinit var appPreference: AppPreference
 
+    @Inject
+    lateinit var storeProvider: javax.inject.Provider<DictionaryOverrideStore>
+    @Inject
+    lateinit var validatorProvider: javax.inject.Provider<DictionaryCompatibilityValidator>
+    private lateinit var store: DictionaryOverrideStore
+    private var preparedRevision: Long = Long.MIN_VALUE
+    private var categoryProblems: Map<DictionaryCategory, List<DictionaryCompatibilityProblem>> = emptyMap()
+
+    override suspend fun preparePreferenceData(context: Context) {
+        settingsIo(SettingsLoadStage.DATABASE) {
+            store = storeProvider.get()
+            val validator = validatorProvider.get()
+            categoryProblems = ClassifiedDictionaries.all.associate { spec ->
+                val files = DictionaryFileSpecs.forCategory(spec.category)
+                val result = if (files.all { store.isValidOverride(it.key) }) {
+                    validator.validateCategoryReplacement(spec.category)
+                } else DictionaryCompatibilityResult.Compatible
+                spec.category to ((result as? DictionaryCompatibilityResult.Incompatible)?.problems.orEmpty())
+            }
+            preparedRevision = store.currentRevision
+        }
+    }
+
+    override fun onPreferencesResumed() {
+        if (store.currentRevision != preparedRevision) {
+            reloadPreferences()
+            return
+        }
+        ClassifiedDictionaries.all.forEach { spec ->
+            findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.isChecked = store.isOptionalBundledEnabled(spec.category)
+        }
+    }
+
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+
+        ClassifiedDictionaries.all.forEach { spec ->
+            findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.apply {
+                isPersistent = false
+                isChecked = store.isOptionalBundledEnabled(spec.category)
+                setOnPreferenceChangeListener { _, value ->
+                    val enabled = value == true
+                    val problems = categoryProblems[spec.category].orEmpty()
+                    store.setDisableableCategoryEnabled(spec.category, enabled, problems.isEmpty())
+                    preparedRevision = store.currentRevision
+                    isChecked = enabled
+                    if (enabled && problems.isNotEmpty()) {
+                        MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.external_dictionary_compat_dialog_title)
+                            .setMessage((listOf(getString(R.string.external_dictionary_compat_imported_but_not_usable),
+                                getString(R.string.external_dictionary_compat_import_matching_common_files)) +
+                                problems.map { getString(it.messageResId, *it.messageArgs.toTypedArray()) }).joinToString("\n"))
+                            .setPositiveButton(android.R.string.ok, null).show()
+                    }
+                    true
+                }
+            }
+        }
 
         val ngWordSwitchPreference =
             findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")

@@ -82,11 +82,7 @@ class ProductionConnectionMatrixRegressionTest {
         getCandidatesWithBunsetsuSeparation(
             input = input,
             n = 20,
-            mozcUtPersonName = false,
-            mozcUTPlaces = false,
-            mozcUTWiki = false,
-            mozcUTNeologd = false,
-            mozcUTWeb = false,
+            enabledDictionaryCategories = emptySet(),
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = null,
             isOmissionSearchEnable = false,

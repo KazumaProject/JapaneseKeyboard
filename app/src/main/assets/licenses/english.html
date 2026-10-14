@@ -1,0 +1,131 @@
+<!doctype html><meta charset="utf-8"><style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style><title>English word dictionary / 英単語辞書</title><h1>English word dictionary / 英単語辞書</h1><p>Distribution / 配布: v1.7.262-pre.3 (d65dc98b023fa7ab8ca994daef2ec1640d2a1bf5)</p><p>Classified and converted to IME binaries / 分類・IME辞書バイナリへの変換を行っています。</p><p>Input acquisition revision and per-entry copyright attribution: unconfirmed. 元辞書の取得版・各語の著作権者への対応: 未確認。Below are preserved upstream notices; source-code licenses do not replace data terms. 以下は保持した出典の通知です。プログラムのライセンスはデータの条件を置き換えません。</p><p>Source and applicable data license: unconfirmed / 元データ・適用されるデータライセンス: 未確認。This asset is not part of the pinned dictionary release / この資源は当該配布ZIPには含まれません。</p><h2>converter</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d65dc98b023fa7ab8ca994daef2ec1640d2a1bf5/src/main/resources/THIRD-PARTY-NOTICES.md">Source / 出典</a></p><pre># Third-party notices
+
+The generated dictionaries combine data sources. The Kotlin program is MIT, but the
+generated dictionary data keeps the license and notice requirements of its
+upstream data sources. Do not treat the complete release archive as a single
+MIT-licensed work.
+
+Repository license scope is described in [LICENSE-DATA.md](../../../LICENSE-DATA.md).
+The upstream documents in `third-party/LICENSE-DATA.md` and `third-party/NOTICE.md`
+are preserved JapaneseCorpus notices: references to &quot;this repository&quot; in those
+documents describe JapaneseCorpus, not this converter project.
+
+## Project source code
+
+The Kotlin conversion program source files are distributed
+under the MIT License. The complete project license is in the repository
+[LICENSE](../../../LICENSE).
+
+## JapaneseCorpus / JMdict English data
+
+The hiragana-to-English source combines the JapaneseCorpus direct-loanword
+asset `mozc-english-reading-unigram-00000.txt.zst` with the curated full-reading
+pairs in `src/main/english/reading-supplement.tsv`. The CI resolves one latest
+published [JapaneseCorpus release](https://github.com/KazumaProject/JapaneseCorpus/releases)
+and records its tag and dictionary checksum; all downloaded inputs come from
+that same release. The manifest records the CMUdict pronunciation source.
+
+The initial supplement was checked against JMdict_e-20261012 from
+[JapaneseCorpus v2026.1012.19](https://github.com/KazumaProject/JapaneseCorpus/releases/tag/v2026.1012.19),
+SHA-256 `5004ad9c777db2188baaa51554d4bb3e1ef3781725c4b38467723886b5d47d9e`.
+Each supplemental row records its JMdict entry ID or official reference URL
+and the reason for accepting the complete reading/surface pair.
+
+JMdict is copyright James William BREEN and the Electronic Dictionary Research
+and Development Group. The JMdict-derived source, curated supplement, and
+adapted database data are licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The authoritative attribution and license notice is preserved in
+[`third-party/JMDICT-LICENSE.html`](third-party/JMDICT-LICENSE.html),
+with current [EDRDG terms](https://www.edrdg.org/edrdg/licence.html).
+This data license is separate from the MIT-licensed Kotlin program.
+
+Modifications include selecting direct English loanword pairs, converting
+Katakana readings to hiragana, adding individually checked full-reading pairs
+and attested variants, and applying the defensive quality filter documented in
+[`docs/english-dictionary.md`](../../../docs/english-dictionary.md).
+Only `primary` candidates are emitted. Source explanations and unapproved
+compounds remain in audit reports rather than being trimmed automatically.
+Redistribution of the JMdict-derived portion must preserve attribution and
+ShareAlike requirements. The binary-only assets ZIP does not include these
+notices; downstream distributions must provide the required source and license
+information, for example through the application&#x27;s source/license screen.
+
+## NGSL and CMUdict general English supplement
+
+General English headwords were prioritized using the New General Service List
+(NGSL) 1.2 by Charles Browne, Brent Culligan, and Joseph Phillips, licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The [official NGSL site](https://www.newgeneralservicelist.com/new-general-service-list)
+provides the frequency list. The raw list and frequency statistics are not
+included in the binary assets; its version and checksum are recorded in the
+dictionary creation documentation. Frequency rankings are used for selection,
+not as measured IME candidate costs.
+
+Some supplemental kana readings are editorial adaptations of full US English
+pronunciations from [CMUdict](https://github.com/cmusphinx/cmudict), commit
+`74790861f652b15e4ac49015a90074ad62a27690`.
+CMUdict is Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+Its redistribution conditions and disclaimer are preserved verbatim in
+[`third-party/CMUDICT-LICENSE`](third-party/CMUDICT-LICENSE); source and binary
+redistributions of the derived material must reproduce the required notice.
+Rows distinguish these reviewed pronunciation-derived readings from readings
+attested in Japanese sources, and record the original ARPAbet pronunciation.
+The curated combined supplement remains distributed under CC BY-SA 4.0, with
+the CMUdict notice retained for its portion. The Kotlin code remains MIT.
+The CC BY-SA [legal code](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en)
+applies to the project-owned editorial contributions and the relevant adapted
+data; this does not replace the original CMUdict conditions or claim ownership
+of the upstream material. Changes include selection, hiragana normalization,
+reviewed pronunciation-derived kana, costs, de-duplication, and binary encoding.
+
+The binary-only ZIP does not include notice files. Downstream distributions must
+include the CMUdict notice alongside the existing JMdict attribution.
+
+## Google Mozc resources
+
+The Japanese dictionary and related resources are derived from
+[google/mozc](https://github.com/google/mozc). Mozc&#x27;s code license and binary
+redistribution notice are in its
+[`LICENSE`](https://github.com/google/mozc/blob/master/LICENSE). The bundled
+`src/data/dictionary*` resources are mixed-license data. The upstream notice is
+preserved in this repository as `src/main/resources/third-party/MOZC-LICENSE`,
+alongside `src/main/resources/third-party/IPADIC-NOTICE`. The upstream source
+notice is also available at
+[`src/data/dictionary_oss/README.txt`](https://raw.githubusercontent.com/google/mozc/master/src/data/dictionary_oss/README.txt).
+
+The Mozc dictionary notice includes, among other conditions:
+
+- NAIST/IPAdic copyright and attribution requirements;
+- the ICOT Free Software no-warranty and notice requirements; and
+- Okinawa dictionary public-domain terms.
+
+Those upstream conditions continue to apply to the corresponding generated
+dictionary assets in this release. Google/Mozc names are not used to endorse
+this project.
+
+## Practical redistribution rule
+
+When redistributing the generated assets, preserve the attribution and license
+information required by each data source. The binary-only assets ZIP does not
+carry notice files. This repository preserves them under
+`src/main/resources/third-party/`; downstream packages must provide the required
+information or links in their own distribution. `LICENSE-DATA.md` and `NOTICE.md`
+in that directory provide additional JapaneseCorpus data provenance.
+
+## 漢方・医療辞書
+
+`src/main/specialist` のKNApSAcK KAMPO由来データと `kampo` 辞書の加工部分は
+[CC BY-SA 2.1 日本](https://creativecommons.org/licenses/by-sa/2.1/jp/) に従います。
+KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学)。
+万病辞書 MANBYO_202106 と百薬辞書 HYAKUYAKU_202107 由来データおよび
+`medical` 辞書の編集・読み補完部分は [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) で提供します。
+作成者の表示は各提供元の保存した公式文書を維持します。
+
+加工は表記・読みの抽出と正規化、重複除外、空欄へのGemini推定読みの追加、
+品詞・コストの割当、バイナリ化です。原本の自動読みと推定読みの正確性は全件確認していません。
+出典・版・取得ZIPハッシュ・各行の原本対応・加工状態は
+[専門辞書の文書](../../../docs/specialist-dictionaries.md) と `src/main/specialist` に記録します。
+出典・著作権・条件・加工表示を保持し、漢方の継承条件を守ってください。
+配布時はライセンス全文を含む別添 `DICTIONARY-LICENSES.txt` を維持してください。
+</pre>

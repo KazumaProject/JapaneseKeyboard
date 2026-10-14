@@ -1,0 +1,3 @@
+
+# Preserve the pinned upstream legal-code notice verbatim, including its final blank line.
+app/src/main/assets/licenses/sources/cc-by-sa-4.txt whitespace=-blank-at-eof
