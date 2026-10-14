@@ -543,6 +543,10 @@ object SettingSearchIndex {
     ): SettingDestinationType {
         val fallback = fallbackDestinationType(key, destinationId, highlightPreferenceKey)
         if (SettingDestinations.isManagementDestinationKey(key)) return fallback
+        // These switches use DictionaryOverrideStore and compatibility checks.
+        // Search/frequent cards must navigate to their handler, not write default preferences.
+        if (com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries.all
+                .any { it.preferenceKey == key }) return fallback
 
         val simpleTagName = parser.name.substringAfterLast('.')
         return when (simpleTagName) {

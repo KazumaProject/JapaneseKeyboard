@@ -361,7 +361,7 @@ data class ImePreferencesSnapshot(
                 keyboardOrder = appPreference.keyboard_order,
                 candidateTabOrder = appPreference.candidate_tab_order,
                 enabledDictionaryCategories = ClassifiedDictionaries.categories.filterTo(linkedSetOf()) {
-                    optionalEnabled(it, false)
+                    optionalEnabled(it, true)
                 },
                 isFlickOnlyMode = appPreference.flick_input_only_preference ?: false,
                 flickEditorPreviewPreference = appPreference.flick_editor_preview_preference,

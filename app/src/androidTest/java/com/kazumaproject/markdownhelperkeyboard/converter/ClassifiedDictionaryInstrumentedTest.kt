@@ -26,7 +26,7 @@ class ClassifiedDictionaryInstrumentedTest {
     private fun expected() = JSONObject(InstrumentationRegistry.getInstrumentation().context.assets
         .open("classified-expected-records.json").bufferedReader().use { it.readText() })
 
-    @Test fun all767274RecordsMatchFrozenReadingSurfacePosAndCost() {
+    @Test fun all861053RecordsMatchFrozenReadingSurfacePosAndCost() {
         val reader = entryPoint.dictionaryBinaryReader()
         val expected = expected()
         val digest = MessageDigest.getInstance("SHA-256")
@@ -69,8 +69,44 @@ class ClassifiedDictionaryInstrumentedTest {
             total += count
             println("CLASSIFIED_RECORDS ${spec.id}=$count")
         }
-        assertEquals(767274, total)
+        assertEquals(861053, total)
         assertEquals("Categories with differing decoded records", emptyList<String>(), mismatches)
+    }
+
+    @Test fun all5138EnglishReadingPairsMatchPinnedCatalog() {
+        val reader = entryPoint.dictionaryBinaryReader()
+        val files = DictionaryFileSpecs.forCategory(DictionaryCategory.ENGLISH_READING)
+        val yomi = reader.loadLoudsWithTermId(files.single { it.role == DictionaryFileRole.YOMI }.key)
+        val tango = reader.loadLouds(files.single { it.role == DictionaryFileRole.TANGO }.key)
+        val token = reader.loadTokenArray(files.single { it.role == DictionaryFileRole.TOKEN }.key)
+        val lbs = SuccinctBitVector(yomi.LBS)
+        val leaf = SuccinctBitVector(yomi.isLeaf)
+        val words = SuccinctBitVector(tango.LBS)
+        val tokens = SuccinctBitVector(token.bitvector)
+        val expected = JSONObject(InstrumentationRegistry.getInstrumentation().context.assets
+            .open("english-reading-expected.json").bufferedReader().use { it.readText() })
+        val digest = MessageDigest.getInstance("SHA-256")
+        var sum = BigInteger.ZERO
+        var count = 0
+        val pairs = mutableSetOf<Pair<String, String>>()
+        yomi.predictiveSearch("", lbs).forEach { reading ->
+            val term = yomi.getTermIdShortArray(yomi.getNodeIndex(reading, lbs), leaf)
+            assertTrue(term >= 0)
+            token.forEachDictionaryByYomiTermIdShortArray(term, tokens) { pos, cost, node ->
+                val surface = tango.getLetterShortArray(node, words)
+                assertTrue(token.leftIds[pos.toInt()] >= 0 && token.rightIds[pos.toInt()] >= 0)
+                val row = "$reading\t$cost\t$surface"
+                sum = sum.add(BigInteger(1, digest.digest(row.toByteArray(Charsets.UTF_8))))
+                pairs.add(reading to surface)
+                count++
+            }
+        }
+        assertEquals(expected.getInt("count"), count)
+        assertEquals(expected.getString("digestSum"), sum.mod(BigInteger.ONE.shiftLeft(256)).toString(16).padStart(64, '0'))
+        assertTrue(pairs.containsAll(listOf("しんく" to "sync", "ふぇっち" to "fetch", "えいしんく" to "async", "うぇぶふっく" to "webhook")))
+        assertTrue("かー" to "car" in pairs)
+        assertFalse("かー" to "Car" in pairs)
+        println("CLASSIFIED_ENGLISH_RECORDS $count")
     }
 
     @Test fun allCategoriesToggleAndKeepLabelsAcrossBackendsAndModes() = runBlocking {
@@ -79,8 +115,17 @@ class ClassifiedDictionaryInstrumentedTest {
         val previous = ClassifiedDictionaries.all.associate { it.category to store.isOptionalBundledEnabled(it.category) }
         val expected = expected()
         try {
+            ClassifiedDictionaries.all.forEach { store.setOptionalBundledEnabled(it.category, false) }
+            engine.applyDictionaryOverrideState(context)
+            System.gc()
+            val beforeHeap = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+            val started = android.os.SystemClock.elapsedRealtime()
             ClassifiedDictionaries.all.forEach { store.setOptionalBundledEnabled(it.category, true) }
             engine.applyDictionaryOverrideState(context)
+            val loadMs = android.os.SystemClock.elapsedRealtime() - started
+            System.gc()
+            val afterHeap = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+            println("CLASSIFIED_LOAD all30ReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
             assertEquals(ClassifiedDictionaries.categories, engine.loadedClassifiedCategories())
             ConversionBackend.entries.forEach { backend ->
                 val session = KanaKanjiConversionSession(engine, backend)
