@@ -1220,6 +1220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
+        fever.candidatesShown(content is CandidateStripContent.Candidates && content.candidates.isNotEmpty())
     }
 
     private fun isFullCandidateViewVisible(): Boolean {
@@ -3179,6 +3180,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return@suggestionClick
             }
 
+            fever.noteCue(FeverCue.CANDIDATE)
             if (isPhysicalFloatingCandidatePathActive() && inputString.value.isNotEmpty()) {
                 commitPhysicalCandidate(suggestion, commitAll = false)
                 return@suggestionClick
@@ -7922,6 +7924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setFeverCandidateBorders(keyboardSkinId == KeyboardSkinId.FEVER)
             adapter.setCandidateTextColor(skinColors?.text ?: if (custom) customThemeCandidateTextColor ?: Color.BLACK else null)
             adapter.setInlineSuggestionIconBackgroundTint(inlineBackgroundTint)
             adapter.setCandidateItemColors(
@@ -25165,6 +25168,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidate.sourceId?.let(::executeTextMacro)
             return
         }
+        fever.noteCue(FeverCue.CANDIDATE)
         if (
             handleBunsetsuCandidateClick(
                 candidate = candidate,

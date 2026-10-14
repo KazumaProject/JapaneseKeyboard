@@ -7,6 +7,7 @@ internal object FeverVisualStyle {
         event.cue == FeverCue.DELETE -> 2
         event.cue == FeverCue.CONVERSION -> 3
         event.cue == FeverCue.CANDIDATE -> 4
+        event.cue == FeverCue.CANDIDATES -> 0
         event.cue != null -> 2
         event.award == FeverAward.HOT -> 1
         event.award == FeverAward.JACKPOT -> 3

@@ -38,6 +38,7 @@ class FeverEffectViewTest {
             layout(0, 0, 500, 800); setArena(RectF(0f, 0f, 500f, 800f))
             protectKeys(RectF(0f, 80f, 500f, 800f))
             setKeyEdges(keys, RectF(0f, 80f, 500f, 190f))
+            show(FeverEvent(100, cue = FeverCue.CANDIDATE), 125f, 325f)
             show(FeverEvent(100, FeverAward.JACKPOT), 125f, 325f)
         }
         SystemClock.sleep(300)
@@ -58,7 +59,7 @@ class FeverEffectViewTest {
                 assertTrue("Sticker overlays must keep the key surface visible", Color.alpha(pixels[y * 500 + x]) <= 96)
         }
         for (y in 80 until 180) for (x in 0 until 500)
-            assertTrue("Candidate wash must stay below 8% opacity", Color.alpha(pixels[y * 500 + x]) <= 20)
+            assertTrue("Candidate decorations must remain translucent", Color.alpha(pixels[y * 500 + x]) <= 125)
         assertTrue("Candidate bottom edge should glow", (180 until 190).any { y ->
             (0 until 500).any { x -> Color.alpha(pixels[y * 500 + x]) > 0 }
         })
@@ -92,6 +93,54 @@ class FeverEffectViewTest {
             com.kazumaproject.core.ui.skin.FeverKeyPulse.clear()
             val stopped = render(); assertTrue("Hiding/changing the theme must restore caps immediately", resting.sameAs(stopped)); stopped.recycle()
         } finally { com.kazumaproject.core.ui.skin.FeverKeyPulse.clear(); resting.recycle() }
+    }
+    @Test fun boundCandidatesGetTheSameReactiveBorderAndRestoreTheirOriginalTheme() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val adapter = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter()
+        val candidate = com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(string = "候補", type = 1, length = 2u, score = 0, yomi = "こうほ")
+        adapter.submitContent(com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent.Candidates(listOf(candidate)))
+        val end = System.nanoTime() + 2_000_000_000L
+        while (adapter.itemCount == 0 && System.nanoTime() < end) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle(); Thread.sleep(10)
+        }
+        assertTrue(adapter.itemCount > 0)
+        val holder = adapter.createViewHolder(android.widget.FrameLayout(context), adapter.getItemViewType(0))
+        fun render(): Bitmap {
+            holder.itemView.background.setBounds(0, 0, 240, 100)
+            return Bitmap.createBitmap(240, 100, Bitmap.Config.ARGB_8888).also { holder.itemView.background.draw(Canvas(it)) }
+        }
+        adapter.onBindViewHolder(holder, 0)
+        val original = render()
+        try {
+            adapter.setFeverCandidateBorders(true); adapter.onBindViewHolder(holder, 0)
+            val resting = render()
+            assertFalse(original.sameAs(resting))
+            com.kazumaproject.core.ui.skin.FeverKeyPulse.pulse(Color.MAGENTA, 2)
+            val reacting = render(); assertFalse("Typing must light the actual candidate background", resting.sameAs(reacting)); reacting.recycle()
+            com.kazumaproject.core.ui.skin.FeverKeyPulse.clear()
+            adapter.setFeverCandidateBorders(false); adapter.onBindViewHolder(holder, 0)
+            val restored = render(); assertTrue("Other themes must get their original candidate background", original.sameAs(restored)); restored.recycle()
+            assertEquals("候補", holder.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_item_text_view).text.toString().trim())
+            resting.recycle()
+        } finally { com.kazumaproject.core.ui.skin.FeverKeyPulse.clear(); original.recycle(); adapter.release() }
+    }
+    @Test fun downMoveAndReleaseRenderWithoutACharacterEventAndStopOnClear() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val view = FeverEffectView(context).apply {
+            layout(0, 0, 500, 500); setArena(RectF(0f, 0f, 500f, 500f))
+            protectKeys(RectF(0f, 0f, 500f, 500f)); setKeyEdges(listOf(RectF(10f, 150f, 490f, 450f)))
+        }
+        fun render(): Bitmap = Bitmap.createBitmap(500, 500, Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
+        for ((index, action) in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_MOVE, android.view.MotionEvent.ACTION_UP).withIndex()) {
+            view.touchPhase(action, 150f + index * 40, 250f, Color.CYAN)
+            SystemClock.sleep(30)
+            val bitmap = render()
+            assertTrue("Phase $action must render before any text is committed", (180 until 350).any { y -> (100 until 350).any { x -> Color.alpha(bitmap.getPixel(x, y)) > 0 } })
+            bitmap.recycle()
+        }
+        view.clear()
+        val clean = render(); val pixels = IntArray(500 * 500).also { clean.getPixels(it, 0, 500, 0, 0, 500, 500) }
+        assertTrue("No touch trail may survive IME teardown", pixels.all { it == Color.TRANSPARENT }); clean.recycle()
     }
     private fun verifyProtectedPixels(event: FeverEvent, keys: RectF) {
         val context = ApplicationProvider.getApplicationContext<Context>()

@@ -82,7 +82,7 @@ class FeverImeInstrumentedTest {
         }
         return requireNotNull(result)
     }
-    private fun assertCapBindings() {
+    private fun assertCapBindings(floating: Boolean) {
         ins.runOnMainSync {
             val ids = listOf("key_1", "key_5", "key_delete").map { context.resources.getIdentifier(it, "id", context.packageName) }
             val caps = mutableListOf<View>()
@@ -90,7 +90,9 @@ class FeverImeInstrumentedTest {
                 if (view.isShown && view.id in ids) caps.add(view)
                 if (view is ViewGroup) for (index in 0 until view.childCount) visit(view.getChildAt(index))
             }
-            WindowInspector.getGlobalWindowViews().forEach(::visit)
+            WindowInspector.getGlobalWindowViews().filter {
+                (it is com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel) == floating
+            }.forEach(::visit)
             assertEquals(3, caps.size)
             caps.forEach { cap ->
                 assertNotNull("Each key must retain its FEVER cap", cap.background)
@@ -218,7 +220,7 @@ class FeverImeInstrumentedTest {
                     println("FEVER activity ready")
                     key("key_1"); SystemClock.sleep(1000)
                     val root = ime()
-                    assertCapBindings()
+                    assertCapBindings(floating)
                     var jackpotSeen = false
                     val cuesSeen = mutableSetOf<FeverCue>()
                     val mode = "${if (floating) "floating" else "docked"}-${if (landscape) "landscape" else "portrait"}-${if (full) "screen" else "keyboard"}"
@@ -253,7 +255,22 @@ class FeverImeInstrumentedTest {
                             recordingDone = done
                             Thread { try { ParcelFileDescriptor.AutoCloseInputStream(recording).use { it.readBytes() } } finally { done.countDown() } }.start()
                         }
-                        tap(if (i % 2 == 0) "key_2" else "key_1")
+                        if (i == 1) {
+                            val cap = Rect().also(key("key_1")::getBoundsInScreen)
+                            val down = SystemClock.uptimeMillis()
+                            fun touch(action: Int, dx: Float = 0f) {
+                                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                                    cap.centerX().toFloat() + dx, cap.centerY().toFloat(), 0)
+                                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                                try { assertTrue(ui.injectInputEvent(event, true)) } finally { event.recycle() }
+                            }
+                            touch(MotionEvent.ACTION_DOWN); SystemClock.sleep(70)
+                            ins.runOnMainSync { assertEquals("Down must not count a character", 0, root.controller.combo) }
+                            touch(MotionEvent.ACTION_MOVE, 5f); SystemClock.sleep(40)
+                            ins.runOnMainSync { assertEquals("Move must not count a character", 0, root.controller.combo) }
+                            capture("$mode-move")
+                            touch(MotionEvent.ACTION_UP, 5f)
+                        } else tap(if (i % 2 == 0) "key_2" else "key_1")
                         await { var count = 0; ins.runOnMainSync { count = root.controller.combo }; count == i }
                         if (i == 9) labelBefore = keyLabelBitmap()
                         if (i == 10) {
@@ -282,11 +299,13 @@ class FeverImeInstrumentedTest {
                     ins.runOnMainSync {
                         assertTrue("Conversion should have its own cue", cuesSeen.contains(FeverCue.CONVERSION))
                         assertTrue("Changing a candidate should have its own cue", cuesSeen.contains(FeverCue.CANDIDATE))
+                        assertTrue("Showing candidates should have its own cue", cuesSeen.contains(FeverCue.CANDIDATES))
                         assertEquals(12, root.controller.combo)
                     }
-                    // Let the ten-combo award end, then force a deterministic jackpot by confirming.
+                    SystemClock.sleep(160); capture("$mode-candidate")
+                    // Exercise both tapping the actual candidate and the enter/confirm key.
                     SystemClock.sleep(2100)
-                    tap("key_enter")
+                    if (full) tap("suggestion_item_text_view") else tap("key_enter")
                     ins.runOnMainSync { assertTrue("Successful confirmation must produce a jackpot at 100%", jackpotSeen) }
                     assertTrue("Capture a frame while the award is visible", captured.await(5, java.util.concurrent.TimeUnit.SECONDS))
                     captureFailure.get()?.let { throw it }

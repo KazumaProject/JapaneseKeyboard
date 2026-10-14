@@ -9,8 +9,8 @@ internal enum class FeverAward(val priority: Int, val label: String) {
 internal enum class FeverCue(val label: String, val color: Int, val priority: Int) {
     CURSOR_LEFT("◀ MOVE", 0xff75caff.toInt(), 1), CURSOR_RIGHT("MOVE ▶", 0xff75caff.toInt(), 1),
     CURSOR_UP("▲ MOVE", 0xff75caff.toInt(), 1), CURSOR_DOWN("MOVE ▼", 0xff75caff.toInt(), 1),
-    DELETE("BREAK!", 0xffff5998.toInt(), 2), CANDIDATE("CHANCE", 0xffffd66e.toInt(), 3),
-    CONVERSION("リーチ！", 0xffffb94f.toInt(), 4)
+    DELETE("BREAK!", 0xffff5998.toInt(), 2), CANDIDATES("PICK!", 0xff62ecff.toInt(), 3),
+    CANDIDATE("SELECT!", 0xffffd66e.toInt(), 4), CONVERSION("リーチ！", 0xffffb94f.toInt(), 5)
 }
 internal data class FeverEvent(val combo: Int, val award: FeverAward? = null, val cue: FeverCue? = null)
 

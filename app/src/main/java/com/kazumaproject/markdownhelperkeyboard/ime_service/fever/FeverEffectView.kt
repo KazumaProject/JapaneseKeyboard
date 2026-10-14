@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.*
 import android.os.SystemClock
 import android.view.View
+import android.view.MotionEvent
 import kotlin.math.*
 
 /** Procedural effects: bounded particles, no video assets, no input or persistent editor data. */
@@ -22,6 +23,8 @@ internal class FeverEffectView(context: Context) : View(context) {
     private var rawTouchY = 0f
     private val particles = ArrayList<Particle>(180)
     private val ornaments = ArrayList<Ornament>(48)
+    private val touchMarks = ArrayList<TouchMark>(24)
+    private var lastMove = 0L
     private var family = 0
     private var awardFamily = 0
     private var awardColor = Color.CYAN
@@ -30,6 +33,9 @@ internal class FeverEffectView(context: Context) : View(context) {
     private var awardStart = 0L
     private var calloutStart = 0L
     private var sparkStart = 0L
+    private var candidateStart = 0L
+    private var candidateAccent = Color.CYAN
+    private var candidateEmphasis = false
     private var callout = ""
     private var cue: FeverCue? = null
     private var calloutColor = Color.WHITE
@@ -45,6 +51,8 @@ internal class FeverEffectView(context: Context) : View(context) {
     private data class Particle(val x: Float, val y: Float, val vx: Float, val vy: Float, val color: Int, val size: Float, val end: Long, val born: Long)
 
     private data class Ornament(val x: Float, val y: Float, val angle: Float, val speed: Float, val size: Float, val family: Int, val color: Int, val born: Long, val life: Long, val keyboard: Boolean = false)
+
+    private data class TouchMark(val x: Float, val y: Float, val action: Int, val born: Long, val color: Int)
 
     init { isClickable = false; isFocusable = false; importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
     fun setArena(rect: RectF) { if (arena != rect) { arena.set(rect); updateStage(); invalidate() } }
@@ -77,7 +85,21 @@ internal class FeverEffectView(context: Context) : View(context) {
         }
     }
     fun setCombo(value: Int) { combo = value; invalidate() }
-    fun clear() { combo = 0; award = null; callout = ""; calloutStart = 0; sparkStart = 0; particles.clear(); ornaments.clear(); invalidate() }
+    fun clear() { combo = 0; award = null; callout = ""; calloutStart = 0; sparkStart = 0; candidateStart = 0; particles.clear(); ornaments.clear(); touchMarks.clear(); invalidate() }
+
+    fun touchPhase(action: Int, x: Float, y: Float, accent: Int) {
+        val now = SystemClock.uptimeMillis()
+        if (action == MotionEvent.ACTION_CANCEL) { touchMarks.clear(); invalidate(); return }
+        if (!keyArea.contains(x, y) && !candidateArea.contains(x, y)) return
+        if (action == MotionEvent.ACTION_MOVE && now - lastMove < 16) return
+        if (action == MotionEvent.ACTION_DOWN) touchMarks.clear()
+        if (action == MotionEvent.ACTION_MOVE) lastMove = now
+        if (touchMarks.size >= 24) touchMarks.removeAt(0)
+        touchMarks.add(TouchMark(x, y, action, now, accent))
+        rawTouchX = x; rawTouchY = y; sparkStart = now; calloutColor = accent
+        if (candidateArea.contains(x, y)) { candidateStart = now; candidateAccent = accent; candidateEmphasis = true }
+        invalidate()
+    }
 
     fun show(event: FeverEvent, touchX: Float? = null, touchY: Float? = null) {
         val time = SystemClock.uptimeMillis()
@@ -85,6 +107,10 @@ internal class FeverEffectView(context: Context) : View(context) {
         family = FeverVisualStyle.family(event)
         calloutColor = FeverVisualStyle.accent(event)
         sparkStart = time
+        if (event.award == null) {
+            candidateStart = time; candidateAccent = calloutColor
+            candidateEmphasis = event.cue == FeverCue.CANDIDATE || event.cue == FeverCue.CANDIDATES || event.cue == FeverCue.CONVERSION
+        }
         if (arena.isEmpty) { arena.set(0f, 0f, width.toFloat(), height.toFloat()); updateStage() }
         originX = (touchX ?: arena.centerX()).coerceIn(arena.left, arena.right)
         originY = (touchY ?: arena.centerY()).coerceIn(arena.top, arena.bottom)
@@ -173,10 +199,11 @@ internal class FeverEffectView(context: Context) : View(context) {
         if (combo > 0 && !stage.isEmpty && !(stage.height() < 110 * dp && (active != null || smallActive))) drawMeter(canvas)
         canvas.restore()
         drawKeyboardOrnaments(canvas, now)
+        drawTouchFeedback(canvas, now)
         drawKeyEnergy(canvas, now, active)
-        drawCandidateEnergy(canvas, now, active)
+        drawCandidateEnergy(canvas, now)
         paint.reset(); paint.isAntiAlias = true
-        if (active != null || particles.isNotEmpty() || ornaments.isNotEmpty() || smallActive || (sparkStart > 0 && now - sparkStart < 650)) postInvalidateOnAnimation()
+        if (active != null || particles.isNotEmpty() || ornaments.isNotEmpty() || touchMarks.isNotEmpty() || smallActive || (sparkStart > 0 && now - sparkStart < 650) || (candidateStart > 0 && now - candidateStart < 720)) postInvalidateOnAnimation()
     }
 
     /** Draw only key borders and gaps. Foreground labels and candidate cells remain untouched. */
@@ -239,13 +266,13 @@ internal class FeverEffectView(context: Context) : View(context) {
         canvas.restore()
     }
 
-    private fun drawCandidateEnergy(canvas: Canvas, now: Long, active: FeverAward?) {
+    private fun drawCandidateEnergy(canvas: Canvas, now: Long) {
         if (candidateArea.isEmpty) return
-        val age = now - sparkStart
-        if (active == null && (sparkStart == 0L || age !in 0..650)) return
-        val progress = if (active == null) age / 650f else (now - awardStart) / 2000f
+        val age = now - candidateStart
+        if (candidateStart == 0L || age !in 0..720) return
+        val progress = if (motion) age / 720f else .25f
         val fade = (1 - progress).coerceIn(0f, 1f)
-        val accent = if (active != null) awardColor else calloutColor
+        val accent = candidateAccent
         canvas.save(); canvas.clipRect(arena); canvas.clipRect(candidateArea)
         paint.style = Paint.Style.FILL
         // The wash reaches only the bottom edge and stays below 8% opacity over text.
@@ -257,7 +284,30 @@ internal class FeverEffectView(context: Context) : View(context) {
             intArrayOf(Color.TRANSPARENT, accent, Color.WHITE, accent, Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
         paint.alpha = (fade * 220).toInt(); paint.strokeWidth = 1.3f * dp
         canvas.drawLine(candidateArea.left, candidateArea.bottom - dp, candidateArea.right, candidateArea.bottom - dp, paint)
-        paint.shader = null; canvas.restore()
+        paint.shader = null
+        val layer = canvas.saveLayerAlpha(candidateArea, if (candidateEmphasis) 112 else 80)
+        val sweep = candidateArea.left + candidateArea.width() * progress
+        paint.shader = LinearGradient(sweep - 30 * dp, 0f, sweep + 30 * dp, 0f,
+            intArrayOf(Color.TRANSPARENT, accent, Color.WHITE, Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
+        paint.alpha = (fade * 130).toInt(); paint.style = Paint.Style.FILL
+        canvas.drawRect(candidateArea, paint); paint.shader = null
+        val count = if (candidateEmphasis) intArrayOf(3, 6, 10)[intensity] else intArrayOf(1, 3, 5)[intensity]
+        repeat(count) { index ->
+            val phase = (progress * 1.15f + index.toFloat() / count) % 1f
+            val x = candidateArea.left + candidateArea.width() * phase
+            val y = candidateArea.centerY() + sin(phase * 6.28f + index) * candidateArea.height() * .27f
+            drawMotif(canvas, x, y, minOf((if (candidateEmphasis) 12f else 7f) * dp, candidateArea.height() * .22f),
+                (index + family) % 5, FeverVisualStyle.palette[index % 5], progress * 150 + index * 20f, (fade * 255).toInt())
+        }
+        if (candidateEmphasis) {
+            val cx = if (candidateArea.contains(rawTouchX, rawTouchY)) rawTouchX else candidateArea.centerX()
+            paint.shader = null; paint.style = Paint.Style.STROKE; paint.color = accent
+            paint.alpha = (fade * 230).toInt(); paint.strokeWidth = (1.5f + intensity) * dp
+            canvas.drawCircle(cx, candidateArea.centerY(), (8 + progress * 100) * dp, paint)
+            val border = RectF(candidateArea).apply { inset(2 * dp, 2 * dp) }
+            canvas.drawRoundRect(border, 12 * dp, 12 * dp, paint)
+        }
+        canvas.restoreToCount(layer); canvas.restore()
     }
 
     /** Gather -> impact -> orbit + confetti. All layers share one bounded two-second clock. */
@@ -446,6 +496,40 @@ internal class FeverEffectView(context: Context) : View(context) {
             drawMotif(canvas, x, y, item.size, item.family, item.color, item.angle * 20 + seconds * 90,
                 (minOf(1f, (item.life - age) / 280f) * 245).toInt())
         }
+    }
+
+    private fun drawTouchFeedback(canvas: Canvas, now: Long) {
+        touchMarks.removeAll { now - it.born >= 440 }
+        if (touchMarks.isEmpty()) return
+        canvas.save(); canvas.clipRect(arena)
+        path.reset()
+        if (!keyArea.isEmpty) path.addRect(keyArea, Path.Direction.CW)
+        if (!candidateArea.isEmpty) path.addRect(candidateArea, Path.Direction.CW)
+        canvas.clipPath(path)
+        val layer = canvas.saveLayerAlpha(arena, 96)
+        var previous: TouchMark? = null
+        touchMarks.forEach { mark ->
+            val age = (now - mark.born) / 440f
+            val progress = if (motion) age else .2f
+            paint.shader = null; paint.style = Paint.Style.STROKE; paint.color = mark.color
+            paint.alpha = ((1 - age) * 245).toInt(); paint.strokeWidth = (1.5f + intensity) * dp
+            if (mark.action == MotionEvent.ACTION_MOVE) {
+                previous?.let { canvas.drawLine(it.x, it.y, mark.x, mark.y, paint) }
+                drawMotif(canvas, mark.x, mark.y, (3 + intensity) * dp, 2, mark.color, -35f, ((1 - age) * 220).toInt())
+            } else {
+                val release = mark.action == MotionEvent.ACTION_UP || mark.action == MotionEvent.ACTION_POINTER_UP
+                val radius = (5 + progress * if (release) 55 else 22) * dp
+                canvas.drawCircle(mark.x, mark.y, radius, paint)
+                repeat(if (release) 8 else 4) { index ->
+                    val angle = index * PI.toFloat() / if (release) 4 else 2
+                    val inner = radius + 3 * dp; val outer = radius + (if (release) 13 else 7) * dp
+                    canvas.drawLine(mark.x + cos(angle) * inner, mark.y + sin(angle) * inner,
+                        mark.x + cos(angle) * outer, mark.y + sin(angle) * outer, paint)
+                }
+            }
+            previous = mark
+        }
+        canvas.restoreToCount(layer); canvas.restore()
     }
 
     /** A single alpha-composited layer allows stickers on caps without opaque piles hiding labels. */

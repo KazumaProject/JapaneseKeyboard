@@ -34,6 +34,8 @@ internal class FeverController(private val context: Context, private val feedbac
     private var failedCommit = false
     private var confirmation = false
     private var cue: FeverCue? = null
+    private var candidatesVisible = false
+    private val revealCandidates = Runnable { if (active && candidatesVisible) render(FeverEvent(engine.combo, cue = FeverCue.CANDIDATES)) }
     private var composingText = ""
     internal val combo get() = engine.combo
     internal val enabled get() = active
@@ -42,6 +44,7 @@ internal class FeverController(private val context: Context, private val feedbac
     private val commits = StringBuilder()
     private var touchX: Float? = null
     private var touchY: Float? = null
+    private var lastTouchLight = 0L
     var settings = FeverSettings(); private set
     val wantsFullScreen get() = active && settings.fullScreen
     private val expire = Runnable { if (engine.expireCombo()) surface?.setCombo(0) }
@@ -122,10 +125,15 @@ internal class FeverController(private val context: Context, private val feedbac
         }
         view.protectControls(controls)
         val candidates = content?.let { body ->
-            val point = IntArray(2).also(body::getLocationOnScreen)
-            val top = (point[1] - parentPosition[1]).toFloat()
-            RectF((point[0] - parentPosition[0]).toFloat(), top,
-                (point[0] - parentPosition[0] + body.width).toFloat(), keys.minOfOrNull { it.top } ?: top)
+            val boxes = listOf(com.kazumaproject.markdownhelperkeyboard.R.id.suggestion_recycler_view,
+                com.kazumaproject.markdownhelperkeyboard.R.id.candidates_row_view).mapNotNull { id ->
+                body.findViewById<View>(id)?.takeIf { it.isShown && it.width > 0 && it.height > 0 }?.let { row ->
+                    val point = IntArray(2).also(row::getLocationOnScreen)
+                    RectF((point[0] - parentPosition[0]).toFloat(), (point[1] - parentPosition[1]).toFloat(),
+                        (point[0] - parentPosition[0] + row.width).toFloat(), (point[1] - parentPosition[1] + row.height).toFloat())
+                }
+            }
+            boxes.firstOrNull()?.let { first -> RectF(first).apply { boxes.drop(1).forEach(::union) } }
         }
         view.setKeyEdges(keys, candidates)
         edgeHost?.let { panel ->
@@ -142,9 +150,24 @@ internal class FeverController(private val context: Context, private val feedbac
     }
     fun touch(event: MotionEvent, before: Boolean) {
         if (before) {
+            val outer = depth == 0
             begin()
-            if (active && event.actionMasked != MotionEvent.ACTION_CANCEL) {
+            if (active) {
                 touchX = event.rawX; touchY = event.rawY
+                if (outer) {
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN) position()
+                    val accent = FeverVisualStyle.accent(FeverEvent(engine.combo + 1))
+                    val now = android.os.SystemClock.uptimeMillis()
+                    if (event.actionMasked != MotionEvent.ACTION_CANCEL &&
+                        (event.actionMasked != MotionEvent.ACTION_MOVE || now - lastTouchLight >= 65)) {
+                        FeverKeyPulse.pulse(accent, settings.intensity); lastTouchLight = now
+                    }
+                    fun dispatch(view: FeverEffectView?, parent: View?) {
+                        val point = IntArray(2).also { parent?.getLocationOnScreen(it) }
+                        view?.touchPhase(event.actionMasked, event.rawX - point[0], event.rawY - point[1], accent)
+                    }
+                    dispatch(surface, host); dispatch(edgeSurface, edgeHost)
+                }
             }
         } else end()
     }
@@ -153,6 +176,12 @@ internal class FeverController(private val context: Context, private val feedbac
     }
     fun noteCharacter() { if (active && depth > 0) character = true }
     fun noteConfirmation() { if (active && depth > 0) confirmation = true }
+    fun candidatesShown(visible: Boolean) {
+        if (!active || candidatesVisible == visible) return
+        candidatesVisible = visible
+        handler.removeCallbacks(revealCandidates)
+        if (visible) handler.postDelayed(revealCandidates, 32)
+    }
     fun noteCue(value: FeverCue) {
         if (!active) return
         if (depth == 0) render(FeverEvent(engine.combo, cue = value))
@@ -205,6 +234,7 @@ internal class FeverController(private val context: Context, private val feedbac
     fun stop() {
         val expandedHost = host?.takeIf { wantsFullScreen }
         active = false; engine.reset(); handler.removeCallbacks(expire); FeverKeyPulse.clear()
+        candidatesVisible = false; handler.removeCallbacks(revealCandidates)
         surface?.let { it.clear(); host?.overlay?.remove(it) }
         edgeSurface?.let { it.clear(); edgeHost?.overlay?.remove(it) }
         edgeSurface = null; edgeHost = null; keyboardContent = null

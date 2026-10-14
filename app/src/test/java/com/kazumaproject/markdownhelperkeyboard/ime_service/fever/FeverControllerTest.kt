@@ -21,6 +21,11 @@ class FeverControllerTest {
         val events = mutableListOf<FeverEvent>()
         controller.eventObserver = { events.add(it) }
         controller.configure(true, host, host, null)
+        for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_MOVE, android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL)) {
+            val touch = android.view.MotionEvent.obtain(100, 100, action, 25f, 40f, 0)
+            controller.touch(touch, true); controller.touch(touch, false); touch.recycle()
+        }
+        assertEquals(0, controller.combo); assertTrue(events.isEmpty())
         controller.begin(); controller.noteCharacter(); controller.end()
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(2, java.util.concurrent.TimeUnit.SECONDS)
         FeverCue.entries.forEach { cue ->
@@ -35,6 +40,31 @@ class FeverControllerTest {
         controller.stop(); val before = events.size
         controller.noteCue(FeverCue.DELETE)
         assertEquals(before, events.size)
+        controller.release()
+    }
+
+    @Test fun candidateRevealIsDeduplicatedCancelledAndDoesNotCountInput() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().clear().putInt(FeverSettings.HIT_RATE, 100).commit()
+        val host = FrameLayout(context).apply { layout(0, 0, 500, 400) }
+        val controller = FeverController(context) { Triple(false, false, 0) }
+        val events = mutableListOf<FeverEvent>()
+        controller.eventObserver = events::add
+        controller.configure(true, host, host, null)
+        val main = org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+        controller.candidatesShown(true); controller.candidatesShown(true)
+        main.idleFor(40, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals(listOf(FeverEvent(0, cue = FeverCue.CANDIDATES)), events)
+        assertEquals(0, controller.combo)
+        controller.candidatesShown(true)
+        main.idleFor(40, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals(1, events.size)
+        controller.candidatesShown(false); controller.candidatesShown(true); controller.candidatesShown(false)
+        main.idleFor(40, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals(1, events.size)
+        controller.candidatesShown(true); controller.stop()
+        main.idleFor(40, java.util.concurrent.TimeUnit.MILLISECONDS)
+        assertEquals(1, events.size)
         controller.release()
     }
 
