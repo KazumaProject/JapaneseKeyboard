@@ -62,8 +62,24 @@ class FeverImeInstrumentedTest {
         return result
     }
     private fun tap(id: String) {
-        val rect = Rect().also(key(id)::getBoundsInScreen)
-        shell("input tap ${rect.centerX()} ${rect.centerY()}")
+        var previous = Rect(); var stable = 0; var rect = Rect()
+        await {
+            val node = key(id); node.refresh()
+            rect = Rect().also(node::getBoundsInScreen)
+            stable = if (rect == previous && !rect.isEmpty) stable + 1 else 0
+            previous = rect
+            SystemClock.sleep(80)
+            stable >= 2
+        }
+        println("FEVER tap $id at $rect")
+        val down = SystemClock.uptimeMillis()
+        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                rect.centerX().toFloat(), rect.centerY().toFloat(), 0)
+            event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+            try { assertTrue(ui.injectInputEvent(event, true)) } finally { event.recycle() }
+            if (action == MotionEvent.ACTION_DOWN) SystemClock.sleep(35)
+        }
     }
     private fun keyLabelBitmap(): Bitmap {
         val rect = Rect().also(key("key_5")::getBoundsInScreen)
