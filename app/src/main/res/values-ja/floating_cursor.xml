@@ -1,0 +1,15 @@
+<resources>
+    <string name="floating_cursor_title">カーソル・トラックパッドフロート</string>
+    <string name="floating_cursor_summary">フロートの方向キーとトラックパッドでカーソル移動・範囲選択を行います</string>
+    <string name="floating_cursor_enabled">カーソル・トラックパッドフロート</string>
+    <string name="floating_cursor_reset">カーソルフロートの位置・サイズをリセット</string>
+    <string name="floating_cursor_select">選択</string>
+    <string name="floating_cursor_selection_on">範囲選択オン</string>
+    <string name="floating_cursor_selection_off">範囲選択オフ</string>
+    <string name="floating_cursor_selection_unavailable">未確定文字の入力中は範囲選択できません</string>
+    <string name="floating_cursor_left">カーソルを左へ移動</string>
+    <string name="floating_cursor_right">カーソルを右へ移動</string>
+    <string name="floating_cursor_up">カーソルを上へ移動</string>
+    <string name="floating_cursor_down">カーソルを下へ移動</string>
+    <string name="floating_cursor_trackpad">カーソルのトラックパッド</string>
+</resources>

@@ -1525,7 +1525,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             when (event.actionMasked) {
                 MotionEvent.ACTION_MOVE -> {
                     val threshold = 20f
-                    val index = if (independentMultiTouchForCurrentGesture) cursorPointerId?.let(event::findPointerIndex) ?: 0 else 0
+                    val index = cursorPointerId?.let(event::findPointerIndex) ?: 0
                     if (index < 0) return true
                     val currentX = event.getX(index)
                     val currentY = event.getY(index)
@@ -1550,9 +1550,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                     if (event.actionMasked == MotionEvent.ACTION_POINTER_UP &&
-                        (!independentMultiTouchForCurrentGesture || event.getPointerId(event.actionIndex) != cursorPointerId)) return true
+                        event.getPointerId(event.actionIndex) != cursorPointerId) return true
                     setCursorMode(false)
-                    clearAllPressed()
+                    clearAllPressed(clearSuppressedPointers = false)
+                    if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
+                        // Other fingers remain physically down after the space owner lifts.
+                        // They must not re-enter a key on MOVE or turn their final UP into input.
+                        for (index in 0 until event.pointerCount) {
+                            if (index != event.actionIndex) suppressedPointerIds.add(event.getPointerId(index))
+                        }
+                    }
                 }
 
                 MotionEvent.ACTION_CANCEL -> {
@@ -3103,13 +3110,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
         if (enabled) {
+            cursorPointerId = (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
+                .firstOrNull { pointerButtonMap[it]?.id == binding.keySpace.id }
+            cursorPointerId?.let { pointerStartCoords[it] }?.let { position ->
+                cursorInitialX = position.first
+                cursorInitialY = position.second
+            }
             if (independentMultiTouchForCurrentGesture) {
-                cursorPointerId = (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
-                    .firstOrNull { pointerButtonMap[it]?.id == binding.keySpace.id }
-                cursorPointerId?.let { pointerStartCoords[it] }?.let { position ->
-                    cursorInitialX = position.first
-                    cursorInitialY = position.second
-                }
                 (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
                     .filter { it != cursorPointerId }.forEach { pid ->
                         notifyQwertyTouchCanceledForPointer(pid, KeyTouchCancelReason.PointerInterrupted)
