@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.MotionEvent
@@ -22,6 +23,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
+import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.*
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
@@ -30,6 +34,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import kotlinx.coroutines.runBlocking
 
 @RunWith(AndroidJUnit4::class)
 class ClassifiedDictionaryUiInstrumentedTest {
@@ -205,6 +210,18 @@ class ClassifiedDictionaryUiInstrumentedTest {
     }
 
     @Test fun actualRomajiImeShowsNewCategoryLabelsAndCommitsCandidates() {
+        verifyRomajiLabelsAndCommit()
+    }
+
+    @Test fun learnedKampoCandidateKeepsCategoryLabelAndCommits() {
+        verifyRomajiLabelsAndCommit(learnedPrediction = false)
+    }
+
+    @Test fun predictiveLearnedKampoCandidateKeepsCategoryLabelAndCommits() {
+        verifyRomajiLabelsAndCommit(learnedPrediction = true)
+    }
+
+    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null) {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         check(context.packageName.contains(".classifiedprobe")) { "Use the isolated classifiedprobe APK" }
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
@@ -214,7 +231,18 @@ class ClassifiedDictionaryUiInstrumentedTest {
         val oldIme = shell("settings get secure default_input_method")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
+        val learningKeys = listOf("learn_dictionary_preference", "enable_prediction_search_learn_dictionary_preference")
+        val previousLearning = learningKeys.associateWith { key ->
+            if (prefs.contains(key)) prefs.getBoolean(key, false) else null
+        }
+        var repository: LearnRepository? = null
+        var previousLearned: LearnEntity? = null
+        var seeded = false
         try {
+            if (learnedPrediction != null) {
+                prefs.edit().putBoolean("learn_dictionary_preference", true)
+                    .putBoolean("enable_prediction_search_learn_dictionary_preference", learnedPrediction).commit()
+            }
             prefs.edit().putString("keyboard_order_preference", "[\"ROMAJI\"]")
                 .putBoolean("save_last_used_keyboard", false).putBoolean("live_conversion_preference", false)
                 .putBoolean("show_dictionary_candidate_labels_preference", false)
@@ -230,6 +258,29 @@ class ClassifiedDictionaryUiInstrumentedTest {
             // The keyboard view appears before the editor restart/IME entrance animation completes.
             await("Editor input connection not active") { activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java).isActive(activity.editText) }
             SystemClock.sleep(750)
+            if (learnedPrediction != null) {
+                lateinit var service: IMEService
+                main {
+                    service = views().mapNotNull { view ->
+                        var owner = view.context
+                        while (owner is ContextWrapper && owner !is IMEService) owner = owner.baseContext
+                        owner as? IMEService
+                    }.first()
+                }
+                repository = service.learnRepository
+                runBlocking {
+                    previousLearned = repository!!.findLearnDataByInputAndOutput("あせんやく", "阿仙薬")
+                    seeded = true
+                    repository!!.deleteByInputAndOutput("あせんやく", "阿仙薬")
+                    // Seed an actual dictionary candidate's learned score and POS IDs.
+                    val entry = LearnEntity(input = "あせんやく", out = "阿仙薬",
+                        score = 9_066, leftId = 1851, rightId = 1851)
+                    repository!!.insertLearnedData(entry)
+                    // Without learned prediction, repeat the normal learning update so the
+                    // learned conversion path wins over the classified dictionary path.
+                    if (!learnedPrediction) repository!!.upsertLearnedData(entry)
+                }
+            }
             for ((input, expectedLabel) in listOf("aiehusyou" to "[賞]", "asennyaku" to "[漢方・生薬]", "asaitami" to "[医療]")) {
             main { activity.editText.setText("") }
             SystemClock.sleep(300)
@@ -270,6 +321,15 @@ class ClassifiedDictionaryUiInstrumentedTest {
             println("CLASSIFIED_IME_COMMIT $expectedLabel $committed")
             }
         } finally {
+            if (seeded) runBlocking {
+                repository!!.deleteByInputAndOutput("あせんやく", "阿仙薬")
+                previousLearned?.let { repository!!.insertLearnedData(it) }
+            }
+            prefs.edit().also { editor ->
+                previousLearning.forEach { (key, value) ->
+                    if (value == null) editor.remove(key) else editor.putBoolean(key, value)
+                }
+            }.commit()
             previous.forEach { (category, value) -> store.setOptionalBundledEnabled(category, value) }
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             if (!wasEnabled) shell("ime disable $target")
