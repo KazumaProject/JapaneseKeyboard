@@ -429,6 +429,16 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
             }
         }
         screen.addPreference(skinPreference)
+        screen.addPreference(Preference(context).apply {
+            key = "fever_settings"
+            setTitle(R.string.fever_settings_title)
+            setSummary(R.string.fever_settings_summary)
+            order = -1
+            configureClickListener {
+                findNavController().navigate(R.id.feverSettingsFragment)
+                true
+            }
+        })
         val localFontPreference = Preference(context).apply {
             key = PREF_KEY_LOCAL_FONT
             title = context.getString(R.string.local_font_title)
@@ -457,6 +467,7 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
             if (
                 preference.key != KeyboardSkinId.PREFERENCE_KEY &&
                 preference.key != PREF_KEY_LOCAL_FONT &&
+                preference.key != "fever_settings" &&
                 preference.key != CATEGORY_KEY_CUSTOM_INPUT
             ) {
                 preference.isEnabled = selected == KeyboardSkinId.DEFAULT

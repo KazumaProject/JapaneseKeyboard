@@ -127,6 +127,7 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.markdownhelperkeyboard.ime_service.fever.*
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_clipboard.FloatingClipboardController
 import com.kazumaproject.core.data.clipboard.ClipboardItem
@@ -1561,7 +1562,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         endCursorSelectionForInput()
-        currentInputConnection?.commitText(candidate.string, 1)
+        val committed = currentInputConnection?.commitText(candidate.string, 1) == true
+        fever.committed(candidate.string, committed)
         clearZeroQueryAllState(refresh = true)
     }
 
@@ -1801,12 +1803,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
     }
-    private val directCommitHandler = DirectCommitHandler()
+    private val directCommitHandler = DirectCommitHandler { text, success -> fever.committed(text, success) }
     private val keyInputBehaviorDispatcher = KeyInputBehaviorDispatcher(directCommitHandler)
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
     private val englishSpaceKeyPressed = AtomicBoolean(false)
     private var suggestionClickNum = 0
+        set(value) {
+            val previous = field
+            field = value
+            if (previous > 0 && value > 0 && value != previous) fever.noteCue(FeverCue.CANDIDATE)
+        }
     private val isHenkan = AtomicBoolean(false)
     private val onLeftKeyLongPressUp = AtomicBoolean(false)
     private val onRightKeyLongPressUp = AtomicBoolean(false)
@@ -2015,6 +2022,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertySpecialKeyTextSize: Float? = 12.0f
     private var qwertySpecialKeyIconSize: Float? = 18.0f
 
+    private val fever by lazy { FeverController(this) {
+        Triple(isKeySoundEnabled == true, isVibration != false, keySoundVolumePercent ?: 0)
+    } }
+    private var feverExpandedWindow = false
+    private var feverWindowHost: FrameLayout? = null
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
     private var keyboardThemeMode: String? = "default"
     private var customThemeBgColor: Int? = Color.WHITE
@@ -2308,6 +2320,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var currentPage: Int = 0
     private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
+        set(value) {
+            val previous = field
+            field = value
+            if (previous >= 0 && value >= 0 && value != previous) fever.noteCue(FeverCue.CANDIDATE)
+        }
     private var fullSuggestionsList: List<CandidateItem> = emptyList()
 
     private val physicalKeyboardPopupPositions = PhysicalKeyboardPopupPositionTracker()
@@ -3156,6 +3173,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             pageSize = PAGE_SIZE,
         )
         listAdapter.onSuggestionClicked = suggestionClick@ { suggestion: CandidateItem ->
+            feverSoftwareOperation {
             if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
                 suggestion.sourceId?.let(::executeTextMacro)
                 return@suggestionClick
@@ -3194,6 +3212,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
                 currentHighlightIndex = RecyclerView.NO_POSITION
                 consumePendingZeroQueryAfterCommit()
+            }
             }
         }
         listAdapter.onPagerClicked = {
@@ -3488,6 +3507,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun queueCursorMove(direction: CursorDirection, fromPanel: Boolean = false) {
+        feverCursor(direction)
         val editor = currentInputConnection ?: return
         if (!isInputViewActive || isKeyboardLayoutEditModeActive()) return
         cursorInputTracking = true
@@ -3534,6 +3554,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun moveCursorVertically(direction: CursorDirection) {
+        feverCursor(direction)
         if (cursorSelectionMode && !hasCursorPreedit()) queueCursorMove(direction)
         else sendDownUpKeyEvents(direction.keyCode)
     }
@@ -3671,7 +3692,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     ?: (current.displayInput != inputString.value))) return@setOnClickListener
                             mainLayoutBinding?.let { binding ->
                                 vibrate()
-                                setCandidateClick(candidate, current.displayInput, currentTenkeyInputMode(binding), 0, listOf(candidate))
+                                feverSoftwareOperation {
+                                    setCandidateClick(candidate, current.displayInput, currentTenkeyInputMode(binding), 0, listOf(candidate))
+                                }
                             }
                         }
                     }
@@ -3746,7 +3769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 作成とセットアップを行う。
         if (keyboardContainer == null) {
             isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-            keyboardContainer = FrameLayout(this)
+            keyboardContainer = FeverInputFrameLayout(this, fever)
 
             // コンテナの内部にキーボードのUIをセットアップする
             setupKeyboardView()
@@ -3768,7 +3791,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 startScope(mainView)
             }
         }
-        return keyboardContainer
+        val host = feverWindowHost ?: FeverWindowFrameLayout(this, fever).also { feverWindowHost = it }
+        (host.parent as? ViewGroup)?.removeView(host)
+        keyboardContainer?.let { content ->
+            (content.parent as? ViewGroup)?.removeView(content)
+            val params = (content.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            params.gravity = Gravity.BOTTOM
+            host.addView(content, params)
+        }
+        return host
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -3784,6 +3816,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        fever.stop()
+        restoreFeverWindow()
         floatingCursor?.stop()
         resetCursorInputSession()
         cursorInputTracking = cursorSettings.enabled
@@ -4090,6 +4124,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyImePreferences(savedPreferences: ImePreferencesSnapshot) {
         val preferences = savedPreferences.withKeyboardSkinAppearance()
         keyboardSkinId = preferences.keyboardSkin
+        fever.stop()
         val deleteKeyFlickPreferencesChanged =
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
                     isDeleteUpFlickPreference != preferences.isDeleteUpFlickPreference ||
@@ -6095,6 +6130,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        refreshFever()
         refreshFloatingCursor()
         startComposingGuide()
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
@@ -6477,6 +6513,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingDockView.setText("あ")
             ensurePhysicalKeyboardPopupWindows()
         }
+        refreshFever()
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
         consumePendingGemmaPickedImage()
     }
@@ -6493,6 +6530,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        fever.stop()
+        restoreFeverWindow()
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
@@ -6514,6 +6553,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        fever.stop()
+        restoreFeverWindow()
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
@@ -6567,6 +6608,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        fever.stop()
+        restoreFeverWindow()
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
@@ -6588,6 +6631,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        fever.release()
         floatingCursor?.destroy()
         floatingCursor = null
         resetCursorInputSession()
@@ -6924,6 +6968,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         dismissFloatingDock()
     }
 
+    private fun beginHenkan() {
+        if (!isHenkan.getAndSet(true)) fever.noteCue(FeverCue.CONVERSION)
+    }
+
+    private fun feverCursor(direction: CursorDirection) = fever.noteCue(when (direction) {
+        CursorDirection.LEFT -> FeverCue.CURSOR_LEFT
+        CursorDirection.RIGHT -> FeverCue.CURSOR_RIGHT
+        CursorDirection.UP -> FeverCue.CURSOR_UP
+        CursorDirection.DOWN -> FeverCue.CURSOR_DOWN
+    })
+
+    private inline fun <T> feverSoftwareOperation(block: () -> T): T {
+        fever.begin()
+        return try { block() } finally { fever.end() }
+    }
+
+    private fun refreshFever() {
+        val enabled = keyboardSkinId == KeyboardSkinId.FEVER && isInputViewActive &&
+            !currentInputType.isPassword() && !isKeyboardLayoutEditModeActive() && !isFullscreenMode &&
+            !physicalKeyboardEnable.replayCache.firstOrNull().let { it == true }
+        val floating = floatingKeyboardBinding?.root as? ViewGroup
+        (floating as? InkTouchDispatchFrameLayout)?.inputDispatchObserver = fever::touch
+        fever.configure(enabled, keyboardContainer, if (isKeyboardFloatingMode == true) floating else mainLayoutBinding?.root,
+            floating.takeIf { isKeyboardFloatingMode == true }, feverWindowHost) {
+            if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.root else mainLayoutBinding?.root
+        }
+        val expanded = fever.wantsFullScreen && isKeyboardFloatingMode != true
+        if (expanded != feverExpandedWindow) {
+            feverExpandedWindow = expanded
+            window.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
+                if (expanded) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT)
+            feverWindowHost?.layoutParams?.height = if (expanded) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT
+            feverWindowHost?.requestLayout()
+        }
+    }
+
+    private fun restoreFeverWindow() {
+        if (!feverExpandedWindow) return
+        feverExpandedWindow = false
+        window.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        feverWindowHost?.layoutParams?.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        feverWindowHost?.requestLayout()
+    }
+
     override fun onComputeInsets(outInsets: Insets?) {
         super.onComputeInsets(outInsets)
         if ((physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) || isKeyboardFloatingMode == true) {
@@ -6931,6 +7019,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             outInsets?.contentTopInsets = inputHeight
             outInsets?.visibleTopInsets = inputHeight
             outInsets?.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        } else if (feverExpandedWindow && outInsets != null) {
+            keyboardContainer?.let { applyDockedCandidateInsets(it, false, outInsets) }
         } else if (dockedCandidateContainerActive && !isFullscreenMode && outInsets != null) {
             val container = keyboardContainer ?: return
             applyDockedCandidateInsets(container, dockedCandidateHeightStabilized, outInsets)
@@ -7021,6 +7111,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        if (feverExpandedWindow) win?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         updateImeWindowBlurForCurrentMode(win)
     }
 
@@ -8179,6 +8270,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         keyboardContainer?.let { container ->
+            fever.stop()
             container.removeAllViews()
             mainLayoutBinding?.root?.let { newRootView ->
                 container.addView(newRootView)
@@ -9086,7 +9178,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         romajiConverter?.flush(insertString)?.first
                     } ?: insertString
 
-                    isHenkan.set(true)
+                    beginHenkan()
                     Timber.d("KEYCODE_SPACE is pressed: $normalizedInsertString $stringInTail")
                     _inputString.update { normalizedInsertString }
 
@@ -9742,7 +9834,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val head = input.substring(0, position)
         stringInTail.set(input.substring(position))
         _inputString.update { head }
-        isHenkan.set(true)
+        beginHenkan()
         henkanPressedWithBunsetsuDetect = true
         bunsetsuPositionList = positions
         bunsetusMultipleDetect = positions.size > 1
@@ -9807,7 +9899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         currentHighlightIndex = RecyclerView.NO_POSITION
         if (result.remainingReading.isNotEmpty()) {
-            isHenkan.set(true)
+            beginHenkan()
             beginPhysicalCandidateCompositionSession(result.remainingReading)
             pendingPhysicalCandidatePreviewGeneration = physicalCandidateCompositionSession?.generation
             // Request explicitly: StateFlow may conflate the preceding edit, or the reading
@@ -9994,6 +10086,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * @param isFloatingMode フローティングモードが有効かどうかのフラグ
      */
     private fun applyFloatingModeState(isFloatingMode: Boolean) {
+        keyboardContainer?.post { refreshFever() }
         if (splitController != null || splitLoadingJob?.isActive == true) { splitController?.refresh(); return }
         val mainView = mainLayoutBinding ?: return
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
@@ -11743,6 +11836,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
+        fever.begin()
+        try {
         if (deferCursorInput { handleTapAndFlick(key, char, inputString.value, StringBuilder(), isFlick,
                 gestureType, suggestionAdapter?.suggestions.orEmpty(), mainView) }) return
         if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
@@ -11923,6 +12018,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+
+        } finally { fever.end() }
     }
 
     private fun handleTapAndFlickFloating(
@@ -11935,6 +12032,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        fever.begin()
+        try {
         if (deferCursorInput { handleTapAndFlickFloating(key, char, inputString.value, StringBuilder(), isFlick,
                 gestureType, suggestionAdapter?.suggestions.orEmpty(), floatingKeyboardLayoutBinding) }) return
         if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
@@ -12118,11 +12217,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+
+        } finally { fever.end() }
     }
 
     private fun handleFlick(
         char: Char?, insertString: String, sb: StringBuilder, _mainView: MainLayoutBinding
     ) {
+        if (char != null) fever.noteCharacter()
         if (isHenkan.get()) {
             commitCurrentHenkanForNewInput()
             char?.let {
@@ -12149,6 +12251,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sb: StringBuilder,
         _floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (char != null) fever.noteCharacter()
         if (isHenkan.get()) {
             commitCurrentHenkanForNewInput()
             char?.let {
@@ -12172,6 +12275,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleTap(
         char: Char?, insertString: String, sb: StringBuilder, _mainView: MainLayoutBinding
     ) {
+        if (char != null) fever.noteCharacter()
         char?.let {
             if (dispatchDirectTextIfNeeded(it.toString())) return
         }
@@ -12224,6 +12328,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sb: StringBuilder,
         _floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (char != null) fever.noteCharacter()
         if (isHenkan.get()) {
             commitCurrentHenkanForNewInput()
             char?.let {
@@ -15495,6 +15600,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+        fever.begin()
+        try {
                 if (deferCursorInput { onFlickActionUpAfterLongPress(action, isFlick) }) return
                 if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
                         KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
@@ -15774,9 +15881,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.DeleteAfterCursor -> {}
                     KeyAction.CommitAndInsertSpace -> {}
                 }
-            }
+
+        } finally { fever.end() }
+    }
 
             override fun onToggleText(keyIdentity: String, values: List<String>) {
+        fever.begin()
+        try {
                 if (deferCursorInput { onToggleText(keyIdentity, values) }) return
                 endCursorSelectionForInput()
                 activateSplitView(flickView)
@@ -15788,6 +15899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     resetCustomToggleState()
                 }
                 val canonicalValues = values.filter { it.length == 1 }
+                if (canonicalValues.isNotEmpty()) fever.noteCharacter()
                 val outputValues = canonicalValues.map(::applyCustomLayoutShiftAndCapLock)
                 handleCustomToggleText(
                     keyIdentity = keyIdentity,
@@ -15796,9 +15908,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView = mainView
                 )
                 consumeCustomKeyboardOneShotShift()
-            }
+
+        } finally { fever.end() }
+    }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
+        fever.begin()
+        try {
                 if (deferCursorInput { onAction(action, isFlick) }) return
                 if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
                         KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
@@ -15814,6 +15930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (action) {
                     KeyAction.DoNothing -> Unit
                     is KeyAction.Text -> {
+                        if (action.text.isNotEmpty()) fever.noteCharacter()
                         val text = action.text
                         Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
                         when (qwertyMode.value) {
@@ -15940,6 +16057,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
 
                             ":", "-" -> {
+                                fever.noteCharacter()
                                 if (dispatchDirectTextIfNeeded(action.text)) return
                                 val insertString = inputString.value
                                 val sb = StringBuilder()
@@ -16281,7 +16399,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.CommitAndInsertSpace -> {}
                 }
-            }
+
+        } finally { fever.end() }
+    }
         })
     }
 
@@ -16453,6 +16573,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customToggleEditInProgress = false
         }
 
+        fever.committed(next, committed)
         if (!committed) return false
         // Both values are one UTF-16 code unit, so replacing the preceding value leaves the
         // collapsed cursor at the same absolute position. Keep the validated position even if
@@ -16768,6 +16889,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
      */
     private fun pasteAction() {
+        fever.suppressCommit()
         clearZeroQueryAllState(refresh = false)
         val inputConnection = currentInputConnection ?: return
         scope.launch {
@@ -16827,6 +16949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun pasteClipboardHistoryItem(item: ClipboardItem) {
+        fever.suppressCommit()
         scope.launch {
             val fullContent = if (item.clipboardId() > 0) {
                 withContext(Dispatchers.IO) {
@@ -16840,6 +16963,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun pasteClipboardItemContent(item: ClipboardItem) {
+        fever.suppressCommit()
         clearZeroQueryAllState(refresh = false)
         when (item) {
             is ClipboardItem.Image -> {
@@ -16857,6 +16981,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun pasteClipboardText(text: String) {
+        fever.suppressCommit()
         if (text.isEmpty() || !commitText(text, 1)) return
         // The editor replaced its composing region. Clear local preedit before the
         // next key, without waiting for an asynchronous selection notification.
@@ -17344,6 +17469,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
+        feverCursor(CursorDirection.LEFT)
         if (selectMode.value) {
             extendOrShrinkLeftOneChar()
         } else {
@@ -21367,7 +21493,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
 
             clearZenzLiveSlot("bunsetsu conversion session activated")
-            isHenkan.set(true)
+            beginHenkan()
             henkanPressedWithBunsetsuDetect = true
             bunsetusMultipleDetect = true
             stringInTail.set("")
@@ -21787,6 +21913,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val candidateCount = segment.candidates.size
         val nextIndex =
             ((segment.selectedIndex + delta) % candidateCount + candidateCount) % candidateCount
+        if (nextIndex != segment.selectedIndex) fever.noteCue(FeverCue.CANDIDATE)
         val updatedSegment = segment.copy(
             selectedIndex = nextIndex,
             displayText = displayTextFromCandidate(segment.candidates[nextIndex]),
@@ -22437,6 +22564,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         suggestionAdapter?.let { adapter ->
             adapter.setOnItemClickListener { candidate, position ->
+                feverSoftwareOperation {
                 val insertString = inputString.value
                 val currentInputMode: InputMode = currentTenkeyInputMode(mainView)
                 if (candidate.isZenzLiveLoadingSlot(insertString)) {
@@ -22451,6 +22579,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     position = position,
                     displayedCandidates = adapter.suggestions
                 )
+                }
             }
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
@@ -22564,8 +22693,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 toggleInlineSuggestionSurface()
             }
             adapter.setOnZeroQueryCandidateClickListener { candidate ->
-                vibrate()
-                commitZeroQueryCandidate(candidate)
+                feverSoftwareOperation {
+                    vibrate()
+                    commitZeroQueryCandidate(candidate)
+                }
             }
             adapter.setOnZeroQueryCloseClickListener {
                 toggleZeroQueryVisibility()
@@ -22573,6 +22704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapterFull?.let { adapter ->
             adapter.setOnItemClickListener { candidate, position ->
+                feverSoftwareOperation {
                 val insertString = inputString.value
                 val currentInputMode: InputMode = currentTenkeyInputMode(mainView)
                 if (candidate.isZenzLiveLoadingSlot(insertString)) {
@@ -22587,6 +22719,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     position = position,
                     displayedCandidates = adapter.suggestions
                 )
+                }
             }
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
@@ -22890,6 +23023,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        fever.stop()
+        restoreFeverWindow()
         _keyboardLayoutEditState.value = state
         composingGuide?.refresh()
         refreshZenzFloatingCandidates()
@@ -22938,6 +23073,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         keyboardLayoutEditController?.stop()
         _keyboardLayoutEditState.value = KeyboardLayoutEditState.Disabled
+        keyboardContainer?.post { refreshFever() }
         updateShortcutActiveStates()
         if (updateSurface) {
             reloadKeyboardLayoutEditCachesFromPreferences()
@@ -24189,7 +24325,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showQwertyGlideCandidates(candidates, applyFirstCandidate = false)
                     },
                     onFinalCandidates = { candidates ->
-                        showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
+                        feverSoftwareOperation {
+                            showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
+                        }
                     },
                     onGlideStarted = {
                         endCursorSelectionForInput()
@@ -24263,12 +24401,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+        fever.begin()
+        try {
                     if (deferCursorInput { onReleasedQWERTYKey(qwertyKey, tap, variations) }) return
                     if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift,
                             QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight,
                             QWERTYKey.QWERTYKeyCursorUp, QWERTYKey.QWERTYKeyCursorDown)) endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
+                    if (tap != null && !tap.isWhitespace()) fever.noteCharacter()
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
                     handleKeyReleaseFeedback()
                     val insertString = inputString.value
@@ -24590,7 +24731,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             lastFlickConvertedNextHiragana.set(true)
                         }
                     }
-                }
+
+        } finally { fever.end() }
+    }
 
                 override fun onQWERTYShiftStateChanged(
                     capsLockOn: Boolean,
@@ -24688,6 +24831,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onFlickUPQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+        fever.begin()
+        try {
                     if (deferCursorInput { onFlickUPQWERTYKey(qwertyKey, tap, variations) }) return
                     endCursorSelectionForInput()
                     activateSplitView(qwertyView)
@@ -24721,12 +24866,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
-                }
+
+        } finally { fever.end() }
+    }
 
                 override fun onFlickDownQWERTYKey(
                     qwertyKey: QWERTYKey,
                     character: Char
                 ) {
+        fever.begin()
+        try {
                     if (deferCursorInput { onFlickDownQWERTYKey(qwertyKey, character) }) return
                     endCursorSelectionForInput()
                     activateSplitView(qwertyView)
@@ -24741,7 +24890,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     // the append-only flick path. The tap path can enter the ten-key repeated
                     // character cycle (for example A + a -> B).
                     handleFlick(character, inputString.value, StringBuilder(), mainView)
-                }
+
+        } finally { fever.end() }
+    }
             })
 
             setOnDeleteLeftFlickListener {
@@ -24806,6 +24957,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 null
             }
             suppressNextQwertyGlideSuggestionRefresh = true
+            fever.noteCharacter()
             _inputString.update { first.string }
             val spannable = createSpannableWithTail(first.string)
             setComposingTextAfterEdit(
@@ -27825,6 +27977,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * - カーソル直前の文字がそれ以外の場合：その単語を末尾まで削除します。
      */
     private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
+        fever.noteCue(FeverCue.DELETE)
         invalidateZeroQueryForEditorMutation()
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
@@ -27871,6 +28024,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * - PreEdit / stringInTail がある場合は committed text を消さず、stringInTail を削除します。
      */
     private fun deleteWordOrSymbolsAfterCursor(insertString: String) {
+        fever.noteCue(FeverCue.DELETE)
         invalidateZeroQueryForEditorMutation()
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
@@ -28106,6 +28260,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
+        fever.noteCue(FeverCue.DELETE)
         clearZeroQueryAllState(refresh = false)
         if (dispatchDirectBackspaceIfNeeded()) {
             stopDeleteLongPress()
@@ -28489,7 +28644,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        isHenkan.set(true)
+        beginHenkan()
         suggestionClickNum += 1
         suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
         mainView.suggestionRecyclerView.apply {
@@ -28529,7 +28684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d(
                 "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
             )
-            isHenkan.set(true)
+            beginHenkan()
             henkanPressedWithBunsetsuDetect = true
             bunsetsuPositionList?.let {
                 if (it.size > 1) {
@@ -28537,7 +28692,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            isHenkan.set(true)
+            beginHenkan()
             suggestionClickNum += 1
             suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
             mainView.suggestionRecyclerView.apply {
@@ -28589,10 +28744,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d(
                 "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
             )
-            isHenkan.set(true)
+            beginHenkan()
             henkanPressedWithBunsetsuDetect = true
         } else {
-            isHenkan.set(true)
+            beginHenkan()
             suggestionClickNum += 1
             suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
             floatingKeyboardLayoutBinding.suggestionRecyclerView.apply {
@@ -28622,7 +28777,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        isHenkan.set(true)
+        beginHenkan()
         suggestionClickNum += 1
         suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
         floatingKeyboardLayoutBinding.suggestionRecyclerView.apply {
@@ -28755,12 +28910,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleLeftCursorMoveAction() {
+        feverCursor(CursorDirection.LEFT)
         Timber.d("handleLeftCursorMoveAction: called")
         clearZeroQueryAllState(refresh = false)
         sendDpadLeftIfPossible()
     }
 
     private fun handleRightCursorMoveAction() {
+        feverCursor(CursorDirection.RIGHT)
         clearZeroQueryAllState(refresh = false)
         sendDpadRightIfPossible()
     }
@@ -28918,6 +29075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun finishInputEnterKey() {
+        fever.noteConfirmation()
         clearZeroQueryAllState(refresh = false)
         _inputString.update { "" }
         finishComposingText()
@@ -28934,6 +29092,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * [stringInTail], and must therefore be edited before delegating to the editor.
      */
     private fun handleDeleteAfterCursor() {
+        fever.noteCue(FeverCue.DELETE)
         clearZeroQueryAllState(refresh = false)
         if (currentInputConnection == null) return
         if (forwardDeleteCoordinator.hasSelection) {
@@ -29185,6 +29344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
+        feverCursor(CursorDirection.RIGHT)
         clearZeroQueryAllState(refresh = false)
         when {
             insertString.isEmpty() -> {
@@ -29200,6 +29360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun actionInRightKeyPressed(insertString: String) {
+        feverCursor(CursorDirection.RIGHT)
         clearZeroQueryAllState(refresh = false)
         when {
             insertString.isEmpty() -> handleEmptyInputString()
@@ -29306,6 +29467,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteStringCommon(insertString: String) {
+        fever.noteCue(FeverCue.DELETE)
         invalidateZeroQueryForEditorMutation()
         clearFunctionKeyConversionSource()
         val length = insertString.length
@@ -29406,6 +29568,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         _inputString.update { mutation.resultInput }
         return true
+    }
+
+    override fun sendKeyChar(character: Char) {
+        if (!fever.observesSoftwareInput || character == '\n') {
+            super.sendKeyChar(character)
+            return
+        }
+        val connection = currentInputConnection ?: return
+        val success = if (character in '0'..'9') {
+            // Preserve InputMethodService's digit key events, observing both results.
+            val time = SystemClock.uptimeMillis()
+            val code = character - '0' + KeyEvent.KEYCODE_0
+            val flags = KeyEvent.FLAG_SOFT_KEYBOARD or KeyEvent.FLAG_KEEP_TOUCH_MODE
+            val down = connection.sendKeyEvent(KeyEvent(time, time, KeyEvent.ACTION_DOWN, code, 0, 0,
+                android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags))
+            val up = connection.sendKeyEvent(KeyEvent(time, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, code, 0, 0,
+                android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags))
+            down && up
+        } else connection.commitText(character.toString(), 1)
+        fever.committed(character.toString(), success)
     }
 
     private fun sendCharTap(
@@ -30525,7 +30707,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
         val deleted = connection.deleteSurroundingText(p0, p1)
-        if (deleted) editorMutationRevision.advance()
+        if (deleted) {
+            editorMutationRevision.advance()
+            fever.noteCue(FeverCue.DELETE)
+        }
         return deleted
     }
 
@@ -30535,7 +30720,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
         val deleted = connection.deleteSurroundingTextInCodePoints(p0, p1)
-        if (deleted) editorMutationRevision.advance()
+        if (deleted) {
+            editorMutationRevision.advance()
+            fever.noteCue(FeverCue.DELETE)
+        }
         return deleted
     }
 
@@ -30543,6 +30731,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
+        fever.composing(p0, applied)
         if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
@@ -30567,6 +30756,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val finished = composingTextArbiter.finishCanonical()
+        fever.finished(finished)
         composingGuide?.update(null)
         clearPhysicalCandidateCompositionSession("finish composing text")
         return finished
@@ -30581,6 +30771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         val committed = connection.commitText(p0, p1)
+        fever.committed(p0, committed, _keyboardSymbolViewState.value.isShown)
         if (committed) {
             cursorWrittenComposing = null
             editorMutationRevision.advance()

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_skin_fever">FEVER</string>
+    <string name="keyboard_skin_fever_description">ネオンのキーとコンボ。金と虹色の大当たり演出。</string>
+    <string name="fever_settings_title">FEVER演出設定</string>
+    <string name="fever_settings_summary">演出範囲・強さ・音・抽選率・反応語を設定します。</string>
+    <string name="fever_preview">演出を試す</string>
+    <string name="fever_preview_summary">プレビューをタップすると再生します。実際の入力やコンボ数には影響しません。</string>
+    <string name="fever_full_screen">画面全体に演出</string>
+    <string name="fever_full_screen_summary">OFF：キーボード内。ON：キーボード表示中、入力先の画面にも演出を広げます。</string>
+    <string name="fever_intensity">演出の強さ</string>
+    <string name="fever_intensity_summary">0：控えめ・1：標準・2：激アツ</string>
+    <string name="fever_sound">専用の効果音</string>
+    <string name="fever_vibration">専用の振動</string>
+    <string name="fever_feedback_summary">キーボード全体の音・振動設定と、端末の消音設定に従います。</string>
+    <string name="fever_volume">効果音量（%）</string>
+    <string name="fever_hit_rate">大当たり抽選率（%）</string>
+    <string name="fever_hit_rate_summary">ソフトウェア操作で文字を確定した時に抽選します。抽選の間隔は最低3秒です。</string>
+    <string name="fever_combo_seconds">コンボの猶予時間（秒）</string>
+    <string name="fever_keywords_enabled">特定語に反応する</string>
+    <string name="fever_keywords">反応する語句</string>
+    <string name="fever_keywords_help">1行に1語句を入力してください。行の追加・編集・削除で変更できます。空欄ですべて削除します。全角・半角と英字大小は区別しません。</string>
+    <string name="fever_keywords_empty">反応語なし</string>
+    <string name="fever_restore_words">初期語に戻す</string>
+</resources>

@@ -178,7 +178,22 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
-        return (listOfNotNull(themeItem, textMacroItem) + xmlItems).distinctBy { destination ->
+        val feverItem = SettingDestinations.destination(
+            key = "fever_settings",
+            title = context.getString(R.string.fever_settings_title),
+            summary = context.getString(R.string.fever_settings_summary),
+            category = SettingCategory.KEYBOARD_DISPLAY,
+            keywords = listOf("fever", "pachinko", "combo", "jackpot", "パチンコ", "コンボ", "演出", "抽選", "反応語", "フィーバー"),
+            destinationId = com.kazumaproject.markdownhelperkeyboard.R.id.feverSettingsFragment,
+            iconRes = SettingDestinations.defaultIconForCategory(SettingCategory.KEYBOARD_DISPLAY),
+            legacyTarget = LegacySettingTarget(
+                tabKey = SettingTabRegistry.TAB_THEME, xmlRes = null,
+                destinationId = com.kazumaproject.markdownhelperkeyboard.R.id.feverSettingsFragment,
+                preferenceKey = "fever_settings", filterResultMode = false,
+            ),
+            searchScope = SettingSearchScope.LEGACY_TABS,
+        )
+        return (listOfNotNull(themeItem, textMacroItem, feverItem) + xmlItems).distinctBy { destination ->
             val legacyTarget = destination.legacyTarget
             "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"
         }

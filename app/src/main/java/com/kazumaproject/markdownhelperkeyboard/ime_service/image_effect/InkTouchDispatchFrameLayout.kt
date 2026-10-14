@@ -51,7 +51,14 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
 
     var suppressTouchEffectMotionEvents: Boolean = false
 
+    var inputDispatchObserver: ((MotionEvent, Boolean) -> Unit)? = null
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        inputDispatchObserver?.invoke(ev, true)
+        return try { dispatchKeyboardTouchEvent(ev) } finally { inputDispatchObserver?.invoke(ev, false) }
+    }
+
+    private fun dispatchKeyboardTouchEvent(ev: MotionEvent): Boolean {
         if (!suppressTouchEffectMotionEvents) {
             runCatching {
                 keyboardTouchEffectMotionEventListener?.invoke(ev)

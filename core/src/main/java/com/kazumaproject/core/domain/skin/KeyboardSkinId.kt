@@ -5,7 +5,8 @@ enum class KeyboardSkinId(val preferenceValue: String) {
     DEFAULT("default"),
     CUPERTINO_LIGHT("cupertino_light"),
     CUPERTINO_DARK("cupertino_dark"),
-    CUPERTINO_CLASSIC("cupertino_classic");
+    CUPERTINO_CLASSIC("cupertino_classic"),
+    FEVER("fever");
 
     companion object {
         const val PREFERENCE_KEY = "keyboard_skin_preference"

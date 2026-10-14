@@ -188,6 +188,15 @@ object SettingDestinations {
                 iconRes = CoreR.drawable.keyboard_24px,
             )
         )
+        add(destination(
+            key = "fever_settings",
+            title = context.getString(R.string.fever_settings_title),
+            summary = context.getString(R.string.fever_settings_summary),
+            category = SettingCategory.KEYBOARD_DISPLAY,
+            keywords = listOf("fever", "pachinko", "combo", "jackpot", "パチンコ", "コンボ", "演出", "抽選", "反応語", "フィーバー"),
+            destinationId = R.id.feverSettingsFragment,
+            iconRes = CoreR.drawable.table_lamp_24px,
+        ))
         add(
             destination(
                 key = "setting_route_keyboard_theme",
