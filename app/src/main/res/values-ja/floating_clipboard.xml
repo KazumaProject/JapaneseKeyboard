@@ -1,0 +1,7 @@
+<resources>
+    <string name="floating_clipboard_title">クリップボードフロート</string>
+    <string name="floating_clipboard_summary">移動・サイズ変更できるフロートでクリップボード履歴を表示します</string>
+    <string name="floating_clipboard_empty">クリップボード履歴はありません</string>
+    <string name="floating_clipboard_image">クリップボードの画像</string>
+    <string name="floating_clipboard_history">クリップボード履歴を保存</string>
+</resources>

@@ -28,6 +28,8 @@ internal class ShortcutIconColorState {
 
 class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(DiffCallback) {
 
+    private object ActiveStatePayload
+
     /**
      * A listener that gets called when an item is clicked.
      * The listener receives the resource ID of the clicked item.
@@ -78,6 +80,22 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         val item = getItem(position)
         holder.itemView.contentDescription = item.description
         applyShortcutToolbarSize(holder)
+        applyShortcutIcon(holder, item)
+    }
+
+    override fun onBindViewHolder(
+        holder: ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>,
+    ) {
+        if (payloads.isNotEmpty() && payloads.all { it === ActiveStatePayload }) {
+            applyShortcutIcon(holder, getItem(position))
+        } else {
+            onBindViewHolder(holder, position)
+        }
+    }
+
+    private fun applyShortcutIcon(holder: ViewHolder, item: ShortcutType) {
         KeyboardFontGlyphDrawable.setImageResource(
             holder.imageView,
             item.resolveIconResId(),
@@ -126,10 +144,12 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         val oldActive = activeShortcutTypes
         activeShortcutTypes = activeTypes
 
-        (oldActive union activeTypes).forEach { type ->
+        ((oldActive - activeTypes) + (activeTypes - oldActive)).forEach { type ->
             val index = currentList.indexOf(type)
             if (index >= 0) {
-                notifyItemChanged(index)
+                // Keep the touched holder while changing its icon, so a close/reopen tap
+                // is not lost when DefaultItemAnimator replaces the item view.
+                notifyItemChanged(index, ActiveStatePayload)
             }
         }
     }
