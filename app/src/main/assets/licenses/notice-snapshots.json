@@ -1,0 +1,54 @@
+{
+  "mozc": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/third-party/MOZC-LICENSE",
+    "sha256": "44cdd923b91ea9199293abecc2762c70c87dbf1e581c027a94c416368d1a648c"
+  },
+  "ipadic": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/third-party/IPADIC-NOTICE",
+    "sha256": "8f76551acd5ba10116d61a2fea60bcc484906c836e86b7846cb175d1492a086b"
+  },
+  "jmdict": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/third-party/JMDICT-LICENSE.html",
+    "sha256": "62e34e91ccce7d591eb497a8149d34218e697805948ea4becb2118beec9c4114"
+  },
+  "data": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/third-party/LICENSE-DATA.md",
+    "sha256": "4c8d597ddbd85e7b83a46acc6cde36820286d998804202a3bce57396cd4ae6e9"
+  },
+  "corpus": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/third-party/NOTICE.md",
+    "sha256": "db0bede533cd18da1353eaf3ddfb3cf8e0555c443103fc08ad2bc828a1edea83"
+  },
+  "converter": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/574d450c652e42e81713cc1c926a57c3f5310320/src/main/resources/THIRD-PARTY-NOTICES.md",
+    "sha256": "0b7c7186c593bac6dac1a4a670cc8e2326b8bf26568df367e2bf31f3e8d059b4"
+  },
+  "cc-by-sa-4": {
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
+    "sha256": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5"
+  },
+  "apache-2": {
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "person": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-personal-names/b557dd4c1548cc7c2164d5f8b14170c40cbb6f81/LICENSE",
+    "sha256": "f9f8c65f68879ceb7813ec8e021f57a65bed070a0b86b9e9cb8dae0dc46d4caf"
+  },
+  "place": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-place-names/98cf8e9d7731695a52e5bc72ed633933c71d1913/LICENSE",
+    "sha256": "f024e288aee8d111d7ec3121689f92f069b9d830af3bc4e38e1e3298e648ef0c"
+  },
+  "wiki": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-jawiki/57af6adefedab262c295c4bfff71a89902cbe05c/LICENSE",
+    "sha256": "bb83687cd5a99c452a9757aba90dfe1df9d43e3ea0c488ad188ff33161e95640"
+  },
+  "neologd": {
+    "url": "https://raw.githubusercontent.com/neologd/mecab-ipadic-neologd/abc61e33d8be3d0ead202e6b1df064c72d5ccf11/COPYING",
+    "sha256": "428ad012b9b7baf3af430fb730998791da30458e4f88fbcd8ef5ac75a0eed81e"
+  },
+  "merge-ut": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/merge-ut-dictionaries/6239884099ddc0c4d5bb1453b20441121d20593e/LICENSE",
+    "sha256": "989ebd78ae2f428f78dd16eec2a65b2665ad8910812c5788f749efa35e49db6a"
+  }
+}

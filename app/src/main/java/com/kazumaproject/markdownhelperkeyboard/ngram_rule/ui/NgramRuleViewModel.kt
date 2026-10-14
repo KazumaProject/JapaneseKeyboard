@@ -23,9 +23,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @HiltViewModel
 class NgramRuleViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: NgramRuleRepository,
     private val scorerManager: NgramRuleScorerManager,
     private val kanaKanjiEngine: KanaKanjiEngine,
@@ -54,14 +57,11 @@ class NgramRuleViewModel @Inject constructor(
         viewModelScope.launch {
             val suggestions = runCatching {
                 withContext(Dispatchers.Default) {
+                    kanaKanjiEngine.ensureCurrentDictionaryState(context)
                     kanaKanjiEngine.getCandidatesOriginal(
                         input = yomi,
                         n = 120,
-                        mozcUtPersonName = appPreference.mozc_ut_person_names_preference,
-                        mozcUTPlaces = appPreference.mozc_ut_places_preference,
-                        mozcUTWiki = appPreference.mozc_ut_wiki_preference,
-                        mozcUTNeologd = appPreference.mozc_ut_neologd_preference,
-                        mozcUTWeb = appPreference.mozc_ut_web_preference,
+                        enabledDictionaryCategories = kanaKanjiEngine.loadedClassifiedCategories(),
                         userDictionaryRepository = userDictionaryRepository,
                         learnRepository = if (appPreference.learn_dictionary_preference == true) learnRepository else null,
                         isOmissionSearchEnable = appPreference.omission_search_preference == true,
