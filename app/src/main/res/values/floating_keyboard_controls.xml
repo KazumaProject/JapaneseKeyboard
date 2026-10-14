@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="floating_keyboard_hide_button_position_title">Hide keyboard button position</string>
+    <string name="floating_keyboard_show_edit_button_title">Show size adjustment button</string>
+    <string name="floating_keyboard_show_edit_button_summary">Show the pencil icon on the floating keyboard. You can also use the Keyboard adjustment shortcut.</string>
+    <string-array name="floating_keyboard_hide_button_position_labels">
+        <item>Bottom left (beside the move handle)</item>
+        <item>Top left (fixed beside the shortcuts)</item>
+    </string-array>
+    <string-array name="floating_keyboard_hide_button_position_values" translatable="false">
+        <item>bottom_left</item>
+        <item>top_left</item>
+    </string-array>
+</resources>

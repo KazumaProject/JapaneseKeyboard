@@ -63,11 +63,12 @@ internal open class FloatingPanelFrame(
     private var handlingGesture = false
     private var headerVisible = true
     private var footerEnabled = false
+    private var moveBandDp = MOVE_BAND_DP
     var editing = false
         private set
 
     val contentInsets: Rect get() = Rect(dp(if (editing) 24 else 8), dp(if (headerVisible) (if (editing) 72 else 56) else (if (editing) 24 else 8)),
-        dp(if (editing) 24 else 8), dp(MOVE_BAND_DP + if (editing) (if (footerEnabled) 104 else 32) else 4))
+        dp(if (editing) 24 else 8), dp(moveBandDp + if (editing) (if (footerEnabled) 104 else 32) else 4))
 
     init {
         isClickable = true
@@ -91,7 +92,7 @@ internal open class FloatingPanelFrame(
         panelTitle?.let { KeyboardFontApplicator.apply(it, snapshot) }
     }
 
-    fun setEditing(value: Boolean) {
+    open fun setEditing(value: Boolean) {
         if (editing == value) return
         editing = value
         handlingGesture = false
@@ -102,6 +103,12 @@ internal open class FloatingPanelFrame(
     fun setHeaderVisible(value: Boolean) {
         if (headerVisible == value) return
         headerVisible = value
+        renderChrome()
+    }
+
+    protected fun setMoveBandHeight(heightDp: Int) {
+        if (moveBandDp == heightDp) return
+        moveBandDp = heightDp
         renderChrome()
     }
 
@@ -122,6 +129,7 @@ internal open class FloatingPanelFrame(
     }
 
     private fun renderChrome() {
+        moveGrip.layoutParams = LayoutParams(-1, dp(moveBandDp), Gravity.BOTTOM)
         header.visibility = if (headerVisible) VISIBLE else GONE
         moveGrip.isEnabled = !editing
         moveGrip.alpha = if (editing) .35f else 1f
@@ -151,7 +159,7 @@ internal open class FloatingPanelFrame(
             topMargin = insets.top; bottomMargin = insets.bottom
         }
         footerContainer.layoutParams = LayoutParams(-1, dp(72), Gravity.BOTTOM).apply {
-            leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(MOVE_BAND_DP + 28)
+            leftMargin = dp(24); rightMargin = dp(24); bottomMargin = dp(moveBandDp + 28)
         }
         edges.forEach { (edge, view) ->
             val horizontal = edge == GuideHandle.TOP || edge == GuideHandle.BOTTOM
@@ -161,8 +169,8 @@ internal open class FloatingPanelFrame(
                 GuideHandle.LEFT -> Gravity.LEFT or Gravity.CENTER_VERTICAL
                 else -> Gravity.RIGHT or Gravity.CENTER_VERTICAL
             }).apply {
-                if (edge == GuideHandle.BOTTOM) bottomMargin = dp(MOVE_BAND_DP)
-                if (edge == GuideHandle.LEFT || edge == GuideHandle.RIGHT) bottomMargin = dp(MOVE_BAND_DP / 2)
+                if (edge == GuideHandle.BOTTOM) bottomMargin = dp(moveBandDp)
+                if (edge == GuideHandle.LEFT || edge == GuideHandle.RIGHT) bottomMargin = dp(moveBandDp / 2)
             }
         }
         moveGrip.invalidate()
@@ -176,7 +184,7 @@ internal open class FloatingPanelFrame(
         setOnClickListener { action() }
     }
 
-    fun handleAt(x: Float, y: Float): GuideHandle? {
+    open fun handleAt(x: Float, y: Float): GuideHandle? {
         val moveRect = Rect().also(moveGrip::getHitRect)
         if (moveRect.contains(x.toInt(), y.toInt())) return if (editing) null else GuideHandle.MOVE
         if (!editing) return null

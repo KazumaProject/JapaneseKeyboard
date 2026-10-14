@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="floating_keyboard_hide_button_position_title">キーボードを隠すボタンの位置</string>
+    <string name="floating_keyboard_show_edit_button_title">サイズ調整ボタンを表示</string>
+    <string name="floating_keyboard_show_edit_button_summary">フローティングキーボードに鉛筆アイコンを表示します。「キーボード調整」ショートカットからも調整できます。</string>
+    <string-array name="floating_keyboard_hide_button_position_labels">
+        <item>下部左端（移動用つまみの横）</item>
+        <item>上部左端（ショートカットの横に固定）</item>
+    </string-array>
+</resources>
