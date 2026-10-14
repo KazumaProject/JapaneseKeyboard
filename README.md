@@ -398,7 +398,9 @@ zenzModelAssetName=ggml-model-Q5_K_M.gguf
 
 ### 📄 ライセンス
 
-**MIT License** © 2025 Kazuma Naka — 詳細は [`LICENSE`](LICENSE) ファイルをご覧ください。
+ライセンス・出典・通知原文の一覧は [ライセンス情報ドキュメント](docs/licenses/README.md) を参照してください。
+
+**MIT License** © 2024 Kazuma Naka — 詳細は [`LICENSE`](LICENSE) ファイルをご覧ください。
 
 -----
 
@@ -489,4 +491,6 @@ This project stands on the shoulders of giants. Our thanks go to:
 
 ### 📄 License
 
-**MIT License** © 2025 Kazuma Naka — See the [`LICENSE`](LICENSE) file for details.
+See [the complete license information index / ライセンス情報一覧](docs/licenses/README.md) for dictionary categories, bundled notices, dependencies and model resources.
+
+**MIT License** © 2024 Kazuma Naka — See the [`LICENSE`](LICENSE) file for details.
