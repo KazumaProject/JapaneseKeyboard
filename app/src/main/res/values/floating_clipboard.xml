@@ -1,0 +1,7 @@
+<resources>
+    <string name="floating_clipboard_title">Floating clipboard</string>
+    <string name="floating_clipboard_summary">Show clipboard history in a movable, resizable panel</string>
+    <string name="floating_clipboard_empty">No clipboard history</string>
+    <string name="floating_clipboard_image">Clipboard image</string>
+    <string name="floating_clipboard_history">Save clipboard history</string>
+</resources>

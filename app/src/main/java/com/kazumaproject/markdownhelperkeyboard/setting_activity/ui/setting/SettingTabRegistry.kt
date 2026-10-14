@@ -23,6 +23,7 @@ object SettingTabRegistry {
     const val TAB_CONVERSION_ENGINE = "conversion_engine"
     const val TAB_DICTIONARY = "dictionary"
     const val TAB_TEXT_MACRO = "text_macro"
+    const val TAB_VOICE_INPUT = "voice_input"
     const val TAB_KANA = "kana"
     const val TAB_QWERTY = "qwerty"
     const val TAB_QWERTY_ENGLISH = "qwerty_english"
@@ -94,6 +95,13 @@ object SettingTabRegistry {
                 xmlRes = null,
                 destinationId = R.id.textMacroFragment,
                 fragmentFactory = { TextMacroFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_VOICE_INPUT,
+                title = { it.getString(R.string.setting_category_voice_input_title) },
+                xmlRes = R.xml.pref_voice_input,
+                destinationId = R.id.voiceInputPreferenceFragment,
+                fragmentFactory = { VoiceInputPreferenceFragment() },
             ),
             SettingTabSpec(
                 key = TAB_KANA,
