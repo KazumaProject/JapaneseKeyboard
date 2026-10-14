@@ -436,6 +436,12 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             }
         }
 
+        findPreference<Preference>(com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings.RESET)
+            ?.setOnPreferenceClickListener {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings(guidePreferences).resetPlacement()
+                true
+            }
+
         findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 it.isEnabled = false
