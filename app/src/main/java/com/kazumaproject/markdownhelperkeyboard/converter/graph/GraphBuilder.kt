@@ -11,6 +11,8 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.TripleDictionaryData
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.GraphNodeTrace
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
@@ -33,10 +35,7 @@ class GraphBuilder {
         val systemPrefixStates: Map<Int, Int>,
         val englishReadingPrefixStates: Map<Int, Int>,
         val systemUserPrefixStates: Map<Int, Int>,
-        val wikiPrefixStates: Map<Int, Int>,
-        val webPrefixStates: Map<Int, Int>,
-        val personPrefixStates: Map<Int, Int>,
-        val neologdPrefixStates: Map<Int, Int>,
+        val classifiedPrefixStates: Map<DictionaryCategory, Map<Int, Int>>,
         val unprunedPositions: Map<Int, MutableList<Node>>?,
     )
 
@@ -245,6 +244,19 @@ class GraphBuilder {
         val reusedThroughEndIndex = (graph as? IncrementalGraph)?.reusedThroughEndIndex ?: -1
         if (endIndex <= reusedThroughEndIndex) return
         val nodes = graph.computeIfAbsent(endIndex) { mutableListOf() }
+        // Merge taxonomy only for the exact same token and cost, including Mozc keep-all mode.
+        val identical = nodes.firstOrNull {
+            (it.dictionaryCategories.isNotEmpty() || newNode.dictionaryCategories.isNotEmpty()) &&
+                it.tango == newNode.tango && it.yomiUsed == newNode.yomiUsed &&
+                it.l == newNode.l && it.r == newNode.r && it.score == newNode.score &&
+                it.sPos == newNode.sPos && it.len == newNode.len &&
+                it.candidateSource == newNode.candidateSource
+        }
+        if (identical != null) {
+            identical.dictionaryCategories = identical.dictionaryCategories + newNode.dictionaryCategories
+            return
+        }
+
 
         when (mode) {
             GraphNodeDedupMode.MOZC_KEEP_ALL -> {
@@ -306,34 +318,7 @@ class GraphBuilder {
         succinctBitVectorTangoLBS: SuccinctBitVector,
         userDictionaryRepository: UserDictionaryRepository?,
         learnRepository: LearnRepository?,
-        wikiYomiTrie: LOUDSWithTermId?,
-        wikiTangoTrie: LOUDS?,
-        wikiTokenArray: TokenArray?,
-        succinctBitVectorLBSWikiYomi: SuccinctBitVector?,
-        succinctBitVectorIsLeafWikiYomi: SuccinctBitVector?,
-        succinctBitVectorWikiTokenArray: SuccinctBitVector?,
-        succinctBitVectorWikiTangoLBS: SuccinctBitVector?,
-        webYomiTrie: LOUDSWithTermId?,
-        webTangoTrie: LOUDS?,
-        webTokenArray: TokenArray?,
-        succinctBitVectorLBSwebYomi: SuccinctBitVector?,
-        succinctBitVectorIsLeafwebYomi: SuccinctBitVector?,
-        succinctBitVectorwebTokenArray: SuccinctBitVector?,
-        succinctBitVectorwebTangoLBS: SuccinctBitVector?,
-        personYomiTrie: LOUDSWithTermId?,
-        personTangoTrie: LOUDS?,
-        personTokenArray: TokenArray?,
-        succinctBitVectorLBSpersonYomi: SuccinctBitVector?,
-        succinctBitVectorIsLeafpersonYomi: SuccinctBitVector?,
-        succinctBitVectorpersonTokenArray: SuccinctBitVector?,
-        succinctBitVectorpersonTangoLBS: SuccinctBitVector?,
-        neologdYomiTrie: LOUDSWithTermId?,
-        neologdTangoTrie: LOUDS?,
-        neologdTokenArray: TokenArray?,
-        succinctBitVectorLBSneologdYomi: SuccinctBitVector?,
-        succinctBitVectorIsLeafneologdYomi: SuccinctBitVector?,
-        succinctBitVectorneologdTokenArray: SuccinctBitVector?,
-        succinctBitVectorneologdTangoLBS: SuccinctBitVector?,
+        classifiedDictionaries: Map<DictionaryCategory, TripleDictionaryData> = emptyMap(),
         isOmissionSearchEnable: Boolean,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         typoCorrectionOffsetScore: Int,
@@ -361,10 +346,7 @@ class GraphBuilder {
         val signature = conversionSignature(
             yomiTrie = yomiTrie,
             englishReadingYomiTrie = englishReadingYomiTrie,
-            wikiYomiTrie = wikiYomiTrie,
-            webYomiTrie = webYomiTrie,
-            personYomiTrie = personYomiTrie,
-            neologdYomiTrie = neologdYomiTrie,
+            classifiedDictionaries = classifiedDictionaries,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
             isOmissionSearchEnable = isOmissionSearchEnable,
@@ -406,10 +388,7 @@ class GraphBuilder {
         val systemPrefixStates = LinkedHashMap<Int, Int>()
         val englishReadingPrefixStates = LinkedHashMap<Int, Int>()
         val systemUserPrefixStates = LinkedHashMap<Int, Int>()
-        val wikiPrefixStates = LinkedHashMap<Int, Int>()
-        val webPrefixStates = LinkedHashMap<Int, Int>()
-        val personPrefixStates = LinkedHashMap<Int, Int>()
-        val neologdPrefixStates = LinkedHashMap<Int, Int>()
+        val classifiedPrefixStates = classifiedDictionaries.keys.associateWith { LinkedHashMap<Int, Int>() }
         val typoTopTokenScratch = IntArray(5)
 
         fun prefixSearch(
@@ -1110,209 +1089,31 @@ class GraphBuilder {
             }
 
             // 5. Wiki辞書
-            if (wikiYomiTrie != null && wikiTangoTrie != null && wikiTokenArray != null &&
-                succinctBitVectorLBSWikiYomi != null && succinctBitVectorWikiTangoLBS != null &&
-                succinctBitVectorWikiTokenArray != null && succinctBitVectorIsLeafWikiYomi != null
-            ) {
-                val commonPrefixSearchWiki = prefixSearch(
-                    trie = wikiYomiTrie,
-                    bitVector = succinctBitVectorLBSWikiYomi,
+            classifiedDictionaries.forEach { (category, data) ->
+                val results = prefixSearch(
+                    trie = data.yomiTrie,
+                    bitVector = data.succinctBitVectorLBSYomi,
                     start = i,
-                    previousStates = reusable?.wikiPrefixStates,
-                    currentStates = wikiPrefixStates,
+                    previousStates = reusable?.classifiedPrefixStates?.get(category),
+                    currentStates = classifiedPrefixStates.getValue(category),
                 )
-                if (commonPrefixSearchWiki.isNotEmpty()) foundInAnyDictionary = true
-                for (prefixResult in commonPrefixSearchWiki) {
+                if (results.isNotEmpty()) foundInAnyDictionary = true
+                for (prefixResult in results) {
                     val yomiStr = prefixResult.yomi
                     val nodeIndex = prefixResult.nodeIndex
-                    if (nodeIndex > 0) {
-                        val termId =
-                            wikiYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafWikiYomi)
-                        val endIndex = i + yomiStr.length
-                        if (endIndex <= reusablePrefixLength) continue
-                        wikiTokenArray.forEachDictionaryByYomiTermId(
-                            termId,
-                            succinctBitVectorWikiTokenArray
-                        ) { posTableIndex, wordCost, tokenNodeId ->
-                            val tango = when (tokenNodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> wikiTangoTrie.getLetter(
-                                    tokenNodeId,
-                                    succinctBitVector = succinctBitVectorWikiTangoLBS
-                                )
-                            }
-                            val leftId = wikiTokenArray.leftIds[posTableIndex.toInt()]
-                            val node = Node(
-                                l = leftId,
-                                r = wikiTokenArray.rightIds[posTableIndex.toInt()],
-                                score = wordCost.toInt(),
-                                f = wordCost.toInt(),
-                                g = wordCost.toInt(),
-                                tango = tango,
-                                yomiUsed = yomiStr,
-                                len = yomiStr.length.toShort(),
-                                sPos = i,
-                                mozcAttributes = mozcAttributesFor(leftId),
-                            )
-                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "WIKI")
-                        }
-                    }
-                }
-            }
-
-            // 6. Web辞書
-            if (webYomiTrie != null && webTangoTrie != null && webTokenArray != null &&
-                succinctBitVectorLBSwebYomi != null && succinctBitVectorwebTangoLBS != null &&
-                succinctBitVectorwebTokenArray != null && succinctBitVectorIsLeafwebYomi != null
-            ) {
-                val commonPrefixSearchWeb = prefixSearch(
-                    trie = webYomiTrie,
-                    bitVector = succinctBitVectorLBSwebYomi,
-                    start = i,
-                    previousStates = reusable?.webPrefixStates,
-                    currentStates = webPrefixStates,
-                )
-                if (commonPrefixSearchWeb.isNotEmpty()) foundInAnyDictionary = true
-                for (prefixResult in commonPrefixSearchWeb) {
-                    val yomiStr = prefixResult.yomi
-                    val nodeIndex = prefixResult.nodeIndex
-                    if (nodeIndex > 0) {
-                        val termId =
-                            webYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafwebYomi)
-                        val endIndex = i + yomiStr.length
-                        if (endIndex <= reusablePrefixLength) continue
-                        webTokenArray.forEachDictionaryByYomiTermId(
-                            termId,
-                            succinctBitVectorwebTokenArray
-                        ) { posTableIndex, wordCost, tokenNodeId ->
-                            val tango = when (tokenNodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> webTangoTrie.getLetter(
-                                    tokenNodeId,
-                                    succinctBitVector = succinctBitVectorwebTangoLBS
-                                )
-                            }
-                            val leftId = webTokenArray.leftIds[posTableIndex.toInt()]
-                            val node = Node(
-                                l = leftId,
-                                r = webTokenArray.rightIds[posTableIndex.toInt()],
-                                score = wordCost.toInt(),
-                                f = wordCost.toInt(),
-                                g = wordCost.toInt(),
-                                tango = tango,
-                                yomiUsed = yomiStr,
-                                len = yomiStr.length.toShort(),
-                                sPos = i,
-                                mozcAttributes = mozcAttributesFor(leftId),
-                            )
-                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "WEB")
-                        }
-                    }
-                }
-            }
-
-            // 7. 人名辞書
-            if (personYomiTrie != null && personTangoTrie != null && personTokenArray != null &&
-                succinctBitVectorLBSpersonYomi != null && succinctBitVectorpersonTangoLBS != null &&
-                succinctBitVectorpersonTokenArray != null && succinctBitVectorIsLeafpersonYomi != null
-            ) {
-                val commonPrefixSearchPerson = prefixSearch(
-                    trie = personYomiTrie,
-                    bitVector = succinctBitVectorLBSpersonYomi,
-                    start = i,
-                    previousStates = reusable?.personPrefixStates,
-                    currentStates = personPrefixStates,
-                )
-                if (commonPrefixSearchPerson.isNotEmpty()) foundInAnyDictionary = true
-                for (prefixResult in commonPrefixSearchPerson) {
-                    val yomiStr = prefixResult.yomi
-                    val nodeIndex = prefixResult.nodeIndex
-                    if (nodeIndex > 0) {
-                        val termId =
-                            personYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafpersonYomi)
-                        val endIndex = i + yomiStr.length
-                        if (endIndex <= reusablePrefixLength) continue
-                        personTokenArray.forEachDictionaryByYomiTermId(
-                            termId,
-                            succinctBitVectorpersonTokenArray
-                        ) { posTableIndex, wordCost, tokenNodeId ->
-                            val tango = when (tokenNodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> personTangoTrie.getLetter(
-                                    tokenNodeId,
-                                    succinctBitVector = succinctBitVectorpersonTangoLBS
-                                )
-                            }
-                            val leftId = personTokenArray.leftIds[posTableIndex.toInt()]
-                            val node = Node(
-                                l = leftId,
-                                r = personTokenArray.rightIds[posTableIndex.toInt()],
-                                score = wordCost.toInt(),
-                                f = wordCost.toInt(),
-                                g = wordCost.toInt(),
-                                tango = tango,
-                                yomiUsed = yomiStr,
-                                len = yomiStr.length.toShort(),
-                                sPos = i,
-                                mozcAttributes = mozcAttributesFor(leftId),
-                            )
-                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "PERSON")
-                        }
-                    }
-                }
-            }
-
-            // 8. Neologd辞書
-            if (neologdYomiTrie != null && neologdTangoTrie != null && neologdTokenArray != null &&
-                succinctBitVectorLBSneologdYomi != null && succinctBitVectorneologdTangoLBS != null &&
-                succinctBitVectorneologdTokenArray != null && succinctBitVectorIsLeafneologdYomi != null
-            ) {
-                val commonPrefixSearchNeologd = prefixSearch(
-                    trie = neologdYomiTrie,
-                    bitVector = succinctBitVectorLBSneologdYomi,
-                    start = i,
-                    previousStates = reusable?.neologdPrefixStates,
-                    currentStates = neologdPrefixStates,
-                )
-                if (commonPrefixSearchNeologd.isNotEmpty()) foundInAnyDictionary = true
-                for (prefixResult in commonPrefixSearchNeologd) {
-                    val yomiStr = prefixResult.yomi
-                    val nodeIndex = prefixResult.nodeIndex
-                    if (nodeIndex > 0) {
-                        val termId =
-                            neologdYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafneologdYomi)
-                        val endIndex = i + yomiStr.length
-                        if (endIndex <= reusablePrefixLength) continue
-                        neologdTokenArray.forEachDictionaryByYomiTermId(
-                            termId,
-                            succinctBitVectorneologdTokenArray
-                        ) { posTableIndex, wordCost, tokenNodeId ->
-                            val tango = when (tokenNodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> neologdTangoTrie.getLetter(
-                                    tokenNodeId,
-                                    succinctBitVector = succinctBitVectorneologdTangoLBS
-                                )
-                            }
-                            val leftId = neologdTokenArray.leftIds[posTableIndex.toInt()]
-                            val node = Node(
-                                l = leftId,
-                                r = neologdTokenArray.rightIds[posTableIndex.toInt()],
-                                score = wordCost.toInt(),
-                                f = wordCost.toInt(),
-                                g = wordCost.toInt(),
-                                tango = tango,
-                                yomiUsed = yomiStr,
-                                len = yomiStr.length.toShort(),
-                                sPos = i,
-                                mozcAttributes = mozcAttributesFor(leftId),
-                            )
-                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "NEOLOGD")
-                        }
+                    val endIndex = i + yomiStr.length
+                    if (nodeIndex <= 0 || endIndex <= reusablePrefixLength) continue
+                    val termId = data.yomiTrie.getTermId(nodeIndex, data.succinctBitVectorIsLeafYomi)
+                    data.tokenArray.forEachDictionaryByYomiTermId(termId, data.succinctBitVectorTokenArray) { pos, cost, tokenNodeId ->
+                        val leftId = data.tokenArray.leftIds[pos.toInt()]
+                        val node = Node(
+                            l = leftId, r = data.tokenArray.rightIds[pos.toInt()],
+                            score = cost.toInt(), f = cost.toInt(), g = cost.toInt(),
+                            tango = data.surfaceFor(tokenNodeId, yomiStr, pos.toInt(), cost),
+                            yomiUsed = yomiStr, len = yomiStr.length.toShort(), sPos = i,
+                            mozcAttributes = mozcAttributesFor(leftId), dictionaryCategories = setOf(category),
+                        )
+                        addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, category.name)
                     }
                 }
             }
@@ -1394,10 +1195,7 @@ class GraphBuilder {
             systemPrefixStates = systemPrefixStates,
             englishReadingPrefixStates = englishReadingPrefixStates,
             systemUserPrefixStates = systemUserPrefixStates,
-            wikiPrefixStates = wikiPrefixStates,
-            webPrefixStates = webPrefixStates,
-            personPrefixStates = personPrefixStates,
-            neologdPrefixStates = neologdPrefixStates,
+            classifiedPrefixStates = classifiedPrefixStates,
             unprunedPositions = if (sessionState != null) {
                 val incrementalGraph = graph as? IncrementalGraph
                 if (
@@ -1461,10 +1259,7 @@ class GraphBuilder {
     private fun conversionSignature(
         yomiTrie: LOUDSWithTermId,
         englishReadingYomiTrie: LOUDSWithTermId?,
-        wikiYomiTrie: LOUDSWithTermId?,
-        webYomiTrie: LOUDSWithTermId?,
-        personYomiTrie: LOUDSWithTermId?,
-        neologdYomiTrie: LOUDSWithTermId?,
+        classifiedDictionaries: Map<DictionaryCategory, TripleDictionaryData>,
         userDictionaryRepository: UserDictionaryRepository?,
         learnRepository: LearnRepository?,
         isOmissionSearchEnable: Boolean,
@@ -1477,10 +1272,12 @@ class GraphBuilder {
     ): Int {
         var result = System.identityHashCode(yomiTrie)
         result = 31 * result + System.identityHashCode(englishReadingYomiTrie)
-        result = 31 * result + System.identityHashCode(wikiYomiTrie)
-        result = 31 * result + System.identityHashCode(webYomiTrie)
-        result = 31 * result + System.identityHashCode(personYomiTrie)
-        result = 31 * result + System.identityHashCode(neologdYomiTrie)
+        classifiedDictionaries.forEach { (category, data) ->
+            result = 31 * result + category.hashCode()
+            result = 31 * result + System.identityHashCode(data.yomiTrie)
+            result = 31 * result + System.identityHashCode(data.tangoTrie)
+            result = 31 * result + System.identityHashCode(data.tokenArray)
+        }
         result = 31 * result + System.identityHashCode(systemUserYomiTrie)
         result = 31 * result + System.identityHashCode(userDictionaryRepository)
         result = 31 * result + (userDictionaryRepository?.conversionRevision?.hashCode() ?: 0)

@@ -1,0 +1,187 @@
+{
+  "revision": "574d450c652e42e81713cc1c926a57c3f5310320",
+  "version": "v1.7.262-pre.1",
+  "inputSha256": {
+    "src/main/bin/names.txt": "7978c66a0ca26ee94170b508cf14c5eba16cbb41d7be5a3675474adc95ac6727",
+    "src/main/bin/place.txt.zip": "bae15eb6755a2e6aa30d1d9ece7970c7d97d761b6e430c59bc11222f8e2e6f01",
+    "src/main/bin/only_wiki.txt.zip": "2c3ca451484900edee55ae4ebe79284e1301b077572f64e9100889a5755bed10",
+    "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
+    "src/main/bin/wiki_neologd_common.txt.zip": "1b0638f24e057077c1b1471dc30e741670b547979db458eb447af5cc7221283c"
+  },
+  "decisionSha256": "934b03faa27197ea4e668c9de6658918104fd1ab508d7b6de918954c1a2fc901",
+  "categorySourcePairs": {
+    "address": {
+      "neologd": 827,
+      "place": 120790,
+      "wiki": 516,
+      "web": 136,
+      "person": 2
+    },
+    "agreement": {
+      "neologd": 598,
+      "web": 899,
+      "wiki": 246,
+      "person": 1
+    },
+    "award": {
+      "neologd": 343,
+      "wiki": 193,
+      "web": 468
+    },
+    "character": {
+      "web": 1043,
+      "neologd": 5826,
+      "person": 789,
+      "wiki": 1286
+    },
+    "event": {
+      "neologd": 3746,
+      "web": 4439,
+      "wiki": 1751,
+      "person": 20
+    },
+    "facility": {
+      "wiki": 10858,
+      "web": 8102,
+      "neologd": 9654,
+      "person": 44,
+      "place": 14
+    },
+    "initiative": {
+      "web": 610,
+      "wiki": 263,
+      "neologd": 654,
+      "person": 13
+    },
+    "lineage": {
+      "neologd": 756,
+      "web": 1318,
+      "wiki": 909,
+      "person": 3
+    },
+    "mythological_figure": {
+      "wiki": 1148,
+      "neologd": 1697,
+      "web": 774,
+      "person": 10
+    },
+    "organization": {
+      "neologd": 27134,
+      "web": 13048,
+      "person": 1453,
+      "wiki": 5675
+    },
+    "person": {
+      "neologd": 194692,
+      "web": 29192,
+      "wiki": 8558,
+      "person": 47661,
+      "place": 46
+    },
+    "place": {
+      "neologd": 7553,
+      "wiki": 20002,
+      "web": 14328,
+      "place": 43893,
+      "person": 8
+    },
+    "product": {
+      "neologd": 7700,
+      "web": 3205,
+      "wiki": 2655,
+      "person": 76
+    },
+    "station": {
+      "web": 5622,
+      "neologd": 756,
+      "wiki": 437,
+      "place": 1
+    },
+    "term": {
+      "neologd": 82298,
+      "wiki": 14829,
+      "web": 30452,
+      "person": 205,
+      "place": 11
+    },
+    "transport_route": {
+      "neologd": 1335,
+      "wiki": 667,
+      "web": 1203,
+      "place": 6
+    },
+    "vehicle": {
+      "web": 1271,
+      "neologd": 1347,
+      "wiki": 784,
+      "person": 2
+    },
+    "work_anime": {
+      "neologd": 354,
+      "wiki": 163,
+      "web": 124,
+      "person": 2
+    },
+    "work_book": {
+      "neologd": 1809,
+      "wiki": 1336,
+      "web": 2194,
+      "person": 16
+    },
+    "work_film": {
+      "neologd": 546,
+      "wiki": 268,
+      "web": 365,
+      "person": 3
+    },
+    "work_franchise": {
+      "web": 86,
+      "neologd": 126,
+      "wiki": 56,
+      "person": 2
+    },
+    "work_game": {
+      "web": 236,
+      "person": 7,
+      "neologd": 1024,
+      "wiki": 239
+    },
+    "work_manga": {
+      "neologd": 483,
+      "wiki": 264,
+      "web": 251,
+      "person": 6
+    },
+    "work_music": {
+      "neologd": 1524,
+      "web": 987,
+      "wiki": 1163,
+      "person": 130
+    },
+    "work_other": {
+      "web": 1504,
+      "neologd": 2118,
+      "wiki": 1428,
+      "person": 127
+    },
+    "work_periodical": {
+      "web": 327,
+      "neologd": 550,
+      "wiki": 148,
+      "person": 5
+    },
+    "work_program": {
+      "wiki": 699,
+      "neologd": 1008,
+      "web": 666,
+      "person": 8
+    },
+    "work_stage": {
+      "web": 132,
+      "wiki": 96,
+      "neologd": 125,
+      "person": 2
+    }
+  },
+  "surfaceOverridesSha256": "0937f0ca662d475195b1c8a6a555ee9d69f314faec860204028d477ba1caf282"
+}
