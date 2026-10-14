@@ -1,5 +1,6 @@
 package com.kazumaproject.graph
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 enum class MozcNodeType {
     NOR,
     BOS,
@@ -36,6 +37,7 @@ data class Node(
     val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
+    var dictionaryCategories: Set<DictionaryCategory> = emptySet(),
 ) {
     override fun toString(): String {
         return this.tango

@@ -551,6 +551,10 @@ object SettingSearchIndex {
     ): SettingDestinationType {
         val fallback = fallbackDestinationType(key, destinationId, highlightPreferenceKey)
         if (SettingDestinations.isManagementDestinationKey(key)) return fallback
+        // These switches use DictionaryOverrideStore and compatibility checks.
+        // Search/frequent cards must navigate to their handler, not write default preferences.
+        if (com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries.all
+                .any { it.preferenceKey == key }) return fallback
         // Open the shared screen so replacement/custom-text dependencies also apply to search/favorites.
         if (destinationId == R.id.voiceInputPreferenceFragment) return fallback
 

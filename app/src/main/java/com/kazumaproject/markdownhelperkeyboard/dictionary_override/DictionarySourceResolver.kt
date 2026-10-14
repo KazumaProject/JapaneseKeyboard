@@ -85,11 +85,16 @@ class DictionarySourceResolver @Inject constructor(
         if (specs.all { !it.partOfTripleDictionary }) {
             return DictionaryCategoryLoadState.Bundled
         }
-        if (category == DictionaryCategory.ENGLISH_READING &&
+        if (category.isDisableableBundledDictionary() &&
             !store.isOptionalBundledEnabled(category)
         ) {
             return DictionaryCategoryLoadState.Disabled
         }
+        // An enabled classified dictionary remains usable while an external
+        // replacement is incomplete or invalid; the reader opens the bundled triple.
+        if (category in ClassifiedDictionaries.categories &&
+            (hasInvalid || (hasAny && (!hasAll || !validAll)))
+        ) return DictionaryCategoryLoadState.Bundled
         if (hasInvalid) return DictionaryCategoryLoadState.Invalid
         if (hasAny && (!hasAll || !validAll)) return DictionaryCategoryLoadState.Partial
         if (validAll && store.isExternalEnabledForCategory(category)) return DictionaryCategoryLoadState.User

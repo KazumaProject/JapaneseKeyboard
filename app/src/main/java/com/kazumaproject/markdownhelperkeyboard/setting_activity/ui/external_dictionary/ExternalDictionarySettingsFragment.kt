@@ -25,6 +25,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityProblem
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityResult
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityValidator
@@ -59,6 +60,7 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
     private fun preferenceContext(): Context = hierarchyContext.get() ?: requireContext()
 
     private var pendingKey: DictionaryFileKey? = null
+    private var preparedRevision: Long = Long.MIN_VALUE
     private var compatibilityUiState = CompatibilityUiState()
     private val displayStateResolver: ExternalDictionaryDisplayStateResolver
         get() = ExternalDictionaryDisplayStateResolver(store)
@@ -83,6 +85,11 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
         store = settingsIo(SettingsLoadStage.DATABASE) { storeProvider.get() }
         compatibilityValidator = settingsIo(SettingsLoadStage.DATABASE) { compatibilityValidatorProvider.get() }
         compatibilityUiState = settingsIo(SettingsLoadStage.DATABASE) { buildCompatibilityUiState() }
+        preparedRevision = store.currentRevision
+    }
+
+    override fun onPreferencesResumed() {
+        if (store.currentRevision != preparedRevision) reloadPreferences()
     }
 
     override fun createPreferenceHierarchy(context: Context): PreferenceScreen {
@@ -214,15 +221,8 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
                 isChecked = switchState.switchChecked
                 configureChangeListener { _, newValue ->
                     val enabled = newValue == true
-                    store.setOptionalBundledEnabled(dictionaryCategory, enabled)
-                    if (enabled && problems.isNotEmpty()) {
-                        store.setExternalEnabledForCategory(dictionaryCategory, false)
-                        showCompatibilityProblemDialog(problems)
-                    }
-                    store.setExternalEnabledForCategory(
-                        dictionaryCategory,
-                        enabled && specs.all { store.isValidOverride(it.key) } && problems.isEmpty(),
-                    )
+                    store.setDisableableCategoryEnabled(dictionaryCategory, enabled, problems.isEmpty())
+                    if (enabled && problems.isNotEmpty()) showCompatibilityProblemDialog(problems)
                     toastApplyTiming()
                     refreshCompatibilityUiState()
                     true
@@ -587,6 +587,7 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
         )
 
     private fun categoryTitle(category: DictionaryCategory): String {
+        ClassifiedDictionaries.find(category)?.let { return preferenceContext().getString(it.nameRes) }
         return when (category) {
             DictionaryCategory.SYSTEM -> preferenceContext().getString(R.string.external_dictionary_category_system)
             DictionaryCategory.SINGLE_KANJI -> preferenceContext().getString(R.string.external_dictionary_category_single_kanji)
@@ -603,6 +604,7 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
             DictionaryCategory.NEOLOGD -> preferenceContext().getString(R.string.mozc_ut_neologd_title)
             DictionaryCategory.WEB -> preferenceContext().getString(R.string.mozc_ut_web_title)
             DictionaryCategory.COMMON -> preferenceContext().getString(R.string.external_dictionary_category_common)
+            else -> error("Unknown dictionary category: $category")
         }
     }
 
@@ -640,9 +642,4 @@ private val DICTIONARY_CATEGORIES = listOf(
     DictionaryCategory.ENGLISH_READING,
     DictionaryCategory.READING_CORRECTION,
     DictionaryCategory.KOTOWAZA,
-    DictionaryCategory.PERSON_NAME,
-    DictionaryCategory.PLACES,
-    DictionaryCategory.WIKI,
-    DictionaryCategory.NEOLOGD,
-    DictionaryCategory.WEB,
-)
+) + ClassifiedDictionaries.all.map { it.category }

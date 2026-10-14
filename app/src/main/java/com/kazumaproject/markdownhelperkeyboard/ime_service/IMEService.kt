@@ -1933,11 +1933,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var vibrationTimingStr: String? = "both"
     private var isKeySoundEnabled: Boolean? = false
     private var keySoundVolumePercent: Int? = 0
-    private var mozcUTPersonName: Boolean? = false
-    private var mozcUTPlaces: Boolean? = false
-    private var mozcUTWiki: Boolean? = false
-    private var mozcUTNeologd: Boolean? = false
-    private var mozcUTWeb: Boolean? = false
+    private var enabledDictionaryCategories: Set<DictionaryCategory> = emptySet()
     private var switchQWERTYPassword: Boolean? = false
     private var landscapeForceQwertyPreference: Boolean? = false
     private var landscapeForceQwertyRomajiPreference: Boolean? = false
@@ -4108,11 +4104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateDateCandidateConfig(preferences.dateCandidateConfig)
         voiceInputSettings = preferences.voiceInputSettings
         predictionConfig = preferences.predictionConfig
-        mozcUTPersonName = preferences.mozcUTPersonName
-        mozcUTPlaces = preferences.mozcUTPlaces
-        mozcUTWiki = preferences.mozcUTWiki
-        mozcUTNeologd = preferences.mozcUTNeologd
-        mozcUTWeb = preferences.mozcUTWeb
+        enabledDictionaryCategories = preferences.enabledDictionaryCategories
         isFlickOnlyMode = preferences.isFlickOnlyMode
         flickEditorPreviewPreference = preferences.flickEditorPreviewPreference
         flickEditorPreviewDelayMillis = preferences.flickEditorPreviewDelayMillis
@@ -6683,11 +6675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         filteredCandidateList = null
         if (::kanaKanjiEngine.isInitialized) {
-            if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
-            if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
-            if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
-            if (mozcUTNeologd == true) kanaKanjiEngine.releaseNeologdDictionary()
-            if (mozcUTWeb == true) kanaKanjiEngine.releaseWebDictionary()
+            kanaKanjiEngine.releaseClassifiedDictionaries()
             if (kanaKanjiEngine.isSystemUserDictionaryInitialized()) {
                 kanaKanjiEngine.releaseSystemUserDictionary()
             }
@@ -6814,12 +6802,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customThemeShortcutIconColor = null
 
         vibrationTimingStr = null
-        mozcUTPersonName = null
         romajiConverter = null
-        mozcUTPlaces = null
-        mozcUTWiki = null
-        mozcUTNeologd = null
-        mozcUTWeb = null
         sumireInputKeyType = null
         sumireInputKeyLayoutType = null
         sumireInputStyle = null
@@ -27577,11 +27560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mode = mode,
                 bunsetsuSeparation = bunsetsuSeparation == true,
                 n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUtPlaces = mozcUTPlaces,
-                mozcUtWiki = mozcUTWiki,
-                mozcUtNeologd = mozcUTNeologd,
-                mozcUtWeb = mozcUTWeb,
+                enabledDictionaryCategories = enabledDictionaryCategories,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = learnRepository,
                 omissionSearchEnabled = corrections.omissionEnabled,

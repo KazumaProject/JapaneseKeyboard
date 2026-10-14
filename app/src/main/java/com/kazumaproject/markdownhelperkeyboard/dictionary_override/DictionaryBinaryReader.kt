@@ -21,7 +21,10 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
+import java.security.MessageDigest
 import javax.inject.Inject
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import javax.inject.Singleton
 
 @Singleton
@@ -59,6 +62,38 @@ class DictionaryBinaryReader @Inject constructor(
 
     fun resolveCategoryLoadState(category: DictionaryCategory): DictionaryCategoryLoadState =
         resolver.resolveCategoryLoadState(category)
+
+    private val classifiedSurfaceOverrides: Map<String, Map<String, String>> by lazy {
+        resolver.openBundledAsset("categories/surface-overrides.json").bufferedReader().use {
+            Gson().fromJson(it, object : TypeToken<Map<String, Map<String, String>>>() {}.type)
+        }
+    }
+
+    fun loadClassifiedSurfaceOverrides(category: DictionaryCategory): Map<String, String> {
+        val spec = ClassifiedDictionaries.find(category) ?: return emptyMap()
+        val overrides = classifiedSurfaceOverrides[spec.id].orEmpty()
+        if (overrides.isEmpty()) return overrides
+        // Only bundled data or byte-identical imported triples receive the pinned literal repair.
+        if (resolver.shouldUseOverrideCategory(category) && DictionaryFileSpecs.forCategory(category).any { file ->
+                !resolver.openOverrideForKey(file.key).use(::sha256).contentEquals(
+                    resolver.openBundledForKey(file.key).use(::sha256)
+                )
+            }) return emptyMap()
+        return overrides
+    }
+
+    private fun sha256(input: InputStream): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(8192)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            digest.update(buffer, 0, count)
+        }
+        return digest.digest()
+    }
+
+    val currentRevision: Long get() = store.currentRevision
 
     fun loadLouds(key: DictionaryFileKey): LOUDS {
         compactBundledDictionary(key)?.tangoTrie?.let { return it }

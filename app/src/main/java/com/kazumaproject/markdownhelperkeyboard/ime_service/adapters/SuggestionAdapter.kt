@@ -2280,6 +2280,11 @@ class SuggestionAdapter internal constructor(
             GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte() -> "[AI]"
             else -> ""
         }
+        val categoryLabel = classifiedCandidateLabel(holder.itemView.context, suggestion.dictionaryCategories)
+        if (categoryLabel.isNotEmpty()) {
+            holder.typeText.text = android.text.SpannableStringBuilder(holder.typeText.text)
+                .append(if (holder.typeText.text.isEmpty()) "" else " ").append(categoryLabel)
+        }
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)
