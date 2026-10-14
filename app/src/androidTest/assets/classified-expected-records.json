@@ -80,8 +80,8 @@
     }
   },
   "person": {
-    "count": 276536,
-    "digestSum": "501fbb33185fdc22bc106f33ade4f3e7489969ae10b1bde034bf5dd19b075ef6",
+    "count": 277028,
+    "digestSum": "0ba545ef168886460ccd1d1e749b643dc2a4936b55646537efb41cb08e6f1a0d",
     "sample": {
       "reading": "ぁみにぃ",
       "surface": "ぁみにぃ"
@@ -221,6 +221,22 @@
     "sample": {
       "reading": "あいおいじし",
       "surface": "相生獅子"
+    }
+  },
+  "kampo": {
+    "count": 440,
+    "digestSum": "5fa52f7b26e826e5f50924799732b545de593dea684a76724445a19b69b86066",
+    "sample": {
+      "reading": "あせんやく",
+      "surface": "阿仙薬"
+    }
+  },
+  "medical": {
+    "count": 92847,
+    "digestSum": "e55c2e1b2fb53609424566bb3a1bc6372e212b2068973d004b27e2ce03ada5b2",
+    "sample": {
+      "reading": "あいあいぴー",
+      "surface": "ＩＩＰ"
     }
   }
 }

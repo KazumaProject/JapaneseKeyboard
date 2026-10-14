@@ -60,6 +60,7 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
     private fun preferenceContext(): Context = hierarchyContext.get() ?: requireContext()
 
     private var pendingKey: DictionaryFileKey? = null
+    private var preparedRevision: Long = Long.MIN_VALUE
     private var compatibilityUiState = CompatibilityUiState()
     private val displayStateResolver: ExternalDictionaryDisplayStateResolver
         get() = ExternalDictionaryDisplayStateResolver(store)
@@ -84,6 +85,11 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
         store = settingsIo(SettingsLoadStage.DATABASE) { storeProvider.get() }
         compatibilityValidator = settingsIo(SettingsLoadStage.DATABASE) { compatibilityValidatorProvider.get() }
         compatibilityUiState = settingsIo(SettingsLoadStage.DATABASE) { buildCompatibilityUiState() }
+        preparedRevision = store.currentRevision
+    }
+
+    override fun onPreferencesResumed() {
+        if (store.currentRevision != preparedRevision) reloadPreferences()
     }
 
     override fun createPreferenceHierarchy(context: Context): PreferenceScreen {
@@ -215,15 +221,8 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
                 isChecked = switchState.switchChecked
                 configureChangeListener { _, newValue ->
                     val enabled = newValue == true
-                    store.setOptionalBundledEnabled(dictionaryCategory, enabled)
-                    if (enabled && problems.isNotEmpty()) {
-                        store.setExternalEnabledForCategory(dictionaryCategory, false)
-                        showCompatibilityProblemDialog(problems)
-                    }
-                    store.setExternalEnabledForCategory(
-                        dictionaryCategory,
-                        enabled && specs.all { store.isValidOverride(it.key) } && problems.isEmpty(),
-                    )
+                    store.setDisableableCategoryEnabled(dictionaryCategory, enabled, problems.isEmpty())
+                    if (enabled && problems.isNotEmpty()) showCompatibilityProblemDialog(problems)
                     toastApplyTiming()
                     refreshCompatibilityUiState()
                     true

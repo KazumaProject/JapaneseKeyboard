@@ -55,4 +55,10 @@
     <string name="classified_label_work_periodical">定期刊行物</string>
     <string name="classified_dictionary_work_other">媒体未特定の作品・美術作品</string>
     <string name="classified_label_work_other">その他作品</string>
+    <string name="classified_dictionary_kampo">漢方・生薬</string>
+    <string name="classified_label_kampo">漢方・生薬</string>
+    <string name="classified_dictionary_medical">医療</string>
+    <string name="classified_label_medical">医療</string>
+    <string name="classified_dictionary_settings_title">分類別辞書</string>
+    <string name="classified_dictionary_settings_summary">カテゴリごとに変換・予測候補を有効にします。</string>
 </resources>

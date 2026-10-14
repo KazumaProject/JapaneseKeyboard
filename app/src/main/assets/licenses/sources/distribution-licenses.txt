@@ -1,0 +1,1845 @@
+Dictionary data notices and licenses
+
+Code and third-party dictionary data have separate licenses.
+
+
+=== LICENSE ===
+MIT License
+
+Copyright (c) 2024 KAZUMA NAKA
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+=== LICENSE-DATA.md ===
+# 辞書データのライセンスと出典
+
+このリポジトリのプログラムコードには [MIT License](LICENSE) を適用します。
+辞書データには以下の出典ごとの条件が適用されます。MITの表記は、第三者由来の
+辞書データをMITに変更するものではありません。
+
+## かな→英語辞書
+
+`src/main/english/reading-supplement.tsv`、採用・表記決定を記録した
+`src/main/english/candidate-review.tsv` と、その内容を含む `english_reading` 辞書は、
+JMdict由来部分およびこのプロジェクトの編集・追加部分を
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) で提供します。
+CMUdict由来部分の著作権表示・条件・免責も維持します。
+第三者の原資料について、当プロジェクトが新たな権利を主張するものではありません。
+
+| 出典 | 権利者・作成者 | 適用条件とリポジトリ内の表示 |
+| --- | --- | --- |
+| [JMdict / EDRDG](https://www.edrdg.org/edrdg/licence.html) | James William BREEN、Electronic Dictionary Research and Development Group | CC BY-SA 4.0。著作権・出典・改変表示と継承条件。[保存した公式表記](src/main/resources/third-party/JMDICT-LICENSE.html) |
+| [NGSL 1.2](https://www.newgeneralservicelist.com/new-general-service-list) | Charles Browne、Brent Culligan、Joseph Phillips | CC BY-SA 4.0。一般語の選定・頻度順の調査に利用。原本の頻度値は配布辞書に含めない |
+| [CMUdict](https://github.com/cmusphinx/cmudict/tree/74790861f652b15e4ac49015a90074ad62a27690) | Copyright (C) 1993–2015 Carnegie Mellon University. All rights reserved. | 原本の再配布条件・免責を維持。[LICENSE全文](src/main/resources/third-party/CMUDICT-LICENSE) |
+| [JapaneseCorpus](https://github.com/KazumaProject/JapaneseCorpus/releases) | 上流配布に記録された各出典の権利者 | 上流の英語辞書と出典表示を利用。[第三者表記](src/main/resources/THIRD-PARTY-NOTICES.md) |
+
+変更内容は、読み・表記の選定、カタカナからひらがなへの正規化、確認した読み揺れの追加、
+CMUdictの米語発音から確認したかな読みの作成、コスト設定、品質検査、実用性に基づく採用・除外、一般語の小文字化、略語・固有名詞の表記維持、重複統合とバイナリ化です。
+各採用行の出典・判断は補完TSV、版・リビジョン・SHA-256・作成手順は
+[辞書作成ドキュメント](docs/english-dictionary.md) に記録しています。
+日本語の読みと英語表記を確認した公式資料は、各行の `source` にURLを記録しています。
+資料の文章やPDF自体は補完TSVに転載していません。
+
+CC BY-SA 4.0の[全文](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en)に従い、
+出典・著作権・ライセンス・免責・変更内容の表示を維持し、改変データの継承条件を守ってください。
+ライセンスで認められた利用を制限する追加条件や技術的制限は付けられません。
+EDRDGの公式表記には、アプリ内の出典表示とデータ更新手順に関する記述もあります。
+既存行を追加・更新するときは最新資料との対応を確認し、出典・変更理由を記録します。
+
+## 既存の日本語辞書とその他のデータ
+
+Mozcのコード部分と辞書部分は条件が異なります。辞書にはNAIST/IPAdic、ICOT、
+沖縄辞書などの条件が含まれます。原本の表示を次のファイルに保存しています。
+
+- [MOZC-LICENSE](src/main/resources/third-party/MOZC-LICENSE)
+- [IPADIC-COPYING](src/main/resources/third-party/IPADIC-COPYING)
+- [IPADIC-NOTICE](src/main/resources/third-party/IPADIC-NOTICE)
+
+JapaneseCorpus由来データの原本表記は
+[third-party/LICENSE-DATA.md](src/main/resources/third-party/LICENSE-DATA.md) と
+[third-party/NOTICE.md](src/main/resources/third-party/NOTICE.md) に保存しています。
+これらは上流の文書であり、その中の「このリポジトリ」はJapaneseCorpusを指します。
+その他の辞書入力も、それぞれの出典・ライセンス条件に従います。この文書は、未確認の
+入力データに一律のライセンスを与えるものではありません。
+
+## 漢方・医療辞書
+
+`src/main/specialist` のKNApSAcK KAMPO由来データと `kampo` 辞書の加工部分は
+[CC BY-SA 2.1 日本](https://creativecommons.org/licenses/by-sa/2.1/jp/) に従います。
+KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学)。
+万病辞書 MANBYO_202106 と百薬辞書 HYAKUYAKU_202107 由来データおよび
+`medical` 辞書の編集・読み補完部分は [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) で提供します。
+作成者の表示は各提供元の保存した公式文書を維持します。
+
+加工は表記・読みの抽出と正規化、重複除外、空欄へのGemini推定読みの追加、
+品詞・コストの割当、バイナリ化です。原本の自動読みと推定読みの正確性は全件確認していません。
+出典・版・取得ZIPハッシュ・各行の原本対応・加工状態は
+[専門辞書の文書](docs/specialist-dictionaries.md) と `src/main/specialist` に記録します。
+出典・著作権・条件・加工表示を保持し、漢方の継承条件を守ってください。
+配布時はライセンス全文を含む別添 `DICTIONARY-LICENSES.txt` を維持してください。
+
+
+=== src/main/resources/THIRD-PARTY-NOTICES.md ===
+# Third-party notices
+
+The generated dictionaries combine data sources. The Kotlin program is MIT, but the
+generated dictionary data keeps the license and notice requirements of its
+upstream data sources. Do not treat the complete release archive as a single
+MIT-licensed work.
+
+Repository license scope is described in [LICENSE-DATA.md](../../../LICENSE-DATA.md).
+The upstream documents in `third-party/LICENSE-DATA.md` and `third-party/NOTICE.md`
+are preserved JapaneseCorpus notices: references to "this repository" in those
+documents describe JapaneseCorpus, not this converter project.
+
+## Project source code
+
+The Kotlin conversion program source files are distributed
+under the MIT License. The complete project license is in the repository
+[LICENSE](../../../LICENSE).
+
+## JapaneseCorpus / JMdict English data
+
+The hiragana-to-English source combines the JapaneseCorpus direct-loanword
+asset `mozc-english-reading-unigram-00000.txt.zst` with the curated full-reading
+pairs in `src/main/english/reading-supplement.tsv`. The CI resolves one latest
+published [JapaneseCorpus release](https://github.com/KazumaProject/JapaneseCorpus/releases)
+and records its tag and dictionary checksum; all downloaded inputs come from
+that same release. The manifest records the CMUdict pronunciation source.
+
+The initial supplement was checked against JMdict_e-20261012 from
+[JapaneseCorpus v2026.1012.19](https://github.com/KazumaProject/JapaneseCorpus/releases/tag/v2026.1012.19),
+SHA-256 `5004ad9c777db2188baaa51554d4bb3e1ef3781725c4b38467723886b5d47d9e`.
+Each supplemental row records its JMdict entry ID or official reference URL
+and the reason for accepting the complete reading/surface pair.
+
+JMdict is copyright James William BREEN and the Electronic Dictionary Research
+and Development Group. The JMdict-derived source, curated supplement, and
+adapted database data are licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The authoritative attribution and license notice is preserved in
+[`third-party/JMDICT-LICENSE.html`](third-party/JMDICT-LICENSE.html),
+with current [EDRDG terms](https://www.edrdg.org/edrdg/licence.html).
+This data license is separate from the MIT-licensed Kotlin program.
+
+Modifications include selecting direct English loanword pairs, converting
+Katakana readings to hiragana, adding individually checked full-reading pairs
+and attested variants, and applying the defensive quality filter documented in
+[`docs/english-dictionary.md`](../../../docs/english-dictionary.md).
+Only `primary` candidates are emitted. Source explanations and unapproved
+compounds remain in audit reports rather than being trimmed automatically.
+Redistribution of the JMdict-derived portion must preserve attribution and
+ShareAlike requirements. The binary-only assets ZIP does not include these
+notices; downstream distributions must provide the required source and license
+information, for example through the application's source/license screen.
+
+## NGSL and CMUdict general English supplement
+
+General English headwords were prioritized using the New General Service List
+(NGSL) 1.2 by Charles Browne, Brent Culligan, and Joseph Phillips, licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The [official NGSL site](https://www.newgeneralservicelist.com/new-general-service-list)
+provides the frequency list. The raw list and frequency statistics are not
+included in the binary assets; its version and checksum are recorded in the
+dictionary creation documentation. Frequency rankings are used for selection,
+not as measured IME candidate costs.
+
+Some supplemental kana readings are editorial adaptations of full US English
+pronunciations from [CMUdict](https://github.com/cmusphinx/cmudict), commit
+`74790861f652b15e4ac49015a90074ad62a27690`.
+CMUdict is Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+Its redistribution conditions and disclaimer are preserved verbatim in
+[`third-party/CMUDICT-LICENSE`](third-party/CMUDICT-LICENSE); source and binary
+redistributions of the derived material must reproduce the required notice.
+Rows distinguish these reviewed pronunciation-derived readings from readings
+attested in Japanese sources, and record the original ARPAbet pronunciation.
+The curated combined supplement remains distributed under CC BY-SA 4.0, with
+the CMUdict notice retained for its portion. The Kotlin code remains MIT.
+The CC BY-SA [legal code](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en)
+applies to the project-owned editorial contributions and the relevant adapted
+data; this does not replace the original CMUdict conditions or claim ownership
+of the upstream material. Changes include selection, hiragana normalization,
+reviewed pronunciation-derived kana, costs, de-duplication, and binary encoding.
+
+The binary-only ZIP does not include notice files. Downstream distributions must
+include the CMUdict notice alongside the existing JMdict attribution.
+
+## Google Mozc resources
+
+The Japanese dictionary and related resources are derived from
+[google/mozc](https://github.com/google/mozc). Mozc's code license and binary
+redistribution notice are in its
+[`LICENSE`](https://github.com/google/mozc/blob/master/LICENSE). The bundled
+`src/data/dictionary*` resources are mixed-license data. The upstream notice is
+preserved in this repository as `src/main/resources/third-party/MOZC-LICENSE`,
+alongside `src/main/resources/third-party/IPADIC-NOTICE`. The upstream source
+notice is also available at
+[`src/data/dictionary_oss/README.txt`](https://raw.githubusercontent.com/google/mozc/master/src/data/dictionary_oss/README.txt).
+
+The Mozc dictionary notice includes, among other conditions:
+
+- NAIST/IPAdic copyright and attribution requirements;
+- the ICOT Free Software no-warranty and notice requirements; and
+- Okinawa dictionary public-domain terms.
+
+Those upstream conditions continue to apply to the corresponding generated
+dictionary assets in this release. Google/Mozc names are not used to endorse
+this project.
+
+## Practical redistribution rule
+
+When redistributing the generated assets, preserve the attribution and license
+information required by each data source. The binary-only assets ZIP does not
+carry notice files. This repository preserves them under
+`src/main/resources/third-party/`; downstream packages must provide the required
+information or links in their own distribution. `LICENSE-DATA.md` and `NOTICE.md`
+in that directory provide additional JapaneseCorpus data provenance.
+
+## 漢方・医療辞書
+
+`src/main/specialist` のKNApSAcK KAMPO由来データと `kampo` 辞書の加工部分は
+[CC BY-SA 2.1 日本](https://creativecommons.org/licenses/by-sa/2.1/jp/) に従います。
+KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学)。
+万病辞書 MANBYO_202106 と百薬辞書 HYAKUYAKU_202107 由来データおよび
+`medical` 辞書の編集・読み補完部分は [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) で提供します。
+作成者の表示は各提供元の保存した公式文書を維持します。
+
+加工は表記・読みの抽出と正規化、重複除外、空欄へのGemini推定読みの追加、
+品詞・コストの割当、バイナリ化です。原本の自動読みと推定読みの正確性は全件確認していません。
+出典・版・取得ZIPハッシュ・各行の原本対応・加工状態は
+[専門辞書の文書](../../../docs/specialist-dictionaries.md) と `src/main/specialist` に記録します。
+出典・著作権・条件・加工表示を保持し、漢方の継承条件を守ってください。
+配布時はライセンス全文を含む別添 `DICTIONARY-LICENSES.txt` を維持してください。
+
+
+=== Specialist dictionaries ===
+Medical: CC BY 4.0. Kampo: CC BY-SA 2.1 Japan.
+Changes: field extraction, reading/surface normalization, duplicate filtering, optional Gemini inference of missing medical readings, assigned POS/cost, binary encoding.
+Original readings include automatic readings; supplementary readings are Gemini inferences. Accuracy and IME ranking are not verified.
+
+
+KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本
+Source: https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-1.html
+License: CC-BY-SA-2.1-JP
+
+
+KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本
+Source: https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-2.html
+License: CC-BY-SA-2.1-JP
+
+
+奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 万病辞書 MANBYO_202106
+Source: https://sociocom.naist.jp/manbyou-dic/
+License: CC-BY-4.0
+
+
+奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 百薬辞書 HYAKUYAKU_202107
+Source: https://sociocom.naist.jp/hyakuyaku-dic/
+License: CC-BY-4.0
+
+
+=== CC-BY-4.0.txt ===
+Source: https://creativecommons.org/licenses/by/4.0/legalcode.txt
+
+Attribution 4.0 International
+
+=======================================================================
+
+Creative Commons Corporation ("Creative Commons") is not a law firm and
+does not provide legal services or legal advice. Distribution of
+Creative Commons public licenses does not create a lawyer-client or
+other relationship. Creative Commons makes its licenses and related
+information available on an "as-is" basis. Creative Commons gives no
+warranties regarding its licenses, any material licensed under their
+terms and conditions, or any related information. Creative Commons
+disclaims all liability for damages resulting from their use to the
+fullest extent possible.
+
+Using Creative Commons Public Licenses
+
+Creative Commons public licenses provide a standard set of terms and
+conditions that creators and other rights holders may use to share
+original works of authorship and other material subject to copyright
+and certain other rights specified in the public license below. The
+following considerations are for informational purposes only, are not
+exhaustive, and do not form part of our licenses.
+
+     Considerations for licensors: Our public licenses are
+     intended for use by those authorized to give the public
+     permission to use material in ways otherwise restricted by
+     copyright and certain other rights. Our licenses are
+     irrevocable. Licensors should read and understand the terms
+     and conditions of the license they choose before applying it.
+     Licensors should also secure all rights necessary before
+     applying our licenses so that the public can reuse the
+     material as expected. Licensors should clearly mark any
+     material not subject to the license. This includes other CC-
+     licensed material, or material used under an exception or
+     limitation to copyright. More considerations for licensors:
+    wiki.creativecommons.org/Considerations_for_licensors
+
+     Considerations for the public: By using one of our public
+     licenses, a licensor grants the public permission to use the
+     licensed material under specified terms and conditions. If
+     the licensor's permission is not necessary for any reason--for
+     example, because of any applicable exception or limitation to
+     copyright--then that use is not regulated by the license. Our
+     licenses grant only permissions under copyright and certain
+     other rights that a licensor has authority to grant. Use of
+     the licensed material may still be restricted for other
+     reasons, including because others have copyright or other
+     rights in the material. A licensor may make special requests,
+     such as asking that all changes be marked or described.
+     Although not required by our licenses, you are encouraged to
+     respect those requests where reasonable. More considerations
+     for the public:
+    wiki.creativecommons.org/Considerations_for_licensees
+
+=======================================================================
+
+Creative Commons Attribution 4.0 International Public License
+
+By exercising the Licensed Rights (defined below), You accept and agree
+to be bound by the terms and conditions of this Creative Commons
+Attribution 4.0 International Public License ("Public License"). To the
+extent this Public License may be interpreted as a contract, You are
+granted the Licensed Rights in consideration of Your acceptance of
+these terms and conditions, and the Licensor grants You such rights in
+consideration of benefits the Licensor receives from making the
+Licensed Material available under these terms and conditions.
+
+
+Section 1 -- Definitions.
+
+  a. Adapted Material means material subject to Copyright and Similar
+     Rights that is derived from or based upon the Licensed Material
+     and in which the Licensed Material is translated, altered,
+     arranged, transformed, or otherwise modified in a manner requiring
+     permission under the Copyright and Similar Rights held by the
+     Licensor. For purposes of this Public License, where the Licensed
+     Material is a musical work, performance, or sound recording,
+     Adapted Material is always produced where the Licensed Material is
+     synched in timed relation with a moving image.
+
+  b. Adapter's License means the license You apply to Your Copyright
+     and Similar Rights in Your contributions to Adapted Material in
+     accordance with the terms and conditions of this Public License.
+
+  c. Copyright and Similar Rights means copyright and/or similar rights
+     closely related to copyright including, without limitation,
+     performance, broadcast, sound recording, and Sui Generis Database
+     Rights, without regard to how the rights are labeled or
+     categorized. For purposes of this Public License, the rights
+     specified in Section 2(b)(1)-(2) are not Copyright and Similar
+     Rights.
+
+  d. Effective Technological Measures means those measures that, in the
+     absence of proper authority, may not be circumvented under laws
+     fulfilling obligations under Article 11 of the WIPO Copyright
+     Treaty adopted on December 20, 1996, and/or similar international
+     agreements.
+
+  e. Exceptions and Limitations means fair use, fair dealing, and/or
+     any other exception or limitation to Copyright and Similar Rights
+     that applies to Your use of the Licensed Material.
+
+  f. Licensed Material means the artistic or literary work, database,
+     or other material to which the Licensor applied this Public
+     License.
+
+  g. Licensed Rights means the rights granted to You subject to the
+     terms and conditions of this Public License, which are limited to
+     all Copyright and Similar Rights that apply to Your use of the
+     Licensed Material and that the Licensor has authority to license.
+
+  h. Licensor means the individual(s) or entity(ies) granting rights
+     under this Public License.
+
+  i. Share means to provide material to the public by any means or
+     process that requires permission under the Licensed Rights, such
+     as reproduction, public display, public performance, distribution,
+     dissemination, communication, or importation, and to make material
+     available to the public including in ways that members of the
+     public may access the material from a place and at a time
+     individually chosen by them.
+
+  j. Sui Generis Database Rights means rights other than copyright
+     resulting from Directive 96/9/EC of the European Parliament and of
+     the Council of 11 March 1996 on the legal protection of databases,
+     as amended and/or succeeded, as well as other essentially
+     equivalent rights anywhere in the world.
+
+  k. You means the individual or entity exercising the Licensed Rights
+     under this Public License. Your has a corresponding meaning.
+
+
+Section 2 -- Scope.
+
+  a. License grant.
+
+       1. Subject to the terms and conditions of this Public License,
+          the Licensor hereby grants You a worldwide, royalty-free,
+          non-sublicensable, non-exclusive, irrevocable license to
+          exercise the Licensed Rights in the Licensed Material to:
+
+            a. reproduce and Share the Licensed Material, in whole or
+               in part; and
+
+            b. produce, reproduce, and Share Adapted Material.
+
+       2. Exceptions and Limitations. For the avoidance of doubt, where
+          Exceptions and Limitations apply to Your use, this Public
+          License does not apply, and You do not need to comply with
+          its terms and conditions.
+
+       3. Term. The term of this Public License is specified in Section
+          6(a).
+
+       4. Media and formats; technical modifications allowed. The
+          Licensor authorizes You to exercise the Licensed Rights in
+          all media and formats whether now known or hereafter created,
+          and to make technical modifications necessary to do so. The
+          Licensor waives and/or agrees not to assert any right or
+          authority to forbid You from making technical modifications
+          necessary to exercise the Licensed Rights, including
+          technical modifications necessary to circumvent Effective
+          Technological Measures. For purposes of this Public License,
+          simply making modifications authorized by this Section 2(a)
+          (4) never produces Adapted Material.
+
+       5. Downstream recipients.
+
+            a. Offer from the Licensor -- Licensed Material. Every
+               recipient of the Licensed Material automatically
+               receives an offer from the Licensor to exercise the
+               Licensed Rights under the terms and conditions of this
+               Public License.
+
+            b. No downstream restrictions. You may not offer or impose
+               any additional or different terms or conditions on, or
+               apply any Effective Technological Measures to, the
+               Licensed Material if doing so restricts exercise of the
+               Licensed Rights by any recipient of the Licensed
+               Material.
+
+       6. No endorsement. Nothing in this Public License constitutes or
+          may be construed as permission to assert or imply that You
+          are, or that Your use of the Licensed Material is, connected
+          with, or sponsored, endorsed, or granted official status by,
+          the Licensor or others designated to receive attribution as
+          provided in Section 3(a)(1)(A)(i).
+
+  b. Other rights.
+
+       1. Moral rights, such as the right of integrity, are not
+          licensed under this Public License, nor are publicity,
+          privacy, and/or other similar personality rights; however, to
+          the extent possible, the Licensor waives and/or agrees not to
+          assert any such rights held by the Licensor to the limited
+          extent necessary to allow You to exercise the Licensed
+          Rights, but not otherwise.
+
+       2. Patent and trademark rights are not licensed under this
+          Public License.
+
+       3. To the extent possible, the Licensor waives any right to
+          collect royalties from You for the exercise of the Licensed
+          Rights, whether directly or through a collecting society
+          under any voluntary or waivable statutory or compulsory
+          licensing scheme. In all other cases the Licensor expressly
+          reserves any right to collect such royalties.
+
+
+Section 3 -- License Conditions.
+
+Your exercise of the Licensed Rights is expressly made subject to the
+following conditions.
+
+  a. Attribution.
+
+       1. If You Share the Licensed Material (including in modified
+          form), You must:
+
+            a. retain the following if it is supplied by the Licensor
+               with the Licensed Material:
+
+                 i. identification of the creator(s) of the Licensed
+                    Material and any others designated to receive
+                    attribution, in any reasonable manner requested by
+                    the Licensor (including by pseudonym if
+                    designated);
+
+                ii. a copyright notice;
+
+               iii. a notice that refers to this Public License;
+
+                iv. a notice that refers to the disclaimer of
+                    warranties;
+
+                 v. a URI or hyperlink to the Licensed Material to the
+                    extent reasonably practicable;
+
+            b. indicate if You modified the Licensed Material and
+               retain an indication of any previous modifications; and
+
+            c. indicate the Licensed Material is licensed under this
+               Public License, and include the text of, or the URI or
+               hyperlink to, this Public License.
+
+       2. You may satisfy the conditions in Section 3(a)(1) in any
+          reasonable manner based on the medium, means, and context in
+          which You Share the Licensed Material. For example, it may be
+          reasonable to satisfy the conditions by providing a URI or
+          hyperlink to a resource that includes the required
+          information.
+
+       3. If requested by the Licensor, You must remove any of the
+          information required by Section 3(a)(1)(A) to the extent
+          reasonably practicable.
+
+       4. If You Share Adapted Material You produce, the Adapter's
+          License You apply must not prevent recipients of the Adapted
+          Material from complying with this Public License.
+
+
+Section 4 -- Sui Generis Database Rights.
+
+Where the Licensed Rights include Sui Generis Database Rights that
+apply to Your use of the Licensed Material:
+
+  a. for the avoidance of doubt, Section 2(a)(1) grants You the right
+     to extract, reuse, reproduce, and Share all or a substantial
+     portion of the contents of the database;
+
+  b. if You include all or a substantial portion of the database
+     contents in a database in which You have Sui Generis Database
+     Rights, then the database in which You have Sui Generis Database
+     Rights (but not its individual contents) is Adapted Material; and
+
+  c. You must comply with the conditions in Section 3(a) if You Share
+     all or a substantial portion of the contents of the database.
+
+For the avoidance of doubt, this Section 4 supplements and does not
+replace Your obligations under this Public License where the Licensed
+Rights include other Copyright and Similar Rights.
+
+
+Section 5 -- Disclaimer of Warranties and Limitation of Liability.
+
+  a. UNLESS OTHERWISE SEPARATELY UNDERTAKEN BY THE LICENSOR, TO THE
+     EXTENT POSSIBLE, THE LICENSOR OFFERS THE LICENSED MATERIAL AS-IS
+     AND AS-AVAILABLE, AND MAKES NO REPRESENTATIONS OR WARRANTIES OF
+     ANY KIND CONCERNING THE LICENSED MATERIAL, WHETHER EXPRESS,
+     IMPLIED, STATUTORY, OR OTHER. THIS INCLUDES, WITHOUT LIMITATION,
+     WARRANTIES OF TITLE, MERCHANTABILITY, FITNESS FOR A PARTICULAR
+     PURPOSE, NON-INFRINGEMENT, ABSENCE OF LATENT OR OTHER DEFECTS,
+     ACCURACY, OR THE PRESENCE OR ABSENCE OF ERRORS, WHETHER OR NOT
+     KNOWN OR DISCOVERABLE. WHERE DISCLAIMERS OF WARRANTIES ARE NOT
+     ALLOWED IN FULL OR IN PART, THIS DISCLAIMER MAY NOT APPLY TO YOU.
+
+  b. TO THE EXTENT POSSIBLE, IN NO EVENT WILL THE LICENSOR BE LIABLE
+     TO YOU ON ANY LEGAL THEORY (INCLUDING, WITHOUT LIMITATION,
+     NEGLIGENCE) OR OTHERWISE FOR ANY DIRECT, SPECIAL, INDIRECT,
+     INCIDENTAL, CONSEQUENTIAL, PUNITIVE, EXEMPLARY, OR OTHER LOSSES,
+     COSTS, EXPENSES, OR DAMAGES ARISING OUT OF THIS PUBLIC LICENSE OR
+     USE OF THE LICENSED MATERIAL, EVEN IF THE LICENSOR HAS BEEN
+     ADVISED OF THE POSSIBILITY OF SUCH LOSSES, COSTS, EXPENSES, OR
+     DAMAGES. WHERE A LIMITATION OF LIABILITY IS NOT ALLOWED IN FULL OR
+     IN PART, THIS LIMITATION MAY NOT APPLY TO YOU.
+
+  c. The disclaimer of warranties and limitation of liability provided
+     above shall be interpreted in a manner that, to the extent
+     possible, most closely approximates an absolute disclaimer and
+     waiver of all liability.
+
+
+Section 6 -- Term and Termination.
+
+  a. This Public License applies for the term of the Copyright and
+     Similar Rights licensed here. However, if You fail to comply with
+     this Public License, then Your rights under this Public License
+     terminate automatically.
+
+  b. Where Your right to use the Licensed Material has terminated under
+     Section 6(a), it reinstates:
+
+       1. automatically as of the date the violation is cured, provided
+          it is cured within 30 days of Your discovery of the
+          violation; or
+
+       2. upon express reinstatement by the Licensor.
+
+     For the avoidance of doubt, this Section 6(b) does not affect any
+     right the Licensor may have to seek remedies for Your violations
+     of this Public License.
+
+  c. For the avoidance of doubt, the Licensor may also offer the
+     Licensed Material under separate terms or conditions or stop
+     distributing the Licensed Material at any time; however, doing so
+     will not terminate this Public License.
+
+  d. Sections 1, 5, 6, 7, and 8 survive termination of this Public
+     License.
+
+
+Section 7 -- Other Terms and Conditions.
+
+  a. The Licensor shall not be bound by any additional or different
+     terms or conditions communicated by You unless expressly agreed.
+
+  b. Any arrangements, understandings, or agreements regarding the
+     Licensed Material not stated herein are separate from and
+     independent of the terms and conditions of this Public License.
+
+
+Section 8 -- Interpretation.
+
+  a. For the avoidance of doubt, this Public License does not, and
+     shall not be interpreted to, reduce, limit, restrict, or impose
+     conditions on any use of the Licensed Material that could lawfully
+     be made without permission under this Public License.
+
+  b. To the extent possible, if any provision of this Public License is
+     deemed unenforceable, it shall be automatically reformed to the
+     minimum extent necessary to make it enforceable. If the provision
+     cannot be reformed, it shall be severed from this Public License
+     without affecting the enforceability of the remaining terms and
+     conditions.
+
+  c. No term or condition of this Public License will be waived and no
+     failure to comply consented to unless expressly agreed to by the
+     Licensor.
+
+  d. Nothing in this Public License constitutes or may be interpreted
+     as a limitation upon, or waiver of, any privileges and immunities
+     that apply to the Licensor or You, including from the legal
+     processes of any jurisdiction or authority.
+
+
+=======================================================================
+
+Creative Commons is not a party to its public
+licenses. Notwithstanding, Creative Commons may elect to apply one of
+its public licenses to material it publishes and in those instances
+will be considered the “Licensor.” The text of the Creative Commons
+public licenses is dedicated to the public domain under the CC0 Public
+Domain Dedication. Except for the limited purpose of indicating that
+material is shared under a Creative Commons public license or as
+otherwise permitted by the Creative Commons policies published at
+creativecommons.org/policies, Creative Commons does not authorize the
+use of the trademark "Creative Commons" or any other trademark or logo
+of Creative Commons without its prior written consent including,
+without limitation, in connection with any unauthorized modifications
+to any of its public licenses or any other arrangements,
+understandings, or agreements concerning use of licensed material. For
+the avoidance of doubt, this paragraph does not form part of the
+public licenses.
+
+Creative Commons may be contacted at creativecommons.org.
+
+
+=== CC-BY-SA-2.1-JP.txt ===
+Source: https://creativecommons.org/licenses/by-sa/2.1/jp/legalcode
+
+リーガル・コード - アトリビューション—シェアアライク
+2.1（帰属—同一条件許諾） - Creative Commons
+コンテンツへ進む
+Creative Commons
+Menu
+Who We Are
+Expand
+Strategic Plan
+Team
+Governance
+Opportunities
+Annual Reports & Financials
+History
+Press
+What We Do
+Expand
+Build
+Open Infrastructure
+Expand
+CC Licenses
+CC Signals
+Public Domain
+Chooser
+FAQs
+Implement
+the Commons
+Expand
+Where CC Makes An Impact
+Resources
+Search the Commons
+Engage
+the People
+Expand
+Training + Webinars
+Advocacy
+Community
+Events
+Blog
+Support Us
+Expand
+Make a Gift
+Open Infrastructure Circle
+Donor FAQ
+Donate
+アトリビューション—シェアアライク 2.1（帰属—同一条件許諾）
+CC BY-SA 2.1 JP
+リーガル・コード
+カノニカルURL
+[https://creativecommons.org/licenses/by-sa/2.1/jp/] https://creativecommons.org/licenses/by-sa/2.1/jp/
+その他のフォーマット
+RDF/XML
+コモンズ証を見る
+バージョン 2.1 • 誤りの訂正情報とその日付についてはエラッタのページ
+をご参照ください。
+ご注意
+このページにあるのはこのライセンスの古いバージョンのものです。バージョン4.0のCCライセンス群は、それ以前のバージョンのものと比べてよりユーザー・フレンドリーで国際的にも堅牢です。もしあなたが
+ご自身の作品をライセンスするのでしたらバージョン4.0のライセンスをこのページにあるライセンスの代わりに使うことを強くお勧めします\:
+リーガル・コード - 表示-継承 4.0 国際
+アトリビューション—シェアアライク 2.1（帰属—同一条件許諾）
+クリエイティブ・コモンズ及びクリエイティブ・コモンズ・ジャパンは法律事務所ではありません。この利用許諾条項の頒布は法的アドバイスその他の法律業務を行うものではありません。クリエイティブ・コモンズ及びクリエイティブ・コモンズ・ジャパンは、この利用許諾の当事者ではなく、ここに提供する情報及び本作品に関しいかなる保証も行いません。クリエイティブ・コモンズ及びクリエイティブ・コモンズ・ジャパンは、いかなる法令に基づこうとも、あなた又はいかなる第三者の損害（この利用許諾に関連する通常損害、特別損害を含みますがこれらに限られません）について責任を負いません。
+利用許諾
+本作品（下記に定義する）は、このクリエイティブ・コモンズ･パブリック･ライセンス日本版（以下「この利用許諾」という）の条項の下で提供される。本作品は、著作権法及び／又は他の適用法によって保護される。本作品をこの利用許諾又は著作権法の下で授権された以外の方法で使用することを禁止する。
+許諾者は、かかる条項をあなたが承諾することとひきかえに、ここに規定される権利をあなたに付与する。本作品に関し、この利用許諾の下で認められるいずれかの利用を行うことにより、あなたは、この利用許諾（条項）に拘束されることを承諾し同意したこととなる。
+第1条　定義
+この利用許諾中の用語を以下のように定義する。その他の用語は、著作権法その他の法令で定める意味を持つものとする。
+「二次的著作物」
+とは、著作物を翻訳し、編曲し、若しくは変形し、または脚色し、映画化し、その他翻案することにより創作した著作物をいう。ただし、編集著作物又はデータベースの著作物（以下、この二つを併せて「編集著作物等」という。）を構成する著作物は、二次的著作物とみなされない。また、原著作者及び実演家の名誉又は声望を害する方法で原著作物を改作、変形もしくは翻案して生じる著作物は、この利用許諾の目的においては、二次的著作物に含まれない。
+「許諾者」
+とは、この利用許諾の条項の下で本作品を提供する個人又は団体をいう。
+「あなた」
+とは、この利用許諾に基づく権利を行使する個人又は団体をいう。
+「原著作者」
+とは、本作品に含まれる著作物を創作した個人又は団体をいう。
+「本作品」
+とは、この利用許諾の条項に基づいて利用する権利が付与される対象たる無体物をいい、著作物、実演、レコード、放送にかかる音又は影像、もしくは有線放送にかかる音又は影像をすべて含むものとする。
+「ライセンス要素」
+とは、許諾者が選択し、この利用許諾に表示されている、以下のライセンス属性をいう：帰属・同一条件許諾
+第2条　著作権等に対する制限
+この利用許諾に含まれるいかなる条項によっても、許諾者は、あなたが著作権の制限（著作権法第30条〜49条）、著作者人格権に対する制限（著作権法第18条2項〜4項、第19条2項〜4項、第20条2項）、著作隣接権に対する制限（著作権法第102条）その他、著作権法又はその他の適用法に基づいて認められることとなる本作品の利用を禁止しない。
+第3条　ライセンスの付与
+この利用許諾の条項に従い、許諾者はあなたに、本作品に関し、すべての国で、ロイヤリティ・フリー、非排他的で、（第7条bに定める期間）継続的な以下のライセンスを付与する。ただし、あなたが以前に本作品に関するこの利用許諾の条項に違反したことがないか、あるいは、以前にこの利用許諾の条項に違反したがこの利用許諾に基づく権利を行使するために許諾者から明示的な許可を得ている場合に限る。
+本作品に含まれる著作物（以下「本著作物」という。）を複製すること（編集著作物等に組み込み複製することを含む。以下、同じ。）、
+本著作物を翻案して二次的著作物を創作し、複製すること、
+本著作物又はその二次的著作物の複製物を頒布すること（譲渡または貸与により公衆に提供することを含む。以下同じ。）、上演すること、演奏すること、上映すること、公衆送信を行うこと（送信可能化を含む。以下、同じ。）、公に口述すること、公に展示すること、
+本作品に含まれる実演を、録音・録画すること（録音･録画物を増製することを含む）、録音･録画物により頒布すること、公衆送信を行うこと、
+本作品に含まれるレコードを、複製すること、頒布すること、公衆送信を行うこと、
+本作品に含まれる、放送に係る音又は影像を、複製すること、その放送を受信して再放送すること又は有線放送すること、その放送又はこれを受信して行う有線放送を受信して送信可能化すること、そのテレビジョン放送又はこれを受信して行う有線放送を受信して、影像を拡大する特別の装置を用いて公に伝達すること、
+本作品に含まれる、有線放送に係る音又は影像を、複製すること、その有線放送を受信して放送し、又は再有線放送すること、その有線放送を受信して送信可能化すること、その有線テレビジョン放送を受信して、影像を拡大する特別の装置を用いて公に伝達すること、
+上記に定められた本作品又はその二次的著作物の利用は、現在及び将来のすべての媒体・形式で行うことができる。あなたは、他の媒体及び形式で本作品又はその二次的著作物を利用するのに技術的に必要な変更を行うことができる。許諾者は本作品又はその二次的著作物に関して、この利用許諾に従った利用については自己が有する著作者人格権及び実演家人格権を行使しない。許諾者によって明示的に付与されない全ての権利は、留保される。
+第4条　受領者へのライセンス提供
+あなたが本作品をこの利用許諾に基づいて利用する度毎に、許諾者は本作品又は本作品の二次的著作物の受領者に対して、直接、この利用許諾の下であなたに許可された利用許諾と同じ条件の本作品のライセンスを提供する。
+第5条　制限
+上記第3条及び第4条により付与されたライセンスは、以下の制限に明示的に従い、制約される。
+あなたは、この利用許諾の条項に基づいてのみ、本作品を利用することができる。
+あなたは、この利用許諾又はこの利用許諾と同一のライセンス要素を含むほかのクリエイティブ･コモンズ・ライセンス（例えば、この利用許諾の新しいバージョン、又はこの利用許諾と同一のライセンス要素の他国籍ライセンスなど）に基づいてのみ、本作品の二次的著作物を利用することができる。
+あなたは、本作品を利用するときは、この利用許諾の写し又はURI（Uniform
+Resource
+Identifier）を本作品の複製物に添付又は表示しなければならない。
+あなたは、本作品の二次的著作物を利用するときは、この利用許諾又はこの利用許諾と同一のライセンス要素を含むほかのクリエイティブ･コモンズ･ライセンスの写し又はURIを本作品の二次的著作物の複製物に添付または表示しなければならない。
+あなたは、この利用許諾条項及びこの利用許諾によって付与される利用許諾受領者の権利の行使を変更又は制限するような、本作品又はその二次的著作物に係る条件を提案したり課したりしてはならない。
+あなたは、本作品を再利用許諾することができない。
+あなたは、本作品又はその二次的著作物の利用にあたって、この利用許諾及びその免責条項に関する注意書きの内容を変更せず、見やすい態様でそのまま掲載しなければならない。
+あなたは、この利用許諾条項と矛盾する方法で本著作物へのアクセス又は使用をコントロールするような技術的保護手段を用いて、本作品又はその二次的著作物を利用してはならない。
+本条の制限は、本作品又はその二次的著作物が編集著作物等に組み込まれた場合にも、その組み込まれた作品に関しては適用される。しかし、本作品又はその二次的著作物が組み込まれた編集著作物等そのものは、この利用許諾の条項に従う必要はない。
+あなたは、本作品、その二次的著作物又は本作品を組み込んだ編集著作物等を利用する場合には、（1）本作品に係るすべての著作権表示をそのままにしておかなければならず、（2）原著作者及び実演家のクレジットを、合理的な方式で、（もし示されていれば原著作者及び実演家の名前又は変名を伝えることにより、）表示しなければならず、（3）本作品のタイトルが示されている場合には、そのタイトルを表示しなければならず、（4）許諾者が本作品に添付するよう指定したURIがあれば、合理的に実行可能な範囲で、そのURIを表示しなければならず（ただし、そのURIが本作品の著作権表示またはライセンス情報を参照するものでないときはこの限りでない。）（5）二次的著作物の場合には、当該二次的著作物中の原著作物の利用を示すクレジットを表示しなければならない。これらのクレジットは、合理的であればどんな方法でも行うことができる。しかしながら、二次的著作物又は編集著作物等の場合には、少なくとも他の同様の著作者のクレジットが表示される箇所で当該クレジットを表示し、少なくとも他の同様の著作者のクレジットと同程度に目立つ方法であることを要する。
+もし、あなたが、本作品の二次的著作物、又は本作品もしくはその二次的著作物を組み込んだ編集著作物等を創作した場合、あなたは、許諾者からの通知があれば、実行可能な範囲で、要求に応じて、二次的著作物又は編集著作物等から、許諾者又は原著作者への言及をすべて除去しなければならない。
+第6条　責任制限
+この利用許諾の両当事者が書面にて別途合意しない限り、許諾者は本作品を現状のまま提供するものとし、明示・黙示を問わず、本作品に関していかなる保証（特定の利用目的への適合性、第三者の権利の非侵害、欠陥の不存在を含むが、これに限られない。）もしない。
+この利用許諾又はこの利用許諾に基づく本作品の利用から発生する、いかなる損害（許諾者が、本作品にかかる著作権、著作隣接権、著作者人格権、実演家人格権、商標権、パブリシティ権、不正競争防止法その他関連法規上保護される利益を有する者からの許諾を得ることなく本作品の利用許諾を行ったことにより発生する損害、プライバシー侵害又は名誉毀損から発生する損害等の通常損害、及び特別損害を含むが、これに限らない。）についても、許諾者に故意又は重大な過失がある場合を除き、許諾者がそのような損害発生の可能性を知らされたか否かを問わず、許諾者は、あなたに対し、これを賠償する責任を負わない。
+第7条　終了
+この利用許諾は、あなたがこの利用許諾の条項に違反すると自動的に終了する。しかし、本作品、その二次的著作物又は編集著作物等をあなたからこの利用許諾に基づき受領した第三者に対しては、その受領者がこの利用許諾を遵守している限り、この利用許諾は終了しない。第1条、第2条、第4条から第9条は、この利用許諾が終了してもなお有効に存続する。
+上記aに定める場合を除き、この利用許諾に基づくライセンスは、本作品に含まれる著作権法上の権利が存続するかぎり継続する。
+許諾者は、上記aおよびbに関わらず、いつでも、本作品をこの利用許諾に基づいて頒布することを将来に向かって中止することができる。ただし、許諾者がこの利用許諾に基づく頒布を将来に向かって中止した場合でも、この利用許諾に基づいてすでに本作品を受領した利用者に対しては、この利用許諾に基づいて過去及び将来に与えられるいかなるライセンスも終了することはない。また、上記によって終了しない限り、この利用許諾は、全面的に有効なものとして継続する。
+第8条　その他
+この利用許諾のいずれかの規定が、適用法の下で無効及び／又は執行不能の場合であっても、この利用許諾の他の条項の有効性及び執行可能性には影響しない。
+この利用許諾の条項の全部又は一部の放棄又はその違反に関する承諾は、これが書面にされ、当該放棄又は承諾に責任を負う当事者による署名又は記名押印がなされない限り、行うことができない。
+この利用許諾は、当事者が本作品に関して行った最終かつ唯一の合意の内容である。この利用許諾は、許諾者とあなたとの相互の書面による合意なく修正されない。
+この利用許諾は日本語により提供される。この利用許諾の英語その他の言語への翻訳は参照のためのものに過ぎず、この利用許諾の日本語版と翻訳との間に何らかの齟齬がある場合には日本語版が優先する。
+第9条　準拠法
+この利用許諾は、日本法に基づき解釈される。
+本作品がクリエイティブ・コモンズ・ライセンスに基づき利用許諾されたことを公衆に示すという限定された目的の場合を除き、許諾者も被許諾者もクリエイティブ・コモンズの事前の書面による同意なしに「クリエイティブ・コモンズ」の商標若しくは関連商標又はクリエイティブ・コモンズのロゴを使用しないものとします。使用が許可された場合はクリエイティブ・コモンズおよびクリエイティブ･コモンズ･ジャパンのウェブサイト上に公表される、又はその他随時要求に従い利用可能となる、クリエイティブ・コモンズの当該時点における商標使用指針を遵守するものとします。クリエイティブ・コモンズは
+https://creativecommons.org/から、クリエイティブ・コモンズ・ジャパンはhttp://www.creativecommons.jp/から連絡することができます。
+クリエイティブ・コモンズについて
+クリエイティブ・コモンズは、クリエイティブ・コモンズ・パブリック・ライセンスの当事者ではありません。ただし、クリエイティブ・コモンズは、自らが公開するマテリアルに、自らのパブリック・ライセンスのいずれかを適用すると決定することができ、その場合には許諾者とみなされます。クリエイティブ・コモンズ・パブリック・ライセンスの文章は [https://creativecommons.org/publicdomain/zero/1.0/legalcode.ja] CC0パブリック・ドメイン宣言のもとで提供されています。本マテリアルがクリエイティブ・コモンズ・パブリック・ライセンスで共有されていることを公衆に示すという限られた目的の場合、または [https://creativecommons.org/policies] creativecommons.org/policiesで公表されているクリエイティブ・コモンズの方針に基づいて許容される場合を除き、クリエイティブ・コモンズは、クリエイティブ・コモンズとの事前の書面による同意なしに、「クリエイティブ・コモンズ」の商標や関連商標もしくはクリエイティブ・コモンズのロゴを使用することを認めていません。ここで認められていない使用には、クリエイティブ・コモンズのパブリック・ライセンスの許可されていない改変との関係での利用、その他のライセンスされたマテリアルの利用に関するいかなる取り決め、了解事項または合意との関係での利用を含みますが、これらに限られません。誤解を避けるために記すと、この項はパブリック・ライセンスの一部ではありません。
+クリエイティブ・コモンズにはcreativecommons.orgから連絡することができます。
+クリエイティブ・コモンズはオープンライセンスや、クリエイターが自分たちの作品をシェアできるようにするためのその他の法的なツールの背後にある非営利組織です。私たちの法的なツールは無償でお使いいただけます。
+私たちの活動についてもっと知る
+CCライセンスについてもっと知る
+私たちの活動を支援する
+あなた自身のマテリアルにライセンスを使う
+ライセンスのリスト
+パブリックドメイン関連のツールのリスト
+Creative Commons
+submit
+Who we are
+What we do
+Blog
+Support us
+Store
+Contact
+Privacy
+Policies
+Terms
+Contact Us
+Creative Commons
+PO Box 1866, Mountain View,
+CA 94042
+info@creativecommons.org
+Bluesky
+Mastodon
+LinkedIn
+Subscribe to our newsletter
+Subscribe
+Except where otherwise noted, content
+on this site is licensed under a
+Creative Commons Attribution 4.0 International license. Icons by
+Font Awesome.
+
+
+=== hyakuyaku.txt ===
+Source: https://sociocom.naist.jp/hyakuyaku-dic/
+
+百薬辞書 Hyakuyaku-Dictionary – NAIST Social Computing Lab.
+コンテンツへスキップ
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources & Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+検索...
+ナビゲーションメニュー
+ナビゲーションメニュー
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources & Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+百薬辞書 Hyakuyaku-Dictionary
+English
+臨床現場で実際に使われる医薬品名を解析するための大規模な医薬品名辞書
+医療文書から病名や医薬品名を抽出する処理は，これまで医療言語処理分野の研究では盛んに行われてきました．しかし，実際の医療現場では，医薬品の一般名ではなく略記や英語名を用いることが少なくありません．そのため，定型的な一般名だけでは医薬品に関する情報をすべて抽出したいといった要望には応えることができません．そこで，ソーシャル・コンピューティング研究室では，医薬品に関連する語を広く抽出したデータを作成し，“百薬辞書”と名付けました．本サイトでは，百薬辞書ならびに関連データを公開していますので，ご自由にご利用ください．
+ダウンロード
+◆ 百薬辞書データ
+＜最新バージョン＞
+HYAKUYAKU_202107 (updated: 2021/07/06)
+＜過去バージョン＞
+HYAKUYAKU_202007 (updated: 2020/10/27)
+◆ Mecab用辞書データ（別ページに移動します）
+仕様百薬辞書の抜粋 (HYAKUYAKU_202107 ver.)
+百薬辞書の構成 (HYAKUYAKU_202107 ver.)
+カラム名
+説明
+出現形
+本研究室で収集した医療文書から抽出された医薬品名（全角）
+出現形よみ
+出現形のよみ（全角）
+一般名
+出現形に対応する医薬品の一般名（全角）．KEGG DRUG Database などをもとに，出現形の化学構造を反映した名称を付与．一般名が決まらない場合には [AMB]，[NON]，[TRE] を付与
+[AMB]: 出現形の曖昧性が高い場合
+[NON]: 出現形が医薬品ではなくサプリメントや健康食品などの場合
+[TRE]: 出現形が医薬品ではなく治療法である場合
+信頼度レベル
+一般名などのコーディングに対して付与した信頼度．なお，収載済みの情報を元に計算機が自動的に付与，あるいは，未コーディングの場合は値なし
+A: 2名の医療従事者のコーディングが同じ
+B: 1名の医療従事者のコーディングをもう1名が修正
+C: 1名の医療従事者がコーディング
+頻度レベル
+本研究室で収集した医療文書における出現形の使用頻度に基づき5％区切りで付与した20段階のレベル
+プライバシーポリシー
+本サイトに記入された個人情報は，サイト運営に必要となる連絡，サイトの評価，サイト上での表示，本サイトで提供するサービスの必要に限り使用し，それ以外の用途には使用しません．
+免責事項
+本成果物は，可能な限り細心の注意を払って開発しました．しかし，完全な信頼性や堅牢性を保証しているわけではありません．結果的に本成果物を使用して何らかの問題が発生した場合，提供元である奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室は一切の責任を負いかねます．ご使用になる場合には自己責任でご活用いただくようお願いいたします．
+本成果物は クリエイティブ・コモンズ 表示 4.0 国際 ライセンスの下に提供されています。
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+
+
+=== kampo_core.txt ===
+Source: https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/lic.html
+
+利用許諾 - KNApSAcK KAMPO | LSDB Archive
+[利用者規約]
+- あのデータベースが、丸ごとダウンロード可能に！-
+search
+ホーム
+アーカイブの説明
+寄託応募要領
+更新履歴
+データ一覧
+ヘルプ
+お問い合わせ
+KNApSAcK KAMPO
+このデータベースについて
+データベースの説明
+ダウンロード
+利用許諾
+このデータベースの更新履歴
+利用許諾
+本データベースの利用許諾
+利用許諾更新日: 2012/3/30
+本データベースは、以下で定める利用許諾に基づきご利用いただくことができます。 本利用許諾は、本データベース利用における許諾内容、及び利用者が従うべき条件を定めています。
+本データベースの利用許諾は、 クリエイティブ・コモンズ　表示-継承2.1　日本の定める利用許諾です。
+本データベースのクレジットは、 ”KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本”ですので、 利用にあたり必ず表示してください。
+クリエイティブ・コモンズ　表示-継承2.1　日本の概要は こちらです。 具体的な許諾条項は こちらをご覧ください。
+本データベースにおいて、以下の条件に従う限り許諾されている事項：
+本データベースの全部または一部に自由にアクセスし、データを取得することができます。
+本データベースの全部または一部のデータを自由に再配布することができます。
+本データベースの全部または一部のデータを利用した、データベースなどの二次的著作物を自由に作成し、配布することができます。
+本利用許諾に基づいて利用する際に従うべき条件：
+本データベースの全部または一部、あるいは二次的著作物の配布に際しては、本データベースの作成者のクレジットを表示しなければなりません。
+本データベースの全部または一部のデータを利用して作成された二次的著作物は、この利用許諾の下で配布されなければなりません。
+本利用許諾で許諾されていない事項については、以下のデータベース作成者に連絡をとり、利用許諾を求める必要があります。
+データベース作成者連絡先：
+〒630-0192　奈良県生駒市高山町8916−5
+奈良先端科学技術大学院大学　情報科学研究科　金谷重彦
+Tel: (教授)0743-72-5952　(秘書)0743-72-5257
+Fax: 0743-72-5258
+Email:
+Japan Science and Technology Agency
+Department for Information Infrastructure
+Office of NBDC Program
+5-3, Science Plaza 7F,
+Yonbancho, Chiyoda-ku,
+Tokyo 102-8666 Japan
+Tel. 03-5214-8491
+Fax. 03-5214-8470
+
+
+=== kampo_herb.txt ===
+Source: https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/lic.html
+
+利用許諾 - KNApSAcK KAMPO | LSDB Archive
+[利用者規約]
+- あのデータベースが、丸ごとダウンロード可能に！-
+search
+ホーム
+アーカイブの説明
+寄託応募要領
+更新履歴
+データ一覧
+ヘルプ
+お問い合わせ
+KNApSAcK KAMPO
+このデータベースについて
+データベースの説明
+ダウンロード
+利用許諾
+このデータベースの更新履歴
+利用許諾
+本データベースの利用許諾
+利用許諾更新日: 2012/3/30
+本データベースは、以下で定める利用許諾に基づきご利用いただくことができます。 本利用許諾は、本データベース利用における許諾内容、及び利用者が従うべき条件を定めています。
+本データベースの利用許諾は、 クリエイティブ・コモンズ　表示-継承2.1　日本の定める利用許諾です。
+本データベースのクレジットは、 ”KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本”ですので、 利用にあたり必ず表示してください。
+クリエイティブ・コモンズ　表示-継承2.1　日本の概要は こちらです。 具体的な許諾条項は こちらをご覧ください。
+本データベースにおいて、以下の条件に従う限り許諾されている事項：
+本データベースの全部または一部に自由にアクセスし、データを取得することができます。
+本データベースの全部または一部のデータを自由に再配布することができます。
+本データベースの全部または一部のデータを利用した、データベースなどの二次的著作物を自由に作成し、配布することができます。
+本利用許諾に基づいて利用する際に従うべき条件：
+本データベースの全部または一部、あるいは二次的著作物の配布に際しては、本データベースの作成者のクレジットを表示しなければなりません。
+本データベースの全部または一部のデータを利用して作成された二次的著作物は、この利用許諾の下で配布されなければなりません。
+本利用許諾で許諾されていない事項については、以下のデータベース作成者に連絡をとり、利用許諾を求める必要があります。
+データベース作成者連絡先：
+〒630-0192　奈良県生駒市高山町8916−5
+奈良先端科学技術大学院大学　情報科学研究科　金谷重彦
+Tel: (教授)0743-72-5952　(秘書)0743-72-5257
+Fax: 0743-72-5258
+Email:
+Japan Science and Technology Agency
+Department for Information Infrastructure
+Office of NBDC Program
+5-3, Science Plaza 7F,
+Yonbancho, Chiyoda-ku,
+Tokyo 102-8666 Japan
+Tel. 03-5214-8491
+Fax. 03-5214-8470
+
+
+=== manbyo.txt ===
+Source: https://sociocom.naist.jp/manbyou-dic/
+
+万病辞書 Manbyo-Dictionary – NAIST Social Computing Lab.
+コンテンツへスキップ
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources & Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+検索...
+ナビゲーションメニュー
+ナビゲーションメニュー
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources & Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+万病辞書 Manbyo-Dictionary
+English
+臨床現場で実際に使われる病名を解析するための大規模な病名辞書
+医療文書から病名を抽出する処理は，これまで医療言語処理分野の研究では盛んに行われてきました．病名抽出にはICDのような標準規格で規定された病名を用いることがほとんどでした．しかし，実際の医療現場では，正式名称ではなく略記や英語名を用いることが少なくありません．そのため，定型的な病名コードだけでは症状や病名に関する情報をすべて抽出したいといった要望には応えることができません． そこで，ソーシャル・コンピューティング研究室では，医療従事者が記載した電子カルテや退院サマリから，症状や病名に関連する語を広く抽出したデータを作成し，万病辞書と名付けました． 本ページでは，万病辞書データや万病辞書データを検索できる万病検索を公開していますので，ご自由にご利用ください．
+お知らせ
+現在，辞書プロジェクトは，医学概念・知識連結データベース「JMED-DICT」として継続しています．
+オープンソース（商用利用可能）な医療辞書として，「JMED-DICT mini」のご利用を検討ください．
+ダウンロード◆ 万病辞書データ＜最新バージョン＞
+MANBYO_202106  (updated: 2021/06/02)
+＜過去バージョン＞
+MANBYO_201907  (updated: 2019/07/04)
+MANBYO_201905 (updated: 2019/05/27)
+MANBYO_201810  (updated: 2018/10/12)
+MANBYO_201806 (updated: 2018/06/08)
+◆ Mecab用辞書データ（別ページに移動します）
+仕様
+万病辞書 (MANBYO_202106以降) の構成
+詳細はデータに含まれるREADMEをご覧ください．
+カラム名
+説明
+出現形
+電子カルテや退院サマリから抽出された症状・病名
+（例：１１β−水酸化酵素欠損症, １８常染色体異常等）
+出現形よみ
+出現形のよみがな（全角）． 信頼度LEVELがSの病名は，ICD10対応標準病名マスターに記載されている病名表記カナをもとに付与．上記以外の病名は，「万病辞書 よみがなくん」により自動付与し，一部人手により修正．なお，読みの候補が複数存在する場合は，音読みを優先．（誤りがある場合もございますので，参考までにお使いください）
+ICD10コード
+出現形に対応する，ICD10対応標準病名マスター (*1) に記載されているICD10コード．ただし，次の場合には -1を付与：1) 4つ以上のコードが存在する場合（3つまでは区切り文字には；（半角セミコロン）を用いて全て付与），2) 断⽚的な情報のみで判断が困難な場合，3) コードが存在していない場合
+標準病名
+出現形に対応する，ICD10対応標準病名マスター (*1) に記載されているICD10対応標準病名
+信頼度レベル
+ICD10コードや標準病名のコーディングに対する信頼度を表す．
+S: ICD10対応標準病名マスター (*1) に記載されている症状・病名
+A: 2名以上の医療従事者が同じコードを付与
+B: 2名以上の医療従事者が相談してコードを付与
+C: 1名の医療従事者がコードを付与
+D: 計算機が自動的に付与
+E: 新規に追加された症状・病名のうち，万病辞書に収載済み病名のICD コードと標準病名を元に，計算機が自動的に付与
+F: 新規に追加された症状・病名のうち，万病辞書に収載済み病名のICD コードと標準病名を元に，計算機が自動的に付与
+頻度レベル
+本研究室で収集した医療文書における出現形の出現頻度を降順でソートしたときの順位を5％ごとに区切ったレベル（95-100%など20段階）を付与．出現頻度が0の場合には「出現なし」を付与
+*1: ICD10対応標準病名マスター (V4.04 2018年4月1日改訂) を利用
+万病検索
+万病辞書内のデータをオンラインで閲覧することができます．右サイトで症状や病名を入力し，検索ボタンを押してください．
+https://sociocom.jp/demo/manbyo
+アンケート
+万病辞書について，ご意見・ご要望がございましたら，下記よりご回答ください．お答えいただいた内容は，今後の万病辞書の改善のための貴重な資料として使わせていただきます．
+アンケート（別ページに移動します）
+参考文献
+Kaoru Ito, Hiroyuki Nagai, Taro Okahisa, Shoko Wakamiya, Tomohide Iwao, Eiji Aramaki: J-MeDic: A Japanese Disease Name Dictionary based on Real Clinical Usage, International Conference on Language Resources and Evaluation (LREC) (Japan, Miyazaki), pp. 2365-2369, 2018 (2018/05/11)
+謝辞
+「万病辞書」は主に厚生労働科学研究費補助金「カルテ情報の自動構造化システムと疾患数理モデルの逐次的構築，及び，自動構造化機能を有した入力機構の開発」（研究代表者：荒牧英治）のサポートにて，奈良先端科学技術大学院大学と東京大学医学部附属病院により構築されました．
+プライバシーポリシー
+本サイトに記入された個人情報は，サイト運営に必要となる連絡，サイトの評価，サイト上での表示，本サイトで提供するサービスの必要に限り使用し，それ以外の用途には使用しません．
+免責事項
+本成果物は，可能な限り細心の注意を払って開発しました．しかし，完全な信頼性や堅牢性を保証しているわけではありません．結果的に本成果物を使用して何らかの問題が発生した場合，提供元である奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室は一切の責任を負いかねます．ご使用になる場合には自己責任でご活用いただくようお願いいたします．
+本成果物は クリエイティブ・コモンズ 表示 4.0 国際 ライセンスの下に提供されています。
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+
+
+=== CMUDICT-LICENSE ===
+Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+   The contents of this file are deemed to be source code.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+This work was supported in part by funding from the Defense Advanced
+Research Projects Agency, the Office of Naval Research and the National
+Science Foundation of the United States of America, and by member
+companies of the Carnegie Mellon Sphinx Speech Consortium. We acknowledge
+the contributions of many volunteers to the expansion and improvement of
+this dictionary.
+
+THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ``AS IS'' AND
+ANY EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY
+NOR ITS EMPLOYEES BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+=== IPADIC-COPYING ===
+Copyright 2000, 2001, 2002, 2003 Nara Institute of Science
+and Technology.
+Copyright 2023, LegalOn Technologies, Inc.
+All Rights Reserved.
+
+Use, reproduction, and distribution of this software is permitted.
+Any copy of this software, whether in its original form or modified,
+must include both the above copyright notice and the following
+paragraphs.
+
+Nara Institute of Science and Technology (NAIST),
+the copyright holders, disclaims all warranties with regard to this
+software, including all implied warranties of merchantability and
+fitness, in no event shall NAIST be liable for
+any special, indirect or consequential damages or any damages
+whatsoever resulting from loss of use, data or profits, whether in an
+action of contract, negligence or other tortuous action, arising out
+of or in connection with the use or performance of this software.
+
+A large portion of the dictionary entries
+originate from ICOT Free Software.  The following conditions for ICOT
+Free Software applies to the current dictionary as well.
+
+Each User may also freely distribute the Program, whether in its
+original form or modified, to any third party or parties, PROVIDED
+that the provisions of Section 3 ("NO WARRANTY") will ALWAYS appear
+on, or be attached to, the Program, which is distributed substantially
+in the same form as set out herein and that such intended
+distribution, if actually made, will neither violate or otherwise
+contravene any of the laws and regulations of the countries having
+jurisdiction over the User or the intended distribution itself.
+
+NO WARRANTY
+
+The program was produced on an experimental basis in the course of the
+research and development conducted during the project and is provided
+to users as so produced on an experimental basis.  Accordingly, the
+program is provided without any warranty whatsoever, whether express,
+implied, statutory or otherwise.  The term "warranty" used herein
+includes, but is not limited to, any warranty of the quality,
+performance, merchantability and fitness for a particular purpose of
+the program and the nonexistence of any infringement or violation of
+any right of any third party.
+
+Each user of the program will agree and understand, and be deemed to
+have agreed and understood, that there is no warranty whatsoever for
+the program and, accordingly, the entire risk arising from or
+otherwise connected with the program is assumed by the user.
+
+Therefore, neither ICOT, the copyright holder, or any other
+organization that participated in or was otherwise related to the
+development of the program and their respective officials, directors,
+officers and other employees shall be held liable for any and all
+damages, including, without limitation, general, special, incidental
+and consequential damages, arising out of or otherwise in connection
+with the use or inability to use the program or any product, material
+or result produced or otherwise obtained by using the program,
+regardless of whether they have been advised of, or otherwise had
+knowledge of, the possibility of such damages at any time during the
+project or thereafter.  Each user will be deemed to have agreed to the
+foregoing by his or her commencement of use of the program.  The term
+"use" as used herein includes, but is not limited to, the use,
+modification, copying and distribution of the program and the
+production of secondary products from the program.
+
+In the case where the program, whether in its original form or
+modified, was distributed or delivered to or received by a user from
+any person, organization or entity other than ICOT, unless it makes or
+grants independently of ICOT any specific warranty to the user in
+writing, such person, organization or entity, will also be exempted
+from and not be held liable to the user for any such damages as noted
+above as far as the program is concerned.
+÷÷
+
+
+=== IPADIC-NOTICE ===
+This software includes a binary version of data from
+
+  http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz,
+
+where the connection ids are remapped using CORE data in BCCWJ (except the PN category)
+
+  https://clrd.ninjal.ac.jp/bccwj/.
+
+
+=== JMDICT-LICENSE.html ===
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="Jim's Markup Program - V0.99">
+<TITLE>ELECTRONIC DICTIONARY RESEARCH AND DEVELOPMENT GROUP</TITLE>
+</HEAD>
+<BODY BGCOLOR="white">
+<!-- DO NOT EDIT!!
+This HTML document was generated by the "markup" program.
+Edit the original file instead. -->
+<center>
+<IMG SRC="edrdg.jpg" ALT="EDRDG"><BR>
+</center>
+<H1 ALIGN=CENTER> ELECTRONIC DICTIONARY RESEARCH AND DEVELOPMENT GROUP</H1>
+<H1 ALIGN=CENTER> GENERAL DICTIONARY LICENCE STATEMENT</H1>
+<BASEFONT SIZE="3">
+<P ALIGN="JUSTIFY">
+ <a HREF="index.html">EDRDG Home Page </a>
+</P>
+<P ALIGN="JUSTIFY">
+<B>1. Introduction</B>
+</P>
+<P ALIGN="JUSTIFY">
+In March 2000, James William Breen assigned ownership of the copyright
+of the dictionary files assembled, coordinated and edited by him to the
+The Electronic Dictionary Research and Development Group, then at
+Monash University (hereafter "the Group"), on the understanding that
+the Group
+will foster the development of the dictionary files, and will utilize all
+monies received for use of the files for the further
+development of the files, and for research into computer lexicography and
+electronic dictionaries.
+</P>
+<P ALIGN="JUSTIFY">
+This document outlines the licence arrangement put in place by The
+Group for usage of the files. It replaces all previous copyright and
+licence statements applying to the files.
+</P>
+<P ALIGN="JUSTIFY">
+<B>2. Application</B>
+</P>
+<P ALIGN="JUSTIFY">
+This licence statement and copyright notice applies to the
+following dictionary files, the associated documentation files,
+and any data files which are derived from them.
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+<UL>
+<LI><P ALIGN="JUSTIFY">
+<B>JMDICT</B>
+- Japanese-Multilingual Dictionary File - the Japanese and English
+components (the translational equivalents in other languages, e.g.
+German, French, Dutch, etc.
+are covered by separate copyright held by the compilers of that material.)
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>EDICT</B>
+- Japanese-English Electronic DICTionary File
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>ENAMDICT</B>
+- Japanese Names File
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>COMPDIC</B>
+- Japanese-English Computing and Telecommunications Terminology File
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>KANJIDIC2</B>
+- File of Information about the Kanji in JIS X 0208, JIS X 0212 and JIS X
+0213 in XML format.
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>KANJIDIC</B>
+- File of Information about the 6,355 Kanji in the JIS X 0208 Standard
+<I>(special conditions apply)</I>
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>KANJD212</B>
+- File of Information about the 5,801 Supplementary Kanji in the
+JIS X 0212 Standard
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>EDICT-R</B>
+- romanized version of the EDICT file. (NB: this file has been withdrawn
+from circulation, and all sites carrying it are requested to remove
+their copies.)
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+<B>RADKFILE/KRADFILE</B>
+- files relating to the decomposition of the 6,355 kanji in JIS X 0208
+into their visible components.
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+</LI>
+</UL>
+<P ALIGN="JUSTIFY">
+Copyright over the documents covered by this statement is held by James
+William BREEN and The Electronic Dictionary Research and
+Development Group.
+</P>
+<P ALIGN="JUSTIFY">
+<B>3. Licence Conditions</B>
+</P>
+<P ALIGN="JUSTIFY">
+<a href="https://creativecommons.org/licenses/by-sa/4.0/"><img
+src="https://creativecommons.org/images/public/somerights20.gif"></a>
+</P>
+<P ALIGN="JUSTIFY">
+The dictionary files are made available under a Creative Commons
+Attribution-ShareAlike Licence (V4.0). The Licence Deed can be viewed
+ <a HREF="https://creativecommons.org/licenses/by-sa/4.0/">here, </a>
+and the full Licence Code is
+ <a HREF="https://creativecommons.org/licenses/by-sa/4.0/legalcode">here. </a>
+</P>
+<P ALIGN="JUSTIFY">
+In summary (extract from the Licence Deed):
+<center>
+<table border width="80%"><tr><td>
+You are free:
+<ul>
+<li>to Share - to copy, distribute and transmit the work
+<li>to Remix - to adapt the work
+</ul>
+Under the following conditions:
+<ul>
+<li>Attribution. You must attribute the work in the manner specified by the author or licensor (but not in any way that suggests that they endorse you or your use of the work).
+<li>Share Alike. If you alter, transform, or build upon this work, you may distribute the resulting work only under the same, similar or a compatible licence.
+</ul>
+</td></tr></table>
+</center>
+</P>
+<P ALIGN="JUSTIFY">
+For attribution of these files, you must:
+</P>
+<OL type="a">
+<LI><P ALIGN="JUSTIFY">in the case of publishing significant extracts of the files, or
+material based on significant extracts of the files, e.g. in a published
+dictionary or in
+vocabulary lists, clearly acknowledge that you used the files for this purpose;
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">in the case of a software package,  WWW server, smartphone app, etc. which uses the
+files or incorporates data from the files, you must:
+</P>
+<OL type="i">
+<LI><P ALIGN="JUSTIFY">acknowledge the usage and source of the files in the documentation,
+publicity material, WWW site of the package/server, etc.;
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">provide copies of the documentation and licence files (in the case
+of software packages). Where the application packaging does not provide
+for the inclusion of such files (e.g. with iPhone applications), it is
+sufficient to provide links, as per the next point;
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">provide links to either local copies of
+the documentation and licence files or to the locations of the files
+at Monash University or at the EDRDG site.
+</P>
+<P ALIGN="JUSTIFY">
+If a WWW server is providing a dictionary function or an on-screen
+display of words from the files, the acknowledgement must be made on each
+screen display, e.g. in the form of a message at the foot of the screen
+or page. If, however, material from the files is mixed with information from
+other sources, it is sufficient to provide a general acknowledgement of the
+sources as described above.
+</P>
+<P ALIGN="JUSTIFY">
+For smartphone and tablet apps, acknowledgement must be made, e.g.
+on a separate screen
+accessed from a menu, such as one labelled "About", "Sources", etc. It is not
+sufficient just to mention it on a start-up/launch page of the app.
+</P>
+<P ALIGN="JUSTIFY">
+For the EDICT, JMdict and KANJIDIC files, the
+following URLs may  be used or quoted:
+</P>
+<UL>
+<LI><P ALIGN="JUSTIFY">
+ <a HREF="https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project">https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project </a>
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">
+ <a HREF="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project">https://www.edrdg.org/wiki/index.php/KANJIDIC_Project </a>
+</P>
+</LI>
+</UL>
+</LI>
+</OL>
+</LI>
+</OL>
+See
+ <a HREF="sample.html">this page </a>
+for samples of possible acknowledgement text.
+<P ALIGN="JUSTIFY">
+Note that in all cases, the addition of material to the files or to
+extracts from the files does not remove or in any way diminish the
+Group's copyright over the files. Users of material from the files
+must
+<B>NOT</B>
+claim copyright over that material.
+</P>
+<P ALIGN="JUSTIFY">
+Note also that provided the conditions above are met,
+there is NO restriction placed on commercial use of the files.
+The files can be bundled with software and sold for whatever
+the developer wants to charge.
+Software using these files does not have to be under any form of
+open-source licence.
+</P>
+<P ALIGN="JUSTIFY">
+Where use of the files results in a financial return to the user, it is
+suggested that the user make a donation to the Group to assist with the
+continued development of the files. The only method currently available is to
+make a donation via PayPal using a credit or debit card. Simply click on
+the following button and follow the instructions.
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+<input type="hidden" name="cmd" value="_xclick">
+<input type="hidden" name="business" value="jimbreen@gmail.com">
+<input type="hidden" name="item_name" value="Electronic Dictionary Research Group">
+<input type="hidden" name="item_number" value="EDRGDON001">
+<input type="hidden" name="no_shipping" value="2">
+<input type="hidden" name="no_note" value="1">
+<input type="hidden" name="currency_code" value="AUD">
+<input type="hidden" name="tax" value="0">
+<input type="hidden" name="bn" value="PP-DonationsBF">
+<input type="image" src="https://www.paypal.com/en_US/i/btn/x-click-but21.gif" border="0" name="submit" alt="Make payments with PayPal - it's fast, free and secure!">
+<img alt="" border="0" src="https://www.paypal.com/en_AU/i/scr/pixel.gif" width="1" height="1">
+</form>
+</P>
+<P ALIGN="JUSTIFY">
+NB: No contract or agreement needs to be signed in order to use the files.
+By using the files, the user implicitly undertakes to abide by the
+conditions of this licence.
+</P>
+<P ALIGN="JUSTIFY">
+<B>4. Updating Dictionary Versions</B>
+</P>
+<P ALIGN="JUSTIFY">
+If a software package,  WWW server, smartphone app, etc. uses the
+files or incorporates data from the files, there must be a procedure for
+regular updating of the data from the most recent versions available. For
+example, WWW-based dictionary servers should update their dictionary
+versions at least once a month. Failure to keep the versions up-to-date is
+a violation of the licence to use the data.
+</P>
+<P ALIGN="JUSTIFY">
+<B>5. Warranty and Liability</B>
+</P>
+<P ALIGN="JUSTIFY">
+While every effort has been made to ensure the accuracy of the information
+in the files, it is possible that errors may still be included. The files
+are made available without any warranty whatsoever as to their accuracy or
+suitability for a particular application.
+</P>
+<P ALIGN="JUSTIFY">
+Any individual or organization making use of the files must agree:
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+<OL type="a">
+<P ALIGN="JUSTIFY">
+</P>
+<LI><P ALIGN="JUSTIFY">to assume all liability for the use or misuse of the files, and must
+agree not to hold the Group liable for any actions or
+events resulting from use of the files.
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">to  refrain from bringing action or suit or claim against
+the Group or any of the Group's members on the basis of the use of
+the files, or any information included in the files.
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+</LI>
+<LI><P ALIGN="JUSTIFY">to indemnify the Group or its members in the case of action by a
+third party on the basis of the use of the files, or any
+information included in the files.
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+</LI>
+</OL>
+<P ALIGN="JUSTIFY">
+<B>6. Copyright</B>
+</P>
+<P ALIGN="JUSTIFY">
+Every effort has been made in the compilation of these files to ensure
+that the copyright of other compilers of dictionaries and lexicographic
+material
+has not been infringed. The Group asserts its intention to rectify immediately
+any breach of copyright brought to its attention.
+</P>
+<P ALIGN="JUSTIFY">
+Any individual or organization in possession of copies of the files, upon becoming
+aware that a possible copyright infringement may be present in the files,
+must undertake to contact the Group immediately with details of the
+possible infringement.
+</P>
+<P ALIGN="JUSTIFY">
+<B>7. Prior Permission</B>
+</P>
+<P ALIGN="JUSTIFY">
+All permissions for use of the files granted by James William Breen
+prior to March 2000 will be honoured and maintained, however the placing
+of the KANJD212 and EDICTH files under the GNU GPL has been withdrawn as
+of 25 March 2000.
+</P>
+<P ALIGN="JUSTIFY">
+<B>8. Special Conditions for the KANJIDIC, KANJD212 and KANJIDIC2 Files</B>
+</P>
+<P ALIGN="JUSTIFY">
+In addition to licensing arrangements described above, the following
+additional conditions apply to the KANJIDIC, KANJD212 and KANJIDIC2 files.
+</P>
+<P ALIGN="JUSTIFY">
+The following people have granted permission for material for which they hold
+copyright to be included in the files, and distributed under the above
+conditions, while retaining their copyright over that material:
+</P>
+<P ALIGN="JUSTIFY">
+Jack HALPERN: The SKIP codes.
+</P>
+<P ALIGN="JUSTIFY">
+Note that the SKIP codes are under their own similar Creative Common
+licence. See Jack Halpern's
+ <a HREF="http://www.kanji.org/kanji/dictionaries/skip_permission.htm">conditions of use </a>
+page.
+</P>
+<P ALIGN="JUSTIFY">
+Christian WITTERN and Koichi YASUOKA: The Pinyin information.
+</P>
+<P ALIGN="JUSTIFY">
+Urs APP: the Four Corner codes and the Morohashi information.
+</P>
+<P ALIGN="JUSTIFY">
+Mark SPAHN and Wolfgang HADAMITZKY: the kanji descriptors from their
+dictionary.
+</P>
+<P ALIGN="JUSTIFY">
+Charles MULLER: the Korean readings.
+</P>
+<P ALIGN="JUSTIFY">
+Joseph DE ROO: the De Roo codes.
+</P>
+<P ALIGN="JUSTIFY">
+</P>
+</OL>
+<B>9. Enquiries</B>
+<P ALIGN="JUSTIFY">
+All enquiries to:
+</P>
+<P ALIGN="JUSTIFY">
+The Electronic Dictionary Research and Development Group
+<BR>
+Attn: Dr Jim Breen
+<BR>
+(jimbreen@gmail.com)
+<!-- revised 28 August 2000 to clarify the situation with Linux -->
+<!-- revised 30 September 2000 to clarify the publication of material in other formats -->
+<!-- revised 26 February 2003 to remove commercial use restrictions -->
+<!-- revised 17 January 2004 to clarify acknowledgement details -->
+<!-- revised 20 May     2008 to update the frequency information in KANJIDIC -->
+<!-- revised 21 May     2008 reflected move to EDRDG site -->
+<!-- revised 30 May 2009 reflected the new SKIP licence. -->
+<!-- revised 29 Sep 2021 mention regular updates. -->
+</P>
+</BODY></HTML>
+
+
+=== LICENSE-DATA.md ===
+# Data license
+
+The generated corpus is distributed under the
+[Creative Commons Attribution-ShareAlike 4.0 International license](https://creativecommons.org/licenses/by-sa/4.0/)
+(`CC BY-SA 4.0`).
+
+The Wikipedia portion is derived from Japanese Wikipedia and remains subject
+to its applicable attribution and share-alike terms. Each record retains a URL
+to the corresponding article so that its contributors and revision history can
+be identified.
+
+The Aozora Bunko portion is restricted by this pipeline to works for which both
+the work and every associated person have the official copyright flag `なし`.
+Those source texts are public-domain works. Bibliographic metadata and source
+URLs are retained as requested by Aozora Bunko's file-handling guidelines.
+
+This notice does not replace the terms attached to either upstream source. See
+`NOTICE.md` for source details.
+
+The generated Mozc-format n-gram dictionaries are derived from the same corpus
+and are distributed under CC BY-SA 4.0. The bundled Mozc context-ID definition
+and third-party notice files retain their respective upstream terms; see the
+Release assets `MOZC-LICENSE`, `IPADIC-COPYING`, and `IPADIC-NOTICE`.
+
+The hiragana-to-English dictionary is derived from the Electronic Dictionary
+Research and Development Group's JMdict file and is distributed under the
+same CC BY-SA 4.0 terms. The exact source snapshot and the EDRDG licence page
+are included in each Release as `JMdict_e-<date>.xml.gz` and
+`JMDICT-LICENSE.html`. This project does not claim copyright over JMdict
+material.
+
+The AJIMEE-Bench evaluation dataset is not included in JapaneseCorpus
+Releases. Its aggregate accuracy report contains provenance and factual metric
+values only; the upstream dataset remains subject to its CC BY-SA 3.0 terms as
+described in `NOTICE.md`.
+
+
+=== MOZC-LICENSE ===
+Copyright 2010-2018, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimer
+    in the documentation and/or other materials provided with the
+    distribution.
+  * Neither the name of Google Inc. nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+
+Files: src/data/dictionary*
+
+Copyright 2000, 2001, 2002, 2003 Nara Institute of Science
+and Technology.  All Rights Reserved.
+
+Use, reproduction, and distribution of this software is permitted.
+Any copy of this software, whether in its original form or modified,
+must include both the above copyright notice and the following
+paragraphs.
+
+Nara Institute of Science and Technology (NAIST),
+the copyright holders, disclaims all warranties with regard to this
+software, including all implied warranties of merchantability and
+fitness, in no event shall NAIST be liable for
+any special, indirect or consequential damages or any damages
+whatsoever resulting from loss of use, data or profits, whether in an
+action of contract, negligence or other tortuous action, arising out
+of or in connection with the use or performance of this software.
+
+A large portion of the dictionary entries
+originate from ICOT Free Software.  The following conditions for ICOT
+Free Software applies to the current dictionary as well.
+
+Each User may also freely distribute the Program, whether in its
+original form or modified, to any third party or parties, PROVIDED
+that the provisions of Section 3 ("NO WARRANTY") will ALWAYS appear
+on, or be attached to, the Program, which is distributed substantially
+in the same form as set out herein and that such intended
+distribution, if actually made, will neither violate or otherwise
+contravene any of the laws and regulations of the countries having
+jurisdiction over the User or the intended distribution itself.
+
+NO WARRANTY
+
+The program was produced on an experimental basis in the course of the
+research and development conducted during the project and is provided
+to users as so produced on an experimental basis.  Accordingly, the
+program is provided without any warranty whatsoever, whether express,
+implied, statutory or otherwise.  The term "warranty" used herein
+includes, but is not limited to, any warranty of the quality,
+performance, merchantability and fitness for a particular purpose of
+the program and the nonexistence of any infringement or violation of
+any right of any third party.
+
+Each user of the program will agree and understand, and be deemed to
+have agreed and understood, that there is no warranty whatsoever for
+the program and, accordingly, the entire risk arising from or
+otherwise connected with the program is assumed by the user.
+
+Therefore, neither ICOT, the copyright holder, or any other
+organization that participated in or was otherwise related to the
+development of the program and their respective officials, directors,
+officers and other employees shall be held liable for any and all
+damages, including, without limitation, general, special, incidental
+and consequential damages, arising out of or otherwise in connection
+with the use or inability to use the program or any product, material
+or result produced or otherwise obtained by using the program,
+regardless of whether they have been advised of, or otherwise had
+knowledge of, the possibility of such damages at any time during the
+project or thereafter.  Each user will be deemed to have agreed to the
+foregoing by his or her commencement of use of the program.  The term
+"use" as used herein includes, but is not limited to, the use,
+modification, copying and distribution of the program and the
+production of secondary products from the program.
+
+In the case where the program, whether in its original form or
+modified, was distributed or delivered to or received by a user from
+any person, organization or entity other than ICOT, unless it makes or
+grants independently of ICOT any specific warranty to the user in
+writing, such person, organization or entity, will also be exempted
+from and not be held liable to the user for any such damages as noted
+above as far as the program is concerned.
+
+---
+
+Files: src/data/dictionary*
+
+Public Domain Dataです。使用・変更・配布に関しては一切の制限をつけません。
+商品などに組み込むことも自由に行なってください。すでにいくつかの辞書には沖縄辞書が採用されています。
+勝手ながら、沖縄辞書に寄贈された辞書も in the Public Domain' 扱いとさせていただきます。
+
+
+=== NOTICE.md ===
+# JapaneseCorpus generated data notice
+
+## Japanese Wikipedia
+
+- Source: <https://dumps.wikimedia.org/other/cirrus_search_index/>
+- Project: <https://ja.wikipedia.org/>
+- License information: <https://dumps.wikimedia.org/legal.html>
+- Applicable license for this distribution: CC BY-SA 4.0
+- Copyright: Wikimedia Foundation and Wikipedia contributors
+
+The corpus contains normalized article text, titles, stable page URLs, and
+source timestamps. It does not contain images.
+
+## Aozora Bunko
+
+- Source: <https://www.aozora.gr.jp/>
+- Official metadata: <https://www.aozora.gr.jp/index_pages/person_all.html>
+- File-handling guidelines: <https://www.aozora.gr.jp/guide/kijyunn.html>
+- Official source repository: <https://github.com/aozorabunko/aozorabunko>
+
+Only works whose official work and person copyright flags are all `なし` are
+included. The exact repository commit and metadata archive checksum are recorded in
+each Release manifest.
+
+## Pipeline inspiration
+
+The source selection and future kana-kanji conversion use case were informed by
+[Akaza](https://github.com/akaza-im/akaza), an MIT-licensed Japanese input
+method. JapaneseCorpus has its own extraction and packaging implementation.
+
+## Mozc context IDs and dictionary format
+
+- Source: <https://github.com/google/mozc>
+- Pinned commit: `3f235b4eb6fcff7d14ef5f0fb8ee56de7ee4c732`
+- Included file: `src/data/dictionary_oss/id.def` as Release asset `mozc-id.def`
+- License: the Mozc and dictionary notices in the included `MOZC-LICENSE`
+
+The generated dictionaries use the five-column text format consumed by Mozc's
+system dictionary loader. Mozc itself and its original word dictionary are not
+redistributed, apart from the matching context-ID definition and required notice.
+
+## Vibrato and IPADIC
+
+- Vibrato: <https://github.com/daac-tools/vibrato>, version 0.5.2, MIT license
+- Dictionary archive: Vibrato release v0.5.0, `ipadic-mecab-2_7_0`
+- IPADIC: version 2.7.0, NAIST/ICOT terms
+
+Vibrato and IPADIC are used for morphological analysis and readings. The Release
+includes `IPADIC-COPYING` and `IPADIC-NOTICE` alongside the generated dictionaries.
+
+## JMdict Japanese-English dictionary
+
+- Project: Electronic Dictionary Research and Development Group JMdict/EDICT
+- Source: <https://www.edrdg.org/pub/Nihongo/JMdict_e.gz>
+- Documentation: <https://www.edrdg.org/wiki/JMdict-EDICT_Dictionary_Project.html>
+- Licence: CC BY-SA 4.0 and the attribution conditions published by EDRDG
+
+The hiragana-to-English dictionary extracts English glosses and complete
+English language-source forms from katakana-reading JMdict entries. Each
+Release includes the exact source snapshot, its SHA-256 in the English
+dictionary manifest, and a saved copy of the EDRDG licence page.
+
+## AJIMEE-Bench
+
+- Project: <https://github.com/azooKey/AJIMEE-Bench>
+- Pinned commit: `401666cd56d1a570c2021798b64b6da4396bfd45`
+- Dataset: `JWTD_v2/v1/evaluation_items.json`
+- Dataset SHA-256: `e9eb668fd6aa14b1e26436f429b5550108af0a1dfd443b8cea0bcb3ab3028fca`
+- Dataset licence: CC BY-SA 3.0
+- Evaluation implementation licence: CC0 1.0
+
+The pinned dataset is downloaded and checksum-verified during CI and Release
+builds, but is not redistributed by JapaneseCorpus. A Release contains only an
+aggregate report with Accuracy@1 and MinCER values, source provenance, and no
+benchmark prompts or expected outputs.
+
+## Pipeline code
+
+The source code and configuration in this repository are licensed under the
+MIT License. Generated corpus files are covered by `LICENSE-DATA.md`.
