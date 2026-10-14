@@ -119,6 +119,22 @@
             android:summary="@string/keyboard_floating_preference_summary"
             android:title="@string/keyboard_floating_preference_title" />
 
+        <ListPreference
+            android:key="floating_keyboard_hide_button_position"
+            android:dependency="keyboard_floating_preference"
+            android:defaultValue="bottom_left"
+            android:title="@string/floating_keyboard_hide_button_position_title"
+            android:entries="@array/floating_keyboard_hide_button_position_labels"
+            android:entryValues="@array/floating_keyboard_hide_button_position_values"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            android:key="floating_keyboard_show_edit_button"
+            android:dependency="keyboard_floating_preference"
+            android:defaultValue="true"
+            android:title="@string/floating_keyboard_show_edit_button_title"
+            android:summary="@string/floating_keyboard_show_edit_button_summary" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="landscape_force_qwerty_preference"
