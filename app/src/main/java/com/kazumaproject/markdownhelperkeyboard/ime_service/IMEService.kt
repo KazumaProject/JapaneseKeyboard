@@ -378,6 +378,7 @@ import com.kazumaproject.markdownhelperkeyboard.text_macro.ExpandedMacro
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroInputConnectionExecutor
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.getKeyboardDisplayName
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
@@ -777,6 +778,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionKeySwipePreference: Boolean? = false
 
     private var speechRecognizer: SpeechRecognizer? = null
+    private var voiceInputSettings = VoiceInputSettings()
+    private var activeVoiceInputSettings = VoiceInputSettings()
+    private var activeVoiceInputLanguage = ""
     private var isListening = false
 
     private var enableGemmaTranslationPreference: Boolean? = false
@@ -3121,56 +3125,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
-                setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) {
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = true
-                        )
-                    }
-
-                    override fun onBeginningOfSpeech() {
-
-                    }
-
-                    override fun onRmsChanged(rmsdB: Float) {}
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() {
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onError(error: Int) {
-                        isListening = false
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onResults(results: Bundle?) {
-                        isListening = false
-                        val matches =
-                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onPartialResults(partialResults: Bundle?) {
-                        val matches =
-                            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
-                    }
-
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
+                setRecognitionListener(createVoiceRecognitionListener())
             }
         }
     }
@@ -3880,6 +3835,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
         updateDateCandidateConfig(preferences.dateCandidateConfig)
+        voiceInputSettings = preferences.voiceInputSettings
         predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
@@ -7355,6 +7311,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun createVoiceRecognitionListener(): RecognitionListener = object : RecognitionListener {
+        override fun onReadyForSpeech(params: Bundle?) {
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = true
+            )
+        }
+
+        override fun onBeginningOfSpeech() {
+
+        }
+
+        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onBufferReceived(buffer: ByteArray?) {}
+        override fun onEndOfSpeech() {
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onError(error: Int) {
+            isListening = false
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onResults(results: Bundle?) {
+            isListening = false
+            val matches =
+                results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val text = matches?.firstOrNull() ?: return
+            updateVoiceInputText(text)
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onPartialResults(partialResults: Bundle?) {
+            val matches =
+                partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val text = matches?.firstOrNull() ?: return
+            updateVoiceInputText(text)
+        }
+
+        override fun onEvent(eventType: Int, params: Bundle?) {}
+    }
+
+    private fun updateVoiceInputText(text: String) {
+        _inputString.update { activeVoiceInputSettings.transform(text, activeVoiceInputLanguage) }
+    }
+
     private fun startVoiceInput(
         mainView: MainLayoutBinding
     ) {
@@ -7402,6 +7413,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         try {
+            activeVoiceInputLanguage = languageValue
+            activeVoiceInputSettings = voiceInputSettings
             speechRecognizer?.startListening(intent)
             isListening = true
         } catch (e: SecurityException) {

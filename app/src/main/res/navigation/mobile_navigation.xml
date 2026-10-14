@@ -149,6 +149,11 @@
         android:label="@string/setting_category_input_method_title" />
 
     <fragment
+        android:id="@+id/voiceInputPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.VoiceInputPreferenceFragment"
+        android:label="@string/setting_category_voice_input_title" />
+
+    <fragment
         android:id="@+id/candidateConversionPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateConversionPreferenceFragment"
         android:label="@string/setting_category_candidate_conversion_title" />
