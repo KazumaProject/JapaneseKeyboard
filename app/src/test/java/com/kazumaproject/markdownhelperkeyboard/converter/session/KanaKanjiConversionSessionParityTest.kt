@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.session
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.BunsetsuConversionSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunsetsuSegments
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
@@ -26,6 +27,40 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class KanaKanjiConversionSessionParityTest {
+
+    @Test
+    fun alphanumericInputKeepsHalfWidthUppercaseAcrossQueryModes() = runBlocking {
+        for (backend in ConversionBackend.entries) for (bunsetsu in listOf(false, true)) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in CandidateQueryMode.entries) for (englishPrediction in listOf(false, true)) {
+                for (input in listOf("h8", "ab12", "8ab", "H8", "aB12")) {
+                    val result = session.query(request(input, mode, bunsetsu).copy(
+                        predictionConfig = PredictionConfig(englishPredictionEnabled = englishPrediction),
+                    ))
+                    val context = "$backend/$bunsetsu/$mode/$englishPrediction/$input"
+                    val uppercase = result.candidates.firstOrNull { it.string == input.uppercase() }
+                    assertTrue("$context: ${result.candidates.map { it.string }}", uppercase != null)
+                    assertEquals("$context: committed uppercase", input.uppercase(), uppercase!!.commitText)
+                    assertEquals("$context: consumed input", input.length, uppercase.length.toInt())
+                    assertTrue("$context: capitalized input", result.candidates.any {
+                        it.string == input.replaceFirstChar { char -> char.uppercaseChar() }
+                    })
+                    assertTrue("$context: original input", result.candidates.any { it.string == input })
+                    assertTrue("$context: full-width uppercase", result.candidates.any {
+                        it.string == input.toFullWidth().uppercase()
+                    })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun literalAlphanumericVariantsExcludeNumbersSymbolsAndJapaneseInput() {
+        for (input in listOf("", "1234", "h-8", "h８", "h8あ")) {
+            val candidates = engine.getCandidatesEnglishKana(input)
+            assertFalse("$input: $candidates", candidates.any { it.type == 29.toByte() })
+        }
+    }
 
     @Test fun defaultScoreFlickCorrectionKeepsWholeWordCandidatesInConversion() = runBlocking {
         for (backend in ConversionBackend.entries) {
