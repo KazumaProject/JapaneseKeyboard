@@ -127,6 +127,12 @@ enum class ShortcutType(
             com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_handwriting_active_24,
         description = "Gemma手書き"
     ),
+    FLOATING_CURSOR(
+        "floating_cursor",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_cursor,
+        activeIconResId = com.kazumaproject.markdownhelperkeyboard.R.drawable.floating_cursor_active,
+        description = "カーソル・トラックパッドフロート"
+    ),
     CLIP_BOARD(
         "clip_board",
         com.kazumaproject.core.R.drawable.clip_board,
