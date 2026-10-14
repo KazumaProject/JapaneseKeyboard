@@ -25,7 +25,8 @@ legacy/incremental backends, default/conversion/prediction query modes, and
 category enable/disable changes on the same session. Prefix prediction is tested.
 The settings test calls the actual switch change handlers, checks persistence,
 and waits for the refreshed screen to show both states for every category.
-License dialogs for all 28 categories render offline. Injected touches through
+License dialogs for all 28 categories render offline with a nonzero viewport
+and content height; the actual notice text was also inspected in device screenshots. Injected touches through
 the actual Romaji keyboard produce the `[賞]` label; clicking its candidate
 commits text through the editor's InputConnection. The prior default IME is
 restored. The updated n-gram/unigram assets load and match on ART.
