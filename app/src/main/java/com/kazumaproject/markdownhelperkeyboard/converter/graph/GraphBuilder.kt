@@ -428,7 +428,9 @@ class GraphBuilder {
                     succinctBitVector = bitVector,
                 )
             }
-            currentStates[start] = progress.nodeIndex
+            // Only incremental sessions consume these node frontiers. Legacy append reuse
+            // retains the graph but performs prefix searches from the root again.
+            if (sessionState != null) currentStates[start] = progress.nodeIndex
             return progress.results
         }
 
@@ -1097,7 +1099,9 @@ class GraphBuilder {
                     previousStates = reusable?.classifiedPrefixStates?.get(category),
                     currentStates = classifiedPrefixStates.getValue(category),
                 )
-                if (results.isNotEmpty()) foundInAnyDictionary = true
+                if (results.isEmpty()) return@forEach
+                foundInAnyDictionary = true
+                val categoryLabels = setOf(category)
                 for (prefixResult in results) {
                     val yomiStr = prefixResult.yomi
                     val nodeIndex = prefixResult.nodeIndex
@@ -1111,7 +1115,7 @@ class GraphBuilder {
                             score = cost.toInt(), f = cost.toInt(), g = cost.toInt(),
                             tango = data.surfaceFor(tokenNodeId, yomiStr, pos.toInt(), cost),
                             yomiUsed = yomiStr, len = yomiStr.length.toShort(), sPos = i,
-                            mozcAttributes = mozcAttributesFor(leftId), dictionaryCategories = setOf(category),
+                            mozcAttributes = mozcAttributesFor(leftId), dictionaryCategories = categoryLabels,
                         )
                         addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, category.name)
                     }

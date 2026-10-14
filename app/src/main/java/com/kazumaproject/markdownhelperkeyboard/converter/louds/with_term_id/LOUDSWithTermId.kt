@@ -489,6 +489,48 @@ class LOUDSWithTermId {
         return result
     }
 
+    /** Visit terminals in the same DFS order as predictiveSearch, without exploring longer readings. */
+    fun forEachPredictiveMatch(
+        prefix: String,
+        maxReadingLength: Int,
+        lbsIndex: SuccinctBitVector,
+        leafIndex: SuccinctBitVector,
+        block: (reading: String, termId: Int) -> Unit,
+    ) {
+        if (maxReadingLength < prefix.length) return
+        val reading = StringBuilder(prefix.length)
+        var node = 0
+        for (char in prefix) {
+            node = traverse(node, char, lbsIndex)
+            if (node < 0) return
+            val index = lbsIndex.rank1(node)
+            if (index >= labelCount) return
+            reading.append(labelAt(index))
+        }
+        collectPredictiveMatches(node, reading, maxReadingLength, lbsIndex, leafIndex, block)
+    }
+
+    private fun collectPredictiveMatches(
+        node: Int,
+        reading: StringBuilder,
+        maxReadingLength: Int,
+        lbsIndex: SuccinctBitVector,
+        leafIndex: SuccinctBitVector,
+        block: (String, Int) -> Unit,
+    ) {
+        if (isLeaf[node]) block(reading.toString(), getTermId(node, leafIndex))
+        if (reading.length >= maxReadingLength) return
+        var child = firstChild(node, lbsIndex)
+        while (child >= 0 && LBS[child]) {
+            val index = lbsIndex.rank1(child)
+            if (index >= labelCount) break
+            reading.append(labelAt(index))
+            collectPredictiveMatches(child, reading, maxReadingLength, lbsIndex, leafIndex, block)
+            reading.deleteCharAt(reading.length - 1)
+            child++
+        }
+    }
+
     fun predictiveSearch(prefix: String, succinctBitVector: SuccinctBitVector): List<String> {
         val result = mutableListOf<String>()
         val resultTemp = StringBuilder()
