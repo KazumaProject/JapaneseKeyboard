@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <SwitchPreferenceCompat
+        android:key="voice_input_space_replacement_enabled"
+        android:title="@string/voice_input_space_replacement_enabled_title"
+        android:summary="@string/voice_input_space_replacement_enabled_summary"
+        android:defaultValue="false" />
+    <ListPreference
+        android:key="voice_input_space_replacement"
+        android:title="@string/voice_input_space_replacement_title"
+        android:dependency="voice_input_space_replacement_enabled"
+        android:entries="@array/voice_input_space_replacement_entries"
+        android:entryValues="@array/voice_input_space_replacement_values"
+        android:defaultValue="remove"
+        app:useSimpleSummaryProvider="true" />
+    <EditTextPreference
+        android:key="voice_input_space_custom_text"
+        android:title="@string/voice_input_custom_text_title"
+        android:summary="@string/voice_input_custom_text_empty_summary"
+        android:dependency="voice_input_space_replacement_enabled"
+        android:defaultValue="" />
+</PreferenceScreen>
