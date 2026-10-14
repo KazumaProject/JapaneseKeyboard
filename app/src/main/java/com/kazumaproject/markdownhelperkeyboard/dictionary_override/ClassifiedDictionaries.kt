@@ -9,11 +9,12 @@ data class ClassifiedDictionarySpec(
     @StringRes val nameRes: Int,
     @StringRes val labelRes: Int,
 ) {
+    val preferenceKey: String get() = DictionaryOverrideStore.optionalBundledEnabledKey(category)
     val licenseAssetPath: String get() = "licenses/classified/$id.html"
 }
 
 object ClassifiedDictionaries {
-    const val VERSION = "v1.7.262-pre.1"
+    const val VERSION = "v1.7.262-pre.3"
     val all: List<ClassifiedDictionarySpec> = listOf(
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_PERSON, "person", R.string.classified_dictionary_person, R.string.classified_label_person),
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_CHARACTER, "character", R.string.classified_dictionary_character, R.string.classified_label_character),
@@ -43,6 +44,8 @@ object ClassifiedDictionaries {
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_WORK_STAGE, "work_stage", R.string.classified_dictionary_work_stage, R.string.classified_label_work_stage),
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_WORK_PERIODICAL, "work_periodical", R.string.classified_dictionary_work_periodical, R.string.classified_label_work_periodical),
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_WORK_OTHER, "work_other", R.string.classified_dictionary_work_other, R.string.classified_label_work_other),
+        ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_KAMPO, "kampo", R.string.classified_dictionary_kampo, R.string.classified_label_kampo),
+        ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_MEDICAL, "medical", R.string.classified_dictionary_medical, R.string.classified_label_medical),
     )
     val categories: Set<DictionaryCategory> = all.map { it.category }.toSet()
     fun find(category: DictionaryCategory): ClassifiedDictionarySpec? = all.firstOrNull { it.category == category }

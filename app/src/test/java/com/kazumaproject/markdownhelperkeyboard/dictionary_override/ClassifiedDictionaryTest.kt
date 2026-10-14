@@ -19,8 +19,8 @@ class ClassifiedDictionaryTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test fun allCategoriesHaveThreeDistinctPathMappedFiles() {
-        assertEquals(28, ClassifiedDictionaries.all.size)
-        assertEquals(28, ClassifiedDictionaries.categories.size)
+        assertEquals(30, ClassifiedDictionaries.all.size)
+        assertEquals(30, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
             val files = DictionaryFileSpecs.forCategory(spec.category)
             assertEquals(3, files.size)
@@ -29,7 +29,7 @@ class ClassifiedDictionaryTest {
                 assertEquals(it.key, DictionaryZipEntryNameMapper.map(it.bundledAssetPath.replace('/', '\\')))
             }
             assertTrue(context.getString(spec.nameRes).isNotBlank())
-            assertTrue(context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }.contains("v1.7.262-pre.1"))
+            assertTrue(context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }.contains(ClassifiedDictionaries.VERSION))
         }
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/tango.dat.zip"))
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/system/tango.dat.zip"))
@@ -53,19 +53,62 @@ class ClassifiedDictionaryTest {
         assertEquals("", classifiedCandidateLabel(context, emptySet()))
     }
 
-    @Test fun legacyEnabledFlagsDoNotEnableAnyClassifiedCategory() {
+    @Test fun allCategoriesDefaultEnabledWithoutMigratingLegacyFlags() {
         val prefs = context.getSharedPreferences("classified-test", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
         val legacy = PreferenceManager.getDefaultSharedPreferences(context)
         legacy.edit().putBoolean("mozc_ut_person_name_preference", true).putBoolean("mozc_ut_places_preference", true).commit()
         val store = DictionaryOverrideStore(File(context.cacheDir, "classified-test"), prefs, legacy)
-        ClassifiedDictionaries.all.forEach { assertFalse(store.isOptionalBundledEnabled(it.category)) }
+        ClassifiedDictionaries.all.forEach { assertTrue(store.isOptionalBundledEnabled(it.category)) }
         val first = ClassifiedDictionaries.all.first().category
-        store.setOptionalBundledEnabled(first, true)
-        assertTrue(store.isOptionalBundledEnabled(first))
-        ClassifiedDictionaries.all.drop(1).forEach { assertFalse(store.isOptionalBundledEnabled(it.category)) }
-        store.setOptionalBundledEnabled(first, false)
+        val revision = store.currentRevision
+        store.setDisableableCategoryEnabled(first, false, true)
         assertFalse(store.isOptionalBundledEnabled(first))
+        assertTrue(store.currentRevision > revision)
+        ClassifiedDictionaries.all.drop(1).forEach { assertTrue(store.isOptionalBundledEnabled(it.category)) }
+        // A stored OFF is a choice, not a value to migrate or overwrite.
+        val reopened = DictionaryOverrideStore(File(context.cacheDir, "classified-test"), prefs, legacy)
+        assertFalse(reopened.isOptionalBundledEnabled(first))
+        reopened.removeAllOverrides()
+        ClassifiedDictionaries.all.forEach { assertTrue(reopened.isOptionalBundledEnabled(it.category)) }
+
+    }
+
+    @Test fun dictionarySettingsAndSearchExposeEveryNonPersistentSwitch() {
+        val parser = context.resources.getXml(com.kazumaproject.markdownhelperkeyboard.R.xml.pref_dictionary)
+        val keys = mutableSetOf<String>()
+        parser.use {
+            while (it.eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                if (it.eventType == org.xmlpull.v1.XmlPullParser.START_TAG && it.name == "SwitchPreferenceCompat") {
+                    val key = it.getAttributeValue("http://schemas.android.com/apk/res/android", "key")
+                    if (key.startsWith("optional_bundled_enabled_CLASSIFIED_")) {
+                        assertFalse(it.getAttributeBooleanValue("http://schemas.android.com/apk/res/android", "persistent", true))
+                        assertTrue(it.getAttributeBooleanValue("http://schemas.android.com/apk/res/android", "defaultValue", false))
+                        keys.add(key)
+                    }
+                }
+                it.next()
+            }
+        }
+        assertEquals(ClassifiedDictionaries.all.map { it.preferenceKey }.toSet(), keys)
+        val destinations = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingSearchIndex.searchable(context)
+        assertTrue(destinations.map { it.key }.containsAll(keys))
+        destinations.filter { it.key in keys }.forEach {
+            assertTrue(it.destination is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingDestinationType.NavDestination)
+            assertEquals(it.key, (it.destination as com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingDestinationType.NavDestination).highlightPreferenceKey)
+        }
+        assertEquals("[漢方・生薬・医療]", classifiedCandidateLabel(context, setOf(DictionaryCategory.CLASSIFIED_MEDICAL, DictionaryCategory.CLASSIFIED_KAMPO)))
+    }
+
+    @Test fun specialistLicensesKeepSeparateTermsAndOfflineSourceNotices() {
+        fun notice(id: String) = context.assets.open("licenses/classified/$id.html").bufferedReader().use { it.readText() }
+        assertTrue(notice("kampo").contains("CC-BY-SA-2.1-JP"))
+        assertTrue(notice("kampo").contains("金谷"))
+        assertTrue(notice("medical").contains("CC-BY-4.0"))
+        assertTrue(notice("medical").contains("MANBYO_202106"))
+        assertTrue(notice("medical").contains("HYAKUYAKU_202107"))
+        assertTrue(notice("medical").contains("2,006"))
+        assertTrue(context.assets.open("licenses/english-reading.html").bufferedReader().use { it.readText() }.contains("Carnegie Mellon"))
     }
 
     @Test fun literalRepairOnlyAppliesToThePinnedDataOrIdenticalImports() {

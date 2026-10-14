@@ -15,6 +15,7 @@ import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionarySettingsFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.DictionaryPreferenceFragment
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -90,7 +91,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 list.performItemClick(list, index, index.toLong())
             }
             await("${spec.id} notice did not render") { views().filterIsInstance<WebView>().any { it.isShown && it.height >= 200 * context.resources.displayMetrics.density && it.contentHeight > 0 && it.progress == 100 && it.title?.contains(spec.id) == true } }
-            if (spec.id == "person") { SystemClock.sleep(150); screenshot("classified-license.png") }
+            if (spec.id in setOf("person", "kampo", "medical")) { SystemClock.sleep(150); screenshot("classified-license-${spec.id}.png") }
             main { views().filterIsInstance<TextView>().first { it.isShown && it.id == android.R.id.button1 }.performClick() }
             await("License dialog did not close") { views().filterIsInstance<WebView>().none { it.isShown } }
         }
@@ -99,7 +100,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
     }
 
-    @Test fun settingsExposeAndPersistAll28IndependentSwitches() {
+    @Test fun dictionarySettingsExposeAndPersistAll30IndependentSwitches() {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
@@ -115,11 +116,11 @@ class ClassifiedDictionaryUiInstrumentedTest {
         main {
             activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
-            host.navController.navigate(R.id.externalDictionarySettingsFragment)
+            host.navController.navigate(R.id.dictionaryPreferenceFragment)
         }
-        lateinit var fragment: ExternalDictionarySettingsFragment
+        lateinit var fragment: DictionaryPreferenceFragment
         try { await("Dictionary settings not ready") {
-            val current = host.childFragmentManager.fragments.filterIsInstance<ExternalDictionarySettingsFragment>().firstOrNull()
+            val current = host.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
             if (current?.preferenceScreen == null) false else { fragment = current; true }
         } } catch (failure: Throwable) {
             screenshot("classified-settings-failure.png")
@@ -133,10 +134,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
             val loading = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment::class.java
                 .getDeclaredField("loadJob").apply { isAccessible = true }.get(fragment) as? kotlinx.coroutines.Job
             if (loading?.isActive == true) return null
-            val screen = fragment.preferenceScreen ?: return null
-            val group = (0 until screen.preferenceCount).map { screen.getPreference(it) }
-                .filterIsInstance<PreferenceCategory>().firstOrNull { it.title == activity.getString(spec.nameRes) } ?: return null
-            return (0 until group.preferenceCount).map { group.getPreference(it) }.filterIsInstance<SwitchPreferenceCompat>().singleOrNull()
+            return fragment.findPreference<SwitchPreferenceCompat>(spec.preferenceKey)
+
         }
         try {
             for (spec in ClassifiedDictionaries.all) {
@@ -155,6 +154,48 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 }
                 await("${spec.id} restored state not displayed") { findSwitch(spec)?.let { it.onPreferenceChangeListener != null && it.isChecked == original } == true }
             }
+            // Change all categories in the normal screen, then turn them back on
+            // through the external screen and confirm both views read the same store.
+            main {
+                ClassifiedDictionaries.all.forEach { spec ->
+                    val switch = findSwitch(spec)!!
+                    switch.onPreferenceChangeListener!!.onPreferenceChange(switch, false)
+                }
+                host.navController.navigate(R.id.externalDictionarySettingsFragment)
+            }
+            lateinit var external: ExternalDictionarySettingsFragment
+            fun externalSwitch(spec: ClassifiedDictionarySpec): SwitchPreferenceCompat? {
+                val screen = external.preferenceScreen ?: return null
+                val loading = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment::class.java
+                    .getDeclaredField("loadJob").apply { isAccessible = true }.get(external) as? kotlinx.coroutines.Job
+                if (loading?.isActive == true) return null
+                val group = (0 until screen.preferenceCount).map { screen.getPreference(it) }
+                    .filterIsInstance<PreferenceCategory>().firstOrNull { it.title == activity.getString(spec.nameRes) } ?: return null
+                return (0 until group.preferenceCount).map { group.getPreference(it) }.filterIsInstance<SwitchPreferenceCompat>().singleOrNull()
+            }
+            await("External screen not ready") {
+                host.childFragmentManager.fragments.filterIsInstance<ExternalDictionarySettingsFragment>().firstOrNull()
+                    ?.let { external = it; it.preferenceScreen != null } == true
+            }
+            for (spec in ClassifiedDictionaries.all) {
+                await("External ${spec.id} did not share OFF") { externalSwitch(spec)?.let { !it.isChecked && it.onPreferenceChangeListener != null } == true }
+                main {
+                    val switch = externalSwitch(spec)!!
+                    assertTrue(switch.onPreferenceChangeListener!!.onPreferenceChange(switch, true))
+                }
+                await("External ${spec.id} did not show ON") { externalSwitch(spec)?.let { it.isChecked && it.onPreferenceChangeListener != null } == true }
+            }
+            main { host.navController.popBackStack() }
+            await("Dictionary screen did not refresh shared ON states") {
+                host.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
+                    ?.let { fragment = it; ClassifiedDictionaries.all.all { spec -> findSwitch(spec)?.isChecked == true } } == true
+            }
+            main { fragment.scrollToPreference(ClassifiedDictionaries.all.first().preferenceKey) }
+            SystemClock.sleep(300)
+            screenshot("classified-dictionary-settings.png")
+            main { fragment.scrollToPreference(ClassifiedDictionaries.all.last().preferenceKey) }
+            SystemClock.sleep(300)
+            screenshot("classified-dictionary-settings-medical.png")
         } finally {
             previous.forEach { (category, value) -> store.setOptionalBundledEnabled(category, value) }
         }
@@ -163,12 +204,13 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
     }
 
-    @Test fun actualRomajiImeShowsAwardLabelAndCommitsCandidate() {
+    @Test fun actualRomajiImeShowsNewCategoryLabelsAndCommitsCandidates() {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         check(context.packageName.contains(".classifiedprobe")) { "Use the isolated classifiedprobe APK" }
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
-        val previous = store.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_AWARD)
+        val testedCategories = listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
+        val previous = testedCategories.associateWith { store.isOptionalBundledEnabled(it) }
         val oldIme = shell("settings get secure default_input_method")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
@@ -177,7 +219,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 .putBoolean("save_last_used_keyboard", false).putBoolean("live_conversion_preference", false)
                 .putBoolean("show_dictionary_candidate_labels_preference", false)
                 .putBoolean("clipboard_preview_enable_preference", false).putBoolean("clipboard_history_preference", false).commit()
-            store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_AWARD, true)
+            testedCategories.forEach { store.setOptionalBundledEnabled(it, true) }
             shell("ime enable $target"); shell("ime set $target")
             shell("am start -n ${context.packageName}/com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity")
             lateinit var activity: FastInputHostActivity
@@ -188,7 +230,10 @@ class ClassifiedDictionaryUiInstrumentedTest {
             // The keyboard view appears before the editor restart/IME entrance animation completes.
             await("Editor input connection not active") { activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java).isActive(activity.editText) }
             SystemClock.sleep(750)
-            for (letter in "aiehusyou") {
+            for ((input, expectedLabel) in listOf("aiehusyou" to "[賞]", "asennyaku" to "[漢方・生薬]", "asaitami" to "[医療]")) {
+            main { activity.editText.setText("") }
+            SystemClock.sleep(300)
+            for (letter in input) {
                 val point = IntArray(2)
                 var x = 0f
                 var y = 0f
@@ -208,12 +253,12 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 }
             }
             lateinit var label: TextView
-            try { await("Award category label not shown") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains("[賞]") }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
+            try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
                 screenshot("classified-ime-failure.png")
                 main { println("CLASSIFIED_IME_EDITOR ${activity.editText.text}"); println("CLASSIFIED_IME_LABELS " + views().filterIsInstance<TextView>().filter { it.id == R.id.suggestion_item_text_view || it.id == R.id.suggestion_item_type_text_view }.map { it.text.toString() }.toList()) }
                 throw failure
             }
-            screenshot("classified-ime.png")
+            screenshot("classified-ime-$input.png")
             var committed = ""
             main {
                 val item = label.parent as View
@@ -222,9 +267,10 @@ class ClassifiedDictionaryUiInstrumentedTest {
             }
             await("Candidate was not committed") { activity.editText.text.toString() == committed }
             assertTrue(committed.isNotBlank())
-            println("CLASSIFIED_IME_COMMIT $committed")
+            println("CLASSIFIED_IME_COMMIT $expectedLabel $committed")
+            }
         } finally {
-            store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_AWARD, previous)
+            previous.forEach { (category, value) -> store.setOptionalBundledEnabled(category, value) }
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             if (!wasEnabled) shell("ime disable $target")
         }

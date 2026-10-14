@@ -47,6 +47,8 @@ enum class DictionaryCategory {
     CLASSIFIED_WORK_STAGE,
     CLASSIFIED_WORK_PERIODICAL,
     CLASSIFIED_WORK_OTHER,
+    CLASSIFIED_KAMPO,
+    CLASSIFIED_MEDICAL,
 }
 
 enum class DictionaryFileRole {
@@ -206,6 +208,13 @@ enum class DictionaryFileKey {
     CLASSIFIED_WORK_OTHER_TANGO,
     CLASSIFIED_WORK_OTHER_YOMI,
     CLASSIFIED_WORK_OTHER_TOKEN,
+    CLASSIFIED_KAMPO_TANGO,
+    CLASSIFIED_KAMPO_YOMI,
+    CLASSIFIED_KAMPO_TOKEN,
+    CLASSIFIED_MEDICAL_TANGO,
+    CLASSIFIED_MEDICAL_YOMI,
+    CLASSIFIED_MEDICAL_TOKEN,
+
 }
 
 data class DictionaryFileSpec(
@@ -395,6 +404,12 @@ object DictionaryFileSpecs {
         triple(DictionaryFileKey.CLASSIFIED_WORK_OTHER_TANGO, DictionaryCategory.CLASSIFIED_WORK_OTHER, DictionaryFileRole.TANGO, "categories/work_other/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
         triple(DictionaryFileKey.CLASSIFIED_WORK_OTHER_YOMI, DictionaryCategory.CLASSIFIED_WORK_OTHER, DictionaryFileRole.YOMI, "categories/work_other/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
         triple(DictionaryFileKey.CLASSIFIED_WORK_OTHER_TOKEN, DictionaryCategory.CLASSIFIED_WORK_OTHER, DictionaryFileRole.TOKEN, "categories/work_other/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
+        triple(DictionaryFileKey.CLASSIFIED_KAMPO_TANGO, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryFileRole.TANGO, "categories/kampo/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
+        triple(DictionaryFileKey.CLASSIFIED_KAMPO_YOMI, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryFileRole.YOMI, "categories/kampo/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
+        triple(DictionaryFileKey.CLASSIFIED_KAMPO_TOKEN, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryFileRole.TOKEN, "categories/kampo/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
+        triple(DictionaryFileKey.CLASSIFIED_MEDICAL_TANGO, DictionaryCategory.CLASSIFIED_MEDICAL, DictionaryFileRole.TANGO, "categories/medical/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
+        triple(DictionaryFileKey.CLASSIFIED_MEDICAL_YOMI, DictionaryCategory.CLASSIFIED_MEDICAL, DictionaryFileRole.YOMI, "categories/medical/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
+        triple(DictionaryFileKey.CLASSIFIED_MEDICAL_TOKEN, DictionaryCategory.CLASSIFIED_MEDICAL, DictionaryFileRole.TOKEN, "categories/medical/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
 
     )
 

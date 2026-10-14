@@ -217,13 +217,13 @@ class DictionaryOverrideCoreTest {
         val store = alwaysValidStore("revision-optional-enabled")
         val before = store.currentRevision
 
-        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, true)
-        assertEquals(before + 1L, store.currentRevision)
-
-        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, true)
+        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, false)
         assertEquals(before + 1L, store.currentRevision)
 
         store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, false)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, true)
         assertEquals(before + 2L, store.currentRevision)
     }
 
@@ -471,6 +471,32 @@ class DictionaryOverrideCoreTest {
 
         assertTrue(newPrefs.getBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.PERSON_NAME), false))
         assertFalse(newPrefs.getBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.PLACES), true))
+    }
+
+    @Test
+    fun categorySwitchDisablesExternalAndNeverSelectsIncompleteOrIncompatibleTriples() {
+        val store = alwaysValidStore("classified-shared-switch")
+        val category = DictionaryCategory.CLASSIFIED_MEDICAL
+        val resolver = sourceResolver(store)
+        val files = DictionaryFileSpecs.forCategory(category)
+        store.saveOverrideFromInputStream(files.first().key, ByteArrayInputStream(byteArrayOf(1)), "partial")
+        store.setDisableableCategoryEnabled(category, true, true)
+        assertFalse(store.isExternalEnabledForCategory(category))
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(category))
+        saveTripleOverrides(store, category)
+        assertEquals(DictionaryCategoryLoadState.User, resolver.resolveCategoryLoadState(category))
+        store.setDisableableCategoryEnabled(category, false, true)
+        assertFalse(store.isExternalEnabledForCategory(category))
+        assertEquals(DictionaryCategoryLoadState.Disabled, resolver.resolveCategoryLoadState(category))
+        store.setDisableableCategoryEnabled(category, true, false)
+        assertFalse(store.isExternalEnabledForCategory(category))
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(category))
+        store.setDisableableCategoryEnabled(category, true, true)
+        assertEquals(DictionaryCategoryLoadState.User, resolver.resolveCategoryLoadState(category))
+        store.markInvalid(files.first().key, "broken")
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(category))
+        store.setDisableableCategoryEnabled(category, false, false)
+        assertEquals(DictionaryCategoryLoadState.Disabled, resolver.resolveCategoryLoadState(category))
     }
 
     @Test

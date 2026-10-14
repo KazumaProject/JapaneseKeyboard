@@ -8,14 +8,15 @@ import hashlib
 import html
 import io
 import json
+import re
 from pathlib import Path
 import urllib.request
 import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '574d450c652e42e81713cc1c926a57c3f5310320'
-VERSION = 'v1.7.262-pre.1'
+REVISION = 'd65dc98b023fa7ab8ca994daef2ec1640d2a1bf5'
+VERSION = 'v1.7.262-pre.3'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -45,7 +46,7 @@ def write(path, data):
 def archive():
     manifest = json.loads(fetch(RELEASE + 'dictionary-distribution-manifest.json'))
     assert manifest['revision'] == REVISION
-    assert manifest['archiveSha256'] == '1f5248c48689be664e78aad02ad316f44810a1bd4ccb16b54ef087177eaa2d05'
+    assert manifest['archiveSha256'] == '2f0ae2c9027d00a267475c7140e9457d537ae58cffd61407e1205f8a540759bd'
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == manifest['archiveSha256']
     zipped = zipfile.ZipFile(io.BytesIO(data))
@@ -92,12 +93,46 @@ def provenance():
     records_path = 'src/main/classification/distribution-candidates.tsv.gz'
     records_data = fetch(RAW + records_path)
     assert sha(records_data) == manifest['files'][Path(records_path).name]
+    specialist = json.loads(fetch(RAW + 'src/main/specialist/distribution-manifest.json'))
+    specialist_records = fetch(RAW + 'src/main/specialist/distribution-candidates.tsv.gz')
+    assert sha(specialist_records) == specialist['files']['distribution-candidates.tsv.gz']
+    specialist_provenance = fetch(RAW + 'src/main/specialist/provenance.jsonl.gz')
+    assert sha(specialist_provenance) == specialist['files']['provenance.jsonl.gz']
+    admitted = collections.defaultdict(set)
+    for line in gzip.decompress(specialist_records).decode().splitlines():
+        category, reading, left, right, cost, surface = line.split('\t')
+        admitted[category].add((reading, surface))
+    original_sources = {}
+    for source in ('kampo_core', 'kampo_herb', 'manbyo', 'hyakuyaku'):
+        path = f'src/main/specialist/sources/{source}.jsonl.gz'
+        frozen = fetch(RAW + path)
+        assert sha(frozen) == specialist['inputs'][path]
+        original_sources[source] = {row['row']: row for row in
+            (json.loads(line) for line in gzip.decompress(frozen).decode().splitlines())}
+    for line in gzip.decompress(specialist_provenance).decode().splitlines():
+        row = json.loads(line)
+        if row['status'] == 'adopted':
+            original = original_sources[row['source']][row['sourceRow']]
+            assert original['reading'] == row['originalReading']
+            assert original['surface'] == row['originalSurface']
+            assert (row['reading'], row['surface']) in admitted[row['category']]
+            counts[row['category']][row['source']] += 1
+    assert {k: sum(v.values()) for k, v in counts.items() if k in admitted} == specialist['categoryRows']
+    # Record each reviewed person's source URL without copying the source page.
+    person_additions = []
+    for addition in manifest['provenance']['personAdditions']:
+        frozen = fetch(RAW + addition['path'])
+        assert sha(frozen) == addition['sha256']
+        person_additions.extend(json.loads(line) for line in frozen.decode().splitlines())
+    result['personAdditions'] = person_additions
+    result['specialist'] = specialist
+    result['categorySourcePairs'] = dict(sorted(counts.items()))
     fingerprints = {}
     surface_overrides = {}
     hira = set('あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんぁぃぅぇぉゃゅょゎっゔーがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ')
     kata = set('アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォャュョヮッヴーガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ')
 
-    for line in gzip.decompress(records_data).decode().splitlines():
+    for line in (gzip.decompress(records_data) + gzip.decompress(specialist_records)).decode().splitlines():
         category, reading, left, right, cost, surface = line.split('\t')
         normalized_surface = unicodedata.normalize('NFKC', surface)
         sentinel = -2 if surface == reading or normalized_surface and set(normalized_surface) <= hira else -1 if normalized_surface and set(normalized_surface) <= kata else None
@@ -111,10 +146,32 @@ def provenance():
         fingerprint['count'] += 1
         if 4 <= len(reading) <= 8 and not 4 <= len(fingerprint['sample']['reading']) <= 8:
             fingerprint['sample'] = {'reading': reading, 'surface': surface}
+    assert sum(item['count'] for item in fingerprints.values()) == 861053
+    assert len(fingerprints) == 30
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
     assert sum(map(len, surface_overrides.values())) == 1, surface_overrides
     write(ROOT / 'app/src/main/assets/categories/surface-overrides.json', json.dumps(surface_overrides, ensure_ascii=False, indent=2) + '\n')
+    catalog = fetch(RAW + 'docs/english-dictionary-catalog.md')
+    english_rows = []
+    for line in catalog.decode().splitlines():
+        if not line.startswith('| ') or line.startswith('| ---'):
+            continue
+        cells = line.split(' | ')
+        surface = cells[0].removeprefix('| ').replace('\\|', '|')
+        if len(cells) != 2:
+            continue
+        for reading, cost in re.findall(r'([^、]+?) \((-?\d+)\)', cells[1].removesuffix(' |')):
+            english_rows.append(f'{reading}\t{cost}\t{surface}')
+    assert len(english_rows) == 5138
+    english_fingerprint = sum(int(sha(row.encode()), 16) for row in english_rows) % (1 << 256)
+    write(ROOT/'app/src/androidTest/assets/english-reading-expected.json', json.dumps({
+        'revision': REVISION, 'catalogSha256': sha(catalog), 'count': len(english_rows),
+        'digestSum': format(english_fingerprint, '064x'),
+    }, indent=2) + '\n')
+    result['englishCatalogSha256'] = sha(catalog)
+    result['englishFixtureSha256'] = sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes())
+    result['classifiedFixtureSha256'] = sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes())
     result['surfaceOverridesSha256'] = sha((ROOT / 'app/src/main/assets/categories/surface-overrides.json').read_bytes())
     write(ROOT / 'tools/classified-dictionaries/category-provenance.json', json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     return counts
@@ -123,6 +180,9 @@ def notices(counts):
     assets = ROOT / 'app/src/main/assets/licenses'
     upstream = {
         'mozc': RAW + 'src/main/resources/third-party/MOZC-LICENSE',
+        'cmudict': RAW + 'src/main/resources/third-party/CMUDICT-LICENSE',
+        'ipadic-copying': RAW + 'src/main/resources/third-party/IPADIC-COPYING',
+        'release-data': RAW + 'LICENSE-DATA.md',
         'ipadic': RAW + 'src/main/resources/third-party/IPADIC-NOTICE',
         'jmdict': RAW + 'src/main/resources/third-party/JMDICT-LICENSE.html',
         'data': RAW + 'src/main/resources/third-party/LICENSE-DATA.md',
@@ -131,24 +191,28 @@ def notices(counts):
         'cc-by-sa-4': 'https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt',
         'apache-2': 'https://www.apache.org/licenses/LICENSE-2.0.txt',
     }
-    # Snapshot notices independently. Input acquisition revisions are not recoverable from the release.
-    for key, repo, path, ref in [
-        ('person', 'utuhiro78/mozcdic-ut-personal-names', 'LICENSE', 'main'),
-        ('place', 'utuhiro78/mozcdic-ut-place-names', 'LICENSE', 'main'),
-        ('wiki', 'utuhiro78/mozcdic-ut-jawiki', 'LICENSE', 'main'),
-        ('neologd', 'neologd/mecab-ipadic-neologd', 'COPYING', 'master'),
-        ('merge-ut', 'utuhiro78/merge-ut-dictionaries', 'LICENSE', 'main'),
-    ]:
-        commit = json.loads(fetch(f'https://api.github.com/repos/{repo}/commits/{ref}'))['sha']
-        upstream[key] = f'https://raw.githubusercontent.com/{repo}/{commit}/{path}'
+    # Preserve already pinned external notices; refresh release-owned notices.
     snapshot_file = assets / 'notice-snapshots.json'
-    if snapshot_file.exists():
-        upstream = {key: value['url'] for key, value in json.loads(snapshot_file.read_text()).items()}
+    old_snapshots = json.loads(snapshot_file.read_text()) if snapshot_file.exists() else {}
+    for key in ('person', 'place', 'wiki', 'neologd', 'merge-ut'):
+        upstream[key] = old_snapshots[key]['url']
+    for key in ('cc-by-sa-4', 'apache-2'):
+        if key in old_snapshots:
+            upstream[key] = old_snapshots[key]['url']
+    specialist = json.loads(fetch(RAW + 'src/main/specialist/distribution-manifest.json'))
+    for path, checksum in specialist['inputs'].items():
+        if '/notices/' in path:
+            key = Path(path).stem.lower()
+            upstream[key] = RAW + path
+            assert sha(fetch(upstream[key])) == checksum, key
+    distribution = json.loads(fetch(RELEASE + 'dictionary-distribution-manifest.json'))
+    upstream['distribution-licenses'] = RELEASE + 'DICTIONARY-LICENSES.txt'
+    assert sha(fetch(upstream['distribution-licenses'])) == distribution['licensesSha256']
     snapshots = {}
     existing_snapshots = json.loads(snapshot_file.read_text()) if snapshot_file.exists() else {}
     for key, url in upstream.items():
         data = fetch(url)
-        if key in existing_snapshots:
+        if key in existing_snapshots and url == existing_snapshots[key]['url']:
             assert sha(data) == existing_snapshots[key]['sha256'], key
         write(assets / 'sources' / (key + '.txt'), data)
         snapshots[key] = {'url': url, 'sha256': sha(data)}
@@ -174,11 +238,30 @@ def notices(counts):
         if category['id'] == 'place':
             details += '<p>One literal spelling is restored from the frozen source / 固定入力から1件の表記を復元: あとこしゃらか → アトコシヤラカ。</p>'
         details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版の同一性は未確認です。</p>'
+        if category['id'] == 'person':
+            additions = json.loads((ROOT/'tools/classified-dictionaries/category-provenance.json').read_text())['personAdditions']
+            details += '<h2>Reviewed additions / 公式資料を照合した追加</h2><p>Names/readings selected, normalized, assigned POS/cost and encoded. 氏名・読みの選定、正規化、品詞・コスト割当とバイナリ化。Source page text is not redistributed; per-entry copyright terms remain unconfirmed / 原資料本文は転載していません。各語の著作権条件は未確認。</p>'
+            details += '<ul>' + ''.join('<li>' + html.escape(row['reading'] + ' / ' + row['surface']) + ': <a href="' + html.escape(row['source_url']) + '">Source / 出典</a></li>' for row in additions) + '</ul>'
         write(assets/'classified'/(category['id']+'.html'), page(category['name']+' / '+category['id'], details, keys))
+    source_metadata = json.loads(fetch(RAW + 'src/main/specialist/sources.json'))['sources']
+    provenance = json.loads((ROOT/'tools/classified-dictionaries/category-provenance.json').read_text())
+    for category in json.loads(fetch(RAW + 'src/main/specialist/categories.json'))['categories']:
+        ident = category['id']
+        sources = [source for source in source_metadata if counts[ident][source['id']]]
+        details = '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
+        details += '<p>Changes / 加工: field extraction, normalization, duplicate filtering, POS/cost assignment and binary conversion / 項目抽出・正規化・重複除外・品詞とコスト割当・バイナリ化。</p>'
+        if ident == 'medical':
+            details += '<p>2,006 missing readings were supplemented with Gemini. Automatic and inferred readings are unverified / 空欄2,006件をGeminiで補完。自動読み・推定読みの正確性は未確認。</p>'
+        else:
+            details += '<p>Automatic readings are unverified / 自動読みの正確性は未確認。</p>'
+        for source in sources:
+            details += '<h2>' + html.escape(source['id']) + '</h2><p>' + html.escape(source['attribution']) + '</p><p>Version / 版: ' + html.escape(source['version']) + '</p><p>License / 条件: ' + html.escape(source['license']) + '</p><p><a href="' + html.escape(source['page']) + '">Source / 元データ</a></p><p>Input ZIP SHA-256: ' + source['archiveSha256'] + '</p><p>Adopted rows / 採用行: ' + str(counts[ident][source['id']]) + '</p>'
+        keys = [source['id'] for source in sources] + (['cc-by-sa-2.1-jp'] if ident == 'kampo' else ['cc-by-4.0']) + ['release-data']
+        write(assets/'classified'/(ident+'.html'), page(category['name']+' / '+ident, details, keys))
     for ident, title, keys in [
         ('wiki', 'Japanese Wikipedia-derived data / 日本語Wikipedia由来の辞書データ', ['wiki','cc-by-sa-4']),
-        ('core', 'Mozc dictionaries / Mozc基本・単漢字・絵文字・顔文字・記号辞書', ['mozc','ipadic']),
-        ('english-reading', 'English reading dictionary / 英語読み辞書', ['converter','jmdict','cc-by-sa-4']),
+        ('core', 'Mozc dictionaries / Mozc基本・単漢字・絵文字・顔文字・記号辞書', ['mozc','ipadic','ipadic-copying']),
+        ('english-reading', 'English reading dictionary / 英語読み辞書', ['converter','release-data','jmdict','cmudict','cc-by-sa-4']),
         ('ngram', 'N-gram / Unigram dictionaries', ['data','corpus','mozc','ipadic','cc-by-sa-4']),
         ('auxiliary', 'Reading correction / Proverbs / 読み修正・ことわざ辞書', ['converter','mozc']),
         ('english', 'English word dictionary / 英単語辞書', ['converter']),
@@ -192,8 +275,11 @@ def check():
     for key, value in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
         assert sha((ROOT/'app/src/main/assets/licenses/sources'/(key+'.txt')).read_bytes()) == value['sha256'], key
     provenance_manifest = json.loads((ROOT / 'tools/classified-dictionaries/category-provenance.json').read_text())
+    assert sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes()) == provenance_manifest['englishFixtureSha256']
+    assert sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes()) == provenance_manifest['classifiedFixtureSha256']
     assert sha((ROOT / 'app/src/main/assets/categories/surface-overrides.json').read_bytes()) == provenance_manifest['surfaceOverridesSha256']
-    print('Verified 117 distributed assets and all bundled notice hashes')
+    assert sha((ROOT/'app/src/main/assets/licenses/sources/distribution-licenses.txt').read_bytes()) == m['licensesSha256']
+    print(f"Verified {len(m['assets'])} distributed assets and all bundled notice hashes")
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--check', action='store_true');args=parser.parse_args()
