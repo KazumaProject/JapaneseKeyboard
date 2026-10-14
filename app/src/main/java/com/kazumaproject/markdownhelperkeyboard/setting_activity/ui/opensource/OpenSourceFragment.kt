@@ -297,12 +297,22 @@ class OpenSourceFragment : Fragment() {
                     return true
                 }
             }
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            val ink = com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface)
+            val link = com.google.android.material.color.MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
+            val colors = "<style>body{color:#%06x;background:transparent}a{color:#%06x}</style>".format(ink and 0xffffff, link and 0xffffff)
             val content = requireContext().assets.open(assetPath).bufferedReader().use { it.readText() }
+                .replace("</style>", "</style>$colors")
             loadDataWithBaseURL("https://dictionary-notices.invalid/", content, "text/html", "UTF-8", null)
+        }
+        val viewportHeight = (resources.displayMetrics.heightPixels * 0.60f).toInt()
+        val viewport = android.widget.FrameLayout(requireContext()).apply {
+            minimumHeight = viewportHeight
+            addView(webView, android.widget.FrameLayout.LayoutParams(-1, viewportHeight))
         }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(title)
-            .setView(webView)
+            .setView(viewport)
             .setPositiveButton(android.R.string.ok, null)
             .setOnDismissListener { webView.destroy() }
             .show()

@@ -89,8 +89,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 val index = (0 until list.adapter.count).single { list.adapter.getItem(it) == name }
                 list.performItemClick(list, index, index.toLong())
             }
-            await("${spec.id} notice did not render") { views().filterIsInstance<WebView>().any { it.isShown && it.progress == 100 && it.title?.contains(spec.id) == true } }
-            if (spec.id == "person") screenshot("classified-license.png")
+            await("${spec.id} notice did not render") { views().filterIsInstance<WebView>().any { it.isShown && it.height >= 200 * context.resources.displayMetrics.density && it.contentHeight > 0 && it.progress == 100 && it.title?.contains(spec.id) == true } }
+            if (spec.id == "person") { SystemClock.sleep(150); screenshot("classified-license.png") }
             main { views().filterIsInstance<TextView>().first { it.isShown && it.id == android.R.id.button1 }.performClick() }
             await("License dialog did not close") { views().filterIsInstance<WebView>().none { it.isShown } }
         }
