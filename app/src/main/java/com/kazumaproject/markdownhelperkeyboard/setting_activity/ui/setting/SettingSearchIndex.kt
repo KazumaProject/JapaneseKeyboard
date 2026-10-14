@@ -27,6 +27,12 @@ object SettingSearchIndex {
         val destinations: List<SettingDestination>,
     )
     private val extraKeywordsByKey = mapOf(
+        "floating_keyboard_hide_button_position" to listOf(
+            "floating", "hide", "arrow", "position", "フローティング", "下向き矢印", "やじるし", "隠す", "位置",
+        ),
+        "floating_keyboard_show_edit_button" to listOf(
+            "floating", "pencil", "resize", "フローティング", "鉛筆", "えんぴつ", "サイズ調整",
+        ),
         "keyboard_selection_preference" to listOf(
             "choose",
             "select",
