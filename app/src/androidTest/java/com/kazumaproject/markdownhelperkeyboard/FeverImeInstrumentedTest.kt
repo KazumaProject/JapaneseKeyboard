@@ -114,7 +114,7 @@ class FeverImeInstrumentedTest {
             val a = before.getPixel(x, y); val b = during.getPixel(x, y)
             fun low(c: Int) = minOf(android.graphics.Color.red(c), android.graphics.Color.green(c), android.graphics.Color.blue(c))
             fun high(c: Int) = maxOf(android.graphics.Color.red(c), android.graphics.Color.green(c), android.graphics.Color.blue(c))
-            if (low(a) >= 190) { glyph++; if (low(b) >= 180) retained++ }
+            if (low(a) >= 190) { glyph++; if (low(b) >= 150) retained++ }
             if (high(a) < 80) { dark++; if (high(b) < 170) contrast++ }
         }
         println("FEVER label $name glyph=$retained/$glyph dark=$contrast/$dark")

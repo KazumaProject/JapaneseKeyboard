@@ -47,10 +47,15 @@ class FeverEffectViewTest {
         assertTrue("Key borders must animate as well as the banner", (200 until 450).any { y ->
             (0 until 500).any { x -> Color.alpha(pixels[y * 500 + x]) > 0 }
         })
+        assertTrue("Stickers should also reach the key faces", keys.any { box ->
+            (box.top.toInt() + 20 until box.bottom.toInt() - 20).any { y ->
+                (box.left.toInt() + 20 until box.right.toInt() - 20).any { x -> Color.alpha(pixels[y * 500 + x]) > 0 }
+            }
+        })
         keys.forEach { box ->
             val inside = RectF(box).apply { inset(6 * context.resources.displayMetrics.density, 6 * context.resources.displayMetrics.density) }
             for (y in inside.top.toInt() until inside.bottom.toInt()) for (x in inside.left.toInt() until inside.right.toInt())
-                assertEquals("Key labels must stay clear", Color.TRANSPARENT, pixels[y * 500 + x])
+                assertTrue("Sticker overlays must keep the key surface visible", Color.alpha(pixels[y * 500 + x]) <= 96)
         }
         for (y in 80 until 180) for (x in 0 until 500)
             assertTrue("Candidate wash must stay below 8% opacity", Color.alpha(pixels[y * 500 + x]) <= 20)

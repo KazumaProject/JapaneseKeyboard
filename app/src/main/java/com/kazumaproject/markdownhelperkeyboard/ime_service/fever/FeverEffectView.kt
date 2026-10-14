@@ -17,10 +17,11 @@ internal class FeverEffectView(context: Context) : View(context) {
     private var keyEdges = emptyList<RectF>()
     private var controls = emptyList<RectF>()
     private val candidateArea = RectF()
+    private val keyArea = RectF()
     private var rawTouchX = 0f
     private var rawTouchY = 0f
     private val particles = ArrayList<Particle>(180)
-    private val ornaments = ArrayList<Ornament>(32)
+    private val ornaments = ArrayList<Ornament>(48)
     private var family = 0
     private var awardFamily = 0
     private var awardColor = Color.CYAN
@@ -43,7 +44,7 @@ internal class FeverEffectView(context: Context) : View(context) {
     private val stages = arrayOf("START!", "GOOD!", "NICE!", "MORE!", "RUSH!", "CHANCE!", "LUCKY 7", "BOOST!", "REACH!")
     private data class Particle(val x: Float, val y: Float, val vx: Float, val vy: Float, val color: Int, val size: Float, val end: Long, val born: Long)
 
-    private data class Ornament(val x: Float, val y: Float, val angle: Float, val speed: Float, val size: Float, val family: Int, val color: Int, val born: Long, val life: Long)
+    private data class Ornament(val x: Float, val y: Float, val angle: Float, val speed: Float, val size: Float, val family: Int, val color: Int, val born: Long, val life: Long, val keyboard: Boolean = false)
 
     init { isClickable = false; isFocusable = false; importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
     fun setArena(rect: RectF) { if (arena != rect) { arena.set(rect); updateStage(); invalidate() } }
@@ -53,6 +54,7 @@ internal class FeverEffectView(context: Context) : View(context) {
     }
     fun setKeyEdges(rects: List<RectF>, candidates: RectF? = null) {
         keyEdges = rects
+        keyArea.setEmpty(); rects.forEach(keyArea::union)
         if (candidates == null) candidateArea.setEmpty() else candidateArea.set(candidates)
         invalidate()
     }
@@ -96,7 +98,7 @@ internal class FeverEffectView(context: Context) : View(context) {
             callout = event.cue?.label ?: "${event.combo}  ${stages[(event.combo - 1) % stages.size]}"
         }
         if (event.award != null) { award = event.award; awardStart = time; calloutStart = 0; awardFamily = family; awardColor = calloutColor }
-        if (motion && !stage.isEmpty) {
+        if (motion && (!stage.isEmpty || !keyArea.isEmpty)) {
             val random = kotlin.random.Random(time)
             val big = event.award != null
             val count = if (big) intArrayOf(18, 60, 150)[intensity] else intArrayOf(6, 16, 28)[intensity]
@@ -114,7 +116,7 @@ internal class FeverEffectView(context: Context) : View(context) {
                     (1 + random.nextFloat() * if (big) 4 else 2) * dp, born + if (big) 1400 else 560, born))
             }
             repeat(if (big) intArrayOf(4, 10, 20)[intensity] else intArrayOf(1, 3, 5)[intensity]) { index ->
-                if (ornaments.size >= 32) ornaments.removeAt(0)
+                if (ornaments.size >= 48) ornaments.removeAt(0)
                 val angle = (index * 2.39996f + event.combo * .7f)
                 val size = minOf((if (big) 10 + random.nextFloat() * 13 else 5 + random.nextFloat() * 8) * dp,
                     (stage.height() * if (stage.height() < 110 * dp) .16f else .27f).coerceAtLeast(3 * dp))
@@ -123,6 +125,15 @@ internal class FeverEffectView(context: Context) : View(context) {
                     size, if (big) (family + index) % 5 else family,
                     FeverVisualStyle.palette[(family + index) % 5], time + if (big) 160L + index % 3 * 120 else 0,
                     if (big) 1400 else 650))
+            }
+            if (!keyArea.isEmpty) repeat(if (big) intArrayOf(5, 10, 16)[intensity] else intArrayOf(2, 4, 6)[intensity]) { index ->
+                if (ornaments.size >= 48) ornaments.removeAt(0)
+                val angle = index * 2.39996f + combo * .6f
+                ornaments.add(Ornament(if (big) keyArea.centerX() else rawTouchX, if (big) keyArea.centerY() else rawTouchY,
+                    angle, (if (big) 140 + random.nextFloat() * 230 else 80 + random.nextFloat() * 130) * dp,
+                    (if (big) 12 + random.nextFloat() * 12 else 6 + random.nextFloat() * 9) * dp,
+                    (family + index) % 5, FeverVisualStyle.palette[(family + index) % 5],
+                    time + if (big) 160L + index % 3 * 120 else 0, if (big) 1400 else 650, true))
             }
         }
         invalidate()
@@ -150,7 +161,7 @@ internal class FeverEffectView(context: Context) : View(context) {
             drawParticles(canvas, now)
             drawOrnaments(canvas, now)
             if (active != null) drawAwardTitle(canvas, active, elapsed)
-        } else { particles.clear(); ornaments.clear() }
+        } else { particles.clear(); ornaments.removeAll { !it.keyboard } }
         val smallActive = calloutStart > 0 && now - calloutStart < 700
         if (smallActive && active == null && !stage.isEmpty) drawCallout(canvas, now - calloutStart)
         if (motion && sparkStart > 0 && now - sparkStart < 450) {
@@ -161,6 +172,7 @@ internal class FeverEffectView(context: Context) : View(context) {
         }
         if (combo > 0 && !stage.isEmpty && !(stage.height() < 110 * dp && (active != null || smallActive))) drawMeter(canvas)
         canvas.restore()
+        drawKeyboardOrnaments(canvas, now)
         drawKeyEnergy(canvas, now, active)
         drawCandidateEnergy(canvas, now, active)
         paint.reset(); paint.isAntiAlias = true
@@ -192,8 +204,9 @@ internal class FeverEffectView(context: Context) : View(context) {
             active != null -> awardColor; else -> calloutColor }
         keyEdges.forEachIndexed { index, rect ->
             val touched = rect.contains(rawTouchX, rawTouchY)
-            val wave = if (motion) (.6f + .4f * cos(index * .6f - progress * 9)).coerceIn(0f, 1f) else 1f
-            val amount = fade * if (touched) 1f else wave * if (active != null) 1f else .85f
+            val travel = hypot(rect.centerX() - rawTouchX, rect.centerY() - rawTouchY) / (2.6f * dp)
+            val wave = if (motion) exp(-abs((now - sparkStart) - travel.coerceAtMost(220f)) / 160f) else 1f
+            val amount = fade * if (touched) 1f else if (active != null) .35f + wave * .65f else wave * .95f
             val outline = RectF(rect).apply { inset(1.5f * dp, 1.5f * dp) }
             paint.color = accent; paint.alpha = (amount * 155).toInt(); paint.strokeWidth = (4 + intensity * 2) * dp
             canvas.drawRoundRect(outline, 9 * dp, 9 * dp, paint)
@@ -418,21 +431,30 @@ internal class FeverEffectView(context: Context) : View(context) {
         }
     }
 
-    private fun drawOrnaments(canvas: Canvas, now: Long) {
+    private fun drawOrnaments(canvas: Canvas, now: Long, keyboard: Boolean = false) {
         val iterator = ornaments.iterator()
         while (iterator.hasNext()) {
             val item = iterator.next()
             val age = now - item.born
             if (age >= item.life) { iterator.remove(); continue }
-            if (age < 0) continue
+            if (age < 0 || item.keyboard != keyboard) continue
             val seconds = age / 1000f
-            val compact = stage.height() < 110 * dp
+            val compact = !keyboard && stage.height() < 110 * dp
             val x = item.x + cos(item.angle) * item.speed * seconds
             val y = if (compact) stage.centerY() + sin(item.angle + seconds * 5) * stage.height() * .18f
                 else item.y + sin(item.angle) * item.speed * seconds - sin(seconds * 2) * 35 * dp
             drawMotif(canvas, x, y, item.size, item.family, item.color, item.angle * 20 + seconds * 90,
                 (minOf(1f, (item.life - age) / 280f) * 245).toInt())
         }
+    }
+
+    /** A single alpha-composited layer allows stickers on caps without opaque piles hiding labels. */
+    private fun drawKeyboardOrnaments(canvas: Canvas, now: Long) {
+        if (keyArea.isEmpty) return
+        canvas.save(); canvas.clipRect(arena); canvas.clipRect(keyArea)
+        val layer = canvas.saveLayerAlpha(keyArea, 96)
+        drawOrnaments(canvas, now, true)
+        canvas.restoreToCount(layer); canvas.restore()
     }
 
     /** Small vector stickers: stars, hearts, shooting stars, rockets, and holographic diamonds. */
