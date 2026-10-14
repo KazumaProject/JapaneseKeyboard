@@ -3,6 +3,14 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.DictionaryKind
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorDirection
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorMovement
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorAnchorCompositionProbe
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorInputSynchronization
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorComposingExpectation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings
+import com.kazumaproject.core.domain.flick.FlickTextPreviewEvent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryStore
 import android.annotation.SuppressLint
 import android.Manifest
@@ -120,6 +128,7 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_clipboard.FloatingClipboardController
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
@@ -378,6 +387,7 @@ import com.kazumaproject.markdownhelperkeyboard.text_macro.ExpandedMacro
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroInputConnectionExecutor
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.getKeyboardDisplayName
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
@@ -777,6 +787,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionKeySwipePreference: Boolean? = false
 
     private var speechRecognizer: SpeechRecognizer? = null
+    private var voiceInputSettings = VoiceInputSettings()
+    private var activeVoiceInputSettings = VoiceInputSettings()
+    private var activeVoiceInputLanguage = ""
     private var isListening = false
 
     private var enableGemmaTranslationPreference: Boolean? = false
@@ -898,7 +911,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentConnection = { currentInputConnection },
             currentRevision = { editorMutationRevision.current() },
             currentSelectionRevision = { horizontalCursorSelectionRevision.get() },
-            canCollapseSelection = { !selectMode.value },
+            canCollapseSelection = { !selectMode.value && !cursorSelectionMode },
+            inputGeneration = { cursorInputGeneration.get() },
+            canMove = { !hasCursorPreedit() },
             readMutex = editorConnectionReadMutex,
             setSelection = { connection, start, end ->
                 if (currentInputConnection !== connection) false else setSelection(start, end)
@@ -1016,6 +1031,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (key != null && key in PhysicalToolbarSettings.keys) {
                 runOnMainThread { refreshPhysicalToolbar() }
+            }
+            if (key == null || key == FloatingCursorSettings.ENABLED || key == FloatingCursorSettings.RESET) {
+                runOnMainThread {
+                    if (key == FloatingCursorSettings.RESET) floatingCursor?.resetPlacement()
+                    if (!cursorSettings.enabled) { cancelCursorOperations(); cursorSelectionMode = false; cursorMovement.reset() }
+                    refreshFloatingCursor()
+                    updateShortcutActiveStates()
+                }
             }
         }
 
@@ -1537,6 +1560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearZeroQueryAllState(refresh = true)
             return
         }
+        endCursorSelectionForInput()
         currentInputConnection?.commitText(candidate.string, 1)
         clearZeroQueryAllState(refresh = true)
     }
@@ -1620,6 +1644,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cachedEmoticons: List<Emoticon>? = null
     private var cachedSymbols: List<Symbol>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
+    private var clipboardFloat: FloatingClipboardController? = null
+
+    private fun toggleClipboardFloat() {
+        val host = mainLayoutBinding?.keyboardTouchEffectContainer ?: return
+        val panel = clipboardFloat ?: FloatingClipboardController(
+            host.context,
+            { isInputViewActive && !isFullscreenMode && !isKeyboardLayoutEditModeActive() },
+            ::resolveCandidatePanelColors, ::onToggled,
+            ::performFloatingClipboardAction, ::updateShortcutActiveStates,
+        ).also { clipboardFloat = it }
+        panel.attach(host)
+        panel.updateHistoryEnabled(isClipboardHistoryFeatureEnabled)
+        panel.updateItems(currentClipboardItems)
+        panel.toggle()
+    }
+
+    private fun performFloatingClipboardAction(
+        item: ClipboardItem, action: ClipboardItemAction, complete: (Boolean) -> Unit,
+    ) {
+        val connection = currentInputConnection
+        val session = flickPreviewEditorSessionId
+        val id = item.clipboardId()
+        if (id <= 0) { complete(false); return }
+        vibrate()
+        scope.launch {
+            try {
+                when (action) {
+                    ClipboardItemAction.PASTE -> {
+                        val content = clipboardHistoryRepository.getFullContentById(id)
+                        if (!isInputViewActive || currentInputConnection !== connection ||
+                            flickPreviewEditorSessionId != session || content === ClipboardItem.Empty
+                        ) { complete(false); return@launch }
+                        pasteClipboardItemContent(content)
+                    }
+                    ClipboardItemAction.PIN -> clipboardHistoryRepository.setPinned(id, true)
+                    ClipboardItemAction.UNPIN -> {
+                        clipboardHistoryRepository.setPinned(id, false)
+                        cleanupExpiredClipboardItemsIfNeededNow()
+                    }
+                    ClipboardItemAction.DELETE -> clipboardHistoryRepository.deleteById(id)
+                }
+                complete(true)
+            } catch (exception: kotlinx.coroutines.CancellationException) { throw exception }
+            catch (exception: Exception) {
+                Timber.w(exception, "Floating clipboard action failed")
+                complete(false)
+            }
+        }
+    }
+
     private var currentClipboardItems: List<ClipboardItem> = emptyList()
     private var sumireSpecialKeyActionOverrides: List<SumireSpecialKeyActionOverrideEntity> =
         emptyList()
@@ -1747,10 +1821,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var flickPreviewEditorSessionId: Long = 0L
     private val composingTextArbiter = ComposingTextArbiter(
         writeComposingText = { text, cursorPosition ->
-            currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+            cursorSnapshotRevision.incrementAndGet()
+            cursorSynchronization.invalidateSnapshot()
+            // A native composing range establishes its start. The last caret can lag
+            // a cursor move, so it must not establish the first write's position.
+            val start = cursorNativeComposingRange?.first ?: cursorWrittenComposing?.start
+            val applied = currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+            if (applied) cursorWrittenComposing = text?.toString()?.takeIf { it.isNotEmpty() }
+                ?.let { CursorComposingExpectation(start, it) }
+            applied
         },
         finishComposingText = {
-            currentInputConnection?.finishComposingText() ?: false
+            val finished = currentInputConnection?.finishComposingText() ?: false
+            if (finished) cursorWrittenComposing = null
+            finished
         },
         copyText = { text -> SpannableString(text) },
     )
@@ -1770,16 +1854,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         },
     )
     private val tenKeyFlickTextPreviewListener = FlickTextPreviewListener { event ->
-        flickInputPreviewCoordinator.onEvent(
-            event = event,
-            context = currentFlickPreviewContext(FlickPreviewSource.TENKEY),
-        )
+        handleFlickTextPreview(event, FlickPreviewSource.TENKEY)
     }
     private val sumireFlickTextPreviewListener = FlickTextPreviewListener { event ->
-        flickInputPreviewCoordinator.onEvent(
-            event = event,
-            context = currentFlickPreviewContext(FlickPreviewSource.SUMIRE),
-        )
+        handleFlickTextPreview(event, FlickPreviewSource.SUMIRE)
+    }
+
+    private fun handleFlickTextPreview(event: FlickTextPreviewEvent, source: FlickPreviewSource) {
+        if (deferCursorInput { handleFlickTextPreview(event, source) }) return
+        val text = when (event) {
+            is FlickTextPreviewEvent.Started -> event.selection.text
+            is FlickTextPreviewEvent.Changed -> event.selection.text
+            is FlickTextPreviewEvent.CommitPending -> event.selection.text
+            else -> null
+        }
+        if (!text.isNullOrEmpty()) endCursorSelectionForInput()
+        val token = source to event.gestureId
+        when (event) {
+            is FlickTextPreviewEvent.Started -> if (!text.isNullOrEmpty()) cursorPreviewGesture = token
+            is FlickTextPreviewEvent.Finished, is FlickTextPreviewEvent.Canceled -> if (cursorPreviewGesture == token) cursorPreviewGesture = null
+            else -> Unit
+        }
+        flickInputPreviewCoordinator.onEvent(event, currentFlickPreviewContext(source))
+        floatingCursor?.updateSelection(cursorSelectionMode, !hasCursorPreedit())
     }
     private var isOmissionSearchEnable: Boolean? = false
     private var delayTime: Int? = 1000
@@ -3117,56 +3214,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
-                setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) {
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = true
-                        )
-                    }
-
-                    override fun onBeginningOfSpeech() {
-
-                    }
-
-                    override fun onRmsChanged(rmsdB: Float) {}
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() {
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onError(error: Int) {
-                        isListening = false
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onResults(results: Bundle?) {
-                        isListening = false
-                        val matches =
-                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onPartialResults(partialResults: Bundle?) {
-                        val matches =
-                            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
-                    }
-
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
+                setRecognitionListener(createVoiceRecognitionListener())
             }
         }
     }
@@ -3320,6 +3368,175 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var dictionaryFloats: FloatingDictionaryController? = null
+    private var floatingCursor: FloatingCursorController? = null
+    private val cursorSettings by lazy { FloatingCursorSettings(runtimeInputSharedPreferences) }
+    // The existing selectMode changes character-key labels and actions. This state owns only cursor selection.
+    private var cursorSelectionMode = false
+    private var cursorInputTracking = false
+    private var cursorPreviewGesture: Pair<FlickPreviewSource, Long>? = null
+    private var cursorNativeComposingRange: IntRange? = null
+    private var cursorWrittenComposing: CursorComposingExpectation? = null
+    private var cursorNativeSelectionStart = -1
+    private var cursorNativeSelectionEnd = -1
+    private val cursorWorkGeneration = AtomicLong(0)
+    private val cursorInputGeneration = AtomicLong(0)
+    private val cursorSnapshotRevision = AtomicLong(0)
+    private var cursorUpdateRequestEditor: InputConnection? = null
+    private var cursorUpdateRequestMode = 0
+    private val cursorAnchorProbe by lazy {
+        CursorAnchorCompositionProbe({ currentInputConnection }, { cursorSnapshotRevision.get() },
+            { if (cursorUpdateRequestEditor === currentInputConnection) cursorUpdateRequestMode else 0 })
+    }
+    private val cursorSynchronization by lazy {
+        CursorInputSynchronization(scope, { currentInputConnection }, { cursorSnapshotRevision.get() },
+            editorConnectionReadMutex, { cursorNativeComposingRange }, expectedComposing = { cursorWrittenComposing },
+            compositionProbe = { editor, start, end -> cursorAnchorProbe.read(editor, start, end) })
+    }
+    private val cursorMovement by lazy {
+        CursorMovement(editorConnectionReadMutex,
+            { connection, start, end -> if (currentInputConnection === connection) setSelection(start, end) else false },
+            { connection, event -> if (currentInputConnection === connection) connection.sendKeyEvent(event) else false },
+            selectionRevision = { horizontalCursorSelectionRevision.get() },
+            latestSelection = { cursorNativeSelectionStart to cursorNativeSelectionEnd })
+    }
+    private enum class CursorOperation { EDITOR, PREEDIT, CONVERSION, SEGMENTS, PREVIEW }
+    private data class PendingCursorMove(
+        val direction: CursorDirection, val operation: CursorOperation,
+        val editor: InputConnection, val generation: Long, val selecting: Boolean, val fromPanel: Boolean,
+    )
+    private val cursorMoves = kotlinx.coroutines.channels.Channel<PendingCursorMove>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+    private var cursorWorker: Job? = null
+
+    private fun cursorOperation(): CursorOperation = when {
+        cursorPreviewGesture != null || composingTextArbiter.isPreviewVisible() -> CursorOperation.PREVIEW
+        isBunsetsuCursorMoveSessionActive() -> CursorOperation.SEGMENTS
+        isHenkan.get() -> CursorOperation.CONVERSION
+        inputString.value.isNotEmpty() || stringInTail.get().isNotEmpty() || composingTextArbiter.hasCanonicalText() || cursorNativeComposingRange != null -> CursorOperation.PREEDIT
+        else -> CursorOperation.EDITOR
+    }
+
+    private fun hasCursorPreedit(): Boolean = cursorOperation() != CursorOperation.EDITOR
+
+    private fun refreshFloatingCursor() {
+        if (cursorSettings.enabled) cursorInputTracking = true
+        val host = mainLayoutBinding?.keyboardTouchEffectContainer ?: return
+        if (cursorSettings.enabled && floatingCursor == null) {
+            floatingCursor = FloatingCursorController(host.context, cursorSettings,
+                { isInputViewActive && !isFullscreenMode && !currentInputType.isPassword() && !isKeyboardLayoutEditModeActive() },
+                ::resolveCandidatePanelColors, { queueCursorMove(it, fromPanel = true) }, ::toggleCursorSelection,
+                { cursorSettings.enabled = false; cancelCursorOperations(); cursorSelectionMode = false; updateShortcutActiveStates() },
+                ::cancelCursorOperations)
+        }
+        floatingCursor?.updateSelection(cursorSelectionMode, !hasCursorPreedit())
+        floatingCursor?.attach(host)
+    }
+
+    private fun toggleCursorSelection() {
+        if (hasCursorPreedit()) return
+        cancelCursorOperations()
+        cursorSelectionMode = !cursorSelectionMode
+        floatingCursor?.updateSelection(cursorSelectionMode, true)
+    }
+
+    private fun cancelCursorOperations() {
+        cursorWorkGeneration.incrementAndGet()
+        while (cursorMoves.tryReceive().isSuccess) { /* Drop work accepted by an older gesture/session. */ }
+    }
+
+    private fun stopCursorInputGestures() {
+        floatingCursor?.cancelInput()
+        // Preserve the held-key markers until release, so a cancelled hold cannot turn into a tap.
+        onLeftKeyLongPressUp.set(true); leftLongPressJob?.cancel(); leftLongPressJob = null
+        onRightKeyLongPressUp.set(true); rightLongPressJob?.cancel(); rightLongPressJob = null
+        cursorInputGeneration.incrementAndGet()
+        cancelCursorOperations()
+    }
+
+    private fun endCursorSelectionForInput() {
+        stopCursorInputGestures()
+        cursorSelectionMode = false
+        cursorMovement.reset()
+        cursorSnapshotRevision.incrementAndGet()
+        cursorSynchronization.invalidateSnapshot()
+        floatingCursor?.updateSelection(false, false)
+    }
+
+    private fun resetCursorInputSession() {
+        stopCursorInputGestures()
+        cursorMovement.reset()
+        cursorSynchronization.reset()
+        cursorAnchorProbe.reset()
+        cursorSnapshotRevision.incrementAndGet()
+        cursorSelectionMode = false
+        cursorPreviewGesture = null
+        cursorNativeComposingRange = null
+        cursorWrittenComposing = null
+    }
+
+    private fun deferCursorInput(action: () -> Unit): Boolean {
+        if (!cursorInputTracking || cursorSynchronization.applyingInput) return false
+        val editor = currentInputConnection
+        val session = flickPreviewEditorSessionId
+        if (!cursorSynchronization.checking && dictionaryInputConnection == null &&
+            (composingTextArbiter.hasCanonicalText() || composingTextArbiter.isPreviewVisible())) {
+            cursorSynchronization.verifyBeforeInput(cursorNativeSelectionStart, cursorNativeSelectionEnd) { start, end ->
+                applyEditorSelectionUpdate(cursorNativeSelectionStart, cursorNativeSelectionEnd, start, end)
+            }
+        }
+        return cursorSynchronization.defer({ editor != null && currentInputConnection === editor && flickPreviewEditorSessionId == session }, action)
+            .also { if (it) stopCursorInputGestures() }
+    }
+
+    private fun queueCursorMove(direction: CursorDirection, fromPanel: Boolean = false) {
+        val editor = currentInputConnection ?: return
+        if (!isInputViewActive || isKeyboardLayoutEditModeActive()) return
+        cursorInputTracking = true
+        if (cursorWorker?.isActive != true) cursorWorker = scope.launch {
+            for (move in cursorMoves) {
+                val current = {
+                    move.generation == cursorWorkGeneration.get() && currentInputConnection === move.editor &&
+                        isInputViewActive && !isKeyboardLayoutEditModeActive() && move.operation == cursorOperation() &&
+                        (!move.fromPanel || floatingCursor?.acceptingInput == true)
+                }
+                if (!current()) continue
+                when (move.operation) {
+                    CursorOperation.EDITOR -> {
+                        val revision = editorMutationRevision.current()
+                        cursorMovement.move(move.editor, move.direction, move.selecting) { current() && editorMutationRevision.isCurrent(revision) }
+                    }
+                    CursorOperation.PREEDIT -> when (move.direction) {
+                        CursorDirection.LEFT -> handleLeftKeyPress(GestureType.Tap, inputString.value)
+                        CursorDirection.RIGHT -> actionInRightKeyPressed(GestureType.Tap, inputString.value)
+                        else -> Unit
+                    }
+                    CursorOperation.CONVERSION -> {
+                        val previous = move.direction.towardsStart
+                        val suggestions = suggestionAdapter?.suggestions.orEmpty()
+                        if (previous) handleDeleteKeyInHenkan(suggestions, inputString.value)
+                        else if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.let {
+                            handleJapaneseModeSpaceKeyFloating(it, suggestions, inputString.value)
+                        } else mainLayoutBinding?.let { handleJapaneseModeSpaceKey(it, suggestions, inputString.value) }
+                    }
+                    CursorOperation.SEGMENTS -> bunsetsuOperationMutex.withLock {
+                        val session = bunsetsuConversionSession ?: return@withLock
+                        val binding = floatingKeyboardBinding?.takeIf { isKeyboardFloatingMode == true }
+                        val delta = if (move.direction.towardsStart) -1 else 1
+                        if (move.direction == CursorDirection.LEFT || move.direction == CursorDirection.RIGHT)
+                            moveFocusedBunsetsuSegmentNow(session, delta, binding, current)
+                        else cycleFocusedBunsetsuCandidateNow(session, delta, binding, current)
+                    }
+                    CursorOperation.PREVIEW -> Unit
+                }
+                floatingCursor?.updateSelection(cursorSelectionMode, !hasCursorPreedit())
+            }
+        }
+        cursorMoves.trySend(PendingCursorMove(direction, cursorOperation(), editor, cursorWorkGeneration.get(), cursorSelectionMode, fromPanel))
+    }
+
+    private fun moveCursorVertically(direction: CursorDirection) {
+        if (cursorSelectionMode && !hasCursorPreedit()) queueCursorMove(direction)
+        else sendDownUpKeyEvents(direction.keyCode)
+    }
     private var dictionaryInputConnection: InputConnection? = null
     private var dictionaryInputEditor: EditText? = null
     private var dictionaryEditorInfo: EditorInfo? = null
@@ -3337,6 +3554,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val targetChanged = dictionaryInputEditor !== editor
         if (targetChanged) {
+            resetCursorInputSession()
             keyboardPopupRequests.invalidate()
             // Undo entries contain editor text and must never cross input targets.
             deletedBuffer.clear()
@@ -3378,6 +3596,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun onDictionaryEditorSelectionChanged(editor: EditText, start: Int, end: Int) {
         if (dictionaryInputEditor !== editor) return
+        cursorNativeSelectionStart = start
+        cursorNativeSelectionEnd = end
         horizontalCursorSelectionRevision.incrementAndGet()
         forwardDeleteCoordinator.onSelectionChanged(start, end)
     }
@@ -3564,7 +3784,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        floatingCursor?.stop()
+        resetCursorInputSession()
+        cursorInputTracking = cursorSettings.enabled
+        cursorNativeSelectionStart = attribute?.initialSelStart ?: -1
+        cursorNativeSelectionEnd = attribute?.initialSelEnd ?: -1
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
         super.onStartInput(attribute, restarting)
@@ -3876,6 +4102,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
         updateDateCandidateConfig(preferences.dateCandidateConfig)
+        voiceInputSettings = preferences.voiceInputSettings
         predictionConfig = preferences.predictionConfig
         enabledDictionaryCategories = preferences.enabledDictionaryCategories
         isFlickOnlyMode = preferences.isFlickOnlyMode
@@ -5868,8 +6095,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        refreshFloatingCursor()
         startComposingGuide()
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
+        mainLayoutBinding?.keyboardTouchEffectContainer?.let { clipboardFloat?.attach(it) }
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
         shortcutToolbarHiddenForCandidates = false
@@ -6264,7 +6493,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        floatingCursor?.stop()
+        resetCursorInputSession()
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
         dismissJob?.cancel()
@@ -6282,7 +6514,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        floatingCursor?.stop()
+        resetCursorInputSession()
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
         dismissJob?.cancel()
@@ -6332,7 +6567,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        floatingCursor?.stop()
+        resetCursorInputSession()
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         floatingPhysicalToolbarWindow?.dismiss()
         imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
@@ -6350,11 +6588,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        floatingCursor?.destroy()
+        floatingCursor = null
+        resetCursorInputSession()
+        cursorWorker?.cancel()
+        cursorMoves.close()
         localFontScope.cancel()
         dismissKeyboardSelectionPopups()
         stopSplitKeyboard()
         dictionaryFloats?.destroy()
         dictionaryFloats = null
+        clipboardFloat?.destroy()
+        clipboardFloat = null
         zenzFloatingWindow?.destroy()
         zenzFloatingWindow = null
         composingGuide?.destroy()
@@ -6781,6 +7026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        cursorAnchorProbe.onUpdate(cursorAnchorInfo)
 
         val positions = physicalKeyboardPopupPositions.update(
             anchorInfo = cursorAnchorInfo,
@@ -6797,6 +7043,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             if (shown) modeSwitchAwaitingCursorPosition = false
         }
+        // Cursor verification also requests geometry for on-screen input. Its native
+        // composition reply must not open the physical-keyboard candidate window.
+        if (physicalKeyboardEnable.replayCache.firstOrNull() != true) return
         val candidateAnchor = positions.candidate ?: return
         ensurePhysicalKeyboardPopupWindows()
         floatingCandidateWindow?.let { candidateWindow ->
@@ -6805,17 +7054,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        floatingCursor?.stop()
+        cancelCursorOperations()
         dismissKeyboardSelectionPopups()
         floatingPhysicalToolbarWindow?.dismiss()
         floatingPhysicalToolbarWindow = null
         dictionaryConfigurationChanging = true
         dictionaryFloats?.detach()
+        clipboardFloat?.detach()
         try {
             super.onConfigurationChanged(newConfig)
         } finally {
             dictionaryConfigurationChanging = false
         }
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
+        mainLayoutBinding?.keyboardTouchEffectContainer?.let { clipboardFloat?.attach(it) }
         mainLayoutBinding?.root?.post { refreshPhysicalToolbar() }
         mainLayoutBinding?.root?.postDelayed({
             floatingPhysicalToolbarWindow?.dismiss()
@@ -7338,6 +7591,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun createVoiceRecognitionListener(): RecognitionListener = object : RecognitionListener {
+        override fun onReadyForSpeech(params: Bundle?) {
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = true
+            )
+        }
+
+        override fun onBeginningOfSpeech() {
+
+        }
+
+        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onBufferReceived(buffer: ByteArray?) {}
+        override fun onEndOfSpeech() {
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onError(error: Int) {
+            isListening = false
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onResults(results: Bundle?) {
+            isListening = false
+            val matches =
+                results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val text = matches?.firstOrNull() ?: return
+            updateVoiceInputText(text)
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onPartialResults(partialResults: Bundle?) {
+            val matches =
+                partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val text = matches?.firstOrNull() ?: return
+            updateVoiceInputText(text)
+        }
+
+        override fun onEvent(eventType: Int, params: Bundle?) {}
+    }
+
+    private fun updateVoiceInputText(text: String) {
+        _inputString.update { activeVoiceInputSettings.transform(text, activeVoiceInputLanguage) }
+    }
+
     private fun startVoiceInput(
         mainView: MainLayoutBinding
     ) {
@@ -7385,6 +7693,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         try {
+            activeVoiceInputLanguage = languageValue
+            activeVoiceInputSettings = voiceInputSettings
             speechRecognizer?.startListening(intent)
             isListening = true
         } catch (e: SecurityException) {
@@ -7667,7 +7977,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzFloatingLabel?.let { KeyboardFontApplicator.apply(it, snapshot) }
         zenzFloatingWindow?.setKeyboardFont(snapshot)
         composingGuide?.setKeyboardFont(snapshot)
+        clipboardFloat?.setKeyboardFont(snapshot)
         dictionaryFloats?.setKeyboardFont(snapshot)
+        floatingCursor?.setKeyboardFont(snapshot)
         splitController?.setKeyboardFont(snapshot)
     }
 
@@ -8037,11 +8349,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         forwardDeleteCoordinator.onSelectionChanged(newSelStart, newSelEnd)
         invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
+        cursorNativeSelectionStart = newSelStart
+        cursorNativeSelectionEnd = newSelEnd
+        if (candidatesStart >= 0 && candidatesEnd >= candidatesStart) {
+            cursorNativeComposingRange = candidatesStart..candidatesEnd
+            cursorWrittenComposing?.takeIf { it.start == null && candidatesEnd - candidatesStart == it.text.length }
+                ?.let { cursorWrittenComposing = it.copy(start = candidatesStart) }
+        }
+        floatingCursor?.updateSelection(cursorSelectionMode, !hasCursorPreedit())
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
         }
 
+        if (suppressedSelectionCleanupCount > 0) {
+            suppressedSelectionCleanupCount -= 1
+            Timber.d("onUpdateSelection suppressed: [${inputString.value}] [${stringInTail.get()}]")
+            return
+        }
+
+        val preservedPreEdit = preservePreEditOnNextSelectionUpdate
+        if (preservedPreEdit != null) {
+            preservePreEditOnNextSelectionUpdate = null
+            if (_inputString.value == preservedPreEdit && preservedPreEdit.isNotEmpty()) {
+                Timber.d("onUpdateSelection preserve preedit after cancel: $preservedPreEdit")
+                refreshReconversionUi()
+                return
+            }
+        }
+
+        if (cursorInputTracking && hasCursorPreedit()) {
+            if (inputString.value.isNotEmpty() && !composingTextArbiter.hasCanonicalText() && !composingTextArbiter.isPreviewVisible()) return
+            cursorSynchronization.verifyNotification(newSelStart, newSelEnd) { start, end ->
+                applyEditorSelectionUpdate(oldSelStart, oldSelEnd, start, end)
+            }
+            return
+        }
+        applyEditorSelectionUpdate(oldSelStart, oldSelEnd, newSelStart, newSelEnd)
+    }
+
+    private fun applyEditorSelectionUpdate(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int) {
+        cursorNativeComposingRange = null
+        cursorWrittenComposing = null
         updateEditorSelectionSnapshot(
             newSelStart = newSelStart,
             newSelEnd = newSelEnd,
@@ -8054,12 +8403,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             newSelEnd = newSelEnd,
         )
 
-        if (suppressedSelectionCleanupCount > 0) {
-            suppressedSelectionCleanupCount -= 1
-            Timber.d("onUpdateSelection suppressed: [${inputString.value}] [${stringInTail.get()}]")
-            return
-        }
-
         if (editorTextSelected) {
             if (selectedEditorText.isNotEmpty()) {
                 handleSelectedTextSelection(selectedEditorText)
@@ -8071,16 +8414,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSelectionActionSession(
                 clearSuggestions = hasSelectionActionCandidates()
             )
-        }
-
-        val preservedPreEdit = preservePreEditOnNextSelectionUpdate
-        if (preservedPreEdit != null) {
-            preservePreEditOnNextSelectionUpdate = null
-            if (_inputString.value == preservedPreEdit && preservedPreEdit.isNotEmpty()) {
-                Timber.d("onUpdateSelection preserve preedit after cancel: $preservedPreEdit")
-                refreshReconversionUi()
-                return
-            }
         }
 
         Timber.d("onUpdateSelection end called: [${inputString.value}] [${stringInTail.get()}] [${bunsetusMultipleDetect}]")
@@ -8105,9 +8438,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (_inputString.value.isNotEmpty()) {
                     clearFunctionKeyConversionSource()
                     _inputString.update { "" }
-                    beginBatchEdit()
-                    setComposingText("", 0)
-                    endBatchEdit()
+                    composingTextArbiter.markCanonicalFinished()
                 }
                 setSuggestionAdapterSuggestionsOnMain(
                     emptyList()
@@ -8117,10 +8448,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // Caret moved while tail exists → commit tail
             hasTail -> {
                 Timber.d("onUpdateSelection hasTail : $tail")
-                scope.launch {
-                    _inputString.update { tail }
-                    stringInTail.set("")
-                }
+                _inputString.update { tail }
+                stringInTail.set("")
             }
 
             // No tail but still holding input → cleanup
@@ -8128,9 +8457,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail")
                 clearFunctionKeyConversionSource()
                 _inputString.update { "" }
-                beginBatchEdit()
-                setComposingText("", 0)
-                endBatchEdit()
+                composingTextArbiter.markCanonicalFinished()
             }
         }
 
@@ -8146,6 +8473,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if ((event?.isPrintingKey == true && !event.isCtrlPressed) || keyCode in intArrayOf(
+                KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_TAB)) endCursorSelectionForInput()
+        val queuedEvent = event?.let { KeyEvent(it) }
+        if (deferCursorInput { if (!onKeyDown(keyCode, queuedEvent) && queuedEvent != null) currentInputConnection?.sendKeyEvent(queuedEvent) }) return true
         if (handleImeSwitchPopupKeyDown(keyCode)) {
             imeSwitchPopupConsumedKeyUps.add(keyCode)
             return true
@@ -9178,6 +9509,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        val queuedEvent = event?.let { KeyEvent(it) }
+        if (deferCursorInput { if (!onKeyUp(keyCode, queuedEvent) && queuedEvent != null) currentInputConnection?.sendKeyEvent(queuedEvent) }) return true
         if (imeSwitchPopupConsumedKeyUps.remove(keyCode)) return true
         dictionaryInputEditor?.let { editor ->
             if (event != null && keyCode != KeyEvent.KEYCODE_BACK) {
@@ -11410,6 +11743,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
+        if (deferCursorInput { handleTapAndFlick(key, char, inputString.value, StringBuilder(), isFlick,
+                gestureType, suggestionAdapter?.suggestions.orEmpty(), mainView) }) return
+        if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
         if (isKeyboardLayoutEditModeActive()) return
         handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
@@ -11599,6 +11935,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (deferCursorInput { handleTapAndFlickFloating(key, char, inputString.value, StringBuilder(), isFlick,
+                gestureType, suggestionAdapter?.suggestions.orEmpty(), floatingKeyboardLayoutBinding) }) return
+        if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
         if (isKeyboardLayoutEditModeActive()) return
         handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
@@ -11904,6 +12243,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleLongPress(
         key: Key
     ) {
+        if (deferCursorInput { handleLongPress(key) }) return
+        if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
         if (isKeyboardLayoutEditModeActive()) return
         when (key) {
             Key.NotSelected -> {}
@@ -11954,6 +12295,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleLongPressFloating(
         key: Key
     ) {
+        if (deferCursorInput { handleLongPressFloating(key) }) return
+        if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
         if (isKeyboardLayoutEditModeActive()) return
         when (key) {
             Key.NotSelected -> {}
@@ -14689,6 +15032,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onActionLongPress(action: KeyAction) {
+                if (deferCursorInput { onActionLongPress(action) }) return
+                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 finishCustomToggleForAction()
@@ -14902,6 +15248,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onActionUpAfterLongPress(action: KeyAction) {
+                if (deferCursorInput { onActionUpAfterLongPress(action) }) return
+                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 Timber.d("onActionUpAfterLongPress: $action")
@@ -14991,6 +15340,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionLongPress(action: KeyAction) {
+                if (deferCursorInput { onFlickActionLongPress(action) }) return
+                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 finishCustomToggleForAction()
@@ -15143,6 +15495,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                if (deferCursorInput { onFlickActionUpAfterLongPress(action, isFlick) }) return
+                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
@@ -15340,7 +15695,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertString = inputString.value
                         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
                         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+                            moveCursorVertically(CursorDirection.DOWN)
                         }
                     }
 
@@ -15350,7 +15705,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertString = inputString.value
                         if (cycleFocusedBunsetsuCandidate(delta = -1)) {
                         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
+                            moveCursorVertically(CursorDirection.UP)
                         }
                     }
 
@@ -15422,6 +15777,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onToggleText(keyIdentity: String, values: List<String>) {
+                if (deferCursorInput { onToggleText(keyIdentity, values) }) return
+                endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 handleKeyReleaseFeedback()
@@ -15442,6 +15799,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
+                if (deferCursorInput { onAction(action, isFlick) }) return
+                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 finishCustomToggleForAction()
@@ -15890,7 +16250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertString = inputString.value
                         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
                         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+                            moveCursorVertically(CursorDirection.DOWN)
                         }
                     }
 
@@ -15898,7 +16258,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertString = inputString.value
                         if (cycleFocusedBunsetsuCandidate(delta = -1)) {
                         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
+                            moveCursorVertically(CursorDirection.UP)
                         }
                     }
 
@@ -16421,10 +16781,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 is ClipboardItem.Text -> {
-                    if (item.text.isNotEmpty()) {
-                        commitText(item.text, 1)
-                        appPreference.last_pasted_clipboard_text_preference = item.text
-                    }
+                    pasteClipboardText(item.text)
                 }
 
                 is ClipboardItem.Empty -> {
@@ -16490,16 +16847,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             is ClipboardItem.Text -> {
-                if (item.text.isNotEmpty()) {
-                    commitText(item.text, 1)
-                    appPreference.last_pasted_clipboard_text_preference = item.text
-                }
+                pasteClipboardText(item.text)
             }
 
             ClipboardItem.Empty -> Unit
         }
         clearDeletedBufferWithoutResetLayout()
         refreshEditHistoryUi()
+    }
+
+    private fun pasteClipboardText(text: String) {
+        if (text.isEmpty() || !commitText(text, 1)) return
+        // The editor replaced its composing region. Clear local preedit before the
+        // next key, without waiting for an asynchronous selection notification.
+        resetFlagsEnterKeyNotHenkan()
+        clearSuggestionStateAfterCommit()
+        floatingCursor?.updateSelection(false, !hasCursorPreedit())
+        appPreference.last_pasted_clipboard_text_preference = text
     }
 
     private fun handleClipboardHistoryItemAction(item: ClipboardItem, action: ClipboardItemAction) {
@@ -16577,6 +16941,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * @param bitmap 送信するBitmapオブジェクト。
      */
     private fun commitBitmap(bitmap: Bitmap) {
+        endCursorSelectionForInput()
+        floatingCursor?.updateSelection(false, !hasCursorPreedit())
         // ▼▼▼ ログ追加 ▼▼▼
         Timber.d("commitBitmap: 開始")
 
@@ -18370,7 +18736,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setSymbolsFloating(floatingKeyboardLayoutBinding)
+                        setSymbolsFloating(floatingKeyboardLayoutBinding,
+                            if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) SymbolMode.CLIPBOARD
+                            else symbolKeyboardFirstItem ?: SymbolMode.EMOJI)
                         if (isSymbolKeyboardShow.isShown) {
                             hideKeyboardViews(getFloatingKeyboardSurface() ?: return@let)
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
@@ -18569,6 +18937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 // 2. 最新のリストをクラスのプロパティにキャッシュする
                 currentClipboardItems = uiItems
+                clipboardFloat?.updateItems(uiItems)
 
                 // 3. CustomSymbolKeyboardViewの表示を更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
@@ -20574,6 +20943,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 delay(timeToDelay)
             }
 
+            cursorSynchronization.awaitSnapshot()
             if (
                 inputString.value != string ||
                 !editorMutationRevision.isCurrent(mutationRevision) ||
@@ -21359,22 +21729,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
-        val mainView = mainLayoutBinding ?: return false
-        launchBunsetsuOperation { session ->
-            val nextIndex = (session.focusedIndex + delta).coerceIn(0, session.segments.lastIndex)
-            if (nextIndex == session.focusedIndex) return@launchBunsetsuOperation
-            val movedSession = session.copy(focusedIndex = nextIndex)
-            val loadedSession = loadCandidatesForBunsetsuSegment(
-                movedSession,
-                segmentIndex = nextIndex
-            )
-            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
-                return@launchBunsetsuOperation
-            }
-            bunsetsuConversionSession = loadedSession
-            renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-        }
+        if (mainLayoutBinding == null) return false
+        launchBunsetsuOperation { session -> moveFocusedBunsetsuSegmentNow(session, delta, floatingKeyboardLayoutBinding) }
         return true
+    }
+
+    private suspend fun moveFocusedBunsetsuSegmentNow(
+        session: BunsetsuConversionSession, delta: Int,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?, current: () -> Boolean = { true },
+    ) {
+        if (!current()) return
+        val mainView = mainLayoutBinding ?: return
+        val nextIndex = (session.focusedIndex + delta).coerceIn(0, session.segments.lastIndex)
+        if (nextIndex == session.focusedIndex) return
+        val movedSession = session.copy(focusedIndex = nextIndex)
+        val loadedSession = loadCandidatesForBunsetsuSegment(
+            movedSession,
+            segmentIndex = nextIndex
+        )
+        if (!current() || bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+            return
+        }
+        bunsetsuConversionSession = loadedSession
+        renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
     }
 
     private fun cycleFocusedBunsetsuCandidate(
@@ -21382,36 +21759,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
-        val mainView = mainLayoutBinding ?: return false
-        launchBunsetsuOperation { session ->
-            val loadedSession = loadCandidatesForBunsetsuSegment(
-                session,
-                segmentIndex = session.focusedIndex
-            )
-            if (bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
-                return@launchBunsetsuOperation
-            }
-            val segment = loadedSession.segments[loadedSession.focusedIndex]
-            if (segment.candidates.isEmpty()) {
-                bunsetsuConversionSession = loadedSession
-                renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-                return@launchBunsetsuOperation
-            }
-
-            val candidateCount = segment.candidates.size
-            val nextIndex =
-                ((segment.selectedIndex + delta) % candidateCount + candidateCount) % candidateCount
-            val updatedSegment = segment.copy(
-                selectedIndex = nextIndex,
-                displayText = displayTextFromCandidate(segment.candidates[nextIndex]),
-                overrideDisplayCandidate = null
-            )
-            val updatedSegments = loadedSession.segments.toMutableList()
-            updatedSegments[loadedSession.focusedIndex] = updatedSegment
-            bunsetsuConversionSession = loadedSession.copy(segments = updatedSegments)
-            renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
-        }
+        if (mainLayoutBinding == null) return false
+        launchBunsetsuOperation { session -> cycleFocusedBunsetsuCandidateNow(session, delta, floatingKeyboardLayoutBinding) }
         return true
+    }
+
+    private suspend fun cycleFocusedBunsetsuCandidateNow(
+        session: BunsetsuConversionSession, delta: Int,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?, current: () -> Boolean = { true },
+    ) {
+        if (!current()) return
+        val mainView = mainLayoutBinding ?: return
+        val loadedSession = loadCandidatesForBunsetsuSegment(
+            session,
+            segmentIndex = session.focusedIndex
+        )
+        if (!current() || bunsetsuConversionSession !== session || !isBunsetsuCursorMoveSessionActive()) {
+            return
+        }
+        val segment = loadedSession.segments[loadedSession.focusedIndex]
+        if (segment.candidates.isEmpty()) {
+            bunsetsuConversionSession = loadedSession
+            renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+            return
+        }
+
+        val candidateCount = segment.candidates.size
+        val nextIndex =
+            ((segment.selectedIndex + delta) % candidateCount + candidateCount) % candidateCount
+        val updatedSegment = segment.copy(
+            selectedIndex = nextIndex,
+            displayText = displayTextFromCandidate(segment.candidates[nextIndex]),
+            overrideDisplayCandidate = null
+        )
+        val updatedSegments = loadedSession.segments.toMutableList()
+        updatedSegments[loadedSession.focusedIndex] = updatedSegment
+        bunsetsuConversionSession = loadedSession.copy(segments = updatedSegments)
+        renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
     }
 
     private fun commitBunsetsuConversionSession(): Boolean {
@@ -22596,7 +22980,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun withClipboardShortcutState(types: Set<ShortcutType>): Set<ShortcutType> =
+        types + if (clipboardFloat?.visible == true) setOf(ShortcutType.FLOATING_CLIPBOARD) else emptySet()
+
     private fun updateShortcutActiveStates() {
+        clipboardFloat?.refresh()
         val activeTypes = resolveShortcutActiveTypes(
             keyboardLayoutEditActive = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
             keyboardFloatingActive = isKeyboardFloatingMode == true,
@@ -22604,10 +22992,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liveConversionEnabled = isLiveConversionEnable == true,
             learningPaused = learningPausedForSession,
             handwritingActive = handwritingModeActive,
-        ) + dictionaryFloats?.activeShortcuts.orEmpty()
+        ) + dictionaryFloats?.activeShortcuts.orEmpty() +
+            (if (cursorSettings.enabled) setOf(ShortcutType.FLOATING_CURSOR) else emptySet())
+        refreshFloatingCursor()
 
-        shortcutAdapter?.setActiveShortcutTypes(activeTypes)
-        suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+        shortcutAdapter?.setActiveShortcutTypes(withClipboardShortcutState(activeTypes))
+        suggestionAdapter?.setActiveShortcutTypes(withClipboardShortcutState(activeTypes))
     }
 
     private fun refreshShortcutAvailability() {
@@ -23205,6 +23595,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ShortcutType.FLOATING_USER_DICTIONARY,
             ShortcutType.FLOATING_USER_TEMPLATE -> toggleDictionaryFloat(type)
 
+            ShortcutType.FLOATING_CURSOR -> { cursorSettings.enabled = !cursorSettings.enabled }
+
             ShortcutType.TEMPLATE -> {
                 showUserTemplateListPopup()
             }
@@ -23268,6 +23660,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ShortcutType.GEMMA_HANDWRITING -> {
                 toggleGemmaHandwriting()
             }
+
+            ShortcutType.FLOATING_CLIPBOARD -> toggleClipboardFloat()
 
             ShortcutType.CLIP_BOARD -> {
                 vibrate()
@@ -23353,6 +23747,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val inputConnection = currentInputConnection ?: return false
                     clearZeroQueryAllState(refresh = false)
                     finishComposingText()
+                    endCursorSelectionForInput()
                     inputConnection.commitText(text, 1)
                     refreshCandidateStripContent()
                     return true
@@ -23469,6 +23864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (inputSessionId != gemmaInputSessionId) return false
                     val inputConnection = currentInputConnection ?: return false
                     finishComposingText()
+                    endCursorSelectionForInput()
                     inputConnection.commitText(text, 1)
                     showToastMessage(getString(R.string.gemma_result_ready))
                     return true
@@ -23796,6 +24192,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
                     },
                     onGlideStarted = {
+                        endCursorSelectionForInput()
                         commitPreviousQwertyGlideCandidateOnNewGlideIfNeeded()
                     },
                     onCancel = {},
@@ -23851,6 +24248,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
+                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift,
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight,
+                            QWERTYKey.QWERTYKeyCursorUp, QWERTYKey.QWERTYKeyCursorDown)) stopCursorInputGestures()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Pressed Key: $qwertyKey")
@@ -23863,6 +24263,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (deferCursorInput { onReleasedQWERTYKey(qwertyKey, tap, variations) }) return
+                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift,
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight,
+                            QWERTYKey.QWERTYKeyCursorUp, QWERTYKey.QWERTYKeyCursorDown)) endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
@@ -24284,6 +24688,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onFlickUPQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (deferCursorInput { onFlickUPQWERTYKey(qwertyKey, tap, variations) }) return
+                    endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
@@ -24321,6 +24727,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey,
                     character: Char
                 ) {
+                    if (deferCursorInput { onFlickDownQWERTYKey(qwertyKey, character) }) return
+                    endCursorSelectionForInput()
                     activateSplitView(qwertyView)
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickDownQWERTYKey: $qwertyKey, $character")
@@ -24371,6 +24779,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidates: List<Candidate>,
         applyFirstCandidate: Boolean
     ) {
+        if (applyFirstCandidate) {
+            if (deferCursorInput { showQwertyGlideCandidates(candidates, applyFirstCandidate) }) return
+            endCursorSelectionForInput()
+        }
         if (candidates.isEmpty()) return
         if (currentQwertyRomajiModeForSession) return
         clearZenzLiveSlot("qwerty glide candidates")
@@ -28617,7 +29029,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 GestureType.FlickTop -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
+                    moveCursorVertically(CursorDirection.UP)
                 }
 
                 GestureType.FlickLeft -> {
@@ -28625,7 +29037,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 GestureType.FlickBottom -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+                    moveCursorVertically(CursorDirection.DOWN)
                 }
 
                 GestureType.Null -> {}
@@ -28804,7 +29216,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 GestureType.FlickTop -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
+                    moveCursorVertically(CursorDirection.UP)
                 }
 
                 GestureType.FlickLeft -> {
@@ -28812,7 +29224,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 GestureType.FlickBottom -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+                    moveCursorVertically(CursorDirection.DOWN)
                 }
 
                 GestureType.Null -> {}
@@ -28829,10 +29241,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun sendDpadLeftIfPossible() {
+        if (cursorSelectionMode && !hasCursorPreedit()) { queueCursorMove(CursorDirection.LEFT); return }
         horizontalCursorMoveHandler.move(HorizontalCursorMoveHandler.Direction.Left)
     }
 
     private fun sendDpadRightIfPossible() {
+        if (cursorSelectionMode && !hasCursorPreedit()) { queueCursorMove(CursorDirection.RIGHT); return }
         horizontalCursorMoveHandler.move(HorizontalCursorMoveHandler.Direction.Right)
     }
 
@@ -30106,6 +30520,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun deleteSurroundingText(p0: Int, p1: Int): Boolean {
+        endCursorSelectionForInput()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
@@ -30115,6 +30530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
+        endCursorSelectionForInput()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
@@ -30144,6 +30560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun finishComposingText(): Boolean {
+        cursorNativeComposingRange = null
         if (!customToggleEditInProgress) resetCustomToggleState()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
@@ -30156,6 +30573,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
+        cursorNativeComposingRange = null
+        endCursorSelectionForInput()
         if (!customToggleEditInProgress) resetCustomToggleState()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
@@ -30163,6 +30582,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelCandidateTranslationIfPreEditMutates()
         val committed = connection.commitText(p0, p1)
         if (committed) {
+            cursorWrittenComposing = null
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
             composingGuide?.update(null)
@@ -30172,18 +30592,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun commitCompletion(p0: CompletionInfo?): Boolean {
+        endCursorSelectionForInput()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         val committed = connection.commitCompletion(p0)
-        if (committed) editorMutationRevision.advance()
+        if (committed) {
+            cursorWrittenComposing = null
+            editorMutationRevision.advance()
+        }
         return committed
     }
 
     override fun commitCorrection(p0: CorrectionInfo?): Boolean {
+        endCursorSelectionForInput()
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         val committed = connection.commitCorrection(p0)
-        if (committed) editorMutationRevision.advance()
+        if (committed) {
+            cursorWrittenComposing = null
+            editorMutationRevision.advance()
+        }
         return committed
     }
 
@@ -30237,7 +30665,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun requestCursorUpdates(p0: Int): Boolean {
         val connection = currentInputConnection ?: return false
-        return connection.requestCursorUpdates(p0)
+        return connection.requestCursorUpdates(p0).also { accepted ->
+            if (accepted) {
+                cursorUpdateRequestEditor = connection
+                cursorUpdateRequestMode = p0
+            }
+        }
     }
 
     override fun getHandler(): Handler? {
@@ -30252,6 +30685,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun commitContent(
         inputContent: InputContentInfo, flags: Int, opts: Bundle?
     ): Boolean {
+        endCursorSelectionForInput()
         val connection = currentInputConnection ?: return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             connection.commitContent(inputContent, flags, opts)
@@ -30263,6 +30697,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onToggled(isEnabled: Boolean) {
         isClipboardHistoryFeatureEnabled = isEnabled
         appPreference.clipboard_history_enable = isEnabled
+        clipboardFloat?.updateHistoryEnabled(isEnabled)
+        mainLayoutBinding?.keyboardSymbolView?.setClipboardHistoryEnabled(isEnabled)
+        floatingKeyboardBinding?.floatingSymbolKeyboard?.setClipboardHistoryEnabled(isEnabled)
+        splitInputs.values.forEach { it.binding.floatingSymbolKeyboard.setClipboardHistoryEnabled(isEnabled) }
     }
 
     override fun onInputDeviceAdded(p0: Int) {
