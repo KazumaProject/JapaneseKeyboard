@@ -128,6 +128,7 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_clipboard.FloatingClipboardController
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
@@ -386,6 +387,7 @@ import com.kazumaproject.markdownhelperkeyboard.text_macro.ExpandedMacro
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroInputConnectionExecutor
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.getKeyboardDisplayName
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
@@ -785,6 +787,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionKeySwipePreference: Boolean? = false
 
     private var speechRecognizer: SpeechRecognizer? = null
+    private var voiceInputSettings = VoiceInputSettings()
+    private var activeVoiceInputSettings = VoiceInputSettings()
+    private var activeVoiceInputLanguage = ""
     private var isListening = false
 
     private var enableGemmaTranslationPreference: Boolean? = false
@@ -1639,6 +1644,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cachedEmoticons: List<Emoticon>? = null
     private var cachedSymbols: List<Symbol>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
+    private var clipboardFloat: FloatingClipboardController? = null
+
+    private fun toggleClipboardFloat() {
+        val host = mainLayoutBinding?.keyboardTouchEffectContainer ?: return
+        val panel = clipboardFloat ?: FloatingClipboardController(
+            host.context,
+            { isInputViewActive && !isFullscreenMode && !isKeyboardLayoutEditModeActive() },
+            ::resolveCandidatePanelColors, ::onToggled,
+            ::performFloatingClipboardAction, ::updateShortcutActiveStates,
+        ).also { clipboardFloat = it }
+        panel.attach(host)
+        panel.updateHistoryEnabled(isClipboardHistoryFeatureEnabled)
+        panel.updateItems(currentClipboardItems)
+        panel.toggle()
+    }
+
+    private fun performFloatingClipboardAction(
+        item: ClipboardItem, action: ClipboardItemAction, complete: (Boolean) -> Unit,
+    ) {
+        val connection = currentInputConnection
+        val session = flickPreviewEditorSessionId
+        val id = item.clipboardId()
+        if (id <= 0) { complete(false); return }
+        vibrate()
+        scope.launch {
+            try {
+                when (action) {
+                    ClipboardItemAction.PASTE -> {
+                        val content = clipboardHistoryRepository.getFullContentById(id)
+                        if (!isInputViewActive || currentInputConnection !== connection ||
+                            flickPreviewEditorSessionId != session || content === ClipboardItem.Empty
+                        ) { complete(false); return@launch }
+                        pasteClipboardItemContent(content)
+                    }
+                    ClipboardItemAction.PIN -> clipboardHistoryRepository.setPinned(id, true)
+                    ClipboardItemAction.UNPIN -> {
+                        clipboardHistoryRepository.setPinned(id, false)
+                        cleanupExpiredClipboardItemsIfNeededNow()
+                    }
+                    ClipboardItemAction.DELETE -> clipboardHistoryRepository.deleteById(id)
+                }
+                complete(true)
+            } catch (exception: kotlinx.coroutines.CancellationException) { throw exception }
+            catch (exception: Exception) {
+                Timber.w(exception, "Floating clipboard action failed")
+                complete(false)
+            }
+        }
+    }
+
     private var currentClipboardItems: List<ClipboardItem> = emptyList()
     private var sumireSpecialKeyActionOverrides: List<SumireSpecialKeyActionOverrideEntity> =
         emptyList()
@@ -3163,56 +3218,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
-                setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) {
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = true
-                        )
-                    }
-
-                    override fun onBeginningOfSpeech() {
-
-                    }
-
-                    override fun onRmsChanged(rmsdB: Float) {}
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() {
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onError(error: Int) {
-                        isListening = false
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onResults(results: Bundle?) {
-                        isListening = false
-                        val matches =
-                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
-                        setSuggestionProgressVisible(
-                            reason = SuggestionProgressReason.VoiceInput,
-                            visible = false
-                        )
-                    }
-
-                    override fun onPartialResults(partialResults: Bundle?) {
-                        val matches =
-                            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull() ?: return
-                        _inputString.update { text }
-                    }
-
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
+                setRecognitionListener(createVoiceRecognitionListener())
             }
         }
     }
@@ -3788,6 +3794,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cursorNativeSelectionStart = attribute?.initialSelStart ?: -1
         cursorNativeSelectionEnd = attribute?.initialSelEnd ?: -1
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
         super.onStartInput(attribute, restarting)
@@ -4099,6 +4106,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionBackend = preferences.conversionBackend
         utilityCandidateConfig = preferences.utilityCandidateConfig
         updateDateCandidateConfig(preferences.dateCandidateConfig)
+        voiceInputSettings = preferences.voiceInputSettings
         predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
@@ -6098,6 +6106,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshFloatingCursor()
         startComposingGuide()
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
+        mainLayoutBinding?.keyboardTouchEffectContainer?.let { clipboardFloat?.attach(it) }
         // A hidden input view must not carry the previous candidate-display phase into
         // the next render. The editor can restart the view without onStartInput().
         shortcutToolbarHiddenForCandidates = false
@@ -6495,6 +6504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
         dismissJob?.cancel()
@@ -6515,6 +6525,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         physicalKeyboardPopupPositions.reset()
         modeSwitchAwaitingCursorPosition = false
         dismissJob?.cancel()
@@ -6567,6 +6578,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
+        if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         floatingPhysicalToolbarWindow?.dismiss()
         imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
@@ -6594,6 +6606,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stopSplitKeyboard()
         dictionaryFloats?.destroy()
         dictionaryFloats = null
+        clipboardFloat?.destroy()
+        clipboardFloat = null
         zenzFloatingWindow?.destroy()
         zenzFloatingWindow = null
         composingGuide?.destroy()
@@ -7064,12 +7078,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingPhysicalToolbarWindow = null
         dictionaryConfigurationChanging = true
         dictionaryFloats?.detach()
+        clipboardFloat?.detach()
         try {
             super.onConfigurationChanged(newConfig)
         } finally {
             dictionaryConfigurationChanging = false
         }
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
+        mainLayoutBinding?.keyboardTouchEffectContainer?.let { clipboardFloat?.attach(it) }
         mainLayoutBinding?.root?.post { refreshPhysicalToolbar() }
         mainLayoutBinding?.root?.postDelayed({
             floatingPhysicalToolbarWindow?.dismiss()
@@ -7592,6 +7608,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun createVoiceRecognitionListener(): RecognitionListener = object : RecognitionListener {
+        override fun onReadyForSpeech(params: Bundle?) {
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = true
+            )
+        }
+
+        override fun onBeginningOfSpeech() {
+
+        }
+
+        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onBufferReceived(buffer: ByteArray?) {}
+        override fun onEndOfSpeech() {
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onError(error: Int) {
+            isListening = false
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onResults(results: Bundle?) {
+            isListening = false
+            val matches =
+                results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val text = matches?.firstOrNull() ?: return
+            updateVoiceInputText(text)
+            setSuggestionProgressVisible(
+                reason = SuggestionProgressReason.VoiceInput,
+                visible = false
+            )
+        }
+
+        override fun onPartialResults(partialResults: Bundle?) {
+            val matches =
+                partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val text = matches?.firstOrNull() ?: return
+            updateVoiceInputText(text)
+        }
+
+        override fun onEvent(eventType: Int, params: Bundle?) {}
+    }
+
+    private fun updateVoiceInputText(text: String) {
+        _inputString.update { activeVoiceInputSettings.transform(text, activeVoiceInputLanguage) }
+    }
+
     private fun startVoiceInput(
         mainView: MainLayoutBinding
     ) {
@@ -7639,6 +7710,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         try {
+            activeVoiceInputLanguage = languageValue
+            activeVoiceInputSettings = voiceInputSettings
             speechRecognizer?.startListening(intent)
             isListening = true
         } catch (e: SecurityException) {
@@ -7921,6 +7994,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzFloatingLabel?.let { KeyboardFontApplicator.apply(it, snapshot) }
         zenzFloatingWindow?.setKeyboardFont(snapshot)
         composingGuide?.setKeyboardFont(snapshot)
+        clipboardFloat?.setKeyboardFont(snapshot)
         dictionaryFloats?.setKeyboardFont(snapshot)
         floatingCursor?.setKeyboardFont(snapshot)
         splitController?.setKeyboardFont(snapshot)
@@ -18679,7 +18753,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setSymbolsFloating(floatingKeyboardLayoutBinding)
+                        setSymbolsFloating(floatingKeyboardLayoutBinding,
+                            if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) SymbolMode.CLIPBOARD
+                            else symbolKeyboardFirstItem ?: SymbolMode.EMOJI)
                         if (isSymbolKeyboardShow.isShown) {
                             hideKeyboardViews(getFloatingKeyboardSurface() ?: return@let)
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
@@ -18878,6 +18954,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 // 2. 最新のリストをクラスのプロパティにキャッシュする
                 currentClipboardItems = uiItems
+                clipboardFloat?.updateItems(uiItems)
 
                 // 3. CustomSymbolKeyboardViewの表示を更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
@@ -22920,7 +22997,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun withClipboardShortcutState(types: Set<ShortcutType>): Set<ShortcutType> =
+        types + if (clipboardFloat?.visible == true) setOf(ShortcutType.FLOATING_CLIPBOARD) else emptySet()
+
     private fun updateShortcutActiveStates() {
+        clipboardFloat?.refresh()
         val activeTypes = resolveShortcutActiveTypes(
             keyboardLayoutEditActive = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
             keyboardFloatingActive = isKeyboardFloatingMode == true,
@@ -22932,8 +23013,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (if (cursorSettings.enabled) setOf(ShortcutType.FLOATING_CURSOR) else emptySet())
         refreshFloatingCursor()
 
-        shortcutAdapter?.setActiveShortcutTypes(activeTypes)
-        suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+        shortcutAdapter?.setActiveShortcutTypes(withClipboardShortcutState(activeTypes))
+        suggestionAdapter?.setActiveShortcutTypes(withClipboardShortcutState(activeTypes))
     }
 
     private fun refreshShortcutAvailability() {
@@ -23596,6 +23677,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ShortcutType.GEMMA_HANDWRITING -> {
                 toggleGemmaHandwriting()
             }
+
+            ShortcutType.FLOATING_CLIPBOARD -> toggleClipboardFloat()
 
             ShortcutType.CLIP_BOARD -> {
                 vibrate()
@@ -30635,6 +30718,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onToggled(isEnabled: Boolean) {
         isClipboardHistoryFeatureEnabled = isEnabled
         appPreference.clipboard_history_enable = isEnabled
+        clipboardFloat?.updateHistoryEnabled(isEnabled)
+        mainLayoutBinding?.keyboardSymbolView?.setClipboardHistoryEnabled(isEnabled)
+        floatingKeyboardBinding?.floatingSymbolKeyboard?.setClipboardHistoryEnabled(isEnabled)
+        splitInputs.values.forEach { it.binding.floatingSymbolKeyboard.setClipboardHistoryEnabled(isEnabled) }
     }
 
     override fun onInputDeviceAdded(p0: Int) {
