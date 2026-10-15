@@ -164,6 +164,13 @@ object SettingDestinations {
         return defaultFrequentKeys.mapNotNull { candidatesByKey[it] }
     }
 
+    internal fun isFeverSelected(context: Context): Boolean =
+        com.kazumaproject.core.domain.skin.KeyboardSkinId.fromPreference(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).getString(
+                com.kazumaproject.core.domain.skin.KeyboardSkinId.PREFERENCE_KEY, null
+            )
+        ) == com.kazumaproject.core.domain.skin.KeyboardSkinId.FEVER
+
     fun frequentCandidates(context: Context): List<SettingDestination> {
         val manualDestinations = buildList {
         add(
@@ -188,7 +195,7 @@ object SettingDestinations {
                 iconRes = CoreR.drawable.keyboard_24px,
             )
         )
-        add(destination(
+        if (isFeverSelected(context)) add(destination(
             key = "fever_settings",
             title = context.getString(R.string.fever_settings_title),
             summary = context.getString(R.string.fever_settings_summary),

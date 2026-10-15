@@ -178,7 +178,7 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
-        val feverItem = SettingDestinations.destination(
+        val feverItem = if (SettingDestinations.isFeverSelected(context)) SettingDestinations.destination(
             key = "fever_settings",
             title = context.getString(R.string.fever_settings_title),
             summary = context.getString(R.string.fever_settings_summary),
@@ -192,7 +192,7 @@ object SettingSearchIndex {
                 preferenceKey = "fever_settings", filterResultMode = false,
             ),
             searchScope = SettingSearchScope.LEGACY_TABS,
-        )
+        ) else null
         return (listOfNotNull(themeItem, textMacroItem, feverItem) + xmlItems).distinctBy { destination ->
             val legacyTarget = destination.legacyTarget
             "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"

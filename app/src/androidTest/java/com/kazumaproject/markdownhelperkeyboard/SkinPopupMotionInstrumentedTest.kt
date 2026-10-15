@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Test
@@ -15,6 +14,36 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SkinPopupMotionInstrumentedTest {
+    // startActivitySync waits indefinitely for the launch acknowledgement in this emulator
+    // fixture. Wait for the actual resumed host with a bounded deadline.
+    private fun launchHost(intent: Intent): HostSession {
+        val ins = InstrumentationRegistry.getInstrumentation()
+        ins.runOnMainSync { ins.targetContext.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val deadline = SystemClock.uptimeMillis() + 15000
+        while (SystemClock.uptimeMillis() < deadline) {
+            var host: SkinTestHostActivity? = null
+            ins.runOnMainSync {
+                host = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                    .filterIsInstance<SkinTestHostActivity>().firstOrNull()
+            }
+            host?.let { return HostSession(it) }
+            SystemClock.sleep(50)
+        }
+        error("SkinTestHostActivity did not resume within 15 seconds")
+    }
+
+    private class HostSession(private val host: SkinTestHostActivity) : java.io.Closeable {
+        fun onActivity(block: (SkinTestHostActivity) -> Unit) =
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { block(host) }
+        override fun close() {
+            onActivity { it.finish() }
+            val deadline = SystemClock.uptimeMillis() + 5000
+            while (!host.isDestroyed && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(25)
+            check(host.isDestroyed) { "SkinTestHostActivity was not destroyed" }
+        }
+    }
+
     @Test(timeout = 90000) fun feverFlickAndHeldGuideAnimateOnTheHardwareSurface() {
         val ins = InstrumentationRegistry.getInstrumentation()
         fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.uiAutomation.executeShellCommand(command))
@@ -108,14 +137,14 @@ class SkinPopupMotionInstrumentedTest {
         }
     }
 
-    @Test fun kanaCommitDismissesGuideAndDetachRestoresLabelColors() {
+    @Test(timeout = 180000) fun kanaCommitDismissesGuideAndDetachRestoresLabelColors() {
         val ins = InstrumentationRegistry.getInstrumentation()
         for (dark in listOf(false, true)) {
             val commits = java.util.concurrent.CopyOnWriteArrayList<Char>()
             lateinit var retained: com.kazumaproject.core.ui.skin.SkinGuidePopup
             lateinit var label: TextView
             lateinit var original: android.content.res.ColorStateList
-            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)
+            launchHost(Intent(ins.targetContext, SkinTestHostActivity::class.java)
                 .putExtra("keyboard", "kana").putExtra("dark", dark)).use { scenario ->
                 SystemClock.sleep(500)
                 var x = 0f; var y = 0f
@@ -159,11 +188,11 @@ class SkinPopupMotionInstrumentedTest {
         }
     }
 
-    @Test fun heldGuideSelectionPreservesFlickCommitsAndUsesOneWindow() {
+    @Test(timeout = 180000) fun heldGuideSelectionPreservesFlickCommitsAndUsesOneWindow() {
         val ins=InstrumentationRegistry.getInstrumentation()
         for(dark in listOf(false,true)) {
             val commits=java.util.concurrent.CopyOnWriteArrayList<Char>()
-            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext,SkinTestHostActivity::class.java)
+            launchHost(Intent(ins.targetContext,SkinTestHostActivity::class.java)
                 .putExtra("keyboard","kana").putExtra("dark",dark)).use { scenario ->
                 SystemClock.sleep(500)
                 var x=0f;var y=0f;var w=0;var h=0
@@ -213,11 +242,11 @@ class SkinPopupMotionInstrumentedTest {
         }
     }
 
-    @Test fun continuousDirectionsKeepOneStationarySurfaceAndCancelCleanly() {
+    @Test(timeout = 180000) fun continuousDirectionsKeepOneStationarySurfaceAndCancelCleanly() {
         val ins = InstrumentationRegistry.getInstrumentation()
         for (dark in listOf(false, true)) {
             val commits = java.util.concurrent.CopyOnWriteArrayList<Char>()
-            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext, SkinTestHostActivity::class.java)
+            launchHost(Intent(ins.targetContext, SkinTestHostActivity::class.java)
                 .putExtra("keyboard", "kana").putExtra("dark", dark)).use { scenario ->
                 SystemClock.sleep(500)
                 lateinit var key: TextView
@@ -308,12 +337,12 @@ class SkinPopupMotionInstrumentedTest {
         }
     }
 
-    @Test fun shortTapCommitsBeforeVisualHoldAndDetachClosesRetainedPopup() {
+    @Test(timeout = 180000) fun shortTapCommitsBeforeVisualHoldAndDetachClosesRetainedPopup() {
         val ins=InstrumentationRegistry.getInstrumentation()
         for(dark in listOf(false,true)) {
             val releases=java.util.concurrent.CopyOnWriteArrayList<Char?>()
             lateinit var retained:android.widget.PopupWindow
-            ActivityScenario.launch<SkinTestHostActivity>(Intent(ins.targetContext,SkinTestHostActivity::class.java)
+            launchHost(Intent(ins.targetContext,SkinTestHostActivity::class.java)
                 .putExtra("keyboard","qwerty").putExtra("dark",dark)).use { scenario ->
                 SystemClock.sleep(500)
                 var x=0f;var y=0f

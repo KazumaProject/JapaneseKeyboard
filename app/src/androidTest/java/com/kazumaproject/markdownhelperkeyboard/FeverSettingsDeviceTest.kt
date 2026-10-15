@@ -43,7 +43,7 @@ class FeverSettingsDeviceTest {
             labels(root)
         })
     }
-    @Test fun newAndLegacySettingsShareFeverControlsAndRetainThemAfterRecreation() {
+    @Test(timeout = 180000) fun newAndLegacySettingsShareFeverControlsAndRetainThemAfterRecreation() {
         check(context.packageName.startsWith("com.kazumaproject.skinfidelity"))
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
@@ -77,6 +77,32 @@ class FeverSettingsDeviceTest {
                             SystemClock.sleep(100)
                         }
                         check(selected)
+                    }
+                    for (skin in listOf("default", "fever", "cupertino_dark", "fever")) {
+                        scenario.onActivity { activity ->
+                            val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                            host.navController.navigate(R.id.keyboardSkinSelectionFragment)
+                        }
+                        ins.waitForIdleSync()
+                        prefs.edit().putString("keyboard_skin_preference", skin).commit()
+                        scenario.onActivity { activity ->
+                            val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                            check(host.navController.popBackStack())
+                        }
+                        val deadline = SystemClock.uptimeMillis() + 15000
+                        var correct = false
+                        while (!correct && SystemClock.uptimeMillis() < deadline) {
+                            scenario.onActivity { activity ->
+                                val theme = activity.supportFragmentManager.fragments.flatMap(::descendants)
+                                    .filterIsInstance<com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment>()
+                                    .firstOrNull { it.isResumed }
+                                val entry = theme?.findPreference<androidx.preference.Preference>("fever_settings")
+                                correct = entry != null && entry.isVisible == (skin == "fever")
+                                if (skin == "fever" && entry != null) assertTrue(entry.isEnabled)
+                            }
+                            SystemClock.sleep(100)
+                        }
+                        assertTrue("FEVER visibility legacy=$legacy skin=$skin", correct)
                     }
                     click(context.getString(R.string.fever_settings_title))
                     click(context.getString(R.string.fever_full_screen))

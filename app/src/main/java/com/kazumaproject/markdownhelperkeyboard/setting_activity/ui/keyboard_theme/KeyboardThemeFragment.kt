@@ -431,6 +431,7 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
         screen.addPreference(skinPreference)
         screen.addPreference(Preference(context).apply {
             key = "fever_settings"
+            isVisible = appPreference.keyboardSkin == KeyboardSkinId.FEVER
             setTitle(R.string.fever_settings_title)
             setSummary(R.string.fever_settings_summary)
             order = -1
@@ -460,6 +461,7 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
 
     override fun onPreferencesResumed() {
         val selected = appPreference.keyboardSkin
+        findPreference<Preference>("fever_settings")?.isVisible = selected == KeyboardSkinId.FEVER
         findPreference<Preference>(KeyboardSkinId.PREFERENCE_KEY)?.summary =
             getString(KeyboardThemeCatalog.find(selected).titleRes)
         for (index in 0 until preferenceScreen.preferenceCount) {

@@ -28115,6 +28115,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
+                    // Repeat runs after the touch transaction has ended, so each deletion
+                    // needs its own cue (without adding a character/combo or commit award).
+                    fever.noteCue(FeverCue.DELETE)
                     delay(LONG_DELAY_TIME)
                 }
             } finally {

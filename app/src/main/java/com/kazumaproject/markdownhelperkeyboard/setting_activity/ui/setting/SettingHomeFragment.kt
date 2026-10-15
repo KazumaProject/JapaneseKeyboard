@@ -108,6 +108,7 @@ class SettingHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        frequentCandidates = null
         loadAndRenderFrequentCards()
         if (initialDataJob?.isActive != true) loadInitialData()
     }
@@ -143,7 +144,9 @@ class SettingHomeFragment : Fragment() {
         val columnCount = if (resources.configuration.screenWidthDp >= 600) 3 else 2
         binding.settingHomeFrequentGrid.columnCount = columnCount
         binding.settingHomeFrequentGrid.removeAllViews()
-        homeFrequentDestinations(candidates).forEach { destination ->
+        homeFrequentDestinations(candidates).filter {
+            it.key != "fever_settings" || SettingDestinations.isFeverSelected(requireContext())
+        }.forEach { destination ->
             binding.settingHomeFrequentGrid.addView(
                 createFrequentCard(destination),
                 GridLayout.LayoutParams().apply {

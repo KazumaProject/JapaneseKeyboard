@@ -39,6 +39,7 @@ class FeverSettingsTest {
         assertEquals(FeverSettings.DEFAULT_KEYWORDS, s.keywords)
     }
     @Test fun bothSettingsSearchScopesExposeTheSameDestination() {
+        prefs.edit().putString("keyboard_skin_preference", "fever").commit()
         for (scope in SettingSearchScope.entries) {
             val item = SettingSearchIndex.searchable(context, scope).single { it.key == FeverSettings.ROUTE }
             assertTrue(item.keywords.any { it.contains("パチンコ") })

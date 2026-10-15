@@ -311,6 +311,95 @@ class FeverImeInstrumentedTest {
         }
     }
 
+    @Test(timeout = 180000) fun heldDeleteAnimatesEveryRepeatAndStopsOnReleaseAndCancel() {
+        check(context.packageName.startsWith("com.kazumaproject.skinfidelity"))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val saved = prefs.all.toMap()
+        val original = shell("settings get secure default_input_method")
+        val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val enabled = target in shell("ime list -s").lines()
+        var activity: FastInputHostActivity? = null
+        try {
+            ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
+            check(ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0))
+            shell("ime enable $target"); shell("ime set $target")
+            for (floating in listOf(false, true)) for (full in listOf(false, true)) {
+                prefs.edit().putString("keyboard_skin_preference", "fever")
+                    .putString("keyboard_order_preference", "[\"TENKEY\"]").putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("keyboard_floating_preference", floating)
+                    .putInt("keyboard_width_preference", if (floating) 70 else 100)
+                    .putInt("keyboard_floating_position_x", 24).putInt("keyboard_floating_position_y", 160)
+                    .putInt("long_press_timeout_preference", 300)
+                    .putBoolean(FeverSettings.FULL_SCREEN, full).putInt(FeverSettings.COMBO_SECONDS, 10)
+                    .putBoolean("key_sound_preference", false).putBoolean(FeverSettings.VIBRATION, false).commit()
+                activity = startEditor(false)
+                key("key_1"); stableKeyboardBounds(floating)
+                val host = activity
+                val root = ime()
+                val cues = java.util.concurrent.CopyOnWriteArrayList<FeverEvent>()
+                ins.runOnMainSync { root.controller.eventObserver = { cues.add(it) } }
+                // Real composing input, followed by a held key; no reflected service mutation.
+                repeat(8) { tap(if (it % 2 == 0) "key_1" else "key_2") }
+                var combo = 0
+                ins.runOnMainSync { combo = root.controller.combo }
+                assertEquals(8, combo)
+                for (cancel in listOf(false, true)) {
+                    if (cancel) {
+                        ins.runOnMainSync {
+                            host.editText.setText("あいうえお".repeat(20))
+                            host.editText.setSelection(host.editText.length())
+                            host.restartEditorInput(false)
+                        }
+                        SystemClock.sleep(700); stableKeyboardBounds(floating)
+                    }
+                    val cap = requireNotNull(nativeBounds("key_delete"))
+                    val down = SystemClock.uptimeMillis()
+                    fun send(action: Int) {
+                        val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                            cap.exactCenterX(), cap.exactCenterY(), 0)
+                        event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                        try { check(ui.injectInputEvent(event, true)) } finally { event.recycle() }
+                    }
+                    cues.clear()
+                    var before = 0
+                    ins.runOnMainSync { before = host.editText.length(); combo = root.controller.combo }
+                    send(MotionEvent.ACTION_DOWN)
+                    try {
+                        SystemClock.sleep(750)
+                        val first = requireNotNull(ui.takeScreenshot())
+                        SystemClock.sleep(140)
+                        val second = requireNotNull(ui.takeScreenshot())
+                        val a = IntArray(first.width * first.height); val b = IntArray(a.size)
+                        first.getPixels(a, 0, first.width, 0, 0, first.width, first.height)
+                        second.getPixels(b, 0, second.width, 0, 0, second.width, second.height)
+                        assertTrue("Repeat must animate actual frames", a.indices.count { a[it] != b[it] } > 50)
+                        first.recycle(); second.recycle()
+                        assertTrue("Repeated DELETE cues: floating=$floating full=$full cancel=$cancel $cues",
+                            cues.count { it.cue == FeverCue.DELETE } >= 4)
+                        ins.runOnMainSync {
+                            assertTrue("Held delete must remove text", host.editText.length() < before)
+                            assertEquals("Delete must not add combo", combo, root.controller.combo)
+                        }
+                    } finally { send(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP) }
+                    SystemClock.sleep(200)
+                    val count = cues.count { it.cue == FeverCue.DELETE }
+                    var remaining = 0
+                    ins.runOnMainSync { remaining = host.editText.length() }
+                    SystemClock.sleep(350)
+                    assertEquals("Repeat cue leaked after release", count, cues.count { it.cue == FeverCue.DELETE })
+                    ins.runOnMainSync { assertEquals("Deletion leaked after release", remaining, host.editText.length()) }
+                    println("FEVER held delete PASS floating=$floating full=$full cancel=$cancel cues=$count")
+                }
+                ins.runOnMainSync { host.finish() }; activity = null
+            }
+        } finally {
+            ins.runOnMainSync { activity?.finish() }
+            restorePreferences(prefs, saved)
+            shell("ime set $original"); if (!enabled) shell("ime disable $target")
+            ui.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
     private fun restorePreferences(prefs: android.content.SharedPreferences, saved: Map<String, *>) {
         val edit = prefs.edit().clear()
         saved.forEach { (key, value) -> when (value) {
