@@ -48,16 +48,67 @@ internal class FeverController(private val context: Context, private val feedbac
     var settings = FeverSettings(); private set
     val wantsFullScreen get() = active && settings.fullScreen
     private val expire = Runnable { if (engine.expireCombo()) surface?.setCombo(0) }
-    private val layout = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> position() }
+    private var geometryDirty = true
+    private val geometryBounds = Array(4) { android.graphics.Rect() }
+    private val geometryPoint = IntArray(2)
+    private val geometryViews = arrayOfNulls<View>(4)
+    private val observedHosts = ArrayList<View>(2)
+    private val globalLayout = android.view.ViewTreeObserver.OnGlobalLayoutListener { geometryDirty = true }
+    private val preDraw = android.view.ViewTreeObserver.OnPreDrawListener { position(); true }
+    private val layout = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        geometryDirty = true; position()
+    }
+
+    private fun clearGeometryObservers() {
+        // A ViewTreeObserver can be merged and killed when its view attaches. Resolve the
+        // current observer from the view so teardown also removes migrated listeners.
+        observedHosts.map { it.viewTreeObserver }.distinct().forEach { tree -> if (tree.isAlive) {
+            tree.removeOnGlobalLayoutListener(globalLayout); tree.removeOnPreDrawListener(preDraw)
+        } }
+        observedHosts.clear()
+    }
+    private fun observeGeometry() {
+        clearGeometryObservers()
+        listOfNotNull(host, edgeHost).distinctBy { it.viewTreeObserver }.forEach { parent ->
+            parent.viewTreeObserver.addOnGlobalLayoutListener(globalLayout)
+            parent.viewTreeObserver.addOnPreDrawListener(preDraw)
+            observedHosts.add(parent)
+        }
+        geometryDirty = true
+    }
+
+    private fun updateGeometryBounds(index: Int, item: View?): Boolean {
+        val bounds = geometryBounds[index]
+        val replaced = geometryViews[index] !== item
+        geometryViews[index] = item
+        if (item == null) return (replaced || !bounds.isEmpty).also { bounds.setEmpty() }
+        item.getLocationOnScreen(geometryPoint)
+        val x = geometryPoint[0]; val y = geometryPoint[1]
+        val changed = replaced || bounds.left != x || bounds.top != y ||
+            bounds.width() != item.width || bounds.height() != item.height
+        if (changed) bounds.set(x, y, x + item.width, y + item.height)
+        return changed
+    }
+    /** Layout invalidates the hierarchy cache; screen bounds also catch floating-panel translations. */
+    private fun geometryChanged(parent: View, content: View?, protected: View?): Boolean {
+        var changed = geometryDirty
+        changed = updateGeometryBounds(0, parent) || changed
+        changed = updateGeometryBounds(1, content) || changed
+        changed = updateGeometryBounds(2, protected) || changed
+        changed = updateGeometryBounds(3, edgeHost) || changed
+        geometryDirty = false
+        return changed
+    }
 
     fun configure(enabled: Boolean, mainHost: ViewGroup?, keyboard: View?, floatingHost: ViewGroup?, fullScreenHost: ViewGroup? = mainHost, protectedKeys: (() -> View?)? = null) {
         val next = FeverSettings.read(PreferenceManager.getDefaultSharedPreferences(context))
         val nextHost = if (next.fullScreen) fullScreenHost else (floatingHost?.rootView as? ViewGroup) ?: mainHost
         if (settings != next || active != enabled || host !== nextHost) stop()
         settings = next; engine.configure(next); active = enabled
+        val previousRibbon = needsRibbon
         floating = floatingHost != null
+        if (ribbonHost !== mainHost || previousRibbon != needsRibbon) mainHost?.requestLayout()
         ribbonHost = mainHost
-        mainHost?.requestLayout()
         keyboardContent = protectedKeys
         protectedKeyboard = if (next.fullScreen && floatingHost != null) ({ floatingHost.rootView }) else protectedKeys
         protectFloatingPanel = next.fullScreen && floatingHost != null
@@ -67,13 +118,14 @@ internal class FeverController(private val context: Context, private val feedbac
             surface = FeverEffectView(context).also { nextHost.overlay.add(it) }
             if (feedback == null) feedback = FeverFeedback(context)
             nextHost.addOnLayoutChangeListener(layout)
-            anchor?.addOnLayoutChangeListener(layout)
+            observeGeometry()
         }
         val extraHost = (floatingHost?.rootView as? ViewGroup)?.takeIf { next.fullScreen && it !== nextHost }
         if (extraHost !== edgeHost) {
             edgeSurface?.let { edgeHost?.overlay?.remove(it) }
             edgeHost = extraHost
             edgeSurface = extraHost?.let { panel -> FeverEffectView(context).also(panel.overlay::add) }
+            observeGeometry()
         }
         surface?.intensity = next.intensity
         edgeSurface?.intensity = next.intensity
@@ -82,13 +134,16 @@ internal class FeverController(private val context: Context, private val feedbac
     private fun position() {
         val parent = host ?: return
         val view = surface ?: return
+        val content = keyboardContent?.invoke()
+        val protectedView = protectedKeyboard?.invoke()
+        if (!geometryChanged(parent, content, protectedView)) return
         view.layout(0, 0, parent.width, parent.height)
         val target = anchor ?: parent
         val parentPosition = IntArray(2).also(parent::getLocationOnScreen)
         val position = IntArray(2).also(target::getLocationOnScreen)
         view.setArena(RectF((position[0] - parentPosition[0]).toFloat(), (position[1] - parentPosition[1]).toFloat(),
             (position[0] - parentPosition[0] + target.width).toFloat(), (position[1] - parentPosition[1] + target.height).toFloat()))
-        val protected = protectedKeyboard?.invoke()?.let { keys ->
+        val protected = protectedView?.let { keys ->
             val point = IntArray(2).also(keys::getLocationOnScreen)
             RectF((point[0] - parentPosition[0]).toFloat(), (point[1] - parentPosition[1]).toFloat(),
                 (point[0] - parentPosition[0] + keys.width).toFloat(),
@@ -107,7 +162,6 @@ internal class FeverController(private val context: Context, private val feedbac
                 if (protected != null && RectF.intersects(rect, protected)) keys.add(rect)
             } else if (candidate is ViewGroup) for (index in 0 until candidate.childCount) collect(candidate.getChildAt(index))
         }
-        val content = keyboardContent?.invoke()
         content?.let(::collect)
         val controls = ArrayList<RectF>()
         if (floating && !settings.fullScreen && content != null) {
@@ -238,7 +292,8 @@ internal class FeverController(private val context: Context, private val feedbac
         surface?.let { it.clear(); host?.overlay?.remove(it) }
         edgeSurface?.let { it.clear(); edgeHost?.overlay?.remove(it) }
         edgeSurface = null; edgeHost = null; keyboardContent = null
-        host?.removeOnLayoutChangeListener(layout); anchor?.removeOnLayoutChangeListener(layout)
+        clearGeometryObservers(); geometryViews.fill(null); geometryDirty = true
+        host?.removeOnLayoutChangeListener(layout)
         expandedHost?.requestLayout()
         ribbonHost?.requestLayout(); ribbonHost = null
         surface = null; host = null; anchor = null; protectedKeyboard = null; touchX = null; touchY = null

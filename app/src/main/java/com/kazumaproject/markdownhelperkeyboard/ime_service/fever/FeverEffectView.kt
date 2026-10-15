@@ -9,13 +9,14 @@ import com.kazumaproject.core.ui.skin.FeverSpectrum
 import kotlin.math.*
 
 /** Procedural effects: bounded particles, no video assets, no input or persistent editor data. */
-internal class FeverEffectView(context: Context) : View(context) {
+internal class FeverEffectView(context: Context, private val clock: () -> Long = SystemClock::uptimeMillis) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
+    private val stickers = FeverStickerCache(96 * resources.displayMetrics.density)
     private val arena = RectF()
     private val protectedKeys = RectF()
     private val stage = RectF()
-    private var keyEdges = emptyList<RectF>()
+    private var keyInteriors = emptyList<RectF>()
     private var controls = emptyList<RectF>()
     private val candidateArea = RectF()
     private val keyArea = RectF()
@@ -46,6 +47,17 @@ internal class FeverEffectView(context: Context) : View(context) {
     private var originY = 0f
     var intensity = 2
     private val dp get() = resources.displayMetrics.density
+    private val titleTypeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC)
+    private val awardMatrix = Matrix()
+    private val awardFrame = RectF()
+    private var frameShader: SweepGradient? = null
+    private var frameAward: FeverAward? = null
+    private var titleShader: LinearGradient? = null
+    private var titleX = Float.NaN
+    private var titleY = Float.NaN
+    private var titleSize = Float.NaN
+    private var titleTint = 0
+    private var titleRainbow = false
     private val gold = 0xffffc83d.toInt()
     private val red = 0xffff1749.toInt()
     private val colors = FeverSpectrum.colors
@@ -57,13 +69,16 @@ internal class FeverEffectView(context: Context) : View(context) {
     private data class TouchMark(val x: Float, val y: Float, val action: Int, val born: Long, val color: Int)
 
     init { isClickable = false; isFocusable = false; importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
-    fun setArena(rect: RectF) { if (arena != rect) { arena.set(rect); updateStage(); invalidate() } }
+    fun setArena(rect: RectF) { if (arena != rect) {
+        arena.set(rect); awardFrame.set(rect); awardFrame.inset(2 * dp, 2 * dp)
+        frameShader = null; updateStage(); invalidate()
+    } }
     fun protectKeys(rect: RectF?) {
         if (rect == null) protectedKeys.setEmpty() else protectedKeys.set(rect)
         updateStage(); invalidate()
     }
     fun setKeyEdges(rects: List<RectF>, candidates: RectF? = null) {
-        keyEdges = rects
+        keyInteriors = rects.map { RectF(it).apply { inset(3 * dp, 3 * dp) } }
         keyArea.setEmpty(); rects.forEach(keyArea::union)
         if (candidates == null) candidateArea.setEmpty() else candidateArea.set(candidates)
         invalidate()
@@ -87,10 +102,14 @@ internal class FeverEffectView(context: Context) : View(context) {
         }
     }
     fun setCombo(value: Int) { combo = value; invalidate() }
-    fun clear() { combo = 0; award = null; callout = ""; calloutStart = 0; sparkStart = 0; stageStart = 0; candidateStart = 0; particles.clear(); ornaments.clear(); touchMarks.clear(); invalidate() }
+    override fun onDetachedFromWindow() {
+        stickers.clear()
+        super.onDetachedFromWindow()
+    }
+    fun clear() { stickers.clear(); combo = 0; award = null; callout = ""; calloutStart = 0; sparkStart = 0; stageStart = 0; candidateStart = 0; particles.clear(); ornaments.clear(); touchMarks.clear(); invalidate() }
 
     fun touchPhase(action: Int, x: Float, y: Float, accent: Int) {
-        val now = SystemClock.uptimeMillis()
+        val now = clock()
         if (action == MotionEvent.ACTION_CANCEL) { touchMarks.clear(); invalidate(); return }
         if (!keyArea.contains(x, y) && !candidateArea.contains(x, y)) return
         if (action == MotionEvent.ACTION_MOVE && now - lastMove < 16) return
@@ -143,7 +162,7 @@ internal class FeverEffectView(context: Context) : View(context) {
     }
 
     fun show(event: FeverEvent, touchX: Float? = null, touchY: Float? = null) {
-        val time = SystemClock.uptimeMillis()
+        val time = clock()
         combo = event.combo; cue = event.cue; family = FeverVisualStyle.family(event)
         motion = FeverVisualStyle.motion(event)
         gestureDirection = when (cue) {
@@ -157,7 +176,7 @@ internal class FeverEffectView(context: Context) : View(context) {
             candidateStart = time; candidateAccent = calloutColor
             candidateEmphasis = event.cue in listOf(FeverCue.CANDIDATE, FeverCue.CANDIDATES, FeverCue.CONVERSION)
         }
-        if (arena.isEmpty) { arena.set(0f, 0f, width.toFloat(), height.toFloat()); updateStage() }
+        if (arena.isEmpty) setArena(RectF(0f, 0f, width.toFloat(), height.toFloat()))
         rawTouchX = (touchX ?: keyArea.centerX()).coerceIn(arena.left, arena.right)
         rawTouchY = (touchY ?: keyArea.centerY()).coerceIn(arena.top, arena.bottom)
         originX = rawTouchX; originY = rawTouchY
@@ -228,7 +247,7 @@ internal class FeverEffectView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (arena.isEmpty) return
-        val now = SystemClock.uptimeMillis()
+        val now = clock()
         val elapsed = (now - awardStart).coerceAtLeast(0)
         val active = award?.takeIf { elapsed < 2000 }
         canvas.save(); canvas.clipRect(arena)
@@ -264,9 +283,10 @@ internal class FeverEffectView(context: Context) : View(context) {
         val age = now - sparkStart
         if (keyArea.isEmpty || sparkStart == 0L || age !in 0..520) return
         val t = age / 520f
+        // Other motion families paint no gap streaks, so need neither clipping nor a display list.
+        if (motion != FeverMotion.CURSOR && motion != FeverMotion.IMPLODE && motion != FeverMotion.RIBBON) return
         canvas.save(); canvas.clipRect(arena); canvas.clipRect(keyArea)
-        keyEdges.forEach { cap ->
-            val inside = RectF(cap).apply { inset(3 * dp, 3 * dp) }
+        keyInteriors.forEach { inside ->
             if (android.os.Build.VERSION.SDK_INT >= 26) canvas.clipOutRect(inside)
             else @Suppress("DEPRECATION") canvas.clipRect(inside, Region.Op.DIFFERENCE)
         }
@@ -402,16 +422,20 @@ internal class FeverEffectView(context: Context) : View(context) {
             }
         }
         paint.style = Paint.Style.STROKE
-        val frameColors = when (value) {
-            FeverAward.FEVER -> intArrayOf(Color.WHITE, 0xff4985ff.toInt(), 0xff69eaff.toInt(), Color.WHITE)
-            FeverAward.HOT -> intArrayOf(Color.WHITE, 0xffff4d97.toInt(), 0xffffb9e0.toInt(), Color.WHITE)
-            FeverAward.JACKPOT -> intArrayOf(Color.WHITE, gold, 0xffff9e3d.toInt(), Color.WHITE)
-            else -> colors
+        if (frameShader == null || frameAward != value) {
+            val frameColors = when (value) {
+                FeverAward.FEVER -> intArrayOf(Color.WHITE, 0xff4985ff.toInt(), 0xff69eaff.toInt(), Color.WHITE)
+                FeverAward.HOT -> intArrayOf(Color.WHITE, 0xffff4d97.toInt(), 0xffffb9e0.toInt(), Color.WHITE)
+                FeverAward.JACKPOT -> intArrayOf(Color.WHITE, gold, 0xffff9e3d.toInt(), Color.WHITE)
+                else -> colors
+            }
+            frameShader = SweepGradient(arena.centerX(), arena.centerY(), frameColors, null)
+            frameAward = value
         }
-        val shader = SweepGradient(arena.centerX(), arena.centerY(), frameColors, null)
-        val matrix = Matrix().apply { setRotate(t * 300, arena.centerX(), arena.centerY()) }
-        shader.setLocalMatrix(matrix); paint.shader = shader; paint.alpha = (fade * 165).toInt(); paint.strokeWidth = 1.1f * dp
-        canvas.drawRoundRect(RectF(arena).apply { inset(2 * dp, 2 * dp) }, 12 * dp, 12 * dp, paint)
+        awardMatrix.setRotate(t * 300, arena.centerX(), arena.centerY())
+        frameShader!!.setLocalMatrix(awardMatrix); paint.shader = frameShader
+        paint.alpha = (fade * 165).toInt(); paint.strokeWidth = 1.1f * dp
+        canvas.drawRoundRect(awardFrame, 12 * dp, 12 * dp, paint)
         paint.shader = null
     }
 
@@ -442,14 +466,14 @@ internal class FeverEffectView(context: Context) : View(context) {
         metallicText(canvas, label, cx, cy, size, fade, value == FeverAward.COMBO, awardColor)
         canvas.restore()
         if (!compact) {
-            paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC); paint.textSize = 15 * dp
+            paint.typeface = titleTypeface; paint.textSize = 15 * dp
             paint.style = Paint.Style.FILL; paint.color = awardColor; paint.alpha = (fade * 240).toInt(); paint.textAlign = Paint.Align.CENTER
             canvas.drawText("$combo COMBO  /  ${if (value == FeverAward.JACKPOT) "BONUS!" else "KEEP GOING!"}", cx, cy + size * .82f - exit * 12 * dp, paint)
         }
     }
 
     private fun metallicText(canvas: Canvas, label: String, x: Float, y: Float, size: Float, fade: Float, rainbow: Boolean = false, tint: Int = calloutColor) {
-        paint.shader = null; paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC)
+        paint.shader = null; paint.typeface = titleTypeface
         paint.isFakeBoldText = true; paint.textAlign = Paint.Align.CENTER; paint.textSize = size
         val baseline = y - (paint.ascent() + paint.descent()) / 2
         val bevel = minOf(1f, size / (32 * dp))
@@ -458,10 +482,14 @@ internal class FeverEffectView(context: Context) : View(context) {
         canvas.drawText(label, x + 1.5f * dp * bevel, baseline + 3 * dp * bevel, paint)
         canvas.drawText(label, x, baseline, paint)
         paint.style = Paint.Style.FILL
-        paint.shader = LinearGradient(x, y - size * .5f, x, y + size * .5f,
-            if (rainbow) intArrayOf(0xffffff92.toInt(), 0xffffcb63.toInt(), 0xff78ffcf.toInt(), 0xff60dfff.toInt(), 0xffc591ff.toInt())
-            else intArrayOf(Color.WHITE, tint, Color.rgb(Color.red(tint) / 2, Color.green(tint) / 2, Color.blue(tint) / 2)),
-            null, Shader.TileMode.CLAMP)
+        if (titleShader == null || titleX != x || titleY != y || titleSize != size || titleTint != tint || titleRainbow != rainbow) {
+            titleShader = LinearGradient(x, y - size * .5f, x, y + size * .5f,
+                if (rainbow) intArrayOf(0xffffff92.toInt(), 0xffffcb63.toInt(), 0xff78ffcf.toInt(), 0xff60dfff.toInt(), 0xffc591ff.toInt())
+                else intArrayOf(Color.WHITE, tint, Color.rgb(Color.red(tint) / 2, Color.green(tint) / 2, Color.blue(tint) / 2)),
+                null, Shader.TileMode.CLAMP)
+            titleX = x; titleY = y; titleSize = size; titleTint = tint; titleRainbow = rainbow
+        }
+        paint.shader = titleShader
         canvas.drawText(label, x, baseline, paint); paint.shader = null; paint.isFakeBoldText = false
     }
 
@@ -474,10 +502,10 @@ internal class FeverEffectView(context: Context) : View(context) {
             val age = (now - p.born) / 1000f
             val t = (now - p.born).toFloat() / (p.end - p.born)
             val travel = (1 - exp(-age * 4.5f)) / 4.5f
-            val inward = p.motion in listOf(FeverMotion.IMPLODE, FeverMotion.FOCUS)
+            val inward = (p.motion == FeverMotion.IMPLODE || p.motion == FeverMotion.FOCUS)
             val distance = if (inward) (1 - t).pow(3) * .23f else travel
             val sway = if (p.motion == FeverMotion.RIBBON) sin(t * PI.toFloat() * 2) * 22 * dp else 0f
-            val x = p.x + p.vx * distance + if (p.motion in listOf(FeverMotion.HEARTS, FeverMotion.LOVE)) sin(t * 7 + p.vx) * 10 * dp else sway
+            val x = p.x + p.vx * distance + if ((p.motion == FeverMotion.HEARTS || p.motion == FeverMotion.LOVE)) sin(t * 7 + p.vx) * 10 * dp else sway
             val gravity = when (p.motion) {
                 FeverMotion.ROCKETS, FeverMotion.FEVER, FeverMotion.CURSOR, FeverMotion.SCAN, FeverMotion.REVEAL -> 0f
                 FeverMotion.HEARTS, FeverMotion.LOVE, FeverMotion.RIBBON -> 25f
@@ -505,7 +533,7 @@ internal class FeverEffectView(context: Context) : View(context) {
         val cx = stage.centerX(); val cy = if (compact) stage.centerY() else stage.top + minOf(stage.height() * .5f, 110 * dp)
         val size = minOf(stage.height() * .6f, if (compact) 21 * dp else 36 * dp, stage.width() / maxOf(3f, callout.length * .65f))
         canvas.save()
-        val horizontal = motion in listOf(FeverMotion.RIBBON, FeverMotion.SCAN, FeverMotion.CURSOR)
+        val horizontal = (motion == FeverMotion.RIBBON || motion == FeverMotion.SCAN || motion == FeverMotion.CURSOR)
         val downward = motion == FeverMotion.CASCADE
         canvas.translate(if (horizontal) (1 - enter).pow(3) * -100 * dp + exit.pow(2) * 70 * dp else 0f,
             if (horizontal) 0f else (1 - enter).pow(2) * (if (downward) -35 else 22) * dp - exit.pow(2) * 22 * dp)
@@ -661,8 +689,7 @@ internal class FeverEffectView(context: Context) : View(context) {
         paint.style = Paint.Style.FILL; paint.color = Color.WHITE; paint.alpha = alpha
         paint.typeface = Typeface.DEFAULT; paint.isFakeBoldText = false
         paint.textAlign = Paint.Align.CENTER; paint.textSize = size * 2.2f
-        val glyph = when (kind) { 1 -> "💖"; 2 -> "🌠"; 3 -> "🚀"; 4 -> "💎"; 5 -> "😍"; else -> "✨" }
-        canvas.drawText(glyph, 0f, -(paint.ascent() + paint.descent()) / 2, paint)
+        stickers.draw(canvas, kind, paint.textSize, alpha)
         canvas.restore()
     }
 
@@ -674,7 +701,7 @@ internal class FeverEffectView(context: Context) : View(context) {
         canvas.drawRoundRect(left, top, right, top + (if (compact) 28 else 38) * dp, 6 * dp, 6 * dp, paint)
         paint.style = Paint.Style.STROKE; paint.strokeWidth = dp; paint.color = calloutColor
         canvas.drawRoundRect(left, top, right, top + (if (compact) 28 else 38) * dp, 6 * dp, 6 * dp, paint)
-        paint.style = Paint.Style.FILL; paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC)
+        paint.style = Paint.Style.FILL; paint.typeface = titleTypeface
         paint.textAlign = Paint.Align.CENTER; paint.textSize = (if (compact) 15 else 17) * dp; paint.color = calloutColor; paint.alpha = 255
         canvas.drawText("$combo COMBO", (left + right) / 2, top + (if (compact) 19 else 23) * dp, paint)
         paint.color = 0xff4a2435.toInt()

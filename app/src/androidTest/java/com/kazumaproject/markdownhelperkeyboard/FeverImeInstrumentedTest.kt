@@ -68,17 +68,41 @@ class FeverImeInstrumentedTest {
         }
         return result
     }
+    private fun nativeBounds(id: String): Rect? {
+        var result: Rect? = null
+        ins.runOnMainSync {
+            val wanted = context.resources.getIdentifier(id, "id", context.packageName)
+            fun find(view: View) {
+                if (result != null || !view.isShown) return
+                if (view.id == wanted && view.width > 0 && view.height > 0 &&
+                    view.getGlobalVisibleRect(Rect())) {
+                    val point = IntArray(2).also(view::getLocationOnScreen)
+                    result = Rect(point[0], point[1], point[0] + view.width, point[1] + view.height)
+                } else if (view is ViewGroup) for (index in 0 until view.childCount) find(view.getChildAt(index))
+            }
+            val floating = PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean("keyboard_floating_preference", false)
+            WindowInspector.getGlobalWindowViews().filter {
+                (it is com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel) == floating
+            }.forEach(::find)
+        }
+        return result
+    }
     private fun tap(id: String) {
         var previous = Rect(); var stable = 0; var rect = Rect()
         await {
-            val node = key(id); node.refresh()
-            rect = Rect().also(node::getBoundsInScreen)
-            stable = if (rect == previous && !rect.isEmpty) stable + 1 else 0
-            previous = rect
+            val bounds = nativeBounds(id)
+            if (bounds != null) {
+                stable = if (bounds == previous && !bounds.isEmpty) stable + 1 else 0
+                previous = bounds; rect = bounds
+            } else stable = 0
             SystemClock.sleep(80)
             stable >= 2
         }
-        println("FEVER tap $id at $rect")
+        val accessible = nodes().firstOrNull { it.isVisibleToUser &&
+            it.viewIdResourceName == "${context.packageName}:id/$id" }?.let { Rect().also(it::getBoundsInScreen) }
+        nativeBounds(id)?.let { rect = it }
+        println("FEVER tap $id native=$rect accessibility=$accessible")
         val down = SystemClock.uptimeMillis()
         for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
@@ -89,7 +113,7 @@ class FeverImeInstrumentedTest {
         }
     }
     private fun keyLabelBitmap(): Bitmap {
-        val rect = Rect().also(key("key_5")::getBoundsInScreen)
+        val rect = requireNotNull(nativeBounds("key_5"))
         rect.inset(rect.width() / 4, rect.height() / 4)
         val screen = requireNotNull(ui.takeScreenshot())
         return Bitmap.createBitmap(screen, rect.left, rect.top, rect.width(), rect.height()).also { screen.recycle() }
