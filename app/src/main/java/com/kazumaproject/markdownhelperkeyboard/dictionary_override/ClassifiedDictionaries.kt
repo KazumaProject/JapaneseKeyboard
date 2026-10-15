@@ -14,7 +14,6 @@ data class ClassifiedDictionarySpec(
 }
 
 object ClassifiedDictionaries {
-    const val VERSION = "v1.7.262-pre.3"
     val all: List<ClassifiedDictionarySpec> = listOf(
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_PERSON, "person", R.string.classified_dictionary_person, R.string.classified_label_person),
         ClassifiedDictionarySpec(DictionaryCategory.CLASSIFIED_CHARACTER, "character", R.string.classified_dictionary_character, R.string.classified_label_character),
