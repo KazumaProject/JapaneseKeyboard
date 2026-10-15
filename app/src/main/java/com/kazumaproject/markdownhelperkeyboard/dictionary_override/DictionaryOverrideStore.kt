@@ -331,7 +331,7 @@ class DictionaryOverrideStore private constructor(
                 defaultPrefs.getBoolean("mozc_ut_neologd_preference", false)
             DictionaryCategory.WEB ->
                 defaultPrefs.getBoolean("mozc_ut_web_preference", false)
-            else -> category in ClassifiedDictionaries.categories
+            else -> false
         }
 
     private inline fun applyRevisionedEdit(

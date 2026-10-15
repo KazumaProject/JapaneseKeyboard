@@ -217,13 +217,13 @@ class DictionaryOverrideCoreTest {
         val store = alwaysValidStore("revision-optional-enabled")
         val before = store.currentRevision
 
-        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, false)
-        assertEquals(before + 1L, store.currentRevision)
-
-        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, false)
+        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, true)
         assertEquals(before + 1L, store.currentRevision)
 
         store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PERSON, false)
         assertEquals(before + 2L, store.currentRevision)
     }
 
@@ -497,6 +497,20 @@ class DictionaryOverrideCoreTest {
         assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(category))
         store.setDisableableCategoryEnabled(category, false, false)
         assertEquals(DictionaryCategoryLoadState.Disabled, resolver.resolveCategoryLoadState(category))
+    }
+
+    @Test
+    fun sourceResolver_classifiedDictionariesAreDisabledByDefault() {
+        val store = alwaysValidStore("classified-default-disabled")
+        val resolver = sourceResolver(store)
+
+        ClassifiedDictionaries.all.forEach { spec ->
+            assertEquals(
+                spec.id,
+                DictionaryCategoryLoadState.Disabled,
+                resolver.resolveCategoryLoadState(spec.category),
+            )
+        }
     }
 
     @Test
