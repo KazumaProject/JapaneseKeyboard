@@ -1,15 +1,18 @@
 {
-  "revision": "d65dc98b023fa7ab8ca994daef2ec1640d2a1bf5",
-  "version": "v1.7.262-pre.3",
+  "revision": "0a5510b04f5bbbc54330f72c6f214f79b8aceed4",
+  "version": "v1.7.263-pre.4",
   "inputSha256": {
     "src/main/bin/names.txt": "5fadf8bc0d4f97411138d47cfa18464cfb1c885c889627afde0c53d5b9bc3de9",
     "src/main/bin/place.txt.zip": "bae15eb6755a2e6aa30d1d9ece7970c7d97d761b6e430c59bc11222f8e2e6f01",
     "src/main/bin/only_wiki.txt.zip": "2c3ca451484900edee55ae4ebe79284e1301b077572f64e9100889a5755bed10",
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
     "src/main/bin/wiki_neologd_common.txt.zip": "1b0638f24e057077c1b1471dc30e741670b547979db458eb447af5cc7221283c",
-    "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf"
+    "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf",
+    "src/main/classification/reviews/2026-10-14-001-uzumaki.jsonl": "574794d0df19f8afd09d06b66897d7b7fce97dd3652bc005674a3ecae28bb30a",
+    "src/main/classification/reviews/2026-10-14-003-uzumaki-exclusions.jsonl": "5a373897bbade57c507d08e4813baa7d5975bc752a568cdaee8aaebd9d18f155",
+    "src/main/classification/term-additions.tsv": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b"
   },
-  "decisionSha256": "06f6f2d6cb74f1bbd9b766c578225fd6da37da768c1881e5694af06f11b5ba99",
+  "decisionSha256": "dbdb4b455c4fa766402bd16c265513ab54c1e1925fc65d2ea010aee8ed59bf82",
   "categorySourcePairs": {
     "address": {
       "neologd": 827,
@@ -75,13 +78,13 @@
       "person": 10
     },
     "organization": {
-      "neologd": 27134,
+      "neologd": 27133,
       "web": 13048,
       "person": 1453,
       "wiki": 5675
     },
     "person": {
-      "neologd": 194693,
+      "neologd": 194692,
       "web": 29208,
       "wiki": 8578,
       "person": 48151,
@@ -109,7 +112,7 @@
     "term": {
       "neologd": 82298,
       "wiki": 14829,
-      "web": 30452,
+      "web": 30451,
       "person": 205,
       "place": 11
     },
@@ -7089,7 +7092,7 @@
       "src/main/specialist/sources/manbyo.jsonl.gz": "acf4105c8bfff7d7278fb9d2298481b3dae2d6b58eda824f31b3345e6aea9492"
     },
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "5ad6ef41ea84dce98a2990316d9873a4f4c691c1b288e84fbe3659424a35f173",
+    "existingInventorySha256": "2f113174ac818851dca9dcfbdda16d25bb934786b810c4a47be0b56ad3275d31",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -7128,7 +7131,7 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1850329,
+    "existingUniquePairs": 1850328,
     "sourceRows": {
       "kampo_core": {
         "rows": 1581,
@@ -7197,7 +7200,7 @@
     ]
   },
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "4d4bd12c0127d3597ca057752f1b15bf204589242ded76f5289dfeec2c93c049",
-  "classifiedFixtureSha256": "b1c80100d06e1c2211b85106093200c92ed0e4f689b120c2025b5b73d868dc85",
+  "englishFixtureSha256": "83cb80625624b4aa0c5454878898097f28661adad6c707c098e87706aa87df15",
+  "classifiedFixtureSha256": "a2a05f13275fe89288372e7bd09c70cf29c5ef535a3f05f9af25492f604cc370",
   "surfaceOverridesSha256": "0937f0ca662d475195b1c8a6a555ee9d69f314faec860204028d477ba1caf282"
 }

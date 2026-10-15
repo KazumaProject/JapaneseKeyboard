@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import androidx.preference.PreferenceManager
+import com.google.gson.JsonParser
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.classifiedCandidateLabel
 import org.junit.Assert.*
 import org.junit.Test
@@ -19,6 +20,10 @@ class ClassifiedDictionaryTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test fun allCategoriesHaveThreeDistinctPathMappedFiles() {
+        val manifest = File("../tools/classified-dictionaries/distribution-manifest.json")
+            .reader().use { JsonParser.parseReader(it).asJsonObject }
+        val distributionRevision = manifest.get("revision").asString
+        assertTrue("Distribution revision must be a commit SHA", distributionRevision.matches(Regex("[0-9a-f]{40}")))
         assertEquals(30, ClassifiedDictionaries.all.size)
         assertEquals(30, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
@@ -29,7 +34,9 @@ class ClassifiedDictionaryTest {
                 assertEquals(it.key, DictionaryZipEntryNameMapper.map(it.bundledAssetPath.replace('/', '\\')))
             }
             assertTrue(context.getString(spec.nameRes).isNotBlank())
-            assertTrue(context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }.contains(ClassifiedDictionaries.VERSION))
+            val notice = context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }
+            assertTrue("${spec.id} notice must match the distribution manifest revision",
+                notice.contains("($distributionRevision)"))
         }
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/tango.dat.zip"))
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/system/tango.dat.zip"))

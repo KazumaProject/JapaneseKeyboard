@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "d65dc98b023fa7ab8ca994daef2ec1640d2a1bf5",
+  "revision": "0a5510b04f5bbbc54330f72c6f214f79b8aceed4",
   "classification": {
     "schemaVersion": 1,
     "precedence": [
@@ -1985,6 +1985,23 @@
           "addedRecords": 492,
           "addedSourceRows": 489
         }
+      ],
+      "reviews": [
+        "src/main/classification/reviews/2026-10-14-001-uzumaki.jsonl",
+        "src/main/classification/reviews/2026-10-14-003-uzumaki-exclusions.jsonl"
+      ],
+      "reviewBaseExcludedCandidatePairs": 5725,
+      "termAdditions": [
+        {
+          "path": "src/main/classification/term-additions.tsv",
+          "sha256": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b",
+          "pairs": [
+            [
+              "どぱがき",
+              "ドパガキ"
+            ]
+          ]
+        }
       ]
     },
     "inputs": {
@@ -1993,12 +2010,15 @@
       "src/main/bin/only_wiki.txt.zip": "2c3ca451484900edee55ae4ebe79284e1301b077572f64e9100889a5755bed10",
       "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
       "src/main/bin/wiki_neologd_common.txt.zip": "1b0638f24e057077c1b1471dc30e741670b547979db458eb447af5cc7221283c",
-      "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf"
+      "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf",
+      "src/main/classification/reviews/2026-10-14-001-uzumaki.jsonl": "574794d0df19f8afd09d06b66897d7b7fce97dd3652bc005674a3ecae28bb30a",
+      "src/main/classification/reviews/2026-10-14-003-uzumaki-exclusions.jsonl": "5a373897bbade57c507d08e4813baa7d5975bc752a568cdaee8aaebd9d18f155",
+      "src/main/classification/term-additions.tsv": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b"
     },
     "files": {
       "categories.json": "4fd9d1c05f21789bffe2622ec7269abaff8b7904d2ae2485e072a35df1d10556",
-      "distribution-candidates.tsv.gz": "299780b3e415150e264a5aa95c4f3b205ae0f13c16bd8cb229283761b333e4bf",
-      "distribution-decisions.tsv.gz": "06f6f2d6cb74f1bbd9b766c578225fd6da37da768c1881e5694af06f11b5ba99"
+      "distribution-candidates.tsv.gz": "769a601735284d6361e2da0f4305c73b6ec2637839afea6ad9efbdbc34473ae6",
+      "distribution-decisions.tsv.gz": "dbdb4b455c4fa766402bd16c265513ab54c1e1925fc65d2ea010aee8ed59bf82"
     },
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
     "sourceRows": {
@@ -2006,16 +2026,17 @@
       "place": 170145,
       "wiki": 150132,
       "neologd": 404817,
-      "web": 308185
+      "web": 308185,
+      "term_additions": 1
     },
     "admittedPairsByOrigin": {
+      "gemini": 472163,
       "verified": 257491,
-      "gemini": 472165,
-      "manual": 4328
+      "manual": 4329
     },
-    "uniqueAdmittedPairs": 733984,
-    "excludedCandidatePairs": 5725,
-    "excludedClassifiedPairs": 0,
+    "uniqueAdmittedPairs": 733983,
+    "excludedCandidatePairs": 5728,
+    "excludedClassifiedPairs": 3,
     "unclassifiedPairs": 10730,
     "noResultPairs": 52467,
     "conflicts": {
@@ -2024,15 +2045,15 @@
       "verified_over_manual": 8
     },
     "categoryRows": {
-      "person": 277028,
-      "character": 8870,
+      "person": 277027,
+      "character": 8871,
       "mythological_figure": 3629,
       "place": 85399,
       "address": 122248,
       "station": 6816,
       "facility": 28669,
       "transport_route": 3211,
-      "organization": 47185,
+      "organization": 47184,
       "lineage": 2986,
       "product": 13629,
       "vehicle": 3403,
@@ -2053,7 +2074,7 @@
       "work_periodical": 1029,
       "work_other": 5173
     },
-    "dictionaryRows": 767766,
+    "dictionaryRows": 767765,
     "limitations": [
       "Gemini and manual classifications include provisional categories and unverified readings. IME runtime behavior is not verified."
     ]
@@ -2093,7 +2114,7 @@
       "src/main/specialist/sources/manbyo.jsonl.gz": "acf4105c8bfff7d7278fb9d2298481b3dae2d6b58eda824f31b3345e6aea9492"
     },
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "5ad6ef41ea84dce98a2990316d9873a4f4c691c1b288e84fbe3659424a35f173",
+    "existingInventorySha256": "2f113174ac818851dca9dcfbdda16d25bb934786b810c4a47be0b56ad3275d31",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -2132,7 +2153,7 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1850329,
+    "existingUniquePairs": 1850328,
     "sourceRows": {
       "kampo_core": {
         "rows": 1581,
@@ -2202,7 +2223,7 @@
   },
   "categoryCount": 30,
   "licensesSha256": "7dababd4e8f080dd133216e64c7f64bca3052287dc0e47155067ee0732962a6a",
-  "archiveSha256": "2f0ae2c9027d00a267475c7140e9457d537ae58cffd61407e1205f8a540759bd",
+  "archiveSha256": "84d53abcc4ce88971d3eaffdda2e39591bc10e14e8f1233c32e4bbbbf9ecfb9a",
   "assets": {
     "app/src/main/assets/categories/address/tango.dat.zip": "d159bb2fa9f2c3c2acfebb5d049766389d469eef38738a3a94570e2adfae9648",
     "app/src/main/assets/categories/address/token.dat.zip": "d4b8c65ed7f49698a40e7802ddcd322ad963ae070c54a2a4e1fdf3f3700f251c",
@@ -2213,9 +2234,9 @@
     "app/src/main/assets/categories/award/tango.dat.zip": "092ee6a101d8d6ecc83724a57ea1f2dd7dd7477558960f92179ed59a9dbe80a6",
     "app/src/main/assets/categories/award/token.dat.zip": "6d04c62eab123fb2e5fb041da9b7050b23cbcb269f3bd968f8a97bba024b43f5",
     "app/src/main/assets/categories/award/yomi.dat.zip": "8e080dcd55caac3e3886e2acc13ab3709660f2254e738c9e0c80a39feaf02bcc",
-    "app/src/main/assets/categories/character/tango.dat.zip": "eef0c1d396faaa85e4d379cdc61d39e1fcafe05d513e717d0e037a99d1694a40",
-    "app/src/main/assets/categories/character/token.dat.zip": "e3c3a7e2893aef0f4f1e57c137a78385eff6c37f04face49ea335504bcb28adc",
-    "app/src/main/assets/categories/character/yomi.dat.zip": "f510db3cd498c92b7800e42eba55a8f0a59a4773088bd30df7a2c461f7360346",
+    "app/src/main/assets/categories/character/tango.dat.zip": "15c97de482143a3b37b732987bd593780a3246a529a17a782185c15c4809ac14",
+    "app/src/main/assets/categories/character/token.dat.zip": "cbe37ae990292d3654865eb231f38bbc1202568a9edef853d715f3b63fac5417",
+    "app/src/main/assets/categories/character/yomi.dat.zip": "9f7aa444ad5b121eb0c49527bca153207242e491cf4686cdb608c69cd2f7997a",
     "app/src/main/assets/categories/event/tango.dat.zip": "fb21b1f233dd5678eab5d822d6621dc645a83d9dfa882d1d49fe7c76d6c3fd94",
     "app/src/main/assets/categories/event/token.dat.zip": "73694a42d1c81f93ab90508fac09ed35e28e09548b3fde6f62c462b20d6d7c18",
     "app/src/main/assets/categories/event/yomi.dat.zip": "61995ada9583bd8f1d31108677154efdbc354590c5de9f5f0ebb7b60e8f98e4f",
@@ -2237,12 +2258,12 @@
     "app/src/main/assets/categories/mythological_figure/tango.dat.zip": "006cfe89ae8c7e33e3a072a7088e3ba9c50190654bb92a02ddaabda1269e13dd",
     "app/src/main/assets/categories/mythological_figure/token.dat.zip": "1bbfdedecf37b821fa47f08029977959e84a3be32e32f60e812ab12172d717cb",
     "app/src/main/assets/categories/mythological_figure/yomi.dat.zip": "0246ca778e79bad53b8049c4eea9c0101d5234427e0f1da92c49bf81192a5cf1",
-    "app/src/main/assets/categories/organization/tango.dat.zip": "b1b7fc8789e3871e4b9a2f8ea1ba6dd6f0bfb3c418e1c7975b1c0acfbcb83d13",
-    "app/src/main/assets/categories/organization/token.dat.zip": "5679dcf803cf7f3c5700889c78e795ee99a952abb463ce530bca2a2b13559d9e",
-    "app/src/main/assets/categories/organization/yomi.dat.zip": "a0001e5ee127e439f6766130bb71a9d968272d1d82e744877d307376006d72ff",
-    "app/src/main/assets/categories/person/tango.dat.zip": "3033ffd528fe51f18df2bb04c64c6665a5a21d779b70a016e72e022cbf6564f4",
-    "app/src/main/assets/categories/person/token.dat.zip": "d122d66b24efe4bc8a9b9d8b18f232b7135bc375afdfeef51d39d3057a0d2efa",
-    "app/src/main/assets/categories/person/yomi.dat.zip": "df692c39105716360cfeab897d89a43581d3a8b584cbd9aa8368ad74a964b2c8",
+    "app/src/main/assets/categories/organization/tango.dat.zip": "463ef37cebb6906994725def4eb24fc5926811be52d2f45007d60e1d48ae0bbb",
+    "app/src/main/assets/categories/organization/token.dat.zip": "81dabe1a98a8cf12c09e0abb937474a02f7420404e5da59bacbf3ea4bec52a83",
+    "app/src/main/assets/categories/organization/yomi.dat.zip": "809999a9e51e09733922821b7294bf35752ce0ce441adac2d0f6f2ee93234441",
+    "app/src/main/assets/categories/person/tango.dat.zip": "4482f00d240d1f666113cc8a8af4097ba3c9e5d3ed24d9256edddd5166957b76",
+    "app/src/main/assets/categories/person/token.dat.zip": "f6aa6bfe83539e2fb1f73895ef4d2e317ff20374d65f3ae12b8f76f39b6f5881",
+    "app/src/main/assets/categories/person/yomi.dat.zip": "405ef77a0013602aa9377b239b55f6a305f4829fbfd4c84e6342950943af9d5f",
     "app/src/main/assets/categories/place/tango.dat.zip": "50c30739189dedfe814267d26f48cbf8746bc31ef93d37edd31f4ee9f5339055",
     "app/src/main/assets/categories/place/token.dat.zip": "c6b058c31bb3cadbd467d81d8f9efcc7005bd27350dec7ac85664b89d0a1b8fe",
     "app/src/main/assets/categories/place/yomi.dat.zip": "25d76d768d6212ef62ddace1dc4df28efb2726fc97247a1abc6733e9053c3678",
@@ -2252,9 +2273,9 @@
     "app/src/main/assets/categories/station/tango.dat.zip": "03d013538e53f9fb64114445c3502332f47f2cf6ff4d5fa9ec34590ea1345ec9",
     "app/src/main/assets/categories/station/token.dat.zip": "880089c45b0ecbc7d5ac9133b612d6f993aec834d2f26c2985f967242f5eba34",
     "app/src/main/assets/categories/station/yomi.dat.zip": "8c78c906ba62af47d5e91de8aa87b9c96266630b02241aa7ec8845eb749cb47d",
-    "app/src/main/assets/categories/term/tango.dat.zip": "89ca3bc1e00de1277428ad7596fa0df7f09e03e514b5056a078816d899e95714",
-    "app/src/main/assets/categories/term/token.dat.zip": "2a7a871f2bf245846eaaeb45a9f3710723bd0a63f978ef6d08d4c1eba2eb8b24",
-    "app/src/main/assets/categories/term/yomi.dat.zip": "92397f8ea89fa3fbbfe049c2b52b72e3497e127f7c58217864019ea766fddf52",
+    "app/src/main/assets/categories/term/tango.dat.zip": "2c7ab5b1dcd5889ac6dc3d8f000f9a58487650e11488a2623b466a3a4c235a36",
+    "app/src/main/assets/categories/term/token.dat.zip": "00fbab4721384fca9a42fd30023119978585ed7e9e1fa5f52de022a2c8493e9c",
+    "app/src/main/assets/categories/term/yomi.dat.zip": "0d8e72b4079f97dc6528ad439263b5fc0b246ae0a1d5472dc81ef6a6e3e8e978",
     "app/src/main/assets/categories/transport_route/tango.dat.zip": "bdb03f12268c3175f3a843ba9babb6238af87d7c64a6ac3d76368160bd5d94a8",
     "app/src/main/assets/categories/transport_route/token.dat.zip": "cf31cf4c59143e91cc6990f1d144bea47f683711678173afcd58901059f3f852",
     "app/src/main/assets/categories/transport_route/yomi.dat.zip": "5bd2d4a907276039322d222c0f3981a424404d052b23cd8f843a805d9291266a",
@@ -2313,6 +2334,7 @@
     "app/src/main/assets/mozc/zero_query/zero_query_string.data": "119e3a7005e46da6fff4657a7663d006dc5e2f6014988bb45b8035ec293ffe3d",
     "app/src/main/assets/mozc/zero_query/zero_query_token.data": "ca6e3bd6b5a9649298a067b2acb65f8859b505b39f39f7d540c5532f7d0e18a1",
     "app/src/main/assets/ngram/system_ngram.dat": "8d47adb7934ea687cae8254760623a40de1e009d5a028bf8d2f377fd39b71a0b",
+    "app/src/main/assets/ngram/system_ngram_standalone_unigram.dat": "9ecc3a967f6ede56f5180ac2ded29cddafb10ab13ea1d6c69612b455661a3209",
     "app/src/main/assets/ngram/system_ngram_unigram.dat": "e4c9c935f6a29a48f7cb463d07ac61ff14d439f1fbf0b7d044e5b89e1a34b560",
     "app/src/main/assets/pos_table.dat": "2aa09e7f5318cb7be2f7d88c4a4473987a480bbecce3269685f7696797ed9f48",
     "app/src/main/assets/reading_correction/tango_reading_correction.dat": "3f102aa7f31a51657473352fb3cb35f4c48fb0943efbe2b057ccecade2de08d6",
