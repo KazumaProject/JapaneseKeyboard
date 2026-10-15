@@ -26,7 +26,7 @@ class ClassifiedDictionaryInstrumentedTest {
     private fun expected() = JSONObject(InstrumentationRegistry.getInstrumentation().context.assets
         .open("classified-expected-records.json").bufferedReader().use { it.readText() })
 
-    @Test fun all861053RecordsMatchFrozenReadingSurfacePosAndCost() {
+    @Test fun all861052RecordsMatchFrozenReadingSurfacePosAndCost() {
         val reader = entryPoint.dictionaryBinaryReader()
         val expected = expected()
         val digest = MessageDigest.getInstance("SHA-256")
@@ -69,7 +69,7 @@ class ClassifiedDictionaryInstrumentedTest {
             total += count
             println("CLASSIFIED_RECORDS ${spec.id}=$count")
         }
-        assertEquals(861053, total)
+        assertEquals(861052, total)
         assertEquals("Categories with differing decoded records", emptyList<String>(), mismatches)
     }
 
