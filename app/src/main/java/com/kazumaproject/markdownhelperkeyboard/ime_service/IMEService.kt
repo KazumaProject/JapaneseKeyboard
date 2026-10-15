@@ -1023,7 +1023,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == null || key == BunsetsuDiffController.ENABLED || key == BunsetsuDiffController.PLACEMENT) {
+            if (key == null || key == BunsetsuDiffController.ENABLED || key == BunsetsuDiffController.PLACEMENT || key == BunsetsuDiffController.TAP_BEHAVIOR) {
                 runOnMainThread {
                     if (bunsetsuDiffEnabled) startBunsetsuDiff()
                     if (key == null || key == BunsetsuDiffController.PLACEMENT) {
@@ -3702,7 +3702,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             },
             colors = ::resolveCandidatePanelColors,
             requestGeometry = ::requestBunsetsuDiffGeometry,
-            onCycle = ::cycleBunsetsuDiff,
+            onSelect = ::selectBunsetsuDiff,
+            directSelection = {
+                runtimeInputSharedPreferences.getString(BunsetsuDiffController.TAP_BEHAVIOR, "direct") != BunsetsuDiffController.CYCLE
+            },
             candidatePlacement = { bunsetsuDiffOnCandidates },
             candidateAnchors = ::candidateStripBunsetsuDiffAnchors,
             excludedBounds = {
@@ -3766,9 +3769,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun cycleBunsetsuDiff(snapshot: BunsetsuDiffSnapshot, index: Int): Boolean {
+    private fun selectBunsetsuDiff(snapshot: BunsetsuDiffSnapshot, index: Int, candidateIndex: Int?): Boolean {
+        val target = snapshot.segments.getOrNull(index) ?: return false
+        if (candidateIndex != null && candidateIndex !in target.candidates.indices) return false
         if (!canShowBunsetsuDiff() || bunsetsuDiffComposingText != snapshot.text ||
-            snapshot.segments.getOrNull(index)?.candidates?.size?.let { it > 1 } != true) return false
+            target.candidates.size <= 1) return false
         if (mainLayoutBinding == null) return false
         val existing = bunsetsuConversionSession
         if (existing?.fromDiff != true) {
@@ -3790,9 +3795,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         launchBunsetsuOperation { session ->
             if (!session.fromDiff || session.conversionInput != snapshot.reading) return@launchBunsetsuOperation
-            val focused = session.copy(focusedIndex = index)
-            bunsetsuConversionSession = focused
-            cycleFocusedBunsetsuCandidateNow(focused, 1, floatingKeyboardBinding?.takeIf { isKeyboardFloatingMode == true })
+            val segment = session.segments.getOrNull(index) ?: return@launchBunsetsuOperation
+            if (segment.candidates != target.candidates) return@launchBunsetsuOperation
+            val selectedIndex = candidateIndex ?: (segment.selectedIndex + 1) % segment.candidates.size
+            val selected = segment.copy(selectedIndex = selectedIndex,
+                displayText = segment.candidates[selectedIndex].string, overrideDisplayCandidate = null)
+            bunsetsuConversionSession = session.copy(focusedIndex = index,
+                segments = session.segments.toMutableList().also { it[index] = selected })
+            val mainView = mainLayoutBinding ?: return@launchBunsetsuOperation
+            val floating = floatingKeyboardBinding?.takeIf { isKeyboardFloatingMode == true }
+            if (!renderBunsetsuConversionSession(mainView, floating)) {
+                bunsetsuConversionSession = session
+                updateSuggestionViewsForBunsetsuSegment(session, session.focusedIndex, mainView, floating)
+                bunsetsuDiff?.updateSelection(session.segments)
+            }
         }
         return true
     }

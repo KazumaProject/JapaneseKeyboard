@@ -29,6 +29,15 @@
             android:summary="@string/bunsetsu_diff_summary" />
 
         <ListPreference
+            android:key="bunsetsu_diff_floating_tap_behavior"
+            android:dependency="bunsetsu_diff_floating_enabled"
+            android:defaultValue="direct"
+            android:title="@string/bunsetsu_diff_tap_behavior_title"
+            android:entries="@array/bunsetsu_diff_tap_behavior_entries"
+            android:entryValues="@array/bunsetsu_diff_tap_behavior_values"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
             android:key="bunsetsu_diff_floating_placement"
             android:dependency="bunsetsu_diff_floating_enabled"
             android:defaultValue="editor"

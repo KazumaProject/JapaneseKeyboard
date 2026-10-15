@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bunsetsu_diff_title">Floating segment alternatives</string>
-    <string name="bunsetsu_diff_summary">Show differing alternatives for composing segments. Tap a bubble to cycle only that segment. Text positions must be available at the selected location.</string>
-    <string name="bunsetsu_diff_cycle">Current: %1$s. %2$s. Tap for the next alternative.</string>
+    <string name="bunsetsu_diff_summary">Show differing alternatives for composing segments. Select alternatives for each segment independently. Text positions must be available at the selected location.</string>
+    <string name="bunsetsu_diff_select">Select %1$s</string>
     <item name="bunsetsu_diff_candidate" type="id" />
+    <item name="bunsetsu_diff_option" type="id" />
     <string name="bunsetsu_diff_placement_title">Alternative bubble position</string>
     <string-array name="bunsetsu_diff_placement_entries">
         <item>Near composing text</item>
@@ -12,5 +13,15 @@
     <string-array name="bunsetsu_diff_placement_values">
         <item>editor</item>
         <item>candidates</item>
+    </string-array>
+    <string name="bunsetsu_diff_cycle">Current: %1$s. Alternatives: %2$s. Tap for the next alternative.</string>
+    <string name="bunsetsu_diff_tap_behavior_title">Alternative bubble tap behavior</string>
+    <string-array name="bunsetsu_diff_tap_behavior_entries">
+        <item>Select the tapped alternative</item>
+        <item>Cycle to the next alternative</item>
+    </string-array>
+    <string-array name="bunsetsu_diff_tap_behavior_values" translatable="false">
+        <item>direct</item>
+        <item>cycle</item>
     </string-array>
 </resources>

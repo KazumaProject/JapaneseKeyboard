@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bunsetsu_diff_title">文節の差分候補フロート</string>
-    <string name="bunsetsu_diff_summary">未確定文字の文節ごとに異なる候補を表示します。タップすると、その文節だけを次候補に切り替えます。選んだ表示位置の文字座標を取得できる場合に表示します。</string>
-    <string name="bunsetsu_diff_cycle">現在：%1$s。%2$s。タップで次の候補に切り替えます。</string>
+    <string name="bunsetsu_diff_summary">未確定文字の文節ごとに異なる候補を表示します。候補を選ぶと、対応する文節だけを切り替えます。選んだ表示位置の文字座標を取得できる場合に表示します。</string>
+    <string name="bunsetsu_diff_select">%1$s に切り替え</string>
     <string name="bunsetsu_diff_placement_title">差分候補フロートの表示位置</string>
     <string-array name="bunsetsu_diff_placement_entries">
         <item>本文の文節付近</item>
         <item>変換候補欄の候補上</item>
+    </string-array>
+    <string name="bunsetsu_diff_cycle">現在：%1$s。候補：%2$s。タップで次の候補に切り替えます。</string>
+    <string name="bunsetsu_diff_tap_behavior_title">差分候補フロートのタップ動作</string>
+    <string-array name="bunsetsu_diff_tap_behavior_entries">
+        <item>タップした候補を直接選択</item>
+        <item>次の候補へ順送り</item>
     </string-array>
 </resources>

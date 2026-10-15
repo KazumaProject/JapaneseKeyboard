@@ -5,16 +5,13 @@ import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.BackgroundColorSpan
-import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.view.inputmethod.CursorAnchorInfo
+import android.widget.LinearLayout
 import android.widget.TextView
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -37,8 +34,10 @@ internal class BunsetsuDiffController(
     private val query: suspend (String) -> KanaKanjiQueryResult,
     private val colors: () -> CandidatePanelColors,
     private val requestGeometry: (Boolean) -> Unit,
-    private val onCycle: (BunsetsuDiffSnapshot, Int) -> Boolean,
+    // A null candidate index preserves the whole-float next-candidate action.
+    private val onSelect: (BunsetsuDiffSnapshot, Int, Int?) -> Boolean,
     private val excludedBounds: () -> List<Rect> = { emptyList() },
+    private val directSelection: () -> Boolean = { true },
     private val candidatePlacement: () -> Boolean = { false },
     private val candidateAnchors: (BunsetsuDiffSnapshot, String?) -> BunsetsuDiffCandidateAnchors? = { _, _ -> null },
     private val allowedSegment: (String, String) -> Boolean = { _, _ -> true },
@@ -47,6 +46,8 @@ internal class BunsetsuDiffController(
         const val ENABLED = "bunsetsu_diff_floating_enabled"
         const val PLACEMENT = "bunsetsu_diff_floating_placement"
         const val CANDIDATES = "candidates"
+        const val TAP_BEHAVIOR = "bunsetsu_diff_floating_tap_behavior"
+        const val CYCLE = "cycle"
     }
 
     private val manager = context.getSystemService(WindowManager::class.java)
@@ -215,23 +216,23 @@ internal class BunsetsuDiffController(
     private inner class Bubble(private val index: Int, private val token: Long) {
         var bounds: Rect? = null
         private var params: WindowManager.LayoutParams? = null
-        val view = TextView(context).apply {
+        val view = LinearLayout(context).apply {
             layoutParams = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT)
             id = R.id.bunsetsu_diff_candidate
-            textSize = 16f
-            minHeight = dp(48)
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-            gravity = Gravity.CENTER_VERTICAL
-            isClickable = true
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(2), dp(2), dp(2), dp(2))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             setOnTouchListener { _, event ->
                 if (event.actionMasked == MotionEvent.ACTION_DOWN && token == generation) frozen = true
                 false
             }
             setOnClickListener {
                 val current = snapshot
-                if (token == generation && eligible() && current != null) {
+                val segment = current?.segments?.getOrNull(index)
+                if (!directSelection() && token == generation && eligible() && current != null &&
+                    segment != null && segment.candidates.size > 1) {
                     frozen = true
-                    onCycle(current, index)
+                    onSelect(current, index, null)
                 }
             }
         }
@@ -239,30 +240,61 @@ internal class BunsetsuDiffController(
         init { coordinates.observeLegacyOrigin(view, { params }, ::refresh) }
 
         private var content: Pair<BunsetsuSegmentState, CandidatePanelColors>? = null
+        private var direct: Boolean? = null
         fun setContent(segment: BunsetsuSegmentState) {
             val palette = colors()
-            if (content == (segment to palette)) return
-            content = segment to palette
-            val label = SpannableStringBuilder()
-            segment.candidates.forEachIndexed { i, candidate ->
-                if (i > 0) label.append("\n")
-                val start = label.length
-                label.append(candidate.string)
-                if (i == segment.selectedIndex) {
-                    label.setSpan(BackgroundColorSpan(palette.selection), start, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    label.setSpan(ForegroundColorSpan(palette.selectionText), start, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            val selectDirectly = directSelection()
+            if (content == (segment to palette) && direct == selectDirectly) return
+            if (content?.first?.candidates != segment.candidates) {
+                view.removeAllViews()
+                segment.candidates.forEachIndexed { candidateIndex, candidate ->
+                    val option = TextView(context).apply {
+                        id = R.id.bunsetsu_diff_option
+                        text = candidate.string
+                        textSize = 16f
+                        minHeight = dp(48)
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(dp(10), dp(8), dp(10), dp(8))
+                        contentDescription = context.getString(R.string.bunsetsu_diff_select, candidate.string)
+                        isClickable = true
+                        setOnTouchListener { _, event ->
+                            if (event.actionMasked == MotionEvent.ACTION_DOWN && token == generation) frozen = true
+                            false
+                        }
+                        setOnClickListener {
+                            val current = snapshot
+                            if (directSelection() && token == generation && eligible() && current != null &&
+                                current.segments.getOrNull(index)?.candidates?.getOrNull(candidateIndex) == candidate) {
+                                frozen = true
+                                onSelect(current, index, candidateIndex)
+                            }
+                        }
+                    }
+                    view.addView(option, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
                 }
-
             }
-            view.text = label
-            view.contentDescription = context.getString(R.string.bunsetsu_diff_cycle, segment.displayText, label.toString())
-            view.setTextColor(palette.text)
+            content = segment to palette
+            direct = selectDirectly
+            view.isClickable = !selectDirectly
+            view.contentDescription = if (selectDirectly) null else context.getString(
+                R.string.bunsetsu_diff_cycle, segment.displayText, segment.candidates.joinToString("、") { it.string })
+            for (i in 0 until view.childCount) {
+                val option = view.getChildAt(i) as TextView
+                option.isClickable = selectDirectly
+                option.importantForAccessibility = if (selectDirectly) View.IMPORTANT_FOR_ACCESSIBILITY_YES else View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                option.isSelected = i == segment.selectedIndex
+                option.setTextColor(if (option.isSelected) palette.selectionText else palette.text)
+                option.background = GradientDrawable().apply {
+                    setColor(if (option.isSelected) palette.selection else android.graphics.Color.TRANSPARENT)
+                    cornerRadius = dp(8).toFloat()
+                }
+                KeyboardFontApplicator.apply(option, KeyboardFontApplicator.processSnapshot)
+            }
             view.background = GradientDrawable().apply {
                 setColor(palette.background)
                 cornerRadius = dp(10).toFloat()
                 setStroke(dp(1).coerceAtLeast(1), palette.icon)
             }
-            KeyboardFontApplicator.apply(view, KeyboardFontApplicator.processSnapshot)
         }
 
         fun show(rect: Rect, host: View) {

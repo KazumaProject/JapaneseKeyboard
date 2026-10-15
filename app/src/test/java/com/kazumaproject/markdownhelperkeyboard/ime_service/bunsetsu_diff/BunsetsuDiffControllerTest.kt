@@ -7,8 +7,8 @@ import android.graphics.Matrix
 import android.app.Activity
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
+import android.widget.LinearLayout
 import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
@@ -47,7 +47,7 @@ class BunsetsuDiffControllerTest {
         val reply = CompletableDeferred<KanaKanjiQueryResult>()
         val geometry = mutableListOf<Boolean>()
         val controller = BunsetsuDiffController(context, this, { true },
-            { withContext(NonCancellable) { reply.await() } }, { palette }, { geometry.add(it) }, { _, _ -> true })
+            { withContext(NonCancellable) { reply.await() } }, { palette }, { geometry.add(it) }, { _, _, _ -> true })
         controller.update("はし", "はし")
         advanceTimeBy(120); runCurrent()
         controller.clear()
@@ -60,7 +60,7 @@ class BunsetsuDiffControllerTest {
     @Test fun debounceQueriesOnlyTheLatestReadingAndRetainsTheLockedOrderAcrossSelection() = runTest {
         val queries = mutableListOf<String>()
         val controller = BunsetsuDiffController(context, this, { true },
-            { queries.add(it); result(it) }, { palette }, {}, { _, _ -> true })
+            { queries.add(it); result(it) }, { palette }, {}, { _, _, _ -> true })
         controller.update("は", "は")
         advanceTimeBy(70)
         controller.update("はし", "はし")
@@ -83,7 +83,7 @@ class BunsetsuDiffControllerTest {
         var enabled = true
         val geometry = mutableListOf<Boolean>()
         val controller = BunsetsuDiffController(context, this, { enabled },
-            { result(it) }, { palette }, { geometry.add(it) }, { _, _ -> true })
+            { result(it) }, { palette }, { geometry.add(it) }, { _, _, _ -> true })
         controller.update("はし", "はし")
         enabled = false
         controller.update("はし", "はし")
@@ -105,18 +105,21 @@ class BunsetsuDiffControllerTest {
         root.layout(0, 0, 320, 600)
         keyboard.layout(0, 500, 320, 600)
         var candidateMode = true
+        var selectDirectly = true
         var visibleCandidate = "橋"
         val locks = mutableListOf<String?>()
         val monitoring = mutableListOf<Boolean>()
+        val selections = mutableListOf<Pair<Int, Int?>>()
         val controller = BunsetsuDiffController(activity, this, { true }, { result(it) }, { palette },
-            { monitoring.add(it) }, { _, _ -> true },
+            { monitoring.add(it) }, { _, segment, candidate -> selections.add(segment to candidate); true },
+            directSelection = { selectDirectly },
             candidatePlacement = { candidateMode },
             candidateAnchors = { _, locked ->
                 locks.add(locked)
                 if (locked != null && locked != visibleCandidate) null
                 else BunsetsuDiffCandidateAnchors(visibleCandidate, listOf(RectF(30f, 400f, 80f, 420f)))
             })
-        fun labels(): List<TextView> = ReflectionHelpers.getField<Map<Int, Any>>(controller, "bubbles")
+        fun labels(): List<LinearLayout> = ReflectionHelpers.getField<Map<Int, Any>>(controller, "bubbles")
             .values.map { ReflectionHelpers.getField(it, "view") }
         fun mounted() = ReflectionHelpers.getField<Map<Int, Any>>(controller, "bubbles").values.any {
             ReflectionHelpers.getField<Any?>(it, "params") != null
@@ -129,7 +132,31 @@ class BunsetsuDiffControllerTest {
             assertFalse(monitoring.last())
             controller.onAnchor(null)
             assertTrue(mounted())
-            labels().single().performClick()
+            val options = labels().single()
+            assertEquals(3, options.childCount)
+            assertTrue(options.getChildAt(0).isSelected)
+            assertFalse(options.isClickable)
+            options.getChildAt(2).performClick()
+            assertEquals(listOf(0 to 2), selections)
+            val before = snapshot(controller)!!
+            controller.updateSelection(listOf(before.segments.single().copy(displayText = "箸", selectedIndex = 2)))
+            assertTrue(options.getChildAt(2).isSelected)
+            assertFalse(options.getChildAt(0).isSelected)
+            options.getChildAt(2).performClick()
+            options.getChildAt(0).performClick()
+            assertEquals(listOf(0 to 2, 0 to 2, 0 to 0), selections)
+            selectDirectly = false
+            controller.updateSelection(snapshot(controller)!!.segments)
+            assertTrue(options.isClickable)
+            assertFalse(options.getChildAt(2).isClickable)
+            options.performClick()
+            assertEquals(0 to null, selections.last())
+            selectDirectly = true
+            controller.updateSelection(snapshot(controller)!!.segments)
+            assertFalse(options.isClickable)
+            assertTrue(options.getChildAt(1).isClickable)
+            options.getChildAt(1).performClick()
+            assertEquals(0 to 1, selections.last())
             visibleCandidate = "箸"
             root.viewTreeObserver.dispatchOnPreDraw()
             assertEquals("橋", locks.last())
@@ -144,6 +171,10 @@ class BunsetsuDiffControllerTest {
             assertNull(locks.last())
             assertTrue(mounted())
             assertFalse(monitoring.last())
+            val staleOption = labels().single().getChildAt(1)
+            controller.clear()
+            staleOption.performClick()
+            assertEquals(5, selections.size)
         } finally { controller.stop(); activity.finish() }
     }
 
@@ -158,7 +189,7 @@ class BunsetsuDiffControllerTest {
         root.layout(0, 0, 320, 600)
         keyboard.layout(0, 80, 320, 600)
         val controller = BunsetsuDiffController(activity, this, { true },
-            { result(it) }, { palette }, {}, { _, _ -> true })
+            { result(it) }, { palette }, {}, { _, _, _ -> true })
         try {
             controller.start(keyboard)
             controller.update("はし", "はし")
@@ -169,7 +200,7 @@ class BunsetsuDiffControllerTest {
             controller.onAnchor(reply)
             val bubbles = ReflectionHelpers.getField<Map<Int, Any>>(controller, "bubbles")
             assertEquals(1, bubbles.size)
-            val label = ReflectionHelpers.getField<TextView>(bubbles.values.single(), "view")
+            val label = ReflectionHelpers.getField<LinearLayout>(bubbles.values.single(), "view")
             assertNotNull(label.layoutParams)
             assertFalse(label.isAttachedToWindow)
             controller.onAnchor(reply)
