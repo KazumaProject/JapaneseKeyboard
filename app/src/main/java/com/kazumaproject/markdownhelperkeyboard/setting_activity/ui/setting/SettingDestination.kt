@@ -679,16 +679,6 @@ object SettingDestinations {
 
     fun management(context: Context): List<SettingDestination> = listOf(
         destination(
-            key = "dictionary_browser_preference",
-            title = context.getString(R.string.dictionary_browser_title),
-            summary = context.getString(R.string.dictionary_browser_summary),
-            category = SettingCategory.MANAGEMENT,
-            keywords = listOf("dictionary", "word", "search", "辞書", "単語", "一覧", "検索"),
-            destinationId = R.id.dictionaryBrowserFragment,
-            iconRes = CoreR.drawable.dictionary_24px,
-            destinationType = SettingDestinationType.ManagementDestination(R.id.dictionaryBrowserFragment),
-        ),
-        destination(
             key = "setting_management_learn_dictionary",
             title = context.getString(R.string.learn_dictionary_fragment_title),
             summary = context.getString(R.string.setting_management_learn_dictionary_summary),
@@ -711,6 +701,16 @@ object SettingDestinations {
             destinationType = SettingDestinationType.ManagementDestination(
                 destinationId = R.id.navigation_user_dictionary,
             ),
+        ),
+        destination(
+            key = "dictionary_browser_preference",
+            title = context.getString(R.string.dictionary_browser_title),
+            summary = context.getString(R.string.dictionary_browser_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("dictionary", "word", "search", "辞書", "単語", "一覧", "検索"),
+            destinationId = R.id.dictionaryBrowserFragment,
+            iconRes = CoreR.drawable.dictionary_24px,
+            destinationType = SettingDestinationType.ManagementDestination(R.id.dictionaryBrowserFragment),
         ),
         destination(
             key = "setting_management_user_template",
