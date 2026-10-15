@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = 'd65dc98b023fa7ab8ca994daef2ec1640d2a1bf5'
-VERSION = 'v1.7.262-pre.3'
+REVISION = '0a5510b04f5bbbc54330f72c6f214f79b8aceed4'
+VERSION = 'v1.7.263-pre.4'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,7 +46,7 @@ def write(path, data):
 def archive():
     manifest = json.loads(fetch(RELEASE + 'dictionary-distribution-manifest.json'))
     assert manifest['revision'] == REVISION
-    assert manifest['archiveSha256'] == '2f0ae2c9027d00a267475c7140e9457d537ae58cffd61407e1205f8a540759bd'
+    assert manifest['archiveSha256'] == '84d53abcc4ce88971d3eaffdda2e39591bc10e14e8f1233c32e4bbbbf9ecfb9a'
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == manifest['archiveSha256']
     zipped = zipfile.ZipFile(io.BytesIO(data))
@@ -146,7 +146,7 @@ def provenance():
         fingerprint['count'] += 1
         if 4 <= len(reading) <= 8 and not 4 <= len(fingerprint['sample']['reading']) <= 8:
             fingerprint['sample'] = {'reading': reading, 'surface': surface}
-    assert sum(item['count'] for item in fingerprints.values()) == 861053
+    assert sum(item['count'] for item in fingerprints.values()) == manifest['dictionaryRows'] + sum(specialist['categoryRows'].values())
     assert len(fingerprints) == 30
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
