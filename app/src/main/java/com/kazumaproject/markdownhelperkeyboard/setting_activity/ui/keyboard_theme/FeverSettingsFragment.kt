@@ -100,7 +100,13 @@ class FeverSettingsFragment : AsyncPreferenceFragment() {
                 RectF(left, top, left + 57 * sx, top + 32 * sy)
             }, RectF(0f, miniature.top.toFloat(), miniature.width.toFloat(), miniature.top + 34 * sy))
             previewStep++
-            val event = FeverEvent(previewStep, if (previewStep == 10) FeverAward.COMBO else null)
+            val event = when (previewStep) {
+                10 -> FeverEvent(10, FeverAward.COMBO)
+                11 -> FeverEvent(25, FeverAward.FEVER)
+                12 -> FeverEvent(50, FeverAward.HOT)
+                13 -> FeverEvent(100, FeverAward.JACKPOT)
+                else -> FeverEvent(previewStep)
+            }
             val key = (previewStep - 1) % 20
             effect.show(event, (34 + key % 5 * 63) * sx, miniature.top + (50 + key / 5 * 37) * sy)
             feedback.playEvent(event, settings, AppPreference.key_sound_preference == true,
@@ -110,7 +116,10 @@ class FeverSettingsFragment : AsyncPreferenceFragment() {
             previewRunnable?.let(frame::removeCallbacks)
             previewStep = 0; effect.clear(); feedback.stop()
             previewRunnable = object : Runnable {
-                override fun run() { play(); if (previewStep < 10) frame.postDelayed(this, 180) }
+                override fun run() {
+                    play()
+                    if (previewStep < 13) frame.postDelayed(this, if (previewStep < 10) 300 else 2100)
+                }
             }
             frame.postDelayed(previewRunnable, 180)
         }

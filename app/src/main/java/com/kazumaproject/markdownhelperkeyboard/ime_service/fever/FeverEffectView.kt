@@ -1,11 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.fever
 
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
 import android.os.SystemClock
 import android.view.View
 import android.view.MotionEvent
+import com.kazumaproject.core.ui.skin.FeverSpectrum
 import kotlin.math.*
 
 /** Procedural effects: bounded particles, no video assets, no input or persistent editor data. */
@@ -26,11 +26,14 @@ internal class FeverEffectView(context: Context) : View(context) {
     private val touchMarks = ArrayList<TouchMark>(24)
     private var lastMove = 0L
     private var family = 0
-    private var awardFamily = 0
+    private var motion = FeverMotion.BURST
+    private var gestureDirection = PointF(1f, 0f)
     private var awardColor = Color.CYAN
     private var combo = 0
     private var award: FeverAward? = null
     private var awardStart = 0L
+    private var awardCombo = 0
+    private var stageStart = 0L
     private var calloutStart = 0L
     private var sparkStart = 0L
     private var candidateStart = 0L
@@ -43,14 +46,13 @@ internal class FeverEffectView(context: Context) : View(context) {
     private var originY = 0f
     var intensity = 2
     private val dp get() = resources.displayMetrics.density
-    private val motion get() = android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
     private val gold = 0xffffc83d.toInt()
     private val red = 0xffff1749.toInt()
-    private val colors = intArrayOf(0xff5ae7ff.toInt(), 0xff57fff1.toInt(), gold, red, 0xffc882ff.toInt())
+    private val colors = FeverSpectrum.colors
     private val stages = arrayOf("START!", "GOOD!", "NICE!", "MORE!", "RUSH!", "CHANCE!", "LUCKY 7", "BOOST!", "REACH!")
-    private data class Particle(val x: Float, val y: Float, val vx: Float, val vy: Float, val color: Int, val size: Float, val end: Long, val born: Long)
+    private data class Particle(val x: Float, val y: Float, val vx: Float, val vy: Float, val color: Int, val size: Float, val end: Long, val born: Long, val keyboard: Boolean = false, val motion: FeverMotion = FeverMotion.BURST)
 
-    private data class Ornament(val x: Float, val y: Float, val angle: Float, val speed: Float, val size: Float, val family: Int, val color: Int, val born: Long, val life: Long, val keyboard: Boolean = false)
+    private data class Ornament(val x: Float, val y: Float, val angle: Float, val speed: Float, val size: Float, val family: Int, val color: Int, val born: Long, val life: Long, val keyboard: Boolean = false, val motion: FeverMotion = FeverMotion.BURST)
 
     private data class TouchMark(val x: Float, val y: Float, val action: Int, val born: Long, val color: Int)
 
@@ -85,7 +87,7 @@ internal class FeverEffectView(context: Context) : View(context) {
         }
     }
     fun setCombo(value: Int) { combo = value; invalidate() }
-    fun clear() { combo = 0; award = null; callout = ""; calloutStart = 0; sparkStart = 0; candidateStart = 0; particles.clear(); ornaments.clear(); touchMarks.clear(); invalidate() }
+    fun clear() { combo = 0; award = null; callout = ""; calloutStart = 0; sparkStart = 0; stageStart = 0; candidateStart = 0; particles.clear(); ornaments.clear(); touchMarks.clear(); invalidate() }
 
     fun touchPhase(action: Int, x: Float, y: Float, accent: Int) {
         val now = SystemClock.uptimeMillis()
@@ -97,69 +99,126 @@ internal class FeverEffectView(context: Context) : View(context) {
         if (touchMarks.size >= 24) touchMarks.removeAt(0)
         touchMarks.add(TouchMark(x, y, action, now, accent))
         rawTouchX = x; rawTouchY = y; sparkStart = now; calloutColor = accent
+        // The impact opens in 40 ms, then sheds tiny shards into the finger's wake.
+        if (keyArea.contains(x, y)) emit(x, y, now, true,
+            if (action == MotionEvent.ACTION_MOVE) 2 else 7 + intensity * 3, false, 0)
         if (candidateArea.contains(x, y)) { candidateStart = now; candidateAccent = accent; candidateEmphasis = true }
         invalidate()
     }
 
+    private fun emit(x: Float, y: Float, time: Long, keyboard: Boolean, count: Int, big: Boolean, delay: Long) {
+        val random = kotlin.random.Random(time + particles.size)
+        val area = if (keyboard) keyArea else stage
+        repeat(count) { index ->
+            if (particles.size >= 180) particles.removeAt(0)
+            val angle = random.nextFloat() * 2 * PI.toFloat()
+            val speed = (if (big) 180 + random.nextFloat() * 420 else 90 + random.nextFloat() * 230) * dp
+            var px = x; var py = y
+            var vx = cos(angle) * speed; var vy = sin(angle) * speed
+            when (motion) {
+                FeverMotion.HEARTS, FeverMotion.LOVE -> { vx *= .3f; vy = -speed * .65f }
+                FeverMotion.ROCKETS, FeverMotion.FEVER -> { vx *= .22f; vy = -speed; py = area.bottom }
+                FeverMotion.CASCADE, FeverMotion.JACKPOT -> {
+                    px = area.left + random.nextFloat() * area.width(); py = area.top
+                    vx *= .15f; vy = speed * .3f
+                }
+                FeverMotion.CURSOR -> { vx = gestureDirection.x * speed; vy = gestureDirection.y * speed }
+                FeverMotion.SCAN, FeverMotion.REVEAL -> { px = area.left; py += (random.nextFloat() - .5f) * 20 * dp; vx = speed; vy *= .1f }
+                else -> Unit
+            }
+            val born = time + delay + if (big) index % 4 * 85 else if (motion == FeverMotion.CASCADE) index % 4 * 45 else 0
+            val shade = when (motion) {
+                FeverMotion.HEARTS, FeverMotion.LOVE -> if (index % 2 == 0) 0xffff4d97.toInt() else 0xffffadd9.toInt()
+                FeverMotion.ROCKETS, FeverMotion.FEVER -> if (index % 2 == 0) 0xff699bff.toInt() else 0xff74f5ff.toInt()
+                FeverMotion.CASCADE -> if (index % 2 == 0) 0xffbe80ff.toInt() else 0xfff1b4ff.toInt()
+                FeverMotion.IMPLODE -> 0xffff4965.toInt()
+                FeverMotion.FOCUS -> 0xffffa237.toInt()
+                FeverMotion.JACKPOT -> if (index % 3 == 0) Color.WHITE else gold
+                else -> colors[(index + combo) % 7]
+            }
+            particles.add(Particle(px, py, vx, vy, shade,
+                (if (big) 1.5f + random.nextFloat() * 3 else .8f + random.nextFloat() * 1.7f) * dp,
+                born + if (big) 1200 else 600, born, keyboard, motion))
+        }
+    }
+
     fun show(event: FeverEvent, touchX: Float? = null, touchY: Float? = null) {
         val time = SystemClock.uptimeMillis()
-        combo = event.combo; cue = event.cue
-        family = FeverVisualStyle.family(event)
-        calloutColor = FeverVisualStyle.accent(event)
-        sparkStart = time
+        combo = event.combo; cue = event.cue; family = FeverVisualStyle.family(event)
+        motion = FeverVisualStyle.motion(event)
+        gestureDirection = when (cue) {
+            FeverCue.CURSOR_LEFT -> PointF(-1f, 0f)
+            FeverCue.CURSOR_UP -> PointF(0f, -1f)
+            FeverCue.CURSOR_DOWN -> PointF(0f, 1f)
+            else -> PointF(1f, 0f)
+        }
+        calloutColor = FeverVisualStyle.accent(event); sparkStart = time; stageStart = time
         if (event.award == null) {
             candidateStart = time; candidateAccent = calloutColor
-            candidateEmphasis = event.cue == FeverCue.CANDIDATE || event.cue == FeverCue.CANDIDATES || event.cue == FeverCue.CONVERSION
+            candidateEmphasis = event.cue in listOf(FeverCue.CANDIDATE, FeverCue.CANDIDATES, FeverCue.CONVERSION)
         }
         if (arena.isEmpty) { arena.set(0f, 0f, width.toFloat(), height.toFloat()); updateStage() }
-        originX = (touchX ?: arena.centerX()).coerceIn(arena.left, arena.right)
-        originY = (touchY ?: arena.centerY()).coerceIn(arena.top, arena.bottom)
-        rawTouchX = originX; rawTouchY = originY
+        rawTouchX = (touchX ?: keyArea.centerX()).coerceIn(arena.left, arena.right)
+        rawTouchY = (touchY ?: keyArea.centerY()).coerceIn(arena.top, arena.bottom)
+        originX = rawTouchX; originY = rawTouchY
         if (protectedKeys.contains(originX, originY)) {
-            originX = originX.coerceIn(stage.left, maxOf(stage.left, stage.right))
-            originY = stage.centerY()
+            originX = originX.coerceIn(stage.left, maxOf(stage.left, stage.right)); originY = stage.centerY()
         }
         if (event.cue != null || (event.award == null && event.combo > 0)) {
-            calloutStart = time
-            callout = event.cue?.label ?: "${event.combo}  ${stages[(event.combo - 1) % stages.size]}"
+            calloutStart = time; callout = event.cue?.label ?: "${event.combo}  ${stages[(event.combo - 1) % stages.size]}"
         }
-        if (event.award != null) { award = event.award; awardStart = time; calloutStart = 0; awardFamily = family; awardColor = calloutColor }
-        if (motion && (!stage.isEmpty || !keyArea.isEmpty)) {
-            val random = kotlin.random.Random(time)
-            val big = event.award != null
-            val count = if (big) intArrayOf(18, 60, 150)[intensity] else intArrayOf(6, 16, 28)[intensity]
+        if (event.award != null) {
+            award = event.award; awardStart = time; awardCombo = combo; calloutStart = 0
+            awardColor = calloutColor
+        }
+        val big = event.award != null
+        val random = kotlin.random.Random(time)
+        if (!stage.isEmpty) emit(if (big) stage.centerX() else originX, if (big) titleY() else originY,
+            time, false, if (big) intArrayOf(25, 60, 100)[intensity] else intArrayOf(8, 16, 26)[intensity], big, if (big) 85 else 0)
+        if (!keyArea.isEmpty) emit(if (big) keyArea.centerX() else rawTouchX, if (big) keyArea.centerY() else rawTouchY,
+            time, true, if (big) 30 else 12, big, if (big) 85 else 0)
+        for (keyboard in listOf(false, true)) {
+            if (if (keyboard) keyArea.isEmpty else stage.isEmpty) continue
+            val space = if (keyboard) keyArea else stage
+            // Editing has its own choreography. It must not inherit the character fireworks.
+            if (motion in listOf(FeverMotion.IMPLODE, FeverMotion.CURSOR, FeverMotion.FOCUS, FeverMotion.SCAN, FeverMotion.REVEAL)) continue
+            val count = if (big) intArrayOf(5, 12, 20)[intensity] else intArrayOf(2, 4, 7)[intensity]
             repeat(count) { index ->
-                if (particles.size >= 180) particles.removeAt(0)
-                val angle = random.nextFloat() * PI.toFloat() * 2
-                val speed = (if (big) 100 + random.nextFloat() * 420 else 30 + random.nextFloat() * 110) * dp
-                val spread = if (big && intensity == 2) .7f else 0f
-                val x = if (big) stage.centerX() + (random.nextFloat() - .5f) * stage.width() * spread else originX
-                val y = if (big) titleY() + (random.nextFloat() - .5f) * stage.height() * spread * .5f else originY
-                val color = if (big) FeverVisualStyle.palette[index % FeverVisualStyle.palette.size]
-                    else event.cue?.color ?: calloutColor
-                val born = time + if (big) (index % 3) * 160L else 0
-                particles.add(Particle(x, y, cos(angle) * speed, sin(angle) * speed - 50 * dp, color,
-                    (1 + random.nextFloat() * if (big) 4 else 2) * dp, born + if (big) 1400 else 560, born))
-            }
-            repeat(if (big) intArrayOf(4, 10, 20)[intensity] else intArrayOf(1, 3, 5)[intensity]) { index ->
                 if (ornaments.size >= 48) ornaments.removeAt(0)
-                val angle = (index * 2.39996f + event.combo * .7f)
-                val size = minOf((if (big) 10 + random.nextFloat() * 13 else 5 + random.nextFloat() * 8) * dp,
-                    (stage.height() * if (stage.height() < 110 * dp) .16f else .27f).coerceAtLeast(3 * dp))
-                ornaments.add(Ornament(if (big) stage.centerX() else originX, if (big) titleY() else originY,
-                    angle, (if (big) 95 + random.nextFloat() * 150 else 65 + random.nextFloat() * 90) * dp,
-                    size, if (big) (family + index) % 5 else family,
-                    FeverVisualStyle.palette[(family + index) % 5], time + if (big) 160L + index % 3 * 120 else 0,
-                    if (big) 1400 else 650))
-            }
-            if (!keyArea.isEmpty) repeat(if (big) intArrayOf(5, 10, 16)[intensity] else intArrayOf(2, 4, 6)[intensity]) { index ->
-                if (ornaments.size >= 48) ornaments.removeAt(0)
-                val angle = index * 2.39996f + combo * .6f
-                ornaments.add(Ornament(if (big) keyArea.centerX() else rawTouchX, if (big) keyArea.centerY() else rawTouchY,
-                    angle, (if (big) 140 + random.nextFloat() * 230 else 80 + random.nextFloat() * 130) * dp,
-                    (if (big) 12 + random.nextFloat() * 12 else 6 + random.nextFloat() * 9) * dp,
-                    (family + index) % 5, FeverVisualStyle.palette[(family + index) % 5],
-                    time + if (big) 160L + index % 3 * 120 else 0, if (big) 1400 else 650, true))
+                // A secondary pass enters later with a different trajectory, rather than
+                // sending every symbol out of the same radial burst.
+                val secondary = !big && index % 3 == 2
+                val style = if (secondary) arrayOf(FeverMotion.ROCKETS, FeverMotion.CASCADE,
+                    FeverMotion.RIBBON, FeverMotion.HEARTS, FeverMotion.BURST)[family] else motion
+                val kind = when (style) {
+                    FeverMotion.HEARTS -> 1
+                    FeverMotion.LOVE -> if (index % 3 == 0) 5 else 1
+                    FeverMotion.ROCKETS, FeverMotion.FEVER -> 3
+                    FeverMotion.CASCADE, FeverMotion.JACKPOT -> 4
+                    FeverMotion.RIBBON -> 2
+                    else -> 0
+                }
+                val angle = index * 2.39996f + combo * .72f
+                val px = if (style in listOf(FeverMotion.CASCADE, FeverMotion.JACKPOT) || (big && style == FeverMotion.FEVER))
+                    space.left + space.width() * (index + .5f) / count else if (big) space.centerX() else if (keyboard) rawTouchX else originX
+                val py = when (style) {
+                    FeverMotion.ROCKETS, FeverMotion.FEVER -> space.bottom
+                    FeverMotion.CASCADE, FeverMotion.JACKPOT -> space.top
+                    else -> if (big) space.centerY() else if (keyboard) rawTouchY else originY
+                }
+                val shade = when (style) {
+                    FeverMotion.HEARTS, FeverMotion.LOVE -> if (index % 2 == 0) 0xffff4d97.toInt() else 0xffffa8d9.toInt()
+                    FeverMotion.ROCKETS, FeverMotion.FEVER -> 0xff74c9ff.toInt()
+                    FeverMotion.CASCADE -> 0xffc790ff.toInt()
+                    FeverMotion.JACKPOT -> gold
+                    else -> colors[(family + index) % 7]
+                }
+                ornaments.add(Ornament(px, py, angle,
+                    (if (big) 220 + random.nextFloat() * 400 else 150 + random.nextFloat() * 260) * dp,
+                    minOf((if (big) 9 + random.nextFloat() * 12 else 4 + random.nextFloat() * 6) * dp,
+                        (space.height() * .2f).coerceAtLeast(3 * dp)), kind, shade,
+                    time + if (big) 80L + index % 4 * 90 else if (secondary) 150 else index % 2 * 40L,
+                    if (big) 1500 else 850, keyboard, style))
             }
         }
         invalidate()
@@ -184,213 +243,212 @@ internal class FeverEffectView(context: Context) : View(context) {
         if (active != null && !stage.isEmpty) drawAward(canvas, active, elapsed) else if (active == null) award = null
         if (!stage.isEmpty) {
             drawInputLayers(canvas, now)
-            drawParticles(canvas, now)
+            drawParticles(canvas, now, false)
             drawOrnaments(canvas, now)
             if (active != null) drawAwardTitle(canvas, active, elapsed)
-        } else { particles.clear(); ornaments.removeAll { !it.keyboard } }
+        } else { particles.removeAll { !it.keyboard }; ornaments.removeAll { !it.keyboard } }
         val smallActive = calloutStart > 0 && now - calloutStart < 700
         if (smallActive && active == null && !stage.isEmpty) drawCallout(canvas, now - calloutStart)
-        if (motion && sparkStart > 0 && now - sparkStart < 450) {
-            val progress = (now - sparkStart) / 450f
-            paint.shader = null; paint.color = calloutColor; paint.alpha = ((1 - progress) * 200).toInt()
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = (1 - progress) * 3 * dp
-            canvas.drawCircle(originX, originY, (8 + progress * 35) * dp, paint)
-        }
         if (combo > 0 && !stage.isEmpty && !(stage.height() < 110 * dp && (active != null || smallActive))) drawMeter(canvas)
         canvas.restore()
         drawKeyboardOrnaments(canvas, now)
         drawTouchFeedback(canvas, now)
-        drawKeyEnergy(canvas, now, active)
+        drawKeyEnergy(canvas, now)
         drawCandidateEnergy(canvas, now)
         paint.reset(); paint.isAntiAlias = true
         if (active != null || particles.isNotEmpty() || ornaments.isNotEmpty() || touchMarks.isNotEmpty() || smallActive || (sparkStart > 0 && now - sparkStart < 650) || (candidateStart > 0 && now - candidateStart < 720)) postInvalidateOnAnimation()
     }
 
-    /** Draw only key borders and gaps. Foreground labels and candidate cells remain untouched. */
-    private fun drawKeyEnergy(canvas: Canvas, now: Long, active: FeverAward?) {
-        if (keyEdges.isEmpty()) return
+    /** Bright streaks run through the gaps; cap borders are drawn exactly once by the skin. */
+    private fun drawKeyEnergy(canvas: Canvas, now: Long) {
         val age = now - sparkStart
-        if (active == null && (sparkStart == 0L || age !in 0..650)) return
-        val duration = if (active != null) 2000f else 650f
-        val progress = if (active != null) (now - awardStart) / duration else age / duration
-        val fade = if (active != null) minOf(1f, (1 - progress) * 4) else (1 - progress).coerceIn(0f, 1f)
-        canvas.save(); canvas.clipRect(arena)
-        val keyboardArea = RectF(keyEdges.first())
-        keyEdges.drop(1).forEach(keyboardArea::union)
-        canvas.clipRect(keyboardArea)
-        // Clipping the inside of every cap also protects edge-positioned flick labels.
-        keyEdges.forEach { rect ->
-            val inside = RectF(rect).apply { inset(4 * dp, 4 * dp) }
-            if (!inside.isEmpty) {
-                if (android.os.Build.VERSION.SDK_INT >= 26) canvas.clipOutRect(inside)
-                else @Suppress("DEPRECATION") canvas.clipRect(inside, Region.Op.DIFFERENCE)
-            }
+        if (keyArea.isEmpty || sparkStart == 0L || age !in 0..520) return
+        val t = age / 520f
+        canvas.save(); canvas.clipRect(arena); canvas.clipRect(keyArea)
+        keyEdges.forEach { cap ->
+            val inside = RectF(cap).apply { inset(3 * dp, 3 * dp) }
+            if (android.os.Build.VERSION.SDK_INT >= 26) canvas.clipOutRect(inside)
+            else @Suppress("DEPRECATION") canvas.clipRect(inside, Region.Op.DIFFERENCE)
         }
-        paint.shader = null; paint.style = Paint.Style.STROKE
-        val accent = when { cue == FeverCue.DELETE || active == FeverAward.HOT -> red
-            active != null -> awardColor; else -> calloutColor }
-        keyEdges.forEachIndexed { index, rect ->
-            val touched = rect.contains(rawTouchX, rawTouchY)
-            val travel = hypot(rect.centerX() - rawTouchX, rect.centerY() - rawTouchY) / (2.6f * dp)
-            val wave = if (motion) exp(-abs((now - sparkStart) - travel.coerceAtMost(220f)) / 160f) else 1f
-            val amount = fade * if (touched) 1f else if (active != null) .35f + wave * .65f else wave * .95f
-            val outline = RectF(rect).apply { inset(1.5f * dp, 1.5f * dp) }
-            paint.color = accent; paint.alpha = (amount * 155).toInt(); paint.strokeWidth = (4 + intensity * 2) * dp
-            canvas.drawRoundRect(outline, 9 * dp, 9 * dp, paint)
-            paint.alpha = (amount * 245).toInt(); paint.strokeWidth = (1 + intensity * .4f) * dp
-            canvas.drawRoundRect(outline, 9 * dp, 9 * dp, paint)
-            if (motion) {
-                val phase = (progress * 2 + index * .17f) % 1f
-                val x = rect.left + rect.width() * phase
-                paint.color = Color.WHITE; paint.alpha = (amount * 220).toInt(); paint.strokeWidth = dp
-                canvas.drawLine(x - 3 * dp, rect.top + 2 * dp, x + 3 * dp, rect.top + 2 * dp, paint)
+        when (motion) {
+            FeverMotion.CURSOR -> repeat(4) { index ->
+                val dx = gestureDirection.x; val dy = gestureDirection.y
+                drawComet(canvas, rawTouchX - dy * index * 5 * dp, rawTouchY + dx * index * 5 * dp,
+                    rawTouchX + dx * 180 * dp, rawTouchY + dy * 180 * dp, t, 0f, 0xff6cbdff.toInt(), dp, 1 - t)
             }
-        }
-        if (motion) {
-            paint.color = accent; paint.alpha = (fade * 210).toInt(); paint.strokeWidth = 2 * dp
-            val tapProgress = ((now - sparkStart) / 560f).coerceIn(0f, 1f)
-            val radius = (8 + (1 - (1 - tapProgress).pow(3)) * if (active != null) 180 else 120) * dp
-            canvas.drawCircle(rawTouchX, rawTouchY, radius, paint)
-            canvas.drawCircle(rawTouchX, rawTouchY, radius * .72f, paint)
-            repeat(if (intensity == 2) 16 else 8) { index ->
-                val angle = index * PI.toFloat() / 8
-                val x = rawTouchX + cos(angle) * radius; val y = rawTouchY + sin(angle) * radius
-                canvas.drawLine(x, y, x - cos(angle) * 18 * dp, y - sin(angle) * 18 * dp, paint)
-                if (index % 3 == 0) {
-                    paint.style = Paint.Style.FILL
-                    drawMotif(canvas, x, y, (4 + intensity) * dp, family, accent, tapProgress * 160, (fade * 220).toInt())
-                    paint.style = Paint.Style.STROKE
-                }
+            FeverMotion.IMPLODE -> repeat(6) { index ->
+                val angle = index * PI.toFloat() / 3
+                drawComet(canvas, rawTouchX + cos(angle) * 75 * dp, rawTouchY + sin(angle) * 75 * dp,
+                    rawTouchX, rawTouchY, t, 12 * dp, 0xffff4965.toInt(), dp, 1 - t)
             }
+            FeverMotion.RIBBON -> repeat(3) { index ->
+                drawComet(canvas, keyArea.left, rawTouchY + (index - 1) * 18 * dp,
+                    keyArea.right, rawTouchY, t, (index - 1) * 32 * dp, 0xff60ffbd.toInt(), dp, 1 - t)
+            }
+            else -> Unit
         }
         canvas.restore()
     }
 
+    private fun drawComet(canvas: Canvas, sx: Float, sy: Float, tx: Float, ty: Float,
+                          progress: Float, bend: Float, color: Int, width: Float, opacity: Float) {
+        val t = progress.coerceIn(0f, 1f)
+        val head = 1 - (1 - t).pow(3)
+        val tail = (head - (.08f + .2f * (1 - t))).coerceAtLeast(0f)
+        val cx = (sx + tx) / 2 - (ty - sy).let { if (abs(it) > .1f) sign(it) * bend else 0f }
+        val cy = (sy + ty) / 2 + bend
+        fun x(u: Float) = (1-u).pow(2) * sx + 2*(1-u)*u*cx + u*u*tx
+        fun y(u: Float) = (1-u).pow(2) * sy + 2*(1-u)*u*cy + u*u*ty
+        paint.shader = null; paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.ROUND
+        repeat(8) { part ->
+            val a = tail + (head - tail) * part / 8
+            val b = tail + (head - tail) * (part + 1) / 8
+            paint.color = color; paint.alpha = (opacity.coerceIn(0f, 1f) * (part + 1) / 8 * 225).toInt()
+            paint.strokeWidth = width * (.25f + part / 8f)
+            canvas.drawLine(x(a), y(a), x(b), y(b), paint)
+        }
+        paint.color = Color.WHITE; paint.alpha = (opacity.coerceIn(0f, 1f) * 245).toInt()
+        paint.strokeWidth = width * .8f
+        canvas.drawLine(x((head - .012f).coerceAtLeast(0f)), y((head - .012f).coerceAtLeast(0f)), x(head), y(head), paint)
+    }
+
     private fun drawCandidateEnergy(canvas: Canvas, now: Long) {
-        if (candidateArea.isEmpty) return
         val age = now - candidateStart
-        if (candidateStart == 0L || age !in 0..720) return
-        val progress = if (motion) age / 720f else .25f
-        val fade = (1 - progress).coerceIn(0f, 1f)
-        val accent = candidateAccent
+        if (candidateArea.isEmpty || candidateStart == 0L || age !in 0..720) return
+        val t = age / 720f
+        val fade = (1 - t).pow(1.5f)
         canvas.save(); canvas.clipRect(arena); canvas.clipRect(candidateArea)
-        paint.style = Paint.Style.FILL
-        // The wash reaches only the bottom edge and stays below 8% opacity over text.
-        paint.shader = LinearGradient(0f, candidateArea.top, 0f, candidateArea.bottom,
-            intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, accent), floatArrayOf(0f, .75f, 1f), Shader.TileMode.CLAMP)
-        paint.alpha = (fade * 20).toInt(); canvas.drawRect(candidateArea, paint); paint.shader = null
-        val center = if (motion) candidateArea.left + candidateArea.width() * progress else candidateArea.centerX()
-        paint.shader = LinearGradient(center - 45 * dp, 0f, center + 45 * dp, 0f,
-            intArrayOf(Color.TRANSPARENT, accent, Color.WHITE, accent, Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
-        paint.alpha = (fade * 220).toInt(); paint.strokeWidth = 1.3f * dp
-        canvas.drawLine(candidateArea.left, candidateArea.bottom - dp, candidateArea.right, candidateArea.bottom - dp, paint)
-        paint.shader = null
         val layer = canvas.saveLayerAlpha(candidateArea, if (candidateEmphasis) 112 else 80)
-        val sweep = candidateArea.left + candidateArea.width() * progress
-        paint.shader = LinearGradient(sweep - 30 * dp, 0f, sweep + 30 * dp, 0f,
-            intArrayOf(Color.TRANSPARENT, accent, Color.WHITE, Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
-        paint.alpha = (fade * 130).toInt(); paint.style = Paint.Style.FILL
-        canvas.drawRect(candidateArea, paint); paint.shader = null
-        val count = if (candidateEmphasis) intArrayOf(3, 6, 10)[intensity] else intArrayOf(1, 3, 5)[intensity]
-        repeat(count) { index ->
-            val phase = (progress * 1.15f + index.toFloat() / count) % 1f
-            val x = candidateArea.left + candidateArea.width() * phase
-            val y = candidateArea.centerY() + sin(phase * 6.28f + index) * candidateArea.height() * .27f
-            drawMotif(canvas, x, y, minOf((if (candidateEmphasis) 12f else 7f) * dp, candidateArea.height() * .22f),
-                (index + family) % 5, FeverVisualStyle.palette[index % 5], progress * 150 + index * 20f, (fade * 255).toInt())
+        val cx = candidateArea.centerX(); val cy = candidateArea.centerY()
+        when (motion) {
+            FeverMotion.FOCUS -> repeat(4) { index ->
+                drawComet(canvas, if (index % 2 == 0) candidateArea.left else candidateArea.right,
+                    candidateArea.top + candidateArea.height() * (index + .5f) / 4, cx, cy,
+                    t, (index - 1) * 8 * dp, 0xffffa237.toInt(), 1.5f * dp, fade)
+            }
+            FeverMotion.SCAN, FeverMotion.CURSOR -> repeat(3) { index ->
+                val reverse = motion == FeverMotion.CURSOR && gestureDirection.x < 0
+                drawComet(canvas, if (reverse) candidateArea.right else candidateArea.left, cy + (index - 1) * 9 * dp,
+                    if (reverse) candidateArea.left else candidateArea.right, cy + (index - 1) * 9 * dp,
+                    t, 0f, if (motion == FeverMotion.SCAN) gold else 0xff6cbdff.toInt(), 1.5f * dp, fade)
+            }
+            FeverMotion.IMPLODE -> repeat(4) { index ->
+                val x = candidateArea.left + candidateArea.width() * (index + .5f) / 4
+                drawComet(canvas, x, candidateArea.top, cx, cy, t, 0f, 0xffff4965.toInt(), dp, fade)
+            }
+            else -> repeat(if (candidateEmphasis) 7 else 4) { index ->
+                val local = ((age - index * 35) / 500f).coerceIn(0f, 1f)
+                val lane = candidateArea.left + candidateArea.width() * (index + .5f) / (if (candidateEmphasis) 7 else 4)
+                val kind = when (motion) {
+                    FeverMotion.HEARTS, FeverMotion.LOVE -> 1
+                    FeverMotion.ROCKETS, FeverMotion.FEVER -> 3
+                    FeverMotion.CASCADE, FeverMotion.JACKPOT -> 4
+                    else -> 2
+                }
+                val x = if (motion == FeverMotion.RIBBON) candidateArea.left + candidateArea.width() * local else lane
+                val y = when (motion) {
+                    FeverMotion.CASCADE, FeverMotion.JACKPOT -> candidateArea.top + candidateArea.height() * local.pow(1.6f)
+                    FeverMotion.RIBBON -> cy + sin(local * 6 + index) * candidateArea.height() * .2f
+                    else -> candidateArea.bottom - candidateArea.height() * local
+                }
+                drawMotif(canvas, x, y, (if (candidateEmphasis) 7 else 5) * dp * sin(local * PI.toFloat()),
+                    kind, candidateAccent, if (kind == 3) -80f else local * 120, (fade * 255).toInt())
+            }
         }
-        if (candidateEmphasis) {
-            val cx = if (candidateArea.contains(rawTouchX, rawTouchY)) rawTouchX else candidateArea.centerX()
-            paint.shader = null; paint.style = Paint.Style.STROKE; paint.color = accent
-            paint.alpha = (fade * 230).toInt(); paint.strokeWidth = (1.5f + intensity) * dp
-            canvas.drawCircle(cx, candidateArea.centerY(), (8 + progress * 100) * dp, paint)
-            val border = RectF(candidateArea).apply { inset(2 * dp, 2 * dp) }
-            canvas.drawRoundRect(border, 12 * dp, 12 * dp, paint)
-        }
+        paint.style = Paint.Style.STROKE; paint.shader = null; paint.color = candidateAccent
+        paint.alpha = (fade * 220).toInt(); paint.strokeWidth = .8f * dp
+        val sweep = candidateArea.left + (1 - (1 - t).pow(3)) * candidateArea.width()
+        canvas.drawLine(sweep - 20 * dp, candidateArea.bottom - dp, sweep, candidateArea.bottom - dp, paint)
         canvas.restoreToCount(layer); canvas.restore()
     }
 
-    /** Gather -> impact -> orbit + confetti. All layers share one bounded two-second clock. */
+    /** Impulse, crossing comets, launch and falling confetti; no expanding-ring backdrop. */
     private fun drawAward(canvas: Canvas, value: FeverAward, elapsed: Long) {
-        val t = if (motion) elapsed.toFloat() else 650f
-        val fade = minOf(1f, elapsed / 60f, (2000 - elapsed) / 320f).coerceIn(0f, 1f)
-        val cx = stage.centerX(); val cy = titleY()
+        val t = elapsed / 2000f
+        val fade = minOf(1f, elapsed / 45f, (2000 - elapsed) / 280f).coerceIn(0f, 1f)
         val compact = stage.height() < 110 * dp
-        val radius = hypot(stage.width(), stage.height())
-        val accent = awardColor
-        val gather = (t / 160f).coerceIn(0f, 1f)
-        paint.style = Paint.Style.STROKE; paint.shader = null
-        // A contracting halo establishes anticipation before the release at 160ms.
-        paint.color = accent; paint.alpha = (fade * 210).toInt(); paint.strokeWidth = (1 + intensity) * dp
-        val ring = if (t < 160) radius * (.45f - .32f * gather) else radius * (.13f + ((t - 160) / 1100f).coerceIn(0f, 1f))
-        canvas.drawCircle(cx, cy, ring, paint)
-        canvas.drawCircle(cx, cy, ring * .78f, paint)
-        if (t >= 160) {
-            val release = ((t - 160) / 600f).coerceIn(0f, 1f)
-            val rays = intArrayOf(8, 16, 28)[intensity]
-            repeat(rays) { index ->
-                val angle = index * 2 * PI.toFloat() / rays + awardFamily * .3f
-                val inner = (12 * dp + release * radius * .25f)
-                val outer = inner + (1 - release) * radius * .55f
-                paint.color = FeverVisualStyle.palette[(index + awardFamily) % 5]
-                paint.alpha = (fade * (1 - release) * 230).toInt(); paint.strokeWidth = (if (index % 3 == 0) 3f else 1f) * dp
-                canvas.drawLine(cx + cos(angle) * inner, cy + sin(angle) * inner, cx + cos(angle) * outer, cy + sin(angle) * outer, paint)
+        val cx = stage.centerX(); val cy = titleY()
+        when (value) {
+            FeverAward.COMBO -> {
+                // Crossed launch followed by the separately delayed confetti and elastic caption.
+                repeat(6) { index ->
+                    val local = ((elapsed - index % 3 * 65) / 550f).coerceIn(0f, 1f)
+                    val angle = index * 2.39996f
+                    val distance = minOf(stage.width(), if (compact) stage.width() else stage.height()) * .75f
+                    drawComet(canvas, cx, cy, cx + cos(angle) * distance,
+                        cy + sin(angle) * distance * if (compact) .2f else 1f, local, sin(index * 2f) * 45 * dp,
+                        colors[index], 1.4f * dp, fade * (1 - local))
+                }
             }
-            if (intensity == 2 && !compact && t < 600) drawLightning(canvas, cx, cy, radius * .65f, fade * (1 - release), release, accent)
+            FeverAward.FEVER -> repeat(8) { index ->
+                val local = ((elapsed - index * 95) / 800f).coerceIn(0f, 1f)
+                val x = stage.left + stage.width() * (index + .5f) / 8
+                drawComet(canvas, x, stage.bottom, x + sin(index.toFloat()) * 50 * dp, stage.top,
+                    local, 12 * dp, 0xff6acbff.toInt(), 2 * dp, fade * (1 - local))
+            }
+            FeverAward.HOT -> repeat(4) { index ->
+                val local = ((elapsed - index * 160) / 1000f).coerceIn(0f, 1f)
+                drawComet(canvas, stage.left, cy + (index - 2) * 12 * dp, stage.right, cy,
+                    local, (index % 2 * 2 - 1) * (if (compact) 10 else 70) * dp,
+                    0xffff62a8.toInt(), 1.5f * dp, fade * sin(local * PI.toFloat()))
+            }
+            FeverAward.JACKPOT -> repeat(9) { index ->
+                val local = ((elapsed - index % 3 * 220) / 650f).coerceIn(0f, 1f)
+                val reverse = index % 2 == 0
+                val y = stage.top + stage.height() * (index + .5f) / 9
+                drawComet(canvas, if (reverse) stage.right else stage.left, y,
+                    if (reverse) stage.left else stage.right, y, local, (index % 3 - 1) * 20 * dp,
+                    if (index % 3 == 0) Color.WHITE else gold, (1.5f + index % 2) * dp, fade * (1 - local))
+            }
         }
-        // The frame travels in color rather than obscuring the editor with an opaque field.
-        val border = RectF(arena).apply { inset(2.5f * dp, 2.5f * dp) }
         paint.style = Paint.Style.STROKE
-        paint.shader = SweepGradient(arena.centerX(), arena.centerY(), FeverVisualStyle.palette + FeverVisualStyle.palette[0], null)
-        paint.alpha = (fade * 180).toInt(); paint.strokeWidth = (3 + intensity) * dp
-        canvas.drawRoundRect(border, 12 * dp, 12 * dp, paint); paint.shader = null
+        val frameColors = when (value) {
+            FeverAward.FEVER -> intArrayOf(Color.WHITE, 0xff4985ff.toInt(), 0xff69eaff.toInt(), Color.WHITE)
+            FeverAward.HOT -> intArrayOf(Color.WHITE, 0xffff4d97.toInt(), 0xffffb9e0.toInt(), Color.WHITE)
+            FeverAward.JACKPOT -> intArrayOf(Color.WHITE, gold, 0xffff9e3d.toInt(), Color.WHITE)
+            else -> colors
+        }
+        val shader = SweepGradient(arena.centerX(), arena.centerY(), frameColors, null)
+        val matrix = Matrix().apply { setRotate(t * 300, arena.centerX(), arena.centerY()) }
+        shader.setLocalMatrix(matrix); paint.shader = shader; paint.alpha = (fade * 165).toInt(); paint.strokeWidth = 1.1f * dp
+        canvas.drawRoundRect(RectF(arena).apply { inset(2 * dp, 2 * dp) }, 12 * dp, 12 * dp, paint)
+        paint.shader = null
     }
 
     private fun drawAwardTitle(canvas: Canvas, value: FeverAward, elapsed: Long) {
-        val t = if (motion) elapsed.toFloat() else 650f
-        val fade = minOf(1f, elapsed / 60f, (2000 - elapsed) / 320f).coerceIn(0f, 1f)
+        if (elapsed < 65) return
+        val enter = ((elapsed - 65) / 310f).coerceIn(0f, 1f)
+        val exit = ((elapsed - 1530) / 470f).coerceIn(0f, 1f)
+        val fade = minOf(enter * 5, (1 - exit).pow(2)).coerceIn(0f, 1f)
         val cx = stage.centerX(); val cy = titleY()
         val compact = stage.height() < 110 * dp
-        val accent = awardColor
-        if (t >= 120) {
-            val impactAge = (t - 160).coerceAtLeast(0f)
-            val bounce = if (motion) exp(-impactAge / 150f) * sin(impactAge / 53f) else 0f
-            val label = when (value) {
-                FeverAward.COMBO -> "$combo COMBO!"
-                FeverAward.FEVER -> "ON FIRE!"
-                FeverAward.HOT -> "LOVE IT!"
-                FeverAward.JACKPOT -> "MEGA HIT!"
-            }
-            val size = minOf(stage.width() / maxOf(3f, label.length * .64f), stage.height() * .52f, 76 * dp)
-            canvas.save(); canvas.scale(1 + bounce * .28f, 1 + bounce * .28f, cx, cy)
-            if (!compact) canvas.rotate(-4 + bounce * 3, cx, cy)
-            metallicText(canvas, label, cx, cy, size, fade, false, true)
-            canvas.restore()
-            if (!compact) {
-                paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC); paint.textSize = 16 * dp
-                paint.style = Paint.Style.FILL; paint.color = accent; paint.alpha = (fade * 255).toInt(); paint.textAlign = Paint.Align.CENTER
-                canvas.drawText("$combo COMBO  /  ${if (value == FeverAward.JACKPOT) "BONUS!" else "KEEP GOING!"}", cx, cy + size * .8f, paint)
-            }
+        val label = when (value) {
+            FeverAward.COMBO -> "COMBO ×$awardCombo"
+            FeverAward.FEVER -> "ON FIRE!"
+            FeverAward.HOT -> "LOVE IT!"
+            FeverAward.JACKPOT -> "MEGA HIT!"
+        }
+        val size = minOf(stage.width() / maxOf(3f, label.length * .64f), stage.height() * .56f, 78 * dp)
+        val bounce = 1 - exp(-enter * 7) * cos(enter * 12)
+        val dx = when (value) {
+            FeverAward.FEVER -> -(1 - enter).pow(3) * stage.width() * .55f
+            FeverAward.JACKPOT -> sin(enter * 38) * exp(-enter * 9) * 20 * dp
+            else -> (1 - enter).pow(3) * stage.width() * .12f
+        } + exit.pow(2) * stage.width() * .12f
+        val dy = (1 - enter).pow(2) * (if (value == FeverAward.HOT) 65 else 18) * dp - exit.pow(2) * 24 * dp
+        canvas.save(); canvas.translate(dx, dy)
+        canvas.scale(.55f + .45f * bounce, .5f + .5f * bounce, cx, cy)
+        canvas.rotate(-4 + (1 - enter) * -8 + exit * 5, cx, cy)
+        metallicText(canvas, label, cx, cy, size, fade, value == FeverAward.COMBO, awardColor)
+        canvas.restore()
+        if (!compact) {
+            paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC); paint.textSize = 15 * dp
+            paint.style = Paint.Style.FILL; paint.color = awardColor; paint.alpha = (fade * 240).toInt(); paint.textAlign = Paint.Align.CENTER
+            canvas.drawText("$combo COMBO  /  ${if (value == FeverAward.JACKPOT) "BONUS!" else "KEEP GOING!"}", cx, cy + size * .82f - exit * 12 * dp, paint)
         }
     }
 
-    private fun drawLightning(canvas: Canvas, cx: Float, cy: Float, radius: Float, fade: Float, progress: Float, accent: Int) {
-        repeat(if (intensity == 2) 10 else 5) { bolt ->
-            val angle = bolt * 2f * PI.toFloat() / 10 + .13f
-            path.reset(); path.moveTo(cx, cy)
-            repeat(7) { step ->
-                val distance = radius * (step + 1) / 7f
-                val bend = sin(bolt * 7f + step * 13f + if (motion) progress * 3 else 0f) * 24 * dp
-                path.lineTo(cx + cos(angle) * distance - sin(angle) * bend, cy + sin(angle) * distance + cos(angle) * bend)
-            }
-            paint.style = Paint.Style.STROKE; paint.strokeJoin = Paint.Join.ROUND
-            paint.color = accent; paint.alpha = (fade * 100).toInt(); paint.strokeWidth = 9 * dp; canvas.drawPath(path, paint)
-            paint.color = 0xfffff4cc.toInt(); paint.alpha = (fade * 240).toInt(); paint.strokeWidth = 1.6f * dp; canvas.drawPath(path, paint)
-        }
-        paint.style = Paint.Style.FILL
-    }
-
-    private fun metallicText(canvas: Canvas, label: String, x: Float, y: Float, size: Float, fade: Float, fiery: Boolean, rainbow: Boolean = false) {
+    private fun metallicText(canvas: Canvas, label: String, x: Float, y: Float, size: Float, fade: Float, rainbow: Boolean = false, tint: Int = calloutColor) {
         paint.shader = null; paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC)
         paint.isFakeBoldText = true; paint.textAlign = Paint.Align.CENTER; paint.textSize = size
         val baseline = y - (paint.ascent() + paint.descent()) / 2
@@ -402,129 +460,174 @@ internal class FeverEffectView(context: Context) : View(context) {
         paint.style = Paint.Style.FILL
         paint.shader = LinearGradient(x, y - size * .5f, x, y + size * .5f,
             if (rainbow) intArrayOf(0xffffff92.toInt(), 0xffffcb63.toInt(), 0xff78ffcf.toInt(), 0xff60dfff.toInt(), 0xffc591ff.toInt())
-            else intArrayOf(Color.WHITE, if (fiery) 0xffff7cb7.toInt() else calloutColor, 0xffa9b3ff.toInt()),
+            else intArrayOf(Color.WHITE, tint, Color.rgb(Color.red(tint) / 2, Color.green(tint) / 2, Color.blue(tint) / 2)),
             null, Shader.TileMode.CLAMP)
         canvas.drawText(label, x, baseline, paint); paint.shader = null; paint.isFakeBoldText = false
     }
 
-    private fun drawParticles(canvas: Canvas, now: Long) {
+    private fun drawParticles(canvas: Canvas, now: Long, keyboard: Boolean) {
         val iterator = particles.iterator()
-        paint.shader = null; paint.style = Paint.Style.FILL
         while (iterator.hasNext()) {
             val p = iterator.next()
             if (p.end <= now) { iterator.remove(); continue }
-            if (p.born > now) continue
-            val age = (now - p.born).coerceAtLeast(0) / 1000f
-            val x = p.x + p.vx * age; val y = p.y + p.vy * age + 100 * dp * age * age
-            paint.color = p.color; paint.alpha = (255 * minOf(1f, (p.end - now) / 300f)).toInt()
-            paint.strokeWidth = p.size * .6f
-            canvas.drawLine(x, y, x - p.vx * .025f, y - p.vy * .025f, paint)
-            if (p.size > 2 * dp) {
-                canvas.save(); canvas.rotate(age * 180 + p.vx, x, y)
-                canvas.drawRect(x - p.size, y - p.size * .35f, x + p.size, y + p.size * .35f, paint); canvas.restore()
-            } else canvas.drawCircle(x, y, p.size * .6f, paint)
-            if (p.size > 3 * dp) {
-                canvas.drawLine(x - p.size * 2, y, x + p.size * 2, y, paint)
-                canvas.drawLine(x, y - p.size * 2, x, y + p.size * 2, paint)
+            if (p.born > now || p.keyboard != keyboard) continue
+            val age = (now - p.born) / 1000f
+            val t = (now - p.born).toFloat() / (p.end - p.born)
+            val travel = (1 - exp(-age * 4.5f)) / 4.5f
+            val inward = p.motion in listOf(FeverMotion.IMPLODE, FeverMotion.FOCUS)
+            val distance = if (inward) (1 - t).pow(3) * .23f else travel
+            val sway = if (p.motion == FeverMotion.RIBBON) sin(t * PI.toFloat() * 2) * 22 * dp else 0f
+            val x = p.x + p.vx * distance + if (p.motion in listOf(FeverMotion.HEARTS, FeverMotion.LOVE)) sin(t * 7 + p.vx) * 10 * dp else sway
+            val gravity = when (p.motion) {
+                FeverMotion.ROCKETS, FeverMotion.FEVER, FeverMotion.CURSOR, FeverMotion.SCAN, FeverMotion.REVEAL -> 0f
+                FeverMotion.HEARTS, FeverMotion.LOVE, FeverMotion.RIBBON -> 25f
+                FeverMotion.IMPLODE, FeverMotion.FOCUS -> 0f
+                else -> 120f
+            }
+            val y = p.y + p.vy * distance + gravity * dp * age.pow(2) + if (p.motion == FeverMotion.RIBBON) cos(t * 6 + p.vx) * 12 * dp else 0f
+            val stretch = (1 - t).pow(2) * .045f
+            paint.shader = null; paint.color = p.color; paint.alpha = ((1 - t).pow(.65f) * 245).toInt()
+            paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.ROUND; paint.strokeWidth = p.size * (1 - t * .7f)
+            canvas.drawLine(x, y, x - p.vx * stretch, y - p.vy * stretch, paint)
+            if (t > .15f && p.size > 2 * dp) {
+                canvas.save(); canvas.rotate(p.vx + t * 420, x, y)
+                paint.style = Paint.Style.FILL
+                canvas.drawRect(x - p.size, y - p.size * .32f, x + p.size, y + p.size * .32f, paint); canvas.restore()
             }
         }
     }
 
     private fun drawCallout(canvas: Canvas, elapsed: Long) {
-        val fraction = elapsed / 700f
-        val fade = minOf(1f, (1 - fraction) * 3)
+        val enter = (elapsed / 190f).coerceIn(0f, 1f)
+        val exit = ((elapsed - 370) / 330f).coerceIn(0f, 1f)
+        val response = 1 - exp(-enter * 6) * cos(enter * 10)
         val compact = stage.height() < 110 * dp
-        val cx = stage.centerX()
-        val cy = stage.top + minOf(stage.height() * .5f, 110 * dp)
-        val halfWidth = minOf(98 * dp, (stage.width() / 2 - 3 * dp).coerceAtLeast(dp))
-        paint.shader = LinearGradient(cx - halfWidth, cy, cx + halfWidth, cy,
-            intArrayOf(Color.TRANSPARENT, 0xee071528.toInt(), Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
-        paint.style = Paint.Style.FILL; paint.alpha = (fade * 220).toInt()
-        canvas.drawRect(cx - halfWidth, cy - minOf(18 * dp, stage.height() * .45f), cx + halfWidth, cy + minOf(18 * dp, stage.height() * .45f), paint)
-        paint.shader = null
+        val cx = stage.centerX(); val cy = if (compact) stage.centerY() else stage.top + minOf(stage.height() * .5f, 110 * dp)
+        val size = minOf(stage.height() * .6f, if (compact) 21 * dp else 36 * dp, stage.width() / maxOf(3f, callout.length * .65f))
         canvas.save()
-        if (motion) { val scale = 1 + .18f * exp(-elapsed / 100f); canvas.scale(scale, scale, cx, cy) }
-        metallicText(canvas, callout, cx, cy, minOf(stage.height() * .6f, 26 * dp, halfWidth * 2 / maxOf(3f, callout.length * .65f)), fade, cue == FeverCue.DELETE || combo >= 8)
+        val horizontal = motion in listOf(FeverMotion.RIBBON, FeverMotion.SCAN, FeverMotion.CURSOR)
+        val downward = motion == FeverMotion.CASCADE
+        canvas.translate(if (horizontal) (1 - enter).pow(3) * -100 * dp + exit.pow(2) * 70 * dp else 0f,
+            if (horizontal) 0f else (1 - enter).pow(2) * (if (downward) -35 else 22) * dp - exit.pow(2) * 22 * dp)
+        canvas.scale(.65f + response * .35f, .6f + response * .4f, cx, cy)
+        canvas.rotate((if (compact) -1f else -5f) + (1 - enter) * -8, cx, cy)
+        metallicText(canvas, callout, cx, cy, size, (1 - exit).pow(2))
         canvas.restore()
-        if (motion && cue != null) {
-            val horizontal = cue == FeverCue.CURSOR_LEFT || cue == FeverCue.CURSOR_RIGHT
-            val vertical = cue == FeverCue.CURSOR_UP || cue == FeverCue.CURSOR_DOWN
-            val direction = if (cue == FeverCue.CURSOR_LEFT || cue == FeverCue.CURSOR_UP) -1 else 1
-            paint.color = calloutColor; paint.alpha = (fade * 240).toInt(); paint.strokeWidth = 2 * dp
-            repeat(3) { trail ->
-                val offset = (fraction * 75 - trail * 12) * dp * direction
-                if (horizontal) canvas.drawLine(originX + offset, originY, originX + offset - direction * 22 * dp, originY, paint)
-                else if (vertical) canvas.drawLine(originX, originY + offset, originX, originY + offset - direction * 22 * dp, paint)
-            }
-        }
     }
 
     private fun drawInputLayers(canvas: Canvas, now: Long) {
-        val age = now - sparkStart
-        if (sparkStart == 0L || age !in 0..650) return
-        val progress = if (motion) age / 650f else .25f
-        val fade = (1 - progress).coerceIn(0f, 1f)
+        val age = now - stageStart
+        if (stageStart == 0L || age !in 0..620) return
+        val t = age / 620f
         val compact = stage.height() < 110 * dp
         val cx = if (compact) stage.centerX() else originX
         val cy = if (compact) stage.centerY() else originY
-        paint.shader = null; paint.style = Paint.Style.STROKE; paint.color = calloutColor
-        paint.alpha = (fade * 210).toInt(); paint.strokeWidth = (1 + intensity * .5f) * dp
-        val radius = (8 + (1 - (1 - progress).pow(3)) * if (compact) 70 else 160) * dp
-        canvas.drawCircle(cx, cy, radius, paint)
-        canvas.drawCircle(cx, cy, radius * .67f, paint)
-        // Two satellites curve away from the impact, plus a directional comet for cursor movement.
-        repeat(if (intensity == 0) 1 else 3) { index ->
-            val angle = progress * 4 + index * 2.094f + combo * .7f
-            val rx = radius * cos(angle); val ry = radius * sin(angle) * if (compact) .16f else .7f
-            drawMotif(canvas, cx + rx, cy + ry, (if (compact) 5f else 9f) * dp,
-                (family + index) % 5, FeverVisualStyle.palette[(family + index) % 5], progress * 130, (fade * 240).toInt())
+        when (motion) {
+            FeverMotion.RIBBON -> repeat(3) { index ->
+                drawComet(canvas, stage.left, cy, stage.right, cy, t,
+                    (index - 1) * (if (compact) 8 else 40) * dp, 0xff60ffbd.toInt(), 1.2f * dp, 1 - t)
+            }
+            FeverMotion.FOCUS -> repeat(4) { index ->
+                val left = index % 2 == 0
+                drawComet(canvas, if (left) stage.left else stage.right, stage.top + index / 4f * stage.height(),
+                    cx, cy, t, (index - 1) * 10 * dp, 0xffffa237.toInt(), 1.4f * dp, 1 - t)
+            }
+            FeverMotion.CURSOR -> drawComet(canvas, cx - gestureDirection.x * 80 * dp,
+                cy - gestureDirection.y * 20 * dp, cx + gestureDirection.x * 100 * dp,
+                cy + gestureDirection.y * 20 * dp, t, 0f, 0xff6cbdff.toInt(), 2 * dp, 1 - t)
+            FeverMotion.IMPLODE -> repeat(3) { index ->
+                drawComet(canvas, cx + (index - 1) * 90 * dp, cy - if (compact) 0f else 50 * dp,
+                    cx, cy, t, 8 * dp, 0xffff4965.toInt(), dp, 1 - t)
+            }
+            FeverMotion.BURST, FeverMotion.COMBO -> repeat(3 + intensity) { index ->
+                val direction = if (index % 2 == 0) 1 else -1
+                drawComet(canvas, cx, cy, (cx + direction * (75 + index * 26) * dp).coerceIn(stage.left, stage.right),
+                    if (compact) cy else (cy - (25 + index * 19) * dp).coerceIn(stage.top, stage.bottom), t,
+                    if (compact) 4 * dp else direction * 35 * dp, colors[(family + index) % 7], 1.3f * dp, 1 - t)
+            }
+            else -> Unit
         }
     }
 
     private fun drawOrnaments(canvas: Canvas, now: Long, keyboard: Boolean = false) {
         val iterator = ornaments.iterator()
         while (iterator.hasNext()) {
-            val item = iterator.next()
-            val age = now - item.born
+            val item = iterator.next(); val age = now - item.born
             if (age >= item.life) { iterator.remove(); continue }
             if (age < 0 || item.keyboard != keyboard) continue
+            val t = age.toFloat() / item.life
             val seconds = age / 1000f
+            val travel = (1 - exp(-seconds * 3.2f)) / 3.2f
             val compact = !keyboard && stage.height() < 110 * dp
-            val x = item.x + cos(item.angle) * item.speed * seconds
-            val y = if (compact) stage.centerY() + sin(item.angle + seconds * 5) * stage.height() * .18f
-                else item.y + sin(item.angle) * item.speed * seconds - sin(seconds * 2) * 35 * dp
-            drawMotif(canvas, x, y, item.size, item.family, item.color, item.angle * 20 + seconds * 90,
-                (minOf(1f, (item.life - age) / 280f) * 245).toInt())
+            val bend = sin(t * PI.toFloat()) * 28 * dp
+            var x = item.x + cos(item.angle) * item.speed * travel - sin(item.angle) * bend
+            var y = item.y + sin(item.angle) * item.speed * travel + cos(item.angle) * bend + 65 * dp * seconds * seconds
+            var rotation = item.angle * 25 + t * 300
+            when (item.motion) {
+                FeverMotion.HEARTS, FeverMotion.LOVE -> {
+                    x = item.x + sin(t * 5 + item.angle) * (20 + t * 30) * dp
+                    y = item.y - item.speed * travel * .7f
+                    rotation = sin(t * 5 + item.angle) * 22
+                }
+                FeverMotion.ROCKETS, FeverMotion.FEVER -> {
+                    x = item.x + cos(item.angle) * 150 * dp * t
+                    y = item.y - item.speed * seconds.pow(1.35f)
+                    rotation = -75 + cos(item.angle) * 25
+                }
+                FeverMotion.CASCADE, FeverMotion.JACKPOT -> {
+                    x = item.x + sin(t * 5 + item.angle) * 22 * dp
+                    val fall = if (keyboard) keyArea.height() else stage.height()
+                    y = item.y + fall * t.pow(1.6f)
+                    rotation = item.angle * 25 + t * 520
+                }
+                FeverMotion.RIBBON -> {
+                    x = item.x + (t * 2 - .3f) * item.speed * .35f
+                    y = item.y + sin(t * 6 + item.angle) * (if (compact) stage.height() * .24f else 30 * dp)
+                    rotation = cos(t * 6 + item.angle) * 35
+                }
+                else -> if (compact) y = stage.centerY() + sin(item.angle + t * 4) * stage.height() * .22f
+            }
+            val scale = minOf(1.2f, t / .075f) * (1 - t).pow(.4f)
+            canvas.save(); canvas.scale(scale * (1 + .7f * exp(-t * 15)), scale, x, y)
+            drawMotif(canvas, x, y, item.size, item.family, item.color, rotation, ((1 - t).pow(.7f) * 250).toInt())
+            canvas.restore()
         }
     }
 
     private fun drawTouchFeedback(canvas: Canvas, now: Long) {
-        touchMarks.removeAll { now - it.born >= 440 }
+        touchMarks.removeAll { now - it.born >= 420 }
         if (touchMarks.isEmpty()) return
         canvas.save(); canvas.clipRect(arena)
-        path.reset()
-        if (!keyArea.isEmpty) path.addRect(keyArea, Path.Direction.CW)
+        path.reset(); if (!keyArea.isEmpty) path.addRect(keyArea, Path.Direction.CW)
         if (!candidateArea.isEmpty) path.addRect(candidateArea, Path.Direction.CW)
         canvas.clipPath(path)
         val layer = canvas.saveLayerAlpha(arena, 96)
         var previous: TouchMark? = null
         touchMarks.forEach { mark ->
-            val age = (now - mark.born) / 440f
-            val progress = if (motion) age else .2f
-            paint.shader = null; paint.style = Paint.Style.STROKE; paint.color = mark.color
-            paint.alpha = ((1 - age) * 245).toInt(); paint.strokeWidth = (1.5f + intensity) * dp
+            val t = (now - mark.born) / 420f
+            val fade = (1 - t).pow(1.4f)
             if (mark.action == MotionEvent.ACTION_MOVE) {
-                previous?.let { canvas.drawLine(it.x, it.y, mark.x, mark.y, paint) }
-                drawMotif(canvas, mark.x, mark.y, (3 + intensity) * dp, 2, mark.color, -35f, ((1 - age) * 220).toInt())
+                previous?.let { before ->
+                    paint.shader = LinearGradient(before.x, before.y, mark.x + .1f, mark.y + .1f, colors, null, Shader.TileMode.CLAMP)
+                    paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.ROUND; paint.alpha = (fade * 245).toInt(); paint.strokeWidth = 2 * dp
+                    path.reset(); path.moveTo(before.x, before.y); path.quadTo(before.x, mark.y, mark.x, mark.y)
+                    canvas.drawPath(path, paint); paint.shader = null
+                }
+                drawMotif(canvas, mark.x + (1 - (1 - t).pow(3)) * 14 * dp, mark.y - t * 16 * dp,
+                    (3 + intensity) * dp * (1 - t), 2, mark.color, -35f, (fade * 240).toInt())
             } else {
                 val release = mark.action == MotionEvent.ACTION_UP || mark.action == MotionEvent.ACTION_POINTER_UP
-                val radius = (5 + progress * if (release) 55 else 22) * dp
-                canvas.drawCircle(mark.x, mark.y, radius, paint)
-                repeat(if (release) 8 else 4) { index ->
-                    val angle = index * PI.toFloat() / if (release) 4 else 2
-                    val inner = radius + 3 * dp; val outer = radius + (if (release) 13 else 7) * dp
-                    canvas.drawLine(mark.x + cos(angle) * inner, mark.y + sin(angle) * inner,
-                        mark.x + cos(angle) * outer, mark.y + sin(angle) * outer, paint)
+                val size = (if (release) 10 else 7) * dp * (1 - t).pow(.6f)
+                canvas.save(); canvas.translate(mark.x, mark.y)
+                canvas.scale(1 + .45f * exp(-t * 14) * sin(t * 22), 1 - .25f * exp(-t * 12) * cos(t * 18))
+                drawMotif(canvas, 0f, 0f, size, 0, mark.color, t * 90, (fade * 245).toInt())
+                canvas.restore()
+                repeat(if (release) 6 else 4) { index ->
+                    val angle = index * 2.39996f
+                    val distance = (if (release) 90 else 48) * dp
+                    drawComet(canvas, mark.x, mark.y, mark.x + cos(angle) * distance,
+                        mark.y + sin(angle) * distance, t, (index % 2 * 2 - 1) * 9 * dp,
+                        colors[index], dp, fade)
                 }
             }
             previous = mark
@@ -537,46 +640,30 @@ internal class FeverEffectView(context: Context) : View(context) {
         if (keyArea.isEmpty) return
         canvas.save(); canvas.clipRect(arena); canvas.clipRect(keyArea)
         val layer = canvas.saveLayerAlpha(keyArea, 96)
+        drawParticles(canvas, now, true)
         drawOrnaments(canvas, now, true)
         canvas.restoreToCount(layer); canvas.restore()
     }
 
-    /** Small vector stickers: stars, hearts, shooting stars, rockets, and holographic diamonds. */
+    /** Color emoji stickers have their own float/launch/fall trajectories, separate from sparks. */
     private fun drawMotif(canvas: Canvas, x: Float, y: Float, size: Float, kind: Int, color: Int, rotation: Float, alpha: Int) {
-        canvas.save(); canvas.translate(x, y); canvas.rotate(rotation)
+        if (size <= .1f || alpha <= 0) return
+        canvas.save(); canvas.translate(x, y)
+        canvas.rotate(rotation + if (kind == 3) 45 else 0)
         paint.shader = null; paint.style = Paint.Style.FILL; paint.color = color; paint.alpha = alpha
-        path.reset()
-        when (kind % 5) {
-            1 -> {
-                path.moveTo(0f, size * .9f)
-                path.cubicTo(-size * 1.6f, -size * .1f, -size * .8f, -size * 1.35f, 0f, -size * .5f)
-                path.cubicTo(size * .8f, -size * 1.35f, size * 1.6f, -size * .1f, 0f, size * .9f)
-            }
-            3 -> {
-                path.moveTo(size * 1.3f, 0f); path.quadTo(size * .5f, -size, -size * .5f, -size * .45f)
-                path.lineTo(-size, -size * .85f); path.lineTo(-size * .8f, 0f); path.lineTo(-size, size * .85f)
-                path.lineTo(-size * .5f, size * .45f); path.quadTo(size * .5f, size, size * 1.3f, 0f)
-            }
-            4 -> {
-                path.moveTo(0f, -size); path.lineTo(size * .8f, 0f); path.lineTo(0f, size); path.lineTo(-size * .8f, 0f); path.close()
-            }
-            else -> repeat(10) { index ->
-                val angle = -PI.toFloat() / 2 + index * PI.toFloat() / 5
-                val radius = if (index % 2 == 0) size else size * .42f
-                if (index == 0) path.moveTo(cos(angle) * radius, sin(angle) * radius)
-                else path.lineTo(cos(angle) * radius, sin(angle) * radius)
-            }
-        }
-        path.close(); canvas.drawPath(path, paint)
-        paint.style = Paint.Style.STROKE; paint.color = Color.WHITE; paint.strokeWidth = .8f * dp
-        canvas.drawPath(path, paint)
         if (kind == 2 || kind == 3) {
-            paint.color = color; paint.strokeWidth = 2 * dp
+            // The launch trail contracts while the sticker keeps travelling.
+            paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.ROUND; paint.strokeWidth = 1.2f * dp
             canvas.drawLine(-size, 0f, -size * 3.4f, 0f, paint)
-            paint.alpha = alpha / 2; paint.strokeWidth = dp
+            paint.alpha = alpha / 3; paint.strokeWidth = .6f * dp
             canvas.drawLine(-size * 1.3f, size * .45f, -size * 2.6f, size * .45f, paint)
         }
-        paint.style = Paint.Style.FILL; canvas.restore()
+        paint.style = Paint.Style.FILL; paint.color = Color.WHITE; paint.alpha = alpha
+        paint.typeface = Typeface.DEFAULT; paint.isFakeBoldText = false
+        paint.textAlign = Paint.Align.CENTER; paint.textSize = size * 2.2f
+        val glyph = when (kind) { 1 -> "💖"; 2 -> "🌠"; 3 -> "🚀"; 4 -> "💎"; 5 -> "😍"; else -> "✨" }
+        canvas.drawText(glyph, 0f, -(paint.ascent() + paint.descent()) / 2, paint)
+        canvas.restore()
     }
 
     private fun drawMeter(canvas: Canvas) {
@@ -585,10 +672,10 @@ internal class FeverEffectView(context: Context) : View(context) {
         val top = stage.top + (if (compact) 3 else 8) * dp
         paint.style = Paint.Style.FILL; paint.shader = null; paint.color = 0xff160b19.toInt(); paint.alpha = 245
         canvas.drawRoundRect(left, top, right, top + (if (compact) 28 else 38) * dp, 6 * dp, 6 * dp, paint)
-        paint.style = Paint.Style.STROKE; paint.strokeWidth = dp; paint.color = gold
+        paint.style = Paint.Style.STROKE; paint.strokeWidth = dp; paint.color = calloutColor
         canvas.drawRoundRect(left, top, right, top + (if (compact) 28 else 38) * dp, 6 * dp, 6 * dp, paint)
         paint.style = Paint.Style.FILL; paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD_ITALIC)
-        paint.textAlign = Paint.Align.CENTER; paint.textSize = (if (compact) 15 else 17) * dp; paint.color = 0xffffe38b.toInt(); paint.alpha = 255
+        paint.textAlign = Paint.Align.CENTER; paint.textSize = (if (compact) 15 else 17) * dp; paint.color = calloutColor; paint.alpha = 255
         canvas.drawText("$combo COMBO", (left + right) / 2, top + (if (compact) 19 else 23) * dp, paint)
         paint.color = 0xff4a2435.toInt()
         canvas.drawRoundRect(left + 10 * dp, top + (if (compact) 23 else 29) * dp, right - 10 * dp, top + (if (compact) 25 else 32) * dp, dp, dp, paint)

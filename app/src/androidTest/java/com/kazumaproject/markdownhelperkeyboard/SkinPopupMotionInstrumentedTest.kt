@@ -15,6 +15,97 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SkinPopupMotionInstrumentedTest {
+    @Test(timeout = 90000) fun feverFlickAndHeldGuideAnimateOnTheHardwareSurface() {
+        val ins = InstrumentationRegistry.getInstrumentation()
+        fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.uiAutomation.executeShellCommand(command))
+            .bufferedReader().use { it.readText().trim() }
+        val originalScale = shell("settings get global animator_duration_scale")
+        try {
+            shell("settings put global animator_duration_scale 0")
+            ins.runOnMainSync {
+                ins.targetContext.startActivity(Intent(ins.targetContext, SkinTestHostActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("keyboard", "kana").putExtra("skin", "fever"))
+            }
+            var activity: SkinTestHostActivity? = null
+            val deadline = SystemClock.uptimeMillis() + 15000
+            while (activity == null && SystemClock.uptimeMillis() < deadline) {
+                ins.runOnMainSync {
+                    activity = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED).filterIsInstance<SkinTestHostActivity>().firstOrNull()
+                }
+                SystemClock.sleep(100)
+            }
+            val host = requireNotNull(activity)
+            try {
+                SystemClock.sleep(700)
+                var x = 0f; var y = 0f; var width = 0
+                ins.runOnMainSync {
+                    val key = host.keyboard.findViewById<View>(com.kazumaproject.tenkey.R.id.key_5)
+                    val point = IntArray(2).also(key::getLocationOnScreen)
+                    width = key.width; x = point[0] + width / 2f; y = point[1] + key.height / 2f
+                }
+                for (hold in listOf(65L, 700L)) {
+                    val down = SystemClock.uptimeMillis()
+                    fun touch(action: Int, dx: Float = 0f) {
+                        val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x + dx, y, 0)
+                        event.source = InputDevice.SOURCE_TOUCHSCREEN
+                        try { check(ins.uiAutomation.injectInputEvent(event, true)) } finally { event.recycle() }
+                    }
+                    println("FEVER popup down hold=$hold")
+                    touch(MotionEvent.ACTION_DOWN)
+                    try {
+                        SystemClock.sleep(hold)
+                        touch(MotionEvent.ACTION_MOVE, width * .8f)
+                        SystemClock.sleep(60)
+                        println("FEVER popup moved hold=$hold")
+                        lateinit var cell: View
+                        ins.runOnMainSync {
+                            fun field(name: String): Any? = host.keyboard.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(host.keyboard)
+                            cell = if (hold < 100) {
+                                val popup = field("popupWindowActive") as android.widget.PopupWindow
+                                org.junit.Assert.assertTrue(popup.isShowing)
+                                (popup.contentView as ViewGroup).getChildAt(0)
+                            } else {
+                                val guide = field("skinGuide") as com.kazumaproject.core.ui.skin.SkinGuidePopup
+                                org.junit.Assert.assertTrue(guide.isShowing)
+                                val content = guide.javaClass.getDeclaredField("content").apply { isAccessible = true }.get(guide) as ViewGroup
+                                (0 until content.childCount).map(content::getChildAt).first { it.visibility == View.VISIBLE }
+                            }
+                        }
+                        val bounds = android.graphics.Rect()
+                        ins.runOnMainSync {
+                            val point = IntArray(2).also(cell::getLocationOnScreen)
+                            bounds.set(point[0], point[1], point[0] + cell.width, point[1] + cell.height)
+                        }
+                        fun capture(suffix: String): android.graphics.Bitmap {
+                            val screen = requireNotNull(ins.uiAutomation.takeScreenshot())
+                            val folder = java.io.File(ins.targetContext.getExternalFilesDir(null), "fever-evidence").apply { mkdirs() }
+                            java.io.File(folder, "popup-$hold-$suffix.png").outputStream().use { screen.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                            return android.graphics.Bitmap.createBitmap(screen, bounds.left, bounds.top, bounds.width(), bounds.height()).also { screen.recycle() }
+                        }
+                        println("FEVER popup capturing hold=$hold bounds=$bounds")
+                        val first = capture("launch")
+                        SystemClock.sleep(170)
+                        val second = capture("travel")
+                        var changed = 0
+                        for (py in 0 until first.height) for (px in 0 until first.width)
+                            if (first.getPixel(px, py) != second.getPixel(px, py)) changed++
+                        org.junit.Assert.assertTrue("Popup cells must animate in actual screen frames: hold=$hold changed=$changed", changed > 50)
+                        first.recycle(); second.recycle()
+                    } finally { touch(MotionEvent.ACTION_CANCEL, width * .8f) }
+                    SystemClock.sleep(250)
+                    ins.runOnMainSync {
+                        val field = host.keyboard.javaClass.getDeclaredField("skinGuide").apply { isAccessible = true }
+                        org.junit.Assert.assertFalse((field.get(host.keyboard) as? com.kazumaproject.core.ui.skin.SkinGuidePopup)?.isShowing == true)
+                    }
+                }
+            } finally { ins.runOnMainSync { host.finish() } }
+        } finally {
+            if (originalScale == "null") shell("settings delete global animator_duration_scale")
+            else shell("settings put global animator_duration_scale $originalScale")
+        }
+    }
+
     @Test fun kanaCommitDismissesGuideAndDetachRestoresLabelColors() {
         val ins = InstrumentationRegistry.getInstrumentation()
         for (dark in listOf(false, true)) {

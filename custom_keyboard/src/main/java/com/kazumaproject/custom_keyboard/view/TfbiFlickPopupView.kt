@@ -150,10 +150,12 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
     }
 
     override fun onDraw(canvas: Canvas) {
+        // These cells draw temporary drawables directly, so no Drawable.Callback owns their frames.
+        if (skinId == KeyboardSkinId.FEVER && isShown) postInvalidateOnAnimation()
         super.onDraw(canvas)
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
             val characters = petalCharacters + (TfbiFlickDirection.TAP to tapCharacter)
-            if (presentationMode == PresentationMode.LONG_PRESS) {
+            if (presentationMode == PresentationMode.LONG_PRESS && skinId != KeyboardSkinId.FEVER) {
                 drawCupertinoLongPressPanel(canvas, skin.palette, characters)
                 return
             }

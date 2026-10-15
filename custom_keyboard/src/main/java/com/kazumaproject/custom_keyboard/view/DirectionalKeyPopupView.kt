@@ -95,6 +95,8 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context), Ke
      * ▼▼▼ 変更点: 背景の描画後に、枠線も描画する処理を追加 ▼▼▼
      */
     override fun onDraw(canvas: Canvas) {
+        // These cells draw temporary drawables directly, so no Drawable.Callback owns their frames.
+        if (skinId == KeyboardSkinId.FEVER && isShown) postInvalidateOnAnimation()
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
             val direction = currentDirection.skinDirection()
             skin.popupDrawable(resources, direction).apply {

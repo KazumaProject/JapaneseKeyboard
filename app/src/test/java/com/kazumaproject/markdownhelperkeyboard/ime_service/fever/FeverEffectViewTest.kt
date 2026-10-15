@@ -18,6 +18,101 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FeverEffectViewTest {
+    @Test fun characterFamiliesChangeBothTheMovingSilhouetteAndTheDominantColor() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val masks = mutableListOf<Set<Int>>()
+        val shades = mutableSetOf<Int>()
+        for (combo in 1..5) {
+            val view = FeverEffectView(context).apply {
+                layout(0, 0, 500, 800); setArena(RectF(0f, 0f, 500f, 800f))
+                protectKeys(RectF(0f, 100f, 500f, 800f))
+                setKeyEdges(listOf(RectF(0f, 100f, 500f, 800f)))
+                show(FeverEvent(combo), 250f, 450f)
+            }
+            SystemClock.sleep(260)
+            val bitmap = Bitmap.createBitmap(500, 800, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+            // Only the key face: captions/rainbow borders cannot satisfy this assertion.
+            masks.add(buildSet<Int> {
+                for (y in 110 until 790) for (x in 10 until 490)
+                    if (Color.alpha(bitmap.getPixel(x, y)) > 12) add(y * 500 + x)
+            })
+            shades += FeverVisualStyle.accent(FeverEvent(combo))
+            bitmap.recycle(); view.clear()
+        }
+        assertEquals(5, shades.size)
+        masks.forEach { assertTrue("Each family must reach the key face", it.size > 50) }
+        for (a in masks.indices) for (b in 0 until a) {
+            val overlap = masks[a].intersect(masks[b]).size.toFloat() / masks[a].union(masks[b]).size
+            assertTrue("Families $a/$b must have different trajectories, not only captions: $overlap", overlap < .7f)
+        }
+    }
+
+    @Test fun launchTravelAndExitChangeTheSilhouetteWithoutAnotherInput() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val view = FeverEffectView(context).apply {
+            layout(0, 0, 500, 800); setArena(RectF(0f, 0f, 500f, 800f))
+            show(FeverEvent(10, FeverAward.COMBO), 250f, 400f)
+        }
+        fun silhouette(): Set<Int> {
+            val bitmap = Bitmap.createBitmap(500, 800, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+            return buildSet {
+                // Exclude the persistent meter and the outer rim: test objects travelling inside.
+                for (y in 100 until 700) for (x in 30 until 470)
+                    if (Color.alpha(bitmap.getPixel(x, y)) > 80) add(y * 500 + x)
+            }.also { bitmap.recycle() }
+        }
+        SystemClock.sleep(100); val launch = silhouette()
+        SystemClock.sleep(180); val travelling = silhouette()
+        SystemClock.sleep(300); val confetti = silhouette()
+        assertTrue(launch.size > 100)
+        for ((before, after) in listOf(launch to travelling, travelling to confetti)) {
+            assertTrue("Motion must move occupied pixels, rather than only recolor a static shape",
+                after.minus(before).size > 300 && before.minus(after).size > 300)
+        }
+        SystemClock.sleep(1600)
+        view.clear()
+        assertTrue("Teardown must stop every animated object", silhouette().isEmpty())
+    }
+
+    @Test fun capAndHeldPopupCarrySevenHuesAndMovingHighlightsWithAnimatorsDisabled() {
+        val method = android.animation.ValueAnimator::class.java.getDeclaredMethod("setDurationScale", Float::class.javaPrimitiveType)
+        method.isAccessible = true
+        val previous = android.animation.ValueAnimator.getDurationScale()
+        method.invoke(null, 0f)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val skin = requireNotNull(com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(com.kazumaproject.core.domain.skin.KeyboardSkinId.FEVER))
+        fun render(drawable: android.graphics.drawable.Drawable): Bitmap {
+            drawable.setBounds(0, 0, 240, 160)
+            return Bitmap.createBitmap(240, 160, Bitmap.Config.ARGB_8888).also { drawable.draw(Canvas(it)) }
+        }
+        try {
+            assertFalse(android.animation.ValueAnimator.areAnimatorsEnabled())
+            com.kazumaproject.core.ui.skin.FeverKeyPulse.clear()
+            val key = render(skin.keyDrawable(context.resources))
+            val hues = mutableSetOf<Int>()
+            val hsv = FloatArray(3)
+            for (y in 0 until key.height) for (x in 0 until key.width) {
+                Color.colorToHSV(key.getPixel(x, y), hsv)
+                if (hsv[1] > .25f && hsv[2] > .45f) hues.add((hsv[0] / (360f / 7)).toInt())
+            }
+            assertEquals("All seven hues must exist together on the fine cap rim: $hues", 7, hues.size)
+            key.recycle()
+            val state = requireNotNull(skin.popupDrawable(context.resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER).constantState)
+            val popup = state.newDrawable(context.resources).mutate()
+            // The finger can stay held longer than a character pulse. Popup frames must continue.
+            SystemClock.sleep(750); val first = render(popup)
+            SystemClock.sleep(170); val second = render(popup)
+            assertFalse("A held popup must keep travelling, even at animator scale zero", first.sameAs(second))
+            for (y in 40 until 120) for (x in 60 until 180)
+                assertEquals("Popup label surface must stay stable", first.getPixel(x, y), second.getPixel(x, y))
+            first.recycle(); second.recycle()
+        } finally {
+            com.kazumaproject.core.ui.skin.FeverKeyPulse.clear()
+            method.invoke(null, previous)
+        }
+    }
     @Test fun allBurstsAndEditingCuesLeaveTheKeyboardPixelsTransparent() {
         for (top in listOf(100f, 400f)) {
             for (event in ((1..9) + listOf(11, 26)).map { FeverEvent(it) } + FeverAward.entries.map { FeverEvent(10, it) } +

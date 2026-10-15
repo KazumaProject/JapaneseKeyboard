@@ -31,23 +31,22 @@ internal class FeverSkin : KeyboardSkin {
             SkinKeyRole.SPACE -> palette.spaceKey
         }
         return FeverKeyDrawable(StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), surface(resources, palette.pressed, 0xff68ffee.toInt(), qwerty))
-            addState(intArrayOf(android.R.attr.state_selected), surface(resources, palette.selection, 0xffffd578.toInt(), qwerty))
-            addState(intArrayOf(), surface(resources, color,
-                if (role == SkinKeyRole.MODIFIER) 0xff9869ad.toInt() else 0xff458697.toInt(), qwerty))
+            addState(intArrayOf(android.R.attr.state_pressed), surface(resources, palette.pressed, qwerty))
+            addState(intArrayOf(android.R.attr.state_selected), surface(resources, palette.selection, qwerty))
+            addState(intArrayOf(), surface(resources, color, qwerty))
         }, resources.displayMetrics.density, (if (qwerty) 7f else 11f) * resources.displayMetrics.density)
     }
-    private fun surface(resources: Resources, color: Int, edge: Int, qwerty: Boolean = false) =
+    private fun surface(resources: Resources, color: Int, qwerty: Boolean = false) =
         GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
             intArrayOf(blend(color, Color.WHITE, .08f), color, blend(color, Color.BLACK, .25f))).apply {
             cornerRadius = (if (qwerty) 7f else 11f) * resources.displayMetrics.density
-            setStroke(resources.displayMetrics.density.toInt().coerceAtLeast(1), edge)
         }
     override fun popupDrawable(resources: Resources, direction: PopupDirection, selected: Boolean): Drawable =
-        surface(resources, if (selected) palette.selection else palette.key,
-            if (selected) 0xffffd578.toInt() else 0xff67dfed.toInt())
-    override fun showPopup(view: View) { clearPopup(view) }
+        FeverKeyDrawable(surface(resources, if (selected) palette.selection else palette.key), resources.displayMetrics.density,
+            11f * resources.displayMetrics.density, popup = true)
+    override fun showPopup(view: View) { FeverPopupMotion.show(view) }
     override fun clearPopup(view: View) {
+        FeverPopupMotion.clear(view)
         view.animate().cancel(); view.alpha = 1f; view.scaleX = 1f; view.scaleY = 1f
     }
     private fun blend(a: Int, b: Int, amount: Float) = Color.rgb(

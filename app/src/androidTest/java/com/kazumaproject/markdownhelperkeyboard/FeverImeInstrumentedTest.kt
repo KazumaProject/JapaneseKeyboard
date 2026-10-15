@@ -53,7 +53,14 @@ class FeverImeInstrumentedTest {
         var stable = 0
         var result = Rect()
         await {
-            result = Rect().also(key(if (floating) "keyboard_view_floating" else "keyboard_view")::getBoundsInScreen)
+            ins.runOnMainSync {
+                val id = if (floating) R.id.keyboard_view_floating else R.id.keyboard_view
+                val view = WindowInspector.getGlobalWindowViews().filter {
+                    (it is com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel) == floating
+                }.mapNotNull { it.findViewById<View>(id)?.takeIf(View::isShown) }.single()
+                val point = IntArray(2).also(view::getLocationOnScreen)
+                result = Rect(point[0], point[1], point[0] + view.width, point[1] + view.height)
+            }
             stable = if (result == previous) stable + 1 else 0
             previous = result
             SystemClock.sleep(150)
@@ -206,6 +213,90 @@ class FeverImeInstrumentedTest {
     @Test fun keyboardAndFullScreenKeepEditorTouchesAndStopWhenHidden() = verifyMatrix(false)
     @Test fun floatingKeyboardAndFullScreenKeepEditorTouchesAndStopWhenHidden() = verifyMatrix(true)
 
+    @Test fun variedTypingMilestonesAndEditingKeepRealCandidatesUsable() {
+        check(context.packageName.startsWith("com.kazumaproject.skinfidelity"))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val saved = prefs.all.toMap()
+        val original = shell("settings get secure default_input_method")
+        val scale = shell("settings get global animator_duration_scale")
+        val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val enabled = target in shell("ime list -s").lines()
+        var activity: FastInputHostActivity? = null
+        var recordingDone: java.util.concurrent.CountDownLatch? = null
+        try {
+            ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
+            check(ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0))
+            prefs.edit().putString("keyboard_skin_preference", "fever")
+                .putString("keyboard_order_preference", "[\"TENKEY\"]").putBoolean("save_last_used_keyboard", false)
+                .putBoolean("keyboard_floating_preference", false).putInt("keyboard_width_preference", 100)
+                .putBoolean(FeverSettings.FULL_SCREEN, true).putInt(FeverSettings.INTENSITY, 2)
+                .putInt(FeverSettings.HIT_RATE, 100).putInt(FeverSettings.COMBO_SECONDS, 10)
+                .putBoolean("key_sound_preference", false).commit()
+            shell("settings put global animator_duration_scale 0")
+            shell("ime enable $target"); shell("ime set $target")
+            activity = startEditor(false)
+            key("key_1"); stableKeyboardBounds(false)
+            val root = ime()
+            val awards = mutableSetOf<FeverAward>()
+            ins.runOnMainSync { root.controller.eventObserver = { it.award?.let(awards::add) } }
+            if (InstrumentationRegistry.getArguments().getString("feverVideo") == "true") {
+                val recording = ui.executeShellCommand("screenrecord --time-limit 45 /sdcard/Download/fever-variety.mp4")
+                recordingDone = java.util.concurrent.CountDownLatch(1)
+                val done = recordingDone
+                Thread { try { ParcelFileDescriptor.AutoCloseInputStream(recording).use { it.readBytes() } } finally { done.countDown() } }.start()
+                SystemClock.sleep(200)
+            }
+            fun touchKey(id: String, hold: Long = 25, flick: Boolean = false) {
+                val cap = Rect().also(key(id)::getBoundsInScreen)
+                val down = SystemClock.uptimeMillis()
+                fun send(action: Int, dx: Float = 0f) {
+                    val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                        cap.centerX() + dx, cap.centerY().toFloat(), 0)
+                    event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                    try { check(ui.injectInputEvent(event, true)) } finally { event.recycle() }
+                }
+                send(MotionEvent.ACTION_DOWN); SystemClock.sleep(hold)
+                if (flick) { send(MotionEvent.ACTION_MOVE, cap.width() * .8f); SystemClock.sleep(180) }
+                send(MotionEvent.ACTION_UP, if (flick) cap.width() * .8f else 0f)
+            }
+            for (count in 1..50) {
+                touchKey(if (count % 2 == 0) "key_2" else "key_1")
+                await { var combo = 0; ins.runOnMainSync { combo = root.controller.combo }; combo == count }
+                if (count <= 5) { SystemClock.sleep(200); capture("variety-input-$count"); SystemClock.sleep(250) }
+                else SystemClock.sleep(60)
+                if (count in listOf(10, 25, 50)) { SystemClock.sleep(250); capture("variety-combo-$count"); SystemClock.sleep(1400) }
+            }
+            ins.runOnMainSync { assertTrue(awards.containsAll(listOf(FeverAward.COMBO, FeverAward.FEVER, FeverAward.HOT))) }
+            touchKey("key_5", 650, true)
+            touchKey("key_delete"); SystemClock.sleep(400)
+            touchKey("key_soft_left"); SystemClock.sleep(400)
+            touchKey("key_move_cursor_right"); SystemClock.sleep(400)
+            touchKey("key_space"); SystemClock.sleep(400)
+            touchKey("key_space"); SystemClock.sleep(400)
+            assertTrue(nodes().any { it.isVisibleToUser && it.viewIdResourceName == "${context.packageName}:id/suggestion_item_text_view" && !it.text.isNullOrBlank() })
+            touchKey("suggestion_item_text_view")
+            ins.runOnMainSync { assertTrue(awards.contains(FeverAward.JACKPOT)); assertTrue(activity.editText.text.isNotEmpty()) }
+            SystemClock.sleep(700); capture("variety-confirmed")
+        } finally {
+            recordingDone?.await(50, java.util.concurrent.TimeUnit.SECONDS)
+            ins.runOnMainSync { activity?.finish() }
+            restorePreferences(prefs, saved)
+            if (scale == "null") shell("settings delete global animator_duration_scale") else shell("settings put global animator_duration_scale $scale")
+            shell("ime set $original"); if (!enabled) shell("ime disable $target")
+            ui.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
+    private fun restorePreferences(prefs: android.content.SharedPreferences, saved: Map<String, *>) {
+        val edit = prefs.edit().clear()
+        saved.forEach { (key, value) -> when (value) {
+            is String -> edit.putString(key, value); is Boolean -> edit.putBoolean(key, value)
+            is Int -> edit.putInt(key, value); is Long -> edit.putLong(key, value); is Float -> edit.putFloat(key, value)
+            is Set<*> -> @Suppress("UNCHECKED_CAST") edit.putStringSet(key, value as Set<String>)
+        } }
+        check(edit.commit())
+    }
+
     private fun verifyMatrix(floating: Boolean) {
         check(context.packageName.startsWith("com.kazumaproject.skinfidelity"))
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
@@ -216,10 +307,11 @@ class FeverImeInstrumentedTest {
         val enabled = target in shell("ime list -s").lines()
         ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
         try {
-            shell("settings put global animator_duration_scale 1")
+            shell("settings put global animator_duration_scale 0")
             shell("ime enable $target"); shell("ime set $target")
             val baselineByOrientation = mutableMapOf<Boolean, Rect>()
-            for (landscape in listOf(false, true)) for (full in listOf(false, true)) {
+            val orientations = if (InstrumentationRegistry.getArguments().getString("feverOrientation") == "landscape") listOf(true) else listOf(false, true)
+            for (landscape in orientations) for (full in listOf(false, true)) {
                 assertTrue(ui.setRotation(if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90 else android.app.UiAutomation.ROTATION_FREEZE_0))
                 prefs.edit().putString("keyboard_skin_preference", "fever")
                     .putString("keyboard_order_preference", "[\"TENKEY\"]").putBoolean("save_last_used_keyboard", false)
@@ -396,12 +488,7 @@ class FeverImeInstrumentedTest {
                 verifyNumericAndPasswordEditors()
             }
         } finally {
-            val edit = prefs.edit().clear()
-            saved.forEach { (k,v) -> when(v) {
-                is String -> edit.putString(k,v); is Boolean -> edit.putBoolean(k,v); is Int -> edit.putInt(k,v)
-                is Long -> edit.putLong(k,v); is Float -> edit.putFloat(k,v)
-                is Set<*> -> @Suppress("UNCHECKED_CAST") edit.putStringSet(k,v as Set<String>)
-            } }; check(edit.commit())
+            restorePreferences(prefs, saved)
             if (originalAnimations == "null") shell("settings delete global animator_duration_scale")
             else shell("settings put global animator_duration_scale $originalAnimations")
             shell("ime set $original"); if (!enabled) shell("ime disable $target")

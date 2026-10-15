@@ -265,6 +265,8 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context), Key
     }
 
     override fun onDraw(canvas: Canvas) {
+        // These cells draw temporary drawables directly, so no Drawable.Callback owns their frames.
+        if (skinId == KeyboardSkinId.FEVER && isShown) postInvalidateOnAnimation()
         val skin = KeyboardSkinRegistry.find(skinId)
         val characters = skinCharacters
         if (skin == null || characters == null) { super.onDraw(canvas); return }
