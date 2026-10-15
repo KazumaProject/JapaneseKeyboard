@@ -32,6 +32,13 @@ class DictionaryBinaryReader @Inject constructor(
     private val resolver: DictionarySourceResolver,
     private val store: DictionaryOverrideStore,
 ) {
+    // Browsing reports damaged files without changing their validity or falling back silently.
+    private var browsingOnly = false
+
+    fun forBrowsing(): DictionaryBinaryReader = DictionaryBinaryReader(resolver, store).also {
+        it.browsingOnly = true
+    }
+
     @Volatile
     private var posTableCache: PosTableCache? = null
 
@@ -247,6 +254,7 @@ class DictionaryBinaryReader @Inject constructor(
             }.onSuccess { return it }
                 .onFailure { error ->
                     Timber.w(error, "External dictionary override failed for %s. Falling back to bundled asset.", key)
+                    if (browsingOnly) throw error
                     store.markInvalid(key, error.message ?: error::class.java.simpleName)
                 }
         }
