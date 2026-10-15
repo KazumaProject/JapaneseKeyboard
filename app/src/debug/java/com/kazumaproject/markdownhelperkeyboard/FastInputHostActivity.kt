@@ -34,6 +34,12 @@ class FastInputHostActivity : Activity() {
         editText = object : EditText(this) {
             override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
                 val connection = super.onCreateInputConnection(outAttrs) ?: return null
+                if (intent.getBooleanExtra("deny_cursor_updates", false)) {
+                    return object : InputConnectionWrapper(connection, false) {
+                        override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = false
+                        override fun requestCursorUpdates(cursorUpdateMode: Int, cursorUpdateFilter: Int): Boolean = false
+                    }
+                }
                 if (!intent.getBooleanExtra("plain_editor_snapshots", false)) return connection
                 val plain = object : InputConnectionWrapper(connection, false) {
                     override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText? =

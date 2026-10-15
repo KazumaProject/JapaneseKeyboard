@@ -280,6 +280,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateCorrectionPolicy
+import com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff.BunsetsuDiffController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff.BunsetsuDiffSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateDisplayMerger
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
@@ -506,7 +508,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tailText: String = "",
         val focusedIndex: Int = 0,
         val splitPatterns: List<List<Int>> = emptyList(),
-        val activeSplitPatternIndex: Int = 0
+        val activeSplitPatternIndex: Int = 0,
+        val fromDiff: Boolean = false
     )
 
     private sealed class BunsetsuDisplayedSelection {
@@ -1016,6 +1019,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == BunsetsuDiffController.ENABLED) {
+                runOnMainThread {
+                    if (bunsetsuDiffEnabled) startBunsetsuDiff()
+                    refreshBunsetsuDiffPreview()
+                }
+            }
             if (key != null && key in runtimeInputPreferenceKeys) {
                 runOnMainThread {
                     syncRuntimeInputPreferences()
@@ -3620,6 +3629,128 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var zenzFloatingWindow: ComposingGuideWindow? = null
+    private var bunsetsuDiff: BunsetsuDiffController? = null
+    private var bunsetsuDiffComposingText = ""
+    private var bunsetsuDiffGeometryEnabled = false
+    private var bunsetsuDiffGeometryJob: Job? = null
+    private var bunsetsuDiffGeometryEditor: InputConnection? = null
+    private var bunsetsuDiffGeometrySession = -1L
+    private var bunsetsuDiffGeometryRevision = 0L
+    private var cursorBaseUpdateRequestMode = 0
+    private val bunsetsuDiffEnabled get() = runtimeInputSharedPreferences.getBoolean(BunsetsuDiffController.ENABLED, false)
+
+    private fun canShowBunsetsuDiff(): Boolean = bunsetsuDiffEnabled && isInputViewActive &&
+        !isFullscreenMode && !currentInputType.isPassword() && !suppressSuggestions &&
+        !isKeyboardLayoutEditModeActive() && dictionaryInputConnection == null &&
+        currentInputModeForSession == InputMode.ModeJapanese
+
+    private fun startBunsetsuDiff() {
+        if (!bunsetsuDiffEnabled) return
+        val host = mainLayoutBinding?.root ?: return
+        val controller = bunsetsuDiff ?: BunsetsuDiffController(
+            this, scope, ::canShowBunsetsuDiff,
+            query = { reading ->
+                val result = withContext(kanaKanjiConversionDispatcher) {
+                    queryKanaKanjiCore(reading, CandidateQueryMode.CONVERSION,
+                        learnedRepositoryForSuggestion(), forBunsetsuDiff = true)
+                }
+                val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+                result.copy(candidates = result.candidates.filter {
+                    !NgWordMatcher.matchesAny(reading, it.string, ngWords)
+                }.withoutHentaiganaCandidatesIfNeeded())
+            },
+            colors = ::resolveCandidatePanelColors,
+            requestGeometry = ::requestBunsetsuDiffGeometry,
+            onCycle = ::cycleBunsetsuDiff,
+            excludedBounds = {
+                (composingGuide?.currentPanelBounds().orEmpty() + dictionaryFloats?.currentPanelBounds().orEmpty() +
+                    listOfNotNull(zenzFloatingWindow?.currentBounds(), clipboardFloat?.currentBounds(), floatingCursor?.currentBounds())).map {
+                    android.graphics.Rect(it.x, it.y, it.right, it.bottom)
+                }
+            },
+            allowedSegment = { reading, output ->
+                isNgWordEnable != true || !NgWordMatcher.matchesAny(reading, output, ngWordsList.value)
+            },
+        ).also { bunsetsuDiff = it }
+        controller.start(host)
+    }
+
+    private fun refreshBunsetsuDiffPreview() {
+        if (!canShowBunsetsuDiff()) { bunsetsuDiff?.clear(); return }
+        val session = bunsetsuConversionSession
+        if (session?.fromDiff == true && isBunsetsuCursorMoveSessionActive()) {
+            bunsetsuDiff?.updateSelection(session.segments)
+        } else {
+            bunsetsuDiff?.update(inputString.value + stringInTail.get(), bunsetsuDiffComposingText)
+        }
+    }
+
+    private fun onBunsetsuDiffComposing(text: CharSequence?) {
+        bunsetsuDiffComposingText = text?.toString().orEmpty()
+        if (bunsetsuDiff == null) return
+        val editor = currentInputConnection
+        val session = flickPreviewEditorSessionId
+        // Some input paths publish the reading immediately after writing composing text.
+        mainHandler.post {
+            if (currentInputConnection === editor && flickPreviewEditorSessionId == session) refreshBunsetsuDiffPreview()
+        }
+    }
+
+    private fun requestBunsetsuDiffGeometry(enabled: Boolean) {
+        if (!enabled && !bunsetsuDiffGeometryEnabled) return
+        bunsetsuDiffGeometryEnabled = enabled
+        val editor = currentInputConnection ?: return
+        val session = flickPreviewEditorSessionId
+        bunsetsuDiffGeometryRevision++
+        if (bunsetsuDiffGeometryJob?.isActive == true && bunsetsuDiffGeometryEditor === editor &&
+            bunsetsuDiffGeometrySession == session) return
+        bunsetsuDiffGeometryJob?.cancel()
+        bunsetsuDiffGeometryEditor = editor
+        bunsetsuDiffGeometrySession = session
+        bunsetsuDiffGeometryJob = scope.launch {
+            do {
+                if (currentInputConnection !== editor || flickPreviewEditorSessionId != session) return@launch
+                val revision = bunsetsuDiffGeometryRevision
+                val mode = cursorBaseUpdateRequestMode or if (bunsetsuDiffGeometryEnabled)
+                    InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR else 0
+                // Coalesce updates while a slow editor's IPC is in flight; never queue one per key.
+                val accepted = withContext(Dispatchers.IO) { runCatching { editor.requestCursorUpdates(mode) }.getOrDefault(false) }
+                if (accepted && currentInputConnection === editor && flickPreviewEditorSessionId == session) {
+                    cursorUpdateRequestEditor = editor
+                    cursorUpdateRequestMode = mode
+                }
+            } while (revision != bunsetsuDiffGeometryRevision)
+        }
+    }
+
+    private fun cycleBunsetsuDiff(snapshot: BunsetsuDiffSnapshot, index: Int): Boolean {
+        if (!canShowBunsetsuDiff() || bunsetsuDiffComposingText != snapshot.text ||
+            snapshot.segments.getOrNull(index)?.candidates?.size?.let { it > 1 } != true) return false
+        if (mainLayoutBinding == null) return false
+        val existing = bunsetsuConversionSession
+        if (existing?.fromDiff != true) {
+            if (inputString.value + stringInTail.get() != snapshot.reading) return false
+            bunsetsuConversionSession = BunsetsuConversionSession(
+                rawInput = snapshot.reading, conversionInput = snapshot.reading,
+                segments = snapshot.segments, generation = ++bunsetsuSessionGeneration,
+                conversionSnapshot = null, focusedIndex = index,
+                splitPatterns = listOf(snapshot.splitPositions), fromDiff = true,
+            )
+            isHenkan.set(true)
+            henkanPressedWithBunsetsuDetect = true
+            bunsetusMultipleDetect = true
+            stringInTail.set("")
+            clearZenzLiveSlot("difference selection started")
+            _inputString.update { snapshot.reading }
+        }
+        launchBunsetsuOperation { session ->
+            if (!session.fromDiff || session.conversionInput != snapshot.reading) return@launchBunsetsuOperation
+            val focused = session.copy(focusedIndex = index)
+            bunsetsuConversionSession = focused
+            cycleFocusedBunsetsuCandidateNow(focused, 1, floatingKeyboardBinding?.takeIf { isKeyboardFloatingMode == true })
+        }
+        return true
+    }
     private var zenzFloatingLabel: android.widget.TextView? = null
     private val zenzFloatingEnabled get() = AppVariantConfig.hasZenz &&
         runtimeInputSharedPreferences.getBoolean("enable_ai_conversion_zenz_preference", false) &&
@@ -3736,6 +3867,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stopSplitKeyboard()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
+        bunsetsuDiff?.stop()
         Timber.d("onCreateInputView")
         // もしコンテナがすでに存在している場合、システムが再追加できるように
         // 古い親から切り離す。
@@ -3785,6 +3917,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        bunsetsuDiffComposingText = ""
+        cursorBaseUpdateRequestMode = 0
         floatingCursor?.stop()
         resetCursorInputSession()
         cursorInputTracking = cursorSettings.enabled
@@ -3794,6 +3928,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
+        bunsetsuDiff?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -6098,6 +6233,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isInputViewActive = true
         refreshFloatingCursor()
         startComposingGuide()
+        startBunsetsuDiff()
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { dictionaryFloats?.attach(it) }
         mainLayoutBinding?.keyboardTouchEffectContainer?.let { clipboardFloat?.attach(it) }
         // A hidden input view must not carry the previous candidate-display phase into
@@ -6505,6 +6641,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
+        bunsetsuDiff?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -6527,6 +6664,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
+        bunsetsuDiff?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -6578,6 +6716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()
+        bunsetsuDiff?.stop()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
         }
@@ -6603,6 +6742,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clipboardFloat = null
         zenzFloatingWindow?.destroy()
         zenzFloatingWindow = null
+        bunsetsuDiff?.stop()
+        bunsetsuDiff = null
         composingGuide?.destroy()
         composingGuide = null
         unregisterCrossWindowBlurListener()
@@ -7028,6 +7169,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorProbe.onUpdate(cursorAnchorInfo)
+        bunsetsuDiff?.onAnchor(cursorAnchorInfo)
 
         val positions = physicalKeyboardPopupPositions.update(
             anchorInfo = cursorAnchorInfo,
@@ -7055,6 +7197,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        bunsetsuDiff?.stop()
         floatingCursor?.stop()
         cancelCursorOperations()
         dismissKeyboardSelectionPopups()
@@ -8390,6 +8533,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applyEditorSelectionUpdate(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int) {
+        bunsetsuDiff?.clear()
         cursorNativeComposingRange = null
         cursorWrittenComposing = null
         updateEditorSelectionSnapshot(
@@ -17844,7 +17988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         segmentCandidates: List<Candidate>,
         displayInput: String
     ): List<Candidate> {
-        if (session.segments.isEmpty()) return segmentCandidates
+        if (session.fromDiff || session.segments.isEmpty()) return segmentCandidates
         val safeFocusedIndex = focusedIndex.coerceIn(0, session.segments.lastIndex)
         val segment = session.segments[safeFocusedIndex]
         val state = _zenzLiveSlotState.value ?: return segmentCandidates
@@ -18325,6 +18469,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         immediate: Boolean
     ): Boolean {
         val session = bunsetsuConversionSession ?: return false
+        if (session.fromDiff) return false
         if (bunsetsuSeparation != true) return false
         if (!isBunsetsuCursorMoveSessionActive()) return false
         if (session.segments.isEmpty()) return false
@@ -19132,6 +19277,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputString.collect { string ->
                 refreshZenzFloatingCandidates()
                 if (string.isEmpty() && stringInTail.get().isEmpty()) composingGuide?.update(null)
+        onBunsetsuDiffComposing(null)
                 try {
                     measureDebugStage("IMEService.input.immediate") {
                         processInputString(string, mainView)
@@ -19690,6 +19836,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         token: CandidateRequestToken? = null,
     ): Boolean {
         return deleteLongPressConversionGate.mayApplyCandidateResult() &&
+                bunsetsuConversionSession?.fromDiff != true &&
                 !suppressSuggestions &&
                 requestInput.isNotEmpty() &&
                 inputString.value == requestInput &&
@@ -21133,7 +21280,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun shouldUseBunsetsuCursorMoveSession(): Boolean {
-        return bunsetsuSeparation == true && bunsetsuCursorMove == true
+        return (bunsetsuSeparation == true && bunsetsuCursorMove == true) ||
+            bunsetsuConversionSession?.fromDiff == true
     }
 
     private fun isBunsetsuCursorMoveSessionActive(): Boolean {
@@ -21567,8 +21715,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun renderBunsetsuConversionSession(
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
-    ) {
-        val session = bunsetsuConversionSession ?: return
+    ): Boolean {
+        val session = bunsetsuConversionSession ?: return false
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
         val segments = session.segments
         val convertedText = segments.joinToString(separator = "") { it.displayText }
@@ -21586,7 +21734,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
         )
 
-        applyBunsetsuComposingText(
+        val applied = applyBunsetsuComposingText(
             text = text,
             segments = segments,
             tailText = session.tailText,
@@ -21604,10 +21752,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 null
             }
         )
+        if (!applied) return false
         updateUIinHenkan(mainView, session.rawInput)
         floatingKeyboardLayoutBinding?.let {
             updateUIinHenkanFloating(it, session.rawInput)
         }
+        return true
     }
 
     private fun applyBunsetsuComposingText(
@@ -21618,7 +21768,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         highlightEnd: Int,
         @ColorInt backgroundColor: Int,
         @ColorInt textColor: Int? = null
-    ) {
+    ): Boolean {
         val spannableString = SpannableString(text)
         val safeStart = highlightStart.coerceIn(0, text.length)
         val safeEnd = highlightEnd.coerceIn(safeStart, text.length)
@@ -21668,10 +21818,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        setComposingText(spannableString, 1)
+        return setComposingText(spannableString, 1)
     }
 
     private fun clearBunsetsuConversionSession() {
+        if (bunsetsuConversionSession?.fromDiff == true) bunsetsuDiff?.clear()
         bunsetsuSessionGeneration++
         bunsetsuConversionSession = null
         bunsetusMultipleDetect = false
@@ -21804,7 +21955,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val updatedSegments = loadedSession.segments.toMutableList()
         updatedSegments[loadedSession.focusedIndex] = updatedSegment
         bunsetsuConversionSession = loadedSession.copy(segments = updatedSegments)
-        renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+        if (!renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding) && loadedSession.fromDiff) {
+            bunsetsuConversionSession = loadedSession
+            updateSuggestionViewsForBunsetsuSegment(loadedSession, loadedSession.focusedIndex, mainView, floatingKeyboardLayoutBinding)
+            bunsetsuDiff?.updateSelection(loadedSession.segments)
+        }
     }
 
     private fun commitBunsetsuConversionSession(): Boolean {
@@ -27539,6 +27694,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         mode: CandidateQueryMode,
         learnRepository: LearnRepository?,
+        forBunsetsuDiff: Boolean = false,
     ): KanaKanjiQueryResult {
         val engine = awaitKanaKanjiEngineOrNull()
             ?: return KanaKanjiQueryResult(candidates = emptyList())
@@ -27561,7 +27717,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KanaKanjiQueryRequest(
                 input = input,
                 mode = mode,
-                bunsetsuSeparation = bunsetsuSeparation == true,
+                bunsetsuSeparation = bunsetsuSeparation == true || forBunsetsuDiff,
                 n = nBest ?: 4,
                 enabledDictionaryCategories = enabledDictionaryCategories,
                 userDictionaryRepository = userDictionaryRepository,
@@ -27575,7 +27731,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 beamWidth = conversionBeamWidth,
                 predictionConfig = predictionConfig,
                 collectCandidateSegments =
-                    appPreference.candidate_order_override_enable_preference == true ||
+                    forBunsetsuDiff || appPreference.candidate_order_override_enable_preference == true ||
                         shouldUseBunsetsuCursorMoveSession() || shouldCollectCandidateRubySegments(),
                 dateCandidateConfig = dateCandidateConfig,
             )
@@ -30546,7 +30702,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
-        if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
+        if (applied) {
+            composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
+            onBunsetsuDiffComposing(p0)
+        }
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
@@ -30571,6 +30730,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelCandidateTranslationIfPreEditMutates()
         val finished = composingTextArbiter.finishCanonical()
         composingGuide?.update(null)
+        onBunsetsuDiffComposing(null)
         clearPhysicalCandidateCompositionSession("finish composing text")
         return finished
     }
@@ -30589,6 +30749,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
             composingGuide?.update(null)
+            onBunsetsuDiffComposing(null)
             clearPhysicalCandidateCompositionSession("commit text")
         }
         return committed
@@ -30667,11 +30828,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun requestCursorUpdates(p0: Int): Boolean {
+        cursorBaseUpdateRequestMode = p0
+        bunsetsuDiffGeometryRevision++
+        val mode = p0 or if (bunsetsuDiffGeometryEnabled)
+            InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR else 0
         val connection = currentInputConnection ?: return false
-        return connection.requestCursorUpdates(p0).also { accepted ->
+        return connection.requestCursorUpdates(mode).also { accepted ->
             if (accepted) {
                 cursorUpdateRequestEditor = connection
-                cursorUpdateRequestMode = p0
+                cursorUpdateRequestMode = mode
             }
         }
     }

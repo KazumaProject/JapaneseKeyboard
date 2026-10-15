@@ -43,6 +43,8 @@ internal class ComposingGuideController(
     fun currentCandidateBounds(): GuideBounds? = activeProfiles.firstOrNull { it.hasCandidates }
         ?.let { windows.getValue(it).currentBounds() }
 
+    fun currentPanelBounds(): List<GuideBounds> = activeProfiles.mapNotNull { windows.getValue(it).currentBounds() }
+
     fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
         windows.values.forEach { it.setKeyboardFont(snapshot) }
     }

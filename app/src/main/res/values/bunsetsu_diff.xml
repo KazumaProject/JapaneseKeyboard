@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bunsetsu_diff_title">Floating segment alternatives</string>
+    <string name="bunsetsu_diff_summary">Show differing alternatives near composing segments. Tap a bubble to cycle only that segment. Available when the input field provides text positions.</string>
+    <string name="bunsetsu_diff_cycle">Current: %1$s. %2$s. Tap for the next alternative.</string>
+    <item name="bunsetsu_diff_candidate" type="id" />
+</resources>

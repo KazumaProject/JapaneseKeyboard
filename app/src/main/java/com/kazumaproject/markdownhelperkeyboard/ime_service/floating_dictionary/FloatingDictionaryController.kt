@@ -52,6 +52,7 @@ internal class FloatingDictionaryController(
     private val density get() = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).toInt()
     val activeShortcuts: Set<ShortcutType> get() = panels.values.filter { it.visible }.map { it.kind.shortcut }.toSet()
+    fun currentPanelBounds(): List<GuideBounds> = panels.values.mapNotNull { it.currentBounds() }
     private val layoutListener = android.view.ViewTreeObserver.OnGlobalLayoutListener {
         panels.values.filter { it.visible }.forEach { it.show() }
     }
@@ -139,6 +140,7 @@ internal class FloatingDictionaryController(
     }
 
     private inner class Panel(val kind: DictionaryKind) {
+        fun currentBounds(): GuideBounds? = bounds?.takeIf { root.isAttachedToWindow }
         var visible = false
         private var params: WindowManager.LayoutParams? = null
         private var bounds: GuideBounds? = null

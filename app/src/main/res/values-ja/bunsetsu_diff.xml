@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bunsetsu_diff_title">文節の差分候補フロート</string>
+    <string name="bunsetsu_diff_summary">未確定文字の文節付近に異なる候補を表示します。タップすると、その文節だけを次候補に切り替えます。表示位置を取得できる入力欄で利用できます。</string>
+    <string name="bunsetsu_diff_cycle">現在：%1$s。%2$s。タップで次の候補に切り替えます。</string>
+</resources>

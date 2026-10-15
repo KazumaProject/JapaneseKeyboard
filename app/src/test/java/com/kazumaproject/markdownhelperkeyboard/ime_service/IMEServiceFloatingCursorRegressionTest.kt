@@ -67,6 +67,21 @@ class IMEServiceFloatingCursorRegressionTest {
         assertNull(expectation())
     }
 
+    @Test fun disablingAnotherCursorConsumerDoesNotDisableDifferenceGeometry() {
+        whenever(editor.requestCursorUpdates(any())).thenReturn(true)
+        ReflectionHelpers.setField(service, "bunsetsuDiffGeometryEnabled", true)
+        assertTrue(service.requestCursorUpdates(0))
+        verify(editor).requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
+    }
+
+    @Test fun cursorMonitoringWithoutDifferenceBubblesRetainsTheRequestedPhysicalKeyboardMode() {
+        whenever(editor.requestCursorUpdates(any())).thenReturn(true)
+        assertTrue(service.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR))
+        verify(editor).requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
+        assertTrue(service.requestCursorUpdates(0))
+        verify(editor).requestCursorUpdates(0)
+    }
+
     @Test fun aFirstWriteDoesNotTreatThePreviousCaretAsAConfirmedComposingStart() {
         whenever(editor.setComposingText(any(), any())).thenReturn(true)
         ReflectionHelpers.setField(service, "cursorNativeSelectionStart", 5)

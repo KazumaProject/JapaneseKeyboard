@@ -59,6 +59,7 @@ internal class FloatingCursorController(
     }
 
     fun destroy() { stop(); root = null }
+    fun currentBounds(): GuideBounds? = bounds?.takeIf { root?.isAttachedToWindow == true }
     fun cancelInput() { root?.cancelInput() }
     fun setKeyboardFont(snapshot: KeyboardFontSnapshot) { font = snapshot; root?.setKeyboardFont(snapshot) }
     fun updateSelection(selected: Boolean, available: Boolean) {

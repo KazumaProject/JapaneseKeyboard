@@ -45,6 +45,7 @@ internal class FloatingClipboardController(
     private var historyEnabled = false
     var visible = false
         private set
+    fun currentBounds(): GuideBounds? = bounds?.takeIf { view?.isAttachedToWindow == true }
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { refresh() }
 
     fun attach(host: View) {

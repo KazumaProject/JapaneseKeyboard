@@ -7,6 +7,7 @@ import android.widget.EditText
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.test.core.app.ApplicationProvider
+import androidx.preference.PreferenceManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryEditText
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -38,7 +39,9 @@ class FloatingDictionaryInputTargetTest {
     private val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
     private val appEditor = EditText(context).apply { setText("background"); setSelection(length()) }
     private val appConnection = appEditor.onCreateInputConnection(EditorInfo())
-    private val service = spy(IMEService()).also { service ->
+    // Run the constructor on the partial mock so lazy delegates capture this service, not a copied spy target.
+    private val service = org.mockito.Mockito.mock(IMEService::class.java,
+        org.mockito.Mockito.withSettings().useConstructor().defaultAnswer(org.mockito.Mockito.CALLS_REAL_METHODS)).also { service ->
         ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
             ClassParameter.from(Context::class.java, context))
         service.zenzRuntimeClient = mock()
@@ -46,6 +49,7 @@ class FloatingDictionaryInputTargetTest {
             whenever(undo_enable_preference).thenReturn(true)
         }
         ReflectionHelpers.setField(service, "listAdapter", mock<FloatingCandidateListAdapter>())
+        ReflectionHelpers.setField(service, "runtimeInputSharedPreferences", PreferenceManager.getDefaultSharedPreferences(context))
         doAnswer {
             ReflectionHelpers.getField<InputConnection?>(service, "dictionaryInputConnection") ?: appConnection
         }.whenever(service).getCurrentInputConnection()

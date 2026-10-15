@@ -51,6 +51,12 @@
             android:title="@string/allow_fullscreen_mode_preference_title" />
 
         <SwitchPreferenceCompat
+            android:key="bunsetsu_diff_floating_enabled"
+            android:defaultValue="false"
+            android:title="@string/bunsetsu_diff_title"
+            android:summary="@string/bunsetsu_diff_summary" />
+
+        <SwitchPreferenceCompat
             android:key="composing_guide_text_enabled"
             android:defaultValue="false"
             android:title="@string/composing_guide_text_title" />
