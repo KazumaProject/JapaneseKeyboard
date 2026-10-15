@@ -376,6 +376,7 @@ class KanaKanjiEngine {
         if (graph.isNotEmpty()) {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStarWithBunsetsu(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
@@ -904,6 +905,7 @@ class KanaKanjiEngine {
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStar(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
@@ -1380,6 +1382,7 @@ class KanaKanjiEngine {
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStarWithBunsetsu(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
@@ -1883,6 +1886,7 @@ class KanaKanjiEngine {
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStarWithBunsetsu(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
@@ -2367,6 +2371,7 @@ class KanaKanjiEngine {
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStar(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
@@ -2837,6 +2842,7 @@ class KanaKanjiEngine {
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStar(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
@@ -3303,6 +3309,7 @@ class KanaKanjiEngine {
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
             findPath.backwardAStarWithBunsetsu(
+                originalInput = input,
                 graph = graph,
                 length = input.length,
                 connectionMatrix = connectionMatrix.costTable,
