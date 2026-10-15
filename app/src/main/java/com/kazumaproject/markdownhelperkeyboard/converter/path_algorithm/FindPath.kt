@@ -1045,7 +1045,9 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): MutableList<Candidate> = backwardAStar(
+        originalInput = originalInput,
         graph = graph,
         length = length,
         connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
@@ -1065,6 +1067,7 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): MutableList<Candidate> {
         cancellationCheck()
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
@@ -1126,7 +1129,7 @@ class FindPath(
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
         val dictionary = systemNgramDictionaryProvider()
-        val standaloneMayMatch = graph[length]?.any { dictionary.matchesStandaloneNode(it, length) } == true
+        val standaloneMayMatch = graph[length]?.any { dictionary.matchesStandaloneNode(it, originalInput) } == true
         val matched = HashSet<String>()
         val searchCount = if (standaloneMayMatch) maxOf(n * 4, 32).coerceAtMost(64) else n
         fun ranked(): MutableList<Candidate> {
@@ -1173,7 +1176,7 @@ class FindPath(
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
 
                 val single = element.next
-                if (single?.next?.node?.tango == "EOS" && dictionary.matchesStandaloneNode(single.node, length)) {
+                if (single?.next?.node?.tango == "EOS" && dictionary.matchesStandaloneNode(single.node, originalInput)) {
                     matched.add(stringFromNode)
                 }
                 if (foundStrings.add(stringFromNode)) {
@@ -1633,7 +1636,9 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): BunsetsuCandidateResult = backwardAStarWithBunsetsu(
+        originalInput = originalInput,
         graph = graph,
         length = length,
         connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
@@ -1661,6 +1666,7 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): BunsetsuCandidateResult {
         cancellationCheck()
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
@@ -1814,7 +1820,7 @@ class FindPath(
         val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
         var standaloneMatched = false
         val standaloneMayAffectCandidates = graph[length]?.any {
-            systemNgramDictionary.matchesStandaloneNode(it, length)
+            systemNgramDictionary.matchesStandaloneNode(it, originalInput)
         } == true
         val systemNgramMayAffectCandidates = standaloneMayAffectCandidates ||
             systemNgramDictionary.ruleCount != 0 &&
@@ -1882,11 +1888,10 @@ class FindPath(
                 )
 
                 // Standalone matching uses the entire path, including later duplicate surfaces.
-                // A corrected node keeps its dictionary reading in yomiUsed; its range covers
-                // the consumed input. Never run this matcher over individual bunsetsu nodes.
+                // The node reading and surface must equal the original input. Never run this matcher over individual bunsetsu nodes.
                 val singleNode = element.next
                 if (singleNode?.next?.node?.tango == "EOS" &&
-                    systemNgramDictionary.matchesStandaloneNode(singleNode.node, length)
+                    systemNgramDictionary.matchesStandaloneNode(singleNode.node, originalInput)
                 ) {
                     standaloneMatched = true
                     systemNgramMatchedCandidates.add(stringFromNode)

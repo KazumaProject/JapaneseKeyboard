@@ -19,8 +19,8 @@ class CompositeSystemNgramDictionary(
     override val ruleCount: Int = dictionaries.sumOf { it.ruleCount }
     override val storageBytes: Int = dictionaries.sumOf { it.storageBytes }
 
-    override fun matchesStandaloneNode(node: Node, inputLength: Int): Boolean =
-        dictionaries.any { it.matchesStandaloneNode(node, inputLength) }
+    override fun matchesStandaloneNode(node: Node, input: String?): Boolean =
+        dictionaries.any { it.matchesStandaloneNode(node, input) }
 
     override fun matchesSingleNode(node: Node): Boolean =
         dictionaries.any { it.matchesSingleNode(node) }

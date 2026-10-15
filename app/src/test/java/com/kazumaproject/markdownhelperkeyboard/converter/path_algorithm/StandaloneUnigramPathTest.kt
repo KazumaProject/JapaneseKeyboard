@@ -27,8 +27,8 @@ class StandaloneUnigramPathTest {
     @Test fun laterSingleNodeDuplicatePromotesExistingCandidateWithoutChangingScore() {
         for (bunsetsu in listOf(false, true)) for (n in listOf(1, 4, 10)) {
             val finder = FindPath(systemNgramDictionaryProvider = { dictionary })
-            val candidates = if (bunsetsu) finder.backwardAStarWithBunsetsu(graph(), 2, ShortArray(4), 2, n).candidates
-                else finder.backwardAStar(graph(), 2, ShortArray(4), 2, n)
+            val candidates = if (bunsetsu) finder.backwardAStarWithBunsetsu(graph(), 2, ShortArray(4), 2, n, originalInput = "しろ").candidates
+                else finder.backwardAStar(graph(), 2, ShortArray(4), 2, n, originalInput = "しろ")
             assertEquals("bunsetsu=$bunsetsu n=$n", "しろ", candidates.first().string)
             assertEquals(0, candidates.first().score)
             assertEquals(1, candidates.count { it.string == "しろ" })
@@ -39,8 +39,8 @@ class StandaloneUnigramPathTest {
         for (suffix in listOf(false, true)) for (bunsetsu in listOf(false, true)) {
             val finder = FindPath(systemNgramDictionaryProvider = { dictionary })
             val length = if (suffix) 3 else 2
-            val candidates = if (bunsetsu) finder.backwardAStarWithBunsetsu(graph(single = suffix, suffix = suffix), length, ShortArray(4), 2, 4).candidates
-                else finder.backwardAStar(graph(single = suffix, suffix = suffix), length, ShortArray(4), 2, 4)
+            val candidates = if (bunsetsu) finder.backwardAStarWithBunsetsu(graph(single = suffix, suffix = suffix), length, ShortArray(4), 2, 4, originalInput = if (suffix) "しろい" else "しろ").candidates
+                else finder.backwardAStar(graph(single = suffix, suffix = suffix), length, ShortArray(4), 2, 4, originalInput = if (suffix) "しろい" else "しろ")
             assertEquals(if (suffix) "城医" else "城", candidates.first().string)
         }
     }

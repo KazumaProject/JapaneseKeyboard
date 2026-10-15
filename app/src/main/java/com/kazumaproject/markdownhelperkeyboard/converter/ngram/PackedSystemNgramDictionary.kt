@@ -50,9 +50,9 @@ class PackedSystemNgramDictionary private constructor(
             .toIntArray()
     }
 
-    override fun matchesStandaloneNode(node: Node, inputLength: Int): Boolean =
-        standalone && inputLength > 0 && node.sPos == 0 &&
-            node.len.toInt() == inputLength && node.yomiUsed == node.tango &&
+    override fun matchesStandaloneNode(node: Node, input: String?): Boolean =
+        standalone && !input.isNullOrEmpty() && node.sPos == 0 &&
+            node.len.toInt() == input.length && node.yomiUsed == input && node.tango == input &&
             matchesUnigramNode(node)
 
     override fun matchesSingleNode(node: Node): Boolean =
