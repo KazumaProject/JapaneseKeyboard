@@ -65,11 +65,17 @@ class StandaloneUnigramInstrumentedTest {
                         for (n in listOf(1, 4, 10)) {
                             for ((input, word, omission) in listOf(Triple("こと", "ごと", true), Triple("ひいる", "はいる", false))) {
                                 for (both in listOf(false, true)) {
+                                    val req = request(input, n, mode, bunsetsu,
+                                        omission = omission || both, typo = !omission || both)
+                                    SystemNgramRuntime.install(ordinary)
+                                    val expected = session.query(req)
                                     SystemNgramRuntime.install(full)
-                                    val result = session.query(request(input, n, mode, bunsetsu,
-                                        omission = omission || both, typo = !omission || both))
+                                    val result = session.query(req)
                                     rows.appendLine("CORRECTED\t$backend\t$mode\t$bunsetsu\t$n\t$input\tboth=$both\t${result.candidates.take(4)}")
-                                    assertEquals("corrected $backend $mode $bunsetsu n=$n $input both=$both", word, result.candidates.first().string)
+                                    assertEquals("corrected $backend $mode $bunsetsu n=$n $input both=$both", expected.candidates, result.candidates)
+                                    assertEquals(expected.bunsetsuResult?.systemNgramMatchedCandidates,
+                                        result.bunsetsuResult?.systemNgramMatchedCandidates)
+                                    assertFalse(result.candidates.any { it.standaloneUnigramMatched && it.string == word })
                                 }
                             }
                         }

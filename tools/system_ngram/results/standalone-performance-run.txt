@@ -1,7 +1,7 @@
 
 com.kazumaproject.markdownhelperkeyboard.converter.StandaloneUnigramInstrumentedTest:.
 
-Time: 50.921
+Time: 51.936
 
 OK (1 test)
 

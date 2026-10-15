@@ -11,8 +11,8 @@
   },
   "variant": "liteStandardDebug",
   "applicationId": "com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite",
-  "appApkSha256": "dadf875258886402ea65bdc3f1901a7f2c2b01101951c26b45d74ae51a22fc4c",
-  "productionSourceDiffSha256": "fc9f5ca187db982836aa52beebc0b40daef35576815dfe7be5443965db170810",
+  "appApkSha256": "3ef5d29bac4da4bc56c3f135656974e44e0b58eb1e476659a1962d064d820751",
+  "productionSourceDiffSha256": "b1a08f2f454be0492745e68e69dc240f1445a9c4fdfd538af8572c1b5fcf15aa",
   "measurement": {
     "candidateMode": "CONVERSION",
     "bunsetsuSeparation": true,
@@ -84,7 +84,8 @@
     "build": "./gradlew -I tools/classified-dictionaries/device-probe.init.gradle :app:assembleLiteStandardDebug :app:assembleLiteStandardDebugAndroidTest",
     "performance": "adb -s 23241FDF6003NG shell am instrument -w -e class com.kazumaproject.markdownhelperkeyboard.converter.StandaloneUnigramInstrumentedTest#measureConversionAndMemory -e standalonePerf true com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner"
   },
-  "deviceTests": {
+  "standaloneContract": "Original input must equal node reading and surface, start 0, full input length, exactly one node. Corrections producing a different reading do not receive standalone priority.",
+  "previousDictionaryRegressionRun": {
     "tests": 6,
     "failures": 0,
     "durationSeconds": 40.014,
@@ -95,6 +96,16 @@
       "861052 classified records and 5138 English-reading records compared to frozen catalog fingerprints",
       "all category toggles across backends and modes",
       "v3/v4/v5 asset loading and existing n-gram score/toggle regression"
+    ]
+  },
+  "deviceTests": {
+    "tests": 1,
+    "failures": 0,
+    "durationSeconds": 5.597,
+    "coverage": [
+      "180 direct-word conditions retain priority",
+      "144 corrected-input conditions match ordinary-dictionary candidate ordering, scores and match sets",
+      "72 compound conditions match ordinary-dictionary candidates and split patterns"
     ]
   }
 }

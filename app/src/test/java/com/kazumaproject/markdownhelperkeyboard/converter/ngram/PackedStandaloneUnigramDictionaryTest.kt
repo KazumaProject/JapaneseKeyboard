@@ -13,16 +13,19 @@ class PackedStandaloneUnigramDictionaryTest {
         assertEquals(5, dictionary.ruleCount)
         for (word in listOf("しろ", "ごと", "したい", "はいる", "みた")) {
             val node = node(word)
-            assertTrue(dictionary.matchesStandaloneNode(node, word.length))
+            assertTrue(dictionary.matchesStandaloneNode(node, word))
             assertFalse(dictionary.matchesSingleNode(node))
             assertFalse(dictionary.mayMatchFirstNode(node))
             assertFalse(dictionary.mayMatchFirstPair(node, node))
-            assertFalse(dictionary.matchesStandaloneNode(node.copy(sPos = 1), word.length))
-            assertFalse(dictionary.matchesStandaloneNode(node, word.length + 1))
-            assertFalse(dictionary.matchesStandaloneNode(node.copy(yomiUsed = "別の読み"), word.length))
+            assertFalse(dictionary.matchesStandaloneNode(node.copy(sPos = 1), word))
+            assertFalse(dictionary.matchesStandaloneNode(node, word + "い"))
+            assertFalse(dictionary.matchesStandaloneNode(node.copy(yomiUsed = "別の読み"), word))
         }
-        assertFalse(dictionary.matchesStandaloneNode(node("しろい"), 3))
-        assertFalse(dictionary.matchesStandaloneNode(node("城").copy(yomiUsed = "しろ"), 2))
+        assertFalse(dictionary.matchesStandaloneNode(node("ごと"), "こと"))
+        assertFalse(dictionary.matchesStandaloneNode(node("はいる"), "ひいる"))
+        assertFalse(dictionary.matchesStandaloneNode(node("しろ"), null))
+        assertFalse(dictionary.matchesStandaloneNode(node("しろい"), "しろい"))
+        assertFalse(dictionary.matchesStandaloneNode(node("城").copy(yomiUsed = "しろ"), "しろ"))
     }
 
     @Test fun readersRejectInterchangedVersionsAndCorruption() {
