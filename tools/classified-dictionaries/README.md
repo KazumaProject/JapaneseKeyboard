@@ -1,6 +1,6 @@
 # Pinned classified dictionary distribution
 
-`prepare.py` imports `v1.7.262-pre.3`, verifies its archive and all 123 asset
+`prepare.py` imports `v1.7.263-pre.4`, verifies its archive and all 124 asset
 hashes, and derives category provenance from hash-verified frozen source data.
 The 30 categories include Kampo (440 records) and Medical (92,847 records).
 Specialist provenance is matched to adopted source rows; license texts include
@@ -13,7 +13,7 @@ python3 tools/classified-dictionaries/prepare.py
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-`ClassifiedDictionaryInstrumentedTest` compares all 861,053 decoded records
+`ClassifiedDictionaryInstrumentedTest` compares all 861,052 decoded records
 against count and SHA-256 multiset fingerprints generated from the frozen
 reading/surface/left POS/right POS/cost records. A second fixture verifies all
 5,138 English-reading pairs and costs against the pinned catalog. It also exercises category
@@ -31,7 +31,7 @@ The frozen record `あとこしゃらか / アトコシヤラカ` consequently d
 entry from the frozen source, keyed by category, sentinel, reading, POS IDs and
 cost. Runtime graph conversion and prediction share that literal decoder.
 The repair applies to bundled dictionaries and byte-identical imported triples;
-it is excluded for other external dictionaries. The published 123 assets remain
+it is excluded for other external dictionaries. The published 124 assets remain
 byte-identical to the release.
 
 ## Isolated device tests

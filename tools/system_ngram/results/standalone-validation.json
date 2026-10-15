@@ -1,0 +1,111 @@
+{
+  "baseRevision": "01e6daba81ac1e6a9481150c8793db1c4abfee5a",
+  "dictionaryRelease": "v1.7.263-pre.4",
+  "dictionaryRevision": "0a5510b04f5bbbc54330f72c6f214f79b8aceed4",
+  "device": {
+    "model": "Pixel 6",
+    "soc": "Tensor",
+    "android": "17",
+    "sdk": 37,
+    "serial": "23241FDF6003NG"
+  },
+  "variant": "liteStandardDebug",
+  "applicationId": "com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite",
+  "appApkSha256": "3ef5d29bac4da4bc56c3f135656974e44e0b58eb1e476659a1962d064d820751",
+  "productionSourceDiffSha256": "b1a08f2f454be0492745e68e69dc240f1445a9c4fdfd538af8572c1b5fcf15aa",
+  "measurement": {
+    "candidateMode": "CONVERSION",
+    "bunsetsuSeparation": true,
+    "n": 4,
+    "beamWidth": 20,
+    "warmupsPerConfiguration": 30,
+    "timedIterationsPerConfiguration": 100,
+    "order": "alternating ordinary/full each round",
+    "allocationIterationsPerConfiguration": 100,
+    "memory": "GC 3 times with 50ms waits, then process Java heap, native allocated heap and PSS; ordinary and full share the same v3/v4 objects",
+    "baseline": "same updated v1.7.263-pre.4 dictionaries with standalone matcher omitted; not an old-dev APK comparison",
+    "sessionWorkload": "repeated identical full input, not sequential key entry",
+    "correctionOffsets": {
+      "omission": 1900,
+      "typo": 3000
+    }
+  },
+  "unitTests": [
+    {
+      "name": "com.kazumaproject.markdownhelperkeyboard.converter.ngram.PackedStandaloneUnigramDictionaryTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.kazumaproject.markdownhelperkeyboard.converter.ngram.PackedSystemNgramDictionaryTest",
+      "tests": "10",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntimeTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPathConnectionMatrixTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPathSessionScratchTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.StandaloneUnigramPathTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "limitations": [
+    "Debug build on one physical device; no release build timing or UI-to-display latency measured.",
+    "No peak-memory measurement. Both configurations retain the standalone object during paired timing.",
+    "Loading delta is a single GC-based sample. PSS/native deltas include process noise; the negative PSS delta does not indicate a memory saving.",
+    "Standalone matching only promotes qualifying one-node paths retained by normal graph/beam/bounded candidate search; does not generate new words."
+  ],
+  "commands": {
+    "build": "./gradlew -I tools/classified-dictionaries/device-probe.init.gradle :app:assembleLiteStandardDebug :app:assembleLiteStandardDebugAndroidTest",
+    "performance": "adb -s 23241FDF6003NG shell am instrument -w -e class com.kazumaproject.markdownhelperkeyboard.converter.StandaloneUnigramInstrumentedTest#measureConversionAndMemory -e standalonePerf true com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner"
+  },
+  "standaloneContract": "Original input must equal node reading and surface, start 0, full input length, exactly one node. Corrections producing a different reading do not receive standalone priority.",
+  "previousDictionaryRegressionRun": {
+    "tests": 6,
+    "failures": 0,
+    "durationSeconds": 40.014,
+    "coverage": [
+      "regular standalone: 2 backends x 3 Japanese candidate modes x 2 bunsetsu settings x 3 n values x 5 words = 180 cases",
+      "corrections: 2 backends x 3 modes x 2 bunsetsu settings x 3 n values x 2 inputs x corrections alone/both enabled = 144 cases",
+      "compound candidate/split equality: 72 cases",
+      "861052 classified records and 5138 English-reading records compared to frozen catalog fingerprints",
+      "all category toggles across backends and modes",
+      "v3/v4/v5 asset loading and existing n-gram score/toggle regression"
+    ]
+  },
+  "deviceTests": {
+    "tests": 1,
+    "failures": 0,
+    "durationSeconds": 5.597,
+    "coverage": [
+      "180 direct-word conditions retain priority",
+      "144 corrected-input conditions match ordinary-dictionary candidate ordering, scores and match sets",
+      "72 compound conditions match ordinary-dictionary candidates and split patterns"
+    ]
+  }
+}

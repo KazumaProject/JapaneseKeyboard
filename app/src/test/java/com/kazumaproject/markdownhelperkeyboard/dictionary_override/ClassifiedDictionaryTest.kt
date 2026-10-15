@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import androidx.preference.PreferenceManager
+import com.google.gson.JsonParser
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.classifiedCandidateLabel
 import org.junit.Assert.*
 import org.junit.Test
@@ -19,6 +20,10 @@ class ClassifiedDictionaryTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test fun allCategoriesHaveThreeDistinctPathMappedFiles() {
+        val manifest = File("../tools/classified-dictionaries/distribution-manifest.json")
+            .reader().use { JsonParser.parseReader(it).asJsonObject }
+        val distributionRevision = manifest.get("revision").asString
+        assertTrue("Distribution revision must be a commit SHA", distributionRevision.matches(Regex("[0-9a-f]{40}")))
         assertEquals(30, ClassifiedDictionaries.all.size)
         assertEquals(30, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
@@ -29,7 +34,9 @@ class ClassifiedDictionaryTest {
                 assertEquals(it.key, DictionaryZipEntryNameMapper.map(it.bundledAssetPath.replace('/', '\\')))
             }
             assertTrue(context.getString(spec.nameRes).isNotBlank())
-            assertTrue(context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }.contains(ClassifiedDictionaries.VERSION))
+            val notice = context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }
+            assertTrue("${spec.id} notice must match the distribution manifest revision",
+                notice.contains("($distributionRevision)"))
         }
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/tango.dat.zip"))
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/system/tango.dat.zip"))
@@ -53,24 +60,24 @@ class ClassifiedDictionaryTest {
         assertEquals("", classifiedCandidateLabel(context, emptySet()))
     }
 
-    @Test fun allCategoriesDefaultEnabledWithoutMigratingLegacyFlags() {
+    @Test fun allCategoriesDefaultDisabledWithoutMigratingLegacyFlags() {
         val prefs = context.getSharedPreferences("classified-test", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
         val legacy = PreferenceManager.getDefaultSharedPreferences(context)
         legacy.edit().putBoolean("mozc_ut_person_name_preference", true).putBoolean("mozc_ut_places_preference", true).commit()
         val store = DictionaryOverrideStore(File(context.cacheDir, "classified-test"), prefs, legacy)
-        ClassifiedDictionaries.all.forEach { assertTrue(store.isOptionalBundledEnabled(it.category)) }
+        ClassifiedDictionaries.all.forEach { assertFalse(store.isOptionalBundledEnabled(it.category)) }
         val first = ClassifiedDictionaries.all.first().category
         val revision = store.currentRevision
-        store.setDisableableCategoryEnabled(first, false, true)
-        assertFalse(store.isOptionalBundledEnabled(first))
+        store.setDisableableCategoryEnabled(first, true, true)
+        assertTrue(store.isOptionalBundledEnabled(first))
         assertTrue(store.currentRevision > revision)
-        ClassifiedDictionaries.all.drop(1).forEach { assertTrue(store.isOptionalBundledEnabled(it.category)) }
-        // A stored OFF is a choice, not a value to migrate or overwrite.
+        ClassifiedDictionaries.all.drop(1).forEach { assertFalse(store.isOptionalBundledEnabled(it.category)) }
+        // A stored ON is a choice, not a value to migrate or overwrite.
         val reopened = DictionaryOverrideStore(File(context.cacheDir, "classified-test"), prefs, legacy)
-        assertFalse(reopened.isOptionalBundledEnabled(first))
+        assertTrue(reopened.isOptionalBundledEnabled(first))
         reopened.removeAllOverrides()
-        ClassifiedDictionaries.all.forEach { assertTrue(reopened.isOptionalBundledEnabled(it.category)) }
+        ClassifiedDictionaries.all.forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
 
     }
 
@@ -83,7 +90,7 @@ class ClassifiedDictionaryTest {
                     val key = it.getAttributeValue("http://schemas.android.com/apk/res/android", "key")
                     if (key.startsWith("optional_bundled_enabled_CLASSIFIED_")) {
                         assertFalse(it.getAttributeBooleanValue("http://schemas.android.com/apk/res/android", "persistent", true))
-                        assertTrue(it.getAttributeBooleanValue("http://schemas.android.com/apk/res/android", "defaultValue", false))
+                        assertFalse(it.getAttributeBooleanValue("http://schemas.android.com/apk/res/android", "defaultValue", true))
                         keys.add(key)
                     }
                 }
