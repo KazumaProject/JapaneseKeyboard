@@ -288,6 +288,17 @@ class GraphBuilder {
         }
     }
 
+    private fun attachClassifiedLabelsToPersonalNodes(personalNodes: List<Node>, dictionaryNode: Node) {
+        for (personal in personalNodes) {
+            if (personal.tango == dictionaryNode.tango && personal.yomiUsed == dictionaryNode.yomiUsed &&
+                personal.sPos == dictionaryNode.sPos && personal.len == dictionaryNode.len &&
+                !personal.dictionaryCategories.containsAll(dictionaryNode.dictionaryCategories)
+            ) {
+                personal.dictionaryCategories = personal.dictionaryCategories + dictionaryNode.dictionaryCategories
+            }
+        }
+    }
+
     private fun Node.toTrace(
         input: String,
         endIndex: Int,
@@ -428,7 +439,9 @@ class GraphBuilder {
                     succinctBitVector = bitVector,
                 )
             }
-            currentStates[start] = progress.nodeIndex
+            // Only incremental sessions consume these node frontiers. Legacy append reuse
+            // retains the graph but performs prefix searches from the root again.
+            if (sessionState != null) currentStates[start] = progress.nodeIndex
             return progress.results
         }
 
@@ -591,6 +604,7 @@ class GraphBuilder {
                 return str.substring(i).also { subStrCache = it }
             }
             var foundInAnyDictionary = false
+            var personalNodes: MutableList<Node>? = null
 
             // 1. ユーザー辞書
             val userWords = userDictionaryRepository?.let { repository ->
@@ -617,6 +631,7 @@ class GraphBuilder {
                     mozcAttributes = mozcAttributesFor(contextId),
                     candidateSource = CandidateSource.USER_DICTIONARY,
                 )
+                (personalNodes ?: ArrayList<Node>().also { personalNodes = it }).add(node)
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "USER")
             }
 
@@ -644,6 +659,7 @@ class GraphBuilder {
                     mozcAttributes = mozcAttributesFor(learnedWord.leftId ?: 1851.toShort()),
                     candidateSource = CandidateSource.LEARNED_DICTIONARY,
                 )
+                (personalNodes ?: ArrayList<Node>().also { personalNodes = it }).add(node)
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "LEARN")
             }
 
@@ -1089,6 +1105,7 @@ class GraphBuilder {
             }
 
             // 5. Wiki辞書
+            val personalNodesForLabels = personalNodes
             classifiedDictionaries.forEach { (category, data) ->
                 val results = prefixSearch(
                     trie = data.yomiTrie,
@@ -1097,7 +1114,9 @@ class GraphBuilder {
                     previousStates = reusable?.classifiedPrefixStates?.get(category),
                     currentStates = classifiedPrefixStates.getValue(category),
                 )
-                if (results.isNotEmpty()) foundInAnyDictionary = true
+                if (results.isEmpty()) return@forEach
+                foundInAnyDictionary = true
+                val categoryLabels = setOf(category)
                 for (prefixResult in results) {
                     val yomiStr = prefixResult.yomi
                     val nodeIndex = prefixResult.nodeIndex
@@ -1111,8 +1130,12 @@ class GraphBuilder {
                             score = cost.toInt(), f = cost.toInt(), g = cost.toInt(),
                             tango = data.surfaceFor(tokenNodeId, yomiStr, pos.toInt(), cost),
                             yomiUsed = yomiStr, len = yomiStr.length.toShort(), sPos = i,
-                            mozcAttributes = mozcAttributesFor(leftId), dictionaryCategories = setOf(category),
+                            mozcAttributes = mozcAttributesFor(leftId), dictionaryCategories = categoryLabels,
                         )
+                        // Path search keeps only the cheapest path for each output. Preserve
+                        // the enabled dictionary's label when an identical personal word wins,
+                        // without replacing either node or changing its cost/source/POS.
+                        personalNodesForLabels?.let { attachClassifiedLabelsToPersonalNodes(it, node) }
                         addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, category.name)
                     }
                 }

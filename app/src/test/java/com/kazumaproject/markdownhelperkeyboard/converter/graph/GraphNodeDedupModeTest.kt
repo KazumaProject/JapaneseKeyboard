@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
 import com.kazumaproject.graph.Node
+import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -47,6 +48,50 @@ class GraphNodeDedupModeTest {
                 assertEquals(2, graph.getValue(1).size)
             }
         }
+    }
+
+    @Test fun personalWordInheritsLabelsWithoutChangingAnyOtherNodeFields() {
+        for (source in listOf(CandidateSource.LEARNED_DICTIONARY, CandidateSource.USER_DICTIONARY)) {
+            val personal = node(500).copy(candidateSource = source, l = 3, r = 4)
+            val original = personal.copy()
+            val category = DictionaryCategory.CLASSIFIED_KAMPO
+            attachLabels(listOf(personal), node(1000).copy(dictionaryCategories = setOf(category)))
+            assertEquals(original.copy(dictionaryCategories = setOf(category)), personal)
+        }
+    }
+
+    @Test fun personalLabelsUnionOnlyForIdenticalOutputReadingAndInputSpan() {
+        val original = node(500).copy(candidateSource = CandidateSource.LEARNED_DICTIONARY)
+        val different = listOf(original.copy(tango = "別"), original.copy(yomiUsed = "べつ"),
+            original.copy(sPos = 1), original.copy(len = 2))
+        val nodes = listOf(original) + different
+        val category = DictionaryCategory.CLASSIFIED_KAMPO
+        attachLabels(nodes, node(1000).copy(dictionaryCategories = setOf(category)))
+        assertEquals(setOf(category), original.dictionaryCategories)
+        assertEquals(List(4) { emptySet<DictionaryCategory>() }, different.map { it.dictionaryCategories })
+        attachLabels(nodes, node(2000).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_MEDICAL)))
+        assertEquals(setOf(category, DictionaryCategory.CLASSIFIED_MEDICAL), original.dictionaryCategories)
+    }
+
+    @Test fun classifiedAnnotationDoesNotChangeDedupWinnerOrNodeCountInEitherMode() {
+        for (mode in GraphNodeDedupMode.entries) {
+            val graph = mutableMapOf<Int, MutableList<Node>>()
+            val builder = GraphBuilder()
+            val personal = node(500).copy(candidateSource = CandidateSource.LEARNED_DICTIONARY)
+            val dictionary = node(1000).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_KAMPO))
+            invokeAddOrUpdate(builder, graph, personal, mode)
+            attachLabels(listOf(personal), dictionary)
+            invokeAddOrUpdate(builder, graph, dictionary, mode)
+            assertEquals(500, graph.getValue(1).first().score)
+            assertEquals(CandidateSource.LEARNED_DICTIONARY, graph.getValue(1).first().candidateSource)
+            assertEquals(setOf(DictionaryCategory.CLASSIFIED_KAMPO), graph.getValue(1).first().dictionaryCategories)
+            assertEquals(if (mode == GraphNodeDedupMode.MOZC_KEEP_ALL) 2 else 1, graph.getValue(1).size)
+        }
+    }
+
+    private fun attachLabels(personal: List<Node>, dictionary: Node) {
+        GraphBuilder::class.java.getDeclaredMethod("attachClassifiedLabelsToPersonalNodes", List::class.java,
+            Node::class.java).apply { isAccessible = true }.invoke(GraphBuilder(), personal, dictionary)
     }
 
     private fun invokeAddOrUpdate(

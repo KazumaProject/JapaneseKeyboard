@@ -280,6 +280,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateCorrectionPolicy
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateDisplayMerger
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
@@ -27507,17 +27508,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     /**
      * A macro action may deliberately have the same display label as a conversion candidate.
-     * Keep it as a separate executable item while preserving the legacy string de-duplication
-     * behavior for ordinary conversion candidates.
+     * Keep it as a separate executable item. Ordinary conversion candidates retain the first
+     * candidate's behavior and order, including labels from duplicate dictionary candidates.
      */
     private fun List<Candidate>.distinctIncludingTextMacroActions(): List<Candidate> =
-        distinctBy { candidate ->
-            if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
-                "text-macro:${candidate.sourceId}"
-            } else {
-                "text:${candidate.string}"
-            }
-        }
+        CandidateDisplayMerger.merge(this)
 
     private suspend fun getSuggestionListEnglishKana(
         insertString: String,
