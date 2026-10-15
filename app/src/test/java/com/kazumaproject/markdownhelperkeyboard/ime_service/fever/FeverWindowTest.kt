@@ -19,7 +19,7 @@ class FeverWindowTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         prefs.edit().clear().putBoolean(FeverSettings.FULL_SCREEN, true).putBoolean(FeverSettings.SOUND, false).commit()
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         val host = FeverWindowFrameLayout(context, controller)
         val content = FrameLayout(context)
         host.addView(content, FrameLayout.LayoutParams(500, 300, Gravity.BOTTOM))
@@ -37,7 +37,7 @@ class FeverWindowTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         prefs.edit().clear().commit()
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         val screen = FrameLayout(context)
         val window = FeverWindowFrameLayout(context, controller)
         val content = FeverInputFrameLayout(context, controller)
@@ -64,7 +64,7 @@ class FeverWindowTest {
     @Test fun finishingCanonicalCompositionRewardsOnlySuccessfulSoftwareConfirmationOnce() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         PreferenceManager.getDefaultSharedPreferences(context).edit().clear().putInt(FeverSettings.HIT_RATE, 100).commit()
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         val host = FrameLayout(context)
         val events = mutableListOf<FeverEvent>()
         controller.eventObserver = { events.add(it) }

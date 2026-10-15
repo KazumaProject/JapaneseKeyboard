@@ -9,14 +9,16 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.Handler
 import android.os.Looper
-import com.kazumaproject.markdownhelperkeyboard.R
+import java.io.File
 
 internal class FeverFeedback(context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val vibrator = context.getSystemService(Vibrator::class.java)
     private val pool = SoundPool.Builder().setMaxStreams(3).setAudioAttributes(AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build()
+        .setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build()
     private val ready = mutableSetOf<Int>()
+    private val pendingFiles = mutableMapOf<Int, File>()
+    private var released = false
     private val streams = ArrayList<Int>(2)
     private val handler = Handler(Looper.getMainLooper())
     private val accents = mutableListOf<Runnable>()
@@ -24,28 +26,43 @@ internal class FeverFeedback(context: Context) {
     private val chime: Int
     private val jackpot: Int
     init {
-        pool.setOnLoadCompleteListener { _, sample, status -> if (status == 0) ready.add(sample) }
-        tick = pool.load(context, R.raw.fever_tick, 1)
-        chime = pool.load(context, R.raw.fever_chime, 1)
-        jackpot = pool.load(context, R.raw.fever_jackpot, 1)
+        pool.setOnLoadCompleteListener { _, sample, status ->
+            pendingFiles.remove(sample)?.delete()
+            if (!released && status == 0) ready.add(sample)
+        }
+        fun load(sample: FeverSoundSample): Int {
+            // SoundPool decodes files asynchronously. Keep only a private temporary WAV until
+            // decoding completes, then retain the decoded sample in memory for this session.
+            val file = try { File.createTempFile("fever-", ".wav", context.cacheDir) }
+                catch (_: java.io.IOException) { return 0 }
+            return try {
+                file.outputStream().buffered().use(sample::writeWave)
+                pool.load(file.path, 1).also { id ->
+                    if (id == 0) file.delete() else pendingFiles[id] = file
+                }
+            } catch (_: java.io.IOException) { file.delete(); 0 }
+        }
+        tick = load(FeverSoundSample.TICK)
+        chime = load(FeverSoundSample.CHIME)
+        jackpot = load(FeverSoundSample.JACKPOT)
     }
-    fun play(award: FeverAward, settings: FeverSettings, soundAllowed: Boolean, vibrationAllowed: Boolean, globalVolume: Int) =
-        playEvent(FeverEvent(10, award), settings, soundAllowed, vibrationAllowed, globalVolume)
+    fun play(award: FeverAward, settings: FeverSettings, vibrationAllowed: Boolean) =
+        playEvent(FeverEvent(10, award), settings, vibrationAllowed)
 
-    fun playEvent(event: FeverEvent, settings: FeverSettings, soundAllowed: Boolean, vibrationAllowed: Boolean, globalVolume: Int) {
-        val volume = settings.volume / 100f * (if (globalVolume == 0) 1f else globalVolume.coerceIn(0, 100) / 100f)
+    fun playEvent(event: FeverEvent, settings: FeverSettings, vibrationAllowed: Boolean) {
+        val volume = settings.volume.coerceIn(0, 100) / 100f
         fun sound(sample: Int, gain: Float, pitch: Float) {
-            if (sample !in ready || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+            if (released || sample !in ready || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
             if (streams.size >= 3) pool.stop(streams.removeAt(0))
             streams.add(pool.play(sample, volume * gain, volume * gain, 1, 0, pitch))
         }
-        if (settings.sound && soundAllowed && volume > 0) {
+        if (settings.sound && volume > 0) {
             val pitch = when (event.cue) {
                 FeverCue.DELETE -> .8f
                 FeverCue.CURSOR_LEFT, FeverCue.CURSOR_RIGHT, FeverCue.CURSOR_UP, FeverCue.CURSOR_DOWN -> 1.7f
                 else -> 1f + (event.combo % 10) * .055f
             }
-            sound(tick, .28f, pitch)
+            sound(tick, .6f, pitch)
             if (event.award != null) {
                 accents.forEach(handler::removeCallbacks); accents.clear()
                 // Match the visual gather, release, and sparkle rather than playing one flat bell.
@@ -71,5 +88,8 @@ internal class FeverFeedback(context: Context) {
         accents.forEach(handler::removeCallbacks); accents.clear()
         streams.forEach(pool::stop); streams.clear(); vibrator?.cancel()
     }
-    fun release() { stop(); pool.release() }
+    fun release() {
+        released = true; stop(); pool.release(); ready.clear()
+        pendingFiles.values.forEach(File::delete); pendingFiles.clear()
+    }
 }

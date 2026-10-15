@@ -24,6 +24,22 @@ import kotlin.math.min
  * 通常フリック時に表示される、方向を示す矢印型のポップアップ
  */
 class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context), KeyboardFontAware {
+    private val fingerTrail = FeverPopupTrail(this)
+
+    fun updateFingerFeedback(rawX: Float, rawY: Float) {
+        if (skinId == KeyboardSkinId.FEVER) fingerTrail.move(rawX, rawY)
+    }
+
+    override fun draw(canvas: android.graphics.Canvas) {
+        super.draw(canvas)
+        if (skinId == KeyboardSkinId.FEVER) fingerTrail.draw(canvas)
+    }
+
+    override fun onDetachedFromWindow() {
+        fingerTrail.clear()
+        super.onDetachedFromWindow()
+    }
+
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         // 初期色は設定するが、onDrawで動的に上書きされる
@@ -96,7 +112,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context), Ke
      */
     override fun onDraw(canvas: Canvas) {
         // These cells draw temporary drawables directly, so no Drawable.Callback owns their frames.
-        if (skinId == KeyboardSkinId.FEVER && com.kazumaproject.core.ui.skin.FeverKeyPulse.hasMotionSession && isShown) postInvalidateOnAnimation()
+        if (skinId == KeyboardSkinId.FEVER && com.kazumaproject.core.ui.skin.FeverKeyPulse.hasMotionSession && isAttachedToWindow && windowVisibility == android.view.View.VISIBLE) postInvalidateOnAnimation()
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
             val direction = currentDirection.skinDirection()
             skin.popupDrawable(resources, direction).apply {

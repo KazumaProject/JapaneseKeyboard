@@ -400,6 +400,175 @@ class FeverImeInstrumentedTest {
         }
     }
 
+    @Test(timeout = 240000) fun sumirePopupsMovementAndCandidateButtonsStayVisible() {
+        check(context.packageName.startsWith("com.kazumaproject.skinfidelity"))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val saved = prefs.all.toMap()
+        val original = shell("settings get secure default_input_method")
+        val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val enabled = target in shell("ime list -s").lines()
+        var activity: FastInputHostActivity? = null
+        fun field(value: Any, name: String): Any? = value.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(value)
+        fun sumire(): com.kazumaproject.custom_keyboard.view.FlickKeyboardView? {
+            var result: com.kazumaproject.custom_keyboard.view.FlickKeyboardView? = null
+            fun visit(view: View) {
+                if (!view.isShown) return
+                if (view is com.kazumaproject.custom_keyboard.view.FlickKeyboardView && view.width > 0) result = view
+                if (view is ViewGroup) for (i in 0 until view.childCount) visit(view.getChildAt(i))
+            }
+            val floating = prefs.getBoolean("keyboard_floating_preference", false)
+            WindowInspector.getGlobalWindowViews().filter {
+                (it is com.kazumaproject.markdownhelperkeyboard.ime_service.floating_keyboard.FloatingKeyboardPanel) == floating
+            }.forEach(::visit)
+            return result
+        }
+        try {
+            ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
+            check(ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0))
+            shell("ime enable $target"); shell("ime set $target")
+            for (floating in listOf(false, true)) for (full in listOf(false, true)) {
+                prefs.edit().clear().putString("keyboard_skin_preference", "fever")
+                    .putString("keyboard_order_preference", "[\"SUMIRE\"]").putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("gojuon_keyboard_type_migrated_v1", true)
+                    .putString("sumire_input_method_preference", "flick").putString("sumire_keyboard_style_preference", "default")
+                    .putBoolean("sumire_restore_input_mode_on_restart_preference", false)
+                    .putBoolean("landscape_force_qwerty_preference", false)
+                    .putBoolean("flick_editor_preview_preference", false).putBoolean("live_conversion_preference", false)
+                    .putBoolean("keyboard_floating_preference", floating).putInt("keyboard_width_preference", if (floating) 70 else 100)
+                    .putInt("keyboard_floating_position_x", 24).putInt("keyboard_floating_position_y", 160)
+                    .putInt("long_press_timeout_preference", 300).putBoolean(FeverSettings.FULL_SCREEN, full)
+                    .putBoolean(FeverSettings.SOUND, true).putInt(FeverSettings.VOLUME, 100).putBoolean("key_sound_preference", false)
+                    .putBoolean(FeverSettings.VIBRATION, false).commit()
+                activity = startEditor(false)
+                await { var found = false; ins.runOnMainSync { found = sumire() != null }; found }
+                SystemClock.sleep(700)
+                val inputFrame = ime()
+                for (label in listOf("あ", "わ")) for (hold in listOf(40L, 500L, 500L)) {
+                    lateinit var keyView: android.widget.Button
+                    lateinit var keyboard: com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+                    var x = 0f; var y = 0f; var keyWidth = 0
+                    var previousBounds: Rect? = null
+                    var stable = 0
+                    await {
+                        var bounds: Rect? = null
+                        ins.runOnMainSync {
+                        keyboard = requireNotNull(sumire())
+                        val buttons = mutableListOf<android.widget.Button>()
+                        fun visit(v: View) {
+                            if (v is android.widget.Button && v.text.toString() == label) buttons.add(v)
+                            if (v is ViewGroup) for (i in 0 until v.childCount) visit(v.getChildAt(i))
+                        }
+                        visit(keyboard); keyView = buttons.first()
+                        val position = IntArray(2).also(keyView::getLocationOnScreen)
+                        keyWidth = keyView.width; x = position[0] + keyView.width / 2f; y = position[1] + keyView.height / 2f
+                        bounds = Rect(position[0], position[1], position[0] + keyView.width, position[1] + keyView.height)
+                        }
+                        stable = if (bounds == previousBounds && bounds?.isEmpty == false) stable + 1 else 0
+                        previousBounds = bounds
+                        SystemClock.sleep(100)
+                        stable >= 3
+                    }
+                    val down = SystemClock.uptimeMillis()
+                    fun send(action: Int, dx: Float = 0f, dy: Float = 0f) {
+                        val e = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x + dx, y + dy, 0)
+                        e.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                        try { assertTrue(ui.injectInputEvent(e, true)) } finally { e.recycle() }
+                    }
+                    send(MotionEvent.ACTION_DOWN)
+                    lateinit var popup: View
+                    try {
+                        SystemClock.sleep(hold)
+                        send(MotionEvent.ACTION_MOVE, -keyWidth * .8f)
+                        SystemClock.sleep(25)
+                        send(MotionEvent.ACTION_MOVE, 0f, -keyWidth * .8f)
+                        ins.runOnMainSync {
+                            val controllers = field(keyboard, "crossFlickControllers") as List<*>
+                            val controller = controllers.filterNotNull().first { field(it, "anchorView") === keyView }
+                            popup = if (hold < 100) requireNotNull(field(controller, "currentVisibleDirectionalPopup")) as View
+                                else field(controller, "gridPopupView") as View
+                            assertTrue("Popup must remain attached: $label $hold", popup.isAttachedToWindow)
+                            val host = (field(controller, "popupOverlay") as Any).let { field(it, "host") as View }
+                            assertTrue("Popup clipped: $label $hold ${popup.left},${popup.top}", popup.left >= 0 && popup.top >= 0 && popup.right <= host.width && popup.bottom <= host.height)
+                            val trail = requireNotNull(field(popup, "fingerTrail"))
+                            assertTrue("MOVE must reach the popup effect", (field(trail, "marks") as List<*>).isNotEmpty())
+                        }
+                        SystemClock.sleep(80)
+                        val screen = requireNotNull(ui.takeScreenshot())
+                        File(File(context.getExternalFilesDir(null), "fever-evidence"), "surface-$floating-$full-$label-$hold.png")
+                            .outputStream().use { screen.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                        try { ins.runOnMainSync {
+                            val rendered = Bitmap.createBitmap(popup.width, popup.height, Bitmap.Config.ARGB_8888)
+                            try {
+                                popup.draw(android.graphics.Canvas(rendered))
+                                val location = IntArray(2).also(popup::getLocationOnScreen)
+                                val cells = if (popup is ViewGroup) {
+                                    val grid = (popup as ViewGroup).getChildAt(0) as ViewGroup
+                                    (0 until grid.childCount).map(grid::getChildAt).filter { it.background != null }
+                                } else listOf(popup)
+                                assertTrue(cells.isNotEmpty())
+                                cells.forEach { cell ->
+                                    cell.background?.let { assertTrue("Overlay background must stay visible after MOVE", it.isVisible) }
+                                    val cx = if (cell === popup) popup.width / 4 else cell.left + cell.width / 4
+                                    val cy = if (cell === popup) popup.height / 4 else cell.top + cell.height / 4
+                                    val expected = rendered.getPixel(cx, cy)
+                                    assertEquals("Popup surface must be opaque", 255, android.graphics.Color.alpha(expected))
+                                    val actual = screen.getPixel(location[0] + cx, location[1] + cy)
+                                    for (shift in listOf(0, 8, 16)) assertTrue("Hardware popup surface differs: floating=$floating full=$full label=$label hold=$hold point=${location[0] + cx},${location[1] + cy} expected=${Integer.toHexString(expected)} actual=${Integer.toHexString(actual)}",
+                                        kotlin.math.abs((expected shr shift and 255) - (actual shr shift and 255)) < 18)
+                                }
+                            } finally { rendered.recycle() }
+                        } } finally { screen.recycle() }
+                        capture("sumire-$floating-$full-$label-$hold")
+                    } finally { send(if (hold == 500L) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP) }
+                    ins.runOnMainSync {
+                        assertFalse(popup.isAttachedToWindow); assertEquals(label, keyView.text.toString())
+                        if (hold < 100) {
+                            val feedback = requireNotNull(field(inputFrame.controller, "feedback"))
+                            assertTrue("Dedicated sound must play in the real IME with ordinary key sounds OFF",
+                                (field(feedback, "streams") as List<*>).any { it is Int && it > 0 })
+                        }
+                    }
+                }
+                // Commit a real Sumire tap to expose the expand/restore control.
+                lateinit var kana: android.widget.Button
+                ins.runOnMainSync {
+                    fun find(v: View) {
+                        if (v is android.widget.Button && v.text.toString() == "あ") kana = v
+                        if (v is ViewGroup) for (i in 0 until v.childCount) find(v.getChildAt(i))
+                    }
+                    find(requireNotNull(sumire()))
+                    val now = SystemClock.uptimeMillis()
+                    for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                        val e = MotionEvent.obtain(now, now + 30, action, kana.width / 2f, kana.height / 2f, 0)
+                        try { kana.dispatchTouchEvent(e) } finally { e.recycle() }
+                    }
+                }
+                await { nativeBounds("suggestion_visibility") != null }
+                repeat(2) { expanded ->
+                    ins.runOnMainSync {
+                        val id = context.resources.getIdentifier("suggestion_visibility", "id", context.packageName)
+                        val buttons = WindowInspector.getGlobalWindowViews().mapNotNull { it.findViewById<View>(id)?.takeIf(View::isShown) }
+                        assertTrue(buttons.isNotEmpty())
+                        buttons.forEach { button ->
+                            assertEquals("Both candidate button states use the FEVER rim", "FeverKeyDrawable", button.background.javaClass.simpleName)
+                            assertNull("Tint must not erase the neon", button.backgroundTintList)
+                        }
+                    }
+                    capture("sumire-button-$floating-$full-$expanded")
+                    tap("suggestion_visibility"); SystemClock.sleep(250)
+                }
+                println("FEVER Sumire PASS floating=$floating full=$full")
+                ins.runOnMainSync { activity?.finish() }; activity = null
+                SystemClock.sleep(300)
+            }
+        } finally {
+            ins.runOnMainSync { activity?.finish() }
+            restorePreferences(prefs, saved)
+            shell("ime set $original"); if (!enabled) shell("ime disable $target")
+            ui.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
     private fun restorePreferences(prefs: android.content.SharedPreferences, saved: Map<String, *>) {
         val edit = prefs.edit().clear()
         saved.forEach { (key, value) -> when (value) {

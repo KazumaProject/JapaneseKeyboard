@@ -295,6 +295,7 @@ class CrossFlickInputController(
                         )
                     }
                 }
+                updatePopupFingerFeedback(event.rawX, event.rawY)
                 return true
             }
 
@@ -318,6 +319,12 @@ class CrossFlickInputController(
             }
         }
         return false
+    }
+
+    private fun updatePopupFingerFeedback(rawX: Float, rawY: Float) {
+        currentVisibleDirectionalPopup?.takeIf(popupOverlay::isShowing)?.updateFingerFeedback(rawX, rawY)
+        if (popupOverlay.isShowing(gridPopupView)) gridPopupView.updateFingerFeedback(rawX, rawY)
+        actionPopupViews.values.filter(popupOverlay::isShowing).forEach { it.updateFingerFeedback(rawX, rawY) }
     }
 
     // 長押しタイマーが満了したときに呼ばれる。モードに応じてポップアップ表示を切り替える。
@@ -676,11 +683,13 @@ class CrossFlickInputController(
     // TEXT モードで指定方向のポップアップを表示し、直前に表示していたものを閉じる。
     // 同じ方向が連続した場合はちらつき防止のためスキップする。
     private fun showDirectionalPopup(direction: FlickDirection) {
-        if (direction == currentVisibleDirectional) {
-            return
-        }
+        if (direction == currentVisibleDirectional &&
+            currentVisibleDirectionalPopup?.let(popupOverlay::isShowing) == true
+        ) return
 
         currentVisibleDirectionalPopup?.let(popupOverlay::dismiss)
+        currentVisibleDirectionalPopup = null
+        currentVisibleDirectional = null
 
         val popupToShow = directionalPopupMap[direction] ?: return
         val currentAnchor = anchorView ?: return
@@ -895,6 +904,17 @@ class CrossFlickInputController(
         positionGridPopup(anchor)
     }
 
+    private fun placePopupWithinHost(popupView: View) {
+        val host = popupOverlay.currentHost ?: return
+        // Overlay content is clipped to its host, unlike an unclipped PopupWindow.
+        // Fit after each layout so edge keys and resized floating keyboards keep their guides.
+        popupOverlay.place(
+            popupView,
+            popupPositionScratch[0].coerceIn(0, (host.width - popupView.measuredWidth).coerceAtLeast(0)),
+            popupPositionScratch[1].coerceIn(0, (host.height - popupView.measuredHeight).coerceAtLeast(0))
+        )
+    }
+
     private fun positionVisibleActionPopups(anchor: View) {
         actionPopupViews.forEach { (direction, popupView) ->
             if (!popupOverlay.isShowing(popupView)) return@forEach
@@ -904,11 +924,7 @@ class CrossFlickInputController(
                 anchorX = popupAnchorLocation[0],
                 anchorY = popupAnchorLocation[1]
             )
-            popupOverlay.place(
-                popupView = popupView,
-                left = popupPositionScratch[0],
-                top = popupPositionScratch[1]
-            )
+            placePopupWithinHost(popupView)
         }
     }
 
@@ -926,11 +942,7 @@ class CrossFlickInputController(
             popupWidth = popupView.measuredWidth,
             popupHeight = popupView.measuredHeight
         )
-        popupOverlay.place(
-            popupView = popupView,
-            left = popupPositionScratch[0],
-            top = popupPositionScratch[1]
-        )
+        placePopupWithinHost(popupView)
     }
 
     private fun positionGridPopup(anchor: View) {
@@ -943,11 +955,7 @@ class CrossFlickInputController(
             popupWidth = gridPopupView.measuredWidth,
             popupHeight = gridPopupView.measuredHeight
         )
-        popupOverlay.place(
-            popupView = gridPopupView,
-            left = popupPositionScratch[0],
-            top = popupPositionScratch[1]
-        )
+        placePopupWithinHost(gridPopupView)
     }
 }
 

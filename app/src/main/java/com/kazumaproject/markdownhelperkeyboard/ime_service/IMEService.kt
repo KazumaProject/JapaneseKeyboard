@@ -2024,7 +2024,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertySpecialKeyIconSize: Float? = 18.0f
 
     private val fever by lazy { FeverController(this) {
-        Triple(isKeySoundEnabled == true, isVibration != false, keySoundVolumePercent ?: 0)
+        isVibration != false
     } }
     private var feverExpandedWindow = false
     private var feverWindowHost: FrameLayout? = null
@@ -7957,6 +7957,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val chrome = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
                 button.background = chrome.expandButtonBackground(button.resources)
                 button.imageTintList = chrome.expandButtonTint()
+                button.clearColorFilter()
+            } else if (keyboardSkinId == KeyboardSkinId.FEVER && skin != null) {
+                button.background = skin.keyDrawable(button.resources,
+                    role = com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER)
+                button.imageTintList = android.content.res.ColorStateList.valueOf(skin.palette.specialText)
                 button.clearColorFilter()
             } else {
                 // setBackgroundResource may keep the same resource instance after a skin

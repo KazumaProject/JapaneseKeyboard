@@ -13,6 +13,7 @@
     <string name="fever_sound">Celebration sounds</string>
     <string name="fever_vibration">Celebration vibration</string>
     <string name="fever_feedback_summary">Also follows the keyboard feedback and device silent settings.</string>
+    <string name="fever_sound_summary">Uses media volume and device silent settings. Independent of ordinary key sounds.</string>
     <string name="fever_volume">Celebration volume (%)</string>
     <string name="fever_hit_rate">Jackpot probability (%)</string>
     <string name="fever_hit_rate_summary">Draw on successful software text confirmation, at most once every 3 seconds.</string>

@@ -11,7 +11,7 @@ import androidx.preference.PreferenceManager
 import com.kazumaproject.core.ui.skin.FeverKeyPulse
 
 /** Owns transient effects only; text commits and gesture decisions remain with the IME. */
-internal class FeverController(private val context: Context, private val feedbackAllowed: () -> Triple<Boolean, Boolean, Int>) {
+internal class FeverController(private val context: Context, private val vibrationAllowed: () -> Boolean) {
     private val engine = FeverEngine()
     private val handler = Handler(Looper.getMainLooper())
     private var feedback: FeverFeedback? = null
@@ -280,9 +280,9 @@ internal class FeverController(private val context: Context, private val feedbac
             edgeSurface?.show(event, touchX?.minus(location[0]), touchY?.minus(location[1]))
         }
         run {
-            val allowed = feedbackAllowed()
-            if (feedback == null && ((settings.sound && allowed.first) || (settings.vibration && allowed.second))) feedback = FeverFeedback(context)
-            feedback?.playEvent(event, settings, allowed.first, allowed.second, allowed.third)
+            val vibrate = vibrationAllowed()
+            if (feedback == null && (settings.sound || (settings.vibration && vibrate))) feedback = FeverFeedback(context)
+            feedback?.playEvent(event, settings, vibrate)
         }
     }
     fun stop() {

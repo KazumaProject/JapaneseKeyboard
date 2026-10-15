@@ -13,6 +13,7 @@
     <string name="fever_sound">専用の効果音</string>
     <string name="fever_vibration">専用の振動</string>
     <string name="fever_feedback_summary">キーボード全体の音・振動設定と、端末の消音設定に従います。</string>
+    <string name="fever_sound_summary">通常のキー操作音とは別に設定できます。端末のメディア音量と消音設定に従います。</string>
     <string name="fever_volume">効果音量（%）</string>
     <string name="fever_hit_rate">大当たり抽選率（%）</string>
     <string name="fever_hit_rate_summary">ソフトウェア操作で文字を確定した時に抽選します。抽選の間隔は最低3秒です。</string>

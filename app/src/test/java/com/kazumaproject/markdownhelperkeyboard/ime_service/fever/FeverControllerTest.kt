@@ -27,7 +27,7 @@ class FeverControllerTest {
         activity.setContentView(host)
         host.layout(0, 0, 500, 800); content.layout(0, 200, 500, 800)
         candidates.layout(0, 0, 500, 80); key.layout(10, 100, 240, 300)
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         try {
             controller.configure(true, host, content, null, protectedKeys = { content })
             fun surface() = FeverController::class.java.getDeclaredField("surface").apply { isAccessible = true }
@@ -67,7 +67,7 @@ class FeverControllerTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         PreferenceManager.getDefaultSharedPreferences(context).edit().clear().putInt(FeverSettings.HIT_RATE, 100).commit()
         val host = FrameLayout(context).apply { layout(0, 0, 500, 400) }
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         val events = mutableListOf<FeverEvent>()
         controller.eventObserver = { events.add(it) }
         controller.configure(true, host, host, null)
@@ -97,7 +97,7 @@ class FeverControllerTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         PreferenceManager.getDefaultSharedPreferences(context).edit().clear().putInt(FeverSettings.HIT_RATE, 100).commit()
         val host = FrameLayout(context).apply { layout(0, 0, 500, 400) }
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         val events = mutableListOf<FeverEvent>()
         controller.eventObserver = events::add
         controller.configure(true, host, host, null)
@@ -122,7 +122,7 @@ class FeverControllerTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         PreferenceManager.getDefaultSharedPreferences(context).edit().clear().putInt(FeverSettings.HIT_RATE, 0).commit()
         val host = FrameLayout(context).apply { layout(0, 0, 500, 400) }
-        val controller = FeverController(context) { Triple(false, false, 0) }
+        val controller = FeverController(context) { false }
         val events = mutableListOf<FeverEvent>()
         controller.eventObserver = { events.add(it) }
         controller.configure(true, host, host, null)

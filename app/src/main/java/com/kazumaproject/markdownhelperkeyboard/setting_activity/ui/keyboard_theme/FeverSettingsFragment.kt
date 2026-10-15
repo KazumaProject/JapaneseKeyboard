@@ -42,7 +42,7 @@ class FeverSettingsFragment : AsyncPreferenceFragment() {
         })
         toggle(FeverSettings.FULL_SCREEN, R.string.fever_full_screen, false, R.string.fever_full_screen_summary)
         slider(FeverSettings.INTENSITY, R.string.fever_intensity, 0, 2, 2, R.string.fever_intensity_summary)
-        toggle(FeverSettings.SOUND, R.string.fever_sound, true, R.string.fever_feedback_summary)
+        toggle(FeverSettings.SOUND, R.string.fever_sound, true, R.string.fever_sound_summary)
         slider(FeverSettings.VOLUME, R.string.fever_volume, 0, 100, 50)
         toggle(FeverSettings.VIBRATION, R.string.fever_vibration, true, R.string.fever_feedback_summary)
         slider(FeverSettings.HIT_RATE, R.string.fever_hit_rate, 0, 100, 5, R.string.fever_hit_rate_summary)
@@ -109,8 +109,7 @@ class FeverSettingsFragment : AsyncPreferenceFragment() {
             }
             val key = (previewStep - 1) % 20
             effect.show(event, (34 + key % 5 * 63) * sx, miniature.top + (50 + key / 5 * 37) * sy)
-            feedback.playEvent(event, settings, AppPreference.key_sound_preference == true,
-                AppPreference.vibration_preference != false, AppPreference.key_sound_volume_percent_preference ?: 0)
+            feedback.playEvent(event, settings, AppPreference.vibration_preference != false)
         }
         fun restart() {
             previewRunnable?.let(frame::removeCallbacks)
