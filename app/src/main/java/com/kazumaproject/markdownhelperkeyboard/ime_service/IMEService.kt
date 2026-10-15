@@ -11344,6 +11344,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     cancelOngoingLongPressForKey(key)
                 }
             })
+            setOnInputModeChangedListener { inputMode ->
+                currentInputModeForSession = inputMode
+                val mainView = mainLayoutBinding
+                if (mainView != null && switchTenkeyEnglishToQwertyIfNeeded(inputMode, mainView)) {
+                    return@setOnInputModeChangedListener
+                }
+                setTenkeyIconsInHenkanFloating(inputString.value, floatingKeyboardLayoutBinding)
+            }
         }
     }
 
