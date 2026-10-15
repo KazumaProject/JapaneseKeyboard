@@ -2,6 +2,13 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <PreferenceCategory android:title="@string/dictionary_browser_title">
+        <Preference
+            android:key="dictionary_browser_preference"
+            android:title="@string/dictionary_browser_title"
+            app:summary="@string/dictionary_browser_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:title="@string/system_user_dictionary">
 
