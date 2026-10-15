@@ -4403,59 +4403,47 @@ class KanaKanjiEngine {
         }
     }
 
-    private fun deferredFromMozcUTDictionary(
+    private fun predictedClassifiedCandidates(
         input: String,
-        commonPrefixListString: List<String>,
-        yomiTrie: LOUDSWithTermId?,
-        tokenArray: TokenArray?,
-        tangoTrie: LOUDS?,
-        succinctBitVectorLBSYomi: SuccinctBitVector?,
-        succinctBitVectorIsLeafYomi: SuccinctBitVector?,
-        succinctBitVectorTokenArray: SuccinctBitVector?,
-        succinctBitVectorTangoLBS: SuccinctBitVector?,
-        type: Byte,
-        n: Int,
+        data: TripleDictionaryData,
         predictionConfig: PredictionConfig,
-        dictionary: TripleDictionaryData? = null,
-    ): List<Candidate> = commonPrefixListString.flatMap { yomi ->
-        if (yomiTrie == null) return emptyList()
-        if (tokenArray == null) return emptyList()
-        if (tangoTrie == null) return emptyList()
-        if (succinctBitVectorLBSYomi == null) return emptyList()
-        if (succinctBitVectorIsLeafYomi == null) return emptyList()
-        if (succinctBitVectorTokenArray == null) return emptyList()
-        if (succinctBitVectorTangoLBS == null) return emptyList()
-        if (input.length > yomi.length) return emptyList()
-        val termId = yomiTrie.getTermId(
-            yomiTrie.getNodeIndex(
-                yomi, succinctBitVectorLBSYomi
-            ), succinctBitVectorIsLeafYomi
-        )
-        tokenArray.getListDictionaryByYomiTermId(
-            termId, succinctBitVectorTokenArray
-        ).map {
-            Candidate(
-                string = dictionary?.surfaceFor(it.nodeId, yomi, it.posTableIndex.toInt(), it.wordCost) ?: when (it.nodeId) {
-                    -2 -> yomi
-                    -1 -> yomi.hiraToKata()
-                    else -> tangoTrie.getLetter(
-                        it.nodeId, succinctBitVectorTangoLBS
-                    )
-                },
-                type = type,
-                yomi = yomi,
-                length = yomi.length.toUByte(),
-                score = it.wordCost.toInt() + predictionConfig.completionPenalty(
+    ): List<Candidate> {
+        val selected = ArrayList<Candidate>(4)
+        data.yomiTrie.forEachPredictiveMatch(
+            prefix = input,
+            maxReadingLength = input.length + predictionConfig.normalizedLookaheadCharacterCount,
+            lbsIndex = data.succinctBitVectorLBSYomi,
+            leafIndex = data.succinctBitVectorIsLeafYomi,
+        ) { reading, termId ->
+            if (predictionConfig.acceptsJapaneseReading(input.length, reading.length)) {
+                val penalty = predictionConfig.completionPenalty(
                     inputLength = input.length,
-                    readingLength = yomi.length,
+                    readingLength = reading.length,
                     penaltyPerCharacter = 1_500,
                     longInputFlatPenalty = null,
-                ),
-                leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
-                rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
-            )
+                )
+                data.tokenArray.forEachDictionaryByYomiTermId(termId, data.succinctBitVectorTokenArray) { pos, cost, node ->
+                    val score = cost.toInt() + penalty
+                    // Strict comparison retains the original stable sort's first-seen order on ties.
+                    var insertion = selected.size
+                    while (insertion > 0 && score < selected[insertion - 1].score) insertion--
+                    if (insertion < 4) {
+                        selected.add(insertion, Candidate(
+                            string = data.surfaceFor(node, reading, pos.toInt(), cost),
+                            type = 9,
+                            yomi = reading,
+                            length = reading.length.toUByte(),
+                            score = score,
+                            leftId = data.tokenArray.leftIds[pos.toInt()],
+                            rightId = data.tokenArray.rightIds[pos.toInt()],
+                        ))
+                        if (selected.size > 4) selected.removeAt(4)
+                    }
+                }
+            }
         }
-    }.sortedBy { it.score }.take(n)
+        return selected
+    }
 
     private fun deferredFromDictionary(
         commonPrefixListString: List<String>,
@@ -4746,15 +4734,10 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         if (!predictionConfig.japanesePredictionEnabled || !predictionConfig.externalMozcEnabled ||
             input.length < predictionConfig.normalizedMinimumInputLength) return emptyList()
+        if (input.length > PredictionConfig.MAX_PREDICTION_INPUT_LENGTH) return emptyList()
         return activeClassifiedDictionaries(categories).flatMap { (category, data) ->
-            val readings = data.yomiTrie.predictiveSearch(input, data.succinctBitVectorLBSYomi)
-                .filter { predictionConfig.acceptsJapaneseReading(input.length, it.length) }
-            deferredFromMozcUTDictionary(
-                input, readings, data.yomiTrie, data.tokenArray, data.tangoTrie,
-                data.succinctBitVectorLBSYomi, data.succinctBitVectorIsLeafYomi,
-                data.succinctBitVectorTokenArray, data.succinctBitVectorTangoLBS,
-                type = 9, n = 4, predictionConfig = predictionConfig, dictionary = data,
-            ).map { it.copy(dictionaryCategories = setOf(category)) }
+            predictedClassifiedCandidates(input, data, predictionConfig)
+                .map { it.copy(dictionaryCategories = setOf(category)) }
         }.groupBy { it.copy(dictionaryCategories = emptySet()) }.map { (_, candidates) ->
             candidates.first().copy(dictionaryCategories = candidates.flatMap { it.dictionaryCategories }.toSet())
         }
