@@ -1920,4 +1920,20 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="sizing_sp">%1$.1f sp</string>
     <string name="sizing_percent">%1$d%%</string>
     <string name="sizing_inherited">Unchanged sizes use your existing settings.</string>
+    <string name="dictionary_browser_title">Dictionary words</string>
+    <string name="dictionary_browser_summary">Browse and search the words and readings in each built-in or replacement dictionary.</string>
+    <string name="dictionary_browser_select">Choose a dictionary</string>
+    <string name="dictionary_browser_search_hint">Search words or readings</string>
+    <string name="dictionary_browser_kotowaza">Proverb dictionary</string>
+    <string name="dictionary_browser_source_state">%1$s · %2$s</string>
+    <string name="dictionary_browser_bundled">Bundled</string>
+    <string name="dictionary_browser_external">External replacement</string>
+    <string name="dictionary_browser_enabled">Enabled</string>
+    <string name="dictionary_browser_disabled">Disabled (browsing available)</string>
+    <string name="dictionary_browser_loading">Loading dictionary…</string>
+    <string name="dictionary_browser_loading_more">%1$d words shown · Searching for more…</string>
+    <string name="dictionary_browser_count">%1$d words shown</string>
+    <string name="dictionary_browser_empty">No matching words.</string>
+    <string name="dictionary_browser_error">Could not read this dictionary. Check its files and try again.</string>
+    <string name="dictionary_browser_retry">Retry</string>
 </resources>
