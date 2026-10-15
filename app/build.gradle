@@ -129,6 +129,7 @@ android {
             includeAndroidResources = true
             all {
                 maxHeapSize = '2g'
+                inputs.file(rootProject.file("tools/classified-dictionaries/distribution-manifest.json"))
             }
         }
     }
