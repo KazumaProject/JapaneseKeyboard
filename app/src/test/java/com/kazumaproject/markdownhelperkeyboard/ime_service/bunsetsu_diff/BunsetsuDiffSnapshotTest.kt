@@ -36,6 +36,17 @@ class BunsetsuDiffSnapshotTest {
         assertTrue(snapshot.segments.all { it.candidatesLoaded })
     }
 
+    @Test fun candidateAnchorsUseOutputOffsetsAndKeepTheirOriginalMappingAfterSelection() {
+        val snapshot = buildBunsetsuDiffSnapshot(reading, reading, result())!!
+        val candidate = outputs[0].joinToString("")
+        assertEquals(listOf(0..2, 3..5, 6..8, 9..13), snapshot.candidateRanges[candidate])
+        assertEquals(listOf(0..3, 4..8, 9..13, 14..18), snapshot.candidateRanges[reading])
+        val selected = snapshot.segments[3].copy(displayText = "撮りました", selectedIndex = 2)
+        val changed = snapshot.copy(segments = snapshot.segments.toMutableList().also { it[3] = selected })
+        assertEquals(snapshot.candidateRanges, changed.candidateRanges)
+        assertEquals("きのうはこうえんでしゃしんを撮りました", changed.text)
+    }
+
     @Test fun rawPreviewPreservesKanaAndCyclingOneSegmentPreservesEveryOtherDisplay() {
         val snapshot = buildBunsetsuDiffSnapshot(reading, reading, result())!!
         assertEquals(reading, snapshot.text)

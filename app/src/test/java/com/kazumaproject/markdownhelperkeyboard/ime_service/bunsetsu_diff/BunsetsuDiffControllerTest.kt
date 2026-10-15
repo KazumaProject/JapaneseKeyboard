@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff
 
 import android.content.Context
+import android.graphics.RectF
 import android.graphics.Color
 import android.graphics.Matrix
 import android.app.Activity
@@ -27,6 +28,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Robolectric
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.util.ReflectionHelpers
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -88,6 +90,61 @@ class BunsetsuDiffControllerTest {
         advanceUntilIdle()
         assertNull(snapshot(controller))
         assertFalse(geometry.last())
+    }
+
+    @Config(sdk = [35])
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun candidatePlacementNeedsNoEditorReplyAndLocksItsReferenceUntilTheSettingChanges() = runTest {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val root = FrameLayout(activity)
+        val keyboard = View(activity)
+        root.addView(keyboard, FrameLayout.LayoutParams(320, 100))
+        activity.setContentView(root)
+        root.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY))
+        root.layout(0, 0, 320, 600)
+        keyboard.layout(0, 500, 320, 600)
+        var candidateMode = true
+        var visibleCandidate = "橋"
+        val locks = mutableListOf<String?>()
+        val monitoring = mutableListOf<Boolean>()
+        val controller = BunsetsuDiffController(activity, this, { true }, { result(it) }, { palette },
+            { monitoring.add(it) }, { _, _ -> true },
+            candidatePlacement = { candidateMode },
+            candidateAnchors = { _, locked ->
+                locks.add(locked)
+                if (locked != null && locked != visibleCandidate) null
+                else BunsetsuDiffCandidateAnchors(visibleCandidate, listOf(RectF(30f, 400f, 80f, 420f)))
+            })
+        fun labels(): List<TextView> = ReflectionHelpers.getField<Map<Int, Any>>(controller, "bubbles")
+            .values.map { ReflectionHelpers.getField(it, "view") }
+        fun mounted() = ReflectionHelpers.getField<Map<Int, Any>>(controller, "bubbles").values.any {
+            ReflectionHelpers.getField<Any?>(it, "params") != null
+        }
+        try {
+            controller.start(keyboard)
+            controller.update("はし", "はし")
+            advanceUntilIdle()
+            assertTrue(mounted())
+            assertFalse(monitoring.last())
+            controller.onAnchor(null)
+            assertTrue(mounted())
+            labels().single().performClick()
+            visibleCandidate = "箸"
+            root.viewTreeObserver.dispatchOnPreDraw()
+            assertEquals("橋", locks.last())
+            assertTrue(labels().isEmpty())
+            assertNotNull(snapshot(controller))
+            candidateMode = false
+            controller.onPlacementChanged()
+            assertTrue(monitoring.last())
+            assertTrue(labels().isEmpty())
+            candidateMode = true
+            controller.onPlacementChanged()
+            assertNull(locks.last())
+            assertTrue(mounted())
+            assertFalse(monitoring.last())
+        } finally { controller.stop(); activity.finish() }
     }
 
     @Test fun aMeasuredBubbleWithoutRoomCanReceiveAnotherGeometryReplyBeforeMounting() = runTest {

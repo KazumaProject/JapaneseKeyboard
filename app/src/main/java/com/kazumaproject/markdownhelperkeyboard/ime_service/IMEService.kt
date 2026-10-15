@@ -282,6 +282,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSugg
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateCorrectionPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff.BunsetsuDiffController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff.BunsetsuDiffSnapshot
+import com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff.BunsetsuDiffCandidateAnchors
+import com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff.bunsetsuDiffCandidateTextAnchors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateDisplayMerger
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
@@ -509,7 +511,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val focusedIndex: Int = 0,
         val splitPatterns: List<List<Int>> = emptyList(),
         val activeSplitPatternIndex: Int = 0,
-        val fromDiff: Boolean = false
+        val fromDiff: Boolean = false,
+        val diffWholeCandidates: List<Candidate> = emptyList(),
+        val diffWholeFullCandidates: List<Candidate> = emptyList(),
     )
 
     private sealed class BunsetsuDisplayedSelection {
@@ -1019,9 +1023,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == null || key == BunsetsuDiffController.ENABLED) {
+            if (key == null || key == BunsetsuDiffController.ENABLED || key == BunsetsuDiffController.PLACEMENT) {
                 runOnMainThread {
                     if (bunsetsuDiffEnabled) startBunsetsuDiff()
+                    if (key == null || key == BunsetsuDiffController.PLACEMENT) {
+                        bunsetsuDiff?.onPlacementChanged()
+                        val session = bunsetsuConversionSession
+                        val main = mainLayoutBinding
+                        if (session?.fromDiff == true && main != null) {
+                            updateSuggestionViewsForBunsetsuSegment(session, session.focusedIndex, main, floatingKeyboardBinding)
+                        }
+                    }
                     refreshBunsetsuDiffPreview()
                 }
             }
@@ -3639,6 +3651,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cursorBaseUpdateRequestMode = 0
     private val bunsetsuDiffEnabled get() = runtimeInputSharedPreferences.getBoolean(BunsetsuDiffController.ENABLED, false)
 
+    private val bunsetsuDiffOnCandidates get() = runtimeInputSharedPreferences.getString(
+        BunsetsuDiffController.PLACEMENT, "editor") == BunsetsuDiffController.CANDIDATES
+
+    private fun candidateStripBunsetsuDiffAnchors(
+        snapshot: BunsetsuDiffSnapshot, lockedCandidate: String?,
+    ): BunsetsuDiffCandidateAnchors? {
+        val rows = listOfNotNull(
+            mainLayoutBinding?.suggestionRecyclerView, mainLayoutBinding?.candidatesRowView,
+            floatingKeyboardBinding?.suggestionRecyclerView, floatingKeyboardBinding?.candidatesRowView,
+        )
+        for (row in rows) {
+            if (!row.isShown || row.hasPendingAdapterUpdates()) continue
+            val adapter = row.adapter as? SuggestionAdapter ?: continue
+            for (index in 0 until row.childCount) {
+                val holder = row.getChildViewHolder(row.getChildAt(index)) as? SuggestionAdapter.SuggestionViewHolder ?: continue
+                val candidate = holder.boundCandidate ?: continue
+                if (holder.bindingAdapter !== adapter || holder.bindingAdapterPosition == RecyclerView.NO_POSITION ||
+                    candidate !in adapter.suggestions || candidate.sourceId != null || candidate.presentation != null ||
+                    candidate.commitText != candidate.string || candidate.length.toInt() != snapshot.reading.length ||
+                    (lockedCandidate != null && candidate.string != lockedCandidate)) continue
+                val ranges = snapshot.candidateRanges[candidate.string] ?: continue
+                val anchors = bunsetsuDiffCandidateTextAnchors(holder.text, candidate.string, ranges) ?: continue
+                if (snapshot.differingIndices.none { anchors[it] != null }) continue
+                return BunsetsuDiffCandidateAnchors(candidate.string, anchors)
+            }
+        }
+        return null
+    }
+
     private fun canShowBunsetsuDiff(): Boolean = bunsetsuDiffEnabled && isInputViewActive &&
         !isFullscreenMode && !currentInputType.isPassword() && !suppressSuggestions &&
         !isKeyboardLayoutEditModeActive() && dictionaryInputConnection == null &&
@@ -3662,6 +3703,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colors = ::resolveCandidatePanelColors,
             requestGeometry = ::requestBunsetsuDiffGeometry,
             onCycle = ::cycleBunsetsuDiff,
+            candidatePlacement = { bunsetsuDiffOnCandidates },
+            candidateAnchors = ::candidateStripBunsetsuDiffAnchors,
             excludedBounds = {
                 (composingGuide?.currentPanelBounds().orEmpty() + dictionaryFloats?.currentPanelBounds().orEmpty() +
                     listOfNotNull(zenzFloatingWindow?.currentBounds(), clipboardFloat?.currentBounds(), floatingCursor?.currentBounds())).map {
@@ -3735,6 +3778,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 segments = snapshot.segments, generation = ++bunsetsuSessionGeneration,
                 conversionSnapshot = null, focusedIndex = index,
                 splitPatterns = listOf(snapshot.splitPositions), fromDiff = true,
+                diffWholeCandidates = currentCandidateStripCandidates.toList(),
+                diffWholeFullCandidates = currentCandidateStripFullCandidates.toList(),
             )
             isHenkan.set(true)
             henkanPressedWithBunsetsuDetect = true
@@ -21645,6 +21690,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         if (session.segments.isEmpty()) return
+        if (session.fromDiff && bunsetsuDiffOnCandidates) {
+            // The anchored sentence remains the reference while individual segments change.
+            setSuggestionAdaptersOnMain(session.diffWholeCandidates, session.diffWholeFullCandidates)
+            suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+            return
+        }
         refreshZenzFloatingCandidates()
         val safeFocusedIndex = focusedIndex.coerceIn(0, session.segments.lastIndex)
         val segment = session.segments[safeFocusedIndex]
@@ -25220,6 +25271,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         val session = bunsetsuConversionSession ?: return false
         if (!isBunsetsuCursorMoveSessionActive()) return false
+        if (session.fromDiff && bunsetsuDiffOnCandidates) {
+            // A normal strip tap still selects its complete sentence candidate.
+            if (displayedCandidates.getOrNull(position) != candidate ||
+                candidate !in session.diffWholeFullCandidates && candidate !in session.diffWholeCandidates) return true
+            clearBunsetsuConversionSession()
+            return false
+        }
         val mainView = mainLayoutBinding ?: return false
 
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)

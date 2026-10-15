@@ -1214,6 +1214,7 @@ class SuggestionAdapter internal constructor(
     }
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var boundCandidate: Candidate? = null
         val formulaView: FormulaView = itemView.findViewById(R.id.suggestion_item_formula_view)
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
         val yomiText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_yomi_text_view)
@@ -2127,6 +2128,7 @@ class SuggestionAdapter internal constructor(
     ) {
         applyCandidateItemBackground(holder.itemView)
         val suggestion = item.candidate
+        holder.boundCandidate = suggestion
         val position = item.candidateIndex
         val formulaPresentation = suggestion.presentation
         val isFormula = formulaPresentation != null

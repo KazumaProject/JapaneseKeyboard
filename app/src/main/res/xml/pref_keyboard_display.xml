@@ -28,6 +28,15 @@
             android:title="@string/bunsetsu_diff_title"
             android:summary="@string/bunsetsu_diff_summary" />
 
+        <ListPreference
+            android:key="bunsetsu_diff_floating_placement"
+            android:dependency="bunsetsu_diff_floating_enabled"
+            android:defaultValue="editor"
+            android:title="@string/bunsetsu_diff_placement_title"
+            android:entries="@array/bunsetsu_diff_placement_entries"
+            android:entryValues="@array/bunsetsu_diff_placement_values"
+            app:useSimpleSummaryProvider="true" />
+
         <SwitchPreferenceCompat
             android:key="composing_guide_text_enabled"
             android:defaultValue="false"

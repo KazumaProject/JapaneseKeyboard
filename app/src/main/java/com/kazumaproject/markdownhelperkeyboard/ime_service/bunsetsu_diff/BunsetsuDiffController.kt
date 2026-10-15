@@ -39,9 +39,15 @@ internal class BunsetsuDiffController(
     private val requestGeometry: (Boolean) -> Unit,
     private val onCycle: (BunsetsuDiffSnapshot, Int) -> Boolean,
     private val excludedBounds: () -> List<Rect> = { emptyList() },
+    private val candidatePlacement: () -> Boolean = { false },
+    private val candidateAnchors: (BunsetsuDiffSnapshot, String?) -> BunsetsuDiffCandidateAnchors? = { _, _ -> null },
     private val allowedSegment: (String, String) -> Boolean = { _, _ -> true },
 ) {
-    companion object { const val ENABLED = "bunsetsu_diff_floating_enabled" }
+    companion object {
+        const val ENABLED = "bunsetsu_diff_floating_enabled"
+        const val PLACEMENT = "bunsetsu_diff_floating_placement"
+        const val CANDIDATES = "candidates"
+    }
 
     private val manager = context.getSystemService(WindowManager::class.java)
     private val coordinates = FloatingWindowCoordinates(manager)
@@ -53,9 +59,14 @@ internal class BunsetsuDiffController(
     private var snapshot: BunsetsuDiffSnapshot? = null
     private var info: CursorAnchorInfo? = null
     private var frozen = false
+    private var referenceCandidate: String? = null
     private var lastArea: Rect? = null
     private var lastOrigin: RectF? = null
     private val bubbles = linkedMapOf<Int, Bubble>()
+    private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
+        if (candidatePlacement()) refresh()
+        true
+    }
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { refresh() }
     private fun dp(value: Int) = (value * context.resources.displayMetrics.density).toInt()
 
@@ -64,6 +75,7 @@ internal class BunsetsuDiffController(
         stop()
         host = view
         view.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
+        view.viewTreeObserver.addOnPreDrawListener(preDrawListener)
     }
 
     fun update(nextReading: String, nextText: String) {
@@ -73,7 +85,7 @@ internal class BunsetsuDiffController(
         reading = nextReading
         text = nextText
         val token = generation
-        requestGeometry(true)
+        requestGeometry(!candidatePlacement())
         job = scope.launch {
             delay(120)
             try {
@@ -81,7 +93,7 @@ internal class BunsetsuDiffController(
                 if (generation != token || !eligible() || frozen) return@launch
                 snapshot = buildBunsetsuDiffSnapshot(nextReading, nextText, result, allowedSegment)
                 refresh()
-                requestGeometry(snapshot?.differingIndices?.isNotEmpty() == true)
+                requestGeometry(!candidatePlacement() && snapshot?.differingIndices?.isNotEmpty() == true)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -98,11 +110,12 @@ internal class BunsetsuDiffController(
         snapshot = current.copy(segments = segments)
         text = snapshot!!.text
         refresh()
-        requestGeometry(true)
+        requestGeometry(!candidatePlacement())
     }
 
     fun onAnchor(value: CursorAnchorInfo?) {
         if (!eligible()) { clear(); return }
+        if (candidatePlacement()) return
         if (value == null || value.composingTextStart < 0 || value.composingText.isNullOrEmpty()) {
             info = null
             dismissBubbles()
@@ -121,14 +134,24 @@ internal class BunsetsuDiffController(
         info = null
         reading = ""; text = ""
         frozen = false
+        referenceCandidate = null
         lastArea = null; lastOrigin = null
         dismissBubbles()
         requestGeometry(false)
     }
 
+    fun onPlacementChanged() {
+        dismissBubbles()
+        referenceCandidate = null
+        lastArea = null; lastOrigin = null
+        requestGeometry(!candidatePlacement() && snapshot != null)
+        refresh()
+    }
+
     fun stop() {
         clear()
         host?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(layoutListener)
+        host?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDrawListener)
         host = null
     }
 
@@ -141,8 +164,11 @@ internal class BunsetsuDiffController(
         if (!eligible()) { clear(); return }
         val view = host?.takeIf { it.isAttachedToWindow } ?: return
         val current = snapshot ?: return
-        val anchorInfo = info ?: return
-        val anchors = bunsetsuDiffAnchors(anchorInfo, current)
+        val inCandidates = candidatePlacement()
+        val candidateGeometry = if (inCandidates) candidateAnchors(current, referenceCandidate.takeIf { frozen }) else null
+        if (inCandidates && candidateGeometry == null) { dismissBubbles(); return }
+        if (candidateGeometry != null) referenceCandidate = candidateGeometry.candidate
+        val anchors = if (inCandidates) candidateGeometry?.bounds else info?.let { bunsetsuDiffAnchors(it, current) }
         if (anchors == null) {
             // An owned candidate change can retain the frozen placements until its reply arrives.
             if (frozen) bubbles.forEach { (index, bubble) -> bubble.setContent(current.segments[index]) }
@@ -151,7 +177,9 @@ internal class BunsetsuDiffController(
         }
         val area = coordinates.safeArea(view)
         val keyboardTop = IntArray(2).also(view::getLocationOnScreen)[1]
-        if (keyboardTop > area.top) area.bottom = minOf(area.bottom, keyboardTop)
+        if (inCandidates) {
+            area.bottom = minOf(area.bottom, anchors.filterNotNull().maxOfOrNull { it.bottom.toInt() + 1 } ?: area.bottom)
+        } else if (keyboardTop > area.top) area.bottom = minOf(area.bottom, keyboardTop)
         val origin = anchors.firstOrNull()
         // Scrolling/rotation invalidates positions, but never changes a locked candidate list.
         val geometryChanged = lastArea != area || (lastOrigin != null && origin != null &&
@@ -175,7 +203,7 @@ internal class BunsetsuDiffController(
                 // Keep the target still while choosing. Hide it if a reflow covers its old spot.
                 fixed.takeIf { area.contains(it) && isBunsetsuDiffBubbleAdjacent(it, anchor, dp(8)) &&
                     occupied.none { other -> Rect.intersects(it, other) } }
-            } else placeBunsetsuDiffBubble(anchor, bubble.view.measuredWidth, bubble.view.measuredHeight, area, occupied, dp(8))
+            } else placeBunsetsuDiffBubble(anchor, bubble.view.measuredWidth, bubble.view.measuredHeight, area, occupied, dp(8), aboveOnly = inCandidates)
             if (bounds == null) { bubble.dismiss(); continue }
             bubble.show(bounds, view)
             occupied.add(bounds)
@@ -210,8 +238,11 @@ internal class BunsetsuDiffController(
 
         init { coordinates.observeLegacyOrigin(view, { params }, ::refresh) }
 
+        private var content: Pair<BunsetsuSegmentState, CandidatePanelColors>? = null
         fun setContent(segment: BunsetsuSegmentState) {
             val palette = colors()
+            if (content == (segment to palette)) return
+            content = segment to palette
             val label = SpannableStringBuilder()
             segment.candidates.forEachIndexed { i, candidate ->
                 if (i > 0) label.append("\n")
@@ -235,6 +266,7 @@ internal class BunsetsuDiffController(
         }
 
         fun show(rect: Rect, host: View) {
+            if (params != null && bounds == rect) return
             bounds = Rect(rect)
             val p = params ?: WindowManager.LayoutParams(rect.width(), rect.height(),
                 WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL,

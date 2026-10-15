@@ -158,7 +158,46 @@ class BunsetsuDiffDeviceTest {
         assertEquals(prefix + options[1], text())
     }
 
-    private fun withEditor(live: Boolean, denyGeometry: Boolean = false, action: () -> Unit) {
+    @Test fun candidateStripModeWorksWithoutEditorGeometryAndKeepsItsSentenceAnchor() =
+        withEditor(live = false, denyGeometry = true, placement = "candidates") {
+            type("ashitahatoukyouniikimasu")
+            val raw = "あしたはとうきょうにいきます"
+            await("Raw composition did not arrive") { text() == raw && composing() }
+            await("No candidate-strip alternatives without editor geometry") { bubbles().size >= 2 }
+            val candidateId = "${context.packageName}:id/suggestion_item_text_view"
+            val candidates = nodes().filter { it.viewIdResourceName == candidateId }.map { it.text.toString() }
+            val bubble = bubbles().first()
+            val options = choices(bubble)
+            val label = bubble.text.toString()
+            val position = bounds(bubble)
+            assertTrue(raw.contains(options[0]))
+            assertTrue(nodes().filter { it.viewIdResourceName == candidateId }.any {
+                val rect = bounds(it)
+                position.bottom < rect.top && position.centerX() in rect.left..rect.right
+            })
+            capture("candidate-strip-preview")
+            tap(position)
+            await("Candidate-strip tap changed an unrelated range") { text() == raw.replaceFirst(options[0], options[1]) && composing() }
+            await("Anchored sentence was replaced by segment candidates") {
+                nodes().filter { it.viewIdResourceName == candidateId }.map { it.text.toString() } == candidates
+            }
+            assertEquals(position, bounds(bubbles().first { it.text.toString() == label }))
+            SystemClock.sleep(1500)
+            assertEquals(position, bounds(bubbles().first { it.text.toString() == label }))
+            capture("candidate-strip-selected")
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            preferences.edit().putString("bunsetsu_diff_floating_placement", "editor").commit()
+            await("Editor mode must hide when its text geometry is unavailable") { bubbles().isEmpty() }
+            preferences.edit().putString("bunsetsu_diff_floating_placement", "candidates").commit()
+            await("Switching back lost the frozen candidates") { bubbles().any { it.text.toString() == label } }
+            val beforeCommit = candidates.first().trim()
+            val target = nodes().first { it.viewIdResourceName == candidateId && it.text.toString() == candidates.first() }
+            tap(bounds(target))
+            await("Normal sentence candidate tap no longer commits the sentence") { text() == beforeCommit && !composing() }
+            await("Committed candidate left stale bubbles") { bubbles().isEmpty() }
+        }
+
+    private fun withEditor(live: Boolean, denyGeometry: Boolean = false, placement: String = "editor", action: () -> Unit) {
         check(context.packageName.startsWith("com.kazumaproject.floatingqa")) { "Use investigation/floating-panel.init.gradle" }
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val previous = preferences.all.toMap()
@@ -176,6 +215,7 @@ class BunsetsuDiffDeviceTest {
                 .putString("keyboard_order_preference", "[\"ROMAJI\"]")
                 .putBoolean("save_last_used_keyboard", false)
                 .putBoolean(enabledKey, true)
+                .putString("bunsetsu_diff_floating_placement", placement)
                 .putBoolean("live_conversion_preference", live)
                 .putBoolean("conversion_bunsetsu_separation_preference", false)
                 .putBoolean("conversion_bunsetsu_cursor_move_preference", false)

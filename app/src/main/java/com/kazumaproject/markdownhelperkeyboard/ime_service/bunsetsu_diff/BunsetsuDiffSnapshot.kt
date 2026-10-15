@@ -9,6 +9,7 @@ internal data class BunsetsuDiffSnapshot(
     val reading: String,
     val segments: List<BunsetsuSegmentState>,
     val splitPositions: List<Int>,
+    val candidateRanges: Map<String, List<IntRange>> = emptyMap(),
 ) {
     val text: String get() = segments.joinToString("") { it.displayText }
     val differingIndices: List<Int> get() = segments.indices.filter { segments[it].candidates.size > 1 }
@@ -65,5 +66,15 @@ internal fun buildBunsetsuDiffSnapshot(
             candidatesLoaded = true,
         )
     }
-    return BunsetsuDiffSnapshot(reading, segments, splits).takeIf { it.text == displayedText }
+    val candidateRanges = paths.mapNotNull { (candidate, nodes) ->
+        var offset = 0
+        val ranges = boundaries.zipWithNext().map { (start, end) ->
+            val piece = output(nodes, start, end) ?: return@mapNotNull null
+            (offset until offset + piece.length).also { offset += piece.length }
+        }
+        candidate to ranges
+    }.toMap().toMutableMap()
+    // An ordinary literal candidate has an exact identity mapping as well.
+    candidateRanges[reading] = boundaries.zipWithNext().map { (start, end) -> start until end }
+    return BunsetsuDiffSnapshot(reading, segments, splits, candidateRanges).takeIf { it.text == displayedText }
 }

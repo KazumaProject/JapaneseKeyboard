@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.bunsetsu_diff
 import android.graphics.Rect
 import android.graphics.RectF
 import android.view.inputmethod.CursorAnchorInfo
+import android.widget.TextView
 import kotlin.math.roundToInt
 import kotlin.math.abs
 
@@ -41,15 +42,51 @@ internal fun bunsetsuDiffAnchors(info: CursorAnchorInfo, snapshot: BunsetsuDiffS
 
 /** Stay near the associated text, outside the text and previously placed panels. */
 internal fun placeBunsetsuDiffBubble(
-    anchor: RectF, width: Int, height: Int, area: Rect, obstacles: List<Rect>, gap: Int,
+    anchor: RectF, width: Int, height: Int, area: Rect, obstacles: List<Rect>, gap: Int, aboveOnly: Boolean = false,
 ): Rect? {
     if (area.isEmpty || width <= 0 || height <= 0 || width > area.width() || height > area.height()) return null
     if (!RectF.intersects(anchor, RectF(area))) return null
     val left = (anchor.centerX() - width / 2f).roundToInt().coerceIn(area.left, area.right - width)
     // Use only the immediately adjacent positions. Do not shift to a different segment's row.
-    val tops = listOf(anchor.top.toInt() - gap - height, anchor.bottom.toInt() + gap)
+    val tops = listOfNotNull(anchor.top.toInt() - gap - height,
+        (anchor.bottom.toInt() + gap).takeUnless { aboveOnly })
     return tops.asSequence().map { Rect(left, it, left + width, it + height) }.firstOrNull { candidate ->
         area.contains(candidate) && isBunsetsuDiffBubbleAdjacent(candidate, anchor, gap) &&
             obstacles.none { Rect.intersects(it, candidate) }
+    }
+}
+
+
+internal data class BunsetsuDiffCandidateAnchors(val candidate: String, val bounds: List<RectF?>)
+
+/** Use the actual rendered candidate, including its adapter padding and viewport clipping. */
+internal fun bunsetsuDiffCandidateTextAnchors(
+    label: TextView, candidate: String, ranges: List<IntRange>,
+): List<RectF?>? {
+    if (!label.isShown || candidate.isEmpty()) return null
+    val layout = label.layout ?: return null
+    val text = label.text.toString()
+    val offset = text.indexOf(candidate)
+    if (offset < 0) return null
+    val visible = Rect()
+    if (!label.getLocalVisibleRect(visible)) return null
+    val location = IntArray(2).also(label::getLocationOnScreen)
+    // Global visible bounds use the IME root's origin, which differs from the screen.
+    visible.offset(location[0] - label.scrollX, location[1] - label.scrollY)
+    val x = location[0] + label.totalPaddingLeft - label.scrollX
+    val y = location[1] + label.totalPaddingTop - label.scrollY
+    return ranges.map { range ->
+        if (range.isEmpty() || range.first < 0 || range.last >= candidate.length) return@map null
+        val start = offset + range.first
+        val end = offset + range.last + 1
+        val line = layout.getLineForOffset(start)
+        if (layout.getLineForOffset(end - 1) != line) return@map null
+        val ellipsis = layout.getEllipsisStart(line) + layout.getLineStart(line)
+        if (layout.getEllipsisCount(line) > 0 && end > ellipsis) return@map null
+        val a = layout.getPrimaryHorizontal(start)
+        val b = layout.getPrimaryHorizontal(end)
+        val rect = RectF(x + minOf(a, b), y + layout.getLineTop(line).toFloat(),
+            x + maxOf(a, b), y + layout.getLineBottom(line).toFloat())
+        rect.takeIf { !it.isEmpty && RectF(visible).contains(it) }
     }
 }
