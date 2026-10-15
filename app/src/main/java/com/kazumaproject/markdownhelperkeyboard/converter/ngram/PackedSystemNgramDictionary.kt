@@ -7,6 +7,7 @@ import java.util.zip.CRC32
 
 class PackedSystemNgramDictionary private constructor(
     private val bytes: ByteArray,
+    private val standalone: Boolean = false,
 ) : SystemNgramDictionary {
     private val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
     private val formatVersion = buffer.getInt(4)
@@ -49,8 +50,16 @@ class PackedSystemNgramDictionary private constructor(
             .toIntArray()
     }
 
-    override fun matchesSingleNode(node: Node): Boolean {
-        if (formatVersion != UNIGRAM_VERSION || node.tango == "BOS" || node.tango == "EOS") {
+    override fun matchesStandaloneNode(node: Node, input: String?): Boolean =
+        standalone && !input.isNullOrEmpty() && node.sPos == 0 &&
+            node.len.toInt() == input.length && node.yomiUsed == input && node.tango == input &&
+            matchesUnigramNode(node)
+
+    override fun matchesSingleNode(node: Node): Boolean =
+        !standalone && matchesUnigramNode(node)
+
+    private fun matchesUnigramNode(node: Node): Boolean {
+        if ((formatVersion != UNIGRAM_VERSION && formatVersion != STANDALONE_VERSION) || node.tango == "BOS" || node.tango == "EOS") {
             return false
         }
         val local = checkNotNull(scratch.get())
@@ -155,7 +164,7 @@ class PackedSystemNgramDictionary private constructor(
     }
 
     override fun mayMatchFirstNode(node: Node): Boolean {
-        if (node.tango == "BOS" || node.tango == "EOS") return false
+        if (standalone || node.tango == "BOS" || node.tango == "EOS") return false
         var wordHash = 0
         var wordHashReady = false
         for (kind in firstNodeKindKeys) {
@@ -518,7 +527,8 @@ class PackedSystemNgramDictionary private constructor(
     private fun verify() {
         require(bytes.size >= HEADER_SIZE) { "Truncated n-gram header" }
         require(buffer.getInt(0) == MAGIC) { "Invalid n-gram magic" }
-        require(formatVersion == VERSION || formatVersion == UNIGRAM_VERSION) {
+        require(if (standalone) formatVersion == STANDALONE_VERSION
+            else formatVersion == VERSION || formatVersion == UNIGRAM_VERSION) {
             "Unsupported n-gram version"
         }
         require(buffer.getInt(56) == bytes.size) { "Invalid n-gram file size" }
@@ -704,6 +714,7 @@ class PackedSystemNgramDictionary private constructor(
         private const val MAGIC = 0x4A4B4E47
         private const val VERSION = 3
         private const val UNIGRAM_VERSION = 4
+        private const val STANDALONE_VERSION = 5
         private const val HEADER_SIZE = 80
         private const val BLOCK_SIZE = 16
         private const val MAX_BUCKET_COUNT = 65536
@@ -718,6 +729,9 @@ class PackedSystemNgramDictionary private constructor(
         private const val MIX_2 = -4265267296055464877L
 
         /** Takes ownership of [bytes]; the reader never copies the dictionary. */
+        fun readStandalone(bytes: ByteArray): PackedSystemNgramDictionary =
+            PackedSystemNgramDictionary(bytes, standalone = true)
+
         fun read(bytes: ByteArray): PackedSystemNgramDictionary = PackedSystemNgramDictionary(bytes)
     }
 }

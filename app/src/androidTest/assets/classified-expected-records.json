@@ -24,8 +24,8 @@
     }
   },
   "character": {
-    "count": 8870,
-    "digestSum": "51b1985599a5c30adc3aa6a6c976c76cb9037b91dc18ed043773fdce72d6b92f",
+    "count": 8871,
+    "digestSum": "83fbcba5d1d1ba49508ecf809747f51eb82bb12ee7afedd806b0a5975f803d4c",
     "sample": {
       "reading": "あいあむどっしー",
       "surface": "アイアムどっしー"
@@ -72,16 +72,16 @@
     }
   },
   "organization": {
-    "count": 47185,
-    "digestSum": "3d191aa546c1690b5a0b48cdbd2ff472c3217150e23043c538c1c56d689a5f7c",
+    "count": 47184,
+    "digestSum": "51e7457a3c95d05af7f7a9907887e7f4a3530f5b782c4c3dfcfc9708a15f536f",
     "sample": {
       "reading": "ああせいこー",
       "surface": "アアセイコー"
     }
   },
   "person": {
-    "count": 277028,
-    "digestSum": "0ba545ef168886460ccd1d1e749b643dc2a4936b55646537efb41cb08e6f1a0d",
+    "count": 277027,
+    "digestSum": "55b8b0658d0d6acf5449e4220ccb42001fa59ce90db37f8927b81f10aed40fdd",
     "sample": {
       "reading": "ぁみにぃ",
       "surface": "ぁみにぃ"
@@ -113,7 +113,7 @@
   },
   "term": {
     "count": 127770,
-    "digestSum": "5b3d056354d20d91899bebe0a7484d5c348927e0f6e31e44e08fb987fd0e0c66",
+    "digestSum": "530f78017e67fe3e1a69a0105d27357038f793a7521bded5079d87d73815a95b",
     "sample": {
       "reading": "ああかむ",
       "surface": "ああかむ"
