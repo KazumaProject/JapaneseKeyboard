@@ -1,0 +1,11 @@
+
+com.kazumaproject.markdownhelperkeyboard.converter.StandaloneUnigramInstrumentedTest:.
+com.kazumaproject.markdownhelperkeyboard.converter.ClassifiedDictionaryInstrumentedTest:...
+com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramAssetInstrumentedTest:.
+com.kazumaproject.markdownhelperkeyboard.converter.SystemNgramCandidatePerformanceInstrumentedTest:.
+
+Time: 40.014
+
+OK (6 tests)
+
+

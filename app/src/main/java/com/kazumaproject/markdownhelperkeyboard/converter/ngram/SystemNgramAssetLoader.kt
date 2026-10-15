@@ -7,9 +7,12 @@ object SystemNgramAssetLoader {
     private const val NGRAM_ASSET_PATH = "ngram/system_ngram.dat"
     private const val UNIGRAM_ASSET_PATH = "ngram/system_ngram_unigram.dat"
 
+    private const val STANDALONE_ASSET_PATH = "ngram/system_ngram_standalone_unigram.dat"
+
     fun load(context: Context): SystemNgramDictionary {
         val dictionaries = buildList {
             add(loadAsset(context, NGRAM_ASSET_PATH))
+            add(loadAsset(context, STANDALONE_ASSET_PATH))
             try {
                 add(loadAsset(context, UNIGRAM_ASSET_PATH))
             } catch (_: FileNotFoundException) {
@@ -37,6 +40,10 @@ object SystemNgramAssetLoader {
             require(input.read() == -1) {
                 "System n-gram asset size changed while reading: $assetPath"
             }
-            PackedSystemNgramDictionary.read(bytes)
+            if (assetPath == STANDALONE_ASSET_PATH) {
+                PackedSystemNgramDictionary.readStandalone(bytes)
+            } else {
+                PackedSystemNgramDictionary.read(bytes)
+            }
         }
 }

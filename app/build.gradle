@@ -913,31 +913,37 @@ tasks.register("generateMozcSegmenterData") {
 def systemNgramAsset = file("src/main/assets/ngram/system_ngram.dat")
 def systemNgramBuildReport = layout.buildDirectory.file("reports/system-ngram/asset.txt")
 
+def systemNgramAssets = [
+    "system_ngram.dat": 3,
+    "system_ngram_unigram.dat": 4,
+    "system_ngram_standalone_unigram.dat": 5,
+].collectEntries { name, version -> [(file("src/main/assets/ngram/$name")): version] }
+
 tasks.register("verifySystemNgramAsset") {
-    inputs.file(systemNgramAsset)
+    inputs.files(systemNgramAssets.keySet())
     outputs.file(systemNgramBuildReport)
     doLast {
-        byte[] bytes = systemNgramAsset.bytes
-        if (bytes.length < 80) throw new GradleException("Truncated system n-gram asset")
-        def littleInt = { int offset ->
-            ((bytes[offset] & 0xff) |
-                ((bytes[offset + 1] & 0xff) << 8) |
-                ((bytes[offset + 2] & 0xff) << 16) |
-                ((bytes[offset + 3] & 0xff) << 24)) as int
+        def reports = []
+        systemNgramAssets.each { asset, version ->
+            byte[] bytes = asset.bytes
+            if (bytes.length < 80) throw new GradleException("Truncated system dictionary: $asset.name")
+            def buffer = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            if (buffer.getInt(0) != 0x4A4B4E47 || buffer.getInt(4) != version) {
+                throw new GradleException("Invalid system dictionary magic/version: $asset.name")
+            }
+            if (buffer.getInt(56) != bytes.length) throw new GradleException("System dictionary size mismatch: $asset.name")
+            def crc = new java.util.zip.CRC32()
+            crc.update(bytes, 80, bytes.length - 80)
+            if (Integer.toUnsignedLong(buffer.getInt(60)) != crc.value) {
+                throw new GradleException("System dictionary CRC mismatch: $asset.name")
+            }
+            def digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+                .collect { String.format("%02x", it & 0xff) }.join()
+            reports.add("asset=${asset.name}\nversion=$version\nruleCount=${buffer.getInt(8)}\nbytes=${bytes.length}\nsha256=$digest\n")
         }
-        if (littleInt(0) != 0x4A4B4E47) throw new GradleException("Invalid system n-gram magic")
-        if (littleInt(4) != 3) throw new GradleException("System n-gram asset is not version 3")
-        if (littleInt(56) != bytes.length) throw new GradleException("System n-gram file size mismatch")
-        def crc = new java.util.zip.CRC32()
-        crc.update(bytes, 80, bytes.length - 80)
-        if (Integer.toUnsignedLong(littleInt(60)) != crc.value) {
-            throw new GradleException("System n-gram CRC mismatch")
-        }
-        def digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
-            .collect { String.format("%02x", it & 0xff) }.join()
         def report = systemNgramBuildReport.get().asFile
         report.parentFile.mkdirs()
-        report.text = "version=3\nruleCount=${littleInt(8)}\nbytes=${bytes.length}\nsha256=${digest}\n"
+        report.text = reports.join("\n")
     }
 }
 
@@ -957,7 +963,7 @@ tasks.register("installSystemNgramAsset", Copy) {
 def systemNgramZip = layout.buildDirectory.file("distributions/system-ngram-assets.zip")
 tasks.register("packageSystemNgramAssetZip", Zip) {
     dependsOn("verifySystemNgramAsset")
-    from(systemNgramAsset) {
+    from(systemNgramAssets.keySet()) {
         into("app/src/main/assets/ngram")
     }
     archiveFileName = "system-ngram-assets.zip"
@@ -969,12 +975,14 @@ tasks.register("verifySystemNgramAssetZip") {
     inputs.file(systemNgramZip)
     doLast {
         new java.util.zip.ZipFile(systemNgramZip.get().asFile).withCloseable { zip ->
-            def entry = zip.getEntry("app/src/main/assets/ngram/system_ngram.dat")
-            if (entry == null || entry.size != systemNgramAsset.length()) {
-                throw new GradleException("ZIP does not contain the generated system n-gram asset")
-            }
-            if (!Arrays.equals(zip.getInputStream(entry).bytes, systemNgramAsset.bytes)) {
-                throw new GradleException("ZIP system n-gram content differs from the generated asset")
+            systemNgramAssets.keySet().each { asset ->
+                def entry = zip.getEntry("app/src/main/assets/ngram/${asset.name}")
+                if (entry == null || entry.size != asset.length()) {
+                    throw new GradleException("ZIP does not contain system dictionary: $asset.name")
+                }
+                if (!Arrays.equals(zip.getInputStream(entry).bytes, asset.bytes)) {
+                    throw new GradleException("ZIP system dictionary content differs: $asset.name")
+                }
             }
         }
     }

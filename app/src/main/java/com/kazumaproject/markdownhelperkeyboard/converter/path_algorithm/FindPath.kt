@@ -1125,6 +1125,17 @@ class FindPath(
         val resultFinal = mutableListOf<Candidate>()
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
+        val dictionary = systemNgramDictionaryProvider()
+        val standaloneMayMatch = graph[length]?.any { dictionary.matchesStandaloneNode(it, length) } == true
+        val matched = HashSet<String>()
+        val searchCount = if (standaloneMayMatch) maxOf(n * 4, 32).coerceAtMost(64) else n
+        fun ranked(): MutableList<Candidate> {
+            if (!standaloneMayMatch) return resultFinal
+            return resultFinal.map {
+                if (it.string in matched) it.copy(standaloneUnigramMatched = true) else it
+            }.sortedWith(compareByDescending<Candidate> { it.standaloneUnigramMatched }.thenBy { it.score })
+                .take(n).toMutableList()
+        }
 
         val searchScratch = sessionState?.backwardSearchScratch ?: BackwardSearchScratch()
         searchScratch.begin(
@@ -1148,7 +1159,7 @@ class FindPath(
                     sourceMask = 0,
                 )
             )
-        } ?: return resultFinal
+        } ?: return ranked()
 
         var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
@@ -1161,6 +1172,10 @@ class FindPath(
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
 
+                val single = element.next
+                if (single?.next?.node?.tango == "EOS" && dictionary.matchesStandaloneNode(single.node, length)) {
+                    matched.add(stringFromNode)
+                }
                 if (foundStrings.add(stringFromNode)) {
                     candidateSegmentCollector?.set(
                         stringFromNode,
@@ -1182,8 +1197,8 @@ class FindPath(
                     resultFinal.add(candidate)
                 }
 
-                if (resultFinal.size >= n) {
-                    return resultFinal
+                if (resultFinal.size >= searchCount || (resultFinal.size >= n && matched.isNotEmpty())) {
+                    return ranked()
                 }
             } else {
                 if (sessionState != null) {
@@ -1227,7 +1242,7 @@ class FindPath(
             }
         }
 
-        return resultFinal
+        return ranked()
     }
 
     private fun forwardDp(
@@ -1797,7 +1812,11 @@ class FindPath(
         val ngramRuleScorer = ngramRuleScorerProvider()
         val systemNgramDictionary = systemNgramDictionaryProvider()
         val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
-        val systemNgramMayAffectCandidates =
+        var standaloneMatched = false
+        val standaloneMayAffectCandidates = graph[length]?.any {
+            systemNgramDictionary.matchesStandaloneNode(it, length)
+        } == true
+        val systemNgramMayAffectCandidates = standaloneMayAffectCandidates ||
             systemNgramDictionary.ruleCount != 0 &&
                 latticeMayContainSystemNgram(
                     graph = graph,
@@ -1862,6 +1881,16 @@ class FindPath(
                     ),
                 )
 
+                // Standalone matching uses the entire path, including later duplicate surfaces.
+                // A corrected node keeps its dictionary reading in yomiUsed; its range covers
+                // the consumed input. Never run this matcher over individual bunsetsu nodes.
+                val singleNode = element.next
+                if (singleNode?.next?.node?.tango == "EOS" &&
+                    systemNgramDictionary.matchesStandaloneNode(singleNode.node, length)
+                ) {
+                    standaloneMatched = true
+                    systemNgramMatchedCandidates.add(stringFromNode)
+                }
                 if (foundStrings.add(stringFromNode)) {
                     candidateSegmentCollector?.set(
                         stringFromNode,
@@ -1929,7 +1958,8 @@ class FindPath(
                     }
                 } else if (
                     resultFinal.size >= internalCandidateCount ||
-                        (enoughCandidates && systemRuleAlreadyMatched)
+                        (enoughCandidates && systemRuleAlreadyMatched &&
+                            (!standaloneMayAffectCandidates || standaloneMatched))
                 ) {
                     val ranked = rankSystemNgramCandidates(resultFinal, systemNgramMatchedCandidates, n)
                     recordBackwardSearchDuration()

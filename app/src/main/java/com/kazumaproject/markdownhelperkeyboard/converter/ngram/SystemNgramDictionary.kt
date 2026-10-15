@@ -6,7 +6,10 @@ interface SystemNgramDictionary {
     val ruleCount: Int
     val storageBytes: Int
 
-    /** Returns true when a single conversion node matches a unigram rule. */
+    /** Whole-input node only; yomiUsed may be the omission/typo-corrected reading. */
+    fun matchesStandaloneNode(node: Node, inputLength: Int): Boolean = false
+
+    /** Returns true when a single conversion node matches a per-node unigram rule. */
     fun matchesSingleNode(node: Node): Boolean = false
 
     fun matches(

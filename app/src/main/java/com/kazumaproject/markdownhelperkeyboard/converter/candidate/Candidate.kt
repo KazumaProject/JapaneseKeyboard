@@ -25,5 +25,7 @@ data class Candidate(
     val conversionSegments: List<CandidateConversionSegment> = emptyList(),
     /** Date format identity for daily date candidates that can be reordered or disabled. */
     val dateFormat: DateCandidateFormat? = null,
+    /** Whole-input standalone unigram match, including corrected readings. Never changes score. */
+    val standaloneUnigramMatched: Boolean = false,
     val dictionaryCategories: Set<DictionaryCategory> = emptySet(),
 )

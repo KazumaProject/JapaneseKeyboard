@@ -3,9 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.converter.ngram
 import com.kazumaproject.graph.Node
 
 /**
- * Presents the version-3 n-gram and version-4 unigram assets as one scoreless dictionary.
+ * Presents v3 n-gram, v4 per-node unigram and v5 standalone assets through one runtime gate.
  *
- * The two binary formats share the same packed storage layout but have different matching
+ * The three binary formats share the same packed storage layout but have different matching
  * arities. Keeping the physical readers separate lets each reader retain its strict validation
  * while the path search can query both through the existing runtime gate.
  */
@@ -18,6 +18,9 @@ class CompositeSystemNgramDictionary(
 
     override val ruleCount: Int = dictionaries.sumOf { it.ruleCount }
     override val storageBytes: Int = dictionaries.sumOf { it.storageBytes }
+
+    override fun matchesStandaloneNode(node: Node, inputLength: Int): Boolean =
+        dictionaries.any { it.matchesStandaloneNode(node, inputLength) }
 
     override fun matchesSingleNode(node: Node): Boolean =
         dictionaries.any { it.matchesSingleNode(node) }

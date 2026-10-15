@@ -1318,7 +1318,8 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + classifiedCandidates + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareByDescending<Candidate> { it.standaloneUnigramMatched }
+                .thenBy { it.score }.thenBy { it.string })
 
         val englishReadingDeferred = deferredEnglishReadingCandidates(input, resultList)
         return resultListFinal + englishReadingDeferred + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
@@ -2778,7 +2779,8 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + classifiedCandidates + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareByDescending<Candidate> { it.standaloneUnigramMatched }
+                .thenBy { it.score }.thenBy { it.string })
 
         return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
@@ -3241,7 +3243,8 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred + readingCorrectionListDeferred + classifiedCandidates + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareByDescending<Candidate> { it.standaloneUnigramMatched }
+                .thenBy { it.score }.thenBy { it.string })
 
         return resultListFinal + deferredEnglishReadingCandidates(input, resultList) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
