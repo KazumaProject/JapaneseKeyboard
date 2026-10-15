@@ -96,7 +96,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context), Ke
      */
     override fun onDraw(canvas: Canvas) {
         // These cells draw temporary drawables directly, so no Drawable.Callback owns their frames.
-        if (skinId == KeyboardSkinId.FEVER && isShown) postInvalidateOnAnimation()
+        if (skinId == KeyboardSkinId.FEVER && com.kazumaproject.core.ui.skin.FeverKeyPulse.hasMotionSession && isShown) postInvalidateOnAnimation()
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
             val direction = currentDirection.skinDirection()
             skin.popupDrawable(resources, direction).apply {

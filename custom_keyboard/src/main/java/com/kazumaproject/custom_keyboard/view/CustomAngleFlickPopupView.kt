@@ -195,7 +195,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         // These cells draw temporary drawables directly, so no Drawable.Callback owns their frames.
-        if (skinId == KeyboardSkinId.FEVER && isShown) postInvalidateOnAnimation()
+        if (skinId == KeyboardSkinId.FEVER && com.kazumaproject.core.ui.skin.FeverKeyPulse.hasMotionSession && isShown) postInvalidateOnAnimation()
         super.onDraw(canvas)
         KeyboardSkinRegistry.find(skinId)?.let { skin ->
             fun cell(label: String, x: Float, y: Float, selected: Boolean) {

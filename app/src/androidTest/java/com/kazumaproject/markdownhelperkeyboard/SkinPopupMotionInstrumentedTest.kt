@@ -51,6 +51,7 @@ class SkinPopupMotionInstrumentedTest {
                         event.source = InputDevice.SOURCE_TOUCHSCREEN
                         try { check(ins.uiAutomation.injectInputEvent(event, true)) } finally { event.recycle() }
                     }
+                    ins.runOnMainSync { com.kazumaproject.core.ui.skin.FeverKeyPulse.pulse(android.graphics.Color.CYAN, 2) }
                     println("FEVER popup down hold=$hold")
                     touch(MotionEvent.ACTION_DOWN)
                     try {
@@ -101,6 +102,7 @@ class SkinPopupMotionInstrumentedTest {
                 }
             } finally { ins.runOnMainSync { host.finish() } }
         } finally {
+            ins.runOnMainSync { com.kazumaproject.core.ui.skin.FeverKeyPulse.clear() }
             if (originalScale == "null") shell("settings delete global animator_duration_scale")
             else shell("settings put global animator_duration_scale $originalScale")
         }

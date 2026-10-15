@@ -101,6 +101,8 @@ class FeverEffectViewTest {
             key.recycle()
             val state = requireNotNull(skin.popupDrawable(context.resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER).constantState)
             val popup = state.newDrawable(context.resources).mutate()
+            // The real IME starts the pulse on Down, including before a character is committed.
+            com.kazumaproject.core.ui.skin.FeverKeyPulse.pulse(Color.CYAN, 2)
             // The finger can stay held longer than a character pulse. Popup frames must continue.
             SystemClock.sleep(750); val first = render(popup)
             SystemClock.sleep(170); val second = render(popup)
@@ -108,6 +110,11 @@ class FeverEffectViewTest {
             for (y in 40 until 120) for (x in 60 until 180)
                 assertEquals("Popup label surface must stay stable", first.getPixel(x, y), second.getPixel(x, y))
             first.recycle(); second.recycle()
+            com.kazumaproject.core.ui.skin.FeverKeyPulse.clear()
+            val stopped = render(popup)
+            SystemClock.sleep(180); val still = render(popup)
+            assertTrue("Password/teardown clear must also stop popup animation", stopped.sameAs(still))
+            stopped.recycle(); still.recycle()
         } finally {
             com.kazumaproject.core.ui.skin.FeverKeyPulse.clear()
             method.invoke(null, previous)

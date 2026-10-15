@@ -15,6 +15,7 @@ internal object FeverPopupMotion {
         override fun run() {
             val target = reference.get() ?: return
             if (!target.isAttachedToWindow) return
+            if (!FeverKeyPulse.hasMotionSession) { clear(target); return }
             fun redraw(view: View) {
                 view.invalidate()
                 if (view is ViewGroup) for (index in 0 until view.childCount) redraw(view.getChildAt(index))
@@ -27,6 +28,7 @@ internal object FeverPopupMotion {
     fun show(view: View) {
         view.animate().cancel(); view.alpha = 1f; view.scaleX = 1f; view.scaleY = 1f
         clear(view)
+        if (!FeverKeyPulse.hasMotionSession) return
         val loop = FrameLoop(view)
         loops[view] = loop
         view.addOnAttachStateChangeListener(loop)

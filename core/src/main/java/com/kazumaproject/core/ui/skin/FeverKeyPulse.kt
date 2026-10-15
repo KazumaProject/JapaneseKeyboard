@@ -14,6 +14,8 @@ object FeverKeyPulse {
     internal var color = Color.CYAN; private set
     internal var strength = 2; private set
     internal var sequence = 0; private set
+    /** A held popup outlives the short pulse, but cannot animate after IME/session teardown. */
+    val hasMotionSession get() = started > 0
     private var celebrationUntil = 0L
     internal fun register(key: FeverKeyDrawable) { keys[key] = true }
     fun pulse(accent: Int, intensity: Int, celebration: Boolean = false) {
@@ -78,9 +80,10 @@ internal class FeverKeyDrawable(private val base: Drawable, private val dp: Floa
         unscheduleSelf(frame)
         if (bounds.isEmpty || !isVisible) return
         val now = SystemClock.uptimeMillis()
-        val active = FeverKeyPulse.started > 0 && now < FeverKeyPulse.until
+        val active = FeverKeyPulse.hasMotionSession && now < FeverKeyPulse.until
+        val popupMotion = popup && FeverKeyPulse.hasMotionSession
         val age = (now - FeverKeyPulse.started).coerceAtLeast(0)
-        val energy = if (popup) 1f else if (active) minOf(1f, (FeverKeyPulse.until - now) / 180f) else 0f
+        val energy = if (popupMotion) 1f else if (active) minOf(1f, (FeverKeyPulse.until - now) / 180f) else 0f
         if (cachedBounds != bounds) {
             cachedBounds.set(bounds)
             cap.set(bounds); cap.inset(1.5f * dp, 1.5f * dp)
@@ -89,7 +92,7 @@ internal class FeverKeyDrawable(private val base: Drawable, private val dp: Floa
             glint = SweepGradient(cap.centerX(), cap.centerY(), FeverSpectrum.colors, null)
         }
         canvas.save()
-        if (popup && active && age < 240) {
+        if (popupMotion && active && age < 240) {
             // Pop the painted cap only; popup geometry and touch ownership remain fixed.
             val t = age / 240f
             val scale = 1 - .14f * exp(-t * 6) * cos(t * 10)
@@ -97,14 +100,14 @@ internal class FeverKeyDrawable(private val base: Drawable, private val dp: Floa
         }
         base.draw(canvas)
         paint.style = Paint.Style.STROKE; paint.strokeJoin = Paint.Join.ROUND; paint.strokeCap = Paint.Cap.ROUND
-        rotation.setRotate(if (active || popup) (now % 1600) / 1600f * 360 else 0f, cap.centerX(), cap.centerY())
+        rotation.setRotate(if (active || popupMotion) (now % 1600) / 1600f * 360 else 0f, cap.centerX(), cap.centerY())
         glint?.setLocalMatrix(rotation); paint.shader = glint
         // One fine core plus a low-opacity halo, never the former broad filled edge bands.
         paint.alpha = (opacity * energy * .16f).toInt(); paint.strokeWidth = 2.6f * dp
         if (energy > 0) canvas.drawPath(path, paint)
         paint.alpha = (opacity * (.9f + energy * .1f)).toInt(); paint.strokeWidth = (.75f + energy * .2f) * dp
         canvas.drawPath(path, paint); paint.shader = null
-        if (active || popup) {
+        if (active || popupMotion) {
             val distance = ((now % 720) / 720f + FeverKeyPulse.sequence * .073f) % 1f * measure.length
             repeat(if (popup) 3 else 2) { index ->
                 val head = (distance + index * measure.length / 2.7f) % measure.length
@@ -124,6 +127,6 @@ internal class FeverKeyDrawable(private val base: Drawable, private val dp: Floa
             }
         }
         canvas.restore()
-        if (active || popup) scheduleSelf(frame, now + 16)
+        if (active || popupMotion) scheduleSelf(frame, now + 16)
     }
 }
