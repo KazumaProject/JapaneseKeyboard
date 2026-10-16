@@ -132,6 +132,11 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
             true
         }
 
+        findPreference<Preference>("dictionary_browser_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.dictionaryBrowserFragment)
+            true
+        }
+
         findPreference<Preference>("external_dictionary_settings_preference")?.setOnPreferenceClickListener {
             navigateSafely(R.id.externalDictionarySettingsFragment)
             true

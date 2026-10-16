@@ -600,4 +600,9 @@
     <fragment android:id="@+id/splitKeyboardPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SplitKeyboardPreferenceFragment"
         android:label="@string/split_keyboard_title" />
+    <fragment
+        android:id="@+id/dictionaryBrowserFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_browser.DictionaryBrowserFragment"
+        android:label="@string/dictionary_browser_title"
+        tools:layout="@layout/fragment_dictionary_browser" />
 </navigation>
