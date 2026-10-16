@@ -66,6 +66,26 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
+        val floatingSettings = com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()),
+        )
+        floatingSettings.ensureDefaults()
+        fun refreshFloatingRules() {
+            findPreference<ListPreference>(com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings.SELECTED)?.apply {
+                entries = (listOf(getString(R.string.gemma_floating_none)) + floatingSettings.rules.map { it.name }).toTypedArray()
+                entryValues = (listOf("") + floatingSettings.rules.map { it.id }).toTypedArray()
+                value = floatingSettings.selectedId
+                summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            }
+        }
+        refreshFloatingRules()
+        findPreference<Preference>(com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings.MANAGE)?.setOnPreferenceClickListener {
+            com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingRuleEditor(
+                requireContext(), floatingSettings, ::refreshFloatingRules,
+            ).show()
+            true
+        }
+
         val gemmaTranslationSwitch =
             findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference")
         gemmaTranslationSwitch?.setOnPreferenceChangeListener { _, newValue ->
