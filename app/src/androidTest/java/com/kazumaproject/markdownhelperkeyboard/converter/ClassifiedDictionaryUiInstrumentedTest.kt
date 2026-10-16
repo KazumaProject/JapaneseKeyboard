@@ -281,9 +281,10 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     if (!learnedPrediction) repository!!.upsertLearnedData(entry)
                 }
             }
-            for ((input, expectedLabel) in listOf("aiehusyou" to "[賞]", "asennyaku" to "[漢方・生薬]", "asaitami" to "[医療]")) {
+            for ((input, expectedLabel, expectedSurface) in listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))) {
             main { activity.editText.setText("") }
             SystemClock.sleep(300)
+            var lastKeyUpMs = 0L
             for (letter in input) {
                 val point = IntArray(2)
                 var x = 0f
@@ -299,16 +300,19 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     val event = MotionEvent.obtain(now, SystemClock.uptimeMillis(), action, x, y, 0)
                     event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
                     ins.uiAutomation.injectInputEvent(event, true)
+                    if (action == MotionEvent.ACTION_UP) lastKeyUpMs = SystemClock.uptimeMillis()
                     event.recycle()
                     SystemClock.sleep(40)
                 }
             }
             lateinit var label: TextView
-            try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
+            try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) && (it.parent as View).findViewById<TextView>(R.id.suggestion_item_text_view).text.toString().trim() == expectedSurface }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
                 screenshot("classified-ime-failure.png")
                 main { println("CLASSIFIED_IME_EDITOR ${activity.editText.text}"); println("CLASSIFIED_IME_LABELS " + views().filterIsInstance<TextView>().filter { it.id == R.id.suggestion_item_text_view || it.id == R.id.suggestion_item_type_text_view }.map { it.text.toString() }.toList()) }
                 throw failure
             }
+            // Includes the fixed 40 ms post-key delay and up to 50 ms polling; an observed UI bound, not engine time.
+            println("CLASSIFIED_IME_VISIBLE input=$input lastKeyUpToObservedLabelMs=${SystemClock.uptimeMillis() - lastKeyUpMs}")
             screenshot("classified-ime-$input.png")
             var committed = ""
             main {
@@ -317,8 +321,25 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 item.performClick()
             }
             await("Candidate was not committed") { activity.editText.text.toString() == committed }
-            assertTrue(committed.isNotBlank())
+            assertEquals(expectedSurface, committed)
             println("CLASSIFIED_IME_COMMIT $expectedLabel $committed")
+            val deletePoint = IntArray(2)
+            main {
+                val key = views().first { it.isShown && it.id == com.kazumaproject.qwerty_keyboard.R.id.key_delete }
+                key.getLocationOnScreen(deletePoint)
+                deletePoint[0] += key.width / 2
+                deletePoint[1] += key.height / 2
+            }
+            val deleteTime = SystemClock.uptimeMillis()
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                val event = MotionEvent.obtain(deleteTime, SystemClock.uptimeMillis(), action,
+                    deletePoint[0].toFloat(), deletePoint[1].toFloat(), 0)
+                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                ins.uiAutomation.injectInputEvent(event, true)
+                event.recycle()
+                SystemClock.sleep(40)
+            }
+            await("Delete did not remove the committed character") { activity.editText.text.toString() == committed.dropLast(1) }
             }
         } finally {
             if (seeded) runBlocking {

@@ -1,6 +1,6 @@
 {
-  "revision": "0a5510b04f5bbbc54330f72c6f214f79b8aceed4",
-  "version": "v1.7.263-pre.4",
+  "revision": "d45a1aa16bf3f6fe43c3d4e62aa5100290c30746",
+  "version": "v1.7.263-pre.5",
   "inputSha256": {
     "src/main/bin/names.txt": "5fadf8bc0d4f97411138d47cfa18464cfb1c885c889627afde0c53d5b9bc3de9",
     "src/main/bin/place.txt.zip": "bae15eb6755a2e6aa30d1d9ece7970c7d97d761b6e430c59bc11222f8e2e6f01",
@@ -8,190 +8,230 @@
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
     "src/main/bin/wiki_neologd_common.txt.zip": "1b0638f24e057077c1b1471dc30e741670b547979db458eb447af5cc7221283c",
     "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf",
+    "src/main/classification/term-additions.tsv": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b",
     "src/main/classification/reviews/2026-10-14-001-uzumaki.jsonl": "574794d0df19f8afd09d06b66897d7b7fce97dd3652bc005674a3ecae28bb30a",
     "src/main/classification/reviews/2026-10-14-003-uzumaki-exclusions.jsonl": "5a373897bbade57c507d08e4813baa7d5975bc752a568cdaee8aaebd9d18f155",
-    "src/main/classification/term-additions.tsv": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b"
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0000.jsonl": "5eaebf4828887cf0ea8351dc63598e2b24e836ad670c40fb8ab3a69d517c0f4d",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0001.jsonl": "b6bee8c6e4350fe3f154351219b24d01fd13960ef90dbf553bcefd3e1bb1bed2",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0002.jsonl": "345d1cf7132bd1e3f1c4ba91df00b1247af8ea61f662e3e592d834f1a1f7e5f5",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0003.jsonl": "9b4987ccd2f30c13863c4b238a9bf05109bdee5dcfdf5aa42eab4f7ce33deb78",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0004.jsonl": "7ebfd811359beff12247188f94bf424981bad0c4f83d521da654a51b536a64aa",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0005.jsonl": "b4c86b0d78d67a9af9d2295de7a67ef5ebbec057b341ed4b16d89fd4ccc9e163",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0006.jsonl": "adaea509c1b7c826820bb7b2d087a4eabc637e4b1ce0bcaf367ed15b8916af18",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0007.jsonl": "57d433272f8b898f1dbfc014844f61d07d0163d4d9506e0079bbd7c53bd699b8",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0008.jsonl": "3bc5c15aa29f71ad8b01ae0af43308d280ec64ae992025e658785c5453ffb3c7",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0009.jsonl": "8f1b39c3e2f0f8c17fc78291ad50289f9762abec793f5cf44d6f1e85f1ed8a9d",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0010.jsonl": "21bf60a65d754d5c508db0cc3662f2fa1a5e7cb7a96f3f9bf4e4111264a34456",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0011.jsonl": "e8a3d42cfb65ee580fcff495fd64c199d69d48b436a8939a27207438d69a4635",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0012.jsonl": "fc3514e09d4f98a15ae3f118261c2e991c188f4b34deb00e284405faca806168",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0013.jsonl": "27750f64459fd3c11c64439d9e3483c9490676166fa4d75af6cc9c46c337be55",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0014.jsonl": "1f7c735c691b42c125d97bb2cf14e28d79323b288cde8cd2220a421a27fd5f5b",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0015.jsonl": "dd27d95dea28b168d97a6d00d5bb68bce788ac385b4b4649f4cdad4e294f4966",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0016.jsonl": "0c5a8bbb4b5ad26bbce6a1845f957a55bdb0342556cd168a39e01bbe5f410266",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0017.jsonl": "dd80c4156ff6e3117f1c6db94fff9687f387160f88b983048a37741f3c97c2f1",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0018.jsonl": "c799379a4e4db31f67c685eca18b63e196ae2bd6ed0b109d00b2ea4122473c48",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0019.jsonl": "84980351295ca883097f8aea1afea37f532e5aa3553553db56f7b0d46c3be88c",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0020.jsonl": "eed6452589ed3471804d1ffd7782b86d0b30c97563484ba48c35e1bb6720837d",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0021.jsonl": "b765423c668d59a5ee65e99c3b6857803b29ebc642414b92eed6e30d6e5284bc",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0022.jsonl": "4bce6ec686e6d37fcf3488afef068a1e7521063ca9ab712730acc8591a4aa70b",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0023.jsonl": "a7972f5ddcb56879c05307495d65ea702d36a94fd73f64f52fb279f91ba2f9f4",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0024.jsonl": "ce2cec645210f75b4ef61f982fe2a306c509136f59d8814f723b43bfbd401d22",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0025.jsonl": "3036ca1ad2d9946ea3d4f132e800465b9b158a26f884d547e001194e7322f969",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0026.jsonl": "ac6f596a28e9c0fb016e6d8388760794918e7e51475e5e524e4e49b8d7c3323e",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0027.jsonl": "3f320ac860eb0d6030c848a35e63d38b72d70ae13147193950c931fc047e657c",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0028.jsonl": "cdb0636ce4ea364f7d7a5d29d951722434134440373e12c1318ad33eabdda9a9",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0029.jsonl": "91487e3492b8540b39d3e44a2afcccc34d3f362a848de00c650a11db20628f3e",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0030.jsonl": "ff1543cb5f508c3a88314888e0c3a2d53c460fdbef4deb05f557dee49ca07b92",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0031.jsonl": "1ddb7637758de1abbe4a14eeeff89f1ba8114861982c9cfa9c16356b21055972",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0032.jsonl": "19bdd708a037ace8e38c2ccc84c9abd7920be6eeb288d0de590ac4490c9a22a7",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0033.jsonl": "84637398e3fb1518b53f6bc81470ed3316c48c5bb29c9629c4a76dfe821f4af0",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0034.jsonl": "ad31487ccded464ffc35d442b016879cc020a0d32e510c3d1c0d5ca029854127",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0035.jsonl": "e0397e26a62a4802077af40afecd176dd9f32e8ca6e9db0c0c15a99b67210067",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0036.jsonl": "05fb5fef150cbd033c6c031916b4f583bd1e6c7fd82c1ccdcc90465450614e75",
+    "src/main/classification/reviews/2026-10-16-pr128-luna-0037.jsonl": "59f4fb8499430452c3e32a12c9fafaceadbd096256a227f60cb7546454fa5cd7"
   },
-  "decisionSha256": "dbdb4b455c4fa766402bd16c265513ab54c1e1925fc65d2ea010aee8ed59bf82",
+  "decisionSha256": "20aec1771a1ae5dce99465c8c96ecedff1c4e27a54ca9d7316d75867c47c0764",
   "categorySourcePairs": {
     "address": {
-      "neologd": 827,
-      "place": 120790,
-      "wiki": 516,
-      "web": 136,
-      "person": 2
-    },
-    "agreement": {
-      "neologd": 598,
-      "web": 899,
-      "wiki": 246,
+      "place": 147777,
+      "neologd": 676,
+      "wiki": 3965,
+      "web": 601,
       "person": 1
     },
+    "agreement": {
+      "neologd": 130,
+      "web": 233,
+      "wiki": 62
+    },
     "award": {
-      "neologd": 343,
-      "wiki": 193,
-      "web": 468
+      "wiki": 181,
+      "neologd": 264,
+      "web": 721,
+      "person": 1
     },
     "character": {
-      "web": 1043,
-      "neologd": 5826,
-      "person": 789,
-      "wiki": 1286
+      "web": 1152,
+      "neologd": 5011,
+      "wiki": 498,
+      "person": 333
     },
     "event": {
-      "neologd": 3746,
-      "web": 4439,
-      "wiki": 1751,
-      "person": 20
-    },
-    "facility": {
-      "wiki": 10858,
-      "web": 8102,
-      "neologd": 9654,
-      "person": 44,
-      "place": 14
-    },
-    "initiative": {
-      "web": 610,
-      "wiki": 263,
-      "neologd": 654,
-      "person": 13
-    },
-    "kampo": {
-      "kampo_core": 257,
-      "kampo_herb": 183
-    },
-    "lineage": {
-      "neologd": 756,
-      "web": 1318,
-      "wiki": 909,
-      "person": 3
-    },
-    "medical": {
-      "hyakuyaku": 20691,
-      "manbyo": 72156
-    },
-    "mythological_figure": {
-      "wiki": 1148,
-      "neologd": 1697,
-      "web": 774,
-      "person": 10
-    },
-    "organization": {
-      "neologd": 27133,
-      "web": 13048,
-      "person": 1453,
-      "wiki": 5675
-    },
-    "person": {
-      "neologd": 194692,
-      "web": 29208,
-      "wiki": 8578,
-      "person": 48151,
-      "place": 46
-    },
-    "place": {
-      "neologd": 7553,
-      "wiki": 20002,
-      "web": 14328,
-      "place": 43893,
-      "person": 8
-    },
-    "product": {
-      "neologd": 7700,
-      "web": 3205,
-      "wiki": 2655,
-      "person": 76
-    },
-    "station": {
-      "web": 5622,
-      "neologd": 756,
-      "wiki": 437,
+      "web": 4757,
+      "neologd": 2394,
+      "wiki": 1562,
+      "person": 4,
       "place": 1
     },
+    "facility": {
+      "wiki": 14499,
+      "neologd": 7557,
+      "web": 12966,
+      "place": 35,
+      "person": 14
+    },
+    "initiative": {
+      "neologd": 387,
+      "person": 10,
+      "wiki": 183,
+      "web": 494
+    },
+    "kampo": {
+      "kampo_core": 250,
+      "kampo_herb": 182
+    },
+    "lineage": {
+      "neologd": 351,
+      "web": 1049,
+      "wiki": 619
+    },
+    "medical": {
+      "hyakuyaku": 20656,
+      "manbyo": 72029
+    },
+    "mythological_figure": {
+      "web": 999,
+      "neologd": 1522,
+      "wiki": 903,
+      "person": 12
+    },
+    "organization": {
+      "neologd": 18713,
+      "person": 1342,
+      "web": 19604,
+      "wiki": 8184
+    },
+    "person": {
+      "person": 25904,
+      "wiki": 52585,
+      "neologd": 51399,
+      "web": 154634,
+      "place": 16
+    },
+    "place": {
+      "wiki": 14677,
+      "web": 15155,
+      "place": 9476,
+      "neologd": 6002,
+      "person": 10
+    },
+    "product": {
+      "neologd": 5908,
+      "web": 2489,
+      "wiki": 1461,
+      "person": 32
+    },
+    "station": {
+      "web": 9921,
+      "wiki": 1958,
+      "neologd": 874,
+      "place": 5,
+      "person": 1
+    },
     "term": {
-      "neologd": 82298,
-      "wiki": 14829,
-      "web": 30451,
-      "person": 205,
-      "place": 11
+      "web": 29909,
+      "wiki": 13458,
+      "neologd": 65004,
+      "person": 245,
+      "place": 30
     },
     "transport_route": {
-      "neologd": 1335,
-      "wiki": 667,
-      "web": 1203,
-      "place": 6
+      "wiki": 835,
+      "neologd": 1227,
+      "web": 2158,
+      "person": 1,
+      "place": 10
     },
     "vehicle": {
-      "web": 1271,
-      "neologd": 1347,
-      "wiki": 784,
-      "person": 2
+      "wiki": 543,
+      "neologd": 973,
+      "web": 1063
     },
     "work_anime": {
-      "neologd": 354,
-      "wiki": 163,
-      "web": 124,
-      "person": 2
+      "neologd": 445,
+      "person": 8,
+      "wiki": 190,
+      "web": 465
     },
     "work_book": {
-      "neologd": 1809,
-      "wiki": 1336,
-      "web": 2194,
-      "person": 16
+      "web": 4397,
+      "neologd": 1486,
+      "wiki": 1771,
+      "person": 15
     },
     "work_film": {
-      "neologd": 546,
-      "wiki": 268,
-      "web": 365,
-      "person": 3
+      "wiki": 1827,
+      "web": 3543,
+      "neologd": 1138,
+      "person": 5
     },
     "work_franchise": {
-      "web": 86,
-      "neologd": 126,
-      "wiki": 56,
-      "person": 2
+      "web": 392,
+      "neologd": 313,
+      "wiki": 140,
+      "person": 5
     },
     "work_game": {
-      "web": 236,
-      "person": 7,
-      "neologd": 1024,
-      "wiki": 239
+      "web": 1305,
+      "neologd": 1408,
+      "wiki": 430,
+      "person": 9
     },
     "work_manga": {
-      "neologd": 483,
-      "wiki": 264,
-      "web": 251,
-      "person": 6
+      "web": 3328,
+      "neologd": 780,
+      "wiki": 1022,
+      "person": 20
     },
     "work_music": {
-      "neologd": 1524,
-      "web": 987,
-      "wiki": 1163,
-      "person": 130
+      "web": 5442,
+      "neologd": 1426,
+      "wiki": 3423,
+      "person": 57
     },
     "work_other": {
-      "web": 1504,
-      "neologd": 2118,
-      "wiki": 1428,
-      "person": 127
+      "neologd": 548,
+      "wiki": 1027,
+      "web": 1098,
+      "person": 12
     },
     "work_periodical": {
-      "web": 327,
-      "neologd": 550,
-      "wiki": 148,
+      "web": 904,
+      "neologd": 684,
+      "wiki": 220,
       "person": 5
     },
     "work_program": {
-      "wiki": 699,
-      "neologd": 1008,
-      "web": 666,
-      "person": 8
+      "web": 5902,
+      "neologd": 1355,
+      "wiki": 2045,
+      "person": 16,
+      "place": 1
     },
     "work_stage": {
-      "web": 132,
-      "wiki": 96,
-      "neologd": 125,
+      "wiki": 110,
+      "web": 326,
+      "neologd": 137,
       "person": 2
     }
   },
@@ -7060,7 +7100,7 @@
   "specialist": {
     "schemaVersion": 1,
     "rules": {
-      "version": 2,
+      "version": 3,
       "key": "normalized_reading+NFC_surface",
       "reading": "trim,NFKC,katakana-to-hiragana",
       "surface": "trim,NFC; internal spaces/case/width/variants preserved",
@@ -7073,7 +7113,8 @@
       "pos": "名詞,一般,*,*,*,*,*",
       "readingAccuracy": "upstream automatic readings and optional Gemini inference; not independently verified",
       "supplement": "manbyo missing readings only; source row and original surface must match",
-      "kanaSurface": "must equal the current TokenArray sentinel reconstruction"
+      "kanaSurface": "must equal the current TokenArray sentinel reconstruction",
+      "classificationExclusions": "withhold pairs excluded by the classified dictionary review"
     },
     "inputs": {
       "src/main/specialist/notices/CC-BY-4.0.txt": "ae65546dff434288761879ba1cf7868fbaee47d62c92bdd795e31830647507f8",
@@ -7082,6 +7123,7 @@
       "src/main/specialist/notices/kampo_core.txt": "7ca7047eedec76c3a98913dc932487aee1b89c2604842db3f5e961e4c85c4496",
       "src/main/specialist/notices/kampo_herb.txt": "7ca7047eedec76c3a98913dc932487aee1b89c2604842db3f5e961e4c85c4496",
       "src/main/specialist/notices/manbyo.txt": "2ffeab722ef92e8fa0feb0df08b273e4c7522aa948052ce03a269a7475992934",
+      "src/main/classification/distribution-decisions.tsv.gz": "20aec1771a1ae5dce99465c8c96ecedff1c4e27a54ca9d7316d75867c47c0764",
       "src/main/specialist/gemini-readings.jsonl.gz": "04516a0f6b282cbac9bb0325d2f864db5f84829d4c5764e846d6411bc46eb9ec",
       "src/main/specialist/gemini-run.json": "91b4925e86a3635ed342e28861be54fe7e03f72505628de41df4b48efa6a80fb",
       "src/main/specialist/categories.json": "d03ce6563d7439cbcdcdaabf8df2529f507b2ce12abedb75e0ec1167704a0a25",
@@ -7092,7 +7134,7 @@
       "src/main/specialist/sources/manbyo.jsonl.gz": "acf4105c8bfff7d7278fb9d2298481b3dae2d6b58eda824f31b3345e6aea9492"
     },
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "2f113174ac818851dca9dcfbdda16d25bb934786b810c4a47be0b56ad3275d31",
+    "existingInventorySha256": "0798905aff4403b73c0269ca9b6632a5599413800ed253ebf952e44114d187ed",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -7131,29 +7173,30 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1850328,
+    "existingUniquePairs": 1860565,
     "sourceRows": {
       "kampo_core": {
         "rows": 1581,
         "dispositions": {
-          "adopted": 257,
-          "existing_duplicate": 544,
-          "source_duplicate": 780
+          "adopted": 250,
+          "existing_duplicate": 591,
+          "source_duplicate": 740
         }
       },
       "kampo_herb": {
         "rows": 278,
         "dispositions": {
-          "adopted": 183,
-          "existing_duplicate": 95
+          "adopted": 182,
+          "existing_duplicate": 96
         }
       },
       "hyakuyaku": {
         "rows": 39616,
         "dispositions": {
-          "adopted": 20691,
-          "cross_category_duplicate": 114,
-          "existing_duplicate": 2705,
+          "adopted": 20656,
+          "cross_category_duplicate": 106,
+          "excluded_by_classification_review": 60,
+          "existing_duplicate": 2688,
           "non_kana_reading": 16090,
           "unsupported_kana_surface": 16
         }
@@ -7161,8 +7204,9 @@
       "manbyo": {
         "rows": 380300,
         "dispositions": {
-          "adopted": 72156,
-          "existing_duplicate": 3009,
+          "adopted": 72029,
+          "excluded_by_classification_review": 9,
+          "existing_duplicate": 3127,
           "missing_or_placeholder": 304064,
           "non_kana_reading": 1060,
           "source_duplicate": 8,
@@ -7171,27 +7215,28 @@
       }
     },
     "dispositions": {
-      "adopted": 93287,
-      "cross_category_duplicate": 114,
-      "existing_duplicate": 6353,
+      "adopted": 93117,
+      "cross_category_duplicate": 106,
+      "excluded_by_classification_review": 69,
+      "existing_duplicate": 6502,
       "missing_or_placeholder": 304064,
       "non_kana_reading": 17150,
-      "source_duplicate": 788,
+      "source_duplicate": 748,
       "unsupported_kana_surface": 19
     },
     "categoryRows": {
-      "kampo": 440,
-      "medical": 92847
+      "kampo": 432,
+      "medical": 92685
     },
-    "dictionaryRows": 93287,
-    "uniqueAdmittedPairs": 93287,
+    "dictionaryRows": 93117,
+    "uniqueAdmittedPairs": 93117,
     "readingOrigins": {
-      "gemini_inferred_unverified": 2006,
-      "upstream_unverified": 91281
+      "gemini_inferred_unverified": 2003,
+      "upstream_unverified": 91114
     },
     "files": {
-      "distribution-candidates.tsv.gz": "f67faa8ebe67f691300ff99da4b301585090992b328bfdf7dd76af150347a3e7",
-      "provenance.jsonl.gz": "29910e7fbeea3c5f93a379558ec4a8208b75f0426c0386fd8f43674ac06a3b0a"
+      "distribution-candidates.tsv.gz": "2330d31edaec815cd0c743f3acf0708b7337bfd25d79d4edd5115356ac5455c4",
+      "provenance.jsonl.gz": "28bd0e3d90362c17ea1f986d4aabbd4a7d3a882bdd027faeba940da9034eec06"
     },
     "limitations": [
       "Upstream readings include automatic readings; Gemini supplements are inferred. Neither is independently verified.",
@@ -7200,7 +7245,7 @@
     ]
   },
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "83cb80625624b4aa0c5454878898097f28661adad6c707c098e87706aa87df15",
-  "classifiedFixtureSha256": "a2a05f13275fe89288372e7bd09c70cf29c5ef535a3f05f9af25492f604cc370",
-  "surfaceOverridesSha256": "0937f0ca662d475195b1c8a6a555ee9d69f314faec860204028d477ba1caf282"
+  "englishFixtureSha256": "dde175bdfc77309221e990243004fc6e75399f69ae504e5b90e37a3b2d157614",
+  "classifiedFixtureSha256": "7d21e52bed7791002253040953d2a2445ea9902edae2ef5b3e755143ca5e4a7d",
+  "surfaceOverridesSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
 }

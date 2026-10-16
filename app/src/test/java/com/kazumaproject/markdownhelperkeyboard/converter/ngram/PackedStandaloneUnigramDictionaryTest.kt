@@ -10,8 +10,8 @@ class PackedStandaloneUnigramDictionaryTest {
 
     @Test fun standaloneMatchesOnlyWholeInputLiteralReadingNodes() {
         val dictionary = PackedSystemNgramDictionary.readStandalone(bytes())
-        assertEquals(5, dictionary.ruleCount)
-        for (word in listOf("しろ", "ごと", "したい", "はいる", "みた")) {
+        assertEquals(6, dictionary.ruleCount)
+        for (word in listOf("しろ", "ごと", "したい", "はいる", "みた", "なにか")) {
             val node = node(word)
             assertTrue(dictionary.matchesStandaloneNode(node, word))
             assertFalse(dictionary.matchesSingleNode(node))
