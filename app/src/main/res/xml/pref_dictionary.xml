@@ -238,6 +238,13 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/dictionary_browser_title">
+        <Preference
+            android:key="dictionary_browser_preference"
+            android:title="@string/dictionary_browser_title"
+            app:summary="@string/dictionary_browser_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/dictionary_candidate_label_category_title">
 
         <SwitchPreferenceCompat
