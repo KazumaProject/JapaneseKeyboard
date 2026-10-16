@@ -292,6 +292,18 @@ class GemmaTranslationManager @Inject constructor(
         runtimeClient.cancelActive()
     }
 
+    internal suspend fun generateFloatingText(text: String, instruction: String): String? {
+        val ready = _loadState.value as? GemmaLoadState.Ready ?: error("Gemma is not ready.")
+        val model = GemmaModelCatalog.descriptorFor(File(ready.modelPath))
+        val separate = com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.supportsSystemInstruction(model.id)
+        return runtimeClient.generatePreview(
+            if (separate) text else com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.build(text, instruction),
+            if (separate) com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.systemInstruction(instruction) else "",
+        )
+    }
+
+    internal fun cancelFloatingText() = runtimeClient.cancelPreview()
+
     private suspend fun ensureEngineReady() {
         if (_loadState.value is GemmaLoadState.Ready) return
         if (initializeIfEnabled(forceReload = false) && _loadState.value is GemmaLoadState.Ready) return

@@ -1,0 +1,16 @@
+<resources>
+    <item name="gemma_floating_result" type="id" />
+    <string name="gemma_floating_category">Gemma floating suggestions</string>
+    <string name="gemma_floating_enable">Show floating suggestions while typing</string>
+    <string name="gemma_floating_summary">Apply the selected rule to composing text. Tap the result to replace and commit it.</string>
+    <string name="gemma_floating_selected">Selected rule</string>
+    <string name="gemma_floating_none">No rule selected</string>
+    <string name="gemma_floating_manage">Manage floating rules</string>
+    <string name="gemma_floating_add">Add rule</string>
+    <string name="gemma_floating_edit">Edit rule</string>
+    <string name="gemma_floating_delete">Delete rule</string>
+    <string name="gemma_floating_delete_confirm">Delete “%1$s”?</string>
+    <string name="gemma_floating_name">Rule name</string>
+    <string name="gemma_floating_instruction">Instruction for Gemma</string>
+    <string name="gemma_floating_required">Required</string>
+</resources>

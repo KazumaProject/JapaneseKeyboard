@@ -65,6 +65,18 @@ class GemmaRuntimeService : Service() {
                 .onFailure { Timber.w(it, "Failed to cancel Gemma request %s", requestId) }
         }
 
+        override fun generatePreview(requestId: Long, prompt: String, instruction: String, callback: IGemmaRuntimeCallback) {
+            actorScope.launch {
+                runCatching { generateResponse(requestId, prompt, "", MEDIA_TEXT, callback, preview = true, instruction = instruction) }
+                    .onFailure { error ->
+                        runCatching { conversation?.invokeNoArgs("close") }
+                        conversation = null
+                        activeRequestId = NO_REQUEST
+                        callback.safeError(requestId, error.toRuntimeMessage())
+                    }
+            }
+        }
+
         override fun closeEngine() {
             actorScope.launch { closeRuntime() }
         }
@@ -173,6 +185,8 @@ class GemmaRuntimeService : Service() {
         mediaPath: String,
         mediaType: Int,
         callback: IGemmaRuntimeCallback,
+        preview: Boolean = false,
+        instruction: String = "",
     ) {
         val activeEngine = engine
         if (activeEngine == null || activeEngine.invokeNoArgs("isInitialized") != true) {
@@ -188,19 +202,28 @@ class GemmaRuntimeService : Service() {
         callback.safeState(STATE_RUNNING, requestId.toString())
         activeRequestId = requestId
         val conversationConfigClass = Class.forName(CLASS_CONVERSATION_CONFIG)
-        val conversationConfig = conversationConfigClass.getConstructor().newInstance()
+        val conversationConfig = if (preview && instruction.isNotBlank()) {
+            conversationConfigClass.getConstructor(Class.forName(CLASS_CONTENTS))
+                .newInstance(createContents(instruction, "", MEDIA_TEXT))
+        } else conversationConfigClass.getConstructor().newInstance()
         val activeConversation = requireNotNull(activeEngine.javaClass
             .getMethod("createConversation", conversationConfigClass)
             .invoke(activeEngine, conversationConfig))
         conversation = activeConversation
         runCatching {
             val contents = createContents(prompt, mediaPath, mediaType)
+            val started = android.os.SystemClock.elapsedRealtime()
             val response = requireNotNull(activeConversation.javaClass
                 .getMethod("sendMessage", Class.forName(CLASS_CONTENTS), Map::class.java)
-                .invoke(activeConversation, contents, emptyMap<String, Any>()))
-            extractText(response)
-                .trim()
-                .ifEmpty { throw IllegalStateException("Gemma returned an empty response.") }
+                .invoke(activeConversation, contents,
+                    if (preview) mapOf("enable_thinking" to false) else emptyMap<String, Any>()))
+            if (preview) Timber.d("Gemma floating inference: %d ms, channel lengths: %s",
+                android.os.SystemClock.elapsedRealtime() - started,
+                (response.invokeNoArgs("getChannels") as? Map<*, *>)?.mapValues { (_, value) -> (value as? String)?.length ?: 0 })
+            val text = extractText(response)
+            // Preview output replaces composing text verbatim, including indentation and final newlines.
+            (if (preview) text else text.trim())
+                .ifBlank { throw IllegalStateException("Gemma returned an empty response.") }
         }.onSuccess { result ->
             callback.safeResult(requestId, result)
         }.onFailure { error ->
