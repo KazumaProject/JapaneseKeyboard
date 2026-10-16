@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '0a5510b04f5bbbc54330f72c6f214f79b8aceed4'
-VERSION = 'v1.7.263-pre.4'
+REVISION = 'd45a1aa16bf3f6fe43c3d4e62aa5100290c30746'
+VERSION = 'v1.7.263-pre.5'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,7 +46,7 @@ def write(path, data):
 def archive():
     manifest = json.loads(fetch(RELEASE + 'dictionary-distribution-manifest.json'))
     assert manifest['revision'] == REVISION
-    assert manifest['archiveSha256'] == '84d53abcc4ce88971d3eaffdda2e39591bc10e14e8f1233c32e4bbbbf9ecfb9a'
+    assert manifest['archiveSha256'] == 'dd3b1359ea9454829de92976e6cfd43a21e8b122e02860ec0a4ec9abe8df3920'
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == manifest['archiveSha256']
     zipped = zipfile.ZipFile(io.BytesIO(data))
@@ -150,7 +150,7 @@ def provenance():
     assert len(fingerprints) == 30
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
-    assert sum(map(len, surface_overrides.values())) == 1, surface_overrides
+    assert not surface_overrides, surface_overrides
     write(ROOT / 'app/src/main/assets/categories/surface-overrides.json', json.dumps(surface_overrides, ensure_ascii=False, indent=2) + '\n')
     catalog = fetch(RAW + 'docs/english-dictionary-catalog.md')
     english_rows = []
@@ -235,8 +235,6 @@ def notices(counts):
             keys += [key for key in ('wiki', 'neologd') if key not in keys]
         keys += ['cc-by-sa-4', 'apache-2']
         details = common + '<p>Frozen source inputs / 固定入力: ' + ', '.join(f'{html.escape(SOURCES[source][0])}: {counts[category["id"]][source]} pairs / 組' for source in SOURCES if source in ids) + '</p>'
-        if category['id'] == 'place':
-            details += '<p>One literal spelling is restored from the frozen source / 固定入力から1件の表記を復元: あとこしゃらか → アトコシヤラカ。</p>'
         details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版の同一性は未確認です。</p>'
         if category['id'] == 'person':
             additions = json.loads((ROOT/'tools/classified-dictionaries/category-provenance.json').read_text())['personAdditions']
@@ -251,7 +249,8 @@ def notices(counts):
         details = '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
         details += '<p>Changes / 加工: field extraction, normalization, duplicate filtering, POS/cost assignment and binary conversion / 項目抽出・正規化・重複除外・品詞とコスト割当・バイナリ化。</p>'
         if ident == 'medical':
-            details += '<p>2,006 missing readings were supplemented with Gemini. Automatic and inferred readings are unverified / 空欄2,006件をGeminiで補完。自動読み・推定読みの正確性は未確認。</p>'
+            inferred = specialist['readingOrigins']['gemini_inferred_unverified']
+            details += f'<p>{inferred:,} adopted readings were supplemented with Gemini. Automatic and inferred readings are unverified / 採用語の読み{inferred:,}件をGeminiで補完。自動読み・推定読みの正確性は未確認。</p>'
         else:
             details += '<p>Automatic readings are unverified / 自動読みの正確性は未確認。</p>'
         for source in sources:
