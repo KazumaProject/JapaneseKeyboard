@@ -1918,4 +1918,20 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="sizing_sp">%1$.1f sp</string>
     <string name="sizing_percent">%1$d%%</string>
     <string name="sizing_inherited">未変更の項目には、これまでのサイズを使用します。</string>
+    <string name="dictionary_browser_title">辞書の単語一覧</string>
+    <string name="dictionary_browser_summary">内蔵・差替え辞書ごとに単語と読みを一覧・検索できます。</string>
+    <string name="dictionary_browser_select">辞書を選択</string>
+    <string name="dictionary_browser_search_hint">単語・読みを検索</string>
+    <string name="dictionary_browser_kotowaza">ことわざ辞書</string>
+    <string name="dictionary_browser_source_state">%1$s・%2$s</string>
+    <string name="dictionary_browser_bundled">同梱データ</string>
+    <string name="dictionary_browser_external">外部差替えデータ</string>
+    <string name="dictionary_browser_enabled">有効</string>
+    <string name="dictionary_browser_disabled">無効（閲覧可能）</string>
+    <string name="dictionary_browser_loading">辞書を読み込み中…</string>
+    <string name="dictionary_browser_loading_more">%1$d件表示・続きを検索中…</string>
+    <string name="dictionary_browser_count">%1$d件表示</string>
+    <string name="dictionary_browser_empty">該当する単語がありません。</string>
+    <string name="dictionary_browser_error">辞書を読み込めませんでした。辞書ファイルを確認して再試行してください。</string>
+    <string name="dictionary_browser_retry">再試行</string>
 </resources>
