@@ -55,10 +55,14 @@ class DictionaryBrowserRepositoryInstrumentedTest {
                     val surface = sample.getString("surface")
                     assertTrue(repo.open(spec.category, reading).nextPage().rows.contains(DictionaryBrowserRow(reading, surface)))
                     assertFalse(repo.version(spec.category).enabled)
+                    // Verify repairs required by this release without pinning a retired source row.
+                    fixture.reader.loadClassifiedSurfaceOverrides(spec.category).forEach { (key, repairedSurface) ->
+                        val repairedReading = key.split('\t')[1]
+                        assertTrue(repo.open(spec.category, repairedReading).nextPage().rows
+                            .contains(DictionaryBrowserRow(repairedReading, repairedSurface)))
+                    }
                 }
             }
-            val repaired = repo.open(DictionaryCategory.CLASSIFIED_PLACE, "アトコシヤラカ").nextPage().rows
-            assertTrue(repaired.contains(DictionaryBrowserRow("あとこしゃらか", "アトコシヤラカ")))
             val englishReading = repo.open(DictionaryCategory.ENGLISH_READING, "ＦＥＴＣＨ").nextPage().rows
             assertTrue(englishReading.contains(DictionaryBrowserRow("ふぇっち", "fetch")))
             assertEquals(before, fixture.prefs.all)
@@ -147,7 +151,8 @@ class DictionaryBrowserRepositoryInstrumentedTest {
                 total += rawRecords
                 println("BROWSER_CLASSIFIED_FULL ${spec.id} records=$rawRecords uniquePairs=$actualPairs")
             }
-            assertEquals(861053, total)
+            val expectedTotal = ClassifiedDictionaries.all.sumOf { frozen.getJSONObject(it.id).getInt("count") }
+            assertEquals(expectedTotal, total)
         }
     }
 
