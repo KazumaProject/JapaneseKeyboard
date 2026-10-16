@@ -52,6 +52,17 @@ class TokenArray {
         return tempList2
     }
 
+    /** Visits stored variants without allocating a list or logging for every reading. */
+    fun forEachDictionaryByYomiTermId(
+        termId: Int,
+        index: SuccinctBitVector,
+        block: (wordCost: Short, nodeId: Int) -> Unit,
+    ) {
+        val start = index.rank1(index.select0(termId))
+        val end = index.rank1(index.select0(termId + 1))
+        for (i in start until end) block(wordCostList[i], nodeIdList[i])
+    }
+
     fun buildTokenArray(
         dictionaries: List<Dictionary>,
         wordTrie: LOUDS,
