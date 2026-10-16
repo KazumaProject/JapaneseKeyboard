@@ -197,6 +197,13 @@ class LOUDSWithTermId {
     }
 
 
+    /** Lazily walks terminal readings without expanding the complete dictionary. */
+    fun termIterator(lbs: SuccinctBitVector, leaves: SuccinctBitVector): Iterator<Pair<String, Int>> =
+        com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
+            LBS, lbs, labelCount, { index -> labelAt(index) },
+            { node -> if (isLeaf[node]) getTermId(node, leaves) else -1 },
+        )
+
     fun getNodeIndex(
         s: String, rank1Array: IntArray, LBSInBoolArrayPreprocess: IntArray
     ): Int {

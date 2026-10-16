@@ -127,6 +127,7 @@ object SettingDestinations {
         "gemma_prompt_template_management_preference",
         "system_user_dictionary_builder_preference",
         "external_dictionary_settings_preference",
+        "dictionary_browser_preference",
         "n_gram_rule_preference",
         "clipboard_history_preference_fragment",
         "delete_key_flick_left_targets_preference",
@@ -536,6 +537,7 @@ object SettingDestinations {
         "default_emoji_skin_tone_preference",
         "system_user_dictionary_builder_preference",
         "external_dictionary_settings_preference",
+        "dictionary_browser_preference",
         "n_gram_rule_preference",
         "candidate_order_override_preference",
         "ng_word_preference",
@@ -701,6 +703,16 @@ object SettingDestinations {
             ),
         ),
         destination(
+            key = "dictionary_browser_preference",
+            title = context.getString(R.string.dictionary_browser_title),
+            summary = context.getString(R.string.dictionary_browser_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("dictionary", "word", "search", "辞書", "単語", "一覧", "検索"),
+            destinationId = R.id.dictionaryBrowserFragment,
+            iconRes = CoreR.drawable.dictionary_24px,
+            destinationType = SettingDestinationType.ManagementDestination(R.id.dictionaryBrowserFragment),
+        ),
+        destination(
             key = "setting_management_user_template",
             title = context.getString(R.string.user_template_fragment_title),
             summary = context.getString(R.string.setting_management_user_template_summary),
@@ -837,6 +849,7 @@ object SettingDestinations {
             "preference_open_source" -> R.id.openSourceFragment
             "system_user_dictionary_builder_preference" -> R.id.systemUserDictionaryBuilderFragment
             "external_dictionary_settings_preference" -> R.id.externalDictionarySettingsFragment
+            "dictionary_browser_preference" -> R.id.dictionaryBrowserFragment
             "n_gram_rule_preference" -> R.id.ngramRuleFragment
             "candidate_order_override_preference" -> R.id.candidateOrderOverrideFragment
             "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
