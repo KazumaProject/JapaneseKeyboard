@@ -1,5 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingInput
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingCoordinator
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingWindow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.DictionaryKind
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
@@ -1030,6 +1034,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+            if (key == null || key in GemmaFloatingSettings.keys || key == "gemma_translation_enable_preference") {
+                runOnMainThread { refreshGemmaFloating() }
+            }
             if (key != null && key in PhysicalToolbarSettings.keys) {
                 runOnMainThread { refreshPhysicalToolbar() }
             }
@@ -1748,6 +1755,68 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
     private var gemmaInputSessionId: Long = 0L
+    private var gemmaFloatingText = ""
+    private var gemmaFloatingRevision = 0L
+    private var gemmaFloatingCoordinator: GemmaFloatingCoordinator? = null
+    private var gemmaFloatingWindow: GemmaFloatingWindow? = null
+
+    private fun canUseGemmaFloating(): Boolean = AppVariantConfig.hasGemma &&
+        isInputViewActive && !isFullscreenMode && !currentInputType.isPassword() &&
+        dictionaryInputConnection == null &&
+        keyboardLayoutEditState.value !is KeyboardLayoutEditState.Enabled &&
+        appPreference.enable_gemma_translation_preference &&
+        runtimeInputSharedPreferences.getBoolean(GemmaFloatingSettings.ENABLED, false) &&
+        gemmaTranslationManager.isTranslationAvailable() &&
+        gemmaMediaPanelController?.isShowing != true &&
+        gemmaHandwritingController?.isActive != true
+
+    private fun gemmaFloatingAnchor(): View? = listOfNotNull(
+        floatingKeyboardBinding?.candidatesRowView,
+        floatingKeyboardBinding?.suggestionRecyclerView,
+        mainLayoutBinding?.candidatesRowView,
+        mainLayoutBinding?.suggestionRecyclerView,
+    ).firstOrNull { it.isShown && it.width > 0 && it.height > 0 }
+
+    private fun refreshGemmaFloating() {
+        if (!::runtimeInputSharedPreferences.isInitialized) return
+        val rule = if (canUseGemmaFloating() && gemmaFloatingText.isNotBlank())
+            GemmaFloatingSettings(runtimeInputSharedPreferences).selectedRule else null
+        if (rule == null) { gemmaFloatingCoordinator?.update(null); gemmaFloatingWindow?.clear(); return }
+        val window = gemmaFloatingWindow ?: GemmaFloatingWindow(
+            this, ::gemmaFloatingAnchor, ::canUseGemmaFloating, ::resolveCandidatePanelColors,
+            validInput = { it.session == gemmaInputSessionId && it.revision == gemmaFloatingRevision &&
+                editorMutationRevision.isCurrent(it.editorRevision) },
+        ) { input, result ->
+            if (!canUseGemmaFloating() || input.session != gemmaInputSessionId ||
+                input.revision != gemmaFloatingRevision || input.text != gemmaFloatingText ||
+                !editorMutationRevision.isCurrent(input.editorRevision) ||
+                input.rule != GemmaFloatingSettings(runtimeInputSharedPreferences).selectedRule ||
+                composingTextArbiter.isPreviewVisible() || cursorWrittenComposing?.text != input.text
+            ) false else {
+                // commitText replaces the composing region. Finishing first would append instead.
+                if (commitText(result, 1)) {
+                    conversionLearningSession.cancel()
+                    clearDirectCommitCompositionState("Gemma floating result")
+                    true
+                } else false
+            }
+        }.also { gemmaFloatingWindow = it }
+        val coordinator = gemmaFloatingCoordinator ?: GemmaFloatingCoordinator(
+            scope,
+            generate = { gemmaTranslationManager.generateFloatingText(it.text, it.rule.instruction) },
+            cancelGeneration = { gemmaTranslationManager.cancelFloatingText() },
+            publish = { input, result -> window.show(input, result) },
+        ).also { gemmaFloatingCoordinator = it }
+        coordinator.update(GemmaFloatingInput(gemmaInputSessionId, gemmaFloatingRevision, gemmaFloatingText, rule,
+            editorMutationRevision.current()))
+    }
+
+    private fun clearGemmaFloating() {
+        gemmaFloatingRevision++
+        gemmaFloatingText = ""
+        gemmaFloatingCoordinator?.update(null)
+        gemmaFloatingWindow?.clear()
+    }
     private var restoreFloatingModeAfterGemmaPanel: Boolean = false
     private var consumeGemmaBackKeyUp: Boolean = false
     private var consumeKeyboardSelectionPopupBackKeyUp: Boolean = false
@@ -3804,6 +3873,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         textMacroExecutionRequestId.incrementAndGet()
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
+        clearGemmaFloating()
         gemmaInputSessionId += 1L
         gemmaMediaPanelController?.onInputSessionChanged()
         gemmaHandwritingController?.onInputSessionChanged()
@@ -6494,6 +6564,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
@@ -6515,6 +6586,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
@@ -6568,6 +6640,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
         dismissKeyboardSelectionPopups()
@@ -6589,6 +6662,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        gemmaFloatingCoordinator?.destroy()
+        gemmaFloatingWindow?.clear()
         floatingCursor?.destroy()
         floatingCursor = null
         resetCursorInputSession()
@@ -13041,6 +13116,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         failureMessage: String,
         transform: suspend (String) -> String
     ) {
+        gemmaFloatingCoordinator?.suspendForForeground()
         cancelActiveCandidateTranslation()
         cancelActiveSelectionAction()
         val requestId = selectionActionRequestId.incrementAndGet()
@@ -13195,6 +13271,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resultCandidateType: Int,
         transform: suspend (String) -> String
     ) {
+        gemmaFloatingCoordinator?.suspendForForeground()
         cancelActiveCandidateTranslation()
         cancelActiveSelectionAction()
         val sourceText = displayTextFromCandidate(candidate)
@@ -19073,6 +19150,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             gemmaTranslationManager.loadState.collectLatest {
+                refreshGemmaFloating()
                 val capability = gemmaTranslationManager.imageInputCapability()
                 gemmaHandwritingController?.onImageCapabilityChanged(capability)
                 refreshShortcutAvailability()
@@ -19713,6 +19791,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearSuggestionStateAfterEditorSelectionChange() {
+        clearGemmaFloating()
         val hasStaleCandidateState =
             currentCandidateStripCandidates.isNotEmpty() ||
                 currentCandidateStripFullCandidates.isNotEmpty() ||
@@ -23710,6 +23789,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun prepareForGemmaHandwriting() {
+        gemmaFloatingCoordinator?.suspendForForeground()
         gemmaMediaPanelController?.close()
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
@@ -23839,6 +23919,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun prepareForGemmaMediaPanel() {
+        gemmaFloatingCoordinator?.suspendForForeground()
         gemmaHandwritingController?.close()
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
@@ -30546,7 +30627,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         cancelCandidateTranslationIfComposingChanges(p0)
         val applied = composingTextArbiter.setCanonical(p0, p1)
-        if (applied) composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
+        if (applied) {
+            val next = p0?.toString().orEmpty()
+            runOnMainThread {
+                if (gemmaFloatingText != next) { gemmaFloatingRevision++; gemmaFloatingText = next }
+                refreshGemmaFloating()
+            }
+            composingGuide?.update(p0, inputString.value + stringInTail.get(), isLiveConversionEnable == true)
+        }
         if (applied && qwertyMode.value == TenKeyQWERTYMode.Custom &&
             !isCustomToggleDirectInput() && customToggleRemainingMillis() > 0
         ) {
@@ -30569,6 +30657,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
+        clearGemmaFloating()
         val finished = composingTextArbiter.finishCanonical()
         composingGuide?.update(null)
         clearPhysicalCandidateCompositionSession("finish composing text")
@@ -30585,6 +30674,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelCandidateTranslationIfPreEditMutates()
         val committed = connection.commitText(p0, p1)
         if (committed) {
+            clearGemmaFloating()
             cursorWrittenComposing = null
             editorMutationRevision.advance()
             composingTextArbiter.markCanonicalFinished()
