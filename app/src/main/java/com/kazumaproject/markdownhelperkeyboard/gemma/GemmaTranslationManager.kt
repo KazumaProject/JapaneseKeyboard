@@ -299,7 +299,7 @@ class GemmaTranslationManager @Inject constructor(
         return runtimeClient.generatePreview(
             if (separate) text else com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.build(text, instruction),
             if (separate) com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.systemInstruction(instruction) else "",
-        )?.trim()
+        )
     }
 
     internal fun cancelFloatingText() = runtimeClient.cancelPreview()

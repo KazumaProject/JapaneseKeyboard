@@ -2,10 +2,15 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.floating
 
 import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import java.util.UUID
 
-internal data class GemmaFloatingRule(val id: String, val name: String, val instruction: String)
+internal data class GemmaFloatingRule(
+    @field:SerializedName("id") val id: String,
+    @field:SerializedName("name") val name: String,
+    @field:SerializedName("instruction") val instruction: String,
+)
 
 /** Uses the default preferences, so the existing settings backup includes rules and selection. */
 internal class GemmaFloatingSettings(private val preferences: SharedPreferences) {
