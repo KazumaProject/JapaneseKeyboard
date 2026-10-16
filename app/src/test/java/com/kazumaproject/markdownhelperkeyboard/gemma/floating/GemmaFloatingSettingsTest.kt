@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.floating
 import android.content.Context
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.google.gson.JsonParser
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.*
 import org.junit.Before
@@ -53,6 +54,20 @@ class GemmaFloatingSettingsTest {
         assertTrue(restored.enabled)
         assertEquals("Multiline", restored.selectedRule?.name)
         assertEquals(3, restored.rules.size)
+    }
+
+    @Test fun persistedRuleFieldNamesMatchTheExistingBackupSchema() {
+        val settings = GemmaFloatingSettings(preferences)
+        settings.save(null, "Formatting", "Preserve whitespace.")
+        val stored = JsonParser.parseString(preferences.getString(GemmaFloatingSettings.RULES, null))
+            .asJsonArray.last().asJsonObject
+        assertEquals(setOf("id", "name", "instruction"), stored.keySet())
+
+        preferences.edit().putString(GemmaFloatingSettings.RULES,
+            """[{"id":"custom","name":"Formatting","instruction":"Preserve whitespace."}]""")
+            .putString(GemmaFloatingSettings.SELECTED, "custom").commit()
+        assertEquals(GemmaFloatingRule("custom", "Formatting", "Preserve whitespace."),
+            GemmaFloatingSettings(preferences).selectedRule)
     }
 
     @Test fun malformedRulesDoNotRunAnUnrelatedPreset() {
