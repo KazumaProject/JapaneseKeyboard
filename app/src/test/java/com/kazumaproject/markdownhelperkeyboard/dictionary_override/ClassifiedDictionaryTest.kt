@@ -114,14 +114,20 @@ class ClassifiedDictionaryTest {
         assertTrue(notice("medical").contains("CC-BY-4.0"))
         assertTrue(notice("medical").contains("MANBYO_202106"))
         assertTrue(notice("medical").contains("HYAKUYAKU_202107"))
-        assertTrue(notice("medical").contains("2,006"))
+        assertTrue(notice("medical").contains("2,003"))
         assertTrue(context.assets.open("licenses/english-reading.html").bufferedReader().use { it.readText() }.contains("Carnegie Mellon"))
+    }
+
+    @Test fun currentReleaseNeedsNoLiteralSurfaceRepair() {
+        val text = context.assets.open("categories/surface-overrides.json").bufferedReader().use { it.readText() }
+        assertEquals("{}", text.trim())
     }
 
     @Test fun literalRepairOnlyAppliesToThePinnedDataOrIdenticalImports() {
         val resolver = mock<DictionarySourceResolver>()
         whenever(resolver.openBundledAsset("categories/surface-overrides.json")).thenAnswer {
-            context.assets.open("categories/surface-overrides.json")
+            // Synthetic older-release sidecar keeps the compatibility guard covered.
+            ByteArrayInputStream("""{"place":{"-1\tあとこしゃらか\t1851\t1851\t9450":"アトコシヤラカ"}}""".toByteArray())
         }
         val reader = DictionaryBinaryReader(resolver, mock())
         val category = DictionaryCategory.CLASSIFIED_PLACE
