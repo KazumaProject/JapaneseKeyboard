@@ -220,9 +220,10 @@ class GemmaRuntimeService : Service() {
             if (preview) Timber.d("Gemma floating inference: %d ms, channel lengths: %s",
                 android.os.SystemClock.elapsedRealtime() - started,
                 (response.invokeNoArgs("getChannels") as? Map<*, *>)?.mapValues { (_, value) -> (value as? String)?.length ?: 0 })
-            extractText(response)
-                .trim()
-                .ifEmpty { throw IllegalStateException("Gemma returned an empty response.") }
+            val text = extractText(response)
+            // Preview output replaces composing text verbatim, including indentation and final newlines.
+            (if (preview) text else text.trim())
+                .ifBlank { throw IllegalStateException("Gemma returned an empty response.") }
         }.onSuccess { result ->
             callback.safeResult(requestId, result)
         }.onFailure { error ->
