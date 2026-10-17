@@ -24,6 +24,7 @@ internal class GemmaFloatingCoordinator(
     private val cancelGeneration: () -> Unit,
     private val publish: (GemmaFloatingInput?, String?) -> Unit,
     private val debounceMillis: Long = 300,
+    private val publishProcessing: (GemmaFloatingInput) -> Unit = {},
 ) {
     private val updates = Channel<GemmaFloatingInput>(Channel.CONFLATED)
     private var debounceJob: Job? = null
@@ -35,6 +36,7 @@ internal class GemmaFloatingCoordinator(
             if (current != request || suspended) continue
             try {
                 active = true
+                publishProcessing(request)
                 val result = generate(request)
                 if (current == request && !suspended) {
                     if (result == null) schedule(request) // A foreground action owns the engine.

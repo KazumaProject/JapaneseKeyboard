@@ -145,14 +145,15 @@ class GemmaFloatingSettingsDeviceTest {
                     assertNotNull(fragment.findPreference<Preference>(GemmaFloatingSettings.MANAGE))
                     val selection = fragment.findPreference<ListPreference>(GemmaFloatingSettings.SELECTED)!!
                     assertEquals("english", selection.value)
-                    assertTrue(selection.entryValues.contains("modeless"))
-                    selection.value = "modeless"
+                    assertTrue(selection.entryValues.contains("japanese"))
+                    assertFalse(selection.entryValues.contains("modeless"))
+                    selection.value = "japanese"
                 }
                 scenario.recreate()
                 scenario.awaitSettingsContentReady()
                 awaitGemma(scenario)
                 scenario.onActivity { activity ->
-                    assertEquals("modeless", gemmaFragment(activity).findPreference<ListPreference>(GemmaFloatingSettings.SELECTED)!!.value)
+                    assertEquals("japanese", gemmaFragment(activity).findPreference<ListPreference>(GemmaFloatingSettings.SELECTED)!!.value)
                 }
             }
         }
