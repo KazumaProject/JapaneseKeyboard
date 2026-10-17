@@ -63,6 +63,11 @@
 
     <PreferenceCategory android:title="@string/conversion_preference_title">
 
+        <Preference
+            android:key="date_candidate_settings_preference"
+            android:title="@string/date_candidate_settings_title"
+            android:summary="@string/date_candidate_settings_summary" />
+
         <SeekBarPreference
             android:defaultValue="4"
             android:key="n_best_preference"
@@ -128,6 +133,15 @@
             android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <ListPreference
+            android:defaultValue="whole"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:entries="@array/live_conversion_candidate_yomi_mode_entries"
+            android:entryValues="@array/live_conversion_candidate_yomi_mode_values"
+            android:key="live_conversion_candidate_yomi_mode_preference"
+            android:title="@string/live_conversion_candidate_yomi_mode_title"
+            app:useSimpleSummaryProvider="true" />
 
         <SeekBarPreference
             android:defaultValue="14"

@@ -13,6 +13,8 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
+import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -163,7 +165,9 @@ object KeyboardDefaultLayouts {
         dynamicKeyStates: Map<String, Int>,
         inputLayoutType: String,
         inputStyle: String,
-        deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings()
+        deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings(),
+        tfbiFlickRotation: TfbiFlickRotation = TfbiFlickRotation.DEFAULT,
+        sumireFlickInputMode: SumireFlickInputMode = SumireFlickInputMode.ALL
     ): KeyboardLayout {
         val baseLayout = when (inputLayoutType) {
             "toggle" -> {
@@ -263,7 +267,11 @@ object KeyboardDefaultLayouts {
             }
         }
 
-        var finalLayout = baseLayout
+        var finalLayout = if (mode == KeyboardInputMode.HIRAGANA && inputStyle == "second-flick") {
+            SumireFlickRotationMapper.apply(baseLayout, tfbiFlickRotation)
+        } else {
+            baseLayout
+        }
         dynamicKeyStates.forEach { (keyId, stateIndex) ->
             finalLayout = applyKeyState(finalLayout, keyId, stateIndex)
         }

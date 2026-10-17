@@ -104,10 +104,36 @@
             android:title="@string/composing_guide_integrated_reset" />
 
         <SwitchPreferenceCompat
+            android:key="floating_cursor_enabled"
+            android:defaultValue="false"
+            android:title="@string/floating_cursor_enabled"
+            android:summary="@string/floating_cursor_summary" />
+        <Preference
+            android:key="floating_cursor_reset"
+            android:persistent="false"
+            android:title="@string/floating_cursor_reset" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_floating_preference"
             android:summary="@string/keyboard_floating_preference_summary"
             android:title="@string/keyboard_floating_preference_title" />
+
+        <ListPreference
+            android:key="floating_keyboard_hide_button_position"
+            android:dependency="keyboard_floating_preference"
+            android:defaultValue="bottom_left"
+            android:title="@string/floating_keyboard_hide_button_position_title"
+            android:entries="@array/floating_keyboard_hide_button_position_labels"
+            android:entryValues="@array/floating_keyboard_hide_button_position_values"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            android:key="floating_keyboard_show_edit_button"
+            android:dependency="keyboard_floating_preference"
+            android:defaultValue="true"
+            android:title="@string/floating_keyboard_show_edit_button_title"
+            android:summary="@string/floating_keyboard_show_edit_button_summary" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
@@ -548,6 +574,17 @@
             android:title="@string/flick_editor_preview_title" />
 
         <SeekBarPreference
+            android:defaultValue="0"
+            android:dependency="flick_editor_preview_preference"
+            android:key="flick_editor_preview_delay_ms"
+            android:max="500"
+            android:title="@string/flick_editor_preview_delay_title"
+            android:summary="@string/flick_editor_preview_delay_summary"
+            app:min="0"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
             android:defaultValue="100"
             android:key="flick_sensitivity_preference"
             android:max="200"
@@ -669,6 +706,15 @@
             android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
             android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
             android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <ListPreference
+            android:defaultValue="whole"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:entries="@array/live_conversion_candidate_yomi_mode_entries"
+            android:entryValues="@array/live_conversion_candidate_yomi_mode_values"
+            android:key="live_conversion_candidate_yomi_mode_preference"
+            android:title="@string/live_conversion_candidate_yomi_mode_title"
+            app:useSimpleSummaryProvider="true" />
 
         <SeekBarPreference
             android:defaultValue="14"

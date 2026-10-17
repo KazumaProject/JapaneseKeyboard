@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_v
 
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingViewport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -50,6 +51,7 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FormulaView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateYomiPresentation
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
@@ -192,6 +194,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
     private var candidateYomiTextSize: Float = AppPreference.DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE.toFloat()
+    private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = PreviewCandidateItemColorState()
@@ -199,6 +202,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateEmptyDrawableColor: Int? = null
     private var candidateEmptyDrawableTextColor: Int? = null
     private var released: Boolean = false
+    private val readingRecyclers = mutableSetOf<RecyclerView>()
     private var displayGeneration: Int = 0
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
     private var candidateSuggestions: List<Candidate> = emptyList()
@@ -314,7 +318,22 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onShowSoftKeyboardClick = listener
     }
 
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        readingRecyclers += recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        CandidateReadingViewport.release(recyclerView)
+        readingRecyclers -= recyclerView
+        super.onDetachedFromRecyclerView(recyclerView)
+    }
+
     fun release() {
+        readingRecyclers.forEach {
+            CandidateReadingViewport.release(it)
+        }
+        readingRecyclers.clear()
         released = true
         onItemClickListener = null
         onItemLongClickListener = null
@@ -885,6 +904,12 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setCandidateYomiMode(mode: String) {
+        if (candidateYomiMode == mode) return
+        candidateYomiMode = mode
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowCandidateYomiForLiveConversion(enabled: Boolean) {
         if (showCandidateYomiForLiveConversion == enabled) return
         showCandidateYomiForLiveConversion = enabled
@@ -967,10 +992,14 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
             isFirstCandidate = position == 0,
             suggestion = suggestion,
-            readingTextSize = candidateYomiTextSize
+            readingTextSize = candidateYomiTextSize,
+            readingMode = candidateYomiMode
         )
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
+        (holder.yomiText as CandidateReadingTextView).setRubyAnnotations(
+            yomiPresentation.annotations, paddingLength
+        )
         holder.yomiText.textSize = if (yomiPresentation.isVisible) {
             CandidateReadingSizeLimits.clamp(
                 holder.itemView.context, yomiPresentation.textSize)

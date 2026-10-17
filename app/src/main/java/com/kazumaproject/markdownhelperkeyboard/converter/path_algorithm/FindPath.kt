@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.CandidateSource
@@ -33,6 +34,38 @@ class FindPath(
     private var mozcSegmenterProvider: () -> MozcSegmenter? = { null },
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
 ) {
+
+    internal data class ScoredWholeInputCandidate(
+        val candidate: Candidate,
+        val systemNgramMatched: Boolean = candidate.standaloneUnigramMatched,
+    )
+
+    /** Scores BOS -> word -> EOS without enumerating or pruning alternative paths. */
+    internal fun scoreWholeInputCandidate(
+        input: String,
+        candidate: Candidate,
+        connectionMatrix: ConnectionMatrix.CostTable,
+        bunsetsu: Boolean,
+    ): ScoredWholeInputCandidate {
+        val node = Node(
+            l = requireNotNull(candidate.leftId), r = requireNotNull(candidate.rightId),
+            score = candidate.score, f = 0, tango = candidate.string,
+            len = input.length.toShort(), yomiUsed = input, sPos = 0,
+            dictionaryCategories = candidate.dictionaryCategories,
+        )
+        if (bunsetsu) mozcSegmenterProvider()?.let {
+            applyMozcPrefixSuffixPenaltyToNode(node, input.length, it, null)
+        }
+        val dictionary = systemNgramDictionaryProvider()
+        val standalone = dictionary.matchesStandaloneNode(node, input)
+        // NgramRuleScorer contributes zero on both edges: prev=BOS or current=EOS.
+        val score = connectionMatrix.cost(0, node.l.toInt()) + node.adjustedScore +
+            connectionMatrix.cost(node.r.toInt(), 0)
+        return ScoredWholeInputCandidate(
+            candidate.copy(score = score, standaloneUnigramMatched = standalone),
+            standalone || (bunsetsu && dictionary.matchesSingleNode(node)),
+        )
+    }
 
     internal data class ForwardDpCache(
         val inputLength: Int,
@@ -1044,7 +1077,9 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): MutableList<Candidate> = backwardAStar(
+        originalInput = originalInput,
         graph = graph,
         length = length,
         connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
@@ -1064,6 +1099,7 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): MutableList<Candidate> {
         cancellationCheck()
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
@@ -1124,6 +1160,17 @@ class FindPath(
         val resultFinal = mutableListOf<Candidate>()
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
+        val dictionary = systemNgramDictionaryProvider()
+        val standaloneMayMatch = graph[length]?.any { dictionary.matchesStandaloneNode(it, originalInput) } == true
+        val matched = HashSet<String>()
+        val searchCount = if (standaloneMayMatch) maxOf(n * 4, 32).coerceAtMost(64) else n
+        fun ranked(): MutableList<Candidate> {
+            if (!standaloneMayMatch) return resultFinal
+            return resultFinal.map {
+                if (it.string in matched) it.copy(standaloneUnigramMatched = true) else it
+            }.sortedWith(compareByDescending<Candidate> { it.standaloneUnigramMatched }.thenBy { it.score })
+                .take(n).toMutableList()
+        }
 
         val searchScratch = sessionState?.backwardSearchScratch ?: BackwardSearchScratch()
         searchScratch.begin(
@@ -1147,7 +1194,7 @@ class FindPath(
                     sourceMask = 0,
                 )
             )
-        } ?: return resultFinal
+        } ?: return ranked()
 
         var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
@@ -1160,6 +1207,10 @@ class FindPath(
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
 
+                val single = element.next
+                if (single?.next?.node?.tango == "EOS" && dictionary.matchesStandaloneNode(single.node, originalInput)) {
+                    matched.add(stringFromNode)
+                }
                 if (foundStrings.add(stringFromNode)) {
                     candidateSegmentCollector?.set(
                         stringFromNode,
@@ -1171,6 +1222,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
+                        dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = element.priorityCost,
@@ -1180,8 +1232,8 @@ class FindPath(
                     resultFinal.add(candidate)
                 }
 
-                if (resultFinal.size >= n) {
-                    return resultFinal
+                if (resultFinal.size >= searchCount || (resultFinal.size >= n && matched.isNotEmpty())) {
+                    return ranked()
                 }
             } else {
                 if (sessionState != null) {
@@ -1225,7 +1277,7 @@ class FindPath(
             }
         }
 
-        return resultFinal
+        return ranked()
     }
 
     private fun forwardDp(
@@ -1550,6 +1602,22 @@ class FindPath(
         if (mask and 2 != 0) yield(CandidateSource.USER_DICTIONARY)
     }
 
+    private fun categoriesFromPath(path: PathQueueElement): Set<DictionaryCategory> = buildSet {
+        var current: PathQueueElement? = path
+        while (current != null) {
+            addAll(current.node.dictionaryCategories)
+            current = current.next
+        }
+    }
+
+    private fun categoriesFromNode(node: Node): Set<DictionaryCategory> = buildSet {
+        var current: Node? = node
+        while (current != null) {
+            addAll(current.dictionaryCategories)
+            current = current.next
+        }
+    }
+
     private fun resolveCandidateType(
         string: String,
         sources: Sequence<CandidateSource>,
@@ -1600,7 +1668,9 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): BunsetsuCandidateResult = backwardAStarWithBunsetsu(
+        originalInput = originalInput,
         graph = graph,
         length = length,
         connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
@@ -1628,6 +1698,7 @@ class FindPath(
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        originalInput: String? = null,
     ): BunsetsuCandidateResult {
         cancellationCheck()
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
@@ -1779,7 +1850,11 @@ class FindPath(
         val ngramRuleScorer = ngramRuleScorerProvider()
         val systemNgramDictionary = systemNgramDictionaryProvider()
         val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
-        val systemNgramMayAffectCandidates =
+        var standaloneMatched = false
+        val standaloneMayAffectCandidates = graph[length]?.any {
+            systemNgramDictionary.matchesStandaloneNode(it, originalInput)
+        } == true
+        val systemNgramMayAffectCandidates = standaloneMayAffectCandidates ||
             systemNgramDictionary.ruleCount != 0 &&
                 latticeMayContainSystemNgram(
                     graph = graph,
@@ -1844,6 +1919,15 @@ class FindPath(
                     ),
                 )
 
+                // Standalone matching uses the entire path, including later duplicate surfaces.
+                // The node reading and surface must equal the original input. Never run this matcher over individual bunsetsu nodes.
+                val singleNode = element.next
+                if (singleNode?.next?.node?.tango == "EOS" &&
+                    systemNgramDictionary.matchesStandaloneNode(singleNode.node, originalInput)
+                ) {
+                    standaloneMatched = true
+                    systemNgramMatchedCandidates.add(stringFromNode)
+                }
                 if (foundStrings.add(stringFromNode)) {
                     candidateSegmentCollector?.set(
                         stringFromNode,
@@ -1868,6 +1952,7 @@ class FindPath(
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
                         length = length.toUByte(),
+                        dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
                         score = totalCost,
                         leftId = element.next?.node?.l,
@@ -1910,7 +1995,8 @@ class FindPath(
                     }
                 } else if (
                     resultFinal.size >= internalCandidateCount ||
-                        (enoughCandidates && systemRuleAlreadyMatched)
+                        (enoughCandidates && systemRuleAlreadyMatched &&
+                            (!standaloneMayAffectCandidates || standaloneMatched))
                 ) {
                     val ranked = rankSystemNgramCandidates(resultFinal, systemNgramMatchedCandidates, n)
                     recordBackwardSearchDuration()
@@ -2070,6 +2156,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromNode(node.first),
                         ),
+                        dictionaryCategories = categoriesFromNode(node.first),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
@@ -2150,40 +2237,47 @@ class FindPath(
         segmenter: MozcSegmenter,
         trace: MutableList<PenaltyTrace>?,
     ) {
-        nodes.forEach nodeLoop@{ node ->
-            if (node.mozcNodeType != MozcNodeType.NOR) {
-                node.adjustedScore = node.score
-                return@nodeLoop
-            }
+        nodes.forEach { node -> applyMozcPrefixSuffixPenaltyToNode(node, length, segmenter, trace) }
+    }
 
-            val prefixPenalty = when {
-                node.sPos != 0 -> 0
-                ExactInputPenaltyPolicy.shouldZeroPrefixPenalty(node, length) -> 0
-                else -> segmenter.getPrefixPenalty(node.l.toInt())
-            }
-            val suffixPenalty = if (node.sPos + node.len.toInt() == length) {
-                segmenter.getSuffixPenalty(node.r.toInt())
-            } else {
-                0
-            }
+    private fun applyMozcPrefixSuffixPenaltyToNode(
+        node: Node,
+        length: Int,
+        segmenter: MozcSegmenter,
+        trace: MutableList<PenaltyTrace>?,
+    ) {
+        if (node.mozcNodeType != MozcNodeType.NOR) {
+            node.adjustedScore = node.score
+            return
+        }
 
-            node.adjustedScore = node.score + prefixPenalty + suffixPenalty
-            if (prefixPenalty != 0 || suffixPenalty != 0) {
-                trace?.add(
-                    PenaltyTrace(
-                        tango = node.tango,
-                        yomiUsed = node.yomiUsed,
-                        startPos = node.sPos,
-                        endPos = node.sPos + node.len.toInt(),
-                        leftId = node.l.toInt(),
-                        rightId = node.r.toInt(),
-                        baseCost = node.score,
-                        prefixPenalty = prefixPenalty,
-                        suffixPenalty = suffixPenalty,
-                        adjustedCost = node.adjustedScore,
-                    ),
-                )
-            }
+        val prefixPenalty = when {
+            node.sPos != 0 -> 0
+            ExactInputPenaltyPolicy.shouldZeroPrefixPenalty(node, length) -> 0
+            else -> segmenter.getPrefixPenalty(node.l.toInt())
+        }
+        val suffixPenalty = if (node.sPos + node.len.toInt() == length) {
+            segmenter.getSuffixPenalty(node.r.toInt())
+        } else {
+            0
+        }
+
+        node.adjustedScore = node.score + prefixPenalty + suffixPenalty
+        if (prefixPenalty != 0 || suffixPenalty != 0) {
+            trace?.add(
+                PenaltyTrace(
+                    tango = node.tango,
+                    yomiUsed = node.yomiUsed,
+                    startPos = node.sPos,
+                    endPos = node.sPos + node.len.toInt(),
+                    leftId = node.l.toInt(),
+                    rightId = node.r.toInt(),
+                    baseCost = node.score,
+                    prefixPenalty = prefixPenalty,
+                    suffixPenalty = suffixPenalty,
+                    adjustedCost = node.adjustedScore,
+                ),
+            )
         }
     }
 

@@ -1,0 +1,642 @@
+<!doctype html><meta charset="utf-8"><style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style><title>医療 / medical</title><h1>医療 / medical</h1><p>Distribution / 配布: v1.7.263-pre.5 (d45a1aa16bf3f6fe43c3d4e62aa5100290c30746)</p><p>Changes / 加工: field extraction, normalization, duplicate filtering, POS/cost assignment and binary conversion / 項目抽出・正規化・重複除外・品詞とコスト割当・バイナリ化。</p><p>2,003 adopted readings were supplemented with Gemini. Automatic and inferred readings are unverified / 採用語の読み2,003件をGeminiで補完。自動読み・推定読みの正確性は未確認。</p><h2>manbyo</h2><p>奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 万病辞書 MANBYO_202106</p><p>Version / 版: MANBYO_202106</p><p>License / 条件: CC-BY-4.0</p><p><a href="https://sociocom.naist.jp/manbyou-dic/">Source / 元データ</a></p><p>Input ZIP SHA-256: 60daa90df38726d68a68bcdf4112a7a4daaab624e3587993ccffddc3d70b1140</p><p>Adopted rows / 採用行: 72029</p><h2>hyakuyaku</h2><p>奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 百薬辞書 HYAKUYAKU_202107</p><p>Version / 版: HYAKUYAKU_202107</p><p>License / 条件: CC-BY-4.0</p><p><a href="https://sociocom.naist.jp/hyakuyaku-dic/">Source / 元データ</a></p><p>Input ZIP SHA-256: 87ea9b70e50620345543483039dd2f4da7746d57eff12c6c78356b71f79cb769</p><p>Adopted rows / 採用行: 20656</p><h2>manbyo</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/manbyo.txt">Source / 出典</a></p><pre>Source: https://sociocom.naist.jp/manbyou-dic/
+
+万病辞書 Manbyo-Dictionary – NAIST Social Computing Lab.
+コンテンツへスキップ
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources &amp; Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+検索...
+ナビゲーションメニュー
+ナビゲーションメニュー
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources &amp; Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+万病辞書 Manbyo-Dictionary
+English
+臨床現場で実際に使われる病名を解析するための大規模な病名辞書
+医療文書から病名を抽出する処理は，これまで医療言語処理分野の研究では盛んに行われてきました．病名抽出にはICDのような標準規格で規定された病名を用いることがほとんどでした．しかし，実際の医療現場では，正式名称ではなく略記や英語名を用いることが少なくありません．そのため，定型的な病名コードだけでは症状や病名に関する情報をすべて抽出したいといった要望には応えることができません． そこで，ソーシャル・コンピューティング研究室では，医療従事者が記載した電子カルテや退院サマリから，症状や病名に関連する語を広く抽出したデータを作成し，万病辞書と名付けました． 本ページでは，万病辞書データや万病辞書データを検索できる万病検索を公開していますので，ご自由にご利用ください．
+お知らせ
+現在，辞書プロジェクトは，医学概念・知識連結データベース「JMED-DICT」として継続しています．
+オープンソース（商用利用可能）な医療辞書として，「JMED-DICT mini」のご利用を検討ください．
+ダウンロード◆ 万病辞書データ＜最新バージョン＞
+MANBYO_202106  (updated: 2021/06/02)
+＜過去バージョン＞
+MANBYO_201907  (updated: 2019/07/04)
+MANBYO_201905 (updated: 2019/05/27)
+MANBYO_201810  (updated: 2018/10/12)
+MANBYO_201806 (updated: 2018/06/08)
+◆ Mecab用辞書データ（別ページに移動します）
+仕様
+万病辞書 (MANBYO_202106以降) の構成
+詳細はデータに含まれるREADMEをご覧ください．
+カラム名
+説明
+出現形
+電子カルテや退院サマリから抽出された症状・病名
+（例：１１β−水酸化酵素欠損症, １８常染色体異常等）
+出現形よみ
+出現形のよみがな（全角）． 信頼度LEVELがSの病名は，ICD10対応標準病名マスターに記載されている病名表記カナをもとに付与．上記以外の病名は，「万病辞書 よみがなくん」により自動付与し，一部人手により修正．なお，読みの候補が複数存在する場合は，音読みを優先．（誤りがある場合もございますので，参考までにお使いください）
+ICD10コード
+出現形に対応する，ICD10対応標準病名マスター (*1) に記載されているICD10コード．ただし，次の場合には -1を付与：1) 4つ以上のコードが存在する場合（3つまでは区切り文字には；（半角セミコロン）を用いて全て付与），2) 断⽚的な情報のみで判断が困難な場合，3) コードが存在していない場合
+標準病名
+出現形に対応する，ICD10対応標準病名マスター (*1) に記載されているICD10対応標準病名
+信頼度レベル
+ICD10コードや標準病名のコーディングに対する信頼度を表す．
+S: ICD10対応標準病名マスター (*1) に記載されている症状・病名
+A: 2名以上の医療従事者が同じコードを付与
+B: 2名以上の医療従事者が相談してコードを付与
+C: 1名の医療従事者がコードを付与
+D: 計算機が自動的に付与
+E: 新規に追加された症状・病名のうち，万病辞書に収載済み病名のICD コードと標準病名を元に，計算機が自動的に付与
+F: 新規に追加された症状・病名のうち，万病辞書に収載済み病名のICD コードと標準病名を元に，計算機が自動的に付与
+頻度レベル
+本研究室で収集した医療文書における出現形の出現頻度を降順でソートしたときの順位を5％ごとに区切ったレベル（95-100%など20段階）を付与．出現頻度が0の場合には「出現なし」を付与
+*1: ICD10対応標準病名マスター (V4.04 2018年4月1日改訂) を利用
+万病検索
+万病辞書内のデータをオンラインで閲覧することができます．右サイトで症状や病名を入力し，検索ボタンを押してください．
+https://sociocom.jp/demo/manbyo
+アンケート
+万病辞書について，ご意見・ご要望がございましたら，下記よりご回答ください．お答えいただいた内容は，今後の万病辞書の改善のための貴重な資料として使わせていただきます．
+アンケート（別ページに移動します）
+参考文献
+Kaoru Ito, Hiroyuki Nagai, Taro Okahisa, Shoko Wakamiya, Tomohide Iwao, Eiji Aramaki: J-MeDic: A Japanese Disease Name Dictionary based on Real Clinical Usage, International Conference on Language Resources and Evaluation (LREC) (Japan, Miyazaki), pp. 2365-2369, 2018 (2018/05/11)
+謝辞
+「万病辞書」は主に厚生労働科学研究費補助金「カルテ情報の自動構造化システムと疾患数理モデルの逐次的構築，及び，自動構造化機能を有した入力機構の開発」（研究代表者：荒牧英治）のサポートにて，奈良先端科学技術大学院大学と東京大学医学部附属病院により構築されました．
+プライバシーポリシー
+本サイトに記入された個人情報は，サイト運営に必要となる連絡，サイトの評価，サイト上での表示，本サイトで提供するサービスの必要に限り使用し，それ以外の用途には使用しません．
+免責事項
+本成果物は，可能な限り細心の注意を払って開発しました．しかし，完全な信頼性や堅牢性を保証しているわけではありません．結果的に本成果物を使用して何らかの問題が発生した場合，提供元である奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室は一切の責任を負いかねます．ご使用になる場合には自己責任でご活用いただくようお願いいたします．
+本成果物は クリエイティブ・コモンズ 表示 4.0 国際 ライセンスの下に提供されています。
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+</pre><h2>hyakuyaku</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/hyakuyaku.txt">Source / 出典</a></p><pre>Source: https://sociocom.naist.jp/hyakuyaku-dic/
+
+百薬辞書 Hyakuyaku-Dictionary – NAIST Social Computing Lab.
+コンテンツへスキップ
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources &amp; Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+検索...
+ナビゲーションメニュー
+ナビゲーションメニュー
+研究紹介
+Research Funding
+Theses and Dissertations
+Publications
+Member
+学生募集
+アクセス
+Resources &amp; Software
+Links
+English
+Introduction
+Research
+For Students
+Access
+百薬辞書 Hyakuyaku-Dictionary
+English
+臨床現場で実際に使われる医薬品名を解析するための大規模な医薬品名辞書
+医療文書から病名や医薬品名を抽出する処理は，これまで医療言語処理分野の研究では盛んに行われてきました．しかし，実際の医療現場では，医薬品の一般名ではなく略記や英語名を用いることが少なくありません．そのため，定型的な一般名だけでは医薬品に関する情報をすべて抽出したいといった要望には応えることができません．そこで，ソーシャル・コンピューティング研究室では，医薬品に関連する語を広く抽出したデータを作成し，“百薬辞書”と名付けました．本サイトでは，百薬辞書ならびに関連データを公開していますので，ご自由にご利用ください．
+ダウンロード
+◆ 百薬辞書データ
+＜最新バージョン＞
+HYAKUYAKU_202107 (updated: 2021/07/06)
+＜過去バージョン＞
+HYAKUYAKU_202007 (updated: 2020/10/27)
+◆ Mecab用辞書データ（別ページに移動します）
+仕様百薬辞書の抜粋 (HYAKUYAKU_202107 ver.)
+百薬辞書の構成 (HYAKUYAKU_202107 ver.)
+カラム名
+説明
+出現形
+本研究室で収集した医療文書から抽出された医薬品名（全角）
+出現形よみ
+出現形のよみ（全角）
+一般名
+出現形に対応する医薬品の一般名（全角）．KEGG DRUG Database などをもとに，出現形の化学構造を反映した名称を付与．一般名が決まらない場合には [AMB]，[NON]，[TRE] を付与
+[AMB]: 出現形の曖昧性が高い場合
+[NON]: 出現形が医薬品ではなくサプリメントや健康食品などの場合
+[TRE]: 出現形が医薬品ではなく治療法である場合
+信頼度レベル
+一般名などのコーディングに対して付与した信頼度．なお，収載済みの情報を元に計算機が自動的に付与，あるいは，未コーディングの場合は値なし
+A: 2名の医療従事者のコーディングが同じ
+B: 1名の医療従事者のコーディングをもう1名が修正
+C: 1名の医療従事者がコーディング
+頻度レベル
+本研究室で収集した医療文書における出現形の使用頻度に基づき5％区切りで付与した20段階のレベル
+プライバシーポリシー
+本サイトに記入された個人情報は，サイト運営に必要となる連絡，サイトの評価，サイト上での表示，本サイトで提供するサービスの必要に限り使用し，それ以外の用途には使用しません．
+免責事項
+本成果物は，可能な限り細心の注意を払って開発しました．しかし，完全な信頼性や堅牢性を保証しているわけではありません．結果的に本成果物を使用して何らかの問題が発生した場合，提供元である奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室は一切の責任を負いかねます．ご使用になる場合には自己責任でご活用いただくようお願いいたします．
+本成果物は クリエイティブ・コモンズ 表示 4.0 国際 ライセンスの下に提供されています。
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+お問い合わせ
+医療言語処理プロジェクト (MedNLP)
+研究室内部ページ
+©︎ SOCIOCOM 2021
+</pre><h2>cc-by-4.0</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/CC-BY-4.0.txt">Source / 出典</a></p><pre>Source: https://creativecommons.org/licenses/by/4.0/legalcode.txt
+
+Attribution 4.0 International
+
+=======================================================================
+
+Creative Commons Corporation (&quot;Creative Commons&quot;) is not a law firm and
+does not provide legal services or legal advice. Distribution of
+Creative Commons public licenses does not create a lawyer-client or
+other relationship. Creative Commons makes its licenses and related
+information available on an &quot;as-is&quot; basis. Creative Commons gives no
+warranties regarding its licenses, any material licensed under their
+terms and conditions, or any related information. Creative Commons
+disclaims all liability for damages resulting from their use to the
+fullest extent possible.
+
+Using Creative Commons Public Licenses
+
+Creative Commons public licenses provide a standard set of terms and
+conditions that creators and other rights holders may use to share
+original works of authorship and other material subject to copyright
+and certain other rights specified in the public license below. The
+following considerations are for informational purposes only, are not
+exhaustive, and do not form part of our licenses.
+
+     Considerations for licensors: Our public licenses are
+     intended for use by those authorized to give the public
+     permission to use material in ways otherwise restricted by
+     copyright and certain other rights. Our licenses are
+     irrevocable. Licensors should read and understand the terms
+     and conditions of the license they choose before applying it.
+     Licensors should also secure all rights necessary before
+     applying our licenses so that the public can reuse the
+     material as expected. Licensors should clearly mark any
+     material not subject to the license. This includes other CC-
+     licensed material, or material used under an exception or
+     limitation to copyright. More considerations for licensors:
+    wiki.creativecommons.org/Considerations_for_licensors
+
+     Considerations for the public: By using one of our public
+     licenses, a licensor grants the public permission to use the
+     licensed material under specified terms and conditions. If
+     the licensor&#x27;s permission is not necessary for any reason--for
+     example, because of any applicable exception or limitation to
+     copyright--then that use is not regulated by the license. Our
+     licenses grant only permissions under copyright and certain
+     other rights that a licensor has authority to grant. Use of
+     the licensed material may still be restricted for other
+     reasons, including because others have copyright or other
+     rights in the material. A licensor may make special requests,
+     such as asking that all changes be marked or described.
+     Although not required by our licenses, you are encouraged to
+     respect those requests where reasonable. More considerations
+     for the public:
+    wiki.creativecommons.org/Considerations_for_licensees
+
+=======================================================================
+
+Creative Commons Attribution 4.0 International Public License
+
+By exercising the Licensed Rights (defined below), You accept and agree
+to be bound by the terms and conditions of this Creative Commons
+Attribution 4.0 International Public License (&quot;Public License&quot;). To the
+extent this Public License may be interpreted as a contract, You are
+granted the Licensed Rights in consideration of Your acceptance of
+these terms and conditions, and the Licensor grants You such rights in
+consideration of benefits the Licensor receives from making the
+Licensed Material available under these terms and conditions.
+
+
+Section 1 -- Definitions.
+
+  a. Adapted Material means material subject to Copyright and Similar
+     Rights that is derived from or based upon the Licensed Material
+     and in which the Licensed Material is translated, altered,
+     arranged, transformed, or otherwise modified in a manner requiring
+     permission under the Copyright and Similar Rights held by the
+     Licensor. For purposes of this Public License, where the Licensed
+     Material is a musical work, performance, or sound recording,
+     Adapted Material is always produced where the Licensed Material is
+     synched in timed relation with a moving image.
+
+  b. Adapter&#x27;s License means the license You apply to Your Copyright
+     and Similar Rights in Your contributions to Adapted Material in
+     accordance with the terms and conditions of this Public License.
+
+  c. Copyright and Similar Rights means copyright and/or similar rights
+     closely related to copyright including, without limitation,
+     performance, broadcast, sound recording, and Sui Generis Database
+     Rights, without regard to how the rights are labeled or
+     categorized. For purposes of this Public License, the rights
+     specified in Section 2(b)(1)-(2) are not Copyright and Similar
+     Rights.
+
+  d. Effective Technological Measures means those measures that, in the
+     absence of proper authority, may not be circumvented under laws
+     fulfilling obligations under Article 11 of the WIPO Copyright
+     Treaty adopted on December 20, 1996, and/or similar international
+     agreements.
+
+  e. Exceptions and Limitations means fair use, fair dealing, and/or
+     any other exception or limitation to Copyright and Similar Rights
+     that applies to Your use of the Licensed Material.
+
+  f. Licensed Material means the artistic or literary work, database,
+     or other material to which the Licensor applied this Public
+     License.
+
+  g. Licensed Rights means the rights granted to You subject to the
+     terms and conditions of this Public License, which are limited to
+     all Copyright and Similar Rights that apply to Your use of the
+     Licensed Material and that the Licensor has authority to license.
+
+  h. Licensor means the individual(s) or entity(ies) granting rights
+     under this Public License.
+
+  i. Share means to provide material to the public by any means or
+     process that requires permission under the Licensed Rights, such
+     as reproduction, public display, public performance, distribution,
+     dissemination, communication, or importation, and to make material
+     available to the public including in ways that members of the
+     public may access the material from a place and at a time
+     individually chosen by them.
+
+  j. Sui Generis Database Rights means rights other than copyright
+     resulting from Directive 96/9/EC of the European Parliament and of
+     the Council of 11 March 1996 on the legal protection of databases,
+     as amended and/or succeeded, as well as other essentially
+     equivalent rights anywhere in the world.
+
+  k. You means the individual or entity exercising the Licensed Rights
+     under this Public License. Your has a corresponding meaning.
+
+
+Section 2 -- Scope.
+
+  a. License grant.
+
+       1. Subject to the terms and conditions of this Public License,
+          the Licensor hereby grants You a worldwide, royalty-free,
+          non-sublicensable, non-exclusive, irrevocable license to
+          exercise the Licensed Rights in the Licensed Material to:
+
+            a. reproduce and Share the Licensed Material, in whole or
+               in part; and
+
+            b. produce, reproduce, and Share Adapted Material.
+
+       2. Exceptions and Limitations. For the avoidance of doubt, where
+          Exceptions and Limitations apply to Your use, this Public
+          License does not apply, and You do not need to comply with
+          its terms and conditions.
+
+       3. Term. The term of this Public License is specified in Section
+          6(a).
+
+       4. Media and formats; technical modifications allowed. The
+          Licensor authorizes You to exercise the Licensed Rights in
+          all media and formats whether now known or hereafter created,
+          and to make technical modifications necessary to do so. The
+          Licensor waives and/or agrees not to assert any right or
+          authority to forbid You from making technical modifications
+          necessary to exercise the Licensed Rights, including
+          technical modifications necessary to circumvent Effective
+          Technological Measures. For purposes of this Public License,
+          simply making modifications authorized by this Section 2(a)
+          (4) never produces Adapted Material.
+
+       5. Downstream recipients.
+
+            a. Offer from the Licensor -- Licensed Material. Every
+               recipient of the Licensed Material automatically
+               receives an offer from the Licensor to exercise the
+               Licensed Rights under the terms and conditions of this
+               Public License.
+
+            b. No downstream restrictions. You may not offer or impose
+               any additional or different terms or conditions on, or
+               apply any Effective Technological Measures to, the
+               Licensed Material if doing so restricts exercise of the
+               Licensed Rights by any recipient of the Licensed
+               Material.
+
+       6. No endorsement. Nothing in this Public License constitutes or
+          may be construed as permission to assert or imply that You
+          are, or that Your use of the Licensed Material is, connected
+          with, or sponsored, endorsed, or granted official status by,
+          the Licensor or others designated to receive attribution as
+          provided in Section 3(a)(1)(A)(i).
+
+  b. Other rights.
+
+       1. Moral rights, such as the right of integrity, are not
+          licensed under this Public License, nor are publicity,
+          privacy, and/or other similar personality rights; however, to
+          the extent possible, the Licensor waives and/or agrees not to
+          assert any such rights held by the Licensor to the limited
+          extent necessary to allow You to exercise the Licensed
+          Rights, but not otherwise.
+
+       2. Patent and trademark rights are not licensed under this
+          Public License.
+
+       3. To the extent possible, the Licensor waives any right to
+          collect royalties from You for the exercise of the Licensed
+          Rights, whether directly or through a collecting society
+          under any voluntary or waivable statutory or compulsory
+          licensing scheme. In all other cases the Licensor expressly
+          reserves any right to collect such royalties.
+
+
+Section 3 -- License Conditions.
+
+Your exercise of the Licensed Rights is expressly made subject to the
+following conditions.
+
+  a. Attribution.
+
+       1. If You Share the Licensed Material (including in modified
+          form), You must:
+
+            a. retain the following if it is supplied by the Licensor
+               with the Licensed Material:
+
+                 i. identification of the creator(s) of the Licensed
+                    Material and any others designated to receive
+                    attribution, in any reasonable manner requested by
+                    the Licensor (including by pseudonym if
+                    designated);
+
+                ii. a copyright notice;
+
+               iii. a notice that refers to this Public License;
+
+                iv. a notice that refers to the disclaimer of
+                    warranties;
+
+                 v. a URI or hyperlink to the Licensed Material to the
+                    extent reasonably practicable;
+
+            b. indicate if You modified the Licensed Material and
+               retain an indication of any previous modifications; and
+
+            c. indicate the Licensed Material is licensed under this
+               Public License, and include the text of, or the URI or
+               hyperlink to, this Public License.
+
+       2. You may satisfy the conditions in Section 3(a)(1) in any
+          reasonable manner based on the medium, means, and context in
+          which You Share the Licensed Material. For example, it may be
+          reasonable to satisfy the conditions by providing a URI or
+          hyperlink to a resource that includes the required
+          information.
+
+       3. If requested by the Licensor, You must remove any of the
+          information required by Section 3(a)(1)(A) to the extent
+          reasonably practicable.
+
+       4. If You Share Adapted Material You produce, the Adapter&#x27;s
+          License You apply must not prevent recipients of the Adapted
+          Material from complying with this Public License.
+
+
+Section 4 -- Sui Generis Database Rights.
+
+Where the Licensed Rights include Sui Generis Database Rights that
+apply to Your use of the Licensed Material:
+
+  a. for the avoidance of doubt, Section 2(a)(1) grants You the right
+     to extract, reuse, reproduce, and Share all or a substantial
+     portion of the contents of the database;
+
+  b. if You include all or a substantial portion of the database
+     contents in a database in which You have Sui Generis Database
+     Rights, then the database in which You have Sui Generis Database
+     Rights (but not its individual contents) is Adapted Material; and
+
+  c. You must comply with the conditions in Section 3(a) if You Share
+     all or a substantial portion of the contents of the database.
+
+For the avoidance of doubt, this Section 4 supplements and does not
+replace Your obligations under this Public License where the Licensed
+Rights include other Copyright and Similar Rights.
+
+
+Section 5 -- Disclaimer of Warranties and Limitation of Liability.
+
+  a. UNLESS OTHERWISE SEPARATELY UNDERTAKEN BY THE LICENSOR, TO THE
+     EXTENT POSSIBLE, THE LICENSOR OFFERS THE LICENSED MATERIAL AS-IS
+     AND AS-AVAILABLE, AND MAKES NO REPRESENTATIONS OR WARRANTIES OF
+     ANY KIND CONCERNING THE LICENSED MATERIAL, WHETHER EXPRESS,
+     IMPLIED, STATUTORY, OR OTHER. THIS INCLUDES, WITHOUT LIMITATION,
+     WARRANTIES OF TITLE, MERCHANTABILITY, FITNESS FOR A PARTICULAR
+     PURPOSE, NON-INFRINGEMENT, ABSENCE OF LATENT OR OTHER DEFECTS,
+     ACCURACY, OR THE PRESENCE OR ABSENCE OF ERRORS, WHETHER OR NOT
+     KNOWN OR DISCOVERABLE. WHERE DISCLAIMERS OF WARRANTIES ARE NOT
+     ALLOWED IN FULL OR IN PART, THIS DISCLAIMER MAY NOT APPLY TO YOU.
+
+  b. TO THE EXTENT POSSIBLE, IN NO EVENT WILL THE LICENSOR BE LIABLE
+     TO YOU ON ANY LEGAL THEORY (INCLUDING, WITHOUT LIMITATION,
+     NEGLIGENCE) OR OTHERWISE FOR ANY DIRECT, SPECIAL, INDIRECT,
+     INCIDENTAL, CONSEQUENTIAL, PUNITIVE, EXEMPLARY, OR OTHER LOSSES,
+     COSTS, EXPENSES, OR DAMAGES ARISING OUT OF THIS PUBLIC LICENSE OR
+     USE OF THE LICENSED MATERIAL, EVEN IF THE LICENSOR HAS BEEN
+     ADVISED OF THE POSSIBILITY OF SUCH LOSSES, COSTS, EXPENSES, OR
+     DAMAGES. WHERE A LIMITATION OF LIABILITY IS NOT ALLOWED IN FULL OR
+     IN PART, THIS LIMITATION MAY NOT APPLY TO YOU.
+
+  c. The disclaimer of warranties and limitation of liability provided
+     above shall be interpreted in a manner that, to the extent
+     possible, most closely approximates an absolute disclaimer and
+     waiver of all liability.
+
+
+Section 6 -- Term and Termination.
+
+  a. This Public License applies for the term of the Copyright and
+     Similar Rights licensed here. However, if You fail to comply with
+     this Public License, then Your rights under this Public License
+     terminate automatically.
+
+  b. Where Your right to use the Licensed Material has terminated under
+     Section 6(a), it reinstates:
+
+       1. automatically as of the date the violation is cured, provided
+          it is cured within 30 days of Your discovery of the
+          violation; or
+
+       2. upon express reinstatement by the Licensor.
+
+     For the avoidance of doubt, this Section 6(b) does not affect any
+     right the Licensor may have to seek remedies for Your violations
+     of this Public License.
+
+  c. For the avoidance of doubt, the Licensor may also offer the
+     Licensed Material under separate terms or conditions or stop
+     distributing the Licensed Material at any time; however, doing so
+     will not terminate this Public License.
+
+  d. Sections 1, 5, 6, 7, and 8 survive termination of this Public
+     License.
+
+
+Section 7 -- Other Terms and Conditions.
+
+  a. The Licensor shall not be bound by any additional or different
+     terms or conditions communicated by You unless expressly agreed.
+
+  b. Any arrangements, understandings, or agreements regarding the
+     Licensed Material not stated herein are separate from and
+     independent of the terms and conditions of this Public License.
+
+
+Section 8 -- Interpretation.
+
+  a. For the avoidance of doubt, this Public License does not, and
+     shall not be interpreted to, reduce, limit, restrict, or impose
+     conditions on any use of the Licensed Material that could lawfully
+     be made without permission under this Public License.
+
+  b. To the extent possible, if any provision of this Public License is
+     deemed unenforceable, it shall be automatically reformed to the
+     minimum extent necessary to make it enforceable. If the provision
+     cannot be reformed, it shall be severed from this Public License
+     without affecting the enforceability of the remaining terms and
+     conditions.
+
+  c. No term or condition of this Public License will be waived and no
+     failure to comply consented to unless expressly agreed to by the
+     Licensor.
+
+  d. Nothing in this Public License constitutes or may be interpreted
+     as a limitation upon, or waiver of, any privileges and immunities
+     that apply to the Licensor or You, including from the legal
+     processes of any jurisdiction or authority.
+
+
+=======================================================================
+
+Creative Commons is not a party to its public
+licenses. Notwithstanding, Creative Commons may elect to apply one of
+its public licenses to material it publishes and in those instances
+will be considered the “Licensor.” The text of the Creative Commons
+public licenses is dedicated to the public domain under the CC0 Public
+Domain Dedication. Except for the limited purpose of indicating that
+material is shared under a Creative Commons public license or as
+otherwise permitted by the Creative Commons policies published at
+creativecommons.org/policies, Creative Commons does not authorize the
+use of the trademark &quot;Creative Commons&quot; or any other trademark or logo
+of Creative Commons without its prior written consent including,
+without limitation, in connection with any unauthorized modifications
+to any of its public licenses or any other arrangements,
+understandings, or agreements concerning use of licensed material. For
+the avoidance of doubt, this paragraph does not form part of the
+public licenses.
+
+Creative Commons may be contacted at creativecommons.org.
+</pre><h2>release-data</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/LICENSE-DATA.md">Source / 出典</a></p><pre># 辞書データのライセンスと出典
+
+このリポジトリのプログラムコードには [MIT License](LICENSE) を適用します。
+辞書データには以下の出典ごとの条件が適用されます。MITの表記は、第三者由来の
+辞書データをMITに変更するものではありません。
+
+## かな→英語辞書
+
+`src/main/english/reading-supplement.tsv`、採用・表記決定を記録した
+`src/main/english/candidate-review.tsv` と、その内容を含む `english_reading` 辞書は、
+JMdict由来部分およびこのプロジェクトの編集・追加部分を
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) で提供します。
+CMUdict由来部分の著作権表示・条件・免責も維持します。
+第三者の原資料について、当プロジェクトが新たな権利を主張するものではありません。
+
+| 出典 | 権利者・作成者 | 適用条件とリポジトリ内の表示 |
+| --- | --- | --- |
+| [JMdict / EDRDG](https://www.edrdg.org/edrdg/licence.html) | James William BREEN、Electronic Dictionary Research and Development Group | CC BY-SA 4.0。著作権・出典・改変表示と継承条件。[保存した公式表記](src/main/resources/third-party/JMDICT-LICENSE.html) |
+| [NGSL 1.2](https://www.newgeneralservicelist.com/new-general-service-list) | Charles Browne、Brent Culligan、Joseph Phillips | CC BY-SA 4.0。一般語の選定・頻度順の調査に利用。原本の頻度値は配布辞書に含めない |
+| [CMUdict](https://github.com/cmusphinx/cmudict/tree/74790861f652b15e4ac49015a90074ad62a27690) | Copyright (C) 1993–2015 Carnegie Mellon University. All rights reserved. | 原本の再配布条件・免責を維持。[LICENSE全文](src/main/resources/third-party/CMUDICT-LICENSE) |
+| [JapaneseCorpus](https://github.com/KazumaProject/JapaneseCorpus/releases) | 上流配布に記録された各出典の権利者 | 上流の英語辞書と出典表示を利用。[第三者表記](src/main/resources/THIRD-PARTY-NOTICES.md) |
+
+変更内容は、読み・表記の選定、カタカナからひらがなへの正規化、確認した読み揺れの追加、
+CMUdictの米語発音から確認したかな読みの作成、コスト設定、品質検査、実用性に基づく採用・除外、一般語の小文字化、略語・固有名詞の表記維持、重複統合とバイナリ化です。
+各採用行の出典・判断は補完TSV、版・リビジョン・SHA-256・作成手順は
+[辞書作成ドキュメント](docs/english-dictionary.md) に記録しています。
+日本語の読みと英語表記を確認した公式資料は、各行の `source` にURLを記録しています。
+資料の文章やPDF自体は補完TSVに転載していません。
+
+CC BY-SA 4.0の[全文](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en)に従い、
+出典・著作権・ライセンス・免責・変更内容の表示を維持し、改変データの継承条件を守ってください。
+ライセンスで認められた利用を制限する追加条件や技術的制限は付けられません。
+EDRDGの公式表記には、アプリ内の出典表示とデータ更新手順に関する記述もあります。
+既存行を追加・更新するときは最新資料との対応を確認し、出典・変更理由を記録します。
+
+## 既存の日本語辞書とその他のデータ
+
+Mozcのコード部分と辞書部分は条件が異なります。辞書にはNAIST/IPAdic、ICOT、
+沖縄辞書などの条件が含まれます。原本の表示を次のファイルに保存しています。
+
+- [MOZC-LICENSE](src/main/resources/third-party/MOZC-LICENSE)
+- [IPADIC-COPYING](src/main/resources/third-party/IPADIC-COPYING)
+- [IPADIC-NOTICE](src/main/resources/third-party/IPADIC-NOTICE)
+
+JapaneseCorpus由来データの原本表記は
+[third-party/LICENSE-DATA.md](src/main/resources/third-party/LICENSE-DATA.md) と
+[third-party/NOTICE.md](src/main/resources/third-party/NOTICE.md) に保存しています。
+これらは上流の文書であり、その中の「このリポジトリ」はJapaneseCorpusを指します。
+その他の辞書入力も、それぞれの出典・ライセンス条件に従います。この文書は、未確認の
+入力データに一律のライセンスを与えるものではありません。
+
+## 漢方・医療辞書
+
+`src/main/specialist` のKNApSAcK KAMPO由来データと `kampo` 辞書の加工部分は
+[CC BY-SA 2.1 日本](https://creativecommons.org/licenses/by-sa/2.1/jp/) に従います。
+KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学)。
+万病辞書 MANBYO_202106 と百薬辞書 HYAKUYAKU_202107 由来データおよび
+`medical` 辞書の編集・読み補完部分は [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) で提供します。
+作成者の表示は各提供元の保存した公式文書を維持します。
+
+加工は表記・読みの抽出と正規化、重複除外、空欄へのGemini推定読みの追加、
+品詞・コストの割当、バイナリ化です。原本の自動読みと推定読みの正確性は全件確認していません。
+出典・版・取得ZIPハッシュ・各行の原本対応・加工状態は
+[専門辞書の文書](docs/specialist-dictionaries.md) と `src/main/specialist` に記録します。
+出典・著作権・条件・加工表示を保持し、漢方の継承条件を守ってください。
+配布時はライセンス全文を含む別添 `DICTIONARY-LICENSES.txt` を維持してください。
+</pre>

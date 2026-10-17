@@ -195,11 +195,7 @@ class CandidateOrderOverrideImeInstrumentedTest {
                 .getCandidatesWithBunsetsuSeparation(
                     input = input,
                     n = 4,
-                    mozcUtPersonName = false,
-                    mozcUTPlaces = false,
-                    mozcUTWiki = false,
-                    mozcUTNeologd = false,
-                    mozcUTWeb = false,
+                    enabledDictionaryCategories = emptySet(),
                     userDictionaryRepository = entryPoint.userDictionaryRepository(),
                     learnRepository = null,
                     isOmissionSearchEnable = false,

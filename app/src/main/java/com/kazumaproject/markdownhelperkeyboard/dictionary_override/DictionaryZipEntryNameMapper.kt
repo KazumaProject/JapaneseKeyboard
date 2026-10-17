@@ -40,7 +40,8 @@ data class DictionaryZipMappedEntry(
 )
 
 object DictionaryZipEntryNameMapper {
-    private val pathSuffixToKey: Map<String, DictionaryFileKey> = mapOf(
+    private val pathSuffixToKey: Map<String, DictionaryFileKey> = DictionaryFileSpecs.all
+        .associate { it.bundledAssetPath to it.key } + mapOf(
         "english_reading/tango.dat.zip" to DictionaryFileKey.ENGLISH_READING_TANGO,
         "english_reading/yomi.dat.zip" to DictionaryFileKey.ENGLISH_READING_YOMI,
         "english_reading/token.dat.zip" to DictionaryFileKey.ENGLISH_READING_TOKEN,
@@ -68,21 +69,6 @@ object DictionaryZipEntryNameMapper {
         "tango_kotowaza.dat" to DictionaryFileKey.KOTOWAZA_TANGO,
         "yomi_kotowaza.dat" to DictionaryFileKey.KOTOWAZA_YOMI,
         "token_kotowaza.dat" to DictionaryFileKey.KOTOWAZA_TOKEN,
-        "tango_places.dat" to DictionaryFileKey.PLACES_TANGO,
-        "yomi_places.dat" to DictionaryFileKey.PLACES_YOMI,
-        "token_places.dat" to DictionaryFileKey.PLACES_TOKEN,
-        "tango_person_names.dat" to DictionaryFileKey.PERSON_NAME_TANGO,
-        "yomi_person_names.dat" to DictionaryFileKey.PERSON_NAME_YOMI,
-        "token_person_names.dat" to DictionaryFileKey.PERSON_NAME_TOKEN,
-        "tango_wiki.dat" to DictionaryFileKey.WIKI_TANGO,
-        "yomi_wiki.dat" to DictionaryFileKey.WIKI_YOMI,
-        "token_wiki.dat" to DictionaryFileKey.WIKI_TOKEN,
-        "tango_neologd.dat" to DictionaryFileKey.NEOLOGD_TANGO,
-        "yomi_neologd.dat" to DictionaryFileKey.NEOLOGD_YOMI,
-        "token_neologd.dat" to DictionaryFileKey.NEOLOGD_TOKEN,
-        "tango_web.dat" to DictionaryFileKey.WEB_TANGO,
-        "yomi_web.dat" to DictionaryFileKey.WEB_YOMI,
-        "token_web.dat" to DictionaryFileKey.WEB_TOKEN,
         "connectionid.dat" to DictionaryFileKey.CONNECTION_ID,
         "connectionid.dat.zip" to DictionaryFileKey.CONNECTION_ID,
         "pos_table.dat" to DictionaryFileKey.POS_TABLE,
@@ -111,6 +97,14 @@ object DictionaryZipEntryNameMapper {
         }
 
         val normalizedPath = pathSegments.joinToString("/").lowercase(Locale.ROOT)
+        val classifiedPath = pathSegments.indexOfFirst { it.equals("categories", ignoreCase = true) }
+        if (classifiedPath >= 0) {
+            val categoryPath = pathSegments.drop(classifiedPath).joinToString("/").lowercase(Locale.ROOT)
+            val categoryKey = pathSuffixToKey[categoryPath]?.takeIf {
+                ClassifiedDictionaries.find(DictionaryFileSpecs.get(it).category) != null
+            } ?: return DictionaryZipEntryNameResolution.Unrecognized(entryName, basename)
+            return DictionaryZipEntryNameResolution.Mapped(categoryKey, entryName, basename)
+        }
         val key = pathSuffixToKey.entries
             .firstOrNull { (suffix, _) ->
                 normalizedPath == suffix || normalizedPath.endsWith("/$suffix")

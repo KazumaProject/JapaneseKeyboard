@@ -244,11 +244,9 @@ Sumireは、**プライバシーを絶対に妥協しない**
 | ユーザー辞書 | ユーザー辞書 | ON |
 | ユーザー辞書 | 予測変換 | 2 |
 | 定型文 | 定型文 | ON |
-| Mozc UT | 人名 | OFF |
-| Mozc UT | 住所 | OFF |
-| Mozc UT | Web | OFF |
-| Mozc UT | Wiki | OFF |
-| Mozc UT | Neologd | OFF |
+| 分類辞書 | 30カテゴリを個別に切替 | 全てON |
+
+分類辞書は `v1.7.262-pre.3` を採用し、漢方・生薬と医療を含む30カテゴリを初期状態ですべて有効にします。「辞書」設定の「分類別辞書」で個別にON/OFFでき、外部辞書画面とも状態を共有します。移行処理は追加せず、保存済みの選択を維持します。分類候補にはカテゴリラベルを常時表示します。
 
 #### Zenz
 
@@ -283,9 +281,16 @@ Sumireは、**プライバシーを絶対に妥協しない**
 
 | Tool           | Version                    |
 |:---------------|:---------------------------|
-| Android Studio | Compatible with Android Gradle Plugin 8.10.1 |
-| Gradle Plugin  | 8.10.1                     |
-| JDK            | 17                         |
+| Android Studio | Rabbit 1 (2026.2.1) or newer |
+| Gradle Plugin  | 9.4.1                      |
+| Gradle         | 9.6.0                      |
+| Android SDK    | API 37 (Android 17)        |
+| Gradle JDK     | JetBrains Runtime 25 (Android Studio) |
+
+SDK Manager で Android 17（API 37）の SDK Platform をインストールしてください。
+Kotlin は AGP の組み込みサポートを使用します。Java/Kotlin のコンパイル対象は 17 です。
+ABI ごとのバージョン番号と APK ファイル名を維持するため、現在は
+`android.newDsl=false` で旧 Variant API を使用しています。AGP 10 への更新前に移行が必要です。
 
 #### ビルド手順
 
@@ -387,13 +392,15 @@ zenzModelAssetName=ggml-model-Q5_K_M.gguf
 本プロジェクトは、以下の素晴らしい技術や資料に支えられています。
 
 * **Mozc Project**: [google/mozc](https://github.com/google/mozc) (BSD-3-Clause)
-* **Mozc UT Dictionary**: [mozc-ut](http://linuxplayers.g1.xrea.com/mozc-ut.html) (CC BY-SA)
+* **Classified dictionaries / 分類辞書**: 30 categories from `v1.7.262-pre.3`; mixed upstream data terms. See [dictionary notices / 辞書ライセンス](THIRD-PARTY-NOTICES.md).
 * 書籍『[日本語入力を支える技術](https://www.amazon.co.jp/dp/4774149934)』
 * その他多数のオープンソースライブラリ
 
 ### 📄 ライセンス
 
-**MIT License** © 2025 Kazuma Naka — 詳細は [`LICENSE`](LICENSE) ファイルをご覧ください。
+ライセンス・出典・通知原文の一覧は [ライセンス情報ドキュメント](docs/licenses/README.md) を参照してください。
+
+**MIT License** © 2024 Kazuma Naka — 詳細は [`LICENSE`](LICENSE) ファイルをご覧ください。
 
 -----
 
@@ -478,10 +485,12 @@ if your idea is already being discussed.
 This project stands on the shoulders of giants. Our thanks go to:
 
 * **The Mozc Project**: [google/mozc](https://github.com/google/mozc) (BSD-3-Clause)
-* **Mozc UT Dictionary**: [mozc-ut](http://linuxplayers.g1.xrea.com/mozc-ut.html) (CC BY-SA)
+* **Classified dictionaries / 分類辞書**: 30 categories from `v1.7.262-pre.3`; mixed upstream data terms. See [dictionary notices / 辞書ライセンス](THIRD-PARTY-NOTICES.md).
 * The book "[Gijutsu Hyoronsha](https://www.amazon.co.jp/dp/4774149934)" for its deep insights into
   Japanese input technology.
 
 ### 📄 License
 
-**MIT License** © 2025 Kazuma Naka — See the [`LICENSE`](LICENSE) file for details.
+See [the complete license information index / ライセンス情報一覧](docs/licenses/README.md) for dictionary categories, bundled notices, dependencies and model resources.
+
+**MIT License** © 2024 Kazuma Naka — See the [`LICENSE`](LICENSE) file for details.
