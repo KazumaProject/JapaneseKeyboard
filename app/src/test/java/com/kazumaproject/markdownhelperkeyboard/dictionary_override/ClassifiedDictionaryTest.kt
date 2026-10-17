@@ -11,8 +11,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import java.io.ByteArrayInputStream
-import org.mockito.kotlin.*
+import kotlinx.coroutines.runBlocking
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_browser.DictionaryBrowserRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -118,26 +118,17 @@ class ClassifiedDictionaryTest {
         assertTrue(context.assets.open("licenses/english-reading.html").bufferedReader().use { it.readText() }.contains("Carnegie Mellon"))
     }
 
-    @Test fun currentReleaseNeedsNoLiteralSurfaceRepair() {
-        val text = context.assets.open("categories/surface-overrides.json").bufferedReader().use { it.readText() }
-        assertEquals("{}", text.trim())
-    }
-
-    @Test fun literalRepairOnlyAppliesToThePinnedDataOrIdenticalImports() {
-        val resolver = mock<DictionarySourceResolver>()
-        whenever(resolver.openBundledAsset("categories/surface-overrides.json")).thenAnswer {
-            // Synthetic older-release sidecar keeps the compatibility guard covered.
-            ByteArrayInputStream("""{"place":{"-1\tあとこしゃらか\t1851\t1851\t9450":"アトコシヤラカ"}}""".toByteArray())
+    @Test fun allClassifiedDictionariesOpenWithoutSurfaceOverrideAsset() = runBlocking {
+        assertFalse(context.assets.list("categories")!!.contains("surface-overrides.json"))
+        val prefs = context.getSharedPreferences("classified-no-sidecar", Context.MODE_PRIVATE)
+        val defaults = context.getSharedPreferences("classified-no-sidecar-defaults", Context.MODE_PRIVATE)
+        val store = DictionaryOverrideStore(File(context.cacheDir, "classified-no-sidecar"), prefs, defaults)
+        val resolver = DictionarySourceResolver(context, store)
+        val repository = DictionaryBrowserRepository(DictionaryBinaryReader(resolver, store), resolver)
+        for (spec in ClassifiedDictionaries.all) {
+            val page = repository.open(spec.category, "").nextPage()
+            assertTrue("${spec.id} must open without a surface override asset", page.rows.isNotEmpty())
         }
-        val reader = DictionaryBinaryReader(resolver, mock())
-        val category = DictionaryCategory.CLASSIFIED_PLACE
-        assertEquals("アトコシヤラカ", reader.loadClassifiedSurfaceOverrides(category)["-1\tあとこしゃらか\t1851\t1851\t9450"])
-        whenever(resolver.shouldUseOverrideCategory(category)).thenReturn(true)
-        whenever(resolver.openBundledForKey(any())).thenAnswer { ByteArrayInputStream(byteArrayOf(1)) }
-        whenever(resolver.openOverrideForKey(any())).thenAnswer { ByteArrayInputStream(byteArrayOf(2)) }
-        assertTrue(reader.loadClassifiedSurfaceOverrides(category).isEmpty())
-        whenever(resolver.openOverrideForKey(any())).thenAnswer { ByteArrayInputStream(byteArrayOf(1)) }
-        assertEquals(1, reader.loadClassifiedSurfaceOverrides(category).size)
     }
 
     @Test fun unknownCategoryCannotCollideWithSystemAndDuplicatesAreNotImported() {
