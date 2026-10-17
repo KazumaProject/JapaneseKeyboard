@@ -225,24 +225,10 @@ class ClassifiedDictionaryUiInstrumentedTest {
         verifyRomajiLabelsAndCommit(fullyMatched = true)
     }
 
-    private fun revealCandidate(surface: String) {
-        await("Candidate $surface is missing from the displayed adapter") {
-            views().filterIsInstance<androidx.recyclerview.widget.RecyclerView>().any { recycler ->
-                val adapter = recycler.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
-                if (!recycler.isShown || adapter == null) return@any false
-                val differ = adapter.javaClass.getDeclaredField("differ").apply { isAccessible = true }
-                    .get(adapter) as androidx.recyclerview.widget.AsyncListDiffer<*>
-                val index = differ.currentList.indexOfFirst { item ->
-                    if (item == null || item.javaClass.simpleName != "CandidateItem") false else {
-                        val candidate = item.javaClass.getDeclaredField("candidate").apply { isAccessible = true }
-                            .get(item) as com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
-                        candidate.string == surface
-                    }
-                }
-                if (index < 0) false else { recycler.scrollToPosition(index); true }
-            }
-        }
-        ins.waitForIdleSync()
+    private fun isFullyVisible(view: View): Boolean {
+        val visible = android.graphics.Rect()
+        val item = view.parent as View
+        return item.getGlobalVisibleRect(visible) && visible.width() == item.width && visible.height() == item.height
     }
 
     private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null, fullyMatched: Boolean = false) {
@@ -339,9 +325,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     SystemClock.sleep(40)
                 }
             }
-            if (fullyMatched) revealCandidate(expectedSurface)
             lateinit var label: TextView
-            try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) && (it.parent as View).findViewById<TextView>(R.id.suggestion_item_text_view).text.toString().trim() == expectedSurface }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
+            try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && (!fullyMatched || isFullyVisible(it)) && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) && (it.parent as View).findViewById<TextView>(R.id.suggestion_item_text_view).text.toString().trim() == expectedSurface }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
                 screenshot("classified-ime-failure.png")
                 main { println("CLASSIFIED_IME_EDITOR ${activity.editText.text}"); println("CLASSIFIED_IME_LABELS " + views().filterIsInstance<TextView>().filter { it.id == R.id.suggestion_item_text_view || it.id == R.id.suggestion_item_type_text_view }.map { it.text.toString() }.toList()) }
                 throw failure
