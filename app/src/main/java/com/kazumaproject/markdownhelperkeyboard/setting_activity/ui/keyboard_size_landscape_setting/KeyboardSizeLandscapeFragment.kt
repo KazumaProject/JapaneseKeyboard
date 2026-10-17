@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_landscape_setting
 
 import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -14,6 +16,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.widget.ViewPager2
@@ -47,6 +50,28 @@ class KeyboardSizeLandscapeFragment : Fragment() {
     private val maxWidthPercent = 100
     private var targetScreen = KeyboardPreviewGeometry.Size(1, 1)
     private var previewGeneration = 0
+    private var originalRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        originalRequestedOrientation = savedInstanceState
+            ?.takeIf { it.containsKey(ORIGINAL_ORIENTATION_KEY) }
+            ?.getInt(ORIGINAL_ORIENTATION_KEY)
+            ?: requireActivity().requestedOrientation
+        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(ORIGINAL_ORIENTATION_KEY, originalRequestedOrientation)
+    }
+
+    override fun onDestroy() {
+        activity?.takeUnless { it.isChangingConfigurations }?.let {
+            it.requestedOrientation = originalRequestedOrientation
+        }
+        super.onDestroy()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -68,11 +93,17 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         setupKeyboardPositionButton()
         setupResetButton()
 
-        updateKeyboardAlignment()      // constraints + horizontal margin apply
+        updateKeyboardAlignment()
         setupResizeHandles()
         setupMoveHandle()             // vertical + horizontal move
 
         updateControlsVisibility()
+        binding.keyboardContainer.doOnPreDraw { preview ->
+            val bottomPadding = binding.keyboardSettingConstraint.paddingBottom
+            preview.requestRectangleOnScreen(
+                Rect(0, 0, preview.width, preview.height + bottomPadding), true
+            )
+        }
     }
 
     private fun setupViewPager() {
@@ -144,51 +175,39 @@ class KeyboardSizeLandscapeFragment : Fragment() {
 
         val density = resources.displayMetrics.density
         val screenWidth = targetScreen.widthPx
-        val screenHeight = targetScreen.heightPx
-        val projected = KeyboardPreviewGeometry.projectHeightAndBottomMargin(
-            logicalHeightPx = screenHeight,
-            savedHeightPx = (heightPref * density).roundToInt(),
-            savedBottomMarginPx = (marginBottomPref * density).roundToInt(),
-            minimumHeightPx = (minHeightDp * density).roundToInt()
-        )
-        val widthInPx = KeyboardPreviewGeometry.widthForPercent(screenWidth, widthPref)
-        val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
-        layoutParams.height = projected.heightPx
-        layoutParams.width = widthInPx
-        layoutParams.bottomMargin = projected.bottomMarginPx
+        val heightPx = (heightPref.coerceIn(minHeightDp, maxHeightDp) * density).toInt()
+        // Normal IME layout uses both saved side margins, including at 100% width.
         val marginStartPx = (marginStartDpPref * density).toInt()
+            .coerceIn(0, (screenWidth - 1).coerceAtLeast(0))
         val marginEndPx = (marginEndDpPref * density).toInt()
-        layoutParams.marginStart = 0
-        layoutParams.marginEnd = 0
+            .coerceIn(0, (screenWidth - marginStartPx - 1).coerceAtLeast(0))
+        val widthInPx = if (widthPref == 100) {
+            (screenWidth - marginStartPx - marginEndPx).coerceAtLeast(1)
+        } else {
+            KeyboardPreviewGeometry.widthForPercent(resources.displayMetrics.widthPixels, widthPref)
+        }
+        val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+        layoutParams.height = heightPx
+        layoutParams.width = widthInPx
+        // The existing normal IME consumes this preference as pixels, without a dp conversion.
+        layoutParams.bottomMargin = marginBottomPref.coerceIn(
+            0, (targetScreen.heightPx - heightPx).coerceAtLeast(0)
+        )
         val maxMargin = (screenWidth - widthInPx).coerceAtLeast(0)
-        if (isRightAligned) {
-            layoutParams.marginEnd = marginEndPx.coerceIn(0, maxMargin)
-        } else {
-            layoutParams.marginStart = marginStartPx.coerceIn(0, maxMargin)
-        }
+        layoutParams.marginStart = marginStartPx.coerceAtMost(maxMargin)
+        layoutParams.marginEnd = marginEndPx.coerceAtMost(maxMargin)
         binding.keyboardContainer.layoutParams = layoutParams
-    }
-
-    private fun clampHorizontalMarginToBounds() {
-        val lp = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
-        val maxMargin = (targetScreen.widthPx - lp.width).coerceAtLeast(0)
-        if (isRightAligned) {
-            val activeMargin = lp.marginEnd
-            lp.marginStart = 0
-            lp.marginEnd = activeMargin.coerceIn(0, maxMargin)
-        } else {
-            val activeMargin = lp.marginStart
-            lp.marginEnd = 0
-            lp.marginStart = activeMargin.coerceIn(0, maxMargin)
-        }
-        binding.keyboardContainer.layoutParams = lp
     }
 
     private fun refreshPreviewGeometry(): Boolean {
         val bounds = WindowMetricsCalculator.getOrCreate()
             .computeCurrentWindowMetrics(requireActivity()).bounds
-        val updated = KeyboardPreviewGeometry.targetSize(bounds.width(), bounds.height(), true)
-        binding.keyboardPreviewViewport.setLogicalCanvasSize(updated.widthPx, updated.heightPx)
+        val constraint = binding.keyboardSettingConstraint
+        val width = constraint.width.takeIf { it > 0 } ?: bounds.width()
+        val updated = KeyboardPreviewGeometry.Size(
+            widthPx = (width - constraint.paddingLeft - constraint.paddingRight).coerceAtLeast(1),
+            heightPx = bounds.height().coerceAtLeast(1)
+        )
         if (updated == targetScreen) return false
         targetScreen = updated
         previewGeneration++
@@ -204,11 +223,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                     applyCurrentPageDimensions()
                     updateKeyboardAlignment()
                 }
-            }
-        }
-        binding.keyboardPreviewViewport.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
-            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
-                previewGeneration++
             }
         }
     }
@@ -249,7 +263,7 @@ class KeyboardSizeLandscapeFragment : Fragment() {
 
     /**
      * handle_move で上下 + 左右に動かす。
-     * - 上下: bottomMargin (dp 保存)
+     * - 上下: bottomMargin (通常 IME と同じ px 保存)
      * - 左右: 「現在の alignment 側」の marginStart / marginEnd を dp 保存
      */
     @SuppressLint("ClickableViewAccessibility")
@@ -259,7 +273,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         var initialBottomMarginPx = 0
         var initialMarginStartPx = 0
         var initialMarginEndPx = 0
-        var gestureScale = 1f
         var gestureGeneration = 0
         var gestureStarted = false
         val density = resources.displayMetrics.density
@@ -273,7 +286,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                     val lp = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
                     initialX = event.rawX
                     initialY = event.rawY
-                    gestureScale = binding.keyboardPreviewViewport.scale
                     gestureGeneration = previewGeneration
                     gestureStarted = true
                     initialBottomMarginPx = lp.bottomMargin
@@ -292,9 +304,11 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                         return@setOnTouchListener true
                     }
                     val lp = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
-                    val deltaX = KeyboardPreviewGeometry.logicalDelta(event.rawX - initialX, gestureScale)
-                    val deltaY = KeyboardPreviewGeometry.logicalDelta(event.rawY - initialY, gestureScale)
-                    val maxHorizontalMarginPx = (targetScreen.widthPx - lp.width).coerceAtLeast(0)
+                    val deltaX = event.rawX - initialX
+                    val deltaY = event.rawY - initialY
+                    val inactiveMargin = if (isRightAligned) initialMarginStartPx else initialMarginEndPx
+                    val maxHorizontalMarginPx = (targetScreen.widthPx - lp.width - inactiveMargin)
+                        .coerceAtLeast(0)
                     val maxBottomMarginPx = (targetScreen.heightPx - lp.height)
                         .coerceAtLeast(0)
                     val newBottomMargin = (initialBottomMarginPx - deltaY.roundToInt())
@@ -304,12 +318,10 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                         val newEnd = (initialMarginEndPx - deltaX.roundToInt())
                             .coerceIn(0, maxHorizontalMarginPx)
                         lp.marginEnd = newEnd
-                        lp.marginStart = 0
                     } else {
                         val newStart = (initialMarginStartPx + deltaX.roundToInt())
                             .coerceIn(0, maxHorizontalMarginPx)
                         lp.marginStart = newStart
-                        lp.marginEnd = 0
                     }
                     binding.keyboardContainer.layoutParams = lp
                     true
@@ -320,7 +332,7 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                         val lp = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
                         val currentPage = binding.keyboardViewPager.currentItem
                         if (lp.bottomMargin != initialBottomMarginPx) {
-                            val value = (lp.bottomMargin / density).roundToInt()
+                            val value = lp.bottomMargin
                             if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
                                 appPreference.keyboard_vertical_margin_bottom_landscape = value
                             } else {
@@ -342,7 +354,8 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                                 appPreference.qwerty_keyboard_margin_start_dp_landscape = value
                             }
                         }
-                    } else if (gestureStarted) {
+                    }
+                    if (gestureStarted) {
                         applyCurrentPageDimensions()
                         updateKeyboardAlignment()
                     }
@@ -384,7 +397,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         var initialWidth = 0
         var initialHeight = 0
         var initialBottomMargin = 0
-        var gestureScale = 1f
         var gestureGeneration = 0
         var gestureStarted = false
 
@@ -400,7 +412,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                     initialWidth = lp.width
                     initialHeight = lp.height
                     initialBottomMargin = lp.bottomMargin
-                    gestureScale = binding.keyboardPreviewViewport.scale
                     gestureGeneration = previewGeneration
                     gestureStarted = true
                     handle.parent?.requestDisallowInterceptTouchEvent(true)
@@ -416,19 +427,17 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                         return@setOnTouchListener true
                     }
                     val lp = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
-                    val deltaX = KeyboardPreviewGeometry.logicalDelta(event.rawX - initialX, gestureScale)
-                    val deltaY = KeyboardPreviewGeometry.logicalDelta(event.rawY - initialY, gestureScale)
-                    val minimumHeight = minOf(
-                        (minHeightDp * density).roundToInt(), targetScreen.heightPx
+                    val deltaX = event.rawX - initialX
+                    val deltaY = event.rawY - initialY
+                    val minimumHeight = (minHeightDp * density).toInt()
+                    val maximumHeight = (maxHeightDp * density).toInt()
+                    val minimumWidth = KeyboardPreviewGeometry.widthForPercent(
+                        resources.displayMetrics.widthPixels, minWidthPercent
                     )
-                    val maximumHeight = minOf(
-                        (maxHeightDp * density).roundToInt(), targetScreen.heightPx
-                    )
-                    val minimumWidth = (targetScreen.widthPx * (minWidthPercent / 100f)).roundToInt()
 
                     when (edge) {
                         ResizeEdge.TOP -> {
-                            val maxHeight = minOf(maximumHeight, targetScreen.heightPx - initialBottomMargin)
+                            val maxHeight = maximumHeight
                             lp.height = (initialHeight - deltaY.roundToInt())
                                 .coerceIn(minimumHeight.coerceAtMost(maxHeight), maxHeight)
                             lp.bottomMargin = initialBottomMargin
@@ -441,14 +450,14 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                             lp.bottomMargin = (targetScreen.heightPx - topEdge - lp.height).coerceAtLeast(0)
                         }
                         ResizeEdge.LEFT -> {
-                            val activeMargin = if (isRightAligned) lp.marginEnd else lp.marginStart
-                            val maxWidth = (targetScreen.widthPx - activeMargin).coerceAtLeast(minimumWidth)
+                            val maxWidth = (targetScreen.widthPx - lp.marginStart - lp.marginEnd)
+                                .coerceAtLeast(1)
                             lp.width = (initialWidth - deltaX.roundToInt())
                                 .coerceIn(minimumWidth.coerceAtMost(maxWidth), maxWidth)
                         }
                         ResizeEdge.RIGHT -> {
-                            val activeMargin = if (isRightAligned) lp.marginEnd else lp.marginStart
-                            val maxWidth = (targetScreen.widthPx - activeMargin).coerceAtLeast(minimumWidth)
+                            val maxWidth = (targetScreen.widthPx - lp.marginStart - lp.marginEnd)
+                                .coerceAtLeast(1)
                             lp.width = (initialWidth + deltaX.roundToInt())
                                 .coerceIn(minimumWidth.coerceAtMost(maxWidth), maxWidth)
                         }
@@ -470,7 +479,7 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                             }
                         }
                         if (edge == ResizeEdge.BOTTOM && lp.bottomMargin != initialBottomMargin) {
-                            val value = (lp.bottomMargin / density).roundToInt()
+                            val value = lp.bottomMargin
                             if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
                                 appPreference.keyboard_vertical_margin_bottom_landscape = value
                             } else {
@@ -478,14 +487,17 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                             }
                         }
                         if ((edge == ResizeEdge.LEFT || edge == ResizeEdge.RIGHT) && lp.width != initialWidth) {
-                            val value = KeyboardPreviewGeometry.percentForWidth(lp.width, targetScreen.widthPx)
+                            val value = KeyboardPreviewGeometry.percentForWidth(
+                                lp.width, resources.displayMetrics.widthPixels
+                            )
                             if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
                                 appPreference.keyboard_width_landscape = value
                             } else {
                                 appPreference.qwerty_keyboard_width_landscape = value
                             }
                         }
-                    } else if (gestureStarted) {
+                    }
+                    if (gestureStarted) {
                         applyCurrentPageDimensions()
                         updateKeyboardAlignment()
                     }
@@ -557,8 +569,10 @@ class KeyboardSizeLandscapeFragment : Fragment() {
      * ただし保存するのは bias ではなく margin。
      */
     private fun updateKeyboardAlignment() {
-        val currentPage = binding.keyboardViewPager.currentItem
-        val constraintLayout = binding.keyboardPreviewCanvas
+        val constraintLayout = binding.keyboardSettingConstraint
+        val currentParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+        val marginStartPx = currentParams.marginStart
+        val marginEndPx = currentParams.marginEnd
         val constraintSet = ConstraintSet()
         constraintSet.clone(constraintLayout)
 
@@ -589,26 +603,10 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         }
 
         constraintSet.applyTo(constraintLayout)
-
-        val marginDp = if (isRightAligned) {
-            if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
-                appPreference.keyboard_margin_end_dp_landscape ?: 0
-            } else {
-                appPreference.qwerty_keyboard_margin_end_dp_landscape ?: 0
-            }
-        } else {
-            if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
-                appPreference.keyboard_margin_start_dp_landscape ?: 0
-            } else {
-                appPreference.qwerty_keyboard_margin_start_dp_landscape ?: 0
-            }
-        }
-        val lp = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
-        val maxMargin = (targetScreen.widthPx - lp.width).coerceAtLeast(0)
-        val marginPx = (marginDp * resources.displayMetrics.density).roundToInt().coerceIn(0, maxMargin)
-        lp.marginStart = if (isRightAligned) 0 else marginPx
-        lp.marginEnd = if (isRightAligned) marginPx else 0
-        binding.keyboardContainer.layoutParams = lp
+        val updatedParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+        updatedParams.marginStart = marginStartPx
+        updatedParams.marginEnd = marginEndPx
+        binding.keyboardContainer.layoutParams = updatedParams
     }
     private fun updateTooltipUI(selectedPosition: Int) {
         val selectedColor =
@@ -633,6 +631,10 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         binding.resetLayoutButton.visibility = visibility
         binding.tenkeyTooltipButton.visibility = visibility
         binding.qwertyTooltipButton.visibility = visibility
+    }
+
+    private companion object {
+        const val ORIGINAL_ORIENTATION_KEY = "keyboard_size_original_requested_orientation"
     }
 
     override fun onDestroyView() {
