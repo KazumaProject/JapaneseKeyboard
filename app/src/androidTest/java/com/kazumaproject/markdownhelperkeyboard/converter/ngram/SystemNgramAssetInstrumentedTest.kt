@@ -22,11 +22,11 @@ class SystemNgramAssetInstrumentedTest {
     }
 
     @Test
-    fun version3AndVersion4AssetsLoadAndMatchOnPhysicalDevice() {
+    fun allThreeAssetsLoadAndMatchOnPhysicalDevice() {
         val dictionary = SystemNgramAssetLoader.load(context)
 
-        assertEquals(1_715 + 471, dictionary.ruleCount)
-        assertEquals(57_376 + 15_191, dictionary.storageBytes)
+        assertEquals(1_715 + 472 + 5, dictionary.ruleCount)
+        assertEquals(57_376 + 15_207 + 3_885, dictionary.storageBytes)
         assertTrue(dictionary.matchesSingleNode(node("カワボ")))
         assertFalse(dictionary.matchesSingleNode(node("存在しない表記")))
     }

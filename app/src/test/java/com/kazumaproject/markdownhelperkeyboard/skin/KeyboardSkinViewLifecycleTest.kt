@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
@@ -98,15 +99,34 @@ class KeyboardSkinViewLifecycleTest {
             }
             val modeSwitch = view.findViewById<InputModeSwitch>(modeSwitchId)
 
+            fun modeIconPixels(): Bitmap {
+                val icon = requireNotNull(modeSwitch.drawable)
+                return Bitmap.createBitmap(240, 120, Bitmap.Config.ARGB_8888).also {
+                    val bounds = android.graphics.Rect(icon.bounds)
+                    try {
+                        icon.setBounds(0, 0, it.width, it.height)
+                        icon.draw(Canvas(it))
+                    } finally {
+                        icon.bounds = bounds
+                    }
+                }
+            }
+            apply(view, KeyboardSkinId.DEFAULT)
+            val original = modeIconPixels()
             apply(view, KeyboardSkinId.CUPERTINO_LIGHT)
-            assertEquals(
-                "${view.javaClass.simpleName} should draw separately colored labels",
-                null,
-                modeSwitch.drawable,
-            )
+            val skinned = modeIconPixels()
+            val labelRgb = requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.CUPERTINO_LIGHT))
+                .palette.specialText and 0x00ffffff
+            val colors = IntArray(skinned.width * skinned.height)
+            skinned.getPixels(colors, 0, skinned.width, 0, 0, skinned.width, skinned.height)
+            assertTrue("${view.javaClass.simpleName} should draw an opaque selected label",
+                colors.any { (it and 0x00ffffff) == labelRgb && Color.alpha(it) == 255 })
+            assertTrue("${view.javaClass.simpleName} should draw dimmed inactive labels",
+                colors.any { (it and 0x00ffffff) == labelRgb && Color.alpha(it) in 1..220 })
 
             apply(view, KeyboardSkinId.DEFAULT)
-            assertTrue("${view.javaClass.simpleName} should restore its mode icon", modeSwitch.drawable != null)
+            assertTrue("${view.javaClass.simpleName} should restore its vector mode icon",
+                original.sameAs(modeIconPixels()))
         }
     }
 

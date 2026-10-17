@@ -42,6 +42,9 @@ class GemmaRuntimeClient @Inject constructor(
     private var activeRequestId: Long = NO_REQUEST
 
     @Volatile
+    private var previewRequestId: Long = NO_REQUEST
+
+    @Volatile
     private var initializationConfig: InitializationConfig? = null
 
     @Volatile
@@ -128,7 +131,32 @@ class GemmaRuntimeClient @Inject constructor(
         prompt: String,
         mediaPath: String = "",
         mediaType: GemmaMediaType = GemmaMediaType.TEXT,
-    ): String = operationMutex.withLock {
+    ): String {
+        cancelPreview()
+        return operationMutex.withLock { generateLocked(prompt, mediaPath, mediaType, false) }
+    }
+
+    suspend fun generatePreview(prompt: String, instruction: String = ""): String? {
+        if (!operationMutex.tryLock()) return null
+        return try {
+            generateLocked(prompt, "", GemmaMediaType.TEXT, true, instruction)
+        } finally {
+            operationMutex.unlock()
+        }
+    }
+
+    fun cancelPreview() {
+        val id = previewRequestId
+        if (id != NO_REQUEST) runCatching { runtime?.cancel(id) }
+    }
+
+    private suspend fun generateLocked(
+        prompt: String,
+        mediaPath: String,
+        mediaType: GemmaMediaType,
+        preview: Boolean,
+        instruction: String = "",
+    ): String {
         val service = connect()
         val binder = service.asBinder()
         if (initializedBinder !== binder || !binder.isBinderAlive) {
@@ -138,6 +166,7 @@ class GemmaRuntimeClient @Inject constructor(
         }
         val requestId = nextRequestId.getAndIncrement()
         activeRequestId = requestId
+        if (preview) previewRequestId = requestId
         val completion = CompletableDeferred<String>()
         activeCompletion = completion
         val callback = object : IGemmaRuntimeCallback.Stub() {
@@ -155,10 +184,13 @@ class GemmaRuntimeClient @Inject constructor(
                 }
             }
         }
-        try {
-            service.generate(requestId, prompt, mediaPath, mediaType.runtimeValue, callback)
+        return try {
+            if (preview) service.generatePreview(requestId, prompt, instruction, callback)
+            else service.generate(requestId, prompt, mediaPath, mediaType.runtimeValue, callback)
             withTimeout(GENERATE_TIMEOUT_MS) { completion.await() }
         } finally {
+            if (!completion.isCompleted) runCatching { service.cancel(requestId) }
+            if (previewRequestId == requestId) previewRequestId = NO_REQUEST
             if (activeRequestId == requestId) activeRequestId = NO_REQUEST
             if (activeCompletion === completion) activeCompletion = null
         }

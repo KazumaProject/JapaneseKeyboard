@@ -60,7 +60,7 @@ class LocalFontRepository @Inject constructor(
     @ApplicationContext context: Context,
 ) {
     private val resolver: ContentResolver = context.contentResolver
-    private val store = LocalFontStore(context.noBackupFilesDir)
+    private val store by lazy { LocalFontStore(context.noBackupFilesDir) }
     private val operationMutex = Mutex()
     private val generation = AtomicLong(0L)
     private val generationGate = Any()
@@ -74,7 +74,6 @@ class LocalFontRepository @Inject constructor(
     suspend fun loadIfNeeded(): LocalFontState = withContext(Dispatchers.IO) {
         operationMutex.withLock {
             if (loaded) return@withLock _state.value
-            loaded = true
             when (val readResult = store.readState()) {
                 LocalFontReadResult.Missing -> {
                     publishStandardState()
@@ -111,13 +110,14 @@ class LocalFontRepository @Inject constructor(
                             throw e
                         } catch (_: Exception) {
                             publishStandardState(LocalFontWarning.RESTORE_FAILED)
+                            loaded = true
                             return@withLock _state.value
                         }
                         collectGarbage(activeRecord?.id, preview?.record?.id)
                         _state.value
                     }
                 }
-            }
+            }.also { loaded = true }
         }
     }
 

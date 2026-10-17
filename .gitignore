@@ -24,3 +24,8 @@ app/liteFdroid/
 app/liteStandard
 .idea/gradle.xml
 
+
+# Download cache for the pinned dictionary import tool.
+.cache/classified-distribution/
+
+tools/classified-dictionaries/__pycache__/

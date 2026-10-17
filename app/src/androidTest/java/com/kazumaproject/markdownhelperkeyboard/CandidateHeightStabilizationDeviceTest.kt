@@ -102,6 +102,152 @@ class CandidateHeightStabilizationDeviceTest {
         val width: Int = 100
     )
 
+    private fun <T> onMain(block: () -> T): T {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) return block()
+        var result: T? = null
+        var failure: Throwable? = null
+        instrumentation.runOnMainSync {
+            try { result = block() } catch (error: Throwable) { failure = error }
+        }
+        failure?.let { throw it }
+        @Suppress("UNCHECKED_CAST")
+        return result as T
+    }
+
+    private fun liveCandidateStrip(): androidx.recyclerview.widget.RecyclerView? = onMain {
+        android.view.inspector.WindowInspector.getGlobalWindowViews().firstNotNullOfOrNull {
+            it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view)
+                ?.takeIf { view -> view.isShown }
+        }
+    }
+
+    private fun flickKey(id: String, dx: Int = 0, dy: Int = 0) {
+        var rect: Rect? = null
+        await("Missing IME key $id") { key(id).also { rect = it } != null }
+        val x = rect!!.centerX().toFloat()
+        val y = rect!!.centerY().toFloat()
+        val distance = 45 * context.resources.displayMetrics.density
+        val time = SystemClock.uptimeMillis()
+        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action,
+                x + if (action == MotionEvent.ACTION_DOWN) 0f else dx * distance,
+                y + if (action == MotionEvent.ACTION_DOWN) 0f else dy * distance, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            assertTrue(automation.injectInputEvent(event, true))
+            event.recycle()
+            SystemClock.sleep(30)
+        }
+        SystemClock.sleep(150)
+    }
+
+    @Test
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
+    fun readingConversionCancelAndFullDeleteRestoreIntegratedShortcutViewport() {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("candidate_reading_shortcut_device_test") == "true")
+        AppPreference.init(context)
+        val backup = AppPreference.exportAllToJson()
+        val oldIme = shell("settings get secure default_input_method")
+        val target = ComponentName(context, IMEService::class.java).flattenToShortString()
+        val originallyEnabled = shell("ime list -s").lineSequence().any { it.trim() == target }
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val info = automation.serviceInfo
+        val oldFlags = info.flags
+        info.flags = info.flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+            AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        automation.serviceInfo = info
+        var host: CandidateHeightTestHostActivity? = null
+        val landscape = InstrumentationRegistry.getArguments().getString("candidate_height_rotation") == "1"
+        try {
+            shell("ime enable $target")
+            shell("ime set $target")
+            for (readingMode in listOf("whole", "ruby")) for (rows in 1..3) for (stable in listOf(false, true)) {
+                check(prefs.edit().clear()
+                    .putString("keyboard_order_preference", "[\"TENKEY\"]")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("keyboard_floating_preference", false)
+                    .putBoolean("landscape_force_qwerty_preference", false)
+                    .putBoolean("landscape_force_qwerty_romaji_preference", false)
+                    .putBoolean("allow_fullscreen_mode_preference", false)
+                    .putString("candidate_column_preference", rows.toString())
+                    .putString("candidate_column_landscape_preference", rows.toString())
+                    .putInt("candidate_view_height_dp_preference", 60 + (rows - 1) * 20)
+                    .putInt("candidate_view_height_dp_landscape_preference", 60 + (rows - 1) * 20)
+                    .putInt("candidate_view_height_portrait_column_${rows}_dp_preference", 60 + (rows - 1) * 20)
+                    .putInt("candidate_view_height_landscape_column_${rows}_dp_preference", 60 + (rows - 1) * 20)
+                    .putInt("candidate_view_empty_height_dp_preference", 60)
+                    .putInt("candidate_view_empty_height_dp_landscape_preference", 60)
+                    .putBoolean("candidate_height_per_column_migrated_preference", true)
+                    .putInt("candidate_height_defaults_migration_version_preference", 1)
+                    .putBoolean("candidate_tab_visibility_preference", true)
+                    .putBoolean("shortcut_toolbar_visibility_preference", true)
+                    .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", true)
+                    .putBoolean(AppPreference.STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY, stable)
+                    .putBoolean("conversion_bunsetsu_separation_preference", true)
+                    .putBoolean("conversion_bunsetsu_cursor_move_preference", true)
+                    .putBoolean("live_conversion_preference", true)
+                    .putBoolean("live_conversion_candidate_yomi_preference", true)
+                    .putString("live_conversion_candidate_yomi_mode_preference", readingMode)
+                    .putBoolean("inline_suggestion_enabled_preference", false)
+                    .putBoolean("clipboard_preview_enable_preference", false)
+                    .commit())
+                if (host == null) {
+                    context.startActivity(Intent(context, CandidateHeightTestHostActivity::class.java)
+                        .putExtra("landscape", landscape).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    await("Editor activity did not start") {
+                        CandidateHeightTestHostActivity.current.get()?.also { host = it }?.hasWindowFocus() == true
+                    }
+                } else onMain { host!!.restartEditor() }
+                await("Keyboard not ready") { key("key_2") != null && text(host!!).isEmpty() }
+                SystemClock.sleep(400)
+                // とうけい: a real flick sequence whose first converted candidate has a reading.
+                flickKey("key_4", dy = 1)
+                flickKey("key_1", dy = -1)
+                flickKey("key_2", dx = 1)
+                flickKey("key_1", dx = -1)
+                await("Reading was not shown: $readingMode/$rows/$stable") {
+                    liveCandidateStrip()?.let { recycler -> onMain {
+                        recycler.findViewById<android.view.View>(R.id.suggestion_item_yomi_text_view)?.isShown == true &&
+                            recycler.clipBounds != null
+                    } } == true
+                }
+                tapKey("key_space")
+                tapKey("key_delete")
+                await("Cancellation did not restore raw input") { text(host!!) == "とうけい" }
+                repeat(4) { tapKey("key_delete") }
+                await("Composing input was not fully deleted") { text(host!!).isEmpty() }
+                await("Integrated shortcuts did not return") {
+                    liveCandidateStrip()?.let { recycler -> onMain {
+                        (0 until recycler.childCount).any {
+                            recycler.getChildAt(it).findViewById<android.view.View>(R.id.item_image) != null
+                        }
+                    } } == true
+                }
+                onMain {
+                    val recycler = liveCandidateStrip()!!
+                    assertEquals("Reading viewport must be released: $readingMode/$rows/$stable", null, recycler.clipBounds)
+                    val frame = recycler.parent as android.view.ViewGroup
+                    for (index in 0 until recycler.childCount) {
+                        val icon = recycler.getChildAt(index).findViewById<android.view.View>(R.id.item_image) ?: continue
+                        val bounds = Rect(0, 0, icon.width, icon.height)
+                        frame.offsetDescendantRectToMyCoords(icon, bounds)
+                        assertTrue("Icon clipped: $bounds frameHeight=${frame.height}", bounds.top >= 0 && bounds.bottom <= frame.height)
+                    }
+                }
+                val file = java.io.File(context.getExternalFilesDir("candidate-reading-regression"),
+                    "${if (landscape) "landscape" else "portrait"}-$readingMode-$rows-$stable.png")
+                file.outputStream().use { automation.takeScreenshot().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                println("CandidateReadingShortcut rotation=$landscape reading=$readingMode rows=$rows stable=$stable passed")
+            }
+        } finally {
+            onMain { host?.finish() }
+            AppPreference.importAllFromJson(backup)
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            if (!originallyEnabled) shell("ime disable $target")
+            info.flags = oldFlags
+            automation.serviceInfo = info
+        }
+    }
+
     @Test
     fun actualImeKeepsEditorBoundsStableAndTransparentSpacePassesThrough() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("candidate_height_device_test") == "true")

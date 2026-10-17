@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +26,8 @@ class FrequentSettingsEditFragment : Fragment() {
     @Inject
     lateinit var appPreference: AppPreference
 
+    private var loadingUi: SettingsLoadingUi? = null
+    private var loadingJob: kotlinx.coroutines.Job? = null
     private lateinit var candidates: List<SettingDestination>
     private lateinit var selectedAdapter: FrequentSelectedSettingsAdapter
 
@@ -37,21 +41,33 @@ class FrequentSettingsEditFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSettingFrequentEditBinding.inflate(inflater, container, false)
-        return binding.root
+        return SettingsLoadingUi(requireContext(), ::loadCandidates).also { loadingUi = it }.wrap(binding.root)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        candidates = SettingDestinations.frequentCandidates(requireContext())
-        selectedKeys = normalizedSelectedKeys().toMutableList()
+        loadCandidates()
+    }
 
-        setupAdapters()
-        setupInputs()
-        setupFragmentResultListener()
-        renderSelected()
+    private fun loadCandidates() {
+        if (loadingJob?.isActive == true) return
+        val context = requireContext()
+        val ui = loadingUi ?: return
+        loadingJob = viewLifecycleOwner.lifecycleScope.launch {
+            ui.load {
+                candidates = settingsIo(SettingsLoadStage.SEARCH) { SettingDestinations.frequentCandidates(context) }
+                selectedKeys = normalizedSelectedKeys().toMutableList()
+                setupAdapters()
+                setupInputs()
+                setupFragmentResultListener()
+                renderSelected()
+            }
+        }
     }
 
     override fun onDestroyView() {
+        loadingUi = null
+        loadingJob = null
         itemTouchHelper?.attachToRecyclerView(null)
         itemTouchHelper = null
         binding.settingFrequentSelectedRecyclerView.adapter = null

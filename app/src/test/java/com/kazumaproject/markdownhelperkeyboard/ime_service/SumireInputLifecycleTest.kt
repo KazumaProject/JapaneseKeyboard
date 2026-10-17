@@ -47,6 +47,34 @@ class SumireInputLifecycleTest {
     }
     private val listener get() = Reflect.getField<FlickKeyboardView.OnKeyboardActionListener>(binding.customLayoutDefault, "listener")
 
+    @Test fun deletionUpdatesDakutenActionEvenWhenSuggestionsAreSuppressed() {
+        Reflect.setField(service, "suppressSuggestions", true)
+        val input = Reflect.getField<MutableStateFlow<String>>(service, "_inputString")
+        fun processInput() = Reflect.callInstanceMethod<Unit>(service, "processInputString",
+            ClassParameter.from(String::class.java, input.value),
+            ClassParameter.from(MainLayoutBinding::class.java, binding))
+        fun dakutenAction() = requireNotNull(keys().single { it.keyId == "dakuten_toggle_key" }.action)
+
+        listener.onAction(KeyAction.Text("あかな"), false)
+        processInput()
+        assertEquals(KeyAction.InputText("^_^"), dakutenAction())
+        listener.onAction(KeyAction.Delete, false)
+        processInput()
+        assertEquals("あか", input.value)
+        assertEquals(KeyAction.ToggleDakuten, dakutenAction())
+        listener.onAction(dakutenAction(), false)
+        assertEquals("あが", input.value)
+
+        input.value = ""
+        listener.onAction(KeyAction.Text("なか"), false)
+        processInput()
+        assertEquals(KeyAction.ToggleDakuten, dakutenAction())
+        listener.onAction(KeyAction.Delete, false)
+        processInput()
+        assertEquals("な", input.value)
+        assertEquals(KeyAction.InputText("^_^"), dakutenAction())
+    }
+
     @Test fun tapAndLongPressCycleBothTheLayoutAndSessionInputMode() {
         for (longPress in listOf(false, true)) {
             Reflect.setField(service, "customKeyboardMode", KeyboardInputMode.HIRAGANA)

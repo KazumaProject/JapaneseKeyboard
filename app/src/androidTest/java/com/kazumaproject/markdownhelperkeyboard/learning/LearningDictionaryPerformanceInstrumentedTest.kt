@@ -292,11 +292,7 @@ class LearningDictionaryPerformanceInstrumentedTest {
     ): List<Candidate> = getCandidatesWithBunsetsuSeparation(
         input = input,
         n = 4,
-        mozcUtPersonName = false,
-        mozcUTPlaces = false,
-        mozcUTWiki = false,
-        mozcUTNeologd = false,
-        mozcUTWeb = false,
+        enabledDictionaryCategories = emptySet(),
         userDictionaryRepository = userDictionaryRepository,
         learnRepository = learnRepository,
         isOmissionSearchEnable = false,

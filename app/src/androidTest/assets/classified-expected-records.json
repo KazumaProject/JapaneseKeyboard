@@ -1,0 +1,242 @@
+{
+  "address": {
+    "count": 152874,
+    "digestSum": "69ff599adcb461fbc8ddd32fc053e6b5b95e5182476ee81d5afcd5a56514f6d0",
+    "sample": {
+      "reading": "あいおいしあさひ",
+      "surface": "相生市旭"
+    }
+  },
+  "agreement": {
+    "count": 425,
+    "digestSum": "1cb8b3c96252b8c184f5868822c3834c61c453ef2c097f082720f8b9ebcfb22c",
+    "sample": {
+      "reading": "あるてみすごうい",
+      "surface": "アルテミス合意"
+    }
+  },
+  "award": {
+    "count": 1167,
+    "digestSum": "e81e10dd5edcdc93721aa985dee63fe409cf009bbcd245d2e698b119a914a871",
+    "sample": {
+      "reading": "あいあんくろす",
+      "surface": "アイアンクロス"
+    }
+  },
+  "character": {
+    "count": 6871,
+    "digestSum": "0a722d610e30a15ca43d867fd0418741c84531525777f268bc34511edde7af3a",
+    "sample": {
+      "reading": "ああいいちろう",
+      "surface": "亜愛一郎"
+    }
+  },
+  "event": {
+    "count": 8717,
+    "digestSum": "2e14befb78dee5b9b1df8c389a004109ff5dc81e5bfe15e66f52b172b1a17438",
+    "sample": {
+      "reading": "あいおんたいふう",
+      "surface": "アイオン台風"
+    }
+  },
+  "facility": {
+    "count": 35069,
+    "digestSum": "9f2b36d0581c79a23de849102dd2fd9c00b8689b81b5a0591c4b08ca884b4d5e",
+    "sample": {
+      "reading": "ああいせっくつ",
+      "surface": "アアイ石窟"
+    }
+  },
+  "initiative": {
+    "count": 1072,
+    "digestSum": "5d133c85f465977903b8cfbb5a16ade6d7aa3a34f4f71151d93015130743abed",
+    "sample": {
+      "reading": "あかりのもりびと",
+      "surface": "燈の守り人"
+    }
+  },
+  "lineage": {
+    "count": 2019,
+    "digestSum": "50cf329bb98757091c88d6393f1e458b521ac10f233c1efedec60a0023ece8b8",
+    "sample": {
+      "reading": "あいあこすちょう",
+      "surface": "アイアコス朝"
+    }
+  },
+  "mythological_figure": {
+    "count": 3436,
+    "digestSum": "69e050cfa5faefdf917e5b98d2c66ab0969ce006031ca0ee9b6da4100181cc30",
+    "sample": {
+      "reading": "あいえーてーす",
+      "surface": "アイエーテース"
+    }
+  },
+  "organization": {
+    "count": 47486,
+    "digestSum": "9de4f878f6de7615e1cdfbf5c5f83273970938b4c52155e6c82003ab8a856a11",
+    "sample": {
+      "reading": "あいあいえふ",
+      "surface": "IIF"
+    }
+  },
+  "person": {
+    "count": 268795,
+    "digestSum": "165486adc5c11d8286bce50599a76f77ed36993a5ba395fe9be87960a730b832",
+    "sample": {
+      "reading": "ぁぃぁぃ",
+      "surface": "ぁぃぁぃ"
+    }
+  },
+  "place": {
+    "count": 45089,
+    "digestSum": "d5572b4a73941c08ac79f77e721a576fa6e5a01a8fc19ba9a0d0e6f0db00bd55",
+    "sample": {
+      "reading": "あいあいみさき",
+      "surface": "愛逢岬"
+    }
+  },
+  "product": {
+    "count": 9883,
+    "digestSum": "1a031744cdff5c1f6cbfec910988474a0f5e92eac3ef8e3f9b5fd4988032ea67",
+    "sample": {
+      "reading": "あいあいえす",
+      "surface": "IIS"
+    }
+  },
+  "station": {
+    "count": 12758,
+    "digestSum": "50bf34e7a702fbda3701b453f59ae5e5032ecd1376dcb23016166eecadbaa997",
+    "sample": {
+      "reading": "あいかわえき",
+      "surface": "合川駅"
+    }
+  },
+  "term": {
+    "count": 108618,
+    "digestSum": "6324fa8390b1870442966878868556ec5d653b988bdae57773ceb9e89cb03973",
+    "sample": {
+      "reading": "ああしまーる",
+      "surface": "アアシマール"
+    }
+  },
+  "transport_route": {
+    "count": 4231,
+    "digestSum": "7d3728b5470208077532d862ec258ab868e0f1709f952a1a307da75840c78fbb",
+    "sample": {
+      "reading": "ああせん",
+      "surface": "阿阿線"
+    }
+  },
+  "vehicle": {
+    "count": 2579,
+    "digestSum": "14e0022f7359e8ff9a845d03370ac09d600b403f27a487e886211003d15963f4",
+    "sample": {
+      "reading": "あいおわきゅう",
+      "surface": "アイオワ級"
+    }
+  },
+  "work_anime": {
+    "count": 1104,
+    "digestSum": "d39c36190939ce95128c1de521e6cf6e64908783b8fb7197c19d66505653c66f",
+    "sample": {
+      "reading": "ああはりまなだ",
+      "surface": "ああ播磨灘"
+    }
+  },
+  "work_book": {
+    "count": 7667,
+    "digestSum": "69877a7934c2b6dff4180bde5d5799c0bcef64f130c2f4921748196fb83e86f0",
+    "sample": {
+      "reading": "ああのむぎとうげ",
+      "surface": "あゝ野麦峠"
+    }
+  },
+  "work_film": {
+    "count": 6510,
+    "digestSum": "b10ae13353d19f27509647c03e2dafdd446c3b6616be0f48ba6f3bd2aa6eb0a7",
+    "sample": {
+      "reading": "ああかいぐん",
+      "surface": "あゝ海軍"
+    }
+  },
+  "work_franchise": {
+    "count": 849,
+    "digestSum": "10b555660bf3f04402efc72629a38a6a3775aa2dcf6384ef1cdb56f8d34511cf",
+    "sample": {
+      "reading": "あいどるぶしょう",
+      "surface": "IDOL舞SHOW"
+    }
+  },
+  "work_game": {
+    "count": 3151,
+    "digestSum": "cbc11ed23021d9ee0f657931d45e1950b4074fa87998edaf981c8823bec5e60c",
+    "sample": {
+      "reading": "あいおん",
+      "surface": "AION"
+    }
+  },
+  "work_manga": {
+    "count": 5144,
+    "digestSum": "78e38cb0ae27eda76f58d89e9cac77a7b48338c3e28faecdb83e26ae22ac38a6",
+    "sample": {
+      "reading": "ああいちろう",
+      "surface": "ああ一郎"
+    }
+  },
+  "work_music": {
+    "count": 10338,
+    "digestSum": "af117301cecb98458a64753efaf4718f5fd1f982e627a4c1ccacb163ce0a29d4",
+    "sample": {
+      "reading": "ぁまのじゃく",
+      "surface": "ぁまのじゃく"
+    }
+  },
+  "work_other": {
+    "count": 2685,
+    "digestSum": "563d380a06be320d5996e79e8d4f4b8c1b5e25d16bfb3493047e777503a314a2",
+    "sample": {
+      "reading": "ああまきのしらべ",
+      "surface": "あゝ真希の調べ"
+    }
+  },
+  "work_periodical": {
+    "count": 1812,
+    "digestSum": "131af037b99c49a0f5bd6783e8b1552992fd0e2869c762d6d42caf1ce2b18a78",
+    "sample": {
+      "reading": "あいぎにっぽう",
+      "surface": "愛岐日報"
+    }
+  },
+  "work_program": {
+    "count": 9313,
+    "digestSum": "528834c21abd3d8dd537ef992d8c412c45822de9983a283831eab06ae645c383",
+    "sample": {
+      "reading": "ああかあさん",
+      "surface": "ああ母さん"
+    }
+  },
+  "work_stage": {
+    "count": 575,
+    "digestSum": "b51338e6d4a42bd12b5464ee3ce7b8aaefb33e6a7b53d2ce0e061fdce9880202",
+    "sample": {
+      "reading": "あいおいじし",
+      "surface": "相生獅子"
+    }
+  },
+  "kampo": {
+    "count": 432,
+    "digestSum": "7df5efb244bb3a3cce533c51ea875dce0f90cb5cd3dd49b6c348ccff3ebbc926",
+    "sample": {
+      "reading": "あせんやく",
+      "surface": "阿仙薬"
+    }
+  },
+  "medical": {
+    "count": 92685,
+    "digestSum": "17d354c4797df8c3ea8409d5ab472cacd2f054b02e4deed32eb748adca405d73",
+    "sample": {
+      "reading": "あいあいぴー",
+      "surface": "ＩＩＰ"
+    }
+  }
+}

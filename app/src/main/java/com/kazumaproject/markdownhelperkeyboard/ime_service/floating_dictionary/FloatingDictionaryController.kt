@@ -23,6 +23,8 @@ import androidx.core.widget.addTextChangedListener
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.DictionaryWordInput
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
@@ -273,10 +275,17 @@ internal class FloatingDictionaryController(
             action(R.string.save_string) {
                 focus(null)
                 val value = score.text.toString().toIntOrNull()
-                if (reading.text.isNullOrBlank() || word.text.isNullOrBlank() || value == null) {
+                val normalizedWord = DictionaryWordInput.normalize(
+                    word.text.toString(),
+                    kind == DictionaryKind.LEARN || preferences.getBoolean(
+                        AppPreference.PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY, false,
+                    ),
+                )
+                val normalizedReading = reading.text.toString().trim()
+                if (normalizedReading.isEmpty() || normalizedWord == null || value == null) {
                     error.text = context.getString(R.string.floating_dictionary_invalid)
                 } else {
-                    val entry = DictionaryEntry(original?.id ?: 0, reading.text.toString().trim(), word.text.toString(), value, pos.selectedItemPosition)
+                    val entry = DictionaryEntry(original?.id ?: 0, normalizedReading, normalizedWord, value, pos.selectedItemPosition)
                     mutate(error, { store.save(kind, entry, original == null) }) { showList() }
                 }
             }

@@ -33,7 +33,7 @@ class TenKeyPopupStyleSettingFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        AppPreference.init(requireContext())
+        // MainActivity completes preference initialization before opening settings destinations.
         return singleStyleEditor(
             preview = PopupStylePreviewView(requireContext()).apply { previewText = "あ" },
             initialStyle = PopupViewStyle(
@@ -82,7 +82,7 @@ class QwertyPopupStyleSettingFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        AppPreference.init(requireContext())
+        // MainActivity completes preference initialization before opening settings destinations.
         val root = editorRoot()
         root.addView(sectionTitle("Key preview popup"))
         root.addView(
@@ -204,7 +204,7 @@ class FlickKeyboardPopupStyleEditFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        AppPreference.init(requireContext())
+        // MainActivity completes preference initialization before opening settings destinations.
         val target = FlickTarget.from(arguments?.getString("target"))
         val preview = FlickPopupStylePreviewView(requireContext())
         return singleStyleEditor(

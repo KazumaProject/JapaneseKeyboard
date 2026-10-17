@@ -1,0 +1,24 @@
+allprojects {
+    plugins.withId('com.android.application') {
+        androidComponents.finalizeDsl { dsl ->
+            dsl.defaultConfig.applicationId = 'com.kazumaproject.markdownhelperkeyboard.classifiedprobe'
+        }
+    }
+}
+allprojects {
+    tasks.configureEach { task ->
+        if (task.name.endsWith('AndroidTestManifest')) {
+            task.outputs.upToDateWhen { false }
+            task.doLast {
+                task.outputs.files.files.findAll { it.isDirectory() }.each { directory ->
+                    directory.eachFileRecurse(groovy.io.FileType.FILES) { manifest ->
+                        if (manifest.name != 'AndroidManifest.xml') return
+                        manifest.text = manifest.text
+                            .replace('com.kazumaproject.markdownhelperkeyboard.settingsbackuptest', 'com.kazumaproject.markdownhelperkeyboard.classifiedprobe.settingsbackuptest')
+                            .replace('com.kazumaproject.markdownhelperkeyboard.lite.localfonttest', 'com.kazumaproject.markdownhelperkeyboard.classifiedprobe.localfonttest')
+                    }
+                }
+            }
+        }
+    }
+}

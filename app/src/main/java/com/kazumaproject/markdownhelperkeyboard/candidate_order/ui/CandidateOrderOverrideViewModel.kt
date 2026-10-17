@@ -146,14 +146,11 @@ class CandidateOrderOverrideViewModel @Inject constructor(
             val scope = uiState.value.scope
             val candidateSegments = LinkedHashMap<String, List<CandidateConversionSegment>>()
             val candidates = withContext(Dispatchers.Default) {
+                kanaKanjiEngine.ensureCurrentDictionaryState(context)
                 kanaKanjiEngine.getCandidates(
                     input = reading,
                     n = appPreference.n_best_preference ?: 8,
-                    mozcUtPersonName = appPreference.mozc_ut_person_names_preference,
-                    mozcUTPlaces = appPreference.mozc_ut_places_preference,
-                    mozcUTWiki = appPreference.mozc_ut_wiki_preference,
-                    mozcUTNeologd = appPreference.mozc_ut_neologd_preference,
-                    mozcUTWeb = appPreference.mozc_ut_web_preference,
+                    enabledDictionaryCategories = kanaKanjiEngine.loadedClassifiedCategories(),
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = learnRepository,
                     isOmissionSearchEnable = false,

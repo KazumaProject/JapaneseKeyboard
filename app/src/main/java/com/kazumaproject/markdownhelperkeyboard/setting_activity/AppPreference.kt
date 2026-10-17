@@ -15,9 +15,13 @@ import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
+import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.AngleMode
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.Precision
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.RegionalUnitProfile
@@ -29,6 +33,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
@@ -49,6 +55,38 @@ internal object CustomThemeColorPreferenceKeys {
 
 object AppPreference {
 
+    const val VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY = "voice_input_space_replacement_enabled"
+    const val VOICE_INPUT_SPACE_REPLACEMENT_KEY = "voice_input_space_replacement"
+    const val VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY = "voice_input_space_custom_text"
+
+    var voice_input_space_replacement_enabled: Boolean
+        get() = preferences.getBoolean(VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY, value)
+        }
+
+    var voice_input_space_replacement: String
+        get() = preferences.getString(VOICE_INPUT_SPACE_REPLACEMENT_KEY, "remove") ?: "remove"
+        set(value) = preferences.edit {
+            it.putString(VOICE_INPUT_SPACE_REPLACEMENT_KEY, value)
+        }
+
+    var voice_input_space_custom_text: String
+        get() = preferences.getString(VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY, "") ?: ""
+        set(value) = preferences.edit {
+            it.putString(VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY, value)
+        }
+
+    val voice_input_settings: VoiceInputSettings
+        get() = VoiceInputSettings(
+            enabled = voice_input_space_replacement_enabled,
+            replacement = VoiceInputSpaceReplacement.fromPreference(voice_input_space_replacement),
+            customText = voice_input_space_custom_text,
+        )
+
+    const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =
+        "preserve_dictionary_word_whitespace_preference"
+
     internal const val GOJUON_KEYBOARD_TYPE_MIGRATION_KEY =
         "gojuon_keyboard_type_migrated_v1"
 
@@ -60,6 +98,8 @@ object AppPreference {
     const val UTILITY_CALCULATION_PRECISION_KEY = "utility_calculation_precision"
     const val UTILITY_REGIONAL_PROFILE_KEY = "utility_regional_profile"
     const val UTILITY_UNIT_TARGETS_JSON_KEY = "utility_unit_targets_json"
+    const val DATE_CANDIDATE_ORDER_KEY = "date_candidate_order"
+    const val DATE_CANDIDATE_ENABLED_FORMATS_KEY = "date_candidate_enabled_formats"
     private const val UTILITY_DECIMAL_PRECISION_PREFIX = "decimal:"
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
@@ -93,6 +133,8 @@ object AppPreference {
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
     const val TFBI_DIAGONAL_RECOGNITION_MODE_KEY = "tfbi_diagonal_recognition_mode_preference"
+    const val SUMIRE_FLICK_ROTATION_KEY = "sumire_flick_rotation_preference"
+    const val SUMIRE_FLICK_INPUT_MODE_KEY = "sumire_flick_input_mode_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
@@ -128,7 +170,8 @@ object AppPreference {
     private const val CURRENT_CANDIDATE_HEIGHT_DEFAULTS_MIGRATION_VERSION = 1
 
     private val initializationLock = Any()
-    private val initialization = CompletableFuture<Unit>()
+    @Volatile private var initialization = CompletableFuture<Unit>()
+    private val initializationStartLock = Any()
     private val initializationStarted = AtomicBoolean(false)
     @Volatile private var initialized = false
     @Volatile private var initializingThread: Thread? = null
@@ -417,6 +460,9 @@ object AppPreference {
         Pair("custom_direct_mode_space_hankaku_preference", true)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
+    const val LIVE_CONVERSION_CANDIDATE_YOMI_MODE_KEY = "live_conversion_candidate_yomi_mode_preference"
+    const val CANDIDATE_YOMI_MODE_WHOLE = "whole"
+    const val CANDIDATE_YOMI_MODE_RUBY = "ruby"
     const val LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY = "live_conversion_candidate_yomi_size_preference"
     const val DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 14
     const val MIN_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE = 1
@@ -946,14 +992,31 @@ object AppPreference {
         Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
 
     fun startInitialization(context: Context) {
-        if (!initializationStarted.compareAndSet(false, true)) return
-        Thread({
-            try {
-                init(context)
-            } catch (failure: Throwable) {
-                initialization.completeExceptionally(failure)
+        synchronized(initializationStartLock) {
+            if (initialization.isCompletedExceptionally) {
+                initialization = CompletableFuture()
+                initializationStarted.set(false)
             }
-        }, "AppPreferenceInit").start()
+            if (!initializationStarted.compareAndSet(false, true)) return
+            Thread({
+                try {
+                    init(context)
+                } catch (_: Throwable) {
+                    // init completed its future exceptionally; the loading UI owns retry.
+                }
+            }, "AppPreferenceInit").start()
+        }
+    }
+
+    suspend fun awaitInitializationSuspending() = kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
+        // A cancelled screen must not remain retained by a slow initialization future.
+        val waiting = java.util.concurrent.atomic.AtomicReference(continuation)
+        continuation.invokeOnCancellation { waiting.set(null) }
+        initialization.whenComplete { _, error ->
+            waiting.getAndSet(null)?.resumeWith(
+                if (error == null) Result.success(Unit) else Result.failure(error),
+            )
+        }
     }
 
     fun awaitInitialization() {
@@ -966,6 +1029,8 @@ object AppPreference {
             initializingThread = Thread.currentThread()
             try {
                 appContext = context.applicationContext
+                // This startup filesystem maintenance used to run in Application.onCreate on main.
+                appContext.codeCacheDir.setReadOnly()
                 isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
                 loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 migrateCandidateHeightDefaultsIfNeeded()
@@ -1615,7 +1680,6 @@ object AppPreference {
             it.putBoolean(QWERTY_ENABLE_FLICK_DOWN_WINDOW.first, value ?: false)
         }
 
-
     var qwerty_enable_zenkaku_space_preference: Boolean?
         get() = preferences.getBoolean(
             QWERTY_ZENKAKU_SPACE_PREFERENCE.first, QWERTY_ZENKAKU_SPACE_PREFERENCE.second
@@ -1874,6 +1938,22 @@ object AppPreference {
             it.putString(TFBI_DIAGONAL_RECOGNITION_MODE.first, value.preferenceValue)
         }
 
+    var sumire_flick_rotation_preference: TfbiFlickRotation
+        get() = TfbiFlickRotation.fromPreferenceValue(
+            preferences.getString(SUMIRE_FLICK_ROTATION_KEY, TfbiFlickRotation.DEFAULT.preferenceValue)
+        )
+        set(value) = preferences.edit {
+            it.putString(SUMIRE_FLICK_ROTATION_KEY, value.preferenceValue)
+        }
+
+    var sumire_flick_input_mode_preference: SumireFlickInputMode
+        get() = SumireFlickInputMode.fromPreferenceValue(
+            preferences.getString(SUMIRE_FLICK_INPUT_MODE_KEY, SumireFlickInputMode.ALL.preferenceValue)
+        )
+        set(value) = preferences.edit {
+            it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
+        }
+
     var hierarchical_flick_mode_switch_angle_margin_preference: Int
         get() = preferences.getInt(
             HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.first,
@@ -1931,6 +2011,28 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
+        }
+
+    var date_candidate_config: DateCandidateConfig
+        get() {
+            val formatsByValue = DateCandidateFormat.entries.associateBy { it.preferenceValue }
+            val order = preferences.getString(DATE_CANDIDATE_ORDER_KEY, null)
+                ?.split(',')?.mapNotNull(formatsByValue::get).orEmpty()
+            val enabledValues = preferences.getStringSet(DATE_CANDIDATE_ENABLED_FORMATS_KEY, null)
+            val enabledFormats = enabledValues?.mapNotNull(formatsByValue::get)?.toSet()
+                ?: DateCandidateFormat.entries.toSet()
+            val config = DateCandidateConfig(order = order, enabledFormats = enabledFormats)
+            return config.copy(order = config.normalizedOrder)
+        }
+        set(value) = preferences.edit { editor ->
+            editor.putString(
+                DATE_CANDIDATE_ORDER_KEY,
+                value.normalizedOrder.joinToString(",") { it.preferenceValue },
+            )
+            editor.putStringSet(
+                DATE_CANDIDATE_ENABLED_FORMATS_KEY,
+                value.enabledFormats.mapTo(mutableSetOf()) { it.preferenceValue },
+            )
         }
 
     var utility_candidate_config: UtilityCandidateConfig
@@ -2320,6 +2422,12 @@ object AppPreference {
             it.putBoolean(CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.first, value)
         }
 
+    var preserve_dictionary_word_whitespace_preference: Boolean
+        get() = preferences.getBoolean(PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY, value)
+        }
+
     var show_dictionary_candidate_labels_preference: Boolean
         get() = preferences.getBoolean(
             SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE.first,
@@ -2554,6 +2662,14 @@ object AppPreference {
             it.putBoolean(FLICK_EDITOR_PREVIEW.first, value)
         }
 
+    var flick_editor_preview_delay_ms: Int
+        get() = FlickPreviewDelaySettings.normalize(
+            preferences.getInt(FlickPreviewDelaySettings.KEY, 0)
+        )
+        set(value) = preferences.edit {
+            it.putInt(FlickPreviewDelaySettings.KEY, FlickPreviewDelaySettings.normalize(value))
+        }
+
     var undo_enable_preference: Boolean?
         get() = preferences.getBoolean(UNDO_ENABLE.first, UNDO_ENABLE.second)
         set(value) = preferences.edit {
@@ -2630,6 +2746,15 @@ object AppPreference {
                 LIVE_CONVERSION_CANDIDATE_YOMI.first,
                 value ?: LIVE_CONVERSION_CANDIDATE_YOMI.second
             )
+        }
+
+    var live_conversion_candidate_yomi_mode: String
+        get() = preferences.getString(
+            LIVE_CONVERSION_CANDIDATE_YOMI_MODE_KEY, CANDIDATE_YOMI_MODE_WHOLE
+        ).let { if (it == CANDIDATE_YOMI_MODE_RUBY) it else CANDIDATE_YOMI_MODE_WHOLE }
+        set(value) = preferences.edit {
+            it.putString(LIVE_CONVERSION_CANDIDATE_YOMI_MODE_KEY,
+                if (value == CANDIDATE_YOMI_MODE_RUBY) value else CANDIDATE_YOMI_MODE_WHOLE)
         }
 
     var live_conversion_candidate_yomi_size: Int
@@ -3409,6 +3534,39 @@ object AppPreference {
             )
         }
 
+    /** Null means inherit the existing shared setting; opening a screen must not create overrides. */
+    fun modeKeySize(surface: String, mode: KeyboardInputMode, guide: Boolean): Float? {
+        val key = modeKeySizeKey(surface, mode, guide)
+        return if (preferences.contains(key)) preferences.getFloat(key, 0f).takeIf { it.isFinite() }
+        else null
+    }
+
+    fun setModeKeySize(surface: String, mode: KeyboardInputMode, guide: Boolean, size: Float?) {
+        preferences.edit {
+            val key = modeKeySizeKey(surface, mode, guide)
+            if (size == null) it.remove(key)
+            else {
+                require(size.isFinite())
+                val range = if (guide) 6f..16f else if (surface == "tenkey") 4f..40f else 8f..32f
+                it.putFloat(key, size.coerceIn(range))
+            }
+        }
+    }
+
+    fun resetModeKeySizes(surface: String, mode: KeyboardInputMode? = null) {
+        preferences.edit { editor ->
+            (mode?.let { listOf(it) } ?: KeyboardInputMode.entries).forEach { inputMode ->
+                editor.remove(modeKeySizeKey(surface, inputMode, false))
+                editor.remove(modeKeySizeKey(surface, inputMode, true))
+            }
+        }
+    }
+
+    private fun modeKeySizeKey(surface: String, mode: KeyboardInputMode, guide: Boolean): String {
+        require(surface == "tenkey" || surface == "sumire")
+        return "${surface}_${mode.name.lowercase(java.util.Locale.ROOT)}_${if (guide) "guide" else "key"}_text_size_sp"
+    }
+
     var flick_key_text_size_sp: Float?
         get() = preferences.getFloat(
             FLICK_KEY_TEXT_SIZE_SP.first,
@@ -4023,7 +4181,6 @@ object AppPreference {
         )
         set(value) = preferences.edit { it.putInt(CUSTOM_THEME_POST_EDIT_TEXT.first, value) }
 
-
     var sumire_english_qwerty_preference: Boolean
         get() = preferences.getBoolean(
             SUMIRE_ENGLISH_QWERTY_PREFERENCE.first,
@@ -4095,7 +4252,6 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.first, value)
         }
-
 
     var learn_first_candidate_dictionary_preference: Boolean
         get() = preferences.getBoolean(
@@ -4252,7 +4408,6 @@ object AppPreference {
                 value
             )
         }
-
 
     var keyboard_margin_start_dp: Int?
         get() = preferences.getInt(KEYBOARD_MARGIN_START_DP.first, KEYBOARD_MARGIN_START_DP.second)
@@ -5021,7 +5176,7 @@ object AppPreference {
     /**
      * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）
      */
-    fun exportAllToJson(): String {
+    fun exportAllToJson(shortcutIds: List<String>? = null): String {
         val all = preferences.all // Map<String, *>
         val entries = all.entries.map { (k, v) ->
             when (v) {
@@ -5043,14 +5198,21 @@ object AppPreference {
             }
         }
 
-        return gson.toJson(PrefBackup(entries = entries))
+        return gson.toJson(
+            PrefBackup(
+                version = if (shortcutIds == null) 1 else 2,
+                entries = entries,
+                shortcutIds = shortcutIds
+            )
+        )
     }
 
     /**
      * JSON を読み込んで SharedPreferences に反映
      * @param replaceAll true の場合は一旦 clear() してから復元（バックアップ復元向け）
+     * @return バックアップ内のツールバーのID一覧（旧形式では null）。DBへの反映は呼び出し元で行う。
      */
-    fun importAllFromJson(json: String, replaceAll: Boolean = true) {
+    fun importAllFromJson(json: String, replaceAll: Boolean = true): List<String>? {
         val backup = try {
             gson.fromJson(json, PrefBackup::class.java)
         } catch (e: Exception) {
@@ -5081,6 +5243,7 @@ object AppPreference {
         }
         migrateSumireKeymapGuideModesIfNeeded()
         migrateGojuonKeyboardTypeIfNeeded()
+        return backup.shortcutIds
     }
 
     fun migrateSumirePreferenceIfNeeded() {

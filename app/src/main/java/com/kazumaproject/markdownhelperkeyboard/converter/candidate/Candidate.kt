@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.candidate
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.FormulaCandidatePresentation
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 
 /**
  * @see 1:NBest 2:Part of letters 3:Hirakana 4:Katakana 5:Combine part of letter 6. Single Kanji
@@ -19,4 +21,11 @@ data class Candidate(
     val commitText: String = string,
     /** Optional non-text presentation, currently used by formula candidates. */
     val presentation: FormulaCandidatePresentation? = null,
+    /** Exact conversion path used only to align live candidate readings. */
+    val conversionSegments: List<CandidateConversionSegment> = emptyList(),
+    /** Date format identity for daily date candidates that can be reordered or disabled. */
+    val dateFormat: DateCandidateFormat? = null,
+    /** Whole-input standalone unigram match with the original literal input. Never changes score. */
+    val standaloneUnigramMatched: Boolean = false,
+    val dictionaryCategories: Set<DictionaryCategory> = emptySet(),
 )

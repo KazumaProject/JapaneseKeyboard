@@ -1,0 +1,16 @@
+<resources>
+    <string name="gemma_floating_processing">Gemma 処理中</string>
+    <string name="gemma_floating_category">Gemma フローティング候補</string>
+    <string name="gemma_floating_enable">入力中にフローティング候補を表示</string>
+    <string name="gemma_floating_summary">選択したルールで未確定文字列を処理します。結果をタップすると置き換えて確定します。</string>
+    <string name="gemma_floating_selected">使用するルール</string>
+    <string name="gemma_floating_none">選択なし</string>
+    <string name="gemma_floating_manage">フローティングのルール管理</string>
+    <string name="gemma_floating_add">ルールを追加</string>
+    <string name="gemma_floating_edit">ルールを編集</string>
+    <string name="gemma_floating_delete">ルールを削除</string>
+    <string name="gemma_floating_delete_confirm">「%1$s」を削除しますか？</string>
+    <string name="gemma_floating_name">ルール名</string>
+    <string name="gemma_floating_instruction">Gemma への指示</string>
+    <string name="gemma_floating_required">入力してください</string>
+</resources>

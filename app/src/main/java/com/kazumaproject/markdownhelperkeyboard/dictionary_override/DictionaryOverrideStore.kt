@@ -226,7 +226,7 @@ class DictionaryOverrideStore private constructor(
         } else {
             prefs.getBoolean(
                 optionalBundledEnabledKey(category),
-                category in setOf(DictionaryCategory.READING_CORRECTION, DictionaryCategory.KOTOWAZA),
+                optionalBundledResetValue(category),
             )
         }
 
@@ -240,6 +240,31 @@ class DictionaryOverrideStore private constructor(
         applyRevisionedEdit {
             putBoolean(optionalBundledEnabledKey(category), enabled)
             true
+        }
+    }
+
+    /** Shared ON/OFF semantics for the dictionary and external dictionary screens. */
+    fun setDisableableCategoryEnabled(
+        category: DictionaryCategory,
+        enabled: Boolean,
+        externalCompatible: Boolean,
+    ) {
+        require(category.isDisableableBundledDictionary())
+        val externalEnabled = enabled && externalCompatible &&
+            DictionaryFileSpecs.forCategory(category).all { isValidOverride(it.key) }
+        if (category == DictionaryCategory.ENGLISH_READING) {
+            setOptionalBundledEnabled(category, enabled)
+            setExternalEnabledForCategory(category, externalEnabled)
+            return
+        }
+        applyRevisionedEdit {
+            val changed = isOptionalBundledEnabled(category) != enabled ||
+                isExternalEnabledForCategory(category) != externalEnabled
+            if (changed) {
+                putBoolean(optionalBundledEnabledKey(category), enabled)
+                putBoolean(categoryExternalEnabledKey(category), externalEnabled)
+            }
+            changed
         }
     }
 

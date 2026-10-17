@@ -2,6 +2,9 @@ package com.kazumaproject.markdownhelperkeyboard.text_macro.ui
 
 import android.app.AlertDialog
 import android.os.Bundle
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadingUi
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadStage
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.settingsIo
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -32,6 +35,8 @@ import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class TextMacroFragment : Fragment() {
+    private var loadingUi: SettingsLoadingUi? = null
+    private var initialLoadJob: kotlinx.coroutines.Job? = null
     private val viewModel: TextMacroViewModel by viewModels()
     private lateinit var adapter: TextMacroAdapter
 
@@ -110,15 +115,36 @@ class TextMacroFragment : Fragment() {
             },
         )
         recycler.adapter = adapter
-        return root
+        return SettingsLoadingUi(context, ::retryInitialData).also { loadingUi = it }.wrap(root)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        awaitInitialData()
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.macros.collect(adapter::submitList)
             }
         }
+    }
+
+    private fun retryInitialData() {
+        viewModel.retryInitialLoad()
+        awaitInitialData()
+    }
+
+    private fun awaitInitialData() {
+        if (initialLoadJob?.isActive == true) return
+        val ui = loadingUi ?: return
+        initialLoadJob = viewLifecycleOwner.lifecycleScope.launch {
+            ui.load { settingsIo(SettingsLoadStage.DATABASE) { viewModel.awaitInitialLoad() } }
+        }
+    }
+
+    override fun onDestroyView() {
+        loadingUi = null
+        initialLoadJob = null
+        super.onDestroyView()
     }
 
     @Deprecated("Deprecated in Java")

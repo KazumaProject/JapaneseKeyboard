@@ -94,6 +94,9 @@ private fun createFlickSpannable(
     }
 
     val spannable = SpannableString(sb.toString())
+    // Non-visual metadata lets independent sizing preserve the center and guide layout.
+    spannable.setSpan(android.text.Annotation("tenkey", "center"), centerStart,
+        centerStart + center.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
     // 周囲は小さめ
     fun applySideSpan(start: Int, len: Int) {
@@ -116,6 +119,13 @@ private fun createFlickSpannable(
 
     return spannable
 }
+
+private fun japanesePunctuationLabel(): SpannableString =
+    getSpannableStringForKigouButtonJapanese().apply {
+        val centerStart = indexOf(',')
+        setSpan(android.text.Annotation("tenkey", "center"), centerStart, centerStart + 1,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
 
 private fun AppCompatButton.prepareLabelLayout(maxLabelLines: Int) {
     isSingleLine = maxLabelLines == 1
@@ -167,7 +177,7 @@ fun AppCompatButton.setTenKeyTextJapanese(
         R.id.key_8 -> context.getString(com.kazumaproject.core.R.string.string_や)
         R.id.key_9 -> context.getString(com.kazumaproject.core.R.string.string_ら)
         R.id.key_11 -> context.getString(com.kazumaproject.core.R.string.string_わ)
-        R.id.key_12 -> getSpannableStringForKigouButtonJapanese()
+        R.id.key_12 -> japanesePunctuationLabel()
         else -> ""
     }
 }
@@ -308,7 +318,7 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
 
         keyId == R.id.key_12 -> {
             // 記号キーは今までの実装に合わせる
-            getSpannableStringForKigouButtonJapanese()
+            japanesePunctuationLabel()
         }
 
         else -> ""
@@ -439,6 +449,20 @@ fun AppCompatButton.setTenKeyTextNumber(
         R.id.key_11 -> getSpannableStringForNumberButton(context.getString(com.kazumaproject.core.R.string.string_key10_number))
         R.id.key_12 -> context.getString(com.kazumaproject.core.R.string.string_key12_number)
         else -> ""
+    }.let { label ->
+        // Compact numeric labels still contain flick alternatives when the full guide is off.
+        SpannableString(label).apply {
+            val centerStart = if (keyId == R.id.key_12) indexOf('.') else 0
+            if (centerStart >= 0 && isNotEmpty()) {
+                setSpan(android.text.Annotation("tenkey", "center"), centerStart, centerStart + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                if (keyId == R.id.key_12) {
+                    // These legacy punctuation alternatives were full size, not 0.6 of the center.
+                    setSpan(RelativeSizeSpan(1f), 0, centerStart, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    setSpan(RelativeSizeSpan(1f), centerStart + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
+        }
     }
 }
 

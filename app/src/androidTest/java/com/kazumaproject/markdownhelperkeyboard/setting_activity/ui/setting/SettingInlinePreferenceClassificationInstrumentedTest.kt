@@ -39,7 +39,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
 
         assertEquals("keyboard_floating_preference", target.preferenceKey)
         assertFalse(target.defaultValue)
-        assertEquals(R.id.keyboardDisplayPreferenceFragment, target.destinationId)
+        assertEquals(R.id.legacyCommonPreferenceFragment, target.destinationId)
     }
 
     @Test
@@ -79,13 +79,16 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
     }
 
     @Test
-    fun suminagashiInkEffectIsClassifiedAsSwitchPreference() {
-        val destination = destinationForKey("suminagashi_ink_effect_preference")
-        val target = destination.destination as SettingDestinationType.SwitchPreference
+    fun keyboardTouchEffectTypeIncludesLiquidInkAsListPreference() {
+        val destination = destinationForKey("keyboard_touch_effect_type_preference")
+        val target = destination.destination as SettingDestinationType.ListPreference
+        val entries = context.resources.getStringArray(target.entriesResId)
+        val entryValues = context.resources.getStringArray(target.entryValuesResId)
 
-        assertEquals("suminagashi_ink_effect_preference", target.preferenceKey)
-        assertFalse(target.defaultValue)
-        assertEquals(R.id.keyboardDisplayPreferenceFragment, target.destinationId)
+        assertEquals("keyboard_touch_effect_type_preference", target.preferenceKey)
+        assertEquals("none", target.defaultValue)
+        assertEquals(entries.size, entryValues.size)
+        assertTrue("liquid_ink" in entryValues)
     }
 
     @Test
@@ -122,7 +125,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
         assertEquals("flick_threshold_shape_preference", target.preferenceKey)
         assertEquals("radial", target.defaultValue)
         assertEquals(listOf("radial", "rectangular"), entryValues.toList())
-        assertEquals(R.id.operationFeedbackPreferenceFragment, target.destinationId)
+        assertEquals(R.id.legacyCommonPreferenceFragment, target.destinationId)
     }
 
     @Test
@@ -294,6 +297,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
     fun legacyPreferenceResultFilterKeepsTargetAndDependencyOnly() {
         val manager = PreferenceManager(context)
         val screen = manager.createPreferenceScreen(context)
+        manager.setPreferences(screen)
         val category = PreferenceCategory(context).apply {
             title = "Common"
         }
@@ -303,12 +307,11 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
                 key = "shortcut_toolbar_visibility_preference"
             }
         )
-        category.addPreference(
-            SwitchPreferenceCompat(context).apply {
-                key = "shortcut_toolbar_integrated_in_suggestion_preference"
-                dependency = "shortcut_toolbar_visibility_preference"
-            }
-        )
+        val dependent = SwitchPreferenceCompat(context).apply {
+            key = "shortcut_toolbar_integrated_in_suggestion_preference"
+        }
+        category.addPreference(dependent)
+        dependent.dependency = "shortcut_toolbar_visibility_preference"
         category.addPreference(
             Preference(context).apply {
                 key = "unrelated_preference"

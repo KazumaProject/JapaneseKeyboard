@@ -45,6 +45,9 @@ class ImeSelectionPopupBehaviorTest {
     private val binding = mock<MainLayoutBinding>().apply {
         whenever(getRoot()).thenReturn(this@ImeSelectionPopupBehaviorTest.root)
         ReflectionHelpers.setField(this, "shortcutToolbarRecyclerview", androidx.recyclerview.widget.RecyclerView(activity))
+        ReflectionHelpers.setField(this, "keyboardBackgroundContainer", this@ImeSelectionPopupBehaviorTest.root)
+        ReflectionHelpers.setField(this, "suggestionViewParent", androidx.constraintlayout.widget.ConstraintLayout(activity))
+        ReflectionHelpers.setField(this, "candidateTabLayout", com.google.android.material.tabs.TabLayout(activity))
     }
     private val service = spy(IMEService()).also { service ->
         ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
@@ -208,26 +211,97 @@ class ImeSelectionPopupBehaviorTest {
         window.dismiss()
     }
 
-    @Config(sdk = [24, 29, 35])
-    @Test fun dropdownStartsAtTheVisibleToolbarAndRemainsInsideTheScreen() {
-        val toolbar = View(activity)
-        root.addView(toolbar, android.widget.FrameLayout.LayoutParams(600, 40))
-        root.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.EXACTLY))
-        root.layout(root.left, root.top, root.right, root.bottom)
-        val content = android.view.LayoutInflater.from(activity).inflate(R.layout.popup_list_layout, root, false)
-        content.findViewById<ListView>(R.id.popup_listview).adapter =
-            android.widget.ArrayAdapter(activity, R.layout.list_item_layout, listOf("Template"))
-        val window = ImeSelectionPopupWindow(activity, content, ImeSelectionPopupPlacement.TOOLBAR_DROPDOWN, toolbar)
-        window.showAtLocation(root, Gravity.NO_GRAVITY, 0, 0)
-        window.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+    private fun assertPopupCentersOnKeyboard() {
+        val shown = requireNotNull(popup)
+        shown.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
-        window.contentView.layout(0, 0, 1080, 1920)
-        val anchor = IntArray(2).also(toolbar::getLocationOnScreen)
-        val origin = IntArray(2).also(window.contentView::getLocationOnScreen)
-        assertEquals(anchor[1] - origin[1] + toolbar.height, content.top)
-        assertTrue(content.bottom <= window.contentView.height)
-        window.dismiss()
+        shown.contentView.layout(0, 0, 1080, 1920)
+        val content = (shown.contentView as FrameLayout).getChildAt(0)
+        val anchor = IntArray(2).also(root::getLocationOnScreen)
+        val origin = IntArray(2).also(shown.contentView::getLocationOnScreen)
+        assertTrue(kotlin.math.abs(anchor[0] - origin[0] + root.width / 2 - content.left - content.width / 2) <= 1)
+        assertTrue(kotlin.math.abs(anchor[1] - origin[1] + root.height / 2 - content.top - content.height / 2) <= 1)
+    }
+
+    @Config(sdk = [24, 29, 35])
+    @Test fun dateMenuUsesTheSameVisibleKeyboardCenterAsImeSwitching() {
+        call("showCurrentDateListPopup")
+        assertPopupCentersOnKeyboard()
+    }
+
+    @Test fun floatingDateMenuUsesTheFloatingKeyboardInsteadOfNormalChrome() {
+        val floatingBinding = mock<com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding>()
+        whenever(floatingBinding.root).thenReturn(root)
+        ReflectionHelpers.setField(service, "floatingKeyboardBinding", floatingBinding)
+        ReflectionHelpers.setField(service, "isKeyboardFloatingMode", true)
+        ReflectionHelpers.setField(binding, "keyboardBackgroundContainer", FrameLayout(activity))
+        call("showCurrentDateListPopup")
+        assertPopupCentersOnKeyboard()
+    }
+
+    @Test fun dateMenuCentersOnTheUnionOfVisibleKeyboardAndCandidateChrome() {
+        val chrome = androidx.constraintlayout.widget.ConstraintLayout(activity)
+        (root.parent as FrameLayout).addView(chrome, FrameLayout.LayoutParams(-1, 80, Gravity.BOTTOM).apply {
+            bottomMargin = root.height
+        })
+        val decor = activity.window.decorView
+        decor.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        decor.layout(0, 0, 1080, 1920)
+        shadowOf(Looper.getMainLooper()).idle()
+        ReflectionHelpers.setField(binding, "suggestionViewParent", chrome)
+        call("showCurrentDateListPopup")
+        val shown = requireNotNull(popup)
+        shown.contentView.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY))
+        shown.contentView.layout(0, 0, 1080, 1920)
+        val content = (shown.contentView as FrameLayout).getChildAt(0)
+        val keyboardLocation = IntArray(2).also(root::getLocationOnScreen)
+        val chromeLocation = IntArray(2).also(chrome::getLocationOnScreen)
+        val keyboardBounds = android.graphics.Rect(keyboardLocation[0], keyboardLocation[1],
+            keyboardLocation[0] + root.width, keyboardLocation[1] + root.height)
+        keyboardBounds.union(android.graphics.Rect(chromeLocation[0], chromeLocation[1],
+            chromeLocation[0] + chrome.width, chromeLocation[1] + chrome.height))
+        val origin = IntArray(2).also(shown.contentView::getLocationOnScreen)
+        assertTrue("bounds=$keyboardBounds origin=${origin.toList()} panel=${content.top}:${content.height} chrome=${chromeLocation.toList()}:${chrome.height}",
+            kotlin.math.abs(keyboardBounds.centerY() - origin[1] - content.top - content.height / 2) <= 1)
+    }
+
+    @Test fun templateMenuUsesTheVisibleKeyboardCenter() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        ReflectionHelpers.getField<CoroutineScope>(service, "ioScope").cancel()
+        ReflectionHelpers.setField(service, "ioScope", CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)))
+        whenever(service.userTemplateRepository.allTemplatesSuspend()).thenReturn(
+            listOf(UserTemplate(word = "template", reading = "template", posIndex = 0, posScore = 0)))
+        call("showUserTemplateListPopup")
+        advanceUntilIdle()
+        assertPopupCentersOnKeyboard()
+    }
+
+    @Test fun macroMenuUsesTheVisibleKeyboardCenter() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        ReflectionHelpers.getField<CoroutineScope>(service, "ioScope").cancel()
+        ReflectionHelpers.setField(service, "ioScope", CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)))
+        service.textMacroRepository = mock()
+        whenever(service.textMacroRepository.getAllEnabled()).thenReturn(
+            listOf(com.kazumaproject.markdownhelperkeyboard.text_macro.database.TextMacro(name = "macro", body = "text")))
+        call("showTextMacroListPopup")
+        advanceUntilIdle()
+        assertPopupCentersOnKeyboard()
+    }
+
+    @Test fun candidateActionMenuUsesTheVisibleKeyboardCenter() {
+        service.gemmaTranslationManager = mock()
+        val request = ReflectionHelpers.callInstanceMethod<Any>(service, "beginKeyboardPopupRequest")
+        val candidate = com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(
+            string = "candidate", type = 1, length = 1u, score = 0)
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "showCandidateLongPressActionsPopup",
+            ClassParameter.from(String::class.java, candidate.string),
+            ClassParameter.from(candidate.javaClass, candidate),
+            ClassParameter.from(Int::class.javaPrimitiveType, 0),
+            ClassParameter.from(List::class.java, emptyList<Any>()),
+            ClassParameter.from(request.javaClass, request))
+        assertPopupCentersOnKeyboard()
     }
 
     @Config(sdk = [24, 29, 35])

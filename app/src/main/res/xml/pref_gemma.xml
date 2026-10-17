@@ -49,6 +49,21 @@
             app:summary="@string/gemma_prompt_template_management_summary" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/gemma_floating_category">
+        <SwitchPreferenceCompat
+            android:key="gemma_floating_enabled"
+            android:defaultValue="false"
+            android:dependency="gemma_translation_enable_preference"
+            android:title="@string/gemma_floating_enable"
+            android:summary="@string/gemma_floating_summary" />
+        <ListPreference
+            android:key="gemma_floating_selected_rule"
+            android:title="@string/gemma_floating_selected" />
+        <Preference
+            android:key="gemma_floating_manage_rules"
+            android:title="@string/gemma_floating_manage" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_gemma_handwriting_title">
         <SeekBarPreference
             android:defaultValue="900"

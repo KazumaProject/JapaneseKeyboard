@@ -1,12 +1,20 @@
 package com.kazumaproject.markdownhelperkeyboard
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Rect
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.inspector.WindowInspector
+import android.widget.LinearLayout
+import android.widget.ListView
+import androidx.core.os.bundleOf
+import androidx.navigation.fragment.NavHostFragment
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.BaseInputConnection
 import androidx.preference.PreferenceManager
@@ -15,12 +23,19 @@ import androidx.test.runner.lifecycle.Stage
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorViewModel
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.AppModule
+import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Run with investigation/custom-toggle.init.gradle and surface=normal, floating, or split. */
+/** Run with investigation/custom-toggle.init.gradle and surface=normal, floating, or split.
+ * The deletion regression also accepts keyboard=TENKEY, GOJUON, SUMIRE, or CUSTOM.
+ */
 @RunWith(AndroidJUnit4::class)
 class SumireInputLifecycleDeviceTest {
     private val ins = InstrumentationRegistry.getInstrumentation()
@@ -29,6 +44,95 @@ class SumireInputLifecycleDeviceTest {
     private val surface = InstrumentationRegistry.getArguments().getString("surface", "normal")
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
         automation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+
+    @Test fun deletingKanaRestoresTheRemainingCharactersDakutenAction() = runBlocking {
+        assumeTrue("Use investigation/custom-toggle.init.gradle",
+            context.packageName.startsWith("com.kazumaproject.customtoggletest"))
+        val keyboard = InstrumentationRegistry.getArguments().getString("keyboard", "SUMIRE")
+        check(keyboard in listOf("TENKEY", "GOJUON", "SUMIRE", "CUSTOM"))
+        check(surface in listOf("normal", "floating", "split"))
+        val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        val wasEnabled = shell("ime list -s").lineSequence().any { it.trim() == target }
+        val database = if (keyboard == "CUSTOM") AppModule.providesLearnDatabase(context) else null
+        val repository = database?.let { KeyboardRepository(it.keyboardLayoutDao()) }
+        val layoutId = repository?.let {
+            val editor = KeyboardEditorViewModel(it)
+            editor.applyTemplate(KeyboardDefaultLayouts.createToggleKanaTemplateLayout())
+            it.saveLayout(editor.uiState.value.layout, "Dakuten deletion regression", null)
+        }
+        val customStableId = repository?.getLayoutsNotFlow()?.firstOrNull { it.layoutId == layoutId }?.stableId.orEmpty()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        automation.serviceInfo = automation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        try {
+            check(prefs.edit().clear()
+                .putString("keyboard_order_preference", "[\"${if (surface == "split") "SPLIT" else keyboard}\"]")
+                .putBoolean("save_last_used_keyboard", false)
+                .putBoolean("gojuon_keyboard_type_migrated_v1", true)
+                .putBoolean("keyboard_floating_preference", surface == "floating")
+                .putString("sumire_input_method_preference", InstrumentationRegistry.getArguments().getString("inputStyle", "toggle"))
+                .putString("sumire_keyboard_style_preference", "default")
+                .putBoolean("sumire_restore_input_mode_on_restart_preference", false)
+                .putBoolean("tenkey_restore_input_mode_on_restart_preference", false)
+                .putBoolean("landscape_force_qwerty_preference", false)
+                .putBoolean("live_conversion_preference", false)
+                .putBoolean("learn_dictionary_preference", false)
+                .putBoolean("flick_editor_preview_preference", false)
+                .putBoolean("flick_input_only_preference", true)
+                .putBoolean("key_sound_preference", false)
+                .putString("split_keyboard_main_type", keyboard)
+                .putString("split_keyboard_sub_type", keyboard)
+                .putString("split_keyboard_main_custom", customStableId)
+                .putString("split_keyboard_sub_custom", customStableId)
+                .putFloat("split_keyboard_main_portrait_width", 170f)
+                .putFloat("split_keyboard_sub_portrait_width", 170f)
+                .putFloat("split_keyboard_main_portrait_height", 200f)
+                .putFloat("split_keyboard_sub_portrait_height", 200f)
+                .commit())
+            shell("ime enable $target")
+            shell("ime set $target")
+            shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name}")
+            awaitHost()
+            editor { it.restartEditorInput(clearText = true) }
+            key("あ")
+            SystemClock.sleep(500)
+            fun delete() = press(if (keyboard in listOf("SUMIRE", "CUSTOM")) key("Del") else keyById("key_delete"))
+            fun dakuten() = press(when (keyboard) {
+                "TENKEY" -> keyById("key_small_letter")
+                "GOJUON" -> keyById("key_10")
+                // Keep the position even if the stale dynamic key still shows ^_^.
+                else -> Rect(key("あ")).apply { offset(0, 3 * (key("た").centerY() - centerY())) }
+            })
+            for ((kana, expected) in listOf("か" to "が", "は" to "ば", "や" to "ゃ")) {
+                editor { it.restartEditorInput(clearText = true) }
+                press(key("あ")); press(key(kana)); press(key("な"))
+                awaitText("あ${kana}な")
+                delete()
+                awaitText("あ$kana")
+                editor { assertTrue(BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0) }
+                dakuten()
+                awaitText("あ$expected")
+                if (kana == "は") {
+                    dakuten()
+                    awaitText("あぱ")
+                }
+                delete(); delete()
+                awaitText("")
+            }
+        } finally {
+            ins.runOnMainSync {
+                ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<FastInputHostActivity>().forEach { it.finish() }
+            }
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            if (!wasEnabled) shell("ime disable $target")
+            if (layoutId != null) repository.deleteLayout(layoutId)
+            database?.close()
+        }
+    }
 
     @Test fun firstModeSwitchAndInputSurviveReopenSettingsAndRotation() {
         assumeTrue("Use the isolated application ID from investigation/custom-toggle.init.gradle",
@@ -148,6 +252,110 @@ class SumireInputLifecycleDeviceTest {
         } finally {
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             if (!wasEnabled) shell("ime disable $target")
+        }
+    }
+
+    @Test
+    fun configuredHiraganaActionReturnsFromEnglishAndNumbers() {
+        assumeTrue("Use investigation/custom-toggle.init.gradle",
+            context.packageName.startsWith("com.kazumaproject.customtoggletest"))
+        val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        val wasEnabled = shell("ime list -s").lineSequence().any { it.trim() == target }
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        check(prefs.edit().clear()
+            .putString("keyboard_order_preference", "[\"SUMIRE\",\"QWERTY\"]")
+            .putBoolean("save_last_used_keyboard", false)
+            .putBoolean("gojuon_keyboard_type_migrated_v1", true)
+            .putString("sumire_input_method_preference", "toggle")
+            .putString("sumire_keyboard_style_preference", "default")
+            .putBoolean("sumire_english_qwerty_preference", false)
+            .putBoolean("sumire_restore_input_mode_on_restart_preference", false)
+            .putBoolean("landscape_force_qwerty_preference", false)
+            .putBoolean("flick_input_only_preference", true)
+            .putBoolean("independent_multi_touch_preference", true)
+            .putBoolean("learn_dictionary_preference", false)
+            .putBoolean("live_conversion_preference", false)
+            .putBoolean("flick_editor_preview_preference", false)
+            .putBoolean("key_sound_preference", false).commit())
+        automation.serviceInfo = automation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        shell("ime enable $target")
+        shell("ime set $target")
+        try {
+            for ((mode, switchCount) in listOf("ENGLISH" to 1, "SYMBOLS" to 2)) {
+                configureHiraganaOverride(mode)
+                try {
+                    shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name}")
+                    awaitHost()
+                    editor { it.restartEditorInput(clearText = true) }
+                    key("あ")
+                    SystemClock.sleep(300)
+                    repeat(switchCount) { press(key("モード")) }
+                    key(if (mode == "ENGLISH") "ABC" else "1")
+                    // Runtime mode icons use the short accessibility label; the override is on the right.
+                    press(key("あいう", rightmost = true))
+                    key("あ")
+                    press(key("あ"))
+                    awaitText("あ")
+                    ins.runOnMainSync {
+                        androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                            .getActivitiesInStage(Stage.RESUMED).filterIsInstance<FastInputHostActivity>()
+                            .forEach { it.finish() }
+                    }
+                } finally {
+                    configureHiraganaOverride(mode, useDefault = true)
+                }
+            }
+        } finally {
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            if (!wasEnabled) shell("ime disable $target")
+        }
+    }
+
+    private fun configureHiraganaOverride(mode: String, useDefault: Boolean = false) {
+        val label = context.getString(com.kazumaproject.custom_keyboard.R.string.action_switch_to_hiragana_mode)
+        val activity = ins.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+        try {
+            val deadline = SystemClock.uptimeMillis() + 15000
+            var opened = false
+            while (!opened && SystemClock.uptimeMillis() < deadline) {
+                ins.runOnMainSync {
+                    val host = activity.supportFragmentManager.findFragmentById(
+                        R.id.nav_host_fragment_activity_main) as? NavHostFragment
+                    if (host?.navController?.currentDestination != null) {
+                        host.navController.navigate(R.id.sumireSpecialKeyActionEditorFragment,
+                            bundleOf("layoutType" to "toggle", "inputMode" to mode, "keyId" to "enter_key"))
+                        opened = true
+                    }
+                }
+                if (!opened) SystemClock.sleep(50)
+            }
+            assertTrue(opened)
+            ins.waitForIdleSync()
+            ins.runOnMainSync {
+                if (useDefault) {
+                    activity.findViewById<View>(R.id.reset_key_button).performClick()
+                    return@runOnMainSync
+                }
+                activity.findViewById<LinearLayout>(R.id.action_rows_container).getChildAt(0).performClick()
+                fun descendants(view: View): List<View> = listOf(view) +
+                    if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) }
+                    else emptyList()
+                val list = WindowInspector.getGlobalWindowViews().flatMap(::descendants)
+                    .filterIsInstance<ListView>().single()
+                val position = (0 until list.adapter.count).single { list.adapter.getItem(it) == label }
+                list.performItemClick(list.adapter.getView(position, null, list), position,
+                    list.adapter.getItemId(position))
+                activity.findViewById<View>(R.id.save_button).performClick()
+            }
+            ins.waitForIdleSync()
+            SystemClock.sleep(300)
+        } finally {
+            ins.runOnMainSync { activity.finish() }
         }
     }
 

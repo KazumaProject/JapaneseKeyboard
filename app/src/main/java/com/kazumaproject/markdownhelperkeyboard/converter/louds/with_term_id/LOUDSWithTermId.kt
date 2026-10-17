@@ -197,6 +197,13 @@ class LOUDSWithTermId {
     }
 
 
+    /** Lazily walks terminal readings without expanding the complete dictionary. */
+    fun termIterator(lbs: SuccinctBitVector, leaves: SuccinctBitVector): Iterator<Pair<String, Int>> =
+        com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
+            LBS, lbs, labelCount, { index -> labelAt(index) },
+            { node -> if (isLeaf[node]) getTermId(node, leaves) else -1 },
+        )
+
     fun getNodeIndex(
         s: String, rank1Array: IntArray, LBSInBoolArrayPreprocess: IntArray
     ): Int {
@@ -207,11 +214,17 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         succinctBitVector: SuccinctBitVector,
+    ): Int = if (s.isEmpty()) -1 else getNodeIndex(s.toCharArray(), succinctBitVector)
+
+    /** Allows a query to share its reading across several dictionaries. */
+    internal fun getNodeIndex(
+        reading: CharArray,
+        succinctBitVector: SuccinctBitVector,
     ): Int {
-        if (s.isEmpty()) return -1
+        if (reading.isEmpty()) return -1
         return search(
             2,
-            s.toCharArray(),
+            reading,
             0,
             succinctBitVector,
         )
@@ -487,6 +500,48 @@ class LOUDSWithTermId {
         // Collect all words starting from the last matched node
         collectWords(n, resultTemp, rank0Array, rank1Array, result)
         return result
+    }
+
+    /** Visit terminals in the same DFS order as predictiveSearch, without exploring longer readings. */
+    fun forEachPredictiveMatch(
+        prefix: String,
+        maxReadingLength: Int,
+        lbsIndex: SuccinctBitVector,
+        leafIndex: SuccinctBitVector,
+        block: (reading: String, termId: Int) -> Unit,
+    ) {
+        if (maxReadingLength < prefix.length) return
+        val reading = StringBuilder(prefix.length)
+        var node = 0
+        for (char in prefix) {
+            node = traverse(node, char, lbsIndex)
+            if (node < 0) return
+            val index = lbsIndex.rank1(node)
+            if (index >= labelCount) return
+            reading.append(labelAt(index))
+        }
+        collectPredictiveMatches(node, reading, maxReadingLength, lbsIndex, leafIndex, block)
+    }
+
+    private fun collectPredictiveMatches(
+        node: Int,
+        reading: StringBuilder,
+        maxReadingLength: Int,
+        lbsIndex: SuccinctBitVector,
+        leafIndex: SuccinctBitVector,
+        block: (String, Int) -> Unit,
+    ) {
+        if (isLeaf[node]) block(reading.toString(), getTermId(node, leafIndex))
+        if (reading.length >= maxReadingLength) return
+        var child = firstChild(node, lbsIndex)
+        while (child >= 0 && LBS[child]) {
+            val index = lbsIndex.rank1(child)
+            if (index >= labelCount) break
+            reading.append(labelAt(index))
+            collectPredictiveMatches(child, reading, maxReadingLength, lbsIndex, leafIndex, block)
+            reading.deleteCharAt(reading.length - 1)
+            child++
+        }
     }
 
     fun predictiveSearch(prefix: String, succinctBitVector: SuccinctBitVector): List<String> {

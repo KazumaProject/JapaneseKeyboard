@@ -90,7 +90,7 @@ class CircularSlotActionSettingFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        AppPreference.init(requireContext())
+        // MainActivity completes preference initialization before opening settings destinations.
         return androidx.core.widget.NestedScrollView(requireContext()).apply {
             isFillViewport = true
             addView(LinearLayout(requireContext()).apply {

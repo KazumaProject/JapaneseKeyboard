@@ -1,0 +1,5 @@
+<resources>
+    <item name="settings_loading_overlay" type="id" />
+    <item name="settings_loading_progress" type="id" />
+    <item name="settings_loading_retry" type="id" />
+</resources>

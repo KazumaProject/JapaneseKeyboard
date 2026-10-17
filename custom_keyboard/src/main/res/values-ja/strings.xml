@@ -40,4 +40,5 @@
     <string name="action_delete_after_cursor_one">カーソル右側の1文字を削除（Delete）</string>
     <string name="voice_input">音声入力</string>
     <string name="action_switch_romaji_english">ローマ字、英語切り替え</string>
+    <string name="action_switch_to_hiragana_mode">ひらがなモードに切り替え</string>
 </resources>

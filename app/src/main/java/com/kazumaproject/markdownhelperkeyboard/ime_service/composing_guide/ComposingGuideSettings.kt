@@ -6,6 +6,7 @@ internal enum class GuideProfile(val key: String, val hasText: Boolean, val hasC
     INTEGRATED("integrated", true, true),
     CANDIDATES("candidates", false, true),
     TEXT("text", true, false),
+    ZENZ("zenz", false, true),
 }
 
 internal class ComposingGuideSettings(private val preferences: SharedPreferences) {
@@ -30,7 +31,7 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
         val prefix = prefix(landscape, profile)
         return ComposingGuidePlacement(
             preferences.getFloat(prefix + "x", .5f), preferences.getFloat(prefix + "y", 1f),
-            preferences.getFloat(prefix + "width", 280f), preferences.getFloat(prefix + "height", 264f),
+            preferences.getFloat(prefix + "width", 280f), preferences.getFloat(prefix + "height", if (profile == GuideProfile.ZENZ) 160f else 264f),
         )
     }
 
@@ -49,8 +50,11 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
         }.apply()
     }
 
+    fun hasPlacement(landscape: Boolean, profile: GuideProfile) =
+        preferences.contains(prefix(landscape, profile) + "x")
+
     fun usesScreenCoordinates(landscape: Boolean, profile: GuideProfile = GuideProfile.INTEGRATED) =
-        preferences.getBoolean(prefix(landscape, profile) + "screen_coordinates", false)
+        preferences.getBoolean(prefix(landscape, profile) + "screen_coordinates", profile == GuideProfile.ZENZ)
 
     fun save(landscape: Boolean, placement: ComposingGuidePlacement, profile: GuideProfile = GuideProfile.INTEGRATED) {
         val prefix = prefix(landscape, profile)
@@ -60,6 +64,8 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
     }
 
     companion object {
+        const val ZENZ_ENABLED = "zenz_floating_candidates_enabled"
+        const val ZENZ_RESET = "zenz_floating_candidates_reset"
         const val SHOW_READING = "composing_guide_show_live_reading"
         const val SHOW_COMPOSING = "composing_guide_show_composing" // Legacy migration only.
         const val TEXT_ENABLED = "composing_guide_text_enabled"

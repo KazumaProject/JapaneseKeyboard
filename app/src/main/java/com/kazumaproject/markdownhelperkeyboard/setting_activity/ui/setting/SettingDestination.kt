@@ -12,6 +12,7 @@ enum class SettingCategory {
     FREQUENT,
     KEYBOARD_DISPLAY,
     INPUT_METHOD,
+    VOICE_INPUT,
     CANDIDATE_CONVERSION,
     CONVERSION_ENGINE,
     DICTIONARY,
@@ -118,6 +119,7 @@ object SettingDestinations {
         "custom_romaji_preference",
         "shortcut_toolbar_item_preference",
         "candidate_tab_order_preference",
+        "date_candidate_settings_preference",
         "candidate_order_override_preference",
         "ng_word_preference",
         "physical_keyboard_shortcut_setting_preference",
@@ -125,6 +127,7 @@ object SettingDestinations {
         "gemma_prompt_template_management_preference",
         "system_user_dictionary_builder_preference",
         "external_dictionary_settings_preference",
+        "dictionary_browser_preference",
         "n_gram_rule_preference",
         "clipboard_history_preference_fragment",
         "delete_key_flick_left_targets_preference",
@@ -134,6 +137,7 @@ object SettingDestinations {
 
     private val plainPreferenceInlineEditExceptionKeys = setOf(
         "long_press_timeout_preference",
+        "zenz_floating_candidates_reset",
     )
 
     val inlineEditExceptionKeysForTesting: Set<String>
@@ -507,6 +511,7 @@ object SettingDestinations {
         "setting_route_tablet_preferences",
         "flick_input_only_preference",
         "flick_editor_preview_preference",
+        "flick_editor_preview_delay_ms",
         "flick_sensitivity_preference",
         "flick_threshold_shape_preference",
         "long_press_timeout_preference",
@@ -519,6 +524,9 @@ object SettingDestinations {
         "tenkey_space_flick_preference",
         "qwerty_romaji_space_flick_preference",
         "qwerty_english_space_flick_preference",
+        "voice_input_space_replacement_enabled",
+        "voice_input_space_replacement",
+        "voice_input_space_custom_text",
         "clipboard_history_preference_fragment",
         "clipboard_preview_enable_preference",
         "shortcut_toolbar_visibility_preference",
@@ -529,6 +537,7 @@ object SettingDestinations {
         "default_emoji_skin_tone_preference",
         "system_user_dictionary_builder_preference",
         "external_dictionary_settings_preference",
+        "dictionary_browser_preference",
         "n_gram_rule_preference",
         "candidate_order_override_preference",
         "ng_word_preference",
@@ -575,6 +584,15 @@ object SettingDestinations {
             keywords = listOf("sumire", "kana", "qwerty", "custom"),
             destinationId = R.id.inputMethodPreferenceFragment,
             iconRes = CoreR.drawable.input_24px,
+        ),
+        destination(
+            key = "setting_route_voice_input",
+            title = context.getString(R.string.setting_category_voice_input_title),
+            summary = context.getString(R.string.setting_category_voice_input_summary),
+            category = SettingCategory.VOICE_INPUT,
+            keywords = listOf("voice", "speech", "音声", "スペース", "置換", "区切り"),
+            destinationId = R.id.voiceInputPreferenceFragment,
+            iconRes = CoreR.drawable.settings_voice_24px,
         ),
         destination(
             key = "setting_route_candidate_conversion",
@@ -685,6 +703,16 @@ object SettingDestinations {
             ),
         ),
         destination(
+            key = "dictionary_browser_preference",
+            title = context.getString(R.string.dictionary_browser_title),
+            summary = context.getString(R.string.dictionary_browser_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("dictionary", "word", "search", "辞書", "単語", "一覧", "検索"),
+            destinationId = R.id.dictionaryBrowserFragment,
+            iconRes = CoreR.drawable.dictionary_24px,
+            destinationType = SettingDestinationType.ManagementDestination(R.id.dictionaryBrowserFragment),
+        ),
+        destination(
             key = "setting_management_user_template",
             title = context.getString(R.string.user_template_fragment_title),
             summary = context.getString(R.string.setting_management_user_template_summary),
@@ -730,6 +758,7 @@ object SettingDestinations {
             SettingCategory.FREQUENT -> context.getString(R.string.setting_home_frequent_title)
             SettingCategory.KEYBOARD_DISPLAY -> context.getString(R.string.setting_category_keyboard_display_title)
             SettingCategory.INPUT_METHOD -> context.getString(R.string.setting_category_input_method_title)
+            SettingCategory.VOICE_INPUT -> context.getString(R.string.setting_category_voice_input_title)
             SettingCategory.CANDIDATE_CONVERSION -> context.getString(R.string.setting_category_candidate_conversion_title)
             SettingCategory.CONVERSION_ENGINE -> context.getString(R.string.conversion_engine_category_title)
             SettingCategory.DICTIONARY -> context.getString(R.string.category_dictionary)
@@ -749,6 +778,7 @@ object SettingDestinations {
             SettingCategory.FREQUENT -> CoreR.drawable.baseline_check_24
             SettingCategory.KEYBOARD_DISPLAY -> CoreR.drawable.keyboard_24px
             SettingCategory.INPUT_METHOD -> CoreR.drawable.input_24px
+            SettingCategory.VOICE_INPUT -> CoreR.drawable.settings_voice_24px
             SettingCategory.CANDIDATE_CONVERSION -> CoreR.drawable.arrows_output_24px
             SettingCategory.CONVERSION_ENGINE -> CoreR.drawable.swap_horiz_24px
             SettingCategory.DICTIONARY -> CoreR.drawable.dictionary_24px
@@ -806,6 +836,7 @@ object SettingDestinations {
             "shortcut_toolbar_size_setting_fragment_preference" ->
                 R.id.shortcutToolbarSizeSettingFragment
             "candidate_tab_order_preference" -> R.id.candidateTabOrderFragment
+            "date_candidate_settings_preference" -> R.id.dateCandidateSettingsFragment
             "keyboard_selection_preference" -> R.id.keyboardSelectionFragment
             "keyboard_key_letter_size_fragment_preference" -> R.id.keyCandidateLetterSizeFragment
             "keyboard_screen_landscape_preference" -> R.id.keyboardSizeLandscapeFragment
@@ -818,6 +849,7 @@ object SettingDestinations {
             "preference_open_source" -> R.id.openSourceFragment
             "system_user_dictionary_builder_preference" -> R.id.systemUserDictionaryBuilderFragment
             "external_dictionary_settings_preference" -> R.id.externalDictionarySettingsFragment
+            "dictionary_browser_preference" -> R.id.dictionaryBrowserFragment
             "n_gram_rule_preference" -> R.id.ngramRuleFragment
             "candidate_order_override_preference" -> R.id.candidateOrderOverrideFragment
             "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
@@ -848,6 +880,10 @@ object SettingDestinations {
         highlightPreferenceKey: String?,
     ): SettingDestinationType? =
         when (key) {
+            "zenz_floating_candidates_reset" -> SettingDestinationType.NavDestination(
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
             "long_press_timeout_preference" -> SettingDestinationType.IntPreferenceDialog(
                 preferenceKey = key,
                 min = 100,

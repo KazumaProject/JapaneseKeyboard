@@ -6,13 +6,16 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.utility.UtilityCandidateConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
 /** Appearance settings are grouped to keep snapshot copy/default calls within DEX's 255-word limit. */
@@ -64,13 +67,10 @@ data class ImeKeyboardAppearance(
 data class ImePreferencesSnapshot(
     val keyboardOrder: List<KeyboardType>,
     val candidateTabOrder: List<CandidateTab>,
-    val mozcUTPersonName: Boolean,
-    val mozcUTPlaces: Boolean,
-    val mozcUTWiki: Boolean,
-    val mozcUTNeologd: Boolean,
-    val mozcUTWeb: Boolean,
+    val enabledDictionaryCategories: Set<DictionaryCategory> = emptySet(),
     val isFlickOnlyMode: Boolean,
     val flickEditorPreviewPreference: Boolean,
+    val flickEditorPreviewDelayMillis: Int,
     val isOmissionSearchEnable: Boolean,
     val delayTime: Int,
     val isLearnDictionaryMode: Boolean,
@@ -90,6 +90,7 @@ data class ImePreferencesSnapshot(
     val liveConversionStartLength: Int,
     val showLiveConversionCandidateYomi: Boolean,
     val liveConversionCandidateYomiTextSize: Int,
+    val liveConversionCandidateYomiMode: String,
     val nBest: Int,
     val conversionBeamWidth: Int,
     val conversionBackend: ConversionBackend,
@@ -97,6 +98,8 @@ data class ImePreferencesSnapshot(
     val flickSensitivityPreferenceValue: Int,
     val flickThresholdShapePreferenceValue: String,
     val tfbiDiagonalRecognitionModePreferenceValue: String,
+    val tfbiFlickRotationPreferenceValue: String,
+    val sumireFlickInputModePreferenceValue: String,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
     val qwertyShowEmojiButtonPreference: Boolean,
@@ -265,6 +268,8 @@ data class ImePreferencesSnapshot(
     val enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean,
     val enableGemmaTranslationPreference: Boolean,
     val utilityCandidateConfig: UtilityCandidateConfig,
+    val dateCandidateConfig: DateCandidateConfig,
+    val voiceInputSettings: VoiceInputSettings = VoiceInputSettings(),
     val keyboardSkin: KeyboardSkinId = KeyboardSkinId.DEFAULT,
 ) {
     val keyboardThemeMode get() = appearance.keyboardThemeMode
@@ -357,28 +362,12 @@ data class ImePreferencesSnapshot(
             return ImePreferencesSnapshot(
                 keyboardOrder = appPreference.keyboard_order,
                 candidateTabOrder = appPreference.candidate_tab_order,
-                mozcUTPersonName = optionalEnabled(
-                    DictionaryCategory.PERSON_NAME,
-                    appPreference.mozc_ut_person_names_preference,
-                ),
-                mozcUTPlaces = optionalEnabled(
-                    DictionaryCategory.PLACES,
-                    appPreference.mozc_ut_places_preference,
-                ),
-                mozcUTWiki = optionalEnabled(
-                    DictionaryCategory.WIKI,
-                    appPreference.mozc_ut_wiki_preference,
-                ),
-                mozcUTNeologd = optionalEnabled(
-                    DictionaryCategory.NEOLOGD,
-                    appPreference.mozc_ut_neologd_preference,
-                ),
-                mozcUTWeb = optionalEnabled(
-                    DictionaryCategory.WEB,
-                    appPreference.mozc_ut_web_preference,
-                ),
+                enabledDictionaryCategories = ClassifiedDictionaries.categories.filterTo(linkedSetOf()) {
+                    optionalEnabled(it, true)
+                },
                 isFlickOnlyMode = appPreference.flick_input_only_preference ?: false,
                 flickEditorPreviewPreference = appPreference.flick_editor_preview_preference,
+                flickEditorPreviewDelayMillis = appPreference.flick_editor_preview_delay_ms,
                 isOmissionSearchEnable = appPreference.omission_search_preference ?: false,
                 delayTime = appPreference.time_same_pronounce_typing_preference ?: 1000,
                 isLearnDictionaryMode = appPreference.learn_dictionary_preference ?: true,
@@ -405,6 +394,7 @@ data class ImePreferencesSnapshot(
                 liveConversionStartLength =
                     appPreference.live_conversion_start_length_preference ?: 1,
                 liveConversionCandidateYomiTextSize = appPreference.live_conversion_candidate_yomi_size,
+                liveConversionCandidateYomiMode = appPreference.live_conversion_candidate_yomi_mode,
                 showLiveConversionCandidateYomi =
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
@@ -454,6 +444,10 @@ data class ImePreferencesSnapshot(
                     appPreference.flick_threshold_shape_preference,
                 tfbiDiagonalRecognitionModePreferenceValue =
                     appPreference.tfbi_diagonal_recognition_mode_preference.preferenceValue,
+                tfbiFlickRotationPreferenceValue =
+                    appPreference.sumire_flick_rotation_preference.preferenceValue,
+                sumireFlickInputModePreferenceValue =
+                    appPreference.sumire_flick_input_mode_preference.preferenceValue,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,
                 qwertyShowIMEButtonPreference = appPreference.qwerty_show_ime_button ?: true,
@@ -797,6 +791,8 @@ data class ImePreferencesSnapshot(
                 enableGemmaTranslationPreference =
                     AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference,
                 utilityCandidateConfig = appPreference.utility_candidate_config,
+                dateCandidateConfig = appPreference.date_candidate_config,
+                voiceInputSettings = appPreference.voice_input_settings,
             )
         }
     }

@@ -21,6 +21,8 @@ internal data class FlickPreviewContext(
     val isFlickOnlyMode: Boolean,
     val isContinuousTapInputEnabled: Boolean,
     val lastFlickConvertedNextHiragana: Boolean,
+    val previewDelayMillis: Long = 0,
+    val inputConnectionToken: Any? = null,
 )
 
 internal object FlickPreviewEligibilityPolicy {

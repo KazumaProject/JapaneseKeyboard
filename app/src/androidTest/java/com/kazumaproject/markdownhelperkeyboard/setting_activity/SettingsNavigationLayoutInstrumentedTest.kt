@@ -609,7 +609,7 @@ class SettingsNavigationLayoutInstrumentedTest {
             withHomeMode(useNewHome) { scenario ->
                 for ((destination, preferenceKey) in destinations) {
                     scenario.onActivity { navController(it).navigate(destination) }
-                    instrumentation.waitForIdleSync()
+                    awaitPreferenceBinding(scenario, preferenceKey)
                     scenario.onActivity { activity ->
                         val host = activity.supportFragmentManager
                             .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
@@ -624,6 +624,20 @@ class SettingsNavigationLayoutInstrumentedTest {
                 }
             }
         }
+    }
+
+    private fun awaitPreferenceBinding(scenario: ActivityScenario<MainActivity>, key: String) {
+        val deadline = SystemClock.uptimeMillis() + 10_000
+        var bound = false
+        while (!bound && SystemClock.uptimeMillis() < deadline) {
+            scenario.onActivity { activity ->
+                val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                val screen = host.childFragmentManager.primaryNavigationFragment as? PreferenceFragmentCompat
+                bound = screen?.findPreference<Preference>(key) != null && screen.listView.adapter != null
+            }
+            if (!bound) SystemClock.sleep(20)
+        }
+        assertTrue("Preference $key did not finish loading", bound)
     }
 
     private fun navController(activity: MainActivity) =
