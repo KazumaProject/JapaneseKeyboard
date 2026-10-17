@@ -31,7 +31,7 @@ class ClassifiedExactCandidatesInstrumentedTest {
             @Suppress("UNCHECKED_CAST")
             val dictionaries = KanaKanjiEngine::class.java.getDeclaredField("classifiedDictionaries")
                 .apply { isAccessible = true }.get(engine) as Map<DictionaryCategory, TripleDictionaryData>
-            val inputs = listOf("しょう", "ほのか", "かな", "かいぞくばんせんたいせいくりっどへきさごん")
+            val inputs = listOf("あ", "しょう", "ほのか", "かな", "かいぞくばんせんたいせいくりっどへきさごん")
             val expected = inputs.associateWith { input ->
                 val words = linkedSetOf<String>()
                 for (data in dictionaries.values) {
@@ -65,6 +65,16 @@ class ClassifiedExactCandidatesInstrumentedTest {
                         val words = result.candidates.map { it.string }.toSet()
                         assertTrue("$backend/$mode/$bunsetsu/$input/$limited missing=${expected.getValue(input) - words}",
                             words.containsAll(expected.getValue(input)))
+                        val firstAuxiliary = result.candidates.indexOfFirst { it.type == 3.toByte() }
+                        if (firstAuxiliary >= 0) {
+                            for (surface in expected.getValue(input)) {
+                                assertTrue("Exact word $surface is behind auxiliary candidates: $backend/$mode/$bunsetsu/$limited",
+                                    result.candidates.indexOfFirst { it.string == surface } < firstAuxiliary)
+                            }
+                        }
+                        if (input == "しょう" && limited) println("CLASSIFIED_EXACT_RANK $backend/$mode/$bunsetsu " +
+                            result.candidates.withIndex().filter { it.value.string in setOf("SHO", "紫耀") }
+                                .map { "${it.value.string}=${it.index + 1}:${it.value.score}" })
                         if (input == "しょう" && limited) {
                             for (surface in listOf("SHO", "紫耀")) {
                                 val candidate = result.candidates.first { it.string == surface }

@@ -8,6 +8,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.PackedCharArray
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.PackedIntArray
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath.ScoredWholeInputCandidate
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.prefix.with_term_id.PrefixTreeWithTermId
 import org.junit.Assert.*
@@ -48,10 +49,31 @@ class ClassifiedExactCandidatesTest {
             SuccinctBitVector(yomi.isLeaf), SuccinctBitVector(bits), SuccinctBitVector(tango.LBS), overrides)
     }
 
-    @Test fun keepsEveryHomophoneAndAppendsInCostThenSurfaceOrder() {
+    private fun merge(
+        input: String,
+        candidates: List<Candidate>,
+        dictionaries: Map<DictionaryCategory, TripleDictionaryData>,
+        enabled: Set<DictionaryCategory>,
+        collector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        primaryCount: Int = candidates.size,
+        score: (Candidate) -> Candidate = { it },
+    ) = ClassifiedExactCandidates.merge(input, candidates, dictionaries, enabled,
+        { ScoredWholeInputCandidate(score(it)) },
+        collector, primaryCount)
+
+    private fun merge(
+        input: String,
+        result: BunsetsuCandidateResult,
+        dictionaries: Map<DictionaryCategory, TripleDictionaryData>,
+        enabled: Set<DictionaryCategory>,
+        collector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+    ) = ClassifiedExactCandidates.merge(input, result, dictionaries, enabled,
+        { ScoredWholeInputCandidate(it) }, collector)
+
+    @Test fun keepsEveryHomophoneAndRanksWithMainCandidates() {
         val data = dictionary((0 until 12).map { Word("よみ", "語${it.toString().padStart(2, '0')}", (11 - it).toShort()) })
         val original = listOf(Candidate("既存", 1, 2u, -100))
-        val result = ClassifiedExactCandidates.append("よみ", original, mapOf(person to data), setOf(person))
+        val result = merge("よみ", original, mapOf(person to data), setOf(person))
         assertSame(original.first(), result.first())
         assertEquals((11 downTo 0).map { "語${it.toString().padStart(2, '0')}" }, result.drop(1).map { it.string })
         assertTrue(result.drop(1).all { it.yomi == "よみ" && it.length.toInt() == 2 && it.type == 1.toByte() })
@@ -65,12 +87,12 @@ class ClassifiedExactCandidatesTest {
                 val chars = reading.toCharArray()
                 assertEquals(data.yomiTrie.getNodeIndex(reading, data.succinctBitVectorLBSYomi),
                     data.yomiTrie.getNodeIndex(chars, data.succinctBitVectorLBSYomi))
-                assertEquals(listOf("表記$reading"), ClassifiedExactCandidates.append(reading, emptyList(),
+                assertEquals(listOf("表記$reading"), merge(reading, emptyList(),
                     mapOf(person to data), setOf(person)).map { it.string })
             }
             for (reading in listOf("", "かなか", "ない")) {
                 val original = listOf(Candidate("元", 1, 1u, 0))
-                assertSame(original, ClassifiedExactCandidates.append(reading, original, mapOf(person to data), setOf(person)))
+                assertSame(original, merge(reading, original, mapOf(person to data), setOf(person)))
             }
         }
     }
@@ -80,20 +102,20 @@ class ClassifiedExactCandidatesTest {
             person to dictionary(listOf(Word("よみ", "共通", 100))),
             character to dictionary(listOf(Word("よみ", "別", 1), Word("よみ", "共通", 50))),
         )
-        val result = ClassifiedExactCandidates.append("よみ", emptyList(), dictionaries, dictionaries.keys)
+        val result = merge("よみ", emptyList(), dictionaries, dictionaries.keys)
         val common = result.single { it.string == "共通" }
         assertEquals(setOf(person, character), common.dictionaryCategories)
         assertEquals(50, common.score)
         assertEquals(101.toShort(), common.leftId)
         assertEquals(201.toShort(), common.rightId)
-        val oneCategory = ClassifiedExactCandidates.append("よみ", emptyList(), dictionaries, setOf(person))
+        val oneCategory = merge("よみ", emptyList(), dictionaries, setOf(person))
         assertEquals(listOf("共通"), oneCategory.map { it.string })
         assertEquals(setOf(person), oneCategory.single().dictionaryCategories)
     }
 
     @Test fun sortsEqualCostAdditionsBySurfaceAfterLowerCostWords() {
         val data = dictionary(listOf(Word("よみ", "甲", 10), Word("よみ", "乙", 10), Word("よみ", "丙", 5)))
-        val result = ClassifiedExactCandidates.append("よみ", emptyList(), mapOf(person to data), setOf(person))
+        val result = merge("よみ", emptyList(), mapOf(person to data), setOf(person))
         assertEquals(listOf("丙", "乙", "甲"), result.map { it.string })
         assertEquals(listOf(5, 10, 10), result.map { it.score })
     }
@@ -104,17 +126,17 @@ class ClassifiedExactCandidatesTest {
             conversionSegments = listOf(CandidateConversionSegment(0, 2, "学習")), standaloneUnigramMatched = true)
         val other = Candidate("先頭", 1, 2u, 1000)
         val collector = linkedMapOf("学習" to learned.conversionSegments)
-        val result = ClassifiedExactCandidates.append("よみ", listOf(other, learned), mapOf(person to data), setOf(person), collector)
-        assertEquals(listOf(other, learned.copy(dictionaryCategories = setOf(person))), result)
+        val result = merge("よみ", listOf(other, learned), mapOf(person to data), setOf(person), collector)
+        assertEquals(listOf(learned.copy(dictionaryCategories = setOf(person)), other), result)
         assertEquals(mapOf("学習" to learned.conversionSegments), collector)
-        assertSame(result, ClassifiedExactCandidates.append("よみ", result, mapOf(person to data), setOf(person)))
+        assertEquals(result, merge("よみ", result, mapOf(person to data), setOf(person)))
     }
 
     @Test fun actionOrDifferentCommitTextDoesNotConsumeAnExactWord() {
         val data = dictionary(listOf(Word("よみ", "表記", 100)))
         val macro = Candidate("表記", CANDIDATE_TYPE_TEXT_MACRO, 2u, 0, sourceId = 42)
         val differentCommit = Candidate("表記", 1, 2u, 0, commitText = "別の確定文字列")
-        val result = ClassifiedExactCandidates.append("よみ", listOf(macro, differentCommit), mapOf(person to data), setOf(person))
+        val result = merge("よみ", listOf(macro, differentCommit), mapOf(person to data), setOf(person))
         assertEquals(listOf(macro, differentCommit), result.take(2))
         assertEquals("表記", result.last().commitText)
         assertEquals(setOf(person), result.last().dictionaryCategories)
@@ -125,11 +147,71 @@ class ClassifiedExactCandidatesTest {
         val original = BunsetsuCandidateResult(listOf(Candidate("既存", 1, 2u, 0)),
             listOf(listOf(1)), mapOf("既存" to listOf(1)), setOf("既存"))
         val collector = linkedMapOf("追加" to listOf(CandidateConversionSegment(0, 1, "探索で未採用の経路")))
-        val result = ClassifiedExactCandidates.append("よみ", original, mapOf(person to data), setOf(person), collector)
+        val result = merge("よみ", original, mapOf(person to data), setOf(person), collector)
         assertEquals(original.splitPatterns, result.splitPatterns)
         assertEquals(original.systemNgramMatchedCandidates, result.systemNgramMatchedCandidates)
         assertEquals(mapOf("既存" to listOf(1), "追加" to emptyList()), result.splitPatternByCandidateString)
         assertEquals(listOf(CandidateConversionSegment(0, 2, "追加")), collector["追加"])
-        assertSame(original, ClassifiedExactCandidates.append("よみ", original, mapOf(person to data), emptySet()))
+        assertSame(original, merge("よみ", original, mapOf(person to data), emptySet()))
+    }
+
+    @Test fun insertsBeforeAuxiliaryCandidatesAndDoesNotLetAnAuxiliaryDuplicateHideTheWord() {
+        val data = dictionary(listOf(Word("よみ", "完全一致", 50)))
+        val main = Candidate("主候補", 1, 2u, 100)
+        val auxiliary = Candidate("完全一致", 7, 2u, 0)
+        val result = merge("よみ", listOf(main, auxiliary), mapOf(person to data), setOf(person), primaryCount = 1)
+        assertEquals(listOf("完全一致", "主候補", "完全一致"), result.map { it.string })
+        assertEquals(1.toByte(), result.first().type)
+        assertEquals(50, result.first().score)
+        assertSame(auxiliary, result.last())
+    }
+
+    @Test fun choosesDuplicatePosByFinalPathCostRatherThanRawWordCost() {
+        val data = dictionary(listOf(Word("よみ", "共通", 10), Word("よみ", "共通", 50)))
+        val result = merge("よみ", emptyList(), mapOf(person to data), setOf(person), score = {
+            it.copy(score = it.score + if (it.leftId == 100.toShort()) 500 else 0)
+        })
+        assertEquals(50, result.single().score)
+        assertEquals(101.toShort(), result.single().leftId)
+    }
+
+    @Test fun lowerCostWholeWordReplacesAnExistingPathAndClearsItsSplitMetadata() {
+        val data = dictionary(listOf(Word("よみ", "既存", 10)))
+        val old = Candidate("既存", 1, 2u, 100, yomi = "よみ")
+        val original = BunsetsuCandidateResult(listOf(old), listOf(listOf(1)), mapOf("既存" to listOf(1)))
+        val collector = linkedMapOf("既存" to listOf(CandidateConversionSegment(0, 1, "既"), CandidateConversionSegment(1, 2, "存")))
+        val result = merge("よみ", original, mapOf(person to data), setOf(person), collector)
+        assertEquals(10, result.candidates.single().score)
+        assertEquals(emptyList<Int>(), result.splitPatternByCandidateString["既存"])
+        assertEquals(listOf(CandidateConversionSegment(0, 2, "既存")), collector["既存"])
+    }
+
+    @Test fun preservesExistingStandalonePriorityOverALowerCostExactWord() {
+        val data = dictionary(listOf(Word("よみ", "完全一致", 10)))
+        val preferred = Candidate("既存", 1, 2u, 100, standaloneUnigramMatched = true)
+        val result = merge("よみ", listOf(preferred), mapOf(person to data), setOf(person))
+        assertSame(preferred, result.first())
+        assertEquals(10, result.last().score)
+    }
+
+    @Test fun carriesSingleNodeSystemRulePriorityIntoBunsetsuMetadataWithoutChangingScore() {
+        val data = dictionary(listOf(Word("よみ", "完全一致", 100)))
+        val original = BunsetsuCandidateResult(listOf(Candidate("既存", 1, 2u, 0)), emptyList())
+        val result = ClassifiedExactCandidates.merge("よみ", original, mapOf(person to data), setOf(person),
+            { ScoredWholeInputCandidate(it, true) })
+        assertEquals("完全一致", result.candidates.first().string)
+        assertEquals(100, result.candidates.first().score)
+        assertFalse(result.candidates.first().standaloneUnigramMatched)
+        assertEquals(setOf("完全一致"), result.systemNgramMatchedCandidates)
+    }
+
+    @Test fun doesNotPromoteAWordBecauseOnlyADiscardedHigherCostPosMatchesASystemRule() {
+        val data = dictionary(listOf(Word("よみ", "完全一致", 100), Word("よみ", "完全一致", 50)))
+        val original = BunsetsuCandidateResult(listOf(Candidate("既存", 1, 2u, 0)), emptyList())
+        val result = ClassifiedExactCandidates.merge("よみ", original, mapOf(person to data), setOf(person),
+            { ScoredWholeInputCandidate(it, it.leftId == 100.toShort()) })
+        assertEquals("既存", result.candidates.first().string)
+        assertEquals(50, result.candidates.last().score)
+        assertEquals(emptySet<String>(), result.systemNgramMatchedCandidates)
     }
 }
