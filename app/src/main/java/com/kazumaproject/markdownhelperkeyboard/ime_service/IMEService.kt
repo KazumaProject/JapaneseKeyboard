@@ -11927,6 +11927,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setTenkeyIconsInHenkan(insertString, mainView)
             }
 
+            Key.SideKeyImeSwitch -> {
+                if (!isFlick) showListPopup()
+            }
+
             Key.SideKeyPreviousChar -> {
                 when (currentTenkeyInputMode(mainView)) {
                     is InputMode.ModeNumber -> {
@@ -12119,6 +12123,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeyInputMode -> {
                 setTenkeyIconsInHenkanFloating(insertString, floatingKeyboardLayoutBinding)
+            }
+
+            Key.SideKeyImeSwitch -> {
+                if (!isFlick) showListPopup()
             }
 
             Key.SideKeyPreviousChar -> {
