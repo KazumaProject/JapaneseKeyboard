@@ -528,7 +528,6 @@ class KanaKanjiEngine {
             succinctBitVectorLBSYomi = reader.loadYomiLbsIndex(yomiKey, yomiTrie),
             succinctBitVectorIsLeafYomi = reader.loadYomiLeafIndex(yomiKey, yomiTrie),
             succinctBitVectorTokenArray = reader.loadTokenIndex(tokenKey, tokenArray),
-            surfaceOverrides = reader.loadClassifiedSurfaceOverrides(category),
             succinctBitVectorTangoLBS = reader.loadTangoLbsIndex(tangoKey, tangoTrie),
         )
     }
@@ -4572,7 +4571,7 @@ class KanaKanjiEngine {
                     while (insertion > 0 && score < selected[insertion - 1].score) insertion--
                     if (insertion < 4) {
                         selected.add(insertion, Candidate(
-                            string = data.surfaceFor(node, reading, pos.toInt(), cost),
+                            string = data.surfaceFor(node, reading),
                             type = 9,
                             yomi = reading,
                             length = reading.length.toUByte(),

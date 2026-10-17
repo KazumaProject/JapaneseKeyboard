@@ -42,7 +42,7 @@ class ClassifiedDictionaryInstrumentedTest {
             val leaf = SuccinctBitVector(yomi.isLeaf)
             val words = SuccinctBitVector(tango.LBS)
             val tokens = SuccinctBitVector(token.bitvector)
-            val dictionary = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens, words, reader.loadClassifiedSurfaceOverrides(spec.category))
+            val dictionary = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens, words)
             var sum = BigInteger.ZERO
             var count = 0
             val decoded = mutableListOf<String>()
@@ -50,7 +50,7 @@ class ClassifiedDictionaryInstrumentedTest {
                 val term = yomi.getTermId(yomi.getNodeIndex(reading, lbs), leaf)
                 assertTrue("${spec.id}: $reading", term >= 0)
                 token.forEachDictionaryByYomiTermId(term, tokens) { pos, cost, node ->
-                    val surface = dictionary.surfaceFor(node, reading, pos.toInt(), cost)
+                    val surface = dictionary.surfaceFor(node, reading)
                     val left = token.leftIds[pos.toInt()]
                     val right = token.rightIds[pos.toInt()]
                     assertTrue(left >= 0 && right >= 0)
