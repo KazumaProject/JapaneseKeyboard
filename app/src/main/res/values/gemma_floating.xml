@@ -1,5 +1,6 @@
 <resources>
     <item name="gemma_floating_result" type="id" />
+    <string name="gemma_floating_processing">Gemma is processing</string>
     <string name="gemma_floating_category">Gemma floating suggestions</string>
     <string name="gemma_floating_enable">Show floating suggestions while typing</string>
     <string name="gemma_floating_summary">Apply the selected rule to composing text. Tap the result to replace and commit it.</string>

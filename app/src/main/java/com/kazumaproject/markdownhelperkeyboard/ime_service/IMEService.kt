@@ -1806,6 +1806,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             generate = { gemmaTranslationManager.generateFloatingText(it.text, it.rule.instruction) },
             cancelGeneration = { gemmaTranslationManager.cancelFloatingText() },
             publish = { input, result -> window.show(input, result) },
+            publishProcessing = window::showProcessing,
         ).also { gemmaFloatingCoordinator = it }
         coordinator.update(GemmaFloatingInput(gemmaInputSessionId, gemmaFloatingRevision, gemmaFloatingText, rule,
             editorMutationRevision.current()))
@@ -3802,6 +3803,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onCreateInputView(): View? {
+        // This method cancels the scope's children below. Do not retain a coordinator
+        // whose worker belongs to the previous input view.
+        clearGemmaFloating()
+        gemmaFloatingCoordinator?.destroy()
+        gemmaFloatingCoordinator = null
         stopSplitKeyboard()
         zenzFloatingWindow?.stop()
         composingGuide?.stop()

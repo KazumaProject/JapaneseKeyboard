@@ -1,4 +1,5 @@
 <resources>
+    <string name="gemma_floating_processing">Gemma 処理中</string>
     <string name="gemma_floating_category">Gemma フローティング候補</string>
     <string name="gemma_floating_enable">入力中にフローティング候補を表示</string>
     <string name="gemma_floating_summary">選択したルールで未確定文字列を処理します。結果をタップすると置き換えて確定します。</string>
