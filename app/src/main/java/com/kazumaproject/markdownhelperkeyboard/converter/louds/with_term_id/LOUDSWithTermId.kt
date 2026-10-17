@@ -214,11 +214,17 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         succinctBitVector: SuccinctBitVector,
+    ): Int = if (s.isEmpty()) -1 else getNodeIndex(s.toCharArray(), succinctBitVector)
+
+    /** Allows a query to share its reading across several dictionaries. */
+    internal fun getNodeIndex(
+        reading: CharArray,
+        succinctBitVector: SuccinctBitVector,
     ): Int {
-        if (s.isEmpty()) return -1
+        if (reading.isEmpty()) return -1
         return search(
             2,
-            s.toCharArray(),
+            reading,
             0,
             succinctBitVector,
         )
