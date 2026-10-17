@@ -151,7 +151,6 @@ def provenance():
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
     assert not surface_overrides, surface_overrides
-    write(ROOT / 'app/src/main/assets/categories/surface-overrides.json', json.dumps(surface_overrides, ensure_ascii=False, indent=2) + '\n')
     catalog = fetch(RAW + 'docs/english-dictionary-catalog.md')
     english_rows = []
     for line in catalog.decode().splitlines():
@@ -172,7 +171,6 @@ def provenance():
     result['englishCatalogSha256'] = sha(catalog)
     result['englishFixtureSha256'] = sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes())
     result['classifiedFixtureSha256'] = sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes())
-    result['surfaceOverridesSha256'] = sha((ROOT / 'app/src/main/assets/categories/surface-overrides.json').read_bytes())
     write(ROOT / 'tools/classified-dictionaries/category-provenance.json', json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     return counts
 
@@ -276,7 +274,6 @@ def check():
     provenance_manifest = json.loads((ROOT / 'tools/classified-dictionaries/category-provenance.json').read_text())
     assert sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes()) == provenance_manifest['englishFixtureSha256']
     assert sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes()) == provenance_manifest['classifiedFixtureSha256']
-    assert sha((ROOT / 'app/src/main/assets/categories/surface-overrides.json').read_bytes()) == provenance_manifest['surfaceOverridesSha256']
     assert sha((ROOT/'app/src/main/assets/licenses/sources/distribution-licenses.txt').read_bytes()) == m['licensesSha256']
     print(f"Verified {len(m['assets'])} distributed assets and all bundled notice hashes")
 

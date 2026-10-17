@@ -75,7 +75,7 @@ class ClassifiedPredictionParityTest {
             .filter { config.acceptsJapaneseReading(input.length, it.length) }.flatMap { reading ->
                 val term = data.yomiTrie.getTermId(data.yomiTrie.getNodeIndex(reading, data.succinctBitVectorLBSYomi), data.succinctBitVectorIsLeafYomi)
                 data.tokenArray.getListDictionaryByYomiTermId(term, data.succinctBitVectorTokenArray).map { token ->
-                    Candidate(data.surfaceFor(token.nodeId, reading, token.posTableIndex.toInt(), token.wordCost), 9,
+                    Candidate(data.surfaceFor(token.nodeId, reading), 9,
                         reading.length.toUByte(), token.wordCost.toInt() + config.completionPenalty(input.length,
                             reading.length, 1_500, null), reading, data.tokenArray.leftIds[token.posTableIndex.toInt()],
                         data.tokenArray.rightIds[token.posTableIndex.toInt()])

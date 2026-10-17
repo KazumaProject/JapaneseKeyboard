@@ -129,15 +129,14 @@ class DictionaryBrowserRepository @Inject constructor(
         val tokens = reader.loadTokenIndex(tokenKey, token)
         val data = TripleDictionaryData(
             tango, yomi, token, lbs, leaves, tokens, reader.loadTangoLbsIndex(tangoKey, tango),
-            reader.loadClassifiedSurfaceOverrides(category),
         )
         return sequence {
             val readings = yomi.termIterator(lbs, leaves)
             while (readings.hasNext()) {
                 val (reading, term) = readings.next()
                 val words = linkedSetOf<String>()
-                token.forEachDictionaryByYomiTermId(term, tokens) { pos, cost, node ->
-                    words.add(data.surfaceFor(node, reading, pos.toInt(), cost))
+                token.forEachDictionaryByYomiTermId(term, tokens) { _, _, node ->
+                    words.add(data.surfaceFor(node, reading))
                 }
                 for (word in words) yield(DictionaryBrowserRow(reading, word))
             }
