@@ -70,7 +70,7 @@ internal object ClassifiedExactCandidates {
             val labels = setOf(category)
             for (token in data.tokenArray.getListDictionaryByYomiTermId(term, data.succinctBitVectorTokenArray)) {
                 val pos = token.posTableIndex.toInt()
-                val surface = data.surfaceFor(token.nodeId, input, pos, token.wordCost)
+                val surface = data.surfaceFor(token.nodeId, input)
                 val scored = scoreCandidate(Candidate(
                     string = surface, type = 1, length = input.length.toUByte(),
                     score = token.wordCost.toInt(), yomi = input,

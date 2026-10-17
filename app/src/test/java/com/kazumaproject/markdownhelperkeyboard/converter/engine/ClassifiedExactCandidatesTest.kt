@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
-import com.kazumaproject.Louds.LOUDS
+import com.kazumaproject.Louds.Converter
+import com.kazumaproject.prefix.PrefixTree
 import com.kazumaproject.Louds.with_term_id.ConverterWithTermId
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.dictionary.TokenArray
@@ -31,22 +32,23 @@ class ClassifiedExactCandidatesTest {
         val bits = BitSet()
         val positions = mutableListOf<Short>()
         val costs = mutableListOf<Short>()
-        val overrides = mutableMapOf<String, String>()
+        val surfaces = PrefixTree().apply { words.map { it.surface }.distinct().sorted().forEach(::insert) }
+        val tango = Converter().convert(surfaces.root).apply { convertListToBitSet() }
+        val nodeIds = mutableListOf<Int>()
         var bit = 0
-        byReading.forEach { (reading, entries) ->
+        byReading.values.forEach { entries ->
             bit++
             entries.forEach { word ->
                 val pos = positions.size
                 positions.add(pos.toShort()); costs.add(word.cost); bits.set(bit++)
-                overrides["-2\t$reading\t${100 + pos}\t${200 + pos}\t${word.cost}"] = word.surface
+                nodeIds.add(tango.getNodeIndex(word.surface))
             }
         }
         val tokens = TokenArray.fromPacked(positions.toShortArray(), costs.toShortArray(),
-            PackedIntArray.from(IntArray(words.size) { -2 }), bits,
+            PackedIntArray.from(nodeIds.toIntArray()), bits,
             ShortArray(words.size) { (100 + it).toShort() }, ShortArray(words.size) { (200 + it).toShort() })
-        val tango = LOUDS()
         return TripleDictionaryData(tango, yomi, tokens, SuccinctBitVector(yomi.LBS),
-            SuccinctBitVector(yomi.isLeaf), SuccinctBitVector(bits), SuccinctBitVector(tango.LBS), overrides)
+            SuccinctBitVector(yomi.isLeaf), SuccinctBitVector(bits), SuccinctBitVector(tango.LBS))
     }
 
     private fun merge(

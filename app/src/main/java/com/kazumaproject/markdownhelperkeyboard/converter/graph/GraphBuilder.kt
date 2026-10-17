@@ -1128,7 +1128,7 @@ class GraphBuilder {
                         val node = Node(
                             l = leftId, r = data.tokenArray.rightIds[pos.toInt()],
                             score = cost.toInt(), f = cost.toInt(), g = cost.toInt(),
-                            tango = data.surfaceFor(tokenNodeId, yomiStr, pos.toInt(), cost),
+                            tango = data.surfaceFor(tokenNodeId, yomiStr),
                             yomiUsed = yomiStr, len = yomiStr.length.toShort(), sPos = i,
                             mozcAttributes = mozcAttributesFor(leftId), dictionaryCategories = categoryLabels,
                         )

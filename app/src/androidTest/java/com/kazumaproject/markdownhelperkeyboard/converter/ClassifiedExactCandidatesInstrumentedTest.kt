@@ -39,8 +39,8 @@ class ClassifiedExactCandidatesInstrumentedTest {
                     if (node <= 0) continue
                     val term = data.yomiTrie.getTermId(node, data.succinctBitVectorIsLeafYomi)
                     if (term < 0) continue
-                    data.tokenArray.forEachDictionaryByYomiTermId(term, data.succinctBitVectorTokenArray) { pos, cost, id ->
-                        words.add(data.surfaceFor(id, input, pos.toInt(), cost))
+                    data.tokenArray.forEachDictionaryByYomiTermId(term, data.succinctBitVectorTokenArray) { _, _, id ->
+                        words.add(data.surfaceFor(id, input))
                     }
                 }
                 words
