@@ -20,9 +20,10 @@ internal class GemmaFloatingSettings(private val preferences: SharedPreferences)
         const val RULES = "gemma_floating_rules"
         const val MANAGE = "gemma_floating_manage_rules"
         val keys = setOf(ENABLED, SELECTED, RULES)
+        private val legacyModeless = GemmaFloatingRule("modeless", "モードレス", "Convert Japanese or romaji Japanese to natural kanji/kana. Keep English words and sentences in English; never transliterate English into katakana. In mixed input, convert only Japanese portions. Preserve English names, code, URLs, numbers and formatting. Correct obvious typos without changing meaning.")
         fun defaults() = listOf(
             GemmaFloatingRule("english", "英訳", "Translate the input into natural English. Preserve its meaning, names, numbers, emoji and formatting. If already English, preserve it."),
-            GemmaFloatingRule("modeless", "モードレス", "Convert Japanese or romaji Japanese to natural kanji/kana. Keep English words and sentences in English; never transliterate English into katakana. In mixed input, convert only Japanese portions. Preserve English names, code, URLs, numbers and formatting. Correct obvious typos without changing meaning."),
+            GemmaFloatingRule("japanese", "日本語訳", "Translate the input into natural Japanese. Preserve its meaning, names, numbers, emoji and formatting. If already Japanese, preserve it."),
         )
     }
 
@@ -44,6 +45,21 @@ internal class GemmaFloatingSettings(private val preferences: SharedPreferences)
     val selectedId: String
         get() = preferences.getString(SELECTED, if (preferences.contains(RULES)) "" else "english").orEmpty()
     val selectedRule get() = rules.firstOrNull { it.id == selectedId }
+
+    init {
+        // Replace only the untouched old preset; user-edited and deleted rules stay as saved.
+        val previous = rules
+        if (legacyModeless in previous) {
+            val japanese = defaults().first { it.id == "japanese" }
+            val next = previous.flatMap {
+                if (it != legacyModeless) listOf(it)
+                else if (previous.any { rule -> rule.id == japanese.id }) emptyList()
+                else listOf(japanese)
+            }
+            val selection = if (selectedId == legacyModeless.id) japanese.id else selectedId
+            preferences.edit().putString(RULES, gson.toJson(next)).putString(SELECTED, selection).apply()
+        }
+    }
 
     fun ensureDefaults() {
         if (!preferences.contains(RULES)) preferences.edit()

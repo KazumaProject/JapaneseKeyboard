@@ -139,7 +139,7 @@ class GemmaFloatingDeviceTest {
         }
         val suites = listOf(
             Triple("english", "ROMAJI", listOf("konnichiha", "arigatou", "oyasumi", "ashita", "nihongo", "tenki", "kaigi", "denwa", "shigoto", "yasumi")),
-            Triple("modeless", "QWERTY", listOf("konnichiwa", "arigatou", "nihongo", "kyouhagoogledekensaku", "ashitanomeetingwotsuika", "hello", "keyboard", "chatgptwotsukau", "markdownhenkan", "Tokyo")),
+            Triple("japanese", "QWERTY", listOf("hello", "thanks", "goodnight", "tomorrow", "japanese", "weather", "meeting", "phone", "work", "holiday")),
             Triple(uppercase.id, "QWERTY", listOf("hello", "keyboard", "markdown", "android", "gemma", "floating", "candidate", "project", "settings", "typing")),
         )
         val japaneseSources = listOf("こんいちは", "ありがとう", "おやすみ", "あした", "にほんご", "てんき", "かいぎ", "でんわ", "しごと", "やすみ")
@@ -184,7 +184,7 @@ class GemmaFloatingDeviceTest {
                                 editor { applied = it.editText.text.toString() == "PREFIX $expectedSource" }
                                 applied
                             }
-                            await("Gemma floating result did not appear for $ruleId / $typed") { node("gemma_floating_result")?.text?.isNotBlank() == true }
+                            await("Gemma floating result did not appear for $ruleId / $typed") { node("gemma_floating_result")?.let { it.isClickable && it.text?.isNotBlank() == true } == true }
                             val shownAt = SystemClock.elapsedRealtime()
                             val resultNode = requireNotNull(node("gemma_floating_result"))
                             val result = resultNode.text.toString()
@@ -223,7 +223,7 @@ class GemmaFloatingDeviceTest {
                 editor { it.restartEditorInput(true) }
                 await("Keyboard missing") { node("key_a") != null }
                 tap(Rect().also { requireNotNull(node("key_a")).getBoundsInScreen(it) })
-                await("Result missing before disabling") { node("gemma_floating_result") != null }
+                await("Result missing before disabling") { node("gemma_floating_result")?.isClickable == true }
                 preferences.edit().putBoolean(GemmaFloatingSettings.ENABLED, false).commit()
                 await("Disabled feature kept a result", 5_000) { node("gemma_floating_result") == null }
             }

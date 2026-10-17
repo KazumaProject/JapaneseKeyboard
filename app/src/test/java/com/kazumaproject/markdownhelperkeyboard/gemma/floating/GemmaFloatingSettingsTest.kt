@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.google.gson.JsonParser
+import com.google.gson.Gson
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.*
 import org.junit.Before
@@ -18,6 +19,47 @@ class GemmaFloatingSettingsTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val preferences get() = PreferenceManager.getDefaultSharedPreferences(context)
     @Before fun reset() { AppPreference.init(context); preferences.edit().clear().commit() }
+
+    private val legacyModeless = GemmaFloatingRule("modeless", "モードレス", "Convert Japanese or romaji Japanese to natural kanji/kana. Keep English words and sentences in English; never transliterate English into katakana. In mixed input, convert only Japanese portions. Preserve English names, code, URLs, numbers and formatting. Correct obvious typos without changing meaning.")
+
+    @Test fun defaultsOfferEnglishAndJapaneseTranslation() {
+        val settings = GemmaFloatingSettings(preferences)
+        settings.ensureDefaults()
+        assertEquals(listOf("english", "japanese"), settings.rules.map { it.id })
+        assertEquals(listOf("英訳", "日本語訳"), settings.rules.map { it.name })
+        assertTrue(settings.rules.last().instruction.contains("Translate the input into natural Japanese"))
+    }
+
+    @Test fun untouchedLegacyModelessMigratesAndKeepsSelectionAcrossReload() {
+        val english = GemmaFloatingSettings.defaults().first()
+        preferences.edit().putString(GemmaFloatingSettings.RULES, Gson().toJson(listOf(english, legacyModeless)))
+            .putString(GemmaFloatingSettings.SELECTED, "modeless").commit()
+        repeat(2) {
+            val settings = GemmaFloatingSettings(preferences)
+            assertEquals(GemmaFloatingSettings.defaults(), settings.rules)
+            assertEquals("japanese", settings.selectedRule?.id)
+        }
+    }
+
+    @Test fun editedModelessAndDeletedPresetsArePreserved() {
+        val edited = legacyModeless.copy(instruction = "My custom instruction")
+        preferences.edit().putString(GemmaFloatingSettings.RULES, Gson().toJson(listOf(edited)))
+            .putString(GemmaFloatingSettings.SELECTED, edited.id).commit()
+        val settings = GemmaFloatingSettings(preferences)
+        settings.ensureDefaults()
+        assertEquals(listOf(edited), settings.rules)
+        assertEquals(edited, settings.selectedRule)
+    }
+
+    @Test fun migrationPreservesCustomRulesAndDoesNotDuplicateExistingJapaneseRule() {
+        val custom = GemmaFloatingRule("custom", "Custom", "My instruction")
+        val japanese = GemmaFloatingSettings.defaults().last().copy(instruction = "My Japanese instruction")
+        preferences.edit().putString(GemmaFloatingSettings.RULES, Gson().toJson(listOf(custom, legacyModeless, japanese)))
+            .putString(GemmaFloatingSettings.SELECTED, custom.id).commit()
+        val settings = GemmaFloatingSettings(preferences)
+        assertEquals(listOf(custom, japanese), settings.rules)
+        assertEquals(custom, settings.selectedRule)
+    }
 
     @Test fun defaultsAreOffAndDeletedPresetsStayDeleted() {
         val settings = GemmaFloatingSettings(preferences)

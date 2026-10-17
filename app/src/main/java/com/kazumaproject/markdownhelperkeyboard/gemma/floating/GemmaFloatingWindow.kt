@@ -29,16 +29,26 @@ internal class GemmaFloatingWindow(
     private val coordinates = FloatingWindowCoordinates(manager)
     private var host: View? = null
     private var surface: ScrollView? = null
+    private var registered = false
     private var label: TextView? = null
     private var params: WindowManager.LayoutParams? = null
     private var lastColors: CandidatePanelColors? = null
-    private var result: Pair<GemmaFloatingInput, String>? = null
+    private data class Content(val input: GemmaFloatingInput, val text: String, val processing: Boolean)
+    private var result: Content? = null
     private val layoutListener = ViewTreeObserver.OnPreDrawListener { refresh(); true }
     private fun dp(value: Int) = (value * context.resources.displayMetrics.density).toInt()
 
     fun show(input: GemmaFloatingInput?, text: String?) {
         if (input == null || text.isNullOrBlank()) { clear(); return }
-        result = input to text
+        showContent(Content(input, text, processing = false))
+    }
+
+    fun showProcessing(input: GemmaFloatingInput) {
+        showContent(Content(input, "…", processing = true))
+    }
+
+    private fun showContent(content: Content) {
+        result = content
         val next = anchor()
         if (host !== next) {
             detach()
@@ -60,13 +70,16 @@ internal class GemmaFloatingWindow(
     }
 
     private fun dismiss() {
-        surface?.let { view -> if (view.isAttachedToWindow) runCatching { manager.removeViewImmediate(view) } }
+        // WindowManager owns a view as soon as addView returns, before it is attached.
+        // Always attempt removal, including a failed or not-yet-attached registration.
+        surface?.let { view -> runCatching { manager.removeViewImmediate(view) } }
+        registered = false
         surface = null; label = null; params = null; lastColors = null
     }
 
     private fun refresh() {
         val content = result ?: return
-        if (!validInput(content.first)) { clear(); return }
+        if (!validInput(content.input)) { clear(); return }
         val view = anchor()
         if (!eligible() || view == null || !view.isShown || !view.isAttachedToWindow || view.windowToken == null) {
             dismiss(); return
@@ -93,17 +106,18 @@ internal class GemmaFloatingWindow(
                 minHeight = dp(48)
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(12), dp(8), dp(12), dp(8))
-                isClickable = true
                 KeyboardFontApplicator.apply(this, KeyboardFontApplicator.processSnapshot)
                 setOnClickListener {
-                    result?.let { (input, text) -> if (commit(input, text)) clear() }
+                    result?.let { if (!it.processing && commit(it.input, it.text)) clear() }
                 }
                 label = this
             })
             surface = this
         }
         label?.apply {
-            if (text.toString() != content.second) { text = content.second; panel.scrollTo(0, 0) }
+            if (text.toString() != content.text) { text = content.text; panel.scrollTo(0, 0) }
+            isClickable = !content.processing
+            contentDescription = if (content.processing) context.getString(R.string.gemma_floating_processing) else null
         }
         if (lastColors != panelColors) {
             lastColors = panelColors
@@ -119,7 +133,7 @@ internal class GemmaFloatingWindow(
         panel.measure(View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(availableHeight, View.MeasureSpec.AT_MOST))
         val width = panel.measuredWidth
-        val left = (location[0] + view.width / 2 - width / 2).coerceIn(area.left, area.right - width)
+        val left = location[0].coerceIn(area.left, area.right - width)
         val top = location[1] - dp(8) - panel.measuredHeight
         val layout = params ?: WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
@@ -137,7 +151,10 @@ internal class GemmaFloatingWindow(
         val changed = layout.width != previousWidth || layout.height != previousHeight ||
             layout.x != previousX || layout.y != previousY
         try {
-            if (!panel.isAttachedToWindow) manager.addView(panel, layout)
+            if (!registered) {
+                manager.addView(panel, layout)
+                registered = true
+            }
             else if (changed) manager.updateViewLayout(panel, layout)
         } catch (error: Exception) {
             Timber.w(error, "Gemma floating placement unavailable")
