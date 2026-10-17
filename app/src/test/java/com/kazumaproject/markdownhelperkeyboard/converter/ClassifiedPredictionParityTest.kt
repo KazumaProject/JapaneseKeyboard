@@ -19,7 +19,7 @@ import org.junit.Test
 import java.util.BitSet
 
 class ClassifiedPredictionParityTest {
-    private val readings = listOf("あいあ", "あいあい", "あいあう", "あいあえお", "あいあえおかきくけこ", "あいあ😀", "あせんやく").sorted()
+    private val readings = listOf("あい", "あいうえおかきくけこさしすせそたち", "あいあ", "あいあい", "あいあう", "あいあえお", "あいあえおかきくけこ", "あいあ😀", "あせんやく").sorted()
 
     private fun trie(packed: Boolean): LOUDSWithTermId {
         val tree = PrefixTreeWithTermId().apply { readings.forEach(::insert) }
@@ -97,7 +97,7 @@ class ClassifiedPredictionParityTest {
         }
     }
 
-    @Test fun mergedLabelsAndPredictionGatesMatchExistingBehavior() {
+    @Test fun exactMatchesKeepAllTokensAndMergedLabelsRegardlessOfPredictionGates() {
         val data = dictionary(true)
         val categories = linkedSetOf(DictionaryCategory.CLASSIFIED_PERSON, DictionaryCategory.CLASSIFIED_PLACE)
         val engine = KanaKanjiEngine()
@@ -106,11 +106,26 @@ class ClassifiedPredictionParityTest {
         val method = KanaKanjiEngine::class.java.getDeclaredMethod("getClassifiedCandidates", String::class.java,
             Set::class.java, PredictionConfig::class.java).apply { isAccessible = true }
         val config = PredictionConfig()
-        val expected = reference("あいあ", data, config).distinct().map { it.copy(dictionaryCategories = categories) }
+        fun exact(reading: String): List<Candidate> =
+            listOf(2_000, 1_000, 1_000, 0, 1_000, -3_000).mapIndexed { index, cost ->
+                Candidate(string = reading, type = 9, length = reading.length.toUByte(),
+                    score = if (reading.length > 6) Short.MIN_VALUE.toInt() else cost, yomi = reading,
+                    leftId = (100 + index).toShort(), rightId = (200 + index).toShort(),
+                    dictionaryCategories = categories)
+            }
+        val expected = exact("あいあ") + reference("あいあ", data, config).distinct()
+            .map { it.copy(dictionaryCategories = categories) }
         assertEquals(expected, method.invoke(engine, "あいあ", categories, config))
-        for ((input, gate) in listOf("あい" to config, "あいうえおかきくけこさしすせそたち" to config,
-            "あいあ" to config.copy(japanesePredictionEnabled = false), "あいあ" to config.copy(externalMozcEnabled = false))) {
-            assertEquals(emptyList<Candidate>(), method.invoke(engine, input, categories, gate))
+        for (input in listOf("あい", "あいうえおかきくけこさしすせそたち", "あいあ")) {
+            for (gate in listOf(config.copy(japanesePredictionEnabled = false),
+                config.copy(externalMozcEnabled = false), config.copy(minimumInputLength = 8))) {
+                assertEquals("$input/$gate", exact(input), method.invoke(engine, input, categories, gate))
+            }
         }
+        assertEquals(emptyList<Candidate>(), method.invoke(engine, "", categories, config))
+        assertEquals(emptyList<Candidate>(), method.invoke(engine, "ない", categories, config))
+        assertEquals(emptyList<Candidate>(), method.invoke(engine, "あいあ", emptySet<DictionaryCategory>(), config))
+        assertEquals(expected.map { it.copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PERSON)) },
+            method.invoke(engine, "あいあ", setOf(DictionaryCategory.CLASSIFIED_PERSON), config))
     }
 }

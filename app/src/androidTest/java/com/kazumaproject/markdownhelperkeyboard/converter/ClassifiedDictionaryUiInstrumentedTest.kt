@@ -12,6 +12,8 @@ import android.webkit.WebView
 import android.widget.ListView
 import android.widget.TextView
 import androidx.navigation.fragment.NavHostFragment
+import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreferenceCompat
@@ -221,12 +223,17 @@ class ClassifiedDictionaryUiInstrumentedTest {
         verifyRomajiLabelsAndCommit(learnedPrediction = true)
     }
 
-    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null) {
+    @Test fun exactHomophonesAndShortReadingsAreVisibleAndCommit() {
+        verifyRomajiLabelsAndCommit(exactMatches = true)
+    }
+
+    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null, exactMatches: Boolean = false) {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         check(context.packageName.contains(".classifiedprobe")) { "Use the isolated classifiedprobe APK" }
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
-        val testedCategories = listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
+        val testedCategories = if (exactMatches) listOf(DictionaryCategory.CLASSIFIED_PERSON) else
+            listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
         val previous = testedCategories.associateWith { store.isOptionalBundledEnabled(it) }
         val oldIme = shell("settings get secure default_input_method")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
@@ -281,7 +288,9 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     if (!learnedPrediction) repository!!.upsertLearnedData(entry)
                 }
             }
-            for ((input, expectedLabel, expectedSurface) in listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))) {
+            val samples = if (exactMatches) listOf(Triple("honoka", "[人名]", "保乃加"), Triple("kana", "[人名]", "KANA")) else
+                listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))
+            for ((input, expectedLabel, expectedSurface) in samples) {
             main { activity.editText.setText("") }
             SystemClock.sleep(300)
             var lastKeyUpMs = 0L
@@ -304,6 +313,16 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     event.recycle()
                     SystemClock.sleep(40)
                 }
+            }
+            if (exactMatches) {
+                await("Exact word $expectedSurface missing from the actual IME adapter") {
+                    views().filterIsInstance<RecyclerView>().filter { it.isShown }.any { list ->
+                        val adapter = list.adapter as? SuggestionAdapter
+                        val index = adapter?.suggestions?.indexOfFirst { it.string == expectedSurface } ?: -1
+                        if (index < 0) false else { list.scrollToPosition(index); true }
+                    }
+                }
+                SystemClock.sleep(100)
             }
             lateinit var label: TextView
             try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) && (it.parent as View).findViewById<TextView>(R.id.suggestion_item_text_view).text.toString().trim() == expectedSurface }?.let { label = it; true } ?: false } } catch (failure: Throwable) {

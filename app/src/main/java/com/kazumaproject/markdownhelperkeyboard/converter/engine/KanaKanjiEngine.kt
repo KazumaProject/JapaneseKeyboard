@@ -4737,17 +4737,38 @@ class KanaKanjiEngine {
         }
     }
 
+    /** Whole-input dictionary words must survive N-best pruning, independently of completion settings. */
+    private fun exactClassifiedCandidates(input: String, data: TripleDictionaryData): List<Candidate> {
+        val node = data.yomiTrie.getNodeIndex(input, data.succinctBitVectorLBSYomi)
+        val termId = data.yomiTrie.getTermId(node, data.succinctBitVectorIsLeafYomi)
+        if (termId < 0) return emptyList()
+        return buildList {
+            data.tokenArray.forEachDictionaryByYomiTermId(termId, data.succinctBitVectorTokenArray) { pos, cost, surfaceNode ->
+                add(Candidate(
+                    string = data.surfaceFor(surfaceNode, input, pos.toInt(), cost),
+                    type = 9,
+                    yomi = input,
+                    length = input.length.toUByte(),
+                    score = cost.toInt(),
+                    leftId = data.tokenArray.leftIds[pos.toInt()],
+                    rightId = data.tokenArray.rightIds[pos.toInt()],
+                ))
+            }
+        }
+    }
+
     private fun getClassifiedCandidates(
         input: String,
         categories: Set<DictionaryCategory>,
         predictionConfig: PredictionConfig,
     ): List<Candidate> {
-        if (!predictionConfig.japanesePredictionEnabled || !predictionConfig.externalMozcEnabled ||
-            input.length < predictionConfig.normalizedMinimumInputLength) return emptyList()
-        if (input.length > PredictionConfig.MAX_PREDICTION_INPUT_LENGTH) return emptyList()
+        if (input.isEmpty() || categories.isEmpty()) return emptyList()
+        val includePredictions = predictionConfig.japanesePredictionEnabled && predictionConfig.externalMozcEnabled &&
+            input.length in predictionConfig.normalizedMinimumInputLength..PredictionConfig.MAX_PREDICTION_INPUT_LENGTH
         return activeClassifiedDictionaries(categories).flatMap { (category, data) ->
-            predictedClassifiedCandidates(input, data, predictionConfig)
-                .map { it.copy(dictionaryCategories = setOf(category)) }
+            val exact = exactClassifiedCandidates(input, data)
+            val predicted = if (includePredictions) predictedClassifiedCandidates(input, data, predictionConfig) else emptyList()
+            (exact + predicted).map { it.copy(dictionaryCategories = setOf(category)) }
         }.groupBy { it.copy(dictionaryCategories = emptySet()) }.map { (_, candidates) ->
             candidates.first().copy(dictionaryCategories = candidates.flatMap { it.dictionaryCategories }.toSet())
         }

@@ -73,6 +73,76 @@ class ClassifiedDictionaryInstrumentedTest {
         assertEquals("Categories with differing decoded records", emptyList<String>(), mismatches)
     }
 
+    @Test fun exactHomophonesSurviveSmallNBestAndPredictionSettings() = runBlocking {
+        val engine = entryPoint.kanaKanjiEngine()
+        val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
+        val previous = ClassifiedDictionaries.all.associate { it.category to store.isOptionalBundledEnabled(it.category) }
+        try {
+            ClassifiedDictionaries.all.forEach { store.setOptionalBundledEnabled(it.category, true) }
+            engine.applyDictionaryOverrideState(context)
+            val reader = entryPoint.dictionaryBinaryReader()
+            val failures = mutableListOf<String>()
+            for (spec in ClassifiedDictionaries.all) {
+                val files = DictionaryFileSpecs.forCategory(spec.category)
+                val yomi = reader.loadLoudsWithTermId(files.single { it.role == DictionaryFileRole.YOMI }.key)
+                val tango = reader.loadLouds(files.single { it.role == DictionaryFileRole.TANGO }.key)
+                val token = reader.loadTokenArray(files.single { it.role == DictionaryFileRole.TOKEN }.key)
+                val lbs = SuccinctBitVector(yomi.LBS)
+                val leaf = SuccinctBitVector(yomi.isLeaf)
+                val tokens = SuccinctBitVector(token.bitvector)
+                val data = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens,
+                    SuccinctBitVector(tango.LBS), reader.loadClassifiedSurfaceOverrides(spec.category))
+                fun surfaces(reading: String): Set<String> = buildSet {
+                    val term = yomi.getTermId(yomi.getNodeIndex(reading, lbs), leaf)
+                    token.forEachDictionaryByYomiTermId(term, tokens) { pos, cost, node ->
+                        add(data.surfaceFor(node, reading, pos.toInt(), cost))
+                    }
+                }
+                val readings = yomi.predictiveSearch("", lbs)
+                val crowded = readings.maxBy { surfaces(it).size }
+                val samples = listOfNotNull(crowded, readings.firstOrNull { it.length < 3 },
+                    readings.firstOrNull { it.length > 16 }).distinct()
+                for (reading in samples) {
+                    val expected = surfaces(reading)
+                    println("EXACT_SAMPLE ${spec.id} $reading count=${expected.size} words=$expected")
+                    for (backend in ConversionBackend.entries) for (mode in listOf(
+                        CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.CONVERSION, CandidateQueryMode.PREDICTION)) {
+                        for (prediction in listOf(true, false)) for (bunsetsu in listOf(false, true)) {
+                            for (categories in listOf(setOf(spec.category), ClassifiedDictionaries.categories)) {
+                                val request = KanaKanjiQueryRequest(
+                                    input = reading, mode = mode, bunsetsuSeparation = bunsetsu, n = 4,
+                                    enabledDictionaryCategories = categories,
+                                    userDictionaryRepository = entryPoint.userDictionaryRepository(), learnRepository = null,
+                                    omissionSearchEnabled = false, typoCorrectionJapaneseFlickEnabled = false,
+                                    typoCorrectionQwertyEnglishEnabled = false, typoCorrectionOffsetScore = 0,
+                                    omissionSearchOffsetScore = 0, beamWidth = 20,
+                                    predictionConfig = com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig(
+                                        japanesePredictionEnabled = prediction, externalMozcEnabled = prediction),
+                                )
+                                val actual = KanaKanjiConversionSession(engine, backend).query(request).candidates
+                                val missing = expected - actual.filter { spec.category in it.dictionaryCategories }.map { it.string }.toSet()
+                                if (missing.isNotEmpty()) failures.add("$backend $mode bunsetsu=$bunsetsu prediction=$prediction categories=${categories.size} ${spec.id} $reading missing=$missing")
+                            }
+                        }
+                    }
+                    val disabled = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION).query(
+                        KanaKanjiQueryRequest(input = reading, mode = CandidateQueryMode.CONVERSION,
+                            bunsetsuSeparation = true, n = 4, enabledDictionaryCategories = emptySet(),
+                            userDictionaryRepository = entryPoint.userDictionaryRepository(), learnRepository = null,
+                            omissionSearchEnabled = false, typoCorrectionJapaneseFlickEnabled = false,
+                            typoCorrectionQwertyEnglishEnabled = false, typoCorrectionOffsetScore = 0,
+                            omissionSearchOffsetScore = 0, beamWidth = 20))
+                    assertTrue(disabled.candidates.none { it.dictionaryCategories.isNotEmpty() })
+                }
+            }
+            failures.forEach { println("EXACT_MISSING $it") }
+            assertTrue("Missing exact candidates: ${failures.take(10)}; failures=${failures.size}", failures.isEmpty())
+        } finally {
+            previous.forEach { (category, enabled) -> store.setOptionalBundledEnabled(category, enabled) }
+            engine.applyDictionaryOverrideState(context)
+        }
+    }
+
     @Test fun all5138EnglishReadingPairsMatchPinnedCatalog() {
         val reader = entryPoint.dictionaryBinaryReader()
         val files = DictionaryFileSpecs.forCategory(DictionaryCategory.ENGLISH_READING)

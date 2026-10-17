@@ -28,8 +28,8 @@ class DictionaryReleasePerformanceInstrumentedTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         check(context.packageName.contains(".classifiedprobe"))
         val report = StringBuilder("kind\tcategories\tbackend\tinput\tround\tmeanMs\tp50Ms\tp95Ms\tmaxMs\n")
-        fun memory(state: String) {
-            repeat(3) { Runtime.getRuntime().gc(); SystemClock.sleep(50) }
+        fun memory(state: String, collect: Boolean = true) {
+            if (collect) repeat(3) { Runtime.getRuntime().gc(); SystemClock.sleep(50) }
             val heap = Runtime.getRuntime().run { totalMemory() - freeMemory() }
             report.appendLine("MEMORY\t$state\theapBytes=$heap\tnativeBytes=${Debug.getNativeHeapAllocatedSize()}\tpssKb=${Debug.getPss()}")
         }
@@ -43,7 +43,7 @@ class DictionaryReleasePerformanceInstrumentedTest {
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
         val previous = ClassifiedDictionaries.all.associate { it.category to store.isOptionalBundledEnabled(it.category) }
         val inputs = listOf("きょう", "きょうはいいてんきですね", "とうきょうとちよだく",
-            "わたしはきのうともだちとえきまえであいました", "あいえふしょう", "あせんやく", "あさいたみ", "しろ")
+            "わたしはきのうともだちとえきまえであいました", "あいえふしょう", "あせんやく", "あさいたみ", "しろ", "こう", "こうしょう", "ほのか", "すさのおのみこと")
         try {
             for (enabled in listOf(false, true)) {
                 ClassifiedDictionaries.all.forEach { store.setOptionalBundledEnabled(it.category, enabled) }
@@ -69,10 +69,14 @@ class DictionaryReleasePerformanceInstrumentedTest {
                     }
                     repeat(10) { inputs.forEach { convert(it) } }
                     repeat(3) { round ->
+                        val allocatedBefore = Debug.getRuntimeStat("art.gc.bytes-allocated")?.toLongOrNull()
                         val samples = inputs.associateWith { DoubleArray(50) }
                         repeat(50) { iteration ->
                             inputs.forEach { input -> samples.getValue(input)[iteration] = measureNanoTime { convert(input) } / 1e6 }
+                            if (iteration == 0 || iteration == 49) memory("categories=$enabled-$backend-round=$round-iteration=$iteration", collect = false)
                         }
+                        val allocatedAfter = Debug.getRuntimeStat("art.gc.bytes-allocated")?.toLongOrNull()
+                        if (allocatedBefore != null && allocatedAfter != null) report.appendLine("ALLOCATED\t$enabled\t$backend\t$round\tbytes=${allocatedAfter - allocatedBefore}\tconversions=${inputs.size * 50}")
                         for ((input, times) in samples) {
                             val sorted = times.sorted()
                             fun p(f: Double) = sorted[ceil(f * sorted.size).toInt() - 1]
