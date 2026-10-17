@@ -52,8 +52,9 @@ class GemmaFloatingWindowDeviceTest {
     private fun viewBounds(id: Int, parent: Boolean = false): Rect {
         var result = Rect()
         instrumentation.runOnMainSync {
+            val ids = if (id == R.id.candidates_row_view) listOf(id, R.id.suggestion_recycler_view) else listOf(id)
             val child = WindowInspector.getGlobalWindowViews().asSequence()
-                .mapNotNull { it.findViewById<View>(id) }.first { it.isShown }
+                .flatMap { root -> ids.asSequence().mapNotNull { root.findViewById<View>(it) } }.first { it.isShown }
             val view = if (parent) child.parent as View else child
             val location = IntArray(2).also(view::getLocationOnScreen)
             result = Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
@@ -88,6 +89,9 @@ class GemmaFloatingWindowDeviceTest {
                 data.put("loadState", (field("gemmaTranslationManager") as GemmaTranslationManager).loadState.value.toString())
                 val coordinator = field("gemmaFloatingCoordinator")
                 data.put("request", coordinator?.let { GemmaFloatingCoordinator::class.java.getDeclaredField("current").apply { isAccessible = true }.get(it) }.toString())
+                data.put("workerActive", coordinator?.let {
+                    (GemmaFloatingCoordinator::class.java.getDeclaredField("worker").apply { isAccessible = true }.get(it) as kotlinx.coroutines.Job).isActive
+                })
                 data.put("metrics", service.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds.toShortString())
                 val location = IntArray(2).also(candidate::getLocationOnScreen)
                 data.put("candidate", "${location.toList()} ${candidate.width}x${candidate.height}")
@@ -141,11 +145,14 @@ class GemmaFloatingWindowDeviceTest {
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
                 scenario.onActivity { it.editText.setText("PREFIX "); it.restartEditorInput(false) }
                 await("Keyboard did not appear") { node("key_a") != null }
+                SystemClock.sleep(350)
                 tap(bounds(requireNotNull(node("key_a"))))
-                await("Multiline result did not appear") { node("gemma_floating_result") != null }
+                await("Multiline result did not appear") { node("gemma_floating_result")?.isClickable == true }
                 val nativeResult = requireNotNull(node("gemma_floating_result")).text.toString()
                 // Keep window coverage independent of stochastic model formatting. Verify the
                 // real request used our selected rule, and record native compliance separately.
+                lateinit var previewInput: GemmaFloatingInput
+                lateinit var previewWindow: GemmaFloatingWindow
                 instrumentation.runOnMainSync {
                     val label = WindowInspector.getGlobalWindowViews().asSequence()
                         .mapNotNull { it.findViewById<TextView>(R.id.gemma_floating_result) }.first()
@@ -160,8 +167,24 @@ class GemmaFloatingWindowDeviceTest {
                             .put("source", input.text).put("result", nativeResult)
                             .put("modelMultilinePassed", nativeResult == expected).toString(),
                     )
-                    (field("gemmaFloatingWindow") as GemmaFloatingWindow).show(input, expected)
+                    previewInput = input
+                    previewWindow = field("gemmaFloatingWindow") as GemmaFloatingWindow
+                    coordinator.suspendForForeground()
+                    previewWindow.showProcessing(input)
                 }
+                await("Processing indicator did not appear") {
+                    node("gemma_floating_result")?.let { it.text.toString() == "…" && !it.isClickable } == true
+                }
+                SystemClock.sleep(100)
+                val processingViewport = viewBounds(R.id.gemma_floating_result, parent = true)
+                assertEquals(viewBounds(R.id.candidates_row_view).left, processingViewport.left)
+                screenshot("gemma-floating-processing.png")
+                tap(processingViewport)
+                scenario.onActivity {
+                    assertEquals("PREFIX a", it.editText.text.toString())
+                    assertTrue(BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0)
+                }
+                instrumentation.runOnMainSync { previewWindow.show(previewInput, expected) }
                 await("Controlled multiline payload was not rendered") { node("gemma_floating_result")?.text?.toString() == expected }
                 SystemClock.sleep(300) // WindowManager applies the new height and position asynchronously.
                 val resultNode = requireNotNull(node("gemma_floating_result"))
@@ -176,6 +199,7 @@ class GemmaFloatingWindowDeviceTest {
                 screenshot("gemma-floating-multiline-placement.png")
                 assertTrue("Floating result covered candidate strip: result=$viewport candidate=$candidate", viewport.bottom <= candidate.top)
                 assertTrue(viewport.top >= 0)
+                assertEquals(viewBounds(R.id.candidates_row_view).left, viewport.left)
                 assertTrue(scroll.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD))
                 SystemClock.sleep(500)
                 screenshot("gemma-floating-multiline.png")
@@ -201,10 +225,11 @@ class GemmaFloatingWindowDeviceTest {
                 await("Landscape keyboard missing") { node("key_a") != null }
                 SystemClock.sleep(300)
                 tap(bounds(requireNotNull(node("key_a"))))
-                await("Landscape result missing", 20_000) { node("gemma_floating_result") != null }
+                await("Landscape result missing", 20_000) { node("gemma_floating_result")?.isClickable == true }
                 val landscapeViewport = viewBounds(R.id.gemma_floating_result, parent = true)
                 val landscapeCandidate = viewBounds(R.id.suggestion_recycler_view)
                 assertTrue(landscapeViewport.top >= 0 && landscapeViewport.bottom <= landscapeCandidate.top)
+                assertEquals(viewBounds(R.id.candidates_row_view).left, landscapeViewport.left)
                 screenshot("gemma-floating-landscape.png")
 
                 // Even a click already queued on an old view must not commit after rule changes.
@@ -222,14 +247,24 @@ class GemmaFloatingWindowDeviceTest {
                     assertTrue(BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0)
                 }
                 settings.select(selectedId)
-                await("Restored rule did not generate a result") { node("gemma_floating_result") != null }
+                await("Restored rule did not generate a result") { node("gemma_floating_result")?.isClickable == true }
                 tap(bounds(requireNotNull(node("key_delete"))))
                 await("Deleted composing text retained a result") { node("gemma_floating_result") == null }
                 SystemClock.sleep(2_000)
                 assertNull("Cancelled result reappeared after deletion", node("gemma_floating_result"))
                 scenario.onActivity { assertEquals("PREFIX ", it.editText.text.toString()) }
                 tap(bounds(requireNotNull(node("key_a"))))
-                await("New input did not resume suggestions") { node("gemma_floating_result") != null }
+                await("New input did not resume suggestions") { node("gemma_floating_result")?.isClickable == true }
+
+                shell("input keyevent BACK")
+                await("Keyboard did not hide") { node("key_a") == null }
+                assertNull("Hidden keyboard retained the floating result", node("gemma_floating_result"))
+                scenario.onActivity { it.requestImeForEditor() }
+                await("Keyboard did not reopen") { node("key_a") != null }
+                SystemClock.sleep(2_000)
+                assertNull("Old floating result returned when the keyboard reopened", node("gemma_floating_result"))
+                tap(bounds(requireNotNull(node("key_a"))))
+                await("Typing after reopening did not resume suggestions") { node("gemma_floating_result")?.isClickable == true }
 
                 scenario.onActivity {
                     it.editText.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD

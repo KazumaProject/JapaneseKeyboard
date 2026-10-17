@@ -15,6 +15,50 @@ class GemmaFloatingCoordinatorTest {
     private fun input(text: String, session: Long = 1, revision: Long = 1) =
         GemmaFloatingInput(session, revision, text, GemmaFloatingSettings.defaults().first())
 
+    @Test fun processingStartsAfterDebounceAndIsReplacedByTheResult() = runTest {
+        val response = CompletableDeferred<String>()
+        val events = mutableListOf<String?>()
+        val request = input("hello")
+        val controller = GemmaFloatingCoordinator(this, { response.await() }, {},
+            { _, result -> events += result }, publishProcessing = {
+                assertEquals(request, it)
+                events += "processing"
+            })
+        controller.update(request)
+        runCurrent(); advanceTimeBy(299); runCurrent()
+        assertEquals(listOf<String?>(null), events)
+        advanceTimeBy(1); runCurrent()
+        assertEquals(listOf(null, "processing"), events)
+        response.complete("こんにちは"); runCurrent()
+        assertEquals(listOf(null, "processing", "こんにちは"), events)
+        controller.destroy()
+    }
+
+    @Test fun processingClearsOnFailureCancellationAndForegroundSuspension() = runTest {
+        val responses = List(3) { CompletableDeferred<String>() }
+        var calls = 0
+        val events = mutableListOf<String?>()
+        val controller = GemmaFloatingCoordinator(this, { responses[calls++].await() }, {},
+            { _, result -> events += result }, publishProcessing = { events += "processing" })
+        controller.update(input("first")); runCurrent(); advanceTimeBy(300); runCurrent()
+        assertEquals("processing", events.last())
+        responses[0].completeExceptionally(IllegalStateException("generation failed")); runCurrent()
+        assertNull(events.last())
+        controller.update(input("second")); runCurrent(); advanceTimeBy(300); runCurrent()
+        assertEquals("processing", events.last())
+        controller.suspendForForeground()
+        assertNull(events.last())
+        responses[1].complete("obsolete"); runCurrent()
+        assertNull(events.last())
+        controller.update(input("third")); runCurrent(); advanceTimeBy(300); runCurrent()
+        assertEquals("processing", events.last())
+        controller.update(null)
+        assertNull(events.last())
+        responses[2].complete("obsolete"); runCurrent()
+        assertNull(events.last())
+        controller.destroy()
+    }
+
     @Test fun rapidChangesDebounceToTheLatestInput() = runTest {
         val requests = mutableListOf<String>()
         val results = mutableListOf<String>()
