@@ -40,4 +40,5 @@
     <string name="action_delete_after_cursor_one">Delete one character after cursor (Delete)</string>
     <string name="voice_input">Voice Input</string>
     <string name="action_switch_romaji_english">Romaji / English Switch</string>
+    <string name="action_switch_to_hiragana_mode">Switch to Hiragana Mode</string>
 </resources>

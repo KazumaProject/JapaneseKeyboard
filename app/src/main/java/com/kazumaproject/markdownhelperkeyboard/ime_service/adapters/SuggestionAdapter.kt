@@ -132,7 +132,8 @@ internal fun createCandidateItemBackgroundDrawable(
 internal data class CandidateYomiPresentation(
     val isVisible: Boolean,
     val text: String,
-    val textSize: Float
+    val textSize: Float,
+    val annotations: List<CandidateRubyAnnotation>? = null,
 )
 
 /**
@@ -151,7 +152,8 @@ internal fun resolveCandidateYomiPresentation(
     showCandidateYomiForLiveConversion: Boolean,
     isFirstCandidate: Boolean,
     suggestion: Candidate,
-    readingTextSize: Float
+    readingTextSize: Float,
+    readingMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE,
 ): CandidateYomiPresentation {
     val yomi = suggestion.yomi
     val shouldShowYomi =
@@ -159,10 +161,18 @@ internal fun resolveCandidateYomiPresentation(
                 isFirstCandidate &&
                 !yomi.isNullOrBlank() &&
                 yomi != suggestion.string
+    val annotations = if (
+        shouldShowYomi && suggestion.type != 15.toByte() &&
+        readingMode == AppPreference.CANDIDATE_YOMI_MODE_RUBY
+    ) {
+        resolveCandidateRubyAnnotations(suggestion.string, yomi.orEmpty(), suggestion.conversionSegments)
+    } else null
+    val visible = shouldShowYomi && (annotations == null || annotations.isNotEmpty())
     return CandidateYomiPresentation(
-        isVisible = shouldShowYomi,
-        text = if (shouldShowYomi) yomi.orEmpty() else "",
-        textSize = readingTextSize
+        isVisible = visible,
+        text = if (!visible) "" else annotations?.joinToString(" ") { it.reading } ?: yomi.orEmpty(),
+        textSize = readingTextSize,
+        annotations = annotations,
     )
 }
 
@@ -394,6 +404,7 @@ class SuggestionAdapter internal constructor(
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
     private var candidateYomiTextSize: Float = AppPreference.DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE.toFloat()
+    private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
@@ -426,6 +437,7 @@ class SuggestionAdapter internal constructor(
         activeShortcutTypes = source.activeShortcutTypes
         incognitoIconDrawable = source.incognitoIconDrawable
         candidateYomiTextSize = source.candidateYomiTextSize
+        candidateYomiMode = source.candidateYomiMode
         candidateTextSize = source.candidateTextSize
         candidateTextColor = source.candidateTextColor
         candidateDividerColor = source.candidateDividerColor
@@ -498,6 +510,7 @@ class SuggestionAdapter internal constructor(
 
     fun release() {
         attachedRecyclerViews.keys.toList().forEach { recyclerView ->
+            CandidateReadingViewport.release(recyclerView)
             detachInlineSuggestionViews(recyclerView)
             attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
             inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
@@ -1592,6 +1605,7 @@ class SuggestionAdapter internal constructor(
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        CandidateReadingViewport.release(recyclerView)
         detachInlineSuggestionViews(recyclerView)
         attachedRecyclerViews.remove(recyclerView)?.let(recyclerView::removeItemDecoration)
         inlineScrollListeners.remove(recyclerView)?.let(recyclerView::removeOnScrollListener)
@@ -2027,6 +2041,12 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setCandidateYomiMode(mode: String) {
+        if (candidateYomiMode == mode) return
+        candidateYomiMode = mode
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowCandidateYomiForLiveConversion(enabled: Boolean) {
         if (showCandidateYomiForLiveConversion == enabled) return
         showCandidateYomiForLiveConversion = enabled
@@ -2137,10 +2157,14 @@ class SuggestionAdapter internal constructor(
             showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
             isFirstCandidate = position == 0,
             suggestion = suggestion,
-            readingTextSize = candidateYomiTextSize
+            readingTextSize = candidateYomiTextSize,
+            readingMode = candidateYomiMode
         )
         holder.yomiText.isVisible = yomiPresentation.isVisible && !isFormula
         holder.yomiText.text = yomiPresentation.text
+        (holder.yomiText as CandidateReadingTextView).setRubyAnnotations(
+            yomiPresentation.annotations, paddingLength
+        )
         holder.yomiText.textSize = if (yomiPresentation.isVisible) {
             CandidateReadingSizeLimits.clamp(
                 holder.itemView.context, yomiPresentation.textSize)
@@ -2255,6 +2279,11 @@ class SuggestionAdapter internal constructor(
             GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() -> "[訳]"
             GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte() -> "[AI]"
             else -> ""
+        }
+        val categoryLabel = classifiedCandidateLabel(holder.itemView.context, suggestion.dictionaryCategories)
+        if (categoryLabel.isNotEmpty()) {
+            holder.typeText.text = android.text.SpannableStringBuilder(holder.typeText.text)
+                .append(if (holder.typeText.text.isEmpty()) "" else " ").append(categoryLabel)
         }
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {

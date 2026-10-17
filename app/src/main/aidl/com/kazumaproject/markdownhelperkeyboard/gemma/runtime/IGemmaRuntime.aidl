@@ -9,4 +9,5 @@ oneway interface IGemmaRuntime {
         IGemmaRuntimeCallback callback);
     void cancel(long requestId);
     void closeEngine();
+    void generatePreview(long requestId, String prompt, String instruction, IGemmaRuntimeCallback callback);
 }

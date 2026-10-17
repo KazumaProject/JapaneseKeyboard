@@ -236,6 +236,7 @@ fun ShortcutType.summary(context: android.content.Context): String =
         ShortcutType.FLOATING_LEARN_DICTIONARY,
         ShortcutType.FLOATING_USER_DICTIONARY,
         ShortcutType.FLOATING_USER_TEMPLATE -> context.getString(R.string.floating_dictionary_summary)
+        ShortcutType.FLOATING_CLIPBOARD -> context.getString(R.string.floating_clipboard_summary)
         ShortcutType.TEXT_MACRO -> context.getString(R.string.shortcut_toolbar_summary_text_macro)
         ShortcutType.KEYBOARD_PICKER -> context.getString(R.string.shortcut_toolbar_summary_keyboard_picker)
         ShortcutType.KEYBOARD_LAYOUT_EDIT -> context.getString(R.string.shortcut_toolbar_summary_keyboard_layout_edit)
@@ -251,6 +252,7 @@ fun ShortcutType.summary(context: android.content.Context): String =
         ShortcutType.GEMMA_IMAGE -> context.getString(R.string.shortcut_toolbar_summary_gemma_image)
         ShortcutType.GEMMA_AUDIO -> context.getString(R.string.shortcut_toolbar_summary_gemma_audio)
         ShortcutType.GEMMA_HANDWRITING -> context.getString(R.string.shortcut_toolbar_summary_gemma_handwriting)
+        ShortcutType.FLOATING_CURSOR -> context.getString(R.string.floating_cursor_summary)
         ShortcutType.CLIP_BOARD -> context.getString(R.string.shortcut_toolbar_summary_clip_board)
     }
 

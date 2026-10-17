@@ -77,4 +77,5 @@ internal class ComposingTextArbiter(
     }
 
     fun isPreviewVisible(): Boolean = previewVisible
+    fun hasCanonicalText(): Boolean = (canonicalState as? CanonicalComposingState.Text)?.value?.isNotEmpty() == true
 }

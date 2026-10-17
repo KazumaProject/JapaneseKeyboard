@@ -1,0 +1,94 @@
+{
+  "mozc": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/MOZC-LICENSE",
+    "sha256": "44cdd923b91ea9199293abecc2762c70c87dbf1e581c027a94c416368d1a648c"
+  },
+  "cmudict": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/CMUDICT-LICENSE",
+    "sha256": "bd4ce8e44170a5f9f481310ca85c51de3c4f851a65e679b40e603b143bd3542a"
+  },
+  "ipadic-copying": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/IPADIC-COPYING",
+    "sha256": "81266cd4d1808e259b468c7488d658d733c089d4c346a48b9876fa2504a23b46"
+  },
+  "release-data": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/LICENSE-DATA.md",
+    "sha256": "215f1d23fc62e46d9655770b551a2bf07f817e40f4a5494f516c15a0c56428e5"
+  },
+  "ipadic": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/IPADIC-NOTICE",
+    "sha256": "8f76551acd5ba10116d61a2fea60bcc484906c836e86b7846cb175d1492a086b"
+  },
+  "jmdict": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/JMDICT-LICENSE.html",
+    "sha256": "62e34e91ccce7d591eb497a8149d34218e697805948ea4becb2118beec9c4114"
+  },
+  "data": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/LICENSE-DATA.md",
+    "sha256": "4c8d597ddbd85e7b83a46acc6cde36820286d998804202a3bce57396cd4ae6e9"
+  },
+  "corpus": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/third-party/NOTICE.md",
+    "sha256": "db0bede533cd18da1353eaf3ddfb3cf8e0555c443103fc08ad2bc828a1edea83"
+  },
+  "converter": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/resources/THIRD-PARTY-NOTICES.md",
+    "sha256": "6126e227b354b90fd1df230025dca3bde5b3850633ace2544b99cf13eff2f904"
+  },
+  "cc-by-sa-4": {
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
+    "sha256": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5"
+  },
+  "apache-2": {
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "person": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-personal-names/b557dd4c1548cc7c2164d5f8b14170c40cbb6f81/LICENSE",
+    "sha256": "f9f8c65f68879ceb7813ec8e021f57a65bed070a0b86b9e9cb8dae0dc46d4caf"
+  },
+  "place": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-place-names/98cf8e9d7731695a52e5bc72ed633933c71d1913/LICENSE",
+    "sha256": "f024e288aee8d111d7ec3121689f92f069b9d830af3bc4e38e1e3298e648ef0c"
+  },
+  "wiki": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-jawiki/57af6adefedab262c295c4bfff71a89902cbe05c/LICENSE",
+    "sha256": "bb83687cd5a99c452a9757aba90dfe1df9d43e3ea0c488ad188ff33161e95640"
+  },
+  "neologd": {
+    "url": "https://raw.githubusercontent.com/neologd/mecab-ipadic-neologd/abc61e33d8be3d0ead202e6b1df064c72d5ccf11/COPYING",
+    "sha256": "428ad012b9b7baf3af430fb730998791da30458e4f88fbcd8ef5ac75a0eed81e"
+  },
+  "merge-ut": {
+    "url": "https://raw.githubusercontent.com/utuhiro78/merge-ut-dictionaries/6239884099ddc0c4d5bb1453b20441121d20593e/LICENSE",
+    "sha256": "989ebd78ae2f428f78dd16eec2a65b2665ad8910812c5788f749efa35e49db6a"
+  },
+  "cc-by-4.0": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/CC-BY-4.0.txt",
+    "sha256": "ae65546dff434288761879ba1cf7868fbaee47d62c92bdd795e31830647507f8"
+  },
+  "cc-by-sa-2.1-jp": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/CC-BY-SA-2.1-JP.txt",
+    "sha256": "511dc5b2375651354fc44c3d5a51297ba7c4a6a68f8c9a537db84342ca439423"
+  },
+  "hyakuyaku": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/hyakuyaku.txt",
+    "sha256": "bb7dc9bb4c8cf5d8a008e367efaf87be158fad8881b8f854e9259718048496a4"
+  },
+  "kampo_core": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/kampo_core.txt",
+    "sha256": "7ca7047eedec76c3a98913dc932487aee1b89c2604842db3f5e961e4c85c4496"
+  },
+  "kampo_herb": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/kampo_herb.txt",
+    "sha256": "7ca7047eedec76c3a98913dc932487aee1b89c2604842db3f5e961e4c85c4496"
+  },
+  "manbyo": {
+    "url": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/d45a1aa16bf3f6fe43c3d4e62aa5100290c30746/src/main/specialist/notices/manbyo.txt",
+    "sha256": "2ffeab722ef92e8fa0feb0df08b273e4c7522aa948052ce03a269a7475992934"
+  },
+  "distribution-licenses": {
+    "url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/v1.7.263-pre.5/DICTIONARY-LICENSES.txt",
+    "sha256": "7dababd4e8f080dd133216e64c7f64bca3052287dc0e47155067ee0732962a6a"
+  }
+}

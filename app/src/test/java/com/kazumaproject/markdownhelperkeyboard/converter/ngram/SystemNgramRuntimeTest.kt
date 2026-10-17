@@ -49,17 +49,20 @@ class SystemNgramRuntimeTest {
     }
 
     @Test
-    fun loadsVersion3AndVersion4AssetsAsOneDictionary() {
+    fun loadsVersion3Version4AndStandaloneAssetsAsOneDictionary() {
         val ngram = loadAsset("ngram/system_ngram.dat")
         val unigram = loadAsset("ngram/system_ngram_unigram.dat")
 
+        val standalone = context.assets.open("ngram/system_ngram_standalone_unigram.dat").use {
+            PackedSystemNgramDictionary.readStandalone(it.readBytes())
+        }
         SystemNgramRuntime.initialize(context, true)
 
         val loaded = SystemNgramRuntime.loadedDictionary()
         assertTrue(ngram.ruleCount > 0)
         assertTrue(unigram.ruleCount > 0)
-        assertEquals(ngram.ruleCount + unigram.ruleCount, loaded.ruleCount)
-        assertEquals(ngram.storageBytes + unigram.storageBytes, loaded.storageBytes)
+        assertEquals(ngram.ruleCount + unigram.ruleCount + standalone.ruleCount, loaded.ruleCount)
+        assertEquals(ngram.storageBytes + unigram.storageBytes + standalone.storageBytes, loaded.storageBytes)
         assertTrue(loaded.matchesSingleNode(node("カワボ")))
     }
 

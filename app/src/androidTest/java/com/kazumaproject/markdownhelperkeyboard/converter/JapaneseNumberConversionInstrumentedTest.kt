@@ -142,11 +142,7 @@ class JapaneseNumberConversionInstrumentedTest {
     ): List<Candidate> = getCandidatesOriginal(
         input = input,
         n = 8,
-        mozcUtPersonName = false,
-        mozcUTPlaces = false,
-        mozcUTWiki = false,
-        mozcUTNeologd = false,
-        mozcUTWeb = false,
+        enabledDictionaryCategories = emptySet(),
         userDictionaryRepository = repository,
         learnRepository = null,
         isOmissionSearchEnable = false,

@@ -41,6 +41,15 @@ class ShortcutRepository @Inject constructor(
             shortcuts.ifEmpty { fallbackShortcuts }
         }
 
+    suspend fun getShortcutsForBackup(): List<ShortcutType> = withContext(Dispatchers.IO) {
+        val items = shortcutDao.getAllShortcuts()
+        // Before the IME's first launch, the empty DB represents the default toolbar.
+        if (items.isEmpty()) defaultShortcuts else items
+            .mapNotNull { ShortcutType.fromId(it.typeId) }
+            .distinct()
+            .ifEmpty { fallbackShortcuts }
+    }
+
     /**
      * ショートカットのリストを保存（更新）します。
      * リストの順番がそのまま sortOrder として保存されます。
