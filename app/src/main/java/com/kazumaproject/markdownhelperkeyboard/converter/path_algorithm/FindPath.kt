@@ -35,6 +35,38 @@ class FindPath(
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
 ) {
 
+    internal data class ScoredWholeInputCandidate(
+        val candidate: Candidate,
+        val systemNgramMatched: Boolean = candidate.standaloneUnigramMatched,
+    )
+
+    /** Scores BOS -> word -> EOS without enumerating or pruning alternative paths. */
+    internal fun scoreWholeInputCandidate(
+        input: String,
+        candidate: Candidate,
+        connectionMatrix: ConnectionMatrix.CostTable,
+        bunsetsu: Boolean,
+    ): ScoredWholeInputCandidate {
+        val node = Node(
+            l = requireNotNull(candidate.leftId), r = requireNotNull(candidate.rightId),
+            score = candidate.score, f = 0, tango = candidate.string,
+            len = input.length.toShort(), yomiUsed = input, sPos = 0,
+            dictionaryCategories = candidate.dictionaryCategories,
+        )
+        if (bunsetsu) mozcSegmenterProvider()?.let {
+            applyMozcPrefixSuffixPenaltyToNode(node, input.length, it, null)
+        }
+        val dictionary = systemNgramDictionaryProvider()
+        val standalone = dictionary.matchesStandaloneNode(node, input)
+        // NgramRuleScorer contributes zero on both edges: prev=BOS or current=EOS.
+        val score = connectionMatrix.cost(0, node.l.toInt()) + node.adjustedScore +
+            connectionMatrix.cost(node.r.toInt(), 0)
+        return ScoredWholeInputCandidate(
+            candidate.copy(score = score, standaloneUnigramMatched = standalone),
+            standalone || (bunsetsu && dictionary.matchesSingleNode(node)),
+        )
+    }
+
     internal data class ForwardDpCache(
         val inputLength: Int,
         val conversionSignature: Int,
@@ -2205,40 +2237,47 @@ class FindPath(
         segmenter: MozcSegmenter,
         trace: MutableList<PenaltyTrace>?,
     ) {
-        nodes.forEach nodeLoop@{ node ->
-            if (node.mozcNodeType != MozcNodeType.NOR) {
-                node.adjustedScore = node.score
-                return@nodeLoop
-            }
+        nodes.forEach { node -> applyMozcPrefixSuffixPenaltyToNode(node, length, segmenter, trace) }
+    }
 
-            val prefixPenalty = when {
-                node.sPos != 0 -> 0
-                ExactInputPenaltyPolicy.shouldZeroPrefixPenalty(node, length) -> 0
-                else -> segmenter.getPrefixPenalty(node.l.toInt())
-            }
-            val suffixPenalty = if (node.sPos + node.len.toInt() == length) {
-                segmenter.getSuffixPenalty(node.r.toInt())
-            } else {
-                0
-            }
+    private fun applyMozcPrefixSuffixPenaltyToNode(
+        node: Node,
+        length: Int,
+        segmenter: MozcSegmenter,
+        trace: MutableList<PenaltyTrace>?,
+    ) {
+        if (node.mozcNodeType != MozcNodeType.NOR) {
+            node.adjustedScore = node.score
+            return
+        }
 
-            node.adjustedScore = node.score + prefixPenalty + suffixPenalty
-            if (prefixPenalty != 0 || suffixPenalty != 0) {
-                trace?.add(
-                    PenaltyTrace(
-                        tango = node.tango,
-                        yomiUsed = node.yomiUsed,
-                        startPos = node.sPos,
-                        endPos = node.sPos + node.len.toInt(),
-                        leftId = node.l.toInt(),
-                        rightId = node.r.toInt(),
-                        baseCost = node.score,
-                        prefixPenalty = prefixPenalty,
-                        suffixPenalty = suffixPenalty,
-                        adjustedCost = node.adjustedScore,
-                    ),
-                )
-            }
+        val prefixPenalty = when {
+            node.sPos != 0 -> 0
+            ExactInputPenaltyPolicy.shouldZeroPrefixPenalty(node, length) -> 0
+            else -> segmenter.getPrefixPenalty(node.l.toInt())
+        }
+        val suffixPenalty = if (node.sPos + node.len.toInt() == length) {
+            segmenter.getSuffixPenalty(node.r.toInt())
+        } else {
+            0
+        }
+
+        node.adjustedScore = node.score + prefixPenalty + suffixPenalty
+        if (prefixPenalty != 0 || suffixPenalty != 0) {
+            trace?.add(
+                PenaltyTrace(
+                    tango = node.tango,
+                    yomiUsed = node.yomiUsed,
+                    startPos = node.sPos,
+                    endPos = node.sPos + node.len.toInt(),
+                    leftId = node.l.toInt(),
+                    rightId = node.r.toInt(),
+                    baseCost = node.score,
+                    prefixPenalty = prefixPenalty,
+                    suffixPenalty = suffixPenalty,
+                    adjustedCost = node.adjustedScore,
+                ),
+            )
         }
     }
 
