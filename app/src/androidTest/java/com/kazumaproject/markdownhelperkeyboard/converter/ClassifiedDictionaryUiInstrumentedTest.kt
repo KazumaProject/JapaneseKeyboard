@@ -221,24 +221,56 @@ class ClassifiedDictionaryUiInstrumentedTest {
         verifyRomajiLabelsAndCommit(learnedPrediction = true)
     }
 
-    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null) {
+    @Test fun all30ExactMatchesAreVisibleAndCommitThroughTheRealIme() {
+        verifyRomajiLabelsAndCommit(fullyMatched = true)
+    }
+
+    private fun revealCandidate(surface: String) {
+        await("Candidate $surface is missing from the displayed adapter") {
+            views().filterIsInstance<androidx.recyclerview.widget.RecyclerView>().any { recycler ->
+                val adapter = recycler.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+                if (!recycler.isShown || adapter == null) return@any false
+                val differ = adapter.javaClass.getDeclaredField("differ").apply { isAccessible = true }
+                    .get(adapter) as androidx.recyclerview.widget.AsyncListDiffer<*>
+                val index = differ.currentList.indexOfFirst { item ->
+                    if (item == null || item.javaClass.simpleName != "CandidateItem") false else {
+                        val candidate = item.javaClass.getDeclaredField("candidate").apply { isAccessible = true }
+                            .get(item) as com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+                        candidate.string == surface
+                    }
+                }
+                if (index < 0) false else { recycler.scrollToPosition(index); true }
+            }
+        }
+        ins.waitForIdleSync()
+    }
+
+    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null, fullyMatched: Boolean = false) {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         check(context.packageName.contains(".classifiedprobe")) { "Use the isolated classifiedprobe APK" }
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
-        val testedCategories = listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
+        val testedCategories = if (fullyMatched) ClassifiedDictionaries.all.map { it.category } else
+            listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
         val previous = testedCategories.associateWith { store.isOptionalBundledEnabled(it) }
         val oldIme = shell("settings get secure default_input_method")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
-        val learningKeys = listOf("learn_dictionary_preference", "enable_prediction_search_learn_dictionary_preference")
+        val learningKeys = listOf("learn_dictionary_preference", "enable_prediction_search_learn_dictionary_preference", "japanese_prediction_enable_preference")
         val previousLearning = learningKeys.associateWith { key ->
             if (prefs.contains(key)) prefs.getBoolean(key, false) else null
+        }
+        val previousSearch = listOf("n_best_preference", "conversion_beam_width_preference").associateWith { key ->
+            if (prefs.contains(key)) prefs.getInt(key, 0) else null
         }
         var repository: LearnRepository? = null
         var previousLearned: LearnEntity? = null
         var seeded = false
         try {
+            if (fullyMatched) prefs.edit().putBoolean("learn_dictionary_preference", false)
+                .putBoolean("enable_prediction_search_learn_dictionary_preference", false)
+                .putBoolean("japanese_prediction_enable_preference", false)
+                .putInt("n_best_preference", 2).putInt("conversion_beam_width_preference", 1).commit()
             if (learnedPrediction != null) {
                 prefs.edit().putBoolean("learn_dictionary_preference", true)
                     .putBoolean("enable_prediction_search_learn_dictionary_preference", learnedPrediction).commit()
@@ -281,7 +313,9 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     if (!learnedPrediction) repository!!.upsertLearnedData(entry)
                 }
             }
-            for ((input, expectedLabel, expectedSurface) in listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))) {
+            val samples = if (fullyMatched) listOf(Triple("syou", "人名", "SHO"), Triple("syou", "人名", "紫耀")) else
+                listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))
+            for ((input, expectedLabel, expectedSurface) in samples) {
             main { activity.editText.setText("") }
             SystemClock.sleep(300)
             var lastKeyUpMs = 0L
@@ -305,6 +339,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     SystemClock.sleep(40)
                 }
             }
+            if (fullyMatched) revealCandidate(expectedSurface)
             lateinit var label: TextView
             try { await("Category label $expectedLabel not shown for $input") { views().filterIsInstance<TextView>().firstOrNull { it.isShown && it.id == R.id.suggestion_item_type_text_view && it.text.toString().contains(expectedLabel) && (it.parent as View).findViewById<TextView>(R.id.suggestion_item_text_view).text.toString().trim() == expectedSurface }?.let { label = it; true } ?: false } } catch (failure: Throwable) {
                 screenshot("classified-ime-failure.png")
@@ -347,6 +382,9 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 previousLearned?.let { repository!!.insertLearnedData(it) }
             }
             prefs.edit().also { editor ->
+                previousSearch.forEach { (key, value) ->
+                    if (value == null) editor.remove(key) else editor.putInt(key, value)
+                }
                 previousLearning.forEach { (key, value) ->
                     if (value == null) editor.remove(key) else editor.putBoolean(key, value)
                 }
