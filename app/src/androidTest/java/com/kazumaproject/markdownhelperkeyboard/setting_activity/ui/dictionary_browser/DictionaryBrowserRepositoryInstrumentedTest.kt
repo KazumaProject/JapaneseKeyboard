@@ -55,12 +55,6 @@ class DictionaryBrowserRepositoryInstrumentedTest {
                     val surface = sample.getString("surface")
                     assertTrue(repo.open(spec.category, reading).nextPage().rows.contains(DictionaryBrowserRow(reading, surface)))
                     assertFalse(repo.version(spec.category).enabled)
-                    // Verify repairs required by this release without pinning a retired source row.
-                    fixture.reader.loadClassifiedSurfaceOverrides(spec.category).forEach { (key, repairedSurface) ->
-                        val repairedReading = key.split('\t')[1]
-                        assertTrue(repo.open(spec.category, repairedReading).nextPage().rows
-                            .contains(DictionaryBrowserRow(repairedReading, repairedSurface)))
-                    }
                 }
             }
             val englishReading = repo.open(DictionaryCategory.ENGLISH_READING, "ＦＥＴＣＨ").nextPage().rows
@@ -118,7 +112,6 @@ class DictionaryBrowserRepositoryInstrumentedTest {
                 val tokens = reader.loadTokenIndex(tokenKey, token)
                 val data = com.kazumaproject.markdownhelperkeyboard.converter.engine.TripleDictionaryData(
                     tango, yomi, token, lbs, leaves, tokens, reader.loadTangoLbsIndex(tangoKey, tango),
-                    reader.loadClassifiedSurfaceOverrides(spec.category),
                 )
                 val expected = java.security.MessageDigest.getInstance("SHA-256")
                 var expectedPairs = 0
@@ -126,8 +119,8 @@ class DictionaryBrowserRepositoryInstrumentedTest {
                 // Existing callback traversal is independent of the new resumable cursor.
                 yomi.forEachPredictiveMatch("", Int.MAX_VALUE, lbs, leaves) { reading, term ->
                     val words = linkedSetOf<String>()
-                    token.forEachDictionaryByYomiTermId(term, tokens) { pos, cost, node ->
-                        words.add(data.surfaceFor(node, reading, pos.toInt(), cost))
+                    token.forEachDictionaryByYomiTermId(term, tokens) { _, _, node ->
+                        words.add(data.surfaceFor(node, reading))
                         rawRecords++
                     }
                     for (word in words) {
