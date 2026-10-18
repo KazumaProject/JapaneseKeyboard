@@ -2,7 +2,7 @@
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <!-- Column 0 (function keys) -->
+    <!-- Five function rows, with both cursors sharing the second row. -->
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_previous"
         style="?android:attr/borderlessButtonStyle"
@@ -16,7 +16,7 @@
         android:elevation="@dimen/key_elevation"
         android:scaleType="centerInside"
         android:src="@drawable/undo_24px"
-        app:layout_constraintBottom_toTopOf="@+id/key_left_cursor"
+        app:layout_constraintBottom_toTopOf="@+id/cursor_keys_container"
         app:layout_constraintEnd_toStartOf="@+id/key_1"
         app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintHorizontal_weight="1"
@@ -25,49 +25,60 @@
         app:layout_constraintVertical_weight="1"
         app:tint="@color/keyboard_icon_color" />
 
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/key_left_cursor"
-        style="?android:attr/borderlessButtonStyle"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cursor_keys_container"
         android:layout_width="@dimen/gojuon_side_key_portrait_width"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="4dp"
         android:layout_marginBottom="4dp"
-        android:background="@drawable/ten_keys_side_bg"
-        android:contentDescription="@string/keyboard_symbols"
-        android:elevation="@dimen/key_elevation"
-        android:scaleType="centerInside"
-        android:src="@drawable/baseline_arrow_left_24"
-        app:layout_constraintBottom_toTopOf="@+id/key_right_cursor"
+        app:layout_constraintBottom_toTopOf="@+id/key_kigou"
         app:layout_constraintEnd_toStartOf="@+id/key_2"
-        app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/key_previous"
-        app:layout_constraintVertical_weight="1"
-        app:tint="@color/keyboard_icon_color" />
+        app:layout_constraintVertical_weight="1">
 
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/key_right_cursor"
-        style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/gojuon_side_key_portrait_width"
-        android:layout_height="0dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="4dp"
-        android:layout_marginBottom="4dp"
-        android:background="@drawable/ten_keys_side_bg"
-        android:contentDescription="@string/keyboard_symbols"
-        android:elevation="@dimen/key_elevation"
-        android:scaleType="centerInside"
-        android:src="@drawable/baseline_arrow_right_24"
-        app:layout_constraintBottom_toTopOf="@+id/key_kigou"
-        app:layout_constraintEnd_toStartOf="@+id/key_3"
-        app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/key_left_cursor"
-        app:layout_constraintVertical_weight="1"
-        app:tint="@color/keyboard_icon_color" />
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/key_left_cursor"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/ten_keys_side_bg"
+            android:contentDescription="@string/cursor_left"
+            android:elevation="@dimen/key_elevation"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/baseline_arrow_left_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/key_right_cursor"
+            app:layout_constraintHorizontal_weight="1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/keyboard_icon_color" />
 
-    <!-- Symbol key moved down -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/key_right_cursor"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="2dp"
+            android:background="@drawable/ten_keys_side_bg"
+            android:contentDescription="@string/cursor_right"
+            android:elevation="@dimen/key_elevation"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/baseline_arrow_right_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_weight="1"
+            app:layout_constraintStart_toEndOf="@+id/key_left_cursor"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/keyboard_icon_color" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_kigou"
         style="?android:attr/borderlessButtonStyle"
@@ -82,10 +93,9 @@
         android:scaleType="centerInside"
         android:src="@drawable/symbol"
         app:layout_constraintBottom_toTopOf="@+id/key_switch_key_mode"
-        app:layout_constraintEnd_toStartOf="@+id/key_4"
-        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintEnd_toStartOf="@+id/key_3"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/key_right_cursor"
+        app:layout_constraintTop_toBottomOf="@+id/cursor_keys_container"
         app:layout_constraintVertical_weight="1"
         app:tint="@color/keyboard_icon_color" />
 
@@ -95,19 +105,38 @@
         android:layout_width="@dimen/gojuon_side_key_portrait_width"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
+        android:layout_marginEnd="4dp"
         android:layout_marginBottom="4dp"
         android:background="@drawable/round_key_bg_material"
         android:contentDescription="@string/keyboard_japanese"
         android:elevation="@dimen/key_elevation"
         android:scaleType="centerInside"
         android:src="@drawable/input_mode_japanese_select_gojuon"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/key_5"
-        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintBottom_toTopOf="@+id/key_ime_switch"
+        app:layout_constraintEnd_toStartOf="@+id/key_4"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/key_kigou"
         app:layout_constraintVertical_weight="1"
         app:tint="@color/black" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/key_ime_switch"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="@dimen/gojuon_side_key_portrait_width"
+        android:layout_height="0dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/ten_keys_side_bg"
+        android:contentDescription="@string/keyboard_switch"
+        android:elevation="@dimen/key_elevation"
+        android:scaleType="centerInside"
+        android:src="@drawable/language_24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/key_5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/key_switch_key_mode"
+        app:layout_constraintVertical_weight="1"
+        app:tint="@color/keyboard_icon_color" />
 
     <!-- Column 1: key_1–key_5 -->
 
@@ -150,7 +179,7 @@
         app:layout_constraintBottom_toTopOf="@+id/key_3"
         app:layout_constraintEnd_toStartOf="@+id/key_7"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_left_cursor"
+        app:layout_constraintStart_toEndOf="@+id/cursor_keys_container"
         app:layout_constraintTop_toBottomOf="@+id/key_1"
         app:layout_constraintVertical_weight="1" />
 
@@ -170,7 +199,7 @@
         app:layout_constraintBottom_toTopOf="@+id/key_4"
         app:layout_constraintEnd_toStartOf="@+id/key_8"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_right_cursor"
+        app:layout_constraintStart_toEndOf="@+id/key_kigou"
         app:layout_constraintTop_toBottomOf="@+id/key_2"
         app:layout_constraintVertical_weight="1" />
 
@@ -190,7 +219,7 @@
         app:layout_constraintBottom_toTopOf="@+id/key_5"
         app:layout_constraintEnd_toStartOf="@+id/key_9"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_kigou"
+        app:layout_constraintStart_toEndOf="@+id/key_switch_key_mode"
         app:layout_constraintTop_toBottomOf="@+id/key_3"
         app:layout_constraintVertical_weight="1" />
 
@@ -212,7 +241,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_10"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_switch_key_mode"
+        app:layout_constraintStart_toEndOf="@+id/key_ime_switch"
         app:layout_constraintTop_toBottomOf="@+id/key_4"
         app:layout_constraintVertical_weight="1" />
 

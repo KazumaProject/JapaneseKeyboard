@@ -1934,4 +1934,15 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="dictionary_browser_empty">該当する単語がありません。</string>
     <string name="dictionary_browser_error">辞書を読み込めませんでした。辞書ファイルを確認して再試行してください。</string>
     <string name="dictionary_browser_retry">再試行</string>
+    <string name="gojuon_settings_category">50音キーボード</string>
+    <string name="gojuon_keyboard_size_title">50音キーボード・キーと文字のサイズ</string>
+    <string name="gojuon_keyboard_size_summary">キーの幅・高さと、かな／英字／数字ごとの文字サイズを調整します。</string>
+    <string name="gojuon_sizing_default">未変更のモードには、標準の18spを使用します。</string>
+    <string name="gojuon_sizing_letters_help">このモードのキーに表示する文字・記号の大きさです。</string>
+    <string name="gojuon_settings_tab">50音</string>
+    <string name="gojuon_sizing_normal">通常キー・全モード共通</string>
+    <string name="gojuon_sizing_special">特殊キー・全モード共通</string>
+    <string name="gojuon_sizing_special_help">カーソル、削除、IME切替、小文字、シフト、元に戻す、全角切替などのキーです。アイコンと文字のサイズを個別に調整できます。</string>
+    <string name="gojuon_sizing_icon">特殊キーのアイコン</string>
+    <string name="gojuon_sizing_special_text">特殊キーの文字</string>
 </resources>
