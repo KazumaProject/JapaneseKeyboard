@@ -143,8 +143,12 @@ class MorseSettingsDeviceTest {
                         await("reordered control") { MorsePreferences(context).controlLayout().rows.first().first() == MorseControl.DELETE }
                         click(R.string.morse_row_down)
                         await("two rows") { MorsePreferences(context).controlLayout().rows.size == 2 }
-                        click(R.string.morse_controls_above)
-                        await("controls above paddles") { MorsePreferences(context).controlLayout().abovePads }
+                        val placement = nodes().single { it.isVisibleToUser && it.text?.toString()?.startsWith(context.getString(R.string.morse_control_placement_value, "")) == true }
+                        assertTrue(placement.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                        val bothSides = context.resources.getStringArray(R.array.morse_control_placements)[4]
+                        await("placement choices") { nodes().any { it.text?.toString() == bothSides } }
+                        assertTrue(nodes().single { it.text?.toString() == bothSides }.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                        await("controls around paddles") { MorsePreferences(context).controlLayout().placement == com.kazumaproject.morse_keyboard.MorseControlPlacement.BOTH_SIDES }
                         click(R.string.morse_add_key)
                         click(com.kazumaproject.morse_keyboard.R.string.morse_space)
                         await("space key added") { MorseControl.SPACE in MorsePreferences(context).controlLayout().rows.flatten() }

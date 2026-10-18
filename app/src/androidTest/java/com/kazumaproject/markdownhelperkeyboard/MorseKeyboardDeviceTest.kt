@@ -13,6 +13,7 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.BaseInputConnection
+import android.view.inputmethod.InputMethodManager
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences
 import com.kazumaproject.morse_keyboard.MorsePresets
 import com.kazumaproject.morse_keyboard.MorseControl
 import com.kazumaproject.morse_keyboard.MorseControlLayout
+import com.kazumaproject.morse_keyboard.MorseControlPlacement
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -91,6 +93,21 @@ class MorseKeyboardDeviceTest {
     }
     private fun text(host: ActivityScenario<FastInputHostActivity>): String {
         var text = ""; host.onActivity { text = it.editText.text.toString() }; return text
+    }
+    private fun reconnectFocusedEditor(host: ActivityScenario<FastInputHostActivity>, padLabel: String) {
+        key(padLabel)
+        await("editor owns window focus and input connection") {
+            var connected = false
+            host.onActivity { connected = it.editText.hasWindowFocus() &&
+                it.getSystemService(InputMethodManager::class.java).isActive(it.editText) }
+            connected
+        }
+        host.onActivity { it.restartEditorInput(true) }
+        ins.waitForIdleSync()
+        key(padLabel)
+        // The focus callback also restarts input asynchronously. Let that session handover finish
+        // before sending a signal, since onStartInput intentionally clears the previous buffer.
+        SystemClock.sleep(250)
     }
     private fun composing(host: ActivityScenario<FastInputHostActivity>): Boolean {
         var composing = false
@@ -170,6 +187,15 @@ class MorseKeyboardDeviceTest {
                         tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_small), slot))
                         await("small kana") { text(host) == "がぱゃ" && composing(host) }
                     }
+                    // Invalid signals change Enter into Clear without committing the Japanese reading.
+                    val beforeClear = text(host)
+                    repeat(8) { tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))) }
+                    key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_clear_signal))
+                    if (presentation == "normal") screenshot("invalid-signal-clear")
+                    tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_clear_signal)))
+                    assertEquals(beforeClear, text(host))
+                    assertTrue(composing(host))
+                    key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_enter))
                     screenshot("$presentation-wabun")
                     if (presentation == "normal") {
                         host.onActivity { it.restartEditorInput(true) }
@@ -187,6 +213,36 @@ class MorseKeyboardDeviceTest {
                     }
                 }
             }
+            prefs.edit().putString("keyboard_order_preference", "[\"MORSE\"]")
+                .putBoolean("keyboard_floating_preference", false).putString("morse_selected_map", MorsePresets.WABUN)
+                .putString("morse_style", "TAP").putBoolean("morse_auto_boundary", false).commit()
+            for (placement in listOf(MorseControlPlacement.LEFT, MorseControlPlacement.RIGHT, MorseControlPlacement.BOTH_SIDES)) {
+                MorsePreferences(context).saveControlLayout(MorseControlLayout(placement = placement))
+                ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
+                    reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+                    signal(".")
+                    await("$placement editor is connected") { text(host) == "へ" && composing(host) }
+                    tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_delete)))
+                    await("clear connection probe") { text(host).isEmpty() }
+                    val dot = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))::getBoundsInScreen)
+                    val dash = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dash))::getBoundsInScreen)
+                    val divide = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_boundary))::getBoundsInScreen)
+                    val keyboard = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_keyboard))::getBoundsInScreen)
+                    if (placement != MorseControlPlacement.RIGHT) assertTrue(divide.right <= dot.left)
+                    if (placement != MorseControlPlacement.LEFT) assertTrue(keyboard.left >= dash.right)
+                    signal(".-..")
+                    await("$placement accepts input") { text(host) == "か" && composing(host) }
+                    screenshot("controls-${placement.name.lowercase()}")
+                    // The same repeat deletion path handles the signal buffer and composing reading.
+                    repeat(3) { tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))) }
+                    tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_delete)), 1000)
+                    await("held deletion clears signals and reading") { text(host).isEmpty() }
+                    signal(".-")
+                    await("deletion stopped after release") { text(host) == "い" }
+                    SystemClock.sleep(200)
+                    assertEquals("い", text(host))
+                }
+            }
             MorsePreferences(context).saveControlLayout(MorseControlLayout(listOf(
                 listOf(MorseControl.SPACE, MorseControl.DELETE, MorseControl.ENTER),
                 listOf(MorseControl.BOUNDARY, MorseControl.CONVERT, MorseControl.KEYBOARD)), abovePads = true))
@@ -196,6 +252,7 @@ class MorseKeyboardDeviceTest {
                 .putString("morse_style", "PADDLE_A").putInt("morse_wpm", 5)
                 .putBoolean("morse_auto_boundary", false).putBoolean("morse_sound", true).commit()
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
                 val dot = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))::getBoundsInScreen)
                 val dash = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dash))::getBoundsInScreen)
                 val divide = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_boundary))::getBoundsInScreen)
@@ -227,6 +284,7 @@ class MorseKeyboardDeviceTest {
                 .putInt("morse_boundary_ms", 250).commit()
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
                 val label = context.getString(com.kazumaproject.morse_keyboard.R.string.morse_straight)
+                reconnectFocusedEditor(host, label)
                 tap(key(label), 25); await("straight short press") { text(host) == "へ" }
                 tap(key(label), 300); await("straight long press") { text(host) == "へむ" }
                 tap(key(label), 25)

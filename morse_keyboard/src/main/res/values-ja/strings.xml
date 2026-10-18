@@ -18,4 +18,5 @@
     <string name="morse_left">カーソル左</string>
     <string name="morse_right">カーソル右</string>
     <string name="morse_map">次のマップ</string>
+    <string name="morse_clear_signal">未登録の信号をクリア</string>
 </resources>

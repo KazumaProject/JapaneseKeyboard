@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.morse_keyboard.MorseControl
 import com.kazumaproject.morse_keyboard.MorseControlLayout
+import com.kazumaproject.morse_keyboard.MorseControlPlacement
 import com.kazumaproject.morse_keyboard.MorseKeyboardView
 
 /** Changes are saved immediately and use the same view as the running IME. */
@@ -23,7 +24,7 @@ class MorseLayoutFragment : Fragment() {
     private lateinit var selectedLabel: TextView
     private lateinit var remove: Button
     private lateinit var reverse: SwitchCompat
-    private lateinit var above: SwitchCompat
+    private lateinit var placement: Button
     private var selected = MorseControl.BOUNDARY
     private val store get() = MorsePreferences(requireContext())
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
@@ -71,12 +72,20 @@ class MorseLayoutFragment : Fragment() {
         reverse = SwitchCompat(context).apply { setText(R.string.morse_reverse_title); setOnCheckedChangeListener { _, checked ->
             store.saveReverse(checked); render()
         } }
-        above = SwitchCompat(context).apply { setText(R.string.morse_controls_above); setOnCheckedChangeListener { _, checked ->
-            val layout = store.controlLayout()
-            if (checked != layout.abovePads) save(layout.copy(abovePads = checked))
+        placement = Button(context).apply { isAllCaps = false; setOnClickListener {
+            val options = resources.getStringArray(R.array.morse_control_placements)
+            AlertDialog.Builder(context).setTitle(R.string.morse_control_placement)
+                .setSingleChoiceItems(options, store.controlLayout().placement.ordinal) { dialog, index ->
+                    val position = MorseControlPlacement.entries[index]
+                    val layout = store.controlLayout()
+                    val rows = if (position == MorseControlPlacement.BOTH_SIDES && layout.rows.size == 1)
+                        layout.rows.single().chunked((layout.rows.single().size + 1) / 2) else layout.rows
+                    dialog.dismiss()
+                    save(layout.copy(rows = rows, abovePads = position == MorseControlPlacement.TOP, placement = position))
+                }.show()
         } }
         body.addView(reverse, LinearLayout.LayoutParams(-1,dp(56)))
-        body.addView(above, LinearLayout.LayoutParams(-1,dp(56)))
+        body.addView(placement, LinearLayout.LayoutParams(-1,dp(56)))
         body.addView(Button(context).apply { setText(R.string.morse_reset_layout); setOnClickListener {
             selected = MorseControl.BOUNDARY
             store.saveReverse(false); save(MorseControlLayout())
@@ -110,12 +119,13 @@ class MorseLayoutFragment : Fragment() {
         val maps = store.enabledMaps()
         preview.configure(config, maps, store.selectedMapId)
         preview.highlightControl = selected
-        preview.layoutParams.height = dp(if(config.controlLayout.rows.size == 1) 240 else 288)
+        preview.layoutParams.height = dp(config.minimumHeightDp.coerceAtLeast(240))
         preview.requestLayout()
         selectedLabel.text = getString(R.string.morse_selected_key, label(selected))
         remove.isEnabled = !selected.required
         reverse.isChecked = config.reverse
-        above.isChecked = config.controlLayout.abovePads
+        placement.text = getString(R.string.morse_control_placement_value,
+            resources.getStringArray(R.array.morse_control_placements)[config.controlLayout.placement.ordinal])
     }
     private fun full() = Toast.makeText(requireContext(), R.string.morse_layout_full, Toast.LENGTH_SHORT).show()
     override fun onSaveInstanceState(outState: Bundle) { super.onSaveInstanceState(outState); outState.putString("selected", selected.name) }

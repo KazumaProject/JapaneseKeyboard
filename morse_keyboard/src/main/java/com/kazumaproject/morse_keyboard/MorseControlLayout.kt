@@ -25,10 +25,15 @@ enum class MorseControl(val command: MorseCommand? = null) {
     val required: Boolean get() = this == BOUNDARY || this == KEYBOARD
 }
 
+enum class MorseControlPlacement { BOTTOM, TOP, LEFT, RIGHT, BOTH_SIDES;
+    val isSide: Boolean get() = this == LEFT || this == RIGHT || this == BOTH_SIDES
+}
+
 data class MorseControlLayout(
     val rows: List<List<MorseControl>> = listOf(listOf(MorseControl.BOUNDARY, MorseControl.DELETE,
         MorseControl.CONVERT, MorseControl.ENTER, MorseControl.SMALL, MorseControl.KEYBOARD)),
     val abovePads: Boolean = false,
+    val placement: MorseControlPlacement = if (abovePads) MorseControlPlacement.TOP else MorseControlPlacement.BOTTOM,
 ) {
     fun validate() {
         require(rows.size in 1..2 && rows.all { it.size in 1..6 }) { "Use one or two rows of up to six keys" }
