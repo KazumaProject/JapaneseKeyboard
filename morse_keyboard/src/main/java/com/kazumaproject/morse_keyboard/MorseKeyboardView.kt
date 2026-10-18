@@ -18,6 +18,10 @@ import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.skin.SkinKeyRole
 
 class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: AttributeSet? = null) : LinearLayout(localizedMorseContext(baseContext), attrs) {
+    var longPressTimeoutMs: Long = 300L
+    var onDeleteRepeat: (Boolean) -> Unit = {}
+    var hasComposingText: Boolean = false
+        set(value) { field = value; updateControlIcons() }
     var protectNavigationBar: Boolean = false
     var inputAllowed: () -> Boolean = { true }
     var hasConfiguration: Boolean = false
@@ -46,6 +50,20 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
     private val dotPad = pad(MorseGlyphView.Glyph.DOT, R.string.morse_dot)
     private val dashPad = pad(MorseGlyphView.Glyph.DASH, R.string.morse_dash)
     private val controlContainer = LinearLayout(context).apply { orientation = VERTICAL }
+    private val body = LinearLayout(context).apply { gravity = Gravity.CENTER }
+    private val controlGroups = mutableListOf<LinearLayout>()
+    private var deleteHeld = false
+    private var deleteRepeating = false
+    private var editorDeleteRepeating = false
+    private val repeatDelete = object : Runnable {
+        override fun run() {
+            if (!deleteHeld || !inputAllowed()) { stopDeleteRepeat(); return }
+            deleteRepeating = true
+            onInteraction()
+            if (engine.deleteSignal()) mainHandler.postDelayed(this, 64L)
+            else if (!editorDeleteRepeating) { editorDeleteRepeating = true; onDeleteRepeat(true) }
+        }
+    }
     private val controls = mutableListOf<MorseGlyphView>()
     private val defaultDark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     private var backgroundColorValue = if (defaultDark) 0xff111722.toInt() else 0xfff1f4fa.toInt()
@@ -82,7 +100,8 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         pads.gravity = Gravity.CENTER
         padContainer.gravity = Gravity.CENTER
         padContainer.addView(pads, LayoutParams(-1, -1))
-        addView(padContainer, LayoutParams(-1, 0, 1f))
+        body.addView(padContainer, LayoutParams(0, -1, 1f))
+        addView(body, LayoutParams(-1, 0, 1f))
         rebuildControls()
         dotPad.setOnClickListener { if (inputAllowed()) { onInteraction(); engine.addSignal('.') } }
         dashPad.setOnClickListener { if (inputAllowed()) { onInteraction(); engine.addSignal('-') } }
@@ -124,11 +143,19 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
     private fun rebuildControls() {
         controls.clear()
         controlContainer.removeAllViews()
+        controlGroups.forEach { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        controlGroups.clear()
         (controlContainer.parent as? android.view.ViewGroup)?.removeView(controlContainer)
-        addView(controlContainer, if (settings.controlLayout.abovePads) 2 else childCount, LayoutParams(-1, -2))
-        settings.controlLayout.rows.forEach { keys ->
-            val row = LinearLayout(context)
-            controlContainer.addView(row, LayoutParams(-1, dp(48)))
+        val placement = settings.controlLayout.placement
+        if (!placement.isSide) addView(controlContainer, if (placement == MorseControlPlacement.TOP) 2 else childCount, LayoutParams(-1, -2))
+        val groups = if (placement == MorseControlPlacement.BOTH_SIDES && settings.controlLayout.rows.size == 1)
+            settings.controlLayout.rows.single().chunked((settings.controlLayout.rows.single().size + 1) / 2)
+            else settings.controlLayout.rows
+        groups.forEach { keys ->
+            val row = LinearLayout(context).apply { orientation = if (placement.isSide) VERTICAL else HORIZONTAL }
+            controlGroups += row
+            if (placement.isSide) controlContainer.addView(row, LayoutParams(dp(48), -1))
+            else controlContainer.addView(row, LayoutParams(-1, dp(48)))
             keys.forEach { control ->
                 val glyph = MorseGlyphView.Glyph.valueOf(control.name)
                 val button = MorseGlyphView(context, glyph).apply {
@@ -140,8 +167,24 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
                         when (control) {
                             MorseControl.BOUNDARY -> if (engine.pattern.isNotEmpty() && !engine.boundary()) announceForAccessibility(localString(R.string.morse_unknown))
                             MorseControl.DELETE -> if (!engine.deleteSignal()) onCommand(MorseCommand.DELETE)
+                            MorseControl.ENTER -> if (hasInvalidSignal) cancelInput(clearPattern = true) else onCommand(MorseCommand.ENTER)
                             else -> control.command?.let(onCommand)
                         }
+                    }
+                    if (control == MorseControl.DELETE) setOnTouchListener { button, event ->
+                        if (onControlSelected != null || !inputAllowed()) return@setOnTouchListener false
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> { deleteHeld = true; deleteRepeating = false; mainHandler.postDelayed(repeatDelete, longPressTimeoutMs) }
+                            MotionEvent.ACTION_MOVE -> if (event.x < 0 || event.y < 0 || event.x >= button.width || event.y >= button.height) stopDeleteRepeat()
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                val click = event.actionMasked == MotionEvent.ACTION_UP && deleteHeld && !deleteRepeating
+                                stopDeleteRepeat()
+                                button.isPressed = false
+                                if (click) button.performClick()
+                                return@setOnTouchListener true
+                            }
+                        }
+                        false
                     }
                     if (control == MorseControl.CONVERT) setOnLongClickListener {
                         if (onControlSelected == null && inputAllowed()) { onInteraction(); onCommand(MorseCommand.SPACE) }
@@ -149,8 +192,37 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
                     }
                 }
                 controls += button
-                row.addView(button, LayoutParams(0, -1, 1f).apply { setMargins(dp(2),dp(2),dp(2),dp(2)) })
+                row.addView(button, (if (placement.isSide) LayoutParams(-1, 0, 1f) else LayoutParams(0, -1, 1f)).apply { setMargins(dp(2),dp(2),dp(2),dp(2)) })
             }
+        }
+        controlContainer.orientation = if (placement.isSide) HORIZONTAL else VERTICAL
+        if (placement.isSide) {
+            if (placement == MorseControlPlacement.BOTH_SIDES) {
+                // One saved group per side; distribute a single group evenly when first selected.
+                controlGroups.forEachIndexed { index, column ->
+                    controlContainer.removeView(column)
+                    body.addView(column, if (index == 0) 0 else body.childCount, LayoutParams(dp(48), -1))
+                }
+            } else body.addView(controlContainer, if (placement == MorseControlPlacement.LEFT) 0 else body.childCount,
+                LayoutParams(dp(48 * controlGroups.size), -1))
+        }
+        updateControlIcons()
+    }
+
+    private fun stopDeleteRepeat() {
+        deleteHeld = false
+        mainHandler.removeCallbacks(repeatDelete)
+        if (editorDeleteRepeating) { editorDeleteRepeating = false; onDeleteRepeat(false) }
+    }
+
+    private fun updateControlIcons() {
+        settings.controlLayout.rows.flatten().zip(controls).forEach { (control, button) ->
+            button.glyph = when (control) {
+                MorseControl.ENTER -> if (hasInvalidSignal) MorseGlyphView.Glyph.CLEAR else if (hasComposingText) MorseGlyphView.Glyph.COMMIT else MorseGlyphView.Glyph.ENTER
+                MorseControl.CONVERT -> if (hasComposingText) MorseGlyphView.Glyph.CONVERT else MorseGlyphView.Glyph.SPACE
+                else -> MorseGlyphView.Glyph.valueOf(control.name)
+            }
+            button.contentDescription = localString(if (control == MorseControl.ENTER && hasInvalidSignal) R.string.morse_clear_signal else control.labelResource)
         }
     }
 
@@ -262,6 +334,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         engine.pressed(dotPad.isPressed, dashPad.isPressed)
     }
     fun cancelInput(clearPattern: Boolean = false) {
+        stopDeleteRepeat()
         pointerPads.clear(); dotPad.isPressed = false; dashPad.isPressed = false
         engine.cancel(clearPattern); tone.release()
     }
@@ -281,14 +354,17 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         })
         null -> localString(R.string.morse_unknown)
     }
+    val hasInvalidSignal: Boolean get() = engine.pattern.isNotEmpty() && engine.map.decode(engine.pattern) == null && engine.map.continuations(engine.pattern).isEmpty()
+
     private fun updatePreview() {
         val signal = engine.pattern
         preview.signal = signal
-        preview.ink = if (signal.isNotEmpty() && engine.map.decode(signal) == null && engine.map.continuations(signal).isEmpty())
+        preview.ink = if (hasInvalidSignal)
             0xffe07682.toInt() else textColor
         preview.contentDescription = if (signal.isEmpty()) localString(R.string.morse_ready)
             else "$signal → ${label(engine.map.decode(signal))}. " + engine.map.continuations(signal).take(4).joinToString { "${it.signal} ${label(it.output)}" }
         preview.invalidate()
+        updateControlIcons()
     }
 
     fun setAppearance(skin: KeyboardSkinId, background: Int, key: Int, text: Int, special: Int, custom: Boolean = false) {

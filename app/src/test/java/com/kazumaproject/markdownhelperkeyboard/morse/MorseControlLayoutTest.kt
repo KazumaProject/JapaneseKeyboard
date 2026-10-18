@@ -5,6 +5,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.morse_keyboard.MorseControl
 import com.kazumaproject.morse_keyboard.MorseControlLayout
+import com.kazumaproject.morse_keyboard.MorseControlPlacement
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -31,6 +32,14 @@ class MorseControlLayoutTest {
         assertTrue(reopened.settings().reverse)
         assertEquals(maps, reopened.enabledMaps())
         assertEquals(layout, MorseLayoutCodec.decode(MorseLayoutCodec.encode(layout)))
+    }
+    @Test fun allPlacementsRoundTripAndLegacyAbovePadsMigrates() {
+        MorseControlPlacement.entries.forEach { placement ->
+            val layout = MorseControlLayout(placement = placement)
+            assertEquals(layout, MorseLayoutCodec.decode(MorseLayoutCodec.encode(layout)))
+        }
+        assertEquals(MorseControlPlacement.TOP, MorseLayoutCodec.decode(
+            """{"version":1,"abovePads":true,"rows":[["BOUNDARY","KEYBOARD"]]}""").placement)
     }
     @Test fun invalidLayoutsCannotReplaceSavedPlacement() {
         val store = MorsePreferences(context)

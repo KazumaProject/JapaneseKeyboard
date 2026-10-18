@@ -65,11 +65,13 @@
     <string name="morse_selected_key">選択中：%1$s</string>
     <string name="morse_move_left">← 左へ</string>
     <string name="morse_move_right">右へ →</string>
-    <string name="morse_row_up">↑ 上の段へ</string>
-    <string name="morse_row_down">下の段へ ↓</string>
+    <string name="morse_row_up">前のグループへ</string>
+    <string name="morse_row_down">次のグループへ</string>
     <string name="morse_hide_key">選択したキーを非表示</string>
     <string name="morse_add_key">キーを追加</string>
-    <string name="morse_controls_above">補助キーをパッドの上に置く</string>
     <string name="morse_reset_layout">キー配置を初期状態に戻す</string>
-    <string name="morse_layout_full">1段6キー・2段まで配置できます</string>
+    <string name="morse_layout_full">1グループ6キー・2グループまで配置できます</string>
+    <string name="morse_control_placement">補助キーの配置</string>
+    <string name="morse_control_placement_value">補助キー：%1$s</string>
+    <string-array name="morse_control_placements"><item>パッドの下</item><item>パッドの上</item><item>パッドの左</item><item>パッドの右</item><item>パッドを挟んで左右</item></string-array>
 </resources>

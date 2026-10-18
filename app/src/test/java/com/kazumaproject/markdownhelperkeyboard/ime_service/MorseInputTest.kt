@@ -4,6 +4,15 @@ import android.app.Activity
 import android.content.Context
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.MotionEvent
+import android.graphics.Rect
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.os.Looper
+import org.robolectric.Shadows.shadowOf
+import java.time.Duration
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
@@ -82,6 +91,91 @@ class MorseInputTest {
         assertFalse(send("........")); assertEquals("........", binding.morseView.signal)
         assertEquals("か", input.value)
     }
+    private fun descendants(view: View): List<View> = listOf(view) +
+        if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+    private fun control(label: Int) = descendants(binding.morseView).single { it.contentDescription == context.getString(label) }
+
+    @Test fun invalidSignalEnterClearsOnlySignalAndRestoresEnterPresentation() {
+        input.value = "か"
+        "........".forEach(binding.morseView::appendSignal)
+        assertTrue(binding.morseView.hasInvalidSignal)
+        control(com.kazumaproject.morse_keyboard.R.string.morse_clear_signal).performClick()
+        assertEquals("", binding.morseView.signal)
+        assertEquals("か", input.value)
+        assertFalse(binding.morseView.hasInvalidSignal)
+        assertNotNull(control(com.kazumaproject.morse_keyboard.R.string.morse_enter))
+        verify(connection, never()).commitText(any(), anyInt())
+        verify(connection, never()).sendKeyEvent(any())
+        verify(connection, never()).performEditorAction(anyInt())
+    }
+
+    @Test fun drawingSharedFontGlyphDoesNotScheduleAnotherFrame() {
+        binding.morseView.hasComposingText = true
+        val convert = control(com.kazumaproject.morse_keyboard.R.string.morse_convert)
+        convert.measure(View.MeasureSpec.makeMeasureSpec(80, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(80, View.MeasureSpec.EXACTLY))
+        convert.layout(0, 0, 80, 80)
+        val bitmap = Bitmap.createBitmap(80, 80, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        convert.draw(canvas)
+        shadowOf(convert).clearWasInvalidated()
+        convert.draw(canvas)
+        assertFalse(shadowOf(convert).wasInvalidated())
+        bitmap.recycle()
+    }
+
+    @Test fun unfinishedValidPrefixIsNotClearedByEnter() {
+        val map = MorseMap("prefix", "Prefix", listOf(MorseEntry("..", MorseOutput.Reading("か"))))
+        binding.morseView.configure(MorseSettings(sound = false, autoBoundary = false), listOf(map), map.id)
+        binding.morseView.appendSignal('.')
+        assertFalse(binding.morseView.hasInvalidSignal)
+        control(com.kazumaproject.morse_keyboard.R.string.morse_enter).performClick()
+        assertEquals(".", binding.morseView.signal)
+        verify(connection, never()).commitText(any(), anyInt())
+    }
+
+    @Test fun allPlacementsKeepControlsBesideOrAboveOrBelowPads() {
+        val view = binding.morseView
+        fun bounds(node: View) = Rect().also { node.getDrawingRect(it); view.offsetDescendantRectToMyCoords(node, it) }
+        MorseControlPlacement.entries.forEach { placement ->
+            view.configure(MorseSettings(sound = false, controlLayout = MorseControlLayout(placement = placement)),
+                MorsePresets.maps(false), MorsePresets.WABUN)
+            view.measure(View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY))
+            view.layout(0, 0, 800, 600)
+            val dot = bounds(control(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+            val dash = bounds(control(com.kazumaproject.morse_keyboard.R.string.morse_dash))
+            val first = bounds(control(com.kazumaproject.morse_keyboard.R.string.morse_boundary))
+            val last = bounds(control(com.kazumaproject.morse_keyboard.R.string.morse_keyboard))
+            when (placement) {
+                MorseControlPlacement.BOTTOM -> assertTrue(first.top >= dot.bottom)
+                MorseControlPlacement.TOP -> assertTrue(first.bottom <= dot.top)
+                MorseControlPlacement.LEFT -> assertTrue(last.right <= dot.left)
+                MorseControlPlacement.RIGHT -> assertTrue(first.left >= dash.right)
+                MorseControlPlacement.BOTH_SIDES -> { assertTrue(first.right <= dot.left); assertTrue(last.left >= dash.right) }
+            }
+            assertTrue(first.width() > 0 && first.height() > 0 && last.width() > 0 && last.height() > 0)
+        }
+    }
+
+    @Test fun heldDeleteRemovesSignalFirstThenUsesExistingRepeatAndStopsOnCancel() {
+        val view = binding.morseView
+        val transitions = mutableListOf<Boolean>()
+        view.onDeleteRepeat = { transitions += it }
+        view.longPressTimeoutMs = 300
+        "...".forEach(view::appendSignal)
+        val delete = control(com.kazumaproject.morse_keyboard.R.string.morse_delete)
+        delete.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 5f, 5f, 0))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(300))
+        assertEquals("..", view.signal)
+        assertTrue(transitions.isEmpty())
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(192))
+        assertEquals("", view.signal)
+        assertEquals(listOf(true), transitions)
+        view.cancelInput()
+        assertEquals(listOf(true, false), transitions)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        assertEquals(listOf(true, false), transitions)
+    }
+
     @Test fun changingMapReinterpretsPendingSignalWithoutDeletingIt() {
         ".-".forEach(binding.morseView::appendSignal)
         binding.morseView.selectMap(MorsePresets.ENGLISH)
