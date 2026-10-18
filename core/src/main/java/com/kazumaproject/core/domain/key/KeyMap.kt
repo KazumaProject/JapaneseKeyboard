@@ -194,13 +194,14 @@ class KeyMap : KeyMapHolder {
         Key.KeyQuestion to KeyInfo.KeyMultipleNumber,
         Key.KeyCaution to KeyInfo.KeyMusicNoteNumber,
         Key.KeyTouten to KeyInfo.KeyRightArrowNumber,
-        Key.KeyKuten to KeyInfo.KeyCommand,
+        Key.KeyKuten to KeyInfo.KeySquareLeftBracket,
 
 
         Key.KeyRA to KeyInfo.KeyMonthNumber,
         Key.KeyRI to KeyInfo.KeyDivideNumber,
         Key.KeyRU to KeyInfo.KeyStarNumber,
         Key.KeyRE to KeyInfo.KeyTildaNumber,
+        Key.KeyRO to KeyInfo.KeySquareRightBracket,
 
         Key.KeyHA to KeyInfo.KeyDayNumber,
         Key.KeyHI to KeyInfo.KeyPlusNumber,

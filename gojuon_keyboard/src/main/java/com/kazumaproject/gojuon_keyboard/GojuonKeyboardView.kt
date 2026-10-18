@@ -230,6 +230,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         binding.keyKigou,
         binding.keyPrevious,
         binding.keySwitchKeyMode,
+        binding.keyImeSwitch,
         binding.keyLeftCursor,
         binding.keyRightCursor,
         binding.keyDelete,
@@ -319,6 +320,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         Key.SideKeySymbol to binding.keyKigou,
         Key.SideKeyPreviousChar to binding.keyPrevious,
         Key.SideKeyInputMode to binding.keySwitchKeyMode,
+        Key.SideKeyImeSwitch to binding.keyImeSwitch,
         Key.SideKeyCursorLeft to binding.keyLeftCursor,
         Key.SideKeyCursorRight to binding.keyRightCursor,
         Key.SideKeyDelete to binding.keyDelete,
@@ -579,7 +581,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
             )
 
             val specialKeys = listOf(
-                keyKigou, keyPrevious, keySwitchKeyMode, keyLeftCursor,
+                keyKigou, keyPrevious, keySwitchKeyMode, keyImeSwitch, keyLeftCursor,
                 keyRightCursor, keyDelete, keySpace, keyEnter
             )
 
@@ -1100,19 +1102,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
                                         InputMode.ModeNumber -> {
                                             val capState = gojuonCapsLockState.value
                                             val outputChar = keyInfo.getOutputChar(capState)
-                                            if (pressedKey.key == Key.KeyKuten) {
-                                                flickListener?.onFlick(
-                                                    gestureType = gestureType,
-                                                    key = Key.KeyDakutenSmall,
-                                                    char = outputChar,
-                                                )
-                                            } else {
-                                                flickListener?.onFlick(
-                                                    gestureType = gestureType,
-                                                    key = pressedKey.key,
-                                                    char = outputChar,
-                                                )
-                                            }
+                                            flickListener?.onFlick(
+                                                gestureType = gestureType,
+                                                key = pressedKey.key,
+                                                char = outputChar,
+                                            )
                                         }
                                     }
 
@@ -1566,8 +1560,10 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     private fun isIndependentExclusiveKey(key: Key): Boolean =
-        key == Key.SideKeySymbol || key == Key.SideKeyInputMode || key == Key.SideKeyNumberMode ||
-            (currentInputMode.get() != InputMode.ModeJapanese && key in setOf(Key.KeyKuten, Key.KeyO, Key.KeyKO))
+        key == Key.SideKeySymbol || key == Key.SideKeyInputMode || key == Key.SideKeyImeSwitch ||
+            key == Key.SideKeyNumberMode ||
+            (currentInputMode.get() == InputMode.ModeEnglish && key == Key.KeyKuten) ||
+            (currentInputMode.get() != InputMode.ModeJapanese && key in setOf(Key.KeyO, Key.KeyKO))
 
     private fun restoreIndependentTouches(
         sessions: List<IndependentKeyTouchSession>,
@@ -1940,6 +1936,11 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 binding.keySwitchKeyMode.isPressed = true
             }
 
+            Key.SideKeyImeSwitch -> {
+                resetAllKeys()
+                binding.keyImeSwitch.isPressed = true
+            }
+
             Key.SideKeyCursorLeft -> {
                 resetAllKeys()
                 binding.keyLeftCursor.isPressed = true
@@ -2057,6 +2058,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         binding.keyKigou.isPressed = false
         binding.keyPrevious.isPressed = false
         binding.keySwitchKeyMode.isPressed = false
+        binding.keyImeSwitch.isPressed = false
         binding.keyLeftCursor.isPressed = false
         binding.keyRightCursor.isPressed = false
         binding.keyDelete.isPressed = false
@@ -2087,6 +2089,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
             binding.keySwitchKeyMode.layoutYPosition(),
             binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
             binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+        ),
+        KeyRect(
+            Key.SideKeyImeSwitch,
+            binding.keyImeSwitch.layoutXPosition(),
+            binding.keyImeSwitch.layoutYPosition(),
+            binding.keyImeSwitch.layoutXPosition() + binding.keyImeSwitch.width,
+            binding.keyImeSwitch.layoutYPosition() + binding.keyImeSwitch.height
         ),
         KeyRect(
             Key.SideKeyCursorLeft,
@@ -2558,6 +2567,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
             binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
         ),
         KeyRect(
+            Key.SideKeyImeSwitch,
+            binding.keyImeSwitch.layoutXPosition(),
+            binding.keyImeSwitch.layoutYPosition(),
+            binding.keyImeSwitch.layoutXPosition() + binding.keyImeSwitch.width,
+            binding.keyImeSwitch.layoutYPosition() + binding.keyImeSwitch.height
+        ),
+        KeyRect(
             Key.SideKeyCursorLeft,
             binding.keyLeftCursor.layoutXPosition(),
             binding.keyLeftCursor.layoutYPosition(),
@@ -3027,6 +3043,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
             binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
         ),
         KeyRect(
+            Key.SideKeyImeSwitch,
+            binding.keyImeSwitch.layoutXPosition(),
+            binding.keyImeSwitch.layoutYPosition(),
+            binding.keyImeSwitch.layoutXPosition() + binding.keyImeSwitch.width,
+            binding.keyImeSwitch.layoutYPosition() + binding.keyImeSwitch.height
+        ),
+        KeyRect(
             Key.SideKeyCursorLeft,
             binding.keyLeftCursor.layoutXPosition(),
             binding.keyLeftCursor.layoutYPosition(),
@@ -3128,7 +3151,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
             binding.key14.layoutYPosition() + binding.key14.height
         ),
         KeyRect(
-            Key.KeyDakutenSmall,
+            Key.KeyRO,
             binding.key15.layoutXPosition(),
             binding.key15.layoutYPosition(),
             binding.key15.layoutXPosition() + binding.key15.width,
@@ -3848,6 +3871,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     key5.setHorizontalWeight(2f)
                     /** ろボタンを隠す **/
                     key15.isVisible = false
+                    key15.setStartToEndOf(key10)
+                    key15.setEndToStartOf(key20)
                     /** れボタンを句点ボタンの上に配置 **/
                     key14.setBottomToTopOf(key5)
                     /** 句点ボタンをよボタンの左に配置 **/
@@ -3878,6 +3903,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
             InputMode.ModeEnglish -> {
                 setKeysInNumberText(false)
+                configureNumberKeyGeometry()
                 binding.apply {
                     /** や行を削除 **/
                     key16.isVisible = false
@@ -3965,6 +3991,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     key5.setHorizontalWeight(1f)
                     /** ろボタンを表示 **/
                     key15.isVisible = true
+                    key15.setStartToEndOf(key10)
+                    key15.setEndToStartOf(key20)
                     key14.setBottomToTopOf(key15)
                     key5.setEndToStartOf(key10)
                     key10.setStartToEndOf(key5)
@@ -4050,6 +4078,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     key5.setHorizontalWeight(1f)
                     /** ろボタンを表示 **/
                     key15.isVisible = true
+                    key15.setStartToEndOf(key10)
+                    key15.setEndToStartOf(key20)
                     key14.setBottomToTopOf(key15)
                     key5.setEndToStartOf(key10)
                     key10.setStartToEndOf(key5)
@@ -4131,6 +4161,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     key5.setHorizontalWeight(2f)
                     /** ろボタンを隠す **/
                     key15.isVisible = false
+                    key15.setStartToEndOf(key10)
+                    key15.setEndToStartOf(key20)
                     /** れボタンを句点ボタンの上に配置 **/
                     key14.setBottomToTopOf(key5)
                     /** 句点ボタンをよボタンの左に配置 **/
@@ -4174,6 +4206,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
             }
 
             InputMode.ModeNumber -> {
+                configureNumberKeyGeometry()
                 binding.apply {
                     /** や行を削除 **/
                     key16.isVisible = false
@@ -4394,21 +4427,35 @@ class GojuonKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun configureNumberKeyGeometry() = binding.run {
+        // Number mode must not inherit the widened Shift key from English mode.
+        listOf(key1, key2, key3, key4, key5, key26, key27, key28, key29, key30)
+            .forEach { it.setMarginEnd(0f) }
+        listOf(key6, key7, key8, key9, key10, key16, key17, key18, key19, key20,
+            key21, key22, key23, key24, key25, key50).forEach { it.isVisible = false }
+        key5.setHorizontalWeight(1f)
+        key15.isVisible = true
+        key14.setBottomToTopOf(key15)
+        key5.setEndToStartOf(key15)
+        key15.setStartToEndOf(key5)
+        key15.setEndToStartOf(key30)
+        key30.setStartToEndOf(key15)
+
+        key55.setHorizontalWeight(2f)
+        key49.setBottomToTopOf(key55)
+        key55.setStartToEndOf(key45)
+        key45.setEndToStartOf(key55)
+    }
+
     private fun setKeysInNumberText(isZenkaku: Boolean) {
         allButtonKeys.forEach { button ->
-            if (button != binding.key5) {
-                button.setGojuonKeyTextNumber(keyId = button.id)
-                // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
-                if (themeMode != "default") {
-                    button.setTextColor(customKeyTextColor)
-                }
+            button.setGojuonKeyTextNumber(keyId = button.id)
+            if (themeMode != "default") {
+                button.setTextColor(customKeyTextColor)
             }
         }
         binding.apply {
             val ctx = root.context
-            key5.setLargeUnicodeIconScaleX(
-                icon = resources.getString(com.kazumaproject.core.R.string.gojuon_number_command),
-            )
             if (themeMode != "default") {
                 updateKeyStyle(key5, isNormalKey = true)
             }
