@@ -19,6 +19,7 @@ sealed class Key {
     data object SideKeySymbol : Key()
     data object SideKeyNumberMode : Key()
     data object SideKeyInputMode : Key()
+    data object SideKeyImeSwitch : Key()
     data object SideKeyDelete : Key()
     data object SideKeySpace : Key()
     data object SideKeyEnter : Key()
