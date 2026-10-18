@@ -504,6 +504,7 @@ object SettingDestinations {
         "keyboard_selection_preference",
         "setting_route_sumire_preferences",
         "setting_route_kana_preferences",
+        "setting_route_gojuon_preferences",
         "setting_route_qwerty_preferences",
         "setting_route_qwerty_english_preferences",
         "setting_route_qwerty_romaji_preferences",
@@ -821,6 +822,7 @@ object SettingDestinations {
             "key_popup_background_color_preference" -> R.id.keyboardThemeFragment
             "key_popup_text_color_preference" -> R.id.keyboardThemeFragment
             "setting_route_kana_preferences" -> R.id.kanaPreferenceFragment
+            "setting_route_gojuon_preferences" -> R.id.gojuonPreferenceFragment
             "setting_route_qwerty_preferences" -> R.id.qwertyPreferenceFragment
             "setting_route_qwerty_english_preferences" -> R.id.qwertyEnglishPreferenceFragment
             "setting_route_qwerty_romaji_preferences" -> R.id.qwertyRomajiPreferenceFragment
@@ -855,6 +857,7 @@ object SettingDestinations {
             "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
             "ng_word_preference" -> R.id.ngWordFragment
             "gemma_prompt_template_management_preference" -> R.id.gemmaPromptTemplateFragment
+            "gojuon_keyboard_size_preference" -> R.id.gojuonSizeSettingsFragment
             "kana_keyboard_letter_size_preference" -> R.id.tenKeyCandidateLetterSizeFragment
             "tenkey_popup_view_style_preference" -> R.id.tenKeyPopupStyleSettingFragment
             "qwerty_button_size_preference" -> R.id.qwertyMarginSettingFragment

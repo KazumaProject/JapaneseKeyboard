@@ -10,6 +10,11 @@
             android:summary="@string/keyboard_selection_summary"
             android:title="@string/keyboard_selection_preference_title" />
 
+        <Preference
+            android:key="setting_route_gojuon_preferences"
+            android:title="@string/gojuon_settings_category"
+            android:summary="@string/gojuon_keyboard_size_summary" />
+
         <ListPreference
             android:defaultValue="default"
             android:entries="@array/type_null_input_behavior_entries"

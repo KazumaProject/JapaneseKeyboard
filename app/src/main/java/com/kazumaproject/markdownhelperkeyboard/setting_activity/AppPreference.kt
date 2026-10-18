@@ -3498,6 +3498,30 @@ object AppPreference {
             )
         }
 
+    var gojuon_key_width_scale_percent: Int
+        get() = preferences.getInt("gojuon_key_width_scale_percent", 100).coerceIn(60, 140)
+        set(value) = preferences.edit { it.putInt("gojuon_key_width_scale_percent", value.coerceIn(60, 140)) }
+
+    var gojuon_key_height_scale_percent: Int
+        get() = preferences.getInt("gojuon_key_height_scale_percent", 100).coerceIn(60, 140)
+        set(value) = preferences.edit { it.putInt("gojuon_key_height_scale_percent", value.coerceIn(60, 140)) }
+
+    var gojuon_special_key_width_scale_percent: Int
+        get() = preferences.getInt("gojuon_special_key_width_scale_percent", 100).coerceIn(60, 140)
+        set(value) = preferences.edit { it.putInt("gojuon_special_key_width_scale_percent", value.coerceIn(60, 140)) }
+
+    var gojuon_special_key_height_scale_percent: Int
+        get() = preferences.getInt("gojuon_special_key_height_scale_percent", 100).coerceIn(60, 140)
+        set(value) = preferences.edit { it.putInt("gojuon_special_key_height_scale_percent", value.coerceIn(60, 140)) }
+
+    var gojuon_special_icon_scale_percent: Int
+        get() = preferences.getInt("gojuon_special_icon_scale_percent", 100).coerceIn(40, 200)
+        set(value) = preferences.edit { it.putInt("gojuon_special_icon_scale_percent", value.coerceIn(40, 200)) }
+
+    var gojuon_special_text_size_sp: Float
+        get() = preferences.getFloat("gojuon_special_text_size_sp", 18f).takeIf { it.isFinite() }?.coerceIn(8f, 32f) ?: 18f
+        set(value) = preferences.edit { it.putFloat("gojuon_special_text_size_sp", value.takeIf { it.isFinite() }?.coerceIn(8f, 32f) ?: 18f) }
+
     var flick_key_width_scale_percent: Int?
         get() = preferences.getInt(
             FLICK_KEY_WIDTH_SCALE_PERCENT.first,
@@ -3563,7 +3587,7 @@ object AppPreference {
     }
 
     private fun modeKeySizeKey(surface: String, mode: KeyboardInputMode, guide: Boolean): String {
-        require(surface == "tenkey" || surface == "sumire")
+        require(surface == "tenkey" || surface == "sumire" || surface == "gojuon")
         return "${surface}_${mode.name.lowercase(java.util.Locale.ROOT)}_${if (guide) "guide" else "key"}_text_size_sp"
     }
 

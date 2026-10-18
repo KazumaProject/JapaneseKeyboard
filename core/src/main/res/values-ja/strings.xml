@@ -282,4 +282,6 @@
     <string name="title_settings">設定</string>
     <string name="enable_romaji_input">ローマ字入力を使用する</string>
     <string name="enable_direct_input_mode">直接入力モード</string>
+    <string name="cursor_left">カーソルを左に移動</string>
+    <string name="cursor_right">カーソルを右に移動</string>
 </resources>

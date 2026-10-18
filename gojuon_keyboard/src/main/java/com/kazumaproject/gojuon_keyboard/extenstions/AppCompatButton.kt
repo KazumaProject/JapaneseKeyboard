@@ -5,8 +5,8 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.KEY_GOJUON_SIZE
 import com.kazumaproject.gojuon_keyboard.R
 
-fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -73,8 +73,8 @@ fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int) {
     }
 }
 
-fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -133,8 +133,8 @@ fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int) {
     }
 }
 
-fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -196,8 +196,8 @@ fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int) {
     }
 }
 
-fun AppCompatButton.setGojuonKeyTextNumber(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextNumber(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -209,11 +209,12 @@ fun AppCompatButton.setGojuonKeyTextNumber(keyId: Int) {
         R.id.key_2 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_multiplication)
         R.id.key_3 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_music_note)
         R.id.key_4 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_arrow_right)
-        R.id.key_5 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_command)
+        R.id.key_5 -> context.getString(com.kazumaproject.core.R.string.square_bracket_left)
         R.id.key_11 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_month)
         R.id.key_12 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_divide)
         R.id.key_13 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_star)
         R.id.key_14 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_tilde)
+        R.id.key_15 -> context.getString(com.kazumaproject.core.R.string.square_bracket_right)
         R.id.key_26 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_day)
         R.id.key_27 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_plus)
         R.id.key_28 -> context.getString(com.kazumaproject.core.R.string.gojuon_number_percent)

@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="16dp" android:paddingBottom="16dp">
+        <TextView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingModeLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_mode" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <com.google.android.material.button.MaterialButtonToggleGroup android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingModes" android:layout_width="match_parent" android:layout_height="wrap_content" app:singleSelection="true" app:selectionRequired="true">
+            <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingJapanese" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minWidth="0dp" android:minHeight="48dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:text="@string/sizing_hiragana" />
+            <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingEnglish" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minWidth="0dp" android:minHeight="48dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:text="@string/sizing_english" />
+            <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:id="@+id/sizingNumbers" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minWidth="0dp" android:minHeight="48dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:text="@string/sizing_numbers" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="16dp" android:paddingBottom="16dp">
+                <TextView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_preview" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <!-- Match the IME viewport; horizontal card padding would crop wide keyboards. -->
+                <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView android:id="@+id/gojuonSizePreview" android:layout_width="match_parent" android:layout_height="280dp" android:layout_marginTop="12dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/sizing_letters" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <TextView android:id="@+id/sizingInherited" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/gojuon_sizing_default" android:textAppearance="?attr/textAppearanceBodyMedium" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/sizing_center" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingCenterValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/gojuon_sizing_letters_help" android:textAppearance="?attr/textAppearanceBodyMedium" />
+                <com.google.android.material.slider.Slider android:id="@+id/sizingCenter" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_center" />
+                <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button.TextButton" android:id="@+id/sizingResetMode" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/sizing_reset_mode" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/gojuon_sizing_normal" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/sizing_width" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingWidthValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <com.google.android.material.slider.Slider android:id="@+id/sizingWidth" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_width" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/sizing_height" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingHeightValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <com.google.android.material.slider.Slider android:id="@+id/sizingHeight" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_height" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="20dp" app:cardElevation="0dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/gojuon_sizing_special" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/gojuon_sizing_special_help" android:textAppearance="?attr/textAppearanceBodyMedium" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/sizing_width" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingSpecialWidthValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <com.google.android.material.slider.Slider android:id="@+id/sizingSpecialWidth" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_width" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/sizing_height" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingSpecialHeightValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <com.google.android.material.slider.Slider android:id="@+id/sizingSpecialHeight" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_height" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/gojuon_sizing_icon" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingIconValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <com.google.android.material.slider.Slider android:id="@+id/sizingIcon" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/gojuon_sizing_icon" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/gojuon_sizing_special_text" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingSpecialValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <com.google.android.material.slider.Slider android:id="@+id/sizingSpecial" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/gojuon_sizing_special_text" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingResetAll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/sizing_reset_all" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

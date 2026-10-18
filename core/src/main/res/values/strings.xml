@@ -282,4 +282,6 @@
     <string name="title_settings">Settings</string>
     <string name="enable_romaji_input">Enable Romaji Input</string>
     <string name="enable_direct_input_mode">Direct input mode</string>
+    <string name="cursor_left">Move cursor left</string>
+    <string name="cursor_right">Move cursor right</string>
 </resources>
