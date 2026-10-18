@@ -1,0 +1,21 @@
+<resources>
+    <string name="morse_dot">点のパドル</string>
+    <string name="morse_dash">線のパドル</string>
+    <string name="morse_straight">縦振り：短押しで点、長押しで線</string>
+    <string name="morse_boundary">区切り</string>
+    <string name="morse_delete">削除</string>
+    <string name="morse_convert">変換\n空白</string>
+    <string name="morse_enter">確定\nEnter</string>
+    <string name="morse_small">小書き</string>
+    <string name="morse_keyboard">切替</string>
+    <string name="morse_unknown">未登録</string>
+    <string name="morse_ready">点と線を入力 · 変換の長押しで空白</string>
+    <string name="morse_dakuten">濁点</string>
+    <string name="morse_handakuten">半濁点</string>
+    <string name="morse_action">操作</string>
+    <string name="morse_space">空白</string>
+    <string name="morse_commit">確定</string>
+    <string name="morse_left">カーソル左</string>
+    <string name="morse_right">カーソル右</string>
+    <string name="morse_map">次のマップ</string>
+</resources>
