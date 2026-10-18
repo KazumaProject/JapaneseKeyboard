@@ -57,6 +57,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment(R.layout.fragment_flick_keybo
                 SizingField.HEIGHT -> AppPreference.flick_key_height_scale_percent = value.toInt()
                 SizingField.ICON -> AppPreference.flick_key_icon_scale_percent = value.toInt()
                 SizingField.SPECIAL -> AppPreference.flick_special_key_text_size_sp = value
+                SizingField.SPECIAL_WIDTH, SizingField.SPECIAL_HEIGHT -> Unit
             } },
             render = { mode, guides, values ->
                 keyboard.applyKeySizing(values.width.toInt(), values.height.toInt(), values.icon.toInt(),

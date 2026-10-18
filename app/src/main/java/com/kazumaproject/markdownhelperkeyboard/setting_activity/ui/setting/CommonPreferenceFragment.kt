@@ -1052,6 +1052,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             "setting_route_legacy_settings" to R.id.settingMainFragment,
             "setting_route_keyboard_theme" to R.id.keyboardThemeFragment,
             "setting_route_kana_preferences" to R.id.kanaPreferenceFragment,
+            "setting_route_gojuon_preferences" to R.id.gojuonPreferenceFragment,
             "setting_route_qwerty_preferences" to R.id.qwertyPreferenceFragment,
             "setting_route_qwerty_english_preferences" to R.id.qwertyEnglishPreferenceFragment,
             "setting_route_qwerty_romaji_preferences" to R.id.qwertyRomajiPreferenceFragment,

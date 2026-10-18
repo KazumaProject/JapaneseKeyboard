@@ -25,6 +25,7 @@ object SettingTabRegistry {
     const val TAB_TEXT_MACRO = "text_macro"
     const val TAB_VOICE_INPUT = "voice_input"
     const val TAB_KANA = "kana"
+    const val TAB_GOJUON = "gojuon"
     const val TAB_QWERTY = "qwerty"
     const val TAB_QWERTY_ENGLISH = "qwerty_english"
     const val TAB_QWERTY_ROMAJI = "qwerty_romaji"
@@ -109,6 +110,13 @@ object SettingTabRegistry {
                 xmlRes = R.xml.pref_kana,
                 destinationId = R.id.kanaPreferenceFragment,
                 fragmentFactory = { KanaPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_GOJUON,
+                title = { it.getString(R.string.gojuon_settings_tab) },
+                xmlRes = R.xml.pref_gojuon,
+                destinationId = R.id.gojuonPreferenceFragment,
+                fragmentFactory = { GojuonPreferenceFragment() },
             ),
             SettingTabSpec(
                 key = TAB_QWERTY,

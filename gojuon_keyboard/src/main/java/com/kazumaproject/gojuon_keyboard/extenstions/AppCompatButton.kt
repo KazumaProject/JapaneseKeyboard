@@ -5,8 +5,8 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.KEY_GOJUON_SIZE
 import com.kazumaproject.gojuon_keyboard.R
 
-fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -73,8 +73,8 @@ fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int) {
     }
 }
 
-fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -133,8 +133,8 @@ fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int) {
     }
 }
 
-fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -196,8 +196,8 @@ fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int) {
     }
 }
 
-fun AppCompatButton.setGojuonKeyTextNumber(keyId: Int) {
-    textSize = KEY_GOJUON_SIZE
+fun AppCompatButton.setGojuonKeyTextNumber(keyId: Int, sizeSp: Float = KEY_GOJUON_SIZE) {
+    textSize = sizeSp
     setTextColor(
         ContextCompat.getColor(
             context,
