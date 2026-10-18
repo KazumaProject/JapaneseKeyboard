@@ -11930,7 +11930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             Key.SideKeyImeSwitch -> {
-                if (!isFlick) showListPopup()
+                if (!isFlick && !onKeyboardSwitchLongPressUp) switchNextKeyboard()
             }
 
             Key.SideKeyPreviousChar -> {
@@ -12128,7 +12128,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             Key.SideKeyImeSwitch -> {
-                if (!isFlick) showListPopup()
+                if (!isFlick && !onKeyboardSwitchLongPressUp) switchNextKeyboard()
             }
 
             Key.SideKeyPreviousChar -> {
@@ -12347,6 +12347,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
         if (isKeyboardLayoutEditModeActive()) return
         when (key) {
+            Key.SideKeyImeSwitch -> showListPopup()
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {
@@ -12399,6 +12400,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (key !in setOf(Key.NotSelected, Key.SideKeyCursorLeft, Key.SideKeyCursorRight)) endCursorSelectionForInput()
         if (isKeyboardLayoutEditModeActive()) return
         when (key) {
+            Key.SideKeyImeSwitch -> showListPopup()
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {
