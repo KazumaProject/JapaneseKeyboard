@@ -212,6 +212,7 @@ class KeyboardSelectionFragment : Fragment() {
 fun Context.getKeyboardDisplayName(keyboardType: KeyboardType): String {
     return when (keyboardType) {
         KeyboardType.TENKEY -> getString(R.string.keyboard_type_tenkey)
+        KeyboardType.MORSE -> getString(R.string.morse_title)
         KeyboardType.GOJUON -> getString(R.string.keyboard_type_gojuon)
         KeyboardType.QWERTY -> getString(R.string.keyboard_type_qwerty)
         KeyboardType.ROMAJI -> getString(R.string.keyboard_type_romaji)

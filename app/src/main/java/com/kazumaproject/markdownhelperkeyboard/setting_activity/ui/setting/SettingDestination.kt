@@ -12,6 +12,7 @@ enum class SettingCategory {
     FREQUENT,
     KEYBOARD_DISPLAY,
     INPUT_METHOD,
+    MORSE,
     VOICE_INPUT,
     CANDIDATE_CONVERSION,
     CONVERSION_ENGINE,
@@ -124,6 +125,8 @@ object SettingDestinations {
         "ng_word_preference",
         "physical_keyboard_shortcut_setting_preference",
         "sumire_special_key_editor_preference",
+        "morse_maps",
+        "morse_key_layout",
         "gemma_prompt_template_management_preference",
         "system_user_dictionary_builder_preference",
         "external_dictionary_settings_preference",
@@ -471,6 +474,22 @@ object SettingDestinations {
     }
 
     private val frequentCandidatePreferenceKeys = listOf(
+        "morse_maps",
+        "morse_key_layout",
+        "morse_style",
+        "morse_wpm",
+        "morse_auto_boundary",
+        "morse_boundary_ms",
+        "morse_straight_threshold_ms",
+        "morse_reverse",
+        "morse_one_hand",
+        "morse_pad_width",
+        "morse_pad_height",
+        "morse_pad_gap",
+        "morse_sound",
+        "morse_frequency",
+        "morse_volume",
+        "morse_vibration",
         "keyboard_floating_preference",
         "landscape_force_qwerty_preference",
         "keyboard_key_letter_size_fragment_preference",
@@ -559,6 +578,15 @@ object SettingDestinations {
     )
 
     fun categories(context: Context): List<SettingDestination> = listOf(
+        destination(
+            key = "setting_route_morse",
+            title = context.getString(R.string.morse_title),
+            summary = context.getString(R.string.morse_summary),
+            category = SettingCategory.MORSE,
+            keywords = listOf("morse", "モールス", "和文", "パドル", "paddle", "straight", "縦振り"),
+            destinationId = R.id.morsePreferenceFragment,
+            iconRes = CoreR.drawable.keyboard_24px,
+        ),
         destination(
             key = "setting_route_split_keyboard",
             title = context.getString(R.string.split_keyboard_title),
@@ -758,6 +786,7 @@ object SettingDestinations {
         when (category) {
             SettingCategory.FREQUENT -> context.getString(R.string.setting_home_frequent_title)
             SettingCategory.KEYBOARD_DISPLAY -> context.getString(R.string.setting_category_keyboard_display_title)
+            SettingCategory.MORSE -> context.getString(R.string.morse_title)
             SettingCategory.INPUT_METHOD -> context.getString(R.string.setting_category_input_method_title)
             SettingCategory.VOICE_INPUT -> context.getString(R.string.setting_category_voice_input_title)
             SettingCategory.CANDIDATE_CONVERSION -> context.getString(R.string.setting_category_candidate_conversion_title)
@@ -778,6 +807,7 @@ object SettingDestinations {
         when (category) {
             SettingCategory.FREQUENT -> CoreR.drawable.baseline_check_24
             SettingCategory.KEYBOARD_DISPLAY -> CoreR.drawable.keyboard_24px
+            SettingCategory.MORSE -> CoreR.drawable.keyboard_24px
             SettingCategory.INPUT_METHOD -> CoreR.drawable.input_24px
             SettingCategory.VOICE_INPUT -> CoreR.drawable.settings_voice_24px
             SettingCategory.CANDIDATE_CONVERSION -> CoreR.drawable.arrows_output_24px
@@ -857,6 +887,8 @@ object SettingDestinations {
             "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
             "ng_word_preference" -> R.id.ngWordFragment
             "gemma_prompt_template_management_preference" -> R.id.gemmaPromptTemplateFragment
+            "morse_key_layout" -> R.id.morseLayoutFragment
+            "morse_maps" -> R.id.morseMapListFragment
             "gojuon_keyboard_size_preference" -> R.id.gojuonSizeSettingsFragment
             "kana_keyboard_letter_size_preference" -> R.id.tenKeyCandidateLetterSizeFragment
             "tenkey_popup_view_style_preference" -> R.id.tenKeyPopupStyleSettingFragment
