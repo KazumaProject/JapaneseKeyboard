@@ -18,4 +18,5 @@
     <string name="morse_left">Cursor left</string>
     <string name="morse_right">Cursor right</string>
     <string name="morse_map">Next map</string>
+    <string name="morse_clear_signal">Clear unassigned signal</string>
 </resources>

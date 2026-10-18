@@ -65,11 +65,13 @@
     <string name="morse_selected_key">Selected: %1$s</string>
     <string name="morse_move_left">← Left</string>
     <string name="morse_move_right">Right →</string>
-    <string name="morse_row_up">↑ Previous row</string>
-    <string name="morse_row_down">Next row ↓</string>
+    <string name="morse_row_up">Previous group</string>
+    <string name="morse_row_down">Next group</string>
     <string name="morse_hide_key">Hide selected key</string>
     <string name="morse_add_key">Add a key</string>
-    <string name="morse_controls_above">Place control keys above the paddles</string>
     <string name="morse_reset_layout">Reset key placement</string>
-    <string name="morse_layout_full">Use up to two rows with six keys each</string>
+    <string name="morse_layout_full">Use up to two groups with six keys each</string>
+    <string name="morse_control_placement">Control key placement</string>
+    <string name="morse_control_placement_value">Control keys: %1$s</string>
+    <string-array name="morse_control_placements"><item>Below paddles</item><item>Above paddles</item><item>Left of paddles</item><item>Right of paddles</item><item>Both sides of paddles</item></string-array>
 </resources>

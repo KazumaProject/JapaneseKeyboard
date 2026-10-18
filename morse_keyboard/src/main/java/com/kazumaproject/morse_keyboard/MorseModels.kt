@@ -55,7 +55,7 @@ data class MorseSettings(
     val volumePercent: Int = 25,
     val vibration: Boolean = false,
 ) {
-    val minimumHeightDp: Int get() = 220 + (controlLayout.rows.size - 1) * 48
+    val minimumHeightDp: Int get() = if (controlLayout.placement.isSide) 68 + controlLayout.rows.maxOf { it.size } * 48 else 220 + (controlLayout.rows.size - 1) * 48
     val unitMs: Long get() = 1200L / wpm.coerceIn(5, 60)
 }
 
