@@ -481,6 +481,15 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardSkinSelectionFragment"
         android:label="@string/keyboard_skin_choose" />
     <fragment
+        android:id="@+id/gojuonPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.GojuonPreferenceFragment"
+        android:label="@string/gojuon_settings_category" />
+    <fragment
+        android:id="@+id/gojuonSizeSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.gojuon_size_setting.GojuonSizeSettingsFragment"
+        android:label="@string/gojuon_keyboard_size_title"
+        tools:layout="@layout/fragment_gojuon_size_settings" />
+    <fragment
         android:id="@+id/tenKeyCandidateLetterSizeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"
         android:label="@string/tenkeycandidatelettersizefragment" />

@@ -1936,4 +1936,15 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="dictionary_browser_empty">No matching words.</string>
     <string name="dictionary_browser_error">Could not read this dictionary. Check its files and try again.</string>
     <string name="dictionary_browser_retry">Retry</string>
+    <string name="gojuon_settings_category">50-key keyboard</string>
+    <string name="gojuon_keyboard_size_title">50-key keyboard · key and text sizes</string>
+    <string name="gojuon_keyboard_size_summary">Adjust key width and height, and text size for Japanese, English and numbers.</string>
+    <string name="gojuon_sizing_default">Unchanged modes use the default size of 18 sp.</string>
+    <string name="gojuon_sizing_letters_help">The size of the letters and symbols on the keys in this mode.</string>
+    <string name="gojuon_settings_tab">50-key</string>
+    <string name="gojuon_sizing_normal">Character keys · all modes</string>
+    <string name="gojuon_sizing_special">Utility keys · all modes</string>
+    <string name="gojuon_sizing_special_help">Cursor, delete, IME switch, small letters, Shift, undo and full-width toggle keys. Icon and text sizes can be adjusted separately.</string>
+    <string name="gojuon_sizing_icon">Utility key icons</string>
+    <string name="gojuon_sizing_special_text">Utility key text</string>
 </resources>
