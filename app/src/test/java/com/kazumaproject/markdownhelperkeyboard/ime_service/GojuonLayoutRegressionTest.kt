@@ -180,6 +180,56 @@ class GojuonLayoutRegressionTest {
         }
     }
 
+    @Test fun imeSwitchLongPressDoesNotDispatchTapInEveryMode() {
+        for (independent in listOf(false, true)) {
+            val f = Fixture(independent)
+            try {
+                for (mode in listOf(InputMode.ModeJapanese, InputMode.ModeEnglish, InputMode.ModeNumber)) {
+                    f.mode(mode)
+                    f.taps.clear()
+                    f.longPresses.clear()
+                    f.send(MotionEvent.ACTION_DOWN, R.id.key_ime_switch)
+                    shadowOf(Looper.getMainLooper()).idleFor(350, TimeUnit.MILLISECONDS)
+                    assertEquals(listOf(Key.SideKeyImeSwitch), f.longPresses)
+                    f.send(MotionEvent.ACTION_UP, R.id.key_ime_switch)
+                    assertTrue("$mode independent=$independent", f.taps.isEmpty())
+                    f.tap(R.id.key_ime_switch)
+                    assertEquals(listOf(Key.SideKeyImeSwitch), f.taps.map { it.first })
+                }
+            } finally { f.close() }
+        }
+    }
+
+    @Test fun imeSwitchLongPressDoesNotTapWhenAnotherFingerArrives() {
+        for (independent in listOf(false, true)) {
+            val f = Fixture(independent)
+            try {
+                f.send(MotionEvent.ACTION_DOWN, R.id.key_ime_switch)
+                shadowOf(Looper.getMainLooper()).idleFor(350, TimeUnit.MILLISECONDS)
+                f.send(MotionEvent.ACTION_POINTER_DOWN, R.id.key_ime_switch, R.id.key_1, actionIndex = 1)
+                f.send(MotionEvent.ACTION_POINTER_UP, R.id.key_ime_switch, R.id.key_1, actionIndex = 1)
+                f.send(MotionEvent.ACTION_UP, R.id.key_ime_switch)
+                assertEquals(listOf(Key.SideKeyImeSwitch), f.longPresses)
+                assertFalse(f.taps.any { it.first == Key.SideKeyImeSwitch })
+            } finally { f.close() }
+        }
+    }
+
+    @Test fun cancelledImeSwitchDoesNotTapOrLongPress() {
+        for (independent in listOf(false, true)) {
+            val f = Fixture(independent)
+            try {
+                f.send(MotionEvent.ACTION_DOWN, R.id.key_ime_switch)
+                f.send(MotionEvent.ACTION_CANCEL, R.id.key_ime_switch)
+                shadowOf(Looper.getMainLooper()).idleFor(350, TimeUnit.MILLISECONDS)
+                assertTrue(f.longPresses.isEmpty())
+                assertTrue(f.taps.isEmpty())
+                f.tap(R.id.key_ime_switch)
+                assertEquals(listOf(Key.SideKeyImeSwitch), f.taps.map { it.first })
+            } finally { f.close() }
+        }
+    }
+
     @Test fun repeatedModeCyclesRestoreBothBracketCellsAndKana() {
         val f = Fixture()
         try {
