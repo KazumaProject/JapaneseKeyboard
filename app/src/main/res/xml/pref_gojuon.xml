@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="@string/gojuon_settings_category">
+        <Preference
+            android:key="gojuon_keyboard_size_preference"
+            android:title="@string/gojuon_keyboard_size_title"
+            android:summary="@string/gojuon_keyboard_size_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

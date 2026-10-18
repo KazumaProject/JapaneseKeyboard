@@ -6467,6 +6467,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 refreshSuggestionProgressVisibility()
 
+                ModeKeySizing.applyGojuon(gojuonView)
                 gojuonView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 gojuonView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 gojuonView.setIndependentMultiTouchEnabled(appPreference.independent_multi_touch_preference)
@@ -11728,6 +11729,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView: FloatingKeyboardLayoutBinding?,
     ) {
         gojuonView.apply {
+            ModeKeySizing.applyGojuon(this)
             applyKeyboardTheme(
                 skinId = keyboardSkinId,
                 themeMode = keyboardThemeMode ?: "default",
@@ -11927,6 +11929,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setTenkeyIconsInHenkan(insertString, mainView)
             }
 
+            Key.SideKeyImeSwitch -> {
+                if (!isFlick) showListPopup()
+            }
+
             Key.SideKeyPreviousChar -> {
                 when (currentTenkeyInputMode(mainView)) {
                     is InputMode.ModeNumber -> {
@@ -12119,6 +12125,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeyInputMode -> {
                 setTenkeyIconsInHenkanFloating(insertString, floatingKeyboardLayoutBinding)
+            }
+
+            Key.SideKeyImeSwitch -> {
+                if (!isFlick) showListPopup()
             }
 
             Key.SideKeyPreviousChar -> {
