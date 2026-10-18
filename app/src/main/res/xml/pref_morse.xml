@@ -1,0 +1,25 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceCategory android:title="@string/morse_title">
+<Preference android:key="morse_key_layout" android:title="@string/morse_key_layout_title" android:summary="@string/morse_key_layout_summary" />
+<Preference android:key="morse_maps" android:title="@string/morse_maps_title" android:summary="@string/morse_maps_summary" />
+</PreferenceCategory>
+<PreferenceCategory android:title="@string/morse_input_title">
+<ListPreference android:key="morse_style" android:title="@string/morse_style_title" android:entries="@array/morse_style_entries" android:entryValues="@array/morse_style_values" android:defaultValue="PADDLE_A" app:useSimpleSummaryProvider="true" />
+<SeekBarPreference android:key="morse_wpm" android:title="@string/morse_wpm_title" android:defaultValue="15" app:min="5" android:max="60" app:seekBarIncrement="1" app:showSeekBarValue="true" />
+<SwitchPreferenceCompat android:key="morse_auto_boundary" android:title="@string/morse_auto_title" android:defaultValue="true" />
+<SeekBarPreference android:key="morse_boundary_ms" android:title="@string/morse_boundary_title" android:defaultValue="600" app:min="100" android:max="3000" app:seekBarIncrement="20" app:showSeekBarValue="true" />
+<SeekBarPreference android:key="morse_straight_threshold_ms" android:title="@string/morse_threshold_title" android:defaultValue="160" app:min="60" android:max="1000" app:seekBarIncrement="10" app:showSeekBarValue="true" />
+</PreferenceCategory>
+<PreferenceCategory android:title="@string/morse_layout_title">
+<SwitchPreferenceCompat android:key="morse_reverse" android:title="@string/morse_reverse_title" android:defaultValue="false" />
+<SwitchPreferenceCompat android:key="morse_one_hand" android:title="@string/morse_one_hand_title" android:defaultValue="false" />
+<SeekBarPreference android:key="morse_pad_width" android:title="@string/morse_width_title" android:defaultValue="100" app:min="40" android:max="100" app:seekBarIncrement="5" app:showSeekBarValue="true" />
+<SeekBarPreference android:key="morse_pad_height" android:title="@string/morse_height_title" android:defaultValue="100" app:min="40" android:max="100" app:seekBarIncrement="5" app:showSeekBarValue="true" />
+<SeekBarPreference android:key="morse_pad_gap" android:title="@string/morse_gap_title" android:defaultValue="8" app:min="0" android:max="48" app:seekBarIncrement="2" app:showSeekBarValue="true" />
+</PreferenceCategory>
+<PreferenceCategory android:title="@string/morse_feedback_title">
+<SwitchPreferenceCompat android:key="morse_sound" android:title="@string/morse_sound_title" android:defaultValue="true" />
+<SeekBarPreference android:key="morse_frequency" android:title="@string/morse_frequency_title" android:defaultValue="780" app:min="200" android:max="1500" app:seekBarIncrement="10" app:showSeekBarValue="true" />
+<SeekBarPreference android:key="morse_volume" android:title="@string/morse_volume_title" android:defaultValue="25" app:min="0" android:max="100" app:seekBarIncrement="5" app:showSeekBarValue="true" />
+<SwitchPreferenceCompat android:key="morse_vibration" android:title="@string/morse_vibration_title" android:defaultValue="false" />
+</PreferenceCategory></PreferenceScreen>

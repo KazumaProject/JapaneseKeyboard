@@ -1,0 +1,21 @@
+<resources>
+    <string name="morse_dot">Dot paddle</string>
+    <string name="morse_dash">Dash paddle</string>
+    <string name="morse_straight">Straight key: short press for dot, long press for dash</string>
+    <string name="morse_boundary">Divide</string>
+    <string name="morse_delete">Delete</string>
+    <string name="morse_convert">Convert\nSpace</string>
+    <string name="morse_enter">Commit\nEnter</string>
+    <string name="morse_small">Small</string>
+    <string name="morse_keyboard">Keyboard</string>
+    <string name="morse_unknown">Unassigned</string>
+    <string name="morse_ready">Enter dots and dashes · Hold Convert for a space</string>
+    <string name="morse_dakuten">Voicing mark</string>
+    <string name="morse_handakuten">Semi-voicing mark</string>
+    <string name="morse_action">Action</string>
+    <string name="morse_space">Space</string>
+    <string name="morse_commit">Commit</string>
+    <string name="morse_left">Cursor left</string>
+    <string name="morse_right">Cursor right</string>
+    <string name="morse_map">Next map</string>
+</resources>
