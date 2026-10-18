@@ -7,6 +7,9 @@ import com.kazumaproject.core.domain.extensions.screenHeight
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.widget.ImageView
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -14,6 +17,8 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
+import kotlin.math.roundToInt
+import com.kazumaproject.core.domain.extensions.KEY_GOJUON_SIZE
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import com.kazumaproject.core.domain.flick.IndependentKeyTouchDispatcher
@@ -81,10 +86,10 @@ import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowFlickTop
 import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowLeft
 import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowRight
 import com.kazumaproject.gojuon_keyboard.extenstions.setPopUpWindowTop
-import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextEnglish
-import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextEnglishCaps
-import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextJapanese
-import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextNumber
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextEnglish as setEnglishLabel
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextEnglishCaps as setEnglishCapsLabel
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextJapanese as setJapaneseLabel
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextNumber as setNumberLabel
 import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextDefaultEnglish
 import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextFlickBottomJapanese
 import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonTextFlickLeftJapanese
@@ -403,7 +408,155 @@ class GojuonKeyboardView @JvmOverloads constructor(
     private var skinGuidePopup: com.kazumaproject.core.ui.skin.SkinGuidePopup? = null
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
 
+    private var modeLetterSizes: Map<InputMode, Float> = emptyMap()
+    private var keyWidthScale = 100
+    private var keyHeightScale = 100
+    private var specialKeyWidthScale = 100
+    private var specialKeyHeightScale = 100
+    private var specialIconScale = 100
+    private var specialTextSize = KEY_GOJUON_SIZE
+    private val baseIconScaleTypes = allImageButtonKeys.associate { it.id to it.scaleType }
+    private data class KeyMargins(val start: Int, val top: Int, val end: Int, val bottom: Int, val width: Int)
+    private val baseKeyMargins = mutableMapOf<Int, KeyMargins>()
+
+    /** Missing mode overrides preserve the original 18 sp labels. */
+    fun setModeLetterSizes(sizes: Map<InputMode, Float>) {
+        modeLetterSizes = sizes.filterValues { it.isFinite() }.mapValues { it.value.coerceIn(8f, 32f) }
+        when (currentInputMode.get()) {
+            InputMode.ModeJapanese -> setKeysInJapaneseText()
+            InputMode.ModeEnglish -> updateKeyStylesEnglish(gojuonCapsLockState.value)
+            InputMode.ModeNumber -> setKeysInNumberText(gojuonCapsLockState.value.zenkakuOn)
+        }
+    }
+
+    private fun letterSize(mode: InputMode): Float = modeLetterSizes[mode] ?: KEY_GOJUON_SIZE
+
+    private fun labelSize(keyId: Int, mode: InputMode): Float = when {
+        mode == InputMode.ModeEnglish && (keyId == binding.key5.id || keyId == binding.key20.id) ->
+            KEY_GOJUON_SIZE * specialIconScale / 100f
+        isSpecialKey(keyId, mode) -> specialTextSize
+        else -> letterSize(mode)
+    }
+
+    private fun isSpecialKey(keyId: Int, mode: InputMode): Boolean = when (keyId) {
+        binding.key10.id -> mode == InputMode.ModeJapanese
+        binding.key5.id, binding.key20.id -> mode == InputMode.ModeEnglish
+        binding.key55.id -> mode != InputMode.ModeJapanese
+        else -> allImageButtonKeys.any { it.id == keyId } || keyId == binding.cursorKeysContainer.id
+    }
+
+    private fun AppCompatButton.setGojuonKeyTextJapanese(keyId: Int) =
+        setJapaneseLabel(keyId, labelSize(keyId, InputMode.ModeJapanese))
+    private fun AppCompatButton.setGojuonKeyTextEnglish(keyId: Int) =
+        setEnglishLabel(keyId, labelSize(keyId, InputMode.ModeEnglish))
+    private fun AppCompatButton.setGojuonKeyTextEnglishCaps(keyId: Int) =
+        setEnglishCapsLabel(keyId, labelSize(keyId, InputMode.ModeEnglish))
+    private fun AppCompatButton.setGojuonKeyTextNumber(keyId: Int) =
+        setNumberLabel(keyId, labelSize(keyId, InputMode.ModeNumber))
+
+    /** Sizes the character keys by adjusting their gaps. 100 restores the original layout. */
+    fun setKeySizeScale(widthScalePercent: Int, heightScalePercent: Int) {
+        restoreKeyMargins()
+        keyWidthScale = widthScalePercent.coerceIn(60, 140)
+        keyHeightScale = heightScalePercent.coerceIn(60, 140)
+        applyKeySizeScale()
+    }
+
+    /** Utility-key sizes are independent of character keys and apply in every input mode. */
+    fun setSpecialKeySizing(widthPercent: Int, heightPercent: Int, iconPercent: Int, textSizeSp: Float) {
+        restoreKeyMargins()
+        specialKeyWidthScale = widthPercent.coerceIn(60, 140)
+        specialKeyHeightScale = heightPercent.coerceIn(60, 140)
+        specialIconScale = iconPercent.coerceIn(40, 200)
+        specialTextSize = textSizeSp.takeIf { it.isFinite() }?.coerceIn(8f, 32f) ?: KEY_GOJUON_SIZE
+        setModeLetterSizes(modeLetterSizes)
+        applyKeySizeScale()
+        invalidate()
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        // Image matrices affect only the glyph, retaining independent backgrounds / touch bounds.
+        allImageButtonKeys.forEach { key ->
+            val originalType = baseIconScaleTypes.getValue(key.id)
+            if (specialIconScale == 100) {
+                if (key.scaleType != originalType) key.scaleType = originalType
+            } else {
+                val drawable = key.drawable ?: return@forEach
+                val dw = drawable.intrinsicWidth.toFloat()
+                val dh = drawable.intrinsicHeight.toFloat()
+                val width = key.width - key.paddingLeft - key.paddingRight
+                val height = key.height - key.paddingTop - key.paddingBottom
+                if (dw <= 0 || dh <= 0 || width <= 0 || height <= 0) return@forEach
+                val fit = minOf(width / dw, height / dh)
+                val base = when (originalType) {
+                    ImageView.ScaleType.CENTER -> 1f
+                    ImageView.ScaleType.CENTER_INSIDE -> minOf(1f, fit)
+                    else -> fit
+                }
+                val scale = base * specialIconScale / 100f
+                val matrix = Matrix().apply {
+                    setScale(scale, scale)
+                    postTranslate((width - dw * scale) / 2f, (height - dh * scale) / 2f)
+                }
+                if (key.scaleType != ImageView.ScaleType.MATRIX) key.scaleType = ImageView.ScaleType.MATRIX
+                if (key.imageMatrix != matrix) key.imageMatrix = matrix
+            }
+        }
+        super.dispatchDraw(canvas)
+    }
+
+    private fun scalableKeyViews(): List<View> = allButtonKeys +
+        allImageButtonKeys.filterNot { it == binding.keyLeftCursor || it == binding.keyRightCursor } +
+        binding.cursorKeysContainer
+
+    private fun captureKeyMargins() {
+        scalableKeyViews().forEach { key ->
+            val params = key.layoutParams as LayoutParams
+            baseKeyMargins[key.id] = KeyMargins(params.marginStart, params.topMargin,
+                params.marginEnd, params.bottomMargin, params.width)
+        }
+    }
+
+    private fun restoreKeyMargins() {
+        scalableKeyViews().forEach { key ->
+            val base = baseKeyMargins[key.id] ?: return@forEach
+            val params = key.layoutParams as LayoutParams
+            params.width = base.width
+            params.marginStart = base.start
+            params.topMargin = base.top
+            params.marginEnd = base.end
+            params.bottomMargin = base.bottom
+            key.layoutParams = params
+        }
+    }
+
+    private fun applyKeySizeScale(mode: InputMode = currentInputMode.get()) {
+        fun scaled(margin: Int, percent: Int): Int {
+            // Several Gojuon cells share an edge (zero margin). Give those cells a gap
+            // when shrinking too, while 100% restores the original connected layout.
+            val result = if (percent >= 100) margin * (140 - percent) / 40f
+                else margin + maxOf(margin.toFloat(), 2 * resources.displayMetrics.density) *
+                    (100 - percent) / 40f * 1.5f
+            return result.roundToInt().coerceAtLeast(0)
+        }
+        scalableKeyViews().forEach { key ->
+            val base = baseKeyMargins[key.id] ?: return@forEach
+            val params = key.layoutParams as LayoutParams
+            val special = isSpecialKey(key.id, mode)
+            val widthScale = if (special) specialKeyWidthScale else keyWidthScale
+            val heightScale = if (special) specialKeyHeightScale else keyHeightScale
+            params.width = if (special && base.width > 0) (base.width * widthScale / 100f).roundToInt() else base.width
+            params.marginStart = scaled(base.start, widthScale)
+            params.marginEnd = scaled(base.end, widthScale)
+            params.topMargin = scaled(base.top, heightScale)
+            params.bottomMargin = scaled(base.bottom, heightScale)
+            key.layoutParams = params
+        }
+        requestLayout()
+    }
+
     init {
+        captureKeyMargins()
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
         declarePopupWindows()
@@ -3842,6 +3995,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
     }
 
     private fun handleClickInputModeSwitch() {
+        restoreKeyMargins()
         val newInputMode = when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
                 setKeysInEnglishText(false)
@@ -4043,12 +4197,15 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 InputMode.ModeJapanese
             }
         }
+        captureKeyMargins()
+        applyKeySizeScale(newInputMode)
         currentInputMode.set(newInputMode)
         binding.keySwitchKeyMode.setInputMode(newInputMode, isGojuon = true)
         inputModeChangedListener?.invoke(newInputMode)
     }
 
     fun resetLayout() {
+        restoreKeyMargins()
         Log.d("resetLayout", "called: ${gojuonCapsLockState.value} ${currentInputMode.get()}")
         when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
@@ -4246,6 +4403,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 clearShiftCaps()
             }
         }
+        captureKeyMargins()
+        applyKeySizeScale()
     }
 
     private fun setKeysInJapaneseText() {
@@ -4258,10 +4417,12 @@ class GojuonKeyboardView @JvmOverloads constructor(
         }
         binding.apply {
             key5.setLargeUnicodeIconScaleX(
+                iconSizeSp = letterSize(InputMode.ModeJapanese).roundToInt(),
                 icon = resources.getString(com.kazumaproject.core.R.string.string_kuten),
                 scaleX = 1f
             )
             key20.setLargeUnicodeIconScaleX(
+                iconSizeSp = letterSize(InputMode.ModeJapanese).roundToInt(),
                 icon = resources.getString(com.kazumaproject.core.R.string.string_よ), scaleX = 1f
             )
 
@@ -4287,6 +4448,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         val ctx = root.context
         key5.apply {
             setLargeUnicodeIconScaleX(
+                iconSizeSp = (KEY_GOJUON_SIZE * specialIconScale / 100f).roundToInt(),
                 icon = ctx.getString(
                     if (shiftOn) com.kazumaproject.core.R.string.caps_lock_icon
                     else com.kazumaproject.core.R.string.shift_symbol
@@ -4304,6 +4466,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         }
 
         key20.setLargeUnicodeIcon(
+            iconSizeSp = (KEY_GOJUON_SIZE * specialIconScale / 100f).roundToInt(),
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
         // key20もアイコン設定により色がリセットされる可能性があるため再適用
@@ -4340,9 +4503,9 @@ class GojuonKeyboardView @JvmOverloads constructor(
         val ctx = root.context
         key5.apply {
             setLargeUnicodeIconScaleX(
+                iconSizeSp = (30f * specialIconScale / 100f).roundToInt(),
                 icon = ctx.getString(com.kazumaproject.core.R.string.caps_lock_icon),
-                scaleX = 1.618f,
-                iconSizeSp = 30
+                scaleX = 1.618f
             )
             if (themeMode == "default") {
                 background = ContextCompat.getDrawable(
@@ -4356,6 +4519,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         }
 
         key20.setLargeUnicodeIcon(
+            iconSizeSp = (KEY_GOJUON_SIZE * specialIconScale / 100f).roundToInt(),
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
         if (themeMode != "default") {
@@ -4392,6 +4556,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
 
         key5.apply {
             setLargeUnicodeIconScaleX(
+                iconSizeSp = (KEY_GOJUON_SIZE * specialIconScale / 100f).roundToInt(),
                 icon = ctx.getString(com.kazumaproject.core.R.string.shift_symbol), scaleX = 1.618f
             )
             if (themeMode == "default") {
@@ -4404,6 +4569,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
         }
 
         key20.setLargeUnicodeIcon(
+            iconSizeSp = (KEY_GOJUON_SIZE * specialIconScale / 100f).roundToInt(),
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
         if (themeMode != "default") {

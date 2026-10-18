@@ -86,4 +86,37 @@ class ModeKeySizingTest {
         assertEquals(8f, ModeKeySizing.sumireCenter(english), 0f)
         assertEquals(16f, ModeKeySizing.tenkeyGuide(numbers), 0f)
     }
+    @Test fun gojuonDefaultsOverridesAndResetAreIndependentFromTenkey() {
+        for (mode in KeyboardInputMode.entries) {
+            assertEquals(18f, ModeKeySizing.gojuonCenter(mode), 0f)
+            assertNull(AppPreference.modeKeySize("gojuon", mode, false))
+        }
+        assertEquals(100, AppPreference.gojuon_key_width_scale_percent)
+        assertEquals(100, AppPreference.gojuon_key_height_scale_percent)
+        AppPreference.setModeKeySize("gojuon", japanese, false, 24f)
+        AppPreference.setModeKeySize("gojuon", english, false, 1f)
+        AppPreference.setModeKeySize("gojuon", numbers, false, 99f)
+        AppPreference.gojuon_key_width_scale_percent = 20
+        AppPreference.gojuon_key_height_scale_percent = 200
+        assertEquals(24f, ModeKeySizing.gojuonCenter(japanese), 0f)
+        assertEquals(8f, ModeKeySizing.gojuonCenter(english), 0f)
+        assertEquals(32f, ModeKeySizing.gojuonCenter(numbers), 0f)
+        assertEquals(60, AppPreference.gojuon_key_width_scale_percent)
+        assertEquals(140, AppPreference.gojuon_key_height_scale_percent)
+        assertEquals(17f, ModeKeySizing.tenkeyCenter(japanese, false), 0f)
+        AppPreference.resetModeKeySizes("gojuon", english)
+        assertEquals(18f, ModeKeySizing.gojuonCenter(english), 0f)
+        assertEquals(24f, ModeKeySizing.gojuonCenter(japanese), 0f)
+        AppPreference.gojuon_special_key_width_scale_percent = 85
+        AppPreference.gojuon_special_key_height_scale_percent = 90
+        AppPreference.gojuon_special_icon_scale_percent = 75
+        AppPreference.gojuon_special_text_size_sp = 14f
+        AppPreference.init(ApplicationProvider.getApplicationContext<Context>())
+        assertEquals(85, AppPreference.gojuon_special_key_width_scale_percent)
+        assertEquals(90, AppPreference.gojuon_special_key_height_scale_percent)
+        assertEquals(75, AppPreference.gojuon_special_icon_scale_percent)
+        assertEquals(14f, AppPreference.gojuon_special_text_size_sp, 0f)
+        assertEquals(24f, ModeKeySizing.gojuonCenter(japanese), 0f)
+        assertEquals(60, AppPreference.gojuon_key_width_scale_percent)
+    }
 }
