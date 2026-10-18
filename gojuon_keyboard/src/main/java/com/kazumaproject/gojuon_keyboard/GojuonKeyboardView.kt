@@ -1162,7 +1162,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     if (currentInputMode.get() == InputMode.ModeEnglish &&
                         key != Key.SideKeyDelete &&
                         key != Key.SideKeyCursorRight &&
-                        key != Key.SideKeyCursorLeft
+                        key != Key.SideKeyCursorLeft &&
+                        key != Key.SideKeyImeSwitch
                     ) {
                         return false
                     }
@@ -1181,7 +1182,8 @@ class GojuonKeyboardView @JvmOverloads constructor(
                     if (currentInputMode.get() == InputMode.ModeNumber &&
                         key != Key.SideKeyDelete &&
                         key != Key.SideKeyCursorRight &&
-                        key != Key.SideKeyCursorLeft
+                        key != Key.SideKeyCursorLeft &&
+                        key != Key.SideKeyImeSwitch
                     ) {
                         return false
                     }
@@ -1198,13 +1200,14 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 }
 
                 MotionEvent.ACTION_UP -> {
+                    val suppressImeSwitchTap = isLongPressed && pressedKey.key == Key.SideKeyImeSwitch
                     resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo = currentInputMode.get().next(
                             keyMap = keyMap, key = pressedKey.key, isGojuon = true
                         )
-                        if (keyInfo == KeyInfo.Null) {
+                        if (keyInfo == KeyInfo.Null && !suppressImeSwitchTap) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
                             )
@@ -1354,6 +1357,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 }
 
                 MotionEvent.ACTION_POINTER_DOWN -> {
+                    val suppressImeSwitchTap = isLongPressed && pressedKey.key == Key.SideKeyImeSwitch
                     if (isLongPressed) {
                         hideAllPopWindow()
                         if (!hasOtherLongPress()) Blur.removeBlurEffect(this)
@@ -1367,7 +1371,7 @@ class GojuonKeyboardView @JvmOverloads constructor(
                         val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
                         val keyInfo = currentInputMode.get()
                             .next(keyMap = keyMap, key = pressedKey.key, isGojuon = true)
-                        if (keyInfo == KeyInfo.Null) {
+                        if (keyInfo == KeyInfo.Null && !suppressImeSwitchTap) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
                             )
@@ -1465,12 +1469,13 @@ class GojuonKeyboardView @JvmOverloads constructor(
                 MotionEvent.ACTION_POINTER_UP -> {
                     if (event.pointerCount == 2) {
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                            val suppressImeSwitchTap = isLongPressed && pressedKey.key == Key.SideKeyImeSwitch
                             resetLongPressAction()
                             val gestureType =
                                 getGestureType(event, event.getPointerId(event.actionIndex))
                             val keyInfo = currentInputMode.get()
                                 .next(keyMap = keyMap, key = pressedKey.key, isGojuon = true)
-                            if (keyInfo == KeyInfo.Null) {
+                            if (keyInfo == KeyInfo.Null && !suppressImeSwitchTap) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
                                 )
