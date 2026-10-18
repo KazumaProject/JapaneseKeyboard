@@ -21,7 +21,8 @@ import org.robolectric.util.ReflectionHelpers
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ZenzFloatingFallbackTest {
-    private val service = spy(IMEService())
+    private val serviceInstance = IMEService()
+    private val service = spy(serviceInstance)
     private val preferences = ApplicationProvider.getApplicationContext<Context>()
         .getSharedPreferences("zenz-floating-fallback", Context.MODE_PRIVATE)
     private val local = Candidate("垢", 1, 2u, 1000, yomi = "あか")
@@ -43,6 +44,22 @@ class ZenzFloatingFallbackTest {
         }
         ReflectionHelpers.getField<ExecutorCoroutineDispatcher>(service, "kanaKanjiConversionDispatcher").close()
         preferences.edit().clear().commit()
+    }
+
+    @Test fun configuredWaitTimeUpdatesWithoutRestartingTheIme() {
+        val listener = ReflectionHelpers.getField<android.content.SharedPreferences.OnSharedPreferenceChangeListener>(
+            serviceInstance, "runtimeInputPreferenceListener")
+        val key = "zenz_debounce_time_preference"
+        for (delay in listOf(0, 300, 500)) {
+            preferences.edit().putInt(key, delay).commit()
+            listener.onSharedPreferenceChanged(preferences, key)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            assertEquals(delay, ReflectionHelpers.getField<Int>(serviceInstance, "zenzDebounceTimePreference"))
+        }
+        preferences.edit().remove(key).commit()
+        listener.onSharedPreferenceChanged(preferences, key)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertEquals(300, ReflectionHelpers.getField<Int>(serviceInstance, "zenzDebounceTimePreference"))
     }
 
     @Test fun fullscreenKeepsGeneratedCandidateInTheRegularList() {

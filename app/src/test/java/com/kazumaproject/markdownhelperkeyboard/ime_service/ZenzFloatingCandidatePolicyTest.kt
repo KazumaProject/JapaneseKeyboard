@@ -9,6 +9,10 @@ class ZenzFloatingCandidatePolicyTest {
         assertTrue(show(loading = true, candidate = false))
         assertTrue(show(loading = false, candidate = true))
     }
+    @Test fun debounceWaitingNeverShowsTheLoadingPanel() {
+        assertFalse(show(loading = true, candidate = false, started = false))
+        assertTrue(show(loading = true, candidate = false, started = true))
+    }
     @Test fun emptyOrFailedResultDoesNotLeaveAnEmptyPanel() {
         assertFalse(show(loading = false, candidate = false))
     }
@@ -23,6 +27,7 @@ class ZenzFloatingCandidatePolicyTest {
     private fun show(
         enabled: Boolean = true, suppressed: Boolean = false,
         request: Boolean = true, target: Boolean = true,
-        loading: Boolean = false, candidate: Boolean = true,
-    ) = ZenzFloatingCandidatePolicy.shouldShow(enabled, suppressed, request, target, loading, candidate)
+        loading: Boolean = false, candidate: Boolean = true, started: Boolean = true,
+    ) = ZenzFloatingCandidatePolicy.shouldShow(
+        enabled, suppressed, request, target, loading, started, candidate)
 }

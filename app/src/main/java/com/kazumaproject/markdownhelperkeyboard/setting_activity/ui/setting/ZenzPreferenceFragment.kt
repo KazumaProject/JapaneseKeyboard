@@ -29,12 +29,6 @@ class ZenzPreferenceFragment : AsyncPreferenceFragment() {
             true
         }
 
-        findPreference<Preference>("zenz_floating_candidates_reset")?.setOnPreferenceClickListener {
-            com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings.reset(
-                androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()),
-                com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.GuideProfile.ZENZ)
-            true
-        }
         updateModelPrefSummary()
         applyLegacySearchResultFilterIfNeeded()
     }
