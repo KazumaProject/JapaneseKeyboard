@@ -21,4 +21,16 @@ class MorseSettingsEntryPointTest {
         val category = SettingDestinations.categories(context).single { it.category == SettingCategory.MORSE }
         assertEquals(R.id.morsePreferenceFragment, SettingDestinations.destinationId(category.destination))
     }
+    @Test fun settingsAndMapManagementAppearInSearchAndFrequentCandidates() {
+        val searchable = SettingSearchIndex.searchable(context)
+        for (key in listOf("morse_beginner_guide", "morse_style", "morse_wpm", "morse_maps", "morse_key_layout", "morse_sound", "morse_boundary_ms")) {
+            assertTrue(key, searchable.any { it.key == key && it.category == SettingCategory.MORSE })
+        }
+        assertTrue(SettingDestinations.frequentCandidates(context).any { it.key == "morse_beginner_guide" })
+        assertTrue(SettingDestinations.frequentCandidates(context).any { it.key == "morse_maps" })
+        assertTrue(SettingDestinations.frequentCandidates(context).any { it.key == "morse_key_layout" })
+        assertTrue(SettingSearchIndex.legacySearchable(context).any {
+            it.category == SettingCategory.MORSE && it.legacyTarget?.tabKey == SettingTabRegistry.TAB_MORSE
+        })
+    }
 }

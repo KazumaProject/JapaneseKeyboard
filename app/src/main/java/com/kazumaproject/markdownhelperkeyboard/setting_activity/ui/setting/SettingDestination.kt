@@ -474,6 +474,23 @@ object SettingDestinations {
     }
 
     private val frequentCandidatePreferenceKeys = listOf(
+        "morse_maps",
+        "morse_key_layout",
+        "morse_beginner_guide",
+        "morse_style",
+        "morse_wpm",
+        "morse_auto_boundary",
+        "morse_boundary_ms",
+        "morse_straight_threshold_ms",
+        "morse_reverse",
+        "morse_one_hand",
+        "morse_pad_width",
+        "morse_pad_height",
+        "morse_pad_gap",
+        "morse_sound",
+        "morse_frequency",
+        "morse_volume",
+        "morse_vibration",
         "keyboard_floating_preference",
         "landscape_force_qwerty_preference",
         "keyboard_key_letter_size_fragment_preference",
