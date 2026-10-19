@@ -39,6 +39,7 @@ data class MorseMap(val id: String, val name: String, val entries: List<MorseEnt
 enum class MorseInputStyle { PADDLE_A, PADDLE_B, TAP, STRAIGHT }
 
 data class MorseSettings(
+    val beginnerGuide: Boolean = false,
     val controlLayout: MorseControlLayout = MorseControlLayout(),
     val style: MorseInputStyle = MorseInputStyle.PADDLE_A,
     val wpm: Int = 15,

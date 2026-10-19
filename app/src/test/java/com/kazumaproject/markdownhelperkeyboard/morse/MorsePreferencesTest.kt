@@ -19,6 +19,13 @@ class MorsePreferencesTest {
     private val store = MorsePreferences(context)
     @Before fun reset() { preferences.edit().clear().commit() }
 
+    @Test fun beginnerGuideDefaultsOffAndPersistsWithOtherMorseSettings() {
+        assertFalse(MorsePreferences(context).settings().beginnerGuide)
+        preferences.edit().putBoolean("morse_beginner_guide", true).commit()
+        assertTrue(MorsePreferences(context).settings().beginnerGuide)
+        preferences.edit().putBoolean("morse_beginner_guide", false).commit()
+        assertFalse(MorsePreferences(context).settings().beginnerGuide)
+    }
     @Test fun defaultsSelectWabunAndRestoreOrderAndEnabledMapsByStableId() {
         assertEquals(MorsePresets.WABUN, store.selectedMapId)
         assertEquals(listOf(MorsePresets.WABUN, MorsePresets.ROMAJI, MorsePresets.ENGLISH), store.enabledMaps().map { it.id })

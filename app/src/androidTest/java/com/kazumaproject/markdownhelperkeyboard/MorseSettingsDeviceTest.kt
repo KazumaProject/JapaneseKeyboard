@@ -133,6 +133,11 @@ class MorseSettingsDeviceTest {
                     }
                     await("Morse preferences") { nodes().any { it.isVisibleToUser && it.text?.toString() == context.getString(R.string.morse_style_title) } }
                     screenshot(if (newHome) "new-morse-settings" else "legacy-morse-settings")
+                    click(R.string.morse_beginner_guide_title)
+                    await("beginner guide enabled from settings") { MorsePreferences(context).settings().beginnerGuide }
+                    if (newHome) screenshot("guide-setting")
+                    click(R.string.morse_beginner_guide_title)
+                    await("beginner guide disabled from settings") { !MorsePreferences(context).settings().beginnerGuide }
                     if (newHome) {
                         click(R.string.morse_key_layout_title)
                         await("layout preview") { nodes().any { it.isVisibleToUser && it.contentDescription?.toString() == context.getString(com.kazumaproject.morse_keyboard.R.string.morse_delete) } }
