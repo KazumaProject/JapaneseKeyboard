@@ -4,6 +4,7 @@
 <Preference android:key="morse_maps" android:title="@string/morse_maps_title" android:summary="@string/morse_maps_summary" />
 </PreferenceCategory>
 <PreferenceCategory android:title="@string/morse_input_title">
+<SwitchPreferenceCompat android:key="morse_beginner_guide" android:title="@string/morse_beginner_guide_title" android:summary="@string/morse_beginner_guide_summary" android:defaultValue="false" />
 <ListPreference android:key="morse_style" android:title="@string/morse_style_title" android:entries="@array/morse_style_entries" android:entryValues="@array/morse_style_values" android:defaultValue="PADDLE_A" app:useSimpleSummaryProvider="true" />
 <SeekBarPreference android:key="morse_wpm" android:title="@string/morse_wpm_title" android:defaultValue="15" app:min="5" android:max="60" app:seekBarIncrement="1" app:showSeekBarValue="true" />
 <SwitchPreferenceCompat android:key="morse_auto_boundary" android:title="@string/morse_auto_title" android:defaultValue="true" />

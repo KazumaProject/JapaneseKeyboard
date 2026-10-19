@@ -74,4 +74,6 @@
     <string name="morse_control_placement">Control key placement</string>
     <string name="morse_control_placement_value">Control keys: %1$s</string>
     <string-array name="morse_control_placements"><item>Below paddles</item><item>Above paddles</item><item>Left of paddles</item><item>Right of paddles</item><item>Both sides of paddles</item></string-array>
+    <string name="morse_beginner_guide_title">Floating beginner guide</string>
+    <string name="morse_beginner_guide_summary">Choose any entry in the current map to see its code, preview the paddles, and follow your progress. Off by default.</string>
 </resources>

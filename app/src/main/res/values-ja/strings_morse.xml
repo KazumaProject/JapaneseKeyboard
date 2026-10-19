@@ -74,4 +74,6 @@
     <string name="morse_control_placement">補助キーの配置</string>
     <string name="morse_control_placement_value">補助キー：%1$s</string>
     <string-array name="morse_control_placements"><item>パッドの下</item><item>パッドの上</item><item>パッドの左</item><item>パッドの右</item><item>パッドを挟んで左右</item></string-array>
+    <string name="morse_beginner_guide_title">初心者向けフローティングガイド</string>
+    <string name="morse_beginner_guide_summary">現在のマップの文字・操作を選び、符号・パッドの順序・入力の進捗を確認できます。初期状態は無効です。</string>
 </resources>

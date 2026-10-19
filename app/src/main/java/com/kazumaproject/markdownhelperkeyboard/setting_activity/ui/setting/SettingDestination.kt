@@ -476,6 +476,7 @@ object SettingDestinations {
     private val frequentCandidatePreferenceKeys = listOf(
         "morse_maps",
         "morse_key_layout",
+        "morse_beginner_guide",
         "morse_style",
         "morse_wpm",
         "morse_auto_boundary",

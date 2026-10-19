@@ -18,6 +18,15 @@ import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.skin.SkinKeyRole
 
 class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: AttributeSet? = null) : LinearLayout(localizedMorseContext(baseContext), attrs) {
+    var guideAnchor: View? = null
+    var guideAvoidView: () -> View? = { null }
+    var guideAllowed: () -> Boolean = { false }
+    private val guide = MorseGuide()
+    private var guideWindow: MorseGuideWindow? = null
+    private var guideBoundMap: MorseMap? = null
+    private var guideDemo = false
+    private val guideTasks = mutableListOf<Runnable>()
+    private val showGuide = Runnable { refreshGuide() }
     var longPressTimeoutMs: Long = 300L
     var onDeleteRepeat: (Boolean) -> Unit = {}
     var hasComposingText: Boolean = false
@@ -80,7 +89,9 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
             mainHandler.postDelayed(runnable, delayMs)
             return MorseCancellation { mainHandler.removeCallbacks(runnable) }
         }
-    }, maps.first(), onOutput = { output -> onOutput(output) }, onPattern = { updatePreview() }, onTone = { on ->
+    }, maps.first(), onOutput = { output ->
+        onOutput(output).also { accepted -> if (accepted) markGuideDecoded() }
+    }, onPattern = { updatePreview() }, onTone = { on ->
         tone.set(on, settings)
         if (on && settings.vibration) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     })
@@ -103,10 +114,10 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         body.addView(padContainer, LayoutParams(0, -1, 1f))
         addView(body, LayoutParams(-1, 0, 1f))
         rebuildControls()
-        dotPad.setOnClickListener { if (inputAllowed()) { onInteraction(); engine.addSignal('.') } }
-        dashPad.setOnClickListener { if (inputAllowed()) { onInteraction(); engine.addSignal('-') } }
+        dotPad.setOnClickListener { if (inputAllowed()) { stopGuideDemo(); onInteraction(); engine.addSignal('.') } }
+        dashPad.setOnClickListener { if (inputAllowed()) { stopGuideDemo(); onInteraction(); engine.addSignal('-') } }
         dotPad.setOnLongClickListener {
-            if (inputAllowed() && settings.style == MorseInputStyle.STRAIGHT) { onInteraction(); engine.addSignal('-'); true } else false
+            if (inputAllowed() && settings.style == MorseInputStyle.STRAIGHT) { stopGuideDemo(); onInteraction(); engine.addSignal('-'); true } else false
         }
         rebuildPads()
         rebuildMaps()
@@ -128,6 +139,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         cancelInput()
         settings = configuration; maps = nextMaps; engine.settings = configuration
         engine.map = maps.firstOrNull { it.id == selectedId } ?: maps.first()
+        guide.setMap(engine.map); guideBoundMap = null
         rebuildPads(); rebuildControls(); rebuildMaps(); updatePreview(); applyAppearance()
     }
 
@@ -135,6 +147,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         val map = maps.firstOrNull { it.id == id } ?: return
         cancelInput()
         engine.map = map
+        guide.setMap(map); guideBoundMap = null
         onMapSelected(id)
         rebuildMaps(); updatePreview(); applyAppearance()
     }
@@ -163,6 +176,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
                     setOnClickListener {
                         onControlSelected?.let { it(control); return@setOnClickListener }
                         if (!inputAllowed()) return@setOnClickListener
+                        stopGuideDemo()
                         onInteraction()
                         when (control) {
                             MorseControl.BOUNDARY -> if (engine.pattern.isNotEmpty() && !engine.boundary()) announceForAccessibility(localString(R.string.morse_unknown))
@@ -283,6 +297,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
+        if (ready) { mainHandler.removeCallbacks(showGuide); mainHandler.post(showGuide) }
         if (protectNavigationBar) {
             val inset = androidx.core.view.ViewCompat.getRootWindowInsets(this)
                 ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
@@ -299,6 +314,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
                 if (!inputAllowed()) return true
                 val dot = touchedPad(event.x, event.y) ?: return super.dispatchTouchEvent(event)
                 onInteraction()
+                stopGuideDemo()
                 pointerPads[event.getPointerId(0)] = dot
                 parent?.requestDisallowInterceptTouchEvent(true)
                 updateHeld()
@@ -334,6 +350,10 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         engine.pressed(dotPad.isPressed, dashPad.isPressed)
     }
     fun cancelInput(clearPattern: Boolean = false) {
+        mainHandler.removeCallbacks(showGuide)
+        stopGuideDemo()
+        guideWindow?.dismiss()
+        if (clearPattern) guide.reset()
         stopDeleteRepeat()
         pointerPads.clear(); dotPad.isPressed = false; dashPad.isPressed = false
         engine.cancel(clearPattern); tone.release()
@@ -350,7 +370,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         is MorseOutput.Command -> localString(when (output.action) {
             MorseCommand.DAKUTEN -> R.string.morse_dakuten
             MorseCommand.HANDAKUTEN -> R.string.morse_handakuten
-            else -> R.string.morse_action
+            else -> MorseControl.entries.firstOrNull { it.command == output.action }?.labelResource ?: R.string.morse_action
         })
         null -> localString(R.string.morse_unknown)
     }
@@ -365,11 +385,66 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
             else "$signal → ${label(engine.map.decode(signal))}. " + engine.map.continuations(signal).take(4).joinToString { "${it.signal} ${label(it.output)}" }
         preview.invalidate()
         updateControlIcons()
+        if (ready) refreshGuide()
+    }
+
+    private fun markGuideDecoded() { guide.decoded(engine.pattern) }
+
+    fun refreshGuide() {
+        if (!settings.beginnerGuide || !isShown || windowVisibility != VISIBLE || !isAttachedToWindow || !guideAllowed() || onControlSelected != null) {
+            guideWindow?.dismiss(); stopGuideDemo(); return
+        }
+        if (guideBoundMap != engine.map) guide.setMap(engine.map)
+        val window = guideWindow ?: MorseGuideWindow(this, { guideAnchor ?: rootView }, { guideAvoidView() }, MorseGuidePanel(context), { refreshGuide() }).also {
+            guideWindow = it
+            it.panel.onSelect = { entry -> guide.select(entry.signal); replayGuide() }
+            it.panel.onResize = { it.show() }
+            it.panel.onReplay = { replayGuide() }
+            it.panel.onReset = { cancelInput(clearPattern = true); guide.reset(); refreshGuide() }
+        }
+        if (guideBoundMap != engine.map) {
+            window.panel.bind(engine.map, { label(it) }, textColor, backgroundColorValue, specialColor)
+            guideBoundMap = engine.map
+        }
+        val progress = guide.progress(engine.pattern)
+        window.panel.update(guide.selected, progress, guideDemo, settings.style == MorseInputStyle.STRAIGHT)
+        if (!guideDemo) highlightGuidePad(progress.next)
+        window.show()
+    }
+    private fun highlightGuidePad(symbol: Char?) {
+        dotPad.isActivated = symbol == '.' || symbol == '-' && settings.style == MorseInputStyle.STRAIGHT
+        dashPad.isActivated = symbol == '-' && settings.style != MorseInputStyle.STRAIGHT
+        androidx.core.view.ViewCompat.setStateDescription(dotPad, if (dotPad.isActivated) localString(R.string.morse_guide_next) else null)
+        androidx.core.view.ViewCompat.setStateDescription(dashPad, if (dashPad.isActivated) localString(R.string.morse_guide_next) else null)
+        dotPad.invalidate(); dashPad.invalidate()
+    }
+    private fun stopGuideDemo() {
+        guideTasks.forEach(mainHandler::removeCallbacks); guideTasks.clear(); guideDemo = false
+        highlightGuidePad(null)
+    }
+    private fun replayGuide() {
+        stopGuideDemo()
+        val entry = guide.selected ?: return
+        guideDemo = true
+        var delay = 0L
+        entry.signal.forEach { symbol ->
+            val start = Runnable { highlightGuidePad(symbol) }
+            val end = Runnable { highlightGuidePad(null) }
+            guideTasks += start; guideTasks += end
+            mainHandler.postDelayed(start, delay)
+            delay += if (symbol == '.') 240L else 720L
+            mainHandler.postDelayed(end, delay)
+            delay += 240L
+        }
+        val finish = Runnable { guideTasks.clear(); guideDemo = false; refreshGuide() }
+        guideTasks += finish; mainHandler.postDelayed(finish, delay)
+        refreshGuide()
     }
 
     fun setAppearance(skin: KeyboardSkinId, background: Int, key: Int, text: Int, special: Int, custom: Boolean = false) {
         customColors = custom
         skinId = skin; backgroundColorValue = background; keyColor = key; textColor = text; specialColor = special
+        guideWindow?.panel?.bind(engine.map, { label(it) }, textColor, backgroundColorValue, specialColor)
         applyAppearance()
     }
     private fun applyAppearance() {
@@ -398,6 +473,13 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
             key.elevation = if(isPad) dp(2).toFloat() else 0f
         }
         updatePreview()
+    }
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (ready) {
+            if (visibility != VISIBLE) cancelInput()
+            else { mainHandler.removeCallbacks(showGuide); mainHandler.post(showGuide) }
+        }
     }
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
