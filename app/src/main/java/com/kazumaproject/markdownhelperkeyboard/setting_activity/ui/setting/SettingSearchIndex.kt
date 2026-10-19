@@ -85,7 +85,6 @@ object SettingSearchIndex {
     )
 
     private val highlightableDestinations = setOf(
-        R.id.morsePreferenceFragment,
         R.id.splitKeyboardPreferenceFragment,
         R.id.keyboardDisplayPreferenceFragment,
         R.id.inputMethodPreferenceFragment,
@@ -374,7 +373,6 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_general_info, R.id.generalInfoPreferenceFragment, SettingCategory.APP_INFO))
         add(PreferenceXmlSource(R.xml.pref_advanced, R.id.advancedPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_kana, R.id.kanaPreferenceFragment, SettingCategory.INPUT_METHOD))
-        add(PreferenceXmlSource(R.xml.pref_morse, R.id.morsePreferenceFragment, SettingCategory.MORSE))
         add(PreferenceXmlSource(R.xml.pref_gojuon, R.id.gojuonPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty, R.id.qwertyPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty_english, R.id.qwertyEnglishPreferenceFragment, SettingCategory.INPUT_METHOD))
@@ -402,7 +400,6 @@ object SettingSearchIndex {
             SettingTabRegistry.TAB_CONVERSION_ENGINE -> SettingCategory.CONVERSION_ENGINE
             SettingTabRegistry.TAB_DICTIONARY -> SettingCategory.DICTIONARY
             SettingTabRegistry.TAB_TEXT_MACRO -> SettingCategory.TEXT_MACRO
-            SettingTabRegistry.TAB_MORSE -> SettingCategory.MORSE
             SettingTabRegistry.TAB_VOICE_INPUT -> SettingCategory.VOICE_INPUT
             SettingTabRegistry.TAB_ZENZ,
             SettingTabRegistry.TAB_GEMMA -> SettingCategory.AI_CONVERSION

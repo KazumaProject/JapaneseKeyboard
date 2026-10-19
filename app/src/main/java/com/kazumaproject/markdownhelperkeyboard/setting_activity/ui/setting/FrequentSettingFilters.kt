@@ -18,7 +18,6 @@ internal object FrequentSettingFilters {
         val desiredCategories = listOf(
             SettingCategory.KEYBOARD_DISPLAY,
             SettingCategory.INPUT_METHOD,
-            SettingCategory.MORSE,
             SettingCategory.VOICE_INPUT,
             SettingCategory.CANDIDATE_CONVERSION,
             SettingCategory.CONVERSION_ENGINE,
@@ -97,7 +96,6 @@ internal object FrequentSettingFilters {
             R.id.sumireSpecialKeyEditorFragment,
                 -> SettingCategory.INPUT_METHOD
 
-            R.id.morsePreferenceFragment, R.id.morseLayoutFragment, R.id.morseMapListFragment, R.id.morseMapEditorFragment -> SettingCategory.MORSE
             R.id.voiceInputPreferenceFragment -> SettingCategory.VOICE_INPUT
 
             R.id.candidateConversionPreferenceFragment,
