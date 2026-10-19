@@ -46,7 +46,7 @@
     <string name="morse_duplicate">この信号はすでに登録されています</string>
     <string name="morse_delete_confirm">このカスタムマップを削除しますか？</string>
     <string name="morse_imported">マップをインポートしました</string>
-    <string name="morse_map_help">チェックで有効化、矢印で並び替えできます。標準マップは複製して編集できます。</string>
+    <string name="morse_map_help">ハンドルを上下にドラッグして、キーボード上の順序を変更できます。スイッチで有効化し、標準マップは複製して編集できます。</string>
     <string name="morse_command_delete">削除</string>
     <string name="morse_command_convert">変換／空白</string>
     <string name="morse_command_commit">未確定文字列を確定</string>
@@ -60,13 +60,9 @@
     <string name="morse_command_handakuten">半濁点</string>
     <string name="morse_command_small_kana">小書き切替</string>
     <string name="morse_key_layout_title">キー配置</string>
-    <string name="morse_key_layout_summary">キーの並び順・段の移動・追加・非表示・パッドの上下を変更</string>
-    <string name="morse_layout_editor_help">プレビューの補助キーを選んで移動・非表示にできます。変更はその場で保存されます。区切りとキーボード切替は残ります。</string>
+    <string name="morse_key_layout_summary">長押しドラッグで交換・グループ間の移動・追加・非表示・パッドの周囲への配置</string>
+    <string name="morse_layout_editor_help">キーをタップして選択します。長押しして別のキーへドロップすると交換、＋の空き枠へドロップすると移動できます。変更はその場で保存されます。</string>
     <string name="morse_selected_key">選択中：%1$s</string>
-    <string name="morse_move_left">← 左へ</string>
-    <string name="morse_move_right">右へ →</string>
-    <string name="morse_row_up">前のグループへ</string>
-    <string name="morse_row_down">次のグループへ</string>
     <string name="morse_hide_key">選択したキーを非表示</string>
     <string name="morse_add_key">キーを追加</string>
     <string name="morse_reset_layout">キー配置を初期状態に戻す</string>
@@ -74,6 +70,14 @@
     <string name="morse_control_placement">補助キーの配置</string>
     <string name="morse_control_placement_value">補助キー：%1$s</string>
     <string-array name="morse_control_placements"><item>パッドの下</item><item>パッドの上</item><item>パッドの左</item><item>パッドの右</item><item>パッドを挟んで左右</item></string-array>
-    <string name="morse_beginner_guide_title">初心者向けフローティングガイド</string>
-    <string name="morse_beginner_guide_summary">現在のマップの文字・操作を選び、符号・パッドの順序・入力の進捗を確認できます。初期状態は無効です。</string>
+    <string name="morse_beginner_guide_title">初心者ガイドの開閉キー</string>
+    <string name="morse_beginner_guide_summary">マップ横に本のキーを表示します。押すとガイドを開閉でき、日本語は五十音順、英語はABC順に表示します。</string>
+    <string name="morse_reorder_map">ドラッグして並べ替え</string>
+    <string name="morse_map_actions">マップの操作</string>
+    <string name="morse_map_detail">%1$d番目 · %2$s · %3$d項目</string>
+    <string name="morse_map_builtin">標準マップ</string>
+    <string name="morse_map_custom">カスタム</string>
+    <string name="morse_enable_map">%1$sを有効にする</string>
+    <string name="morse_move_map_up">上へ移動</string>
+    <string name="morse_move_map_down">下へ移動</string>
 </resources>

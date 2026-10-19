@@ -24,7 +24,7 @@
     <string name="morse_guide_reset">信号をやり直す</string>
     <string name="morse_guide_choose">%1$sのガイド：%2$s</string>
     <string name="morse_guide_pick">文字・操作を選択</string>
-    <string name="morse_guide_list_hint">現在のマップの全登録項目から選べます</string>
+    <string name="morse_guide_list_hint">文字を選ぶと入力順を案内します。/ は文字の区切りです。</string>
     <string name="morse_guide_demo">パッドの順序を案内中・文字は入力されません</string>
     <string name="morse_guide_mismatch">%1$d / %2$d 符号・順序が違います。削除またはやり直し</string>
     <string name="morse_guide_completed">%1$d / %1$d 符号・入力できました</string>
@@ -33,4 +33,10 @@
     <string name="morse_guide_next">次の符号</string>
     <string name="morse_guide_short">短く押す</string>
     <string name="morse_guide_long">長く押す</string>
+    <string name="morse_guide_toggle">初心者ガイドを開く・閉じる</string>
+    <string name="morse_guide_close">ガイドを閉じる</string>
+    <string name="morse_guide_kana">あいうえお</string>
+    <string name="morse_guide_voiced">濁音</string>
+    <string name="morse_guide_semivoiced">半濁音</string>
+    <string name="morse_drop_key">ここにキーをドロップして移動</string>
 </resources>
