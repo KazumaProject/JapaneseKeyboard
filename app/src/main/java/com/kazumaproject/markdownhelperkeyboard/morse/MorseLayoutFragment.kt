@@ -4,13 +4,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
+import com.google.android.material.button.MaterialButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.SwitchCompat
+import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.morse_keyboard.MorseControl
@@ -22,9 +22,9 @@ import com.kazumaproject.morse_keyboard.MorseKeyboardView
 class MorseLayoutFragment : Fragment() {
     private lateinit var preview: MorseKeyboardView
     private lateinit var selectedLabel: TextView
-    private lateinit var remove: Button
-    private lateinit var reverse: SwitchCompat
-    private lateinit var placement: Button
+    private lateinit var remove: MaterialButton
+    private lateinit var reverse: MaterialSwitch
+    private lateinit var placement: MaterialButton
     private var selected = MorseControl.BOUNDARY
     private val store get() = MorsePreferences(requireContext())
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
@@ -38,26 +38,35 @@ class MorseLayoutFragment : Fragment() {
         preview = MorseKeyboardView(context).apply {
             inputAllowed = { false }
             onControlSelected = { selected = it; render() }
+            onControlMove = { source, group ->
+                val layout = store.controlLayout()
+                val groups = if (layout.placement == MorseControlPlacement.BOTH_SIDES && layout.rows.size == 1)
+                    layout.rows.single().chunked((layout.rows.single().size + 1) / 2) else layout.rows
+                val rows = groups.map { (it - source).toMutableList() }.toMutableList()
+                while (rows.size <= group) rows.add(mutableListOf())
+                if (rows[group].size < 6) {
+                    rows[group].add(source); selected = source
+                    save(layout.copy(rows = rows.filter { it.isNotEmpty() }))
+                }
+            }
+            onControlSwap = { source, target ->
+                val layout = store.controlLayout()
+                selected = source
+                save(layout.copy(rows = layout.rows.map { row -> row.map {
+                    when (it) { source -> target; target -> source; else -> it }
+                } }))
+            }
         }
         body.addView(preview, LinearLayout.LayoutParams(-1, dp(240)).apply { topMargin = dp(12); bottomMargin = dp(12) })
         selectedLabel = TextView(context).apply { textSize = 19f }
         body.addView(selectedLabel)
-        fun row(vararg actions: Pair<Int, () -> Unit>) {
-            val row = LinearLayout(context)
-            actions.forEach { (title, action) -> row.addView(Button(context).apply {
-                setText(title); isAllCaps = false; setOnClickListener { action() }
-            }, LinearLayout.LayoutParams(0,-2,1f)) }
-            body.addView(row)
-        }
-        row(R.string.morse_move_left to { move(-1) }, R.string.morse_move_right to { move(1) })
-        row(R.string.morse_row_up to { moveRow(-1) }, R.string.morse_row_down to { moveRow(1) })
-        remove = Button(context).apply { setText(R.string.morse_hide_key); setOnClickListener {
+        remove = MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply { setText(R.string.morse_hide_key); setOnClickListener {
             val layout = store.controlLayout()
             save(layout.copy(rows = layout.rows.map { it - selected }.filter { it.isNotEmpty() }))
             selected = MorseControl.BOUNDARY; render()
         } }
         body.addView(remove)
-        body.addView(Button(context).apply { setText(R.string.morse_add_key); setOnClickListener {
+        body.addView(MaterialButton(context).apply { setText(R.string.morse_add_key); setOnClickListener {
             val layout = store.controlLayout()
             val unused = MorseControl.entries.filter { it !in layout.rows.flatten() }
             if (unused.isEmpty() || layout.rows.sumOf { it.size } == 12) { full(); return@setOnClickListener }
@@ -69,10 +78,10 @@ class MorseLayoutFragment : Fragment() {
                 save(layout.copy(rows = rows))
             }.show()
         } })
-        reverse = SwitchCompat(context).apply { setText(R.string.morse_reverse_title); setOnCheckedChangeListener { _, checked ->
+        reverse = MaterialSwitch(context).apply { setText(R.string.morse_reverse_title); setOnCheckedChangeListener { _, checked ->
             store.saveReverse(checked); render()
         } }
-        placement = Button(context).apply { isAllCaps = false; setOnClickListener {
+        placement = MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply { isAllCaps = false; setOnClickListener {
             val options = resources.getStringArray(R.array.morse_control_placements)
             AlertDialog.Builder(context).setTitle(R.string.morse_control_placement)
                 .setSingleChoiceItems(options, store.controlLayout().placement.ordinal) { dialog, index ->
@@ -86,32 +95,12 @@ class MorseLayoutFragment : Fragment() {
         } }
         body.addView(reverse, LinearLayout.LayoutParams(-1,dp(56)))
         body.addView(placement, LinearLayout.LayoutParams(-1,dp(56)))
-        body.addView(Button(context).apply { setText(R.string.morse_reset_layout); setOnClickListener {
+        body.addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply { setText(R.string.morse_reset_layout); setOnClickListener {
             selected = MorseControl.BOUNDARY
             store.saveReverse(false); save(MorseControlLayout())
         } })
         render()
         return ScrollView(context).apply { addView(body) }
-    }
-    private fun move(delta: Int) {
-        val layout = store.controlLayout()
-        val rows = layout.rows.map { it.toMutableList() }
-        val row = rows.firstOrNull { selected in it } ?: return
-        val index = row.indexOf(selected)
-        if(index + delta !in row.indices) return
-        java.util.Collections.swap(row,index,index+delta)
-        save(layout.copy(rows = rows))
-    }
-    private fun moveRow(delta: Int) {
-        val layout = store.controlLayout()
-        val rows = layout.rows.map { it.toMutableList() }.toMutableList()
-        val index = rows.indexOfFirst { selected in it }
-        val target = index + delta
-        if(index < 0 || target !in 0..1) return
-        if(target == rows.size) rows.add(mutableListOf())
-        if(rows[target].size >= 6) { full(); return }
-        rows[index].remove(selected); rows[target].add(selected)
-        save(layout.copy(rows = rows.filter { it.isNotEmpty() }))
     }
     private fun save(layout: MorseControlLayout) { store.saveControlLayout(layout); render() }
     private fun render() {
@@ -119,7 +108,8 @@ class MorseLayoutFragment : Fragment() {
         val maps = store.enabledMaps()
         preview.configure(config, maps, store.selectedMapId)
         preview.highlightControl = selected
-        preview.layoutParams.height = dp(config.minimumHeightDp.coerceAtLeast(240))
+        preview.layoutParams.height = dp(if (config.controlLayout.placement.isSide) config.minimumHeightDp.coerceAtLeast(356)
+            else (config.minimumHeightDp + if (config.controlLayout.rows.size == 1) 48 else 0).coerceAtLeast(260))
         preview.requestLayout()
         selectedLabel.text = getString(R.string.morse_selected_key, label(selected))
         remove.isEnabled = !selected.required

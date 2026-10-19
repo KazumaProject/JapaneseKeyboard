@@ -24,7 +24,7 @@
     <string name="morse_guide_reset">Start this signal again</string>
     <string name="morse_guide_choose">Guide %1$s: %2$s</string>
     <string name="morse_guide_pick">Choose a character or action</string>
-    <string name="morse_guide_list_hint">All entries in the current map are available above</string>
+    <string name="morse_guide_list_hint">Choose a character. / separates decoded characters.</string>
     <string name="morse_guide_demo">Paddle preview · no text is entered</string>
     <string name="morse_guide_mismatch">%1$d / %2$d · Signal differs. Use delete or restart.</string>
     <string name="morse_guide_completed">%1$d / %1$d · Decoded</string>
@@ -33,4 +33,10 @@
     <string name="morse_guide_next">Next signal</string>
     <string name="morse_guide_short">Short press</string>
     <string name="morse_guide_long">Long press</string>
+    <string name="morse_guide_toggle">Open or close beginner guide</string>
+    <string name="morse_guide_close">Close guide</string>
+    <string name="morse_guide_kana">Kana</string>
+    <string name="morse_guide_voiced">Voiced</string>
+    <string name="morse_guide_semivoiced">Semi-voiced</string>
+    <string name="morse_drop_key">Drop a key here to move it</string>
 </resources>

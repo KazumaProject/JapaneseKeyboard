@@ -46,7 +46,7 @@
     <string name="morse_duplicate">This signal is already assigned</string>
     <string name="morse_delete_confirm">Delete this custom map?</string>
     <string name="morse_imported">Maps imported</string>
-    <string name="morse_map_help">Check maps to enable them. Use arrows to reorder. Copy a standard map to customize it.</string>
+    <string name="morse_map_help">Drag a handle to change the keyboard map order. Use the switches to enable maps. Copy a built-in map to edit it.</string>
     <string name="morse_command_delete">Delete</string>
     <string name="morse_command_convert">Convert / space</string>
     <string name="morse_command_commit">Commit composition</string>
@@ -60,13 +60,9 @@
     <string name="morse_command_handakuten">Semi-voicing mark</string>
     <string name="morse_command_small_kana">Toggle small kana</string>
     <string name="morse_key_layout_title">Key placement</string>
-    <string name="morse_key_layout_summary">Reorder keys, move between rows, add or hide controls, and place them above or below the paddles</string>
-    <string name="morse_layout_editor_help">Tap a control in the preview, then move or hide it. Changes are saved immediately. Divide and keyboard switching remain available.</string>
+    <string name="morse_key_layout_summary">Drag to swap keys, move between groups, add, hide, and arrange around the paddles</string>
+    <string name="morse_layout_editor_help">Tap a key to select it. Hold and drop onto another key to swap, or onto a + space to move. Changes are saved immediately.</string>
     <string name="morse_selected_key">Selected: %1$s</string>
-    <string name="morse_move_left">← Left</string>
-    <string name="morse_move_right">Right →</string>
-    <string name="morse_row_up">Previous group</string>
-    <string name="morse_row_down">Next group</string>
     <string name="morse_hide_key">Hide selected key</string>
     <string name="morse_add_key">Add a key</string>
     <string name="morse_reset_layout">Reset key placement</string>
@@ -74,6 +70,14 @@
     <string name="morse_control_placement">Control key placement</string>
     <string name="morse_control_placement_value">Control keys: %1$s</string>
     <string-array name="morse_control_placements"><item>Below paddles</item><item>Above paddles</item><item>Left of paddles</item><item>Right of paddles</item><item>Both sides of paddles</item></string-array>
-    <string name="morse_beginner_guide_title">Floating beginner guide</string>
-    <string name="morse_beginner_guide_summary">Choose any entry in the current map to see its code, preview the paddles, and follow your progress. Off by default.</string>
+    <string name="morse_beginner_guide_title">Beginner guide button</string>
+    <string name="morse_beginner_guide_summary">Show a book button beside the maps. Tap to open or close the guide: kana order for Japanese, ABC order for English.</string>
+    <string name="morse_reorder_map">Drag to reorder</string>
+    <string name="morse_map_actions">Map actions</string>
+    <string name="morse_map_detail">%1$d · %2$s · %3$d entries</string>
+    <string name="morse_map_builtin">Built-in</string>
+    <string name="morse_map_custom">Custom</string>
+    <string name="morse_enable_map">Enable %1$s</string>
+    <string name="morse_move_map_up">Move up</string>
+    <string name="morse_move_map_down">Move down</string>
 </resources>

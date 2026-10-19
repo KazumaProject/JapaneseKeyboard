@@ -24,6 +24,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
     private val guide = MorseGuide()
     private var guideWindow: MorseGuideWindow? = null
     private var guideBoundMap: MorseMap? = null
+    private var guideOpen = false
     private var guideDemo = false
     private val guideTasks = mutableListOf<Runnable>()
     private val showGuide = Runnable { refreshGuide() }
@@ -45,6 +46,8 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
             applyAppearance()
         }
     var onControlSelected: ((MorseControl) -> Unit)? = null
+    var onControlMove: ((MorseControl, Int) -> Unit)? = null
+    var onControlSwap: ((MorseControl, MorseControl) -> Unit)? = null
     var onMapSelected: (String) -> Unit = {}
     private var maps = MorsePresets.maps(resources.configuration.locales[0].language == "ja")
     private var settings = MorseSettings()
@@ -104,7 +107,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         setPadding(dp(10), dp(3), dp(10), dp(3))
         isMotionEventSplittingEnabled = false
         mapBar.gravity = Gravity.CENTER
-        addView(android.widget.HorizontalScrollView(context).apply { isHorizontalScrollBarEnabled = false; isFillViewport = true; addView(mapBar) }, LayoutParams(-1, dp(34)))
+        addView(android.widget.HorizontalScrollView(context).apply { isHorizontalScrollBarEnabled = false; isFillViewport = true; addView(mapBar) }, LayoutParams(-1, dp(44)))
         preview.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
         addView(preview, LayoutParams(-1, dp(26)))
         pads.orientation = HORIZONTAL
@@ -136,8 +139,8 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         hasConfiguration = true
         val nextMaps = availableMaps.ifEmpty { MorsePresets.maps(resources.configuration.locales[0].language == "ja") }
         if (settings == configuration && maps == nextMaps && engine.map.id == selectedId) { updatePreview(); return }
-        cancelInput()
-        settings = configuration; maps = nextMaps; engine.settings = configuration
+        cancelInput(closeGuide = false)
+        settings = configuration; if (!configuration.beginnerGuide) guideOpen = false; maps = nextMaps; engine.settings = configuration
         engine.map = maps.firstOrNull { it.id == selectedId } ?: maps.first()
         guide.setMap(engine.map); guideBoundMap = null
         rebuildPads(); rebuildControls(); rebuildMaps(); updatePreview(); applyAppearance()
@@ -145,7 +148,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
 
     fun selectMap(id: String) {
         val map = maps.firstOrNull { it.id == id } ?: return
-        cancelInput()
+        cancelInput(closeGuide = false)
         engine.map = map
         guide.setMap(map); guideBoundMap = null
         onMapSelected(id)
@@ -161,10 +164,11 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         (controlContainer.parent as? android.view.ViewGroup)?.removeView(controlContainer)
         val placement = settings.controlLayout.placement
         if (!placement.isSide) addView(controlContainer, if (placement == MorseControlPlacement.TOP) 2 else childCount, LayoutParams(-1, -2))
-        val groups = if (placement == MorseControlPlacement.BOTH_SIDES && settings.controlLayout.rows.size == 1)
+        val savedGroups = if (placement == MorseControlPlacement.BOTH_SIDES && settings.controlLayout.rows.size == 1)
             settings.controlLayout.rows.single().chunked((settings.controlLayout.rows.single().size + 1) / 2)
             else settings.controlLayout.rows
-        groups.forEach { keys ->
+        val groups = if (onControlSelected != null && savedGroups.size == 1) savedGroups + listOf(emptyList()) else savedGroups
+        groups.forEachIndexed { groupIndex, keys ->
             val row = LinearLayout(context).apply { orientation = if (placement.isSide) VERTICAL else HORIZONTAL }
             controlGroups += row
             if (placement.isSide) controlContainer.addView(row, LayoutParams(dp(48), -1))
@@ -200,13 +204,60 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
                         }
                         false
                     }
-                    if (control == MorseControl.CONVERT) setOnLongClickListener {
-                        if (onControlSelected == null && inputAllowed()) { onInteraction(); onCommand(MorseCommand.SPACE) }
+                    setOnLongClickListener { view ->
+                        if (onControlSelected != null) {
+                            onControlSelected?.invoke(control)
+                            parent?.requestDisallowInterceptTouchEvent(true)
+                            view.startDragAndDrop(android.content.ClipData.newPlainText("morse-control", control.name), View.DragShadowBuilder(view), control, 0)
+                        } else if (control == MorseControl.CONVERT && inputAllowed()) {
+                            onInteraction(); onCommand(MorseCommand.SPACE)
+                        }
+                        true
+                    }
+                    setOnDragListener { target, event ->
+                        val source = event.localState as? MorseControl
+                        if (onControlSelected == null || source == null) return@setOnDragListener false
+                        when (event.action) {
+                            android.view.DragEvent.ACTION_DRAG_ENTERED -> target.isActivated = true
+                            android.view.DragEvent.ACTION_DRAG_EXITED, android.view.DragEvent.ACTION_DRAG_ENDED -> target.isActivated = false
+                            android.view.DragEvent.ACTION_DROP -> {
+                                target.isActivated = false
+                                if (source != control) onControlSwap?.invoke(source, control)
+                                else onControlSelected?.invoke(source)
+                            }
+                        }
                         true
                     }
                 }
                 controls += button
                 row.addView(button, (if (placement.isSide) LayoutParams(-1, 0, 1f) else LayoutParams(0, -1, 1f)).apply { setMargins(dp(2),dp(2),dp(2),dp(2)) })
+            }
+            if (onControlSelected != null && keys.size < 6) {
+                val slot = android.widget.TextView(context).apply {
+                    text = "+"; textSize = 22f; gravity = Gravity.CENTER
+                    contentDescription = localString(R.string.morse_drop_key)
+                    setTextColor(textColor)
+                    fun decorate(active: Boolean) {
+                        background = GradientDrawable().apply {
+                            cornerRadius = dp(12).toFloat()
+                            setColor(if (active) specialColor else Color.TRANSPARENT)
+                            setStroke(dp(if (active) 2 else 1), textColor and 0x00ffffff or 0x55000000, dp(4).toFloat(), dp(4).toFloat())
+                        }
+                    }
+                    decorate(false)
+                    setOnDragListener { _, event ->
+                        val source = event.localState as? MorseControl ?: return@setOnDragListener false
+                        when (event.action) {
+                            android.view.DragEvent.ACTION_DRAG_ENTERED -> decorate(true)
+                            android.view.DragEvent.ACTION_DRAG_EXITED, android.view.DragEvent.ACTION_DRAG_ENDED -> decorate(false)
+                            android.view.DragEvent.ACTION_DROP -> { decorate(false); onControlMove?.invoke(source, groupIndex) }
+                        }
+                        true
+                    }
+                }
+                row.addView(slot, (if (placement.isSide) LayoutParams(-1, 0, (6 - keys.size).toFloat()) else LayoutParams(0, -1, (6 - keys.size).toFloat())).apply {
+                    setMargins(dp(2), dp(2), dp(2), dp(2))
+                })
             }
         }
         controlContainer.orientation = if (placement.isSide) HORIZONTAL else VERTICAL
@@ -246,14 +297,28 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
             val glyph = when(map.id) {
                 MorsePresets.WABUN -> MorseGlyphView.Glyph.WABUN
                 MorsePresets.ROMAJI -> MorseGlyphView.Glyph.ROMAJI
-                MorsePresets.ENGLISH -> MorseGlyphView.Glyph.GLOBE
+                MorsePresets.ENGLISH -> MorseGlyphView.Glyph.ENGLISH
                 else -> MorseGlyphView.Glyph.CUSTOM
             }
             mapBar.addView(MorseGlyphView(context, glyph).apply {
                 contentDescription = map.name
+                if (!map.builtIn) displayLabel = map.name
                 isSelected = map.id == engine.map.id
                 setOnClickListener { if (inputAllowed()) { onInteraction(); selectMap(map.id) } }
-            }, LayoutParams(dp(52), dp(32)).apply { setMargins(dp(3), 0, dp(3), 0) })
+            }, LayoutParams(dp(60), dp(40)).apply { setMargins(dp(3), 0, dp(3), 0) })
+        }
+        if (settings.beginnerGuide && onControlSelected == null) {
+            mapBar.addView(MorseGlyphView(context, MorseGlyphView.Glyph.GUIDE).apply {
+                contentDescription = localString(R.string.morse_guide_toggle)
+                isSelected = guideOpen
+                setOnClickListener {
+                    if (!inputAllowed()) return@setOnClickListener
+                    onInteraction()
+                    guideOpen = !guideOpen
+                    isSelected = guideOpen
+                    applyAppearance()
+                }
+            }, LayoutParams(dp(44), dp(40)).apply { leftMargin = dp(8) })
         }
     }
 
@@ -311,6 +376,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                if (onControlSelected != null) return super.dispatchTouchEvent(event)
                 if (!inputAllowed()) return true
                 val dot = touchedPad(event.x, event.y) ?: return super.dispatchTouchEvent(event)
                 onInteraction()
@@ -349,7 +415,8 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         dashPad.isPressed = pointerPads.values.any { !it }
         engine.pressed(dotPad.isPressed, dashPad.isPressed)
     }
-    fun cancelInput(clearPattern: Boolean = false) {
+    fun cancelInput(clearPattern: Boolean = false, closeGuide: Boolean = true) {
+        if (closeGuide) { guideOpen = false; (mapBar.getChildAt(mapBar.childCount - 1) as? MorseGlyphView)?.takeIf { it.glyph == MorseGlyphView.Glyph.GUIDE }?.isSelected = false }
         mainHandler.removeCallbacks(showGuide)
         stopGuideDemo()
         guideWindow?.dismiss()
@@ -391,19 +458,23 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
     private fun markGuideDecoded() { guide.decoded(engine.pattern) }
 
     fun refreshGuide() {
-        if (!settings.beginnerGuide || !isShown || windowVisibility != VISIBLE || !isAttachedToWindow || !guideAllowed() || onControlSelected != null) {
+        if (!guideOpen || !settings.beginnerGuide || !isShown || windowVisibility != VISIBLE || !isAttachedToWindow || !guideAllowed() || onControlSelected != null) {
             guideWindow?.dismiss(); stopGuideDemo(); return
         }
         if (guideBoundMap != engine.map) guide.setMap(engine.map)
-        val window = guideWindow ?: MorseGuideWindow(this, { guideAnchor ?: rootView }, { guideAvoidView() }, MorseGuidePanel(context), { refreshGuide() }).also {
+        val window = guideWindow ?: MorseGuideWindow(this, { guideAnchor ?: rootView }, { guideAvoidView() }, MorseGuidePanel(context), { IntArray(2).also(dotPad::getLocationOnScreen)[1] }, { refreshGuide() }).also {
             guideWindow = it
-            it.panel.onSelect = { entry -> guide.select(entry.signal); replayGuide() }
+            it.panel.onSelect = { entry -> guide.select(entry); replayGuide(); it.revealProgress() }
+            it.panel.onClose = {
+                guideOpen = false; stopGuideDemo(); it.dismiss()
+                rebuildMaps(); applyAppearance()
+            }
             it.panel.onResize = { it.show() }
             it.panel.onReplay = { replayGuide() }
-            it.panel.onReset = { cancelInput(clearPattern = true); guide.reset(); refreshGuide() }
+            it.panel.onReset = { cancelInput(clearPattern = true, closeGuide = false); guide.reset(); refreshGuide() }
         }
         if (guideBoundMap != engine.map) {
-            window.panel.bind(engine.map, { label(it) }, textColor, backgroundColorValue, specialColor)
+            window.panel.bind(engine.map, guide, { label(it) }, textColor, backgroundColorValue, specialColor)
             guideBoundMap = engine.map
         }
         val progress = guide.progress(engine.pattern)
@@ -427,14 +498,17 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
         val entry = guide.selected ?: return
         guideDemo = true
         var delay = 0L
-        entry.signal.forEach { symbol ->
-            val start = Runnable { highlightGuidePad(symbol) }
-            val end = Runnable { highlightGuidePad(null) }
-            guideTasks += start; guideTasks += end
-            mainHandler.postDelayed(start, delay)
-            delay += if (symbol == '.') 240L else 720L
-            mainHandler.postDelayed(end, delay)
-            delay += 240L
+        entry.signals.forEachIndexed { index, signal ->
+            if (index > 0) delay += 720L
+            signal.forEach { symbol ->
+                val start = Runnable { highlightGuidePad(symbol) }
+                val end = Runnable { highlightGuidePad(null) }
+                guideTasks += start; guideTasks += end
+                mainHandler.postDelayed(start, delay)
+                delay += if (symbol == '.') 240L else 720L
+                mainHandler.postDelayed(end, delay)
+                delay += 240L
+            }
         }
         val finish = Runnable { guideTasks.clear(); guideDemo = false; refreshGuide() }
         guideTasks += finish; mainHandler.postDelayed(finish, delay)
@@ -444,7 +518,7 @@ class MorseKeyboardView @JvmOverloads constructor(baseContext: Context, attrs: A
     fun setAppearance(skin: KeyboardSkinId, background: Int, key: Int, text: Int, special: Int, custom: Boolean = false) {
         customColors = custom
         skinId = skin; backgroundColorValue = background; keyColor = key; textColor = text; specialColor = special
-        guideWindow?.panel?.bind(engine.map, { label(it) }, textColor, backgroundColorValue, specialColor)
+        guideWindow?.panel?.bind(engine.map, guide, { label(it) }, textColor, backgroundColorValue, specialColor)
         applyAppearance()
     }
     private fun applyAppearance() {
