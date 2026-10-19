@@ -135,6 +135,7 @@ internal data class CandidateKeyboardPreviewViews(
     val container: FrameLayout,
     val tenKey: TenKey,
     val gojuon: GojuonKeyboardView,
+    val morse: com.kazumaproject.morse_keyboard.MorseKeyboardView,
     val qwerty: QWERTYKeyboardView,
     val flick: FlickKeyboardView
 )
@@ -160,6 +161,7 @@ internal fun renderCandidateKeyboardPreview(
 
     views.tenKey.isVisible = false
     views.gojuon.isVisible = false
+    views.morse.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
@@ -242,12 +244,16 @@ private fun renderNonCustomKeyboardPreviewType(
 
     views.tenKey.isVisible = false
     views.gojuon.isVisible = false
+    views.morse.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
     when (type) {
-        KeyboardType.MORSE -> Unit
-
+        KeyboardType.MORSE -> {
+            val prefs = com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences(fragment.requireContext())
+            views.morse.configure(prefs.settings().copy(sound = false, vibration = false), prefs.enabledMaps(), prefs.selectedMapId)
+            views.morse.isVisible = true
+        }
         KeyboardType.TENKEY, KeyboardType.SPLIT -> {
             views.tenKey.isVisible = true
             configureTenKeyPreview(fragment.requireContext(), appPreference, views.tenKey)
