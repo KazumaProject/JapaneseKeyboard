@@ -18,7 +18,7 @@ class MorsePreferences(baseContext: Context) {
     fun saveControlLayout(layout: MorseControlLayout) { prefs.edit().putString("morse_key_layout_v1", MorseLayoutCodec.encode(layout)).apply() }
     fun saveReverse(reverse: Boolean) { prefs.edit().putBoolean("morse_reverse", reverse).apply() }
     fun settings() = MorseSettings(
-        beginnerGuide = prefs.getBoolean("morse_beginner_guide", false),
+        beginnerGuide = prefs.getBoolean("morse_beginner_guide", true),
         controlLayout = controlLayout(),
         style = runCatching { MorseInputStyle.valueOf(prefs.getString("morse_style", "PADDLE_A")!!) }.getOrDefault(MorseInputStyle.PADDLE_A),
         wpm = number("morse_wpm", 15, 5, 60),

@@ -14,7 +14,8 @@ internal class MorseGlyphView @JvmOverloads constructor(context: Context, glyph:
         set(value) { if (field != value) { field = value; icon?.callback = null; icon = sharedIcon(value)?.apply { setTint(ink) }; invalidate() } }
     private fun sharedIcon(glyph: Glyph) = when (glyph) {
         Glyph.BOUNDARY -> CoreR.drawable.keyboard_tab_24px
-        Glyph.MAP -> CoreR.drawable.swap_horiz_24px
+        Glyph.MAP -> CoreR.drawable.language_24dp
+        Glyph.GUIDE -> CoreR.drawable.book_3_24px
         Glyph.DELETE -> CoreR.drawable.baseline_backspace_24
         Glyph.CONVERT -> CoreR.drawable.henkan
         Glyph.SPACE -> CoreR.drawable.baseline_space_bar_24
@@ -39,6 +40,7 @@ internal class MorseGlyphView @JvmOverloads constructor(context: Context, glyph:
         callback = this@MorseGlyphView
     } }
     private var icon = sharedIcon(glyph)
+    var displayLabel: String? = null
     private var drawingIcon = false
     override fun invalidateDrawable(who: android.graphics.drawable.Drawable) {
         // Static glyph delegates may invalidate while applying their draw-time tint/state.
@@ -47,7 +49,7 @@ internal class MorseGlyphView @JvmOverloads constructor(context: Context, glyph:
     }
     override fun performClick(): Boolean = super.performClick()
     override fun verifyDrawable(who: android.graphics.drawable.Drawable) = who === icon || super.verifyDrawable(who)
-    enum class Glyph { DOT, DASH, STRAIGHT, CLEAR, BOUNDARY, DELETE, CONVERT, ENTER, SMALL, KEYBOARD, SPACE, COMMIT, LEFT, RIGHT, MAP, DAKUTEN, HANDAKUTEN, WABUN, ROMAJI, GLOBE, CUSTOM }
+    enum class Glyph { DOT, DASH, STRAIGHT, CLEAR, BOUNDARY, DELETE, CONVERT, ENTER, SMALL, KEYBOARD, SPACE, COMMIT, LEFT, RIGHT, MAP, DAKUTEN, HANDAKUTEN, WABUN, ROMAJI, ENGLISH, GLOBE, CUSTOM, GUIDE }
     var ink: Int = 0xff243049.toInt()
         set(value) { field = value; icon?.setTint(value); invalidate() }
     private val pen = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -87,9 +89,17 @@ internal class MorseGlyphView @JvmOverloads constructor(context: Context, glyph:
             Glyph.STRAIGHT -> { dot(5f,12f,2.5f); pen.strokeWidth=4f; line(13f,12f,21f,12f) }
             Glyph.DAKUTEN -> { line(8f,6f,6f,13f); line(15f,6f,13f,13f) }
             Glyph.HANDAKUTEN -> canvas.drawCircle(12f,11f,5f,pen)
-            Glyph.WABUN -> { for(y in listOf(7f,12f,17f)) canvas.drawPath(glyphPath.apply { reset(); moveTo(3f,y); cubicTo(9f,y-5,15f,y+5,21f,y) },pen) }
-            Glyph.ROMAJI -> { path(4f,8f,20f,8f,16f,4f); path(20f,16f,4f,16f,8f,20f) }
-            Glyph.CUSTOM -> { for(x in listOf(4f,14f)) for(y in listOf(4f,14f)) canvas.drawRoundRect(x,y,x+6,y+6,1.5f,1.5f,pen) }
+            Glyph.WABUN, Glyph.ROMAJI, Glyph.ENGLISH, Glyph.CUSTOM -> {
+                val text = displayLabel?.take(5) ?: when (glyph) {
+                    Glyph.WABUN -> "あ"; Glyph.ROMAJI -> "a→あ"; Glyph.ENGLISH -> "ABC"; else -> "✦"
+                }
+                pen.style = Paint.Style.FILL
+                pen.textAlign = Paint.Align.CENTER
+                pen.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                pen.textSize = if (text.length == 1) 25f else 15f
+                if (pen.measureText(text) > 42f) pen.textSize *= 42f / pen.measureText(text)
+                canvas.drawText(text, 12f, 12f - (pen.ascent() + pen.descent()) / 2, pen)
+            }
             else -> Unit
         }
         canvas.restore()
