@@ -55,6 +55,13 @@ internal class MorseGlyphView @JvmOverloads constructor(context: Context, glyph:
     init { isClickable = true; isSoundEffectsEnabled = false }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (isActivated) {
+            pen.style = Paint.Style.STROKE; pen.strokeWidth = 3 * resources.displayMetrics.density
+            pen.color = ink; pen.alpha = 220
+            val inset = pen.strokeWidth
+            canvas.drawRoundRect(inset, inset, width - inset, height - inset, 20 * resources.displayMetrics.density, 20 * resources.displayMetrics.density, pen)
+        }
+        pen.alpha = 255
         val pad = glyph == Glyph.DOT || glyph == Glyph.DASH || glyph == Glyph.STRAIGHT
         val size = if (pad) minOf(width, height) * .38f else minOf(width, height) * .48f
         canvas.save()

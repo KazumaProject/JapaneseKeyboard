@@ -6657,6 +6657,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
@@ -11746,6 +11747,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun configureMorseView(view: MorseKeyboardView) {
+        view.guideAnchor = mainLayoutBinding?.root
+        view.guideAvoidView = {
+            splitInputForView(view)?.binding?.suggestionViewParent
+                ?: if (view === mainLayoutBinding?.morseView) mainLayoutBinding?.suggestionViewParent
+                else floatingKeyboardBinding?.suggestionViewParent
+        }
+        view.guideAllowed = {
+            !isKeyboardLayoutEditModeActive() && when {
+                splitInputForView(view) != null -> !isInactiveSplitView(view)
+                splitController != null -> false
+                isKeyboardFloatingMode == true -> view === floatingKeyboardBinding?.morseViewFloating
+                else -> view === mainLayoutBinding?.morseView
+            }
+        }
         view.protectNavigationBar = view === mainLayoutBinding?.morseView
         val preferences = MorsePreferences(this)
         val maps = preferences.enabledMaps()
@@ -11765,7 +11780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (start) { activateSplitView(view); handleDeleteLongPress() } else stopDeleteLongPress()
         }
         view.inputAllowed = { !isKeyboardLayoutEditModeActive() }
-        view.onInteraction = { activateSplitView(view) }
+        view.onInteraction = { activateSplitView(view); view.refreshGuide() }
         view.onMapSelected = { id ->
             preferences.selectedMapId = id
             setCurrentInputModeForSession(if (id == MorsePresets.ENGLISH) InputMode.ModeEnglish else InputMode.ModeJapanese)

@@ -23,6 +23,10 @@ import com.kazumaproject.morse_keyboard.MorsePresets
 import com.kazumaproject.morse_keyboard.MorseControl
 import com.kazumaproject.morse_keyboard.MorseControlLayout
 import com.kazumaproject.morse_keyboard.MorseControlPlacement
+import com.kazumaproject.morse_keyboard.MorseMap
+import com.kazumaproject.morse_keyboard.MorseEntry
+import com.kazumaproject.morse_keyboard.MorseOutput
+import com.kazumaproject.morse_keyboard.MorseCommand
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -115,6 +119,8 @@ class MorseKeyboardDeviceTest {
         return composing
     }
     private fun screenshot(name: String) {
+        ins.waitForIdleSync()
+        SystemClock.sleep(180)
         val folder = File(context.getExternalFilesDir(null), "morse-shots").apply { mkdirs() }
         val bitmap = automation.takeScreenshot()
         File(folder, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
@@ -139,6 +145,160 @@ class MorseKeyboardDeviceTest {
         send(MotionEvent.ACTION_POINTER_UP, 0, intArrayOf(3, 19), listOf(dot, dash))
         send(MotionEvent.ACTION_UP, 0, intArrayOf(19), listOf(dash))
         tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_boundary), slot))
+    }
+
+    private fun chooseGuide(label: String, pattern: String) {
+        val description = context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_choose,
+            label, pattern.map { if (it == '.') "・" else "－" }.joinToString(" "))
+        repeat(12) {
+            val entry = nodes().firstOrNull { it.isVisibleToUser && it.contentDescription?.toString() == description }
+            if (entry != null) { assertTrue(entry.performAction(AccessibilityNodeInfo.ACTION_CLICK)); return }
+            nodes().firstOrNull { it.isVisibleToUser && it.className?.toString() == "android.widget.ScrollView" }
+                ?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            SystemClock.sleep(100)
+        }
+        screenshot("guide-missing-entry")
+        error("Missing guide entry $description: " + nodes().filter { it.isVisibleToUser }.joinToString { "${it.text}:${it.contentDescription}" })
+    }
+
+    @Test fun beginnerGuideIsOptionalAndFollowsWabunRomajiEnglishAndCustomMaps() {
+        org.junit.Assume.assumeTrue(context.packageName.contains(".morsetest"))
+        automation.serviceInfo = automation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        val oldHardware = shell("settings get secure show_ime_with_hard_keyboard").trim()
+        val enabled = shell("ime list -s").lineSequence().any { it.trim() == target }
+        val localeManager = context.getSystemService(LocaleManager::class.java)
+        val oldLocales = localeManager.applicationLocales
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val store = MorsePreferences(context)
+        val customText = "ありがとうございます".repeat(8) + "😊"
+        val custom = MorseMap("guide-device", "ガイド用", listOf(MorseEntry(".", MorseOutput.LiteralText(customText)),
+            MorseEntry("-", MorseOutput.Command(MorseCommand.DELETE))))
+        fun hasText(value: String) = nodes().any { it.isVisibleToUser && it.text?.toString() == value }
+        try {
+            localeManager.applicationLocales = LocaleList.forLanguageTags("ja")
+            shell("settings put secure show_ime_with_hard_keyboard 1")
+            shell("ime enable $target"); shell("ime set $target")
+            store.saveControlLayout(MorseControlLayout()); store.saveReverse(false); store.saveMap(custom)
+            prefs.edit().putString("keyboard_order_preference", "[\"MORSE\"]")
+                .putString("morse_style", "TAP").putBoolean("morse_auto_boundary", false)
+                .putBoolean("morse_sound", false).putBoolean("morse_beginner_guide", false)
+                .putBoolean("save_last_used_keyboard", false).putBoolean("live_conversion_preference", false)
+                .putBoolean("keyboard_floating_preference", false).putString("morse_selected_map", MorsePresets.WABUN).commit()
+            ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+                assertFalse(hasText(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_pick)))
+                prefs.edit().putBoolean("morse_beginner_guide", true).commit()
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+                await("beginner list shown") { hasText(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_pick)) }
+                chooseGuide("る", "-.--.")
+                screenshot("guide-wabun")
+                tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dash)))
+                await("guide advances after actual dash") { nodes().any { it.isVisibleToUser && it.text?.toString()?.startsWith("1 / 5") == true } }
+                assertEquals(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_next),
+                    key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot)).stateDescription?.toString())
+                signal(".--.")
+                await("guide input is real composing input") { text(host) == "る" && composing(host) }
+                assertTrue(hasText(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_completed, 5)))
+                screenshot("guide-completed")
+                var candidate: AccessibilityNodeInfo? = null
+                await("guide leaves conversion candidates accessible") {
+                    val guideBottom = Rect().also(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_completed, 5))::getBoundsInScreen).bottom
+                    candidate = nodes().firstOrNull { it.isVisibleToUser && it.text?.toString()?.trim() == "る" &&
+                        Rect().also(it::getBoundsInScreen).top > guideBottom }
+                    candidate != null
+                }
+                tap(candidate!!)
+                await("candidate can be selected while guide is open") { text(host) == "る" && !composing(host) }
+                val beforeDemo = text(host)
+                key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_replay)).performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                SystemClock.sleep(4200)
+                assertEquals("guide replay never enters text", beforeDemo, text(host))
+                tap(key(MorsePreferences(context).allMaps().single { it.id == MorsePresets.ENGLISH }.name))
+                chooseGuide("z", "--..")
+                signal("--..")
+                await("English guide follows its map") { text(host).endsWith("z") }
+                screenshot("guide-english")
+                tap(key(MorsePreferences(context).allMaps().single { it.id == MorsePresets.ROMAJI }.name))
+                await("romaji guide map is shown") { hasText(MorsePreferences(context).allMaps().single { it.id == MorsePresets.ROMAJI }.name) }
+                chooseGuide("k", "-.-"); signal("-.-")
+                chooseGuide("a", ".-"); signal(".-")
+                await("romaji guide uses Japanese composing converter") { text(host).endsWith("か") && composing(host) }
+                tap(key(custom.name))
+                chooseGuide(customText, ".")
+                screenshot("guide-custom-text")
+                tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dash)))
+                await("mismatched guide signal") { nodes().any { it.isVisibleToUser && it.text?.toString()?.contains("順序が違います") == true } }
+                val beforeReset = text(host)
+                key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_reset)).performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                assertEquals(beforeReset, text(host))
+                signal("."); await("custom literal in guide") { text(host).endsWith("😊") }
+                chooseGuide(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_delete), "-")
+                screenshot("guide-custom-command")
+                signal("-"); await("custom command acts only after actual input") { !text(host).endsWith("😊") }
+                prefs.edit().putBoolean("morse_beginner_guide", false).commit()
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+                assertFalse(nodes().any { it.isVisibleToUser && it.contentDescription?.toString() == context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_replay) })
+            }
+            prefs.edit().putBoolean("morse_beginner_guide", true).putBoolean("keyboard_floating_preference", true)
+                .putString("morse_selected_map", MorsePresets.WABUN).commit()
+            ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+                chooseGuide("る", "-.--.")
+                assertEquals("one guide per active keyboard", 1, nodes().count { it.isVisibleToUser &&
+                    it.contentDescription?.toString() == context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_replay) })
+                signal("-.--.")
+                await("guide with floating keyboard") { text(host) == "る" }
+                key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_list)).performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                await("guide list collapses") { nodes().none { it.isVisibleToUser &&
+                    it.contentDescription?.toString()?.startsWith("るのガイド") == true } }
+                screenshot("guide-floating")
+                key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_list)).performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                chooseGuide("る", "-.--.")
+                host.onActivity { it.restartEditorInput(true) }
+                SystemClock.sleep(4200)
+                assertEquals("restarted editor receives no demo input", "", text(host))
+                prefs.edit().putString("morse_style", "STRAIGHT").commit()
+                host.onActivity { it.restartEditorInput(true) }
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_straight))
+                chooseGuide("へ", ".")
+                tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_straight)), 25)
+                tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_boundary)))
+                await("straight key guide") { text(host) == "へ" }
+            }
+            prefs.edit().putString("keyboard_order_preference", "[\"SPLIT\"]")
+                .putBoolean("keyboard_floating_preference", false).putString("morse_style", "TAP")
+                .putString("split_keyboard_main_type", "MORSE").putString("split_keyboard_sub_type", "MORSE")
+                .putFloat("split_keyboard_main_portrait_width", 180f).putFloat("split_keyboard_sub_portrait_width", 180f)
+                .putFloat("split_keyboard_main_portrait_height", 280f).putFloat("split_keyboard_sub_portrait_height", 280f).commit()
+            ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
+                reconnectFocusedEditor(host, context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot))
+                for (slot in listOf(0, 1)) {
+                    tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_dot), slot))
+                    tap(key(context.getString(com.kazumaproject.morse_keyboard.R.string.morse_delete), slot))
+                    chooseGuide("へ", ".")
+                    signal(".", slot)
+                    await("split slot $slot accepts guided input") { text(host).endsWith("へ") }
+                    assertEquals(1, nodes().count { it.isVisibleToUser && it.contentDescription?.toString() ==
+                        context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_replay) })
+                }
+                screenshot("guide-split")
+                shell("input keyevent KEYCODE_BACK")
+                await("hiding the keyboard also hides the guide") { nodes().none { it.isVisibleToUser &&
+                    it.contentDescription?.toString() == context.getString(com.kazumaproject.morse_keyboard.R.string.morse_guide_replay) } }
+            }
+        } finally {
+            prefs.edit().putBoolean("morse_beginner_guide", false).putBoolean("keyboard_floating_preference", false).commit()
+            store.deleteMap(custom.id)
+            localeManager.applicationLocales = oldLocales
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            if (!enabled) shell("ime disable $target")
+            if (oldHardware == "null") shell("settings delete secure show_ime_with_hard_keyboard")
+            else shell("settings put secure show_ime_with_hard_keyboard $oldHardware")
+        }
     }
 
     @Test fun composingConversionAndPointerIdentityAcrossNormalFloatingAndBothSplitSlots() {
