@@ -220,7 +220,24 @@ class SegmentCandidateImeInstrumentedTest {
             }
             shown
         }
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        // Touch the actual popup surface rather than waiting for a new accessibility window.
+        var openBounds: android.graphics.Rect? = null
+        await {
+            instrumentation.runOnMainSync {
+                android.view.inspector.WindowInspector.getGlobalWindowViews().forEach { root ->
+                    val bar = root.findViewById<android.view.View>(R.id.segment_candidate_bar)?.takeIf { it.isShown } ?: return@forEach
+                    val matches = arrayListOf<android.view.View>()
+                    bar.findViewsWithText(matches, bar.context.getString(R.string.segment_tree_open_short), android.view.View.FIND_VIEWS_WITH_TEXT)
+                    matches.firstOrNull { it.isShown && it.isClickable && it.width > 0 && it.height > 0 }?.let { button ->
+                        val at = IntArray(2).also(button::getLocationOnScreen)
+                        openBounds = android.graphics.Rect(at[0], at[1], at[0] + button.width, at[1] + button.height)
+                    }
+                }
+            }
+            openBounds != null
+        }
+        val open = openBounds!!
+        drag(open.centerX().toFloat(), open.centerY().toFloat(), open.centerX().toFloat(), open.centerY().toFloat())
         await { treeBounds() != null }
         assertComposing()
         screenshot("floating.png")
@@ -372,7 +389,7 @@ class SegmentCandidateImeInstrumentedTest {
 
     private fun findDescription(value: String) = allNodes().firstOrNull { it.contentDescription?.toString() == value }
     private fun clickDescription(value: String) {
-        await { findDescription(value) != null }
+        await("content description [$value]") { findDescription(value) != null }
         assertTrue("Could not click $value", findDescription(value)!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
     }
 
@@ -460,15 +477,15 @@ class SegmentCandidateImeInstrumentedTest {
 
     private fun awaitText(expected: String) = await { text() == expected }
 
-    private fun await(condition: () -> Boolean) {
+    private fun await(description: String = "", condition: () -> Boolean) {
         val end = SystemClock.uptimeMillis() + 10000
         while (SystemClock.uptimeMillis() < end) {
             if (condition()) return
             SystemClock.sleep(50)
         }
         screenshot("failure-${SystemClock.uptimeMillis()}.png")
-        val labels = allNodes().mapNotNull { it.text?.toString() ?: it.contentDescription?.toString() }.distinct()
-        fail("Timed out; editor=[${text()}]; visible labels=$labels")
+        val labels = allNodes().map { listOfNotNull(it.text?.toString(), it.contentDescription?.toString()).joinToString(" / ") }.filter { it.isNotEmpty() }.distinct()
+        fail("Timed out $description; editor=[${text()}]; visible labels=$labels")
     }
 
     companion object {
