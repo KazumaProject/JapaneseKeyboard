@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.content.ClipData
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -9,6 +10,7 @@ import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.AttributeSet
+import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -30,22 +32,57 @@ internal fun segmentBackground(start: Int, selected: Boolean) = GradientDrawable
 /** The dashed rail is a movement guide. Only the solid boundary handles accept drags. */
 class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : LinearLayout(context, attrs) {
     internal var onFocusSegment: (Int) -> Unit = {}
+    internal var onReorderSegment: (Int, Int) -> Unit = { _, _ -> }
     internal var onResizeSegment: (Int, Int) -> Unit = { _, _ -> }
     internal var onToggleTree: () -> Unit = {}
     private val dp get() = resources.displayMetrics.density
     private val cards = LinearLayout(context)
     private val rail = BoundaryRail(context)
     private val column = LinearLayout(context).apply { orientation = VERTICAL }
-    private val scroll = HorizontalScrollView(context).apply { isHorizontalScrollBarEnabled = false }
+    private val scroll = object : HorizontalScrollView(context) {
+        override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) parent?.requestDisallowInterceptTouchEvent(true)
+            val handled = super.dispatchTouchEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            return handled
+        }
+    }.apply {
+        id = R.id.segment_candidate_scroll
+        isHorizontalScrollBarEnabled = true
+    }
     private val toggle = TextView(context).apply {
         gravity = Gravity.CENTER
         textSize = 12f
         setOnClickListener { onToggleTree() }
         isFocusable = true
     }
+    private data class SegmentDrag(val signature: List<SegmentChoice>, val reading: String, val from: Int)
     private var lastSegments: List<BunsetsuSegmentState> = emptyList()
     private var lastFocus = -1
     private var lastColor = 0
+
+    private var dragScrollDirection = 0
+    private val dragScroller = object : Runnable {
+        override fun run() {
+            if (dragScrollDirection == 0 || !isAttachedToWindow) return
+            scroll.scrollBy((dragScrollDirection * 8 * dp).roundToInt(), 0)
+            scroll.postDelayed(this, 32)
+        }
+    }
+
+    private fun updateDragScroll(direction: Int) {
+        if (dragScrollDirection == direction) return
+        dragScrollDirection = direction
+        scroll.removeCallbacks(dragScroller)
+        if (direction != 0) scroll.post(dragScroller)
+    }
+
+    override fun onDetachedFromWindow() {
+        updateDragScroll(0)
+        super.onDetachedFromWindow()
+    }
 
     init {
         orientation = HORIZONTAL
@@ -60,11 +97,14 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
         rail.onResize = { start, end -> onResizeSegment(start, end) }
     }
 
-    internal fun bind(segments: List<BunsetsuSegmentState>, focus: Int, treeOpen: Boolean, textColor: Int) {
-        toggle.text = context.getString(if (treeOpen) R.string.segment_tree_close_short else R.string.segment_tree_open_short)
-        toggle.contentDescription = context.getString(if (treeOpen) R.string.segment_tree_close else R.string.segment_tree_open)
+    internal fun bind(segments: List<BunsetsuSegmentState>, focus: Int, treeOpen: Boolean, textColor: Int, treeEnabled: Boolean) {
+        toggle.visibility = if (treeEnabled && !treeOpen) VISIBLE else GONE
+        toggle.text = context.getString(R.string.segment_tree_open_short)
+        toggle.contentDescription = context.getString(R.string.segment_tree_open)
         toggle.setTextColor(textColor)
         if (segments == lastSegments && focus == lastFocus && textColor == lastColor) return
+        val followFocus = focus != lastFocus || segmentChoices(segments).map { it.start to it.end } !=
+            segmentChoices(lastSegments).map { it.start to it.end }
         lastSegments = segments
         lastFocus = focus
         lastColor = textColor
@@ -75,7 +115,19 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
         val positions = legal.mapIndexed { index, offset -> offset to (16 + index * 26) * dp }.toMap()
         cards.setPadding((16 * dp).toInt(), 0, (16 * dp).toInt(), 0)
         choices.forEachIndexed { index, choice ->
-            val label = TextView(context).apply {
+            val label = object : TextView(context) {
+                override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(info)
+                    if (index > 0) info.addAction(AccessibilityNodeInfo.AccessibilityAction(R.id.segment_move_left, context.getString(R.string.segment_move_left)))
+                    if (index < choices.lastIndex) info.addAction(AccessibilityNodeInfo.AccessibilityAction(R.id.segment_move_right, context.getString(R.string.segment_move_right)))
+                }
+                override fun performAccessibilityAction(action: Int, arguments: Bundle?): Boolean {
+                    val target = when (action) { R.id.segment_move_left -> index - 1; R.id.segment_move_right -> index + 1; else -> return super.performAccessibilityAction(action, arguments) }
+                    if (target !in choices.indices) return false
+                    onReorderSegment(index, target)
+                    return true
+                }
+            }.apply {
                 text = choice.text
                 textSize = 16f
                 setTextColor(textColor)
@@ -87,6 +139,35 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
                 isSelected = index == focus
                 isFocusable = true
                 setOnClickListener { onFocusSegment(index) }
+                setOnLongClickListener {
+                    if (choices.size < 2) false else startDragAndDrop(
+                        ClipData.newPlainText("segment", ""), DragShadowBuilder(this), SegmentDrag(choices, input, index), 0)
+                }
+                setOnDragListener { _, event ->
+                    val dragged = event.localState as? SegmentDrag
+                    val valid = dragged != null && dragged.signature == segmentChoices(lastSegments) && dragged.reading == lastSegments.joinToString("") { it.reading }
+                    when (event.action) {
+                        DragEvent.ACTION_DRAG_STARTED -> valid
+                        DragEvent.ACTION_DRAG_ENTERED -> { if (valid) alpha = .5f; valid }
+                        DragEvent.ACTION_DRAG_LOCATION -> {
+                            if (valid) {
+                                val labelLocation = IntArray(2).also(::getLocationOnScreen)
+                                val viewport = IntArray(2).also(scroll::getLocationOnScreen)
+                                val x = labelLocation[0] + event.x - viewport[0]
+                                updateDragScroll(when { x < 24 * dp -> -1; x > scroll.width - 24 * dp -> 1; else -> 0 })
+                            } else updateDragScroll(0)
+                            valid
+                        }
+                        DragEvent.ACTION_DRAG_EXITED, DragEvent.ACTION_DRAG_ENDED -> { alpha = 1f; updateDragScroll(0); valid }
+                        DragEvent.ACTION_DROP -> {
+                            alpha = 1f
+                            updateDragScroll(0)
+                            if (valid) onReorderSegment(dragged!!.from, index)
+                            valid
+                        }
+                        else -> valid
+                    }
+                }
             }
             cards.addView(label, LayoutParams(((positions[choice.end] ?: 0f) - (positions[choice.start] ?: 0f)).roundToInt(), LayoutParams.MATCH_PARENT))
         }
@@ -95,9 +176,11 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
         rail.bind(input, choices.getOrNull(focus), positions, textColor)
         rail.layoutParams.width = ((legal.size - 1) * 26 * dp + 32 * dp).roundToInt()
         column.requestLayout()
-        post {
+        if (followFocus) post {
             val focused = cards.getChildAt(focus) ?: return@post
-            scroll.requestChildRectangleOnScreen(focused, android.graphics.Rect(0, 0, focused.width, focused.height), false)
+            val rectangle = android.graphics.Rect(0, 0, focused.width, focused.height)
+            column.offsetDescendantRectToMyCoords(focused, rectangle)
+            scroll.requestChildRectangleOnScreen(column, rectangle, false)
         }
     }
 
@@ -134,27 +217,35 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
             val legal = positions.keys.toList()
             val rangeStart = if (draggingStart == false) legal.first { it > choice.start } else 0
             val rangeEnd = if (draggingStart == true) legal.last { it < choice.end } else input.length
-            canvas.drawRoundRect(RectF(positions.getValue(rangeStart) - 8 * dp, 2 * dp,
-                positions.getValue(rangeEnd) + 8 * dp, 38 * dp), 4 * dp, 4 * dp, paint)
+            canvas.drawLine(positions.getValue(rangeStart), 40 * dp, positions.getValue(rangeEnd), 40 * dp, paint)
             paint.pathEffect = null
+            val selection = RectF(positions.getValue(left), 3 * dp, positions.getValue(right), 37 * dp)
             paint.style = Paint.Style.FILL
             paint.color = segmentColor(choice.start)
-            paint.alpha = 28
-            canvas.drawRect(positions.getValue(left), 4 * dp, positions.getValue(right), 36 * dp, paint)
-            paint.color = textColor
+            paint.alpha = 55
+            canvas.drawRoundRect(selection, 6 * dp, 6 * dp, paint)
             paint.alpha = 255
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2 * dp
+            canvas.drawRoundRect(selection, 6 * dp, 6 * dp, paint)
+            paint.style = Paint.Style.FILL
             paint.textSize = 12 * resources.displayMetrics.scaledDensity
             paint.textAlign = Paint.Align.CENTER
             legal.zipWithNext().forEach { (a, b) ->
+                val inside = a >= left && b <= right
+                paint.color = textColor
+                paint.alpha = if (inside) 255 else 150
+                paint.isFakeBoldText = inside
                 canvas.drawText(input.substring(a, b), (positions.getValue(a) + positions.getValue(b)) / 2, 27 * dp, paint)
             }
-            paint.color = segmentColor(choice.start)
-            paint.strokeWidth = 3 * dp
+            paint.isFakeBoldText = false
+            paint.alpha = 255
             listOf(left, right).forEach { offset ->
                 val x = positions.getValue(offset)
-                canvas.drawLine(x, 4 * dp, x, 36 * dp, paint)
-                canvas.drawCircle(x, 7 * dp, 5 * dp, paint)
-                canvas.drawCircle(x, 34 * dp, 5 * dp, paint)
+                paint.color = segmentColor(choice.start)
+                canvas.drawRoundRect(RectF(x - 6 * dp, 3 * dp, x + 6 * dp, 37 * dp), 6 * dp, 6 * dp, paint)
+                paint.color = Color.WHITE
+                canvas.drawRoundRect(RectF(x - dp, 13 * dp, x + dp, 27 * dp), dp, dp, paint)
             }
         }
 
@@ -164,7 +255,7 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
                 MotionEvent.ACTION_DOWN -> {
                     val startDistance = abs(event.x - positions.getValue(choice.start))
                     val endDistance = abs(event.x - positions.getValue(choice.end))
-                    if (minOf(startDistance, endDistance) > 22 * dp) return false
+                    if (minOf(startDistance, endDistance) > 12 * dp) return false
                     draggingStart = startDistance <= endDistance
                     preview = if (draggingStart == true) choice.start else choice.end
                     parent.requestDisallowInterceptTouchEvent(true)

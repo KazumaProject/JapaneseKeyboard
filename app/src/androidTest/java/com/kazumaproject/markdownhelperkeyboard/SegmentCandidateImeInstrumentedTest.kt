@@ -18,6 +18,7 @@ import org.junit.AfterClass
 import org.junit.runner.RunWith
 
 /** Exercises the shipped IME, its composing spans, native touch routing and candidate window. */
+@androidx.test.filters.SdkSuppress(minSdkVersion = 29)
 @RunWith(AndroidJUnit4::class)
 class SegmentCandidateImeInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -31,7 +32,7 @@ class SegmentCandidateImeInstrumentedTest {
         await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 4, 10)) != null }
         screenshot("segments.png")
         clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
-        await { allNodes().any { it.text?.toString() == instrumentation.targetContext.getString(R.string.segment_tree_title) } }
+        await { treeBounds() != null }
         screenshot("tree.png")
         val alternative = allNodes().firstOrNull { node ->
             val label = node.text?.toString().orEmpty()
@@ -45,6 +46,116 @@ class SegmentCandidateImeInstrumentedTest {
         key(KeyEvent.KEYCODE_ENTER)
         awaitText("明日は" + replacement + "行きます")
         host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
+    @Test fun tappingSegmentsAndSelectedTreeNodesChangesFocusWithoutReplacingText() = withKeyboard {
+        startConversion()
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "行きます", "いきます"))
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 10, 14)) != null }
+        awaitText("明日は東京に行きます")
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        await { treeBounds() != null }
+        // Tapping a chosen tree node focuses it without replacing its conversion state.
+        await { allNodes().any { it.text?.toString() == "明日は\nあしたは" && it.isClickable } }
+        val first = allNodes().first { it.text?.toString() == "明日は\nあしたは" && it.isClickable }
+        assertTrue(first.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 0, 4)) != null }
+        await { allNodes().any { it.text?.toString() == "明日は\nあしたは" && it.isSelected } }
+        awaitText("明日は東京に行きます")
+        assertComposing()
+        val middle = allNodes().first { it.text?.toString() == "東京に" && it.isClickable }
+        assertTrue(middle.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 4, 10)) != null }
+        await { allNodes().any { it.text?.toString() == "東京に\nとうきょうに" && it.isSelected } }
+        awaitText("明日は東京に行きます")
+        assertComposing()
+        screenshot("focus.png")
+    }
+
+    @Test fun segmentReadingStripScrollsHorizontallyWithoutChangingComposition() = withKeyboard {
+        type("ashitahatoukyouniikimasusoshite")
+        awaitText("あしたはとうきょうにいきますそして")
+        key(KeyEvent.KEYCODE_SPACE)
+        showSoftwareKeyboard()
+        await { scrollState(R.id.segment_candidate_scroll)?.let { it.second.width() > 0 } == true }
+        val before = scrollState(R.id.segment_candidate_scroll)!!
+        val area = before.second
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        // Swipe over the segment labels rather than the boundary drag handles.
+        drag(area.right - 24 * density, area.top + 16 * density,
+            area.left + 24 * density, area.top + 16 * density)
+        await { scrollState(R.id.segment_candidate_scroll)!!.first > before.first + 20 * density }
+        assertComposing()
+        val scrolled = scrollState(R.id.segment_candidate_scroll)!!.first
+        SystemClock.sleep(500)
+        assertEquals(scrolled, scrollState(R.id.segment_candidate_scroll)!!.first)
+        drag(area.left + 24 * density, area.top + 16 * density,
+            area.right - 24 * density, area.top + 16 * density)
+        await { scrollState(R.id.segment_candidate_scroll)!!.first < scrolled }
+        assertComposing()
+    }
+
+    private fun scrollState(id: Int): Pair<Int, android.graphics.Rect>? {
+        var result: Pair<Int, android.graphics.Rect>? = null
+        instrumentation.runOnMainSync {
+            android.view.inspector.WindowInspector.getGlobalWindowViews().forEach { root ->
+                root.findViewById<android.widget.HorizontalScrollView>(id)?.takeIf { it.isShown }?.let { view ->
+                    val location = IntArray(2).also(view::getLocationOnScreen)
+                    val visible = android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
+                    // The horizontal view can be taller than the vertical viewport. Inject
+                    // swipes inside the visible viewport, not above a scrolled graph.
+                    (view.parent as? android.view.View)?.let { parent ->
+                        val parentLocation = IntArray(2).also(parent::getLocationOnScreen)
+                        visible.intersect(android.graphics.Rect(parentLocation[0], parentLocation[1],
+                            parentLocation[0] + parent.width, parentLocation[1] + parent.height))
+                    }
+                    result = view.scrollX to visible
+                }
+            }
+        }
+        return result
+    }
+
+    @Test fun draggingSegmentReordersWholeStatesAndConfirmCommitsTheNewOrder() = withKeyboard {
+        startConversion()
+        dragMiddleSegmentBeforeFirst()
+        awaitText("東京に明日は行きます")
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 0, 6)) != null }
+        SystemClock.sleep(500)
+        assertEquals("東京に明日は行きます", text())
+        assertComposing()
+        screenshot("reorder.png")
+        key(KeyEvent.KEYCODE_ENTER)
+        awaitText("東京に明日は行きます")
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
+    @Test fun reorderedSegmentStillHasWorkingRangeHandlesAndCancelsToReorderedReading() = withKeyboard {
+        startConversion()
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        await { treeBounds() != null }
+        dragMiddleSegmentBeforeFirst()
+        awaitText("東京に明日は行きます")
+        val description = instrumentation.targetContext.getString(R.string.segment_range_description, 0, 6)
+        await { findDescription(description) != null }
+        val area = android.graphics.Rect().also(findDescription(description)!!::getBoundsInScreen)
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        val x = area.left + 172 * density
+        drag(x, area.centerY().toFloat(), x - 26 * density, area.centerY().toFloat())
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 0, 5)) != null }
+        assertComposing()
+        screenshot("reorder-range.png")
+        key(KeyEvent.KEYCODE_ESCAPE)
+        awaitText("とうきょうにあしたはいきます")
+        type("a")
+        awaitText("とうきょうにあしたはいきますあ")
+    }
+
+    private fun dragMiddleSegmentBeforeFirst() {
+        val source = android.graphics.Rect().also(allNodes().first { it.text?.toString() == "東京に" && it.isLongClickable }::getBoundsInScreen)
+        val target = android.graphics.Rect().also(allNodes().first { it.text?.toString() == "明日は" && it.isLongClickable }::getBoundsInScreen)
+        drag(source.centerX().toFloat(), source.centerY().toFloat(), target.centerX().toFloat(), target.centerY().toFloat(),
+            holdMillis = android.view.ViewConfiguration.getLongPressTimeout().toLong() + 200)
     }
 
     @Test fun draggingBoundaryRequeriesRangeWithoutLosingReadingOrCommitting() = withKeyboard {
@@ -83,14 +194,96 @@ class SegmentCandidateImeInstrumentedTest {
         assertFalse(prefs.getBoolean("conversion_bunsetsu_cursor_move_preference", true))
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
     @Test fun floatingKeyboardAnchorsTreeAboveItsOwnCandidateBar() = withKeyboard(floating = true) {
         startConversion()
+        // Hardware typing deliberately leaves floating mode. Restore the real popup for this scenario.
+        instrumentation.runOnMainSync {
+            val bar = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                .firstNotNullOf { it.findViewById<android.view.View>(R.id.segment_candidate_bar) }
+            var context: android.content.Context = bar.context
+            while (context is android.content.ContextWrapper && context !is com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService) {
+                context = context.baseContext
+            }
+            check(context is com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService)
+            context.javaClass.getDeclaredMethod("applyFloatingModeState", Boolean::class.javaPrimitiveType).apply {
+                isAccessible = true
+            }.invoke(context, true)
+        }
+        await {
+            var shown = false
+            instrumentation.runOnMainSync {
+                shown = android.view.inspector.WindowInspector.getGlobalWindowViews().any { root ->
+                    root.findViewById<android.view.View>(R.id.floating_keyboard_container)?.isShown == true &&
+                        root.findViewById<android.view.View>(R.id.segment_candidate_bar)?.isShown == true
+                }
+            }
+            shown
+        }
         clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
-        await { allNodes().any { it.text?.toString() == instrumentation.targetContext.getString(R.string.segment_tree_title) } }
+        await { treeBounds() != null }
         assertComposing()
         screenshot("floating.png")
         clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
         assertComposing()
+    }
+
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
+    @Test fun treeVisibilitySettingAndResizePersistWithoutCommitting() = withKeyboard {
+        startConversion()
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        await { treeBounds() != null }
+        assertFalse(allNodes().any { it.text?.toString()?.contains("Full-sentence candidate tree") == true })
+        clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_edit))
+        await { findDescription(instrumentation.targetContext.getString(R.string.composing_guide_done)) != null }
+        val before = treeBounds()!!
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        // The shared frame exposes its left edge in editing mode.
+        drag(before.left + 12 * density, before.centerY().toFloat() - 9 * density,
+            before.left + 60 * density, before.centerY().toFloat() - 9 * density)
+        await { treeBounds()!!.width() < before.width() - 24 * density }
+        screenshot("tree-edit.png")
+        clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_done))
+        val resized = treeBounds()!!
+        val treeScroll = scrollState(R.id.segment_tree_scroll)!!
+        val treeArea = treeScroll.second
+        drag(treeArea.right - 16 * density, treeArea.top + 16 * density,
+            treeArea.left + 16 * density, treeArea.top + 16 * density)
+        await { scrollState(R.id.segment_tree_scroll)!!.first > treeScroll.first }
+        assertFalse(allNodes().any { it.text?.toString() == "Close\ntree" })
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
+        await { treeBounds() == null }
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        await { treeBounds()?.width() == resized.width() }
+        val positioned = treeBounds()!!
+        drag(positioned.centerX().toFloat(), positioned.bottom - 12 * density,
+            positioned.centerX() - 24 * density, positioned.bottom - 36 * density)
+        await { treeBounds()!!.left < positioned.left - 12 * density }
+        val moved = treeBounds()!!
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        await { treeBounds() == moved }
+        assertComposing()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
+        prefs.edit().putBoolean("segment_tree_enabled", false).commit()
+        await { treeBounds() == null && findDescription(instrumentation.targetContext.getString(R.string.segment_tree_open)) == null }
+        assertComposing()
+        prefs.edit().putBoolean("segment_tree_enabled", true).commit()
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_tree_open)) != null }
+        assertNull(treeBounds())
+    }
+
+    private fun treeBounds(): android.graphics.Rect? {
+        var result: android.graphics.Rect? = null
+        instrumentation.runOnMainSync {
+            android.view.inspector.WindowInspector.getGlobalWindowViews().forEach { root ->
+                root.findViewById<android.view.View>(R.id.segment_candidate_tree_panel)?.takeIf { it.isShown }?.let { panel ->
+                    val location = IntArray(2).also(panel::getLocationOnScreen)
+                    result = android.graphics.Rect(location[0], location[1], location[0] + panel.width, location[1] + panel.height)
+                }
+            }
+        }
+        return result
     }
 
     @Test fun switchingToLegacyAndRestartingEditorDismissTreeWithoutStaleResults() = withKeyboard {
@@ -119,8 +312,19 @@ class SegmentCandidateImeInstrumentedTest {
         screenshot("landscape-before.png")
         clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         screenshot("landscape-open.png")
-        await { allNodes().any { it.text?.toString() == instrumentation.targetContext.getString(R.string.segment_tree_title) } }
+        await { treeBounds() != null }
         screenshot("landscape.png")
+        assertComposing()
+        // Expand the compact panel to inspect the reference-style graph end to end.
+        clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_edit))
+        await { findDescription(instrumentation.targetContext.getString(R.string.composing_guide_done)) != null }
+        val panel = treeBounds()!!
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        drag(panel.centerX().toFloat(), panel.bottom - 20 * density, panel.centerX().toFloat(),
+            instrumentation.targetContext.resources.displayMetrics.heightPixels - 40 * density)
+        clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_done))
+        await { findDescription(instrumentation.targetContext.getString(R.string.composing_guide_edit)) != null }
+        screenshot("graph-expanded.png")
         assertComposing()
     }
 
@@ -172,7 +376,7 @@ class SegmentCandidateImeInstrumentedTest {
         assertTrue("Could not click $value", findDescription(value)!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
     }
 
-    private fun drag(x: Float, y: Float, endX: Float, endY: Float) {
+    private fun drag(x: Float, y: Float, endX: Float, endY: Float, holdMillis: Long = 0) {
         val down = SystemClock.uptimeMillis()
         fun event(action: Int, atX: Float, atY: Float) {
             val motion = android.view.MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, atX, atY, 0)
@@ -181,6 +385,7 @@ class SegmentCandidateImeInstrumentedTest {
             motion.recycle()
         }
         event(android.view.MotionEvent.ACTION_DOWN, x, y)
+        if (holdMillis > 0) SystemClock.sleep(holdMillis)
         repeat(8) { step ->
             SystemClock.sleep(25)
             event(android.view.MotionEvent.ACTION_MOVE, x + (endX - x) * (step + 1) / 8, y + (endY - y) * (step + 1) / 8)
@@ -312,11 +517,20 @@ class SegmentCandidateImeInstrumentedTest {
         }
         val context = instrumentation.targetContext
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val values = mapOf<String, Any>(
+        val values = mapOf<String, Any?>(
             "conversion_bunsetsu_separation_preference" to false,
             "conversion_bunsetsu_cursor_move_preference" to false,
             "candidate_order_override_enable_preference" to false,
             "candidate_display_method" to "segments",
+            "segment_tree_enabled" to true,
+            "segment_tree_portrait_width" to null,
+            "segment_tree_portrait_height" to null,
+            "segment_tree_portrait_x" to null,
+            "segment_tree_portrait_y" to null,
+            "segment_tree_landscape_width" to null,
+            "segment_tree_landscape_height" to null,
+            "segment_tree_landscape_x" to null,
+            "segment_tree_landscape_y" to null,
             "physical_toolbar_style" to "floating",
             "keyboard_floating_preference" to floating,
             "allow_fullscreen_mode_preference" to false,
@@ -335,7 +549,7 @@ class SegmentCandidateImeInstrumentedTest {
         try {
             prefs.edit().apply {
                 values.forEach { (key, value) ->
-                    when (value) { is Boolean -> putBoolean(key, value); is String -> putString(key, value) }
+                    when (value) { is Boolean -> putBoolean(key, value); is String -> putString(key, value); null -> remove(key) }
                 }
             }.commit()
             host = EditorHost()
@@ -351,6 +565,7 @@ class SegmentCandidateImeInstrumentedTest {
                     when (value) {
                         is Boolean -> putBoolean(key, value)
                         is String -> putString(key, value)
+                        is Float -> putFloat(key, value)
                         null -> remove(key)
                     }
                 }

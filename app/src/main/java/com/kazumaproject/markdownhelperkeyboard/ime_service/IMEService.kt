@@ -1018,12 +1018,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.DATE_CANDIDATE_ORDER_KEY,
         AppPreference.DATE_CANDIDATE_ENABLED_FORMATS_KEY,
         SEGMENT_CANDIDATE_STYLE_KEY,
+        SEGMENT_TREE_ENABLED_KEY,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key != null && key in runtimeInputPreferenceKeys) {
                 runOnMainThread {
                     syncRuntimeInputPreferences()
+                    if (key == SEGMENT_TREE_ENABLED_KEY) {
+                        segmentTreeOpen = false
+                        segmentTreeWindow?.stop()
+                        mainLayoutBinding?.let { current ->
+                            val activeBar = if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.segmentCandidateBar else current.segmentCandidateBar
+                            if (activeBar != null) updateSegmentCandidateLayout(current, activeBar)
+                        }
+                        refreshSegmentCandidateUi()
+                    }
                     if (key == SEGMENT_CANDIDATE_STYLE_KEY) {
                         segmentEditJob?.cancel()
                         if (isBunsetsuCursorMoveSessionActive()) exitBunsetsuCursorMoveSessionToRawInput()
@@ -3369,7 +3379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!eligible) {
             segmentTreeWindow?.stop()
             if (input.isEmpty() || !segmentCandidateStyle) segmentTreeOpen = false
-            if (visibleBefore) updateKeyboardLayout(main)
+            if (visibleBefore) updateSegmentCandidateLayout(main, bar)
             return
         }
         val segments = session?.segments ?: buildBunsetsuSegments(input, snapshot!!.initialSplitPositions, snapshot)
@@ -3378,23 +3388,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bar.onFocusSegment = { index ->
             editSegmentCandidates(input) { current -> current.copy(focusedIndex = index.coerceIn(0, current.segments.lastIndex)) }
         }
+        bar.onReorderSegment = { from, to -> reorderVisibleSegments(input, from, to) }
         bar.onResizeSegment = { start, end -> replaceVisibleSegment(input, start, end) }
         bar.onToggleTree = {
             segmentTreeOpen = !segmentTreeOpen
-            updateKeyboardLayout(main)
+            updateSegmentCandidateLayout(main, bar)
             refreshSegmentCandidateUi()
+            if (segmentTreeOpen) editSegmentCandidates(input) { current ->
+                var loaded = current
+                for (index in current.segments.indices) loaded = loadCandidatesForBunsetsuSegment(loaded, index)
+                loaded
+            }
         }
-        bar.bind(segments, focused, segmentTreeOpen, colors.text)
-        if (visibleBefore != bar.isVisible) {
-            updateKeyboardLayout(main)
-            if (bar === floating?.segmentCandidateBar) floating.root.requestLayout()
-        }
+        val treeEnabled = appPreference.segment_tree_enabled
+        if (!treeEnabled) segmentTreeOpen = false
+        bar.bind(segments, focused, segmentTreeOpen, colors.text, treeEnabled)
+        if (visibleBefore != bar.isVisible) updateSegmentCandidateLayout(main, bar)
         if (segmentTreeOpen) {
             val source = session?.conversionSnapshot ?: snapshot
             val selected = segmentChoices(segments)
             val paths = source?.let { candidateTreePaths(it, appPreference.n_best_preference ?: 4) }.orEmpty()
-            val alternatives = session?.segments?.getOrNull(focused)?.candidates.orEmpty().take(appPreference.n_best_preference ?: 4).map { candidate ->
-                selected.toMutableList().apply { this[focused] = this[focused].copy(text = displayTextFromCandidate(candidate)) }.toList()
+            val alternatives = session?.segments.orEmpty().flatMapIndexed { index, segment ->
+                segment.candidates.take(appPreference.n_best_preference ?: 4).map { candidate ->
+                    selected.toMutableList().apply { this[index] = this[index].copy(text = displayTextFromCandidate(candidate)) }.toList()
+                }
             }
             val safePaths = (listOf(selected) + paths + alternatives).distinct().filter { path ->
                 path.none { choice -> isNgWordEnable == true &&
@@ -3405,16 +3422,49 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }, {
                 segmentTreeOpen = false
                 segmentTreeWindow?.stop()
-                mainLayoutBinding?.let { updateKeyboardLayout(it) }
+                mainLayoutBinding?.let { current ->
+                    val activeBar = if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.segmentCandidateBar else current.segmentCandidateBar
+                    if (activeBar != null) updateSegmentCandidateLayout(current, activeBar)
+                }
                 refreshSegmentCandidateUi()
             }).also { segmentTreeWindow = it }
-            window.show(bar, input, safePaths, selected, colors.background, colors.text)
+            window.show(bar, input, safePaths, selected, focused, colors.background, colors.text)
         } else segmentTreeWindow?.stop()
+    }
+
+    private fun updateSegmentCandidateLayout(main: MainLayoutBinding, bar: SegmentCandidateBar) {
+        if (!floatingCandidateSurfaceActive && bar === floatingKeyboardBinding?.segmentCandidateBar) {
+            ensureFloatingInputHostLayout(main)
+            floatingKeyboardBinding?.root?.requestLayout()
+        } else updateKeyboardLayout(main)
+    }
+
+    private fun reorderVisibleSegments(input: String, from: Int, to: Int) {
+        if (from == to) return
+        editSegmentCandidates(input) { current ->
+            if (from !in current.segments.indices || to !in current.segments.indices) return@editSegmentCandidates current
+            val moved = moveSegment(current.segments, from, to)
+            val reading = moved.joinToString("") { it.reading }
+            val splits = segmentChoices(moved).dropLast(1).map { it.end }
+            val result = queryBunsetsuConversion(reading)
+            val snapshot = BunsetsuConversionSnapshot(
+                input = reading, candidates = result.candidates, paths = result.candidateSegmentsByString,
+                splitPatterns = result.bunsetsuResult?.splitPatterns.orEmpty(), initialSplitPositions = splits,
+                candidateSplitPositions = result.bunsetsuResult?.splitPatternByCandidateString.orEmpty(),
+            )
+            current.copy(rawInput = reading + current.tailText, conversionInput = reading,
+                segments = moved, conversionSnapshot = snapshot, focusedIndex = to,
+                splitPatterns = listOf(splits), activeSplitPatternIndex = 0)
+        }
     }
 
     private fun replaceVisibleSegment(input: String, start: Int, end: Int, text: String? = null) {
         if (start !in readingBoundaries(input) || end !in readingBoundaries(input) || start >= end) return
         editSegmentCandidates(input) { current ->
+            val selectedIndex = text?.let { value ->
+                segmentChoices(current.segments).indexOf(SegmentChoice(start, end, value))
+            } ?: -1
+            if (selectedIndex >= 0) return@editSegmentCandidates current.copy(focusedIndex = selectedIndex)
             val rebuilt = replaceSegmentRange(current.conversionInput, current.segments, start, end, text)
             val choices = segmentChoices(rebuilt)
             current.copy(segments = rebuilt, focusedIndex = choices.indexOfFirst { it.start == start && it.end == end },
@@ -3437,6 +3487,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val prepared = prepareBunsetsuSegments(changed)
                 if (bunsetsuConversionSession !== current || currentInputConnection !== editor || !isBunsetsuCursorMoveSessionActive()) return@withLock
                 bunsetsuConversionSession = prepared
+                if (prepared.conversionInput != current.conversionInput) {
+                    latestBunsetsuConversionSnapshot = prepared.conversionSnapshot
+                    bunsetsuSplitPatterns = prepared.splitPatterns
+                    _inputString.value = prepared.conversionInput
+                    clearZenzLiveSlot("segment order changed")
+                }
                 bunsetsuPositionList = segmentChoices(prepared.segments).dropLast(1).map { it.end }
                 renderBunsetsuConversionSession(main, floatingKeyboardBinding)
             }
@@ -10315,6 +10371,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             renderCurrentKeyboardStateOnActiveSurface()
         }
         updateShortcutActiveStates()
+        if (segmentCandidateStyle) refreshSegmentCandidateUi()
     }
 
     private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
@@ -20200,7 +20257,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             !isSymbol && physicalKeyboardEnable.replayCache.firstOrNull() != true) {
             val available = FloatingWindowCoordinates(getSystemService(WindowManager::class.java)).safeArea(mainView.root).height()
             // Opening the tree temporarily makes room above the strip; preferences stay intact.
-            val reservedAbove = applicationContext.dpToPx(if (segmentTreeOpen) { if (isPortrait) 112 else 80 } else 40)
+            val reservedAbove = applicationContext.dpToPx(if (segmentTreeOpen) 112 else 40)
             val maximumBody = (available - applicationContext.dpToPx(candidateStripHeightDp) -
                 segmentHeight - dockedCandidateChromeHeight - reservedAbove - applicationContext.dpToPx(6))
                 .coerceAtLeast(applicationContext.dpToPx(140))
@@ -20963,6 +21020,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         defaultInputFinalizeJob?.cancel()
         defaultInputFinalizeJob = null
+        if (segmentCandidateStyle && isBunsetsuCursorMoveSessionActive() &&
+            bunsetsuConversionSession?.conversionInput == string) {
+            renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+            return
+        }
         if (string.isNotEmpty()) {
             clearZeroQueryAllState(refresh = false)
             hasConvertedKatakana = false

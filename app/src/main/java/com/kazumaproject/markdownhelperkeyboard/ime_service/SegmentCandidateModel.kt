@@ -3,14 +3,15 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import java.text.BreakIterator
 import java.util.Locale
 
+internal const val SEGMENT_TREE_ENABLED_KEY = "segment_tree_enabled"
 internal const val SEGMENT_CANDIDATE_STYLE_KEY = "candidate_display_method"
 internal const val SEGMENT_CANDIDATE_STYLE = "segments"
 
 /** Offsets always refer to the reading, never to the length of a converted label. */
 internal data class SegmentChoice(val start: Int, val end: Int, val text: String)
 
-internal class CandidateTreeNode(val choice: SegmentChoice?) {
-    val children = mutableListOf<CandidateTreeNode>()
+internal class CandidateGraphNode(val choice: SegmentChoice?) {
+    val children = mutableListOf<CandidateGraphNode>()
 }
 
 internal fun readingBoundaries(input: String): List<Int> {
@@ -34,18 +35,28 @@ internal fun segmentChoices(segments: List<BunsetsuSegmentState>): List<SegmentC
     }
 }
 
-/** A prefix trie retains actual candidate paths; it does not invent cross-branch sentences. */
-internal fun buildCandidateTree(paths: List<List<SegmentChoice>>): CandidateTreeNode {
-    val root = CandidateTreeNode(null)
+/** Minimize a prefix trie by sharing equivalent continuations; keep the exact input path set. */
+internal fun buildCandidateGraph(paths: List<List<SegmentChoice>>): CandidateGraphNode {
+    val root = CandidateGraphNode(null)
     paths.forEach { path ->
         var parent = root
         path.forEach { choice ->
             val node = parent.children.firstOrNull { it.choice == choice }
-                ?: CandidateTreeNode(choice).also { parent.children.add(it) }
+                ?: CandidateGraphNode(choice).also { parent.children.add(it) }
             parent = node
         }
     }
-    return root
+    data class Key(val choice: SegmentChoice?, val children: List<Int>)
+    data class Canonical(val node: CandidateGraphNode, val id: Int)
+    val continuations = linkedMapOf<Key, Canonical>()
+    fun share(node: CandidateGraphNode): Canonical {
+        val children = node.children.map(::share)
+        val key = Key(node.choice, children.map { it.id }.sorted())
+        return continuations.getOrPut(key) {
+            Canonical(CandidateGraphNode(node.choice).apply { this.children.addAll(children.map { it.node }) }, continuations.size)
+        }
+    }
+    return share(root).node
 }
 
 internal fun candidateTreePaths(snapshot: BunsetsuConversionSnapshot, limit: Int): List<List<SegmentChoice>> =
@@ -96,4 +107,12 @@ internal fun replaceSegmentRange(
             else BunsetsuSegmentState(input.substring(left, right), input.substring(left, right))
         }
     }
+}
+
+/** Move complete segment states together with their readings and selected candidates. */
+internal fun moveSegment(
+    segments: List<BunsetsuSegmentState>, from: Int, to: Int,
+): List<BunsetsuSegmentState> {
+    require(from in segments.indices && to in segments.indices)
+    return segments.toMutableList().apply { add(to, removeAt(from)) }
 }

@@ -31,6 +31,7 @@ internal open class FloatingPanelFrame(
     private val onHandleEvent: (MotionEvent) -> Unit = {},
     title: CharSequence? = null,
     onHide: (() -> Unit)? = null,
+    hideDescription: Int = R.string.floating_dictionary_hide,
 ) : FrameLayout(context), SkinPopupWindowHost, KeyboardFontAware {
     override var applicationWindowView: View? = null
 
@@ -56,19 +57,20 @@ internal open class FloatingPanelFrame(
         gravity = Gravity.CENTER_VERTICAL
     } }
     private val hideButton = onHide?.let { action ->
-        icon(com.kazumaproject.core.R.drawable.ic_close, R.string.floating_dictionary_hide, action)
+        icon(com.kazumaproject.core.R.drawable.ic_close, hideDescription, action)
     }
     private val edges = listOf(GuideHandle.LEFT, GuideHandle.TOP, GuideHandle.RIGHT, GuideHandle.BOTTOM)
         .associateWith { HandleView(context, it) }
     private var handlingGesture = false
     private var headerVisible = true
     private var footerEnabled = false
+    private var compactChrome = false
     private var moveBandDp = MOVE_BAND_DP
     var editing = false
         private set
 
-    val contentInsets: Rect get() = Rect(dp(if (editing) 24 else 8), dp(if (headerVisible) (if (editing) 72 else 56) else (if (editing) 24 else 8)),
-        dp(if (editing) 24 else 8), dp(moveBandDp + if (editing) (if (footerEnabled) 104 else 32) else 4))
+    val contentInsets: Rect get() = Rect(dp(if (editing) 24 else 8), dp(if (headerVisible) (if (editing) 72 else if (compactChrome) 8 else 56) else (if (editing) 24 else 8)),
+        dp(if (editing) 24 else if (compactChrome && headerVisible) 72 else 8), dp(moveBandDp + if (editing) (if (footerEnabled) 104 else 32) else 4))
 
     init {
         isClickable = true
@@ -97,6 +99,14 @@ internal open class FloatingPanelFrame(
         editing = value
         handlingGesture = false
         moveGrip.isPressed = false
+        renderChrome()
+    }
+
+    /** Compact chrome leaves room for candidates above a landscape keyboard. */
+    fun setCompactChrome(value: Boolean) {
+        if (compactChrome == value) return
+        compactChrome = value
+        moveBandDp = if (value) 8 else MOVE_BAND_DP
         renderChrome()
     }
 
@@ -149,7 +159,14 @@ internal open class FloatingPanelFrame(
             cornerRadius = dp(16).toFloat()
             setStroke(dp(if (editing) 2 else 1), if (editing) accent else ColorUtils.setAlphaComponent(inkColor, 45))
         }
-        header.layoutParams = LayoutParams(-1, dp(48)).apply {
+        val headerHeight = if (compactChrome && !editing) 28 else 48
+        listOfNotNull(editButton, hideButton).forEach { button ->
+            button.layoutParams = LinearLayout.LayoutParams(dp(headerHeight), dp(headerHeight))
+            val padding = dp(if (compactChrome && !editing) 6 else 12)
+            button.setPadding(padding, padding, padding, padding)
+        }
+        header.layoutParams = LayoutParams(if (compactChrome && !editing) dp(56) else -1, dp(headerHeight),
+            if (compactChrome && !editing) Gravity.TOP or Gravity.RIGHT else Gravity.TOP).apply {
             leftMargin = dp(if (editing) 24 else 8); rightMargin = leftMargin
             topMargin = dp(if (editing) 20 else 4)
         }

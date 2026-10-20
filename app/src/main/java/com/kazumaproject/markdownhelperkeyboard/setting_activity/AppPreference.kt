@@ -3895,6 +3895,9 @@ object AppPreference {
             it.putBoolean(KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE.first, value)
         }
 
+    val segment_tree_enabled: Boolean
+        get() = preferences.getBoolean("segment_tree_enabled", true)
+
     var candidate_display_method: String
         get() = preferences.getString("candidate_display_method", "legacy") ?: "legacy"
         set(value) = preferences.edit { it.putString("candidate_display_method", value) }
