@@ -1,0 +1,18 @@
+<resources>
+    <string name="segment_candidate_style_title">変換候補の表示方法</string>
+    <string-array name="segment_candidate_style_labels"><item>従来</item><item>文節・ツリー表示</item></string-array>
+    <string name="segment_candidate_help_title">文節の編集方法</string>
+    <string name="segment_candidate_help">色付きの文節を選び、境界のハンドルをドラッグすると範囲を変更できます。破線は変更可能な範囲を示します。候補やツリーの枝をタップすると、確定せずに文節を入れ替えます。確定キーで確定します。「ツリー」で候補欄の上に全文候補を開けます。</string>
+    <string name="segment_tree_title">全文候補のツリー</string>
+    <string name="segment_tree_open_short">ツリー\n表示</string>
+    <string name="segment_tree_close_short">ツリー\n閉じる</string>
+    <string name="segment_tree_open">全文候補のツリーを開く</string>
+    <string name="segment_tree_close">全文候補のツリーを閉じる</string>
+    <string name="segment_select_description">文節「%1$s」、読み「%2$s」を選択</string>
+    <string name="segment_replace_description">読み「%2$s」の文節を「%1$s」に入れ替える</string>
+    <string name="segment_range_description">文節の読みの範囲 %1$d〜%2$d。境界ハンドルをドラッグして調整</string>
+    <string name="segment_start_left">開始境界を左へ移動</string>
+    <string name="segment_start_right">開始境界を右へ移動</string>
+    <string name="segment_end_left">終了境界を左へ移動</string>
+    <string name="segment_end_right">終了境界を右へ移動</string>
+</resources>

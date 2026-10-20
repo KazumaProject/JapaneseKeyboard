@@ -73,7 +73,9 @@ internal class CandidateSurfaceHost(
                     ?: child.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.zero_query_item_text_view)
                 label?.let { kotlin.math.ceil(it.paint.fontMetrics.descent - it.paint.fontMetrics.ascent + 24 * density).toInt() } ?: maxOf(row, child.layoutParams.height) + (8 * density).toInt()
             } ?: row) else 0
-        return tabHeight + toolbarHeight + candidateHeight
+        val segmentBar = strip.findViewById<View>(com.kazumaproject.markdownhelperkeyboard.R.id.segment_candidate_bar)
+        val segmentHeight = if (segmentBar?.visibility == View.VISIBLE) maxOf(segmentBar.height, (84 * density).toInt()) else 0
+        return tabHeight + toolbarHeight + candidateHeight + segmentHeight
     }
 
     private fun refreshToolbarLayout() {

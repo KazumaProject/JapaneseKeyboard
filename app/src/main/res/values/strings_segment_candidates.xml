@@ -1,0 +1,23 @@
+<resources>
+    <string name="segment_candidate_style_title">Candidate display method</string>
+    <string-array name="segment_candidate_style_labels"><item>Classic</item><item>Segments and candidate tree</item></string-array>
+    <string-array name="segment_candidate_style_values"><item>legacy</item><item>segments</item></string-array>
+    <string name="segment_candidate_help_title">Editing conversion segments</string>
+    <string name="segment_candidate_help">Select a colored segment, then drag its boundary handles. The dashed outline shows the adjustable range. Tap a candidate or a tree branch to replace a segment without committing. Use the confirm key to commit. The Tree button opens full-sentence alternatives above the candidate strip.</string>
+    <string name="segment_tree_title">Full-sentence candidate tree</string>
+    <string name="segment_tree_open_short">Show\ntree</string>
+    <string name="segment_tree_close_short">Close\ntree</string>
+    <string name="segment_tree_open">Open full-sentence candidate tree</string>
+    <string name="segment_tree_close">Close full-sentence candidate tree</string>
+    <string name="segment_select_description">Select segment %1$s, reading %2$s</string>
+    <string name="segment_replace_description">Replace segment with %1$s, reading %2$s</string>
+    <string name="segment_range_description">Segment reading range %1$d–%2$d. Drag the boundary handles to adjust.</string>
+    <string name="segment_start_left">Move start boundary left</string>
+    <string name="segment_start_right">Move start boundary right</string>
+    <string name="segment_end_left">Move end boundary left</string>
+    <string name="segment_end_right">Move end boundary right</string>
+    <item name="segment_start_left" type="id" />
+    <item name="segment_start_right" type="id" />
+    <item name="segment_end_left" type="id" />
+    <item name="segment_end_right" type="id" />
+</resources>

@@ -369,6 +369,19 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/conversion_preference_title">
+        <ListPreference
+            android:key="candidate_display_method"
+            android:defaultValue="legacy"
+            android:title="@string/segment_candidate_style_title"
+            android:dialogTitle="@string/segment_candidate_style_title"
+            android:entries="@array/segment_candidate_style_labels"
+            android:entryValues="@array/segment_candidate_style_values"
+            app:useSimpleSummaryProvider="true" />
+        <Preference
+            android:key="segment_candidate_help"
+            android:title="@string/segment_candidate_help_title"
+            android:summary="@string/segment_candidate_help" />
+
 
         <SeekBarPreference
             android:defaultValue="4"
