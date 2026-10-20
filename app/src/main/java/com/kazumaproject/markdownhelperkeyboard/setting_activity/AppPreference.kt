@@ -3895,6 +3895,9 @@ object AppPreference {
             it.putBoolean(KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE.first, value)
         }
 
+    val segment_tree_style: String
+        get() = preferences.getString("segment_tree_style", "sentence") ?: "sentence"
+
     val segment_tree_enabled: Boolean
         get() = preferences.getBoolean("segment_tree_enabled", true)
 

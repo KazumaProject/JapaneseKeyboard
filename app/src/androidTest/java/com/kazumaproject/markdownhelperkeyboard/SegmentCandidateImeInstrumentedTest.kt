@@ -31,12 +31,12 @@ class SegmentCandidateImeInstrumentedTest {
         clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "東京に", "とうきょうに"))
         await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 4, 10)) != null }
         screenshot("segments.png")
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         await { treeBounds() != null }
         screenshot("tree.png")
         val alternative = allNodes().firstOrNull { node ->
             val label = node.text?.toString().orEmpty()
-            label.endsWith("\nとうきょうに") && !label.startsWith("東京に\n") && node.isClickable
+            node.isClickable && node.contentDescription?.toString() == instrumentation.targetContext.getString(
+                R.string.segment_replace_description, label, "とうきょうに")
         } ?: error("No alternative for the focused reading in the tree")
         val replacement = alternative.text.toString().substringBefore('\n')
         assertTrue(alternative.performAction(AccessibilityNodeInfo.ACTION_CLICK))
@@ -53,7 +53,6 @@ class SegmentCandidateImeInstrumentedTest {
         clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "行きます", "いきます"))
         await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, 10, 14)) != null }
         awaitText("明日は東京に行きます")
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         await { treeBounds() != null }
         // Tapping a chosen tree node focuses it without replacing its conversion state.
         await { allNodes().any { it.text?.toString() == "明日は\nあしたは" && it.isClickable } }
@@ -132,7 +131,6 @@ class SegmentCandidateImeInstrumentedTest {
 
     @Test fun reorderedSegmentStillHasWorkingRangeHandlesAndCancelsToReorderedReading() = withKeyboard {
         startConversion()
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         await { treeBounds() != null }
         dragMiddleSegmentBeforeFirst()
         awaitText("東京に明日は行きます")
@@ -220,24 +218,6 @@ class SegmentCandidateImeInstrumentedTest {
             }
             shown
         }
-        // Touch the actual popup surface rather than waiting for a new accessibility window.
-        var openBounds: android.graphics.Rect? = null
-        await {
-            instrumentation.runOnMainSync {
-                android.view.inspector.WindowInspector.getGlobalWindowViews().forEach { root ->
-                    val bar = root.findViewById<android.view.View>(R.id.segment_candidate_bar)?.takeIf { it.isShown } ?: return@forEach
-                    val matches = arrayListOf<android.view.View>()
-                    bar.findViewsWithText(matches, bar.context.getString(R.string.segment_tree_open_short), android.view.View.FIND_VIEWS_WITH_TEXT)
-                    matches.firstOrNull { it.isShown && it.isClickable && it.width > 0 && it.height > 0 }?.let { button ->
-                        val at = IntArray(2).also(button::getLocationOnScreen)
-                        openBounds = android.graphics.Rect(at[0], at[1], at[0] + button.width, at[1] + button.height)
-                    }
-                }
-            }
-            openBounds != null
-        }
-        val open = openBounds!!
-        drag(open.centerX().toFloat(), open.centerY().toFloat(), open.centerX().toFloat(), open.centerY().toFloat())
         await { treeBounds() != null }
         assertComposing()
         screenshot("floating.png")
@@ -248,7 +228,6 @@ class SegmentCandidateImeInstrumentedTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
     @Test fun treeVisibilitySettingAndResizePersistWithoutCommitting() = withKeyboard {
         startConversion()
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         await { treeBounds() != null }
         assertFalse(allNodes().any { it.text?.toString()?.contains("Full-sentence candidate tree") == true })
         clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_edit))
@@ -270,7 +249,9 @@ class SegmentCandidateImeInstrumentedTest {
         assertFalse(allNodes().any { it.text?.toString() == "Close\ntree" })
         clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
         await { treeBounds() == null }
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        SystemClock.sleep(500)
+        assertNull(treeBounds())
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "明日は", "あしたは"))
         await { treeBounds()?.width() == resized.width() }
         val positioned = treeBounds()!!
         drag(positioned.centerX().toFloat(), positioned.bottom - 12 * density,
@@ -278,16 +259,213 @@ class SegmentCandidateImeInstrumentedTest {
         await { treeBounds()!!.left < positioned.left - 12 * density }
         val moved = treeBounds()!!
         clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
+        await { treeBounds() == null }
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "明日は", "あしたは"))
         await { treeBounds() == moved }
         assertComposing()
         val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
         prefs.edit().putBoolean("segment_tree_enabled", false).commit()
-        await { treeBounds() == null && findDescription(instrumentation.targetContext.getString(R.string.segment_tree_open)) == null }
+        await { treeBounds() == null }
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "明日は", "あしたは"))
+        SystemClock.sleep(500)
+        assertNull(treeBounds())
         assertComposing()
         prefs.edit().putBoolean("segment_tree_enabled", true).commit()
-        await { findDescription(instrumentation.targetContext.getString(R.string.segment_tree_open)) != null }
+        await { treeBounds() != null }
+        assertComposing()
+    }
+
+    @Test fun treeStaysHiddenWhenDisabledAndAutomaticallyReturnsForANewConversion() = withKeyboard {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
+        prefs.edit().putBoolean("segment_tree_enabled", false).commit()
+        type("ashitahatoukyouniikimasu")
+        awaitText("あしたはとうきょうにいきます")
+        showSoftwareKeyboard()
+        assertNull(treeBounds()) // Reading preview does not open the tree.
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("明日は東京に行きます")
+        showSoftwareKeyboard()
         assertNull(treeBounds())
+        prefs.edit().putBoolean("segment_tree_enabled", true).commit()
+        await { treeBounds() != null }
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
+        await { treeBounds() == null }
+        SystemClock.sleep(500)
+        assertNull(treeBounds())
+        key(KeyEvent.KEYCODE_ESCAPE)
+        awaitText("あしたはとうきょうにいきます")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("明日は東京に行きます")
+        showSoftwareKeyboard()
+        await { treeBounds() != null }
+        assertComposing()
+    }
+
+    @Test fun floatingWindowSurvivesTypingCandidateRefreshAndDeletionUntilCompositionIsEmpty() = withKeyboard {
+        startConversion()
+        val panel = treePanel()!!
+        val detached = java.util.concurrent.atomic.AtomicInteger()
+        instrumentation.runOnMainSync {
+            panel.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(view: android.view.View) = Unit
+                override fun onViewDetachedFromWindow(view: android.view.View) { detached.incrementAndGet() }
+            })
+        }
+        key(KeyEvent.KEYCODE_ESCAPE)
+        awaitText("あしたはとうきょうにいきます")
+        assertSame(panel, treePanel())
+        type("soshite")
+        awaitText("あしたはとうきょうにいきますそして")
+        showSoftwareKeyboard()
+        assertSame(panel, treePanel())
+        assertEquals(0, detached.get())
+        screenshot("continuous.png")
+        val reading = text()
+        for (remaining in reading.lastIndex downTo 0) {
+            key(KeyEvent.KEYCODE_DEL)
+            awaitText(reading.take(remaining))
+            if (remaining > 0) {
+                assertSame(panel, treePanel())
+                assertEquals(0, detached.get())
+            }
+        }
+        await { treeBounds() == null }
+        assertEquals(1, detached.get())
+    }
+
+    @Test fun perSegmentBranchesCanReplaceCandidatesAndSwitchLayoutWithoutClosingThePanel() = withKeyboard {
+        startConversion()
+        val panel = treePanel()!!
+        instrumentation.runOnMainSync {
+            val labels = mutableListOf<android.widget.TextView>()
+            fun collect(view: android.view.View) {
+                if (view is android.widget.TextView && view.isClickable && view.contentDescription != null) labels.add(view)
+                if (view is android.view.ViewGroup) for (index in 0 until view.childCount) collect(view.getChildAt(index))
+            }
+            collect(panel)
+            val primary = labels.filter { it.isActivated }
+            val alternatives = labels.filter { !it.isActivated && it.contentDescription.toString() ==
+                instrumentation.targetContext.getString(R.string.segment_replace_description, it.text.toString(), "あしたは") }
+            assertTrue(primary.isNotEmpty() && alternatives.isNotEmpty())
+            assertTrue(primary.minOf { it.textSize } > alternatives.maxOf { it.textSize })
+            assertTrue(primary.minOf { it.height } > alternatives.maxOf { it.height })
+        }
+        val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
+        prefs.edit().putString("segment_tree_style", "branches").commit()
+        await { branchViewVisible() }
+        assertSame(panel, treePanel())
+        val alternative = allNodes().first { node ->
+            val value = node.text?.toString().orEmpty()
+            value.endsWith("\nあしたは") && value != "明日は\nあしたは" && node.isClickable
+        }
+        val replacement = alternative.text.toString().substringBefore('\n')
+        assertTrue(alternative.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        awaitText(replacement + "東京に行きます")
+        assertComposing()
+        screenshot("branches.png")
+        prefs.edit().putString("segment_tree_style", "sentence").commit()
+        await { !branchViewVisible() }
+        assertSame(panel, treePanel())
+        awaitText(replacement + "東京に行きます")
+        key(KeyEvent.KEYCODE_ENTER)
+        await { treeBounds() == null }
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
+    }
+
+    @Test fun graphIncludesAdditionalEngineSegmentationAndTappingItsBranchChangesTheRange() = withKeyboard {
+        startConversion()
+        val panel = treePanel()!!
+        var snapshot: Any? = null
+        instrumentation.runOnMainSync {
+            var context: android.content.Context = panel.context
+            while (context is android.content.ContextWrapper && context !is com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService) {
+                context = context.baseContext
+            }
+            snapshot = context.javaClass.getDeclaredField("segmentGraphSource").apply { isAccessible = true }.get(context)
+        }
+        val source = checkNotNull(snapshot)
+        @Suppress("UNCHECKED_CAST")
+        val patterns = source.javaClass.getMethod("getSplitPatterns").invoke(source) as List<List<Int>>
+        @Suppress("UNCHECKED_CAST")
+        val initial = source.javaClass.getMethod("getInitialSplitPositions").invoke(source) as List<Int>
+        val reading = source.javaClass.getMethod("getInput").invoke(source) as String
+        val primary = (listOf(0) + initial + reading.length).zipWithNext().toSet()
+        val different = patterns.flatMap { (listOf(0) + it + reading.length).zipWithNext() }
+            .filter { it !in primary }.minByOrNull { it.first }
+            ?: error("Fixture produced no alternate engine segmentation: $patterns")
+        val segmentReading = reading.substring(different.first, different.second)
+        await { allNodes().any { it.isClickable && it.text?.toString()?.endsWith("\n$segmentReading") == true } }
+        screenshot("segmentation-branches.png")
+        val branch = allNodes().first { it.isClickable && it.text?.toString()?.endsWith("\n$segmentReading") == true }
+        assertTrue(branch.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        await { findDescription(instrumentation.targetContext.getString(R.string.segment_range_description,
+            different.first, different.second)) != null }
+        assertComposing()
+    }
+
+    @Test fun editingSliderScalesTheGraphAndScaledCandidatesStillAcceptNativeTaps() = withKeyboard {
+        startConversion()
+        val panel = treePanel()!!
+        fun graphWidth(): Int {
+            var width = 0
+            instrumentation.runOnMainSync { width = panel.findViewById<android.view.View>(R.id.segment_tree_zoom)?.width ?: 0 }
+            return width
+        }
+        await { graphWidth() > 0 }
+        val before = graphWidth()
+        clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_edit))
+        val title = instrumentation.targetContext.getString(R.string.segment_tree_scale_title)
+        await { findDescription(title) != null }
+        assertTrue(findDescription(title)!!.performAction(
+            AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id,
+            android.os.Bundle().apply { putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, 0f) }))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
+        await { prefs.getInt("segment_tree_scale", 85) == 50 && graphWidth() < before * .7f }
+        assertSame(panel, treePanel())
+        screenshot("zoom.png")
+        clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_done))
+        val scaledWidth = graphWidth()
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_close))
+        await { treeBounds() == null }
+        clickDescription(instrumentation.targetContext.getString(R.string.segment_select_description, "明日は", "あしたは"))
+        await { treeBounds() != null }
+        val reopened = treePanel()!!
+        await {
+            var width = 0
+            instrumentation.runOnMainSync { width = reopened.findViewById<android.view.View>(R.id.segment_tree_zoom)?.width ?: 0 }
+            width == scaledWidth
+        }
+        fun isScaledAlternative(node: AccessibilityNodeInfo): Boolean {
+            val value = node.text?.toString().orEmpty()
+            return node.isClickable && node.isVisibleToUser && node.contentDescription?.toString() ==
+                instrumentation.targetContext.getString(R.string.segment_replace_description, value, "あしたは")
+        }
+        await("scaled candidate window accessibility") { allNodes().any(::isScaledAlternative) }
+        val alternative = allNodes().first(::isScaledAlternative)
+        val replacement = alternative.text.toString()
+        val at = android.graphics.Rect().also(alternative::getBoundsInScreen)
+        drag(at.exactCenterX(), at.exactCenterY(), at.exactCenterX(), at.exactCenterY())
+        awaitText(replacement + "東京に行きます")
+        assertComposing()
+    }
+
+    private fun branchViewVisible(): Boolean {
+        val panel = treePanel()
+        var shown = false
+        instrumentation.runOnMainSync {
+            shown = panel?.findViewById<android.view.View>(R.id.segment_tree_branches)?.isShown == true
+        }
+        return shown
+    }
+
+    private fun treePanel(): android.view.View? {
+        var panel: android.view.View? = null
+        instrumentation.runOnMainSync {
+            panel = android.view.inspector.WindowInspector.getGlobalWindowViews().firstNotNullOfOrNull { root ->
+                root.findViewById<android.view.View>(R.id.segment_candidate_tree_panel)?.takeIf { it.isShown }
+            }
+        }
+        return panel
     }
 
     private fun treeBounds(): android.graphics.Rect? {
@@ -305,11 +483,10 @@ class SegmentCandidateImeInstrumentedTest {
 
     @Test fun switchingToLegacyAndRestartingEditorDismissTreeWithoutStaleResults() = withKeyboard {
         startConversion()
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
         prefs.edit().putString("candidate_display_method", "legacy").commit()
         awaitText("あしたはとうきょうにいきます")
-        await { findDescription(instrumentation.targetContext.getString(R.string.segment_tree_open)) == null }
+        await { treeBounds() == null }
         host.onActivity { it.restartEditorInput(true) }
         SystemClock.sleep(500)
         key(KeyEvent.KEYCODE_KANA)
@@ -327,7 +504,6 @@ class SegmentCandidateImeInstrumentedTest {
         prepareJapaneseEditor()
         startConversion()
         screenshot("landscape-before.png")
-        clickDescription(instrumentation.targetContext.getString(R.string.segment_tree_open))
         screenshot("landscape-open.png")
         await { treeBounds() != null }
         screenshot("landscape.png")
@@ -365,12 +541,15 @@ class SegmentCandidateImeInstrumentedTest {
         key(KeyEvent.KEYCODE_SPACE)
         awaitText("明日は東京に行きます")
         showSoftwareKeyboard()
+        await { treeBounds() != null }
+        assertFalse(allNodes().any { it.text?.toString() in setOf("Start", "End", "開始", "終わり", "Show\ntree", "ツリー\n表示") })
         assertComposing()
     }
 
     private fun showSoftwareKeyboard() {
-        clickDescription(instrumentation.targetContext.getString(R.string.physical_toolbar_keyboard_title))
-        await { findDescription(instrumentation.targetContext.getString(R.string.segment_tree_open)) != null }
+        fun shown() = allNodes().any { it.contentDescription?.toString() == "delete_key" && it.isVisibleToUser }
+        if (!shown()) clickDescription(instrumentation.targetContext.getString(R.string.physical_toolbar_keyboard_title))
+        await { shown() && scrollState(R.id.segment_candidate_scroll) != null }
     }
 
     private fun assertComposing() {
@@ -540,6 +719,8 @@ class SegmentCandidateImeInstrumentedTest {
             "candidate_order_override_enable_preference" to false,
             "candidate_display_method" to "segments",
             "segment_tree_enabled" to true,
+            "segment_tree_style" to "sentence",
+            "segment_tree_scale" to 85,
             "segment_tree_portrait_width" to null,
             "segment_tree_portrait_height" to null,
             "segment_tree_portrait_x" to null,
@@ -566,7 +747,7 @@ class SegmentCandidateImeInstrumentedTest {
         try {
             prefs.edit().apply {
                 values.forEach { (key, value) ->
-                    when (value) { is Boolean -> putBoolean(key, value); is String -> putString(key, value); null -> remove(key) }
+                    when (value) { is Boolean -> putBoolean(key, value); is String -> putString(key, value); is Int -> putInt(key, value); null -> remove(key) }
                 }
             }.commit()
             host = EditorHost()
@@ -583,6 +764,7 @@ class SegmentCandidateImeInstrumentedTest {
                         is Boolean -> putBoolean(key, value)
                         is String -> putString(key, value)
                         is Float -> putFloat(key, value)
+                        is Int -> putInt(key, value)
                         null -> remove(key)
                     }
                 }

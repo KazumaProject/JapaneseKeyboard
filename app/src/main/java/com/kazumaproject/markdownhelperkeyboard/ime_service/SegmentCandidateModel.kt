@@ -3,6 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import java.text.BreakIterator
 import java.util.Locale
 
+internal const val SEGMENT_TREE_SCALE_KEY = "segment_tree_scale"
+internal const val SEGMENT_TREE_STYLE_KEY = "segment_tree_style"
+internal const val SEGMENT_TREE_BRANCHES = "branches"
 internal const val SEGMENT_TREE_ENABLED_KEY = "segment_tree_enabled"
 internal const val SEGMENT_CANDIDATE_STYLE_KEY = "candidate_display_method"
 internal const val SEGMENT_CANDIDATE_STYLE = "segments"
@@ -82,6 +85,41 @@ internal fun candidateTreePaths(snapshot: BunsetsuConversionSnapshot, limit: Int
             }
         }
     }.toList()
+
+/** The engine can preserve segmentation patterns beyond the displayed N-best surfaces. */
+internal fun candidateSegmentationPaths(snapshot: BunsetsuConversionSnapshot): List<List<SegmentChoice>> {
+    val legal = readingBoundaries(snapshot.input).toSet()
+    return snapshot.splitPatterns.distinct().filter { pattern ->
+        pattern == pattern.distinct().sorted() && pattern.all { it > 0 && it < snapshot.input.length && it in legal }
+    }.take(4).map { pattern ->
+        segmentChoices(buildConvertedBunsetsuSegments(snapshot.input, pattern, snapshot))
+    }.filter { it.isNotEmpty() }
+}
+
+internal data class SegmentationCandidateGraph(
+    val root: CandidateGraphNode,
+    val choices: Map<Pair<Int, Int>, List<SegmentChoice>>,
+)
+
+/** Graph edges represent segmentation only. Same-range spellings stay inside their node. */
+internal fun buildSegmentationCandidateGraph(
+    paths: List<List<SegmentChoice>>, selected: List<SegmentChoice>,
+): SegmentationCandidateGraph {
+    val preferred = selected.associateBy { it.start to it.end }
+    val choices = paths.flatten().groupBy { it.start to it.end }.mapValues { (range, values) ->
+        (listOfNotNull(preferred[range]) + values).distinct()
+    }
+    val ranges = paths.map { path -> path.map { choices.getValue(it.start to it.end).first() } }.distinct()
+    return SegmentationCandidateGraph(buildCandidateGraph(ranges), choices)
+}
+
+/** Alternatives belong only to a segment with the same reading boundaries. */
+internal fun segmentCandidateBranches(
+    selected: List<SegmentChoice>, paths: List<List<SegmentChoice>>, limit: Int,
+): List<List<SegmentChoice>> = selected.map { segment ->
+    (listOf(segment) + paths.flatten().filter { it.start == segment.start && it.end == segment.end })
+        .distinct().take(limit.coerceIn(2, 16) + 1)
+}
 
 /** Reconvert only overlapping ranges. A cut through a kanji node never slices its output. */
 internal fun replaceSegmentRange(

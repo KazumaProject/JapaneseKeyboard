@@ -10,6 +10,42 @@ class SegmentCandidateModelTest {
         reading, text, hasConvertedDisplay = true, candidatesLoaded = true,
     )
 
+    @Test fun engineSplitPatternsBecomeBranchesEvenWhenAllDisplayedCandidatesShareOneSegmentation() {
+        val snapshot = BunsetsuConversionSnapshot("あしたはとうきょう", emptyList(), emptyMap(),
+            splitPatterns = listOf(listOf(4), listOf(2), listOf(3, 6), listOf(4), listOf(8, 2)))
+        val paths = candidateSegmentationPaths(snapshot)
+        assertEquals(listOf(listOf(4, 9), listOf(2, 9), listOf(3, 6, 9)), paths.map { p -> p.map { it.end } })
+        val graph = buildSegmentationCandidateGraph(paths, paths.first())
+        assertEquals(3, graph.root.children.size)
+        assertEquals(setOf(2, 3, 4), graph.root.children.map { it.choice!!.end }.toSet())
+    }
+
+    @Test fun graphBranchesOnlyForDifferentSegmentationAndKeepsSameRangeChoicesInsideNodes() {
+        val first = SegmentChoice(0, 2, "今日")
+        val last = SegmentChoice(2, 4, "行く")
+        val alternate = first.copy(text = "京")
+        val graph = buildSegmentationCandidateGraph(listOf(listOf(first, last), listOf(alternate, last),
+            listOf(SegmentChoice(0, 1, "木"), SegmentChoice(1, 4, "よういく"))), listOf(first, last))
+        assertEquals(listOf(first, alternate), graph.choices[0 to 2])
+        assertEquals(setOf(0 to 2, 0 to 1), graph.root.children.map { it.choice!!.let { c -> c.start to c.end } }.toSet())
+        assertEquals(2, graph.root.children.size)
+        val sameRangeOnly = buildSegmentationCandidateGraph(listOf(listOf(first, last), listOf(alternate, last)), listOf(first, last))
+        assertEquals(1, sameRangeOnly.root.children.size)
+        assertEquals(1, sameRangeOnly.root.children.single().children.size)
+        assertEquals(listOf(first, alternate), sameRangeOnly.choices[0 to 2])
+    }
+
+    @Test fun segmentBranchesKeepOnlyMatchingRangesAndDeduplicateSelectedChoices() {
+        val first = SegmentChoice(0, 2, "今日")
+        val last = SegmentChoice(2, 4, "行く")
+        val alternate = first.copy(text = "京")
+        assertEquals(listOf(listOf(first, alternate), listOf(last)), segmentCandidateBranches(
+            listOf(first, last), listOf(listOf(first, last), listOf(alternate, last),
+                listOf(SegmentChoice(0, 4, "今日行く")), listOf(SegmentChoice(0, 1, "木"))), 4))
+        assertEquals(listOf(listOf(first, alternate, first.copy(text = "強"))), segmentCandidateBranches(
+            listOf(first), listOf(listOf(alternate), listOf(first.copy(text = "強")), listOf(first.copy(text = "橋"))), 2))
+    }
+
     @Test fun reorderPreservesReadingsConvertedLabelsAndCandidateSelectionsTogether() {
         val first = segment("あしたは", "明日は")
         val middle = segment("とうきょうに", "東京に").copy(selectedIndex = 2)

@@ -14,7 +14,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.HorizontalScrollView
+import android.widget.SeekBar
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.preference.PreferenceManager
@@ -38,10 +40,18 @@ internal class SegmentCandidateTreeWindow(
     private var bounds: GuideBounds? = null
     private var gesture: ComposingGuideGesture? = null
     private var editing = false
+    private var zoomView: ZoomLayout? = null
+    private var zoomControls: View? = null
+    private var zoomSlider: SeekBar? = null
+    private var zoomLabel: TextView? = null
+    private val scalePercent get() = preferences.getInt(SEGMENT_TREE_SCALE_KEY, 85).coerceIn(50, 150)
     private var lastPaths = emptyList<List<SegmentChoice>>()
     private var lastSelected = emptyList<SegmentChoice>()
     private var lastReading = ""
     private var lastFocused = -1
+    private var lastBranches = emptyList<List<SegmentChoice>>()
+    private var lastBranchMode = false
+    private var acceptingSelections = false
     private var lastCompact = false
     private var lastColors = 0 to 0
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { position() }
@@ -50,17 +60,22 @@ internal class SegmentCandidateTreeWindow(
     private val placementKey get() = "segment_tree_" +
         if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) "landscape_" else "portrait_"
     private val minimumHeight get() = if (lastCompact) 48 else 112
-    private val editExtra get() = if (editing) dp(32) else 0
+    private val editExtra get() = if (editing) dp(64) else 0
 
-    fun show(view: View, reading: String, paths: List<List<SegmentChoice>>, selected: List<SegmentChoice>, focusedIndex: Int, background: Int, textColor: Int) {
+    fun show(view: View, reading: String, paths: List<List<SegmentChoice>>, selected: List<SegmentChoice>, focusedIndex: Int, background: Int, textColor: Int,
+        branchMode: Boolean, branches: List<List<SegmentChoice>>) {
+        acceptingSelections = true
         if (anchor !== view) {
-            stop()
+            anchor?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(layoutListener)
             anchor = view
             view.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
         }
+        body?.applicationWindowView = view
         val location = IntArray(2).also(view::getLocationOnScreen)
         val compact = location[1] - coordinates.safeArea(view).top < dp(200)
-        if (body == null || compact != lastCompact || paths != lastPaths || selected != lastSelected || focusedIndex != lastFocused || reading != lastReading || lastColors != (background to textColor)) {
+        if (body == null || branchMode != lastBranchMode || branches != lastBranches || compact != lastCompact || paths != lastPaths || selected != lastSelected || focusedIndex != lastFocused || reading != lastReading || lastColors != (background to textColor)) {
+            lastBranchMode = branchMode
+            lastBranches = branches
             lastCompact = compact
             lastFocused = focusedIndex
             lastPaths = paths; lastSelected = selected; lastReading = reading; lastColors = background to textColor
@@ -75,24 +90,70 @@ internal class SegmentCandidateTreeWindow(
             panel.setColors(CandidatePanelColors.resolve(context).copy(background = background, text = textColor, icon = textColor))
             panel.setEditing(editing)
             panel.contentContainer.removeAllViews()
-            val tree = TreeView(context, buildCandidateGraph(paths), reading, selected, selected.getOrNull(focusedIndex), textColor, compact) { onSelect(reading, it) }
-            val horizontal = HorizontalScrollView(context).apply { id = R.id.segment_tree_scroll; addView(tree) }
+            val select: (SegmentChoice) -> Unit = { if (acceptingSelections) onSelect(reading, it) }
+            val graph = buildSegmentationCandidateGraph(paths, selected)
+            val tree = if (branchMode) BranchesView(context, branches, reading, selected.getOrNull(focusedIndex), textColor, compact, select)
+                else TreeView(context, graph, reading, selected, selected.getOrNull(focusedIndex), textColor, compact, select)
+            val zoom = ZoomLayout(context, tree, scalePercent).also { zoomView = it }
+            val horizontal = HorizontalScrollView(context).apply { id = R.id.segment_tree_scroll; addView(zoom) }
             val vertical = ScrollView(context).apply {
                 addView(horizontal)
                 addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                    scrollTo(0, (tree.preferredCenterY - height / 2).coerceAtLeast(0))
+                    scrollTo(0, (tree.preferredCenterY * zoom.factor - height / 2).roundToInt().coerceAtLeast(0))
                 }
             }
-            panel.contentContainer.addView(vertical)
+            val controls = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                visibility = if (editing) View.VISIBLE else View.GONE
+            }.also { zoomControls = it }
+            controls.addView(TextView(context).apply {
+                textSize = 11f
+                setTextColor(textColor)
+                text = context.getString(R.string.segment_tree_scale_value, scalePercent)
+                zoomLabel = this
+            }, LinearLayout.LayoutParams(dp(112), ViewGroup.LayoutParams.WRAP_CONTENT))
+            controls.addView(SeekBar(context).apply {
+                id = R.id.segment_tree_scale_control
+                max = 100
+                progress = scalePercent - 50
+                setKeyProgressIncrement(5)
+                contentDescription = context.getString(R.string.segment_tree_scale_title)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onStartTrackingTouch(bar: SeekBar) = Unit
+                    override fun onStopTrackingTouch(bar: SeekBar) = Unit
+                    override fun onProgressChanged(bar: SeekBar, value: Int, fromUser: Boolean) {
+                        if (fromUser) {
+                            preferences.edit().putInt(SEGMENT_TREE_SCALE_KEY, value + 50).apply()
+                            updateZoom()
+                        }
+                    }
+                })
+                zoomSlider = this
+            }, LinearLayout.LayoutParams(0, dp(32), 1f))
+            val content = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(controls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(32)))
+                addView(vertical, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            }
+            panel.contentContainer.addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             KeyboardFontApplicator.applyToKeyboardViews(panel, KeyboardFontApplicator.processSnapshot)
         }
+        updateZoom()
         position()
+    }
+
+    private fun updateZoom() {
+        zoomView?.setZoom(scalePercent)
+        zoomLabel?.text = context.getString(R.string.segment_tree_scale_value, scalePercent)
+        zoomSlider?.progress = scalePercent - 50
     }
 
     private fun position() {
         val host = anchor ?: return
         val panel = body ?: return
-        if (!host.isShown || !host.isAttachedToWindow) { dismiss(); return }
+        // Candidate refreshes temporarily hide the bar. Keep the existing window and bounds.
+        if (!host.isShown || !host.isAttachedToWindow) return
         val safe = coordinates.safeArea(host)
         val area = GuideBounds(safe.left, safe.top, safe.width(), safe.height())
         val location = IntArray(2).also(host::getLocationOnScreen)
@@ -149,9 +210,10 @@ internal class SegmentCandidateTreeWindow(
             bounds = null
         } else {
             editing = true
-            bounds = bounds?.let { it.copy(height = it.height + dp(32)) }
+            bounds = bounds?.let { it.copy(height = it.height + editExtra) }
         }
         body?.setEditing(editing)
+        zoomControls?.visibility = if (editing) View.VISIBLE else View.GONE
         updateGestureExclusion()
         position()
     }
@@ -222,7 +284,13 @@ internal class SegmentCandidateTreeWindow(
         params = null
     }
 
+    fun retain() {
+        // The last complete graph remains visible, but stale choices cannot edit new input.
+        acceptingSelections = false
+    }
+
     fun stop() {
+        acceptingSelections = false
         finishGesture(false)
         editing = false
         bounds = null
@@ -230,30 +298,65 @@ internal class SegmentCandidateTreeWindow(
         dismiss()
         anchor = null
         body = null
+        zoomView = null
+        zoomControls = null
+        zoomSlider = null
+        zoomLabel = null
         lastPaths = emptyList()
+    }
+
+    /** Scale both drawing and hit testing, while scroll extents follow the scaled content. */
+    private class ZoomLayout(context: Context, private val graph: View, percent: Int) : ViewGroup(context) {
+        var factor = percent / 100f
+            private set
+        init {
+            id = R.id.segment_tree_zoom
+            addView(graph)
+            graph.pivotX = 0f
+            graph.pivotY = 0f
+            graph.scaleX = factor
+            graph.scaleY = factor
+        }
+        fun setZoom(percent: Int) {
+            val next = percent / 100f
+            if (factor == next) return
+            factor = next
+            graph.scaleX = factor
+            graph.scaleY = factor
+            requestLayout()
+        }
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val unlimited = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            graph.measure(unlimited, unlimited)
+            setMeasuredDimension((graph.measuredWidth * factor).roundToInt(), (graph.measuredHeight * factor).roundToInt())
+        }
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            graph.layout(0, 0, graph.measuredWidth, graph.measuredHeight)
+        }
+    }
+
+    private abstract class CandidateTreeLayout(context: Context) : ViewGroup(context) {
+        var preferredCenterY = 0
+            protected set
     }
 
     private class TreeView(
         context: Context,
-        private val root: CandidateGraphNode,
+        graph: SegmentationCandidateGraph,
         reading: String,
         selected: List<SegmentChoice>,
         focused: SegmentChoice?,
         textColor: Int,
         private val compact: Boolean,
         onSelect: (SegmentChoice) -> Unit,
-    ) : ViewGroup(context) {
+    ) : CandidateTreeLayout(context) {
         private val dp get() = resources.displayMetrics.density
+        private val root = graph.root
         private val readingLength = reading.length
-        var preferredCenterY = 0
-            private set
         private val preferred = linkedSetOf<CandidateGraphNode>()
-        private val startLabel = terminal(context.getString(R.string.segment_graph_start), textColor)
-        private val endLabel = terminal(context.getString(R.string.segment_graph_end), textColor)
-        private val labels = linkedMapOf<CandidateGraphNode, TextView>()
+        private val labels = linkedMapOf<CandidateGraphNode, LinearLayout>()
         private val boxes = linkedMapOf<CandidateGraphNode, android.graphics.Rect>()
-        private val startBox = Rect()
-        private val endBox = Rect()
+        private var endX = 0
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor and 0x00ffffff or 0x66000000
             style = Paint.Style.STROKE
@@ -271,23 +374,73 @@ internal class SegmentCandidateTreeWindow(
             fun add(node: CandidateGraphNode) {
                 if (!visited.add(node)) return
                 node.choice?.let { choice ->
-                    val label = TextView(context).apply {
-                        text = if (compact) choice.text else choice.text + "\n" + reading.substring(choice.start, choice.end)
-                        textSize = if (compact) 12f else 13f
+                    val primary = node in preferred
+                    val widthLimit = (if (primary) ((choice.end - choice.start) * 26).coerceIn(84, 220) else ((choice.end - choice.start) * 20).coerceIn(48, 132)) * dp
+                    val label = object : LinearLayout(context) {
+                        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                            val width = when (MeasureSpec.getMode(widthMeasureSpec)) {
+                                MeasureSpec.UNSPECIFIED -> MeasureSpec.makeMeasureSpec(widthLimit.roundToInt(), MeasureSpec.AT_MOST)
+                                MeasureSpec.AT_MOST -> MeasureSpec.makeMeasureSpec(minOf(MeasureSpec.getSize(widthMeasureSpec), widthLimit.roundToInt()), MeasureSpec.AT_MOST)
+                                else -> widthMeasureSpec
+                            }
+                            super.onMeasure(width, heightMeasureSpec)
+                        }
+                    }.apply {
+                        orientation = LinearLayout.VERTICAL
+                        background = segmentBackground(choice.start, primary && choice == focused)
+                    }
+                    label.addView(TextView(context).apply {
+                        text = if (compact) choice.text else android.text.SpannableString(
+                            choice.text + "\n" + reading.substring(choice.start, choice.end)
+                        ).apply {
+                            setSpan(android.text.style.RelativeSizeSpan(if (primary) 11f / 16f else 9f / 11f),
+                                choice.text.length + 1, length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        }
+                        textSize = if (primary) { if (compact) 14f else 16f } else { if (compact) 10f else 11f }
                         maxLines = if (compact) 1 else 2
                         ellipsize = android.text.TextUtils.TruncateAt.END
-                        maxWidth = (220 * dp).toInt()
-                        setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
                         gravity = Gravity.CENTER
+                        setPadding((8 * dp).toInt(), (5 * dp).toInt(), (8 * dp).toInt(), (5 * dp).toInt())
                         setTextColor(textColor)
-                        background = segmentBackground(choice.start, choice == focused)
-                        isSelected = choice == focused
-                        isActivated = choice in selected
+                        isSelected = primary && choice == focused
+                        isActivated = primary
                         contentDescription = context.getString(
                             if (choice in selected) R.string.segment_select_description else R.string.segment_replace_description,
                             choice.text, reading.substring(choice.start, choice.end))
                         isFocusable = true
                         setOnClickListener { onSelect(choice) }
+                    }, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+                    val alternatives = graph.choices[choice.start to choice.end].orEmpty().filter { it != choice }
+                    if (alternatives.isNotEmpty()) {
+                        val chips = LinearLayout(context).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            setPadding((4 * dp).toInt(), 0, (4 * dp).toInt(), (4 * dp).toInt())
+                        }
+                        alternatives.forEach { alternative ->
+                            chips.addView(TextView(context).apply {
+                                text = alternative.text
+                                textSize = if (compact) 10f else 11f
+                                gravity = Gravity.CENTER
+                                maxLines = 1
+                                maxWidth = (widthLimit - 8 * dp).roundToInt()
+                                minHeight = ((if (compact) 22 else 28) * dp).roundToInt()
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                setTextColor(textColor)
+                                setPadding((6 * dp).toInt(), (2 * dp).toInt(), (6 * dp).toInt(), (2 * dp).toInt())
+                                background = segmentBackground(choice.start, false)
+                                contentDescription = context.getString(R.string.segment_replace_description,
+                                    alternative.text, reading.substring(choice.start, choice.end))
+                                isFocusable = true
+                                setOnClickListener { onSelect(alternative) }
+                            }, LinearLayout.LayoutParams(
+                                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                                setMargins((2 * dp).toInt(), (2 * dp).toInt(), (2 * dp).toInt(), 0)
+                            })
+                        }
+                        label.addView(HorizontalScrollView(context).apply {
+                            isHorizontalScrollBarEnabled = true
+                            addView(chips)
+                        }, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
                     }
                     labels[node] = label
                     addView(label)
@@ -295,33 +448,16 @@ internal class SegmentCandidateTreeWindow(
                 node.children.forEach(::add)
             }
             add(root)
-            addView(startLabel)
-            addView(endLabel)
-        }
-
-        private fun terminal(label: String, color: Int) = TextView(context).apply {
-            text = label
-            textSize = 12f
-            gravity = Gravity.CENTER
-            setTextColor(color)
-            setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 4 * dp
-                setColor(color and 0x00ffffff or 0x10000000)
-                setStroke(dp.roundToInt().coerceAtLeast(1), color and 0x00ffffff or 0x99000000.toInt())
-            }
         }
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val unlimited = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
             labels.values.forEach { it.measure(unlimited, unlimited) }
-            startLabel.measure(unlimited, unlimited)
-            endLabel.measure(unlimited, unlimited)
             boxes.clear()
             // All branches share one origin. Columns follow reading offsets, so a different
             // segmentation visibly spans a different range rather than an arbitrary depth.
             val gap = 20 * dp
-            val originWidth = startLabel.measuredWidth + 28 * dp
+            val originWidth = 24 * dp
             val offsets = FloatArray(readingLength + 1) { it * 26 * dp }
             labels.forEach { (node, label) ->
                 val choice = node.choice ?: return@forEach
@@ -335,9 +471,14 @@ internal class SegmentCandidateTreeWindow(
             }
             labels.forEach { (node, label) ->
                 val choice = node.choice ?: return@forEach
-                label.measure(MeasureSpec.makeMeasureSpec((offsets[choice.end] - offsets[choice.start] - gap).roundToInt(), MeasureSpec.EXACTLY), unlimited)
+                val width = (offsets[choice.end] - offsets[choice.start] - gap).roundToInt()
+                label.measure(MeasureSpec.makeMeasureSpec(width,
+                    if (node in preferred) MeasureSpec.EXACTLY else MeasureSpec.AT_MOST), unlimited)
             }
-            val rowHeight = maxOf(((if (compact) 32 else 62) * dp).toInt(), (labels.values.maxOfOrNull { it.measuredHeight } ?: 0) + (10 * dp).toInt())
+            val primaryHeight = maxOf(((if (compact) 38 else 64) * dp).roundToInt(),
+                (labels.filterKeys { it in preferred }.values.maxOfOrNull { it.measuredHeight } ?: 0) + (10 * dp).roundToInt())
+            val branchHeight = maxOf(((if (compact) 26 else 40) * dp).roundToInt(),
+                (labels.filterKeys { it !in preferred }.values.maxOfOrNull { it.measuredHeight } ?: 0) + (8 * dp).roundToInt())
             val lanes = linkedMapOf<CandidateGraphNode, Int>()
             val occupied = mutableMapOf<Int, MutableList<SegmentChoice>>()
             preferred.forEach { node -> lanes[node] = 0; occupied.getOrPut(0, ::mutableListOf).add(node.choice!!) }
@@ -352,22 +493,26 @@ internal class SegmentCandidateTreeWindow(
             }
             val firstLane = minOf(0, lanes.values.minOrNull() ?: 0)
             val lastLane = maxOf(0, lanes.values.maxOrNull() ?: 0)
-            preferredCenterY = -firstLane * rowHeight + rowHeight / 2
+            val above = -firstLane * branchHeight
+            preferredCenterY = above + (labels.entries.firstOrNull { it.key in preferred }?.value?.getChildAt(0)?.measuredHeight ?: primaryHeight) / 2
             labels.forEach { (node, label) ->
-                val x = (originWidth + offsets[node.choice!!.start]).roundToInt()
-                val y = (lanes.getValue(node) - firstLane) * rowHeight + rowHeight / 2
+                val choice = node.choice!!
+                val span = offsets[choice.end] - offsets[choice.start] - gap
+                val x = (originWidth + offsets[choice.start] + (span - label.measuredWidth) / 2).roundToInt()
+                val lane = lanes.getValue(node)
+                val y = when {
+                    lane < 0 -> above + lane * branchHeight + branchHeight / 2
+                    lane > 0 -> above + primaryHeight + (lane - 1) * branchHeight + branchHeight / 2
+                    else -> above + label.measuredHeight / 2
+                }
                 boxes[node] = Rect(x, y - label.measuredHeight / 2, x + label.measuredWidth, y + (label.measuredHeight + 1) / 2)
             }
-            val endX = (originWidth + offsets.last() + 8 * dp).roundToInt()
-            startBox.set(0, preferredCenterY - startLabel.measuredHeight / 2, startLabel.measuredWidth, preferredCenterY + (startLabel.measuredHeight + 1) / 2)
-            endBox.set(endX, preferredCenterY - endLabel.measuredHeight / 2, endX + endLabel.measuredWidth, preferredCenterY + (endLabel.measuredHeight + 1) / 2)
-            setMeasuredDimension(endX + endLabel.measuredWidth + (8 * dp).roundToInt(), (lastLane - firstLane + 1) * rowHeight)
+            endX = (originWidth + offsets.last() + 4 * dp).roundToInt()
+            setMeasuredDimension(endX + (4 * dp).roundToInt(), above + primaryHeight + lastLane * branchHeight)
         }
 
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
             boxes.forEach { (node, box) -> labels.getValue(node).layout(box.left, box.top, box.right, box.bottom) }
-            startLabel.layout(startBox.left, startBox.top, startBox.right, startBox.bottom)
-            endLabel.layout(endBox.left, endBox.top, endBox.right, endBox.bottom)
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -383,23 +528,122 @@ internal class SegmentCandidateTreeWindow(
             val normalColor = paint.color
             fun emphasize(value: Boolean) {
                 paint.color = if (value) segmentColor(0) else normalColor
-                paint.strokeWidth = (if (value) 2f else 1.25f) * dp
+                paint.strokeWidth = (if (value) 2.5f else 1f) * dp
+            }
+            fun header(node: CandidateGraphNode): Rect = boxes.getValue(node).let { box ->
+                Rect(box.left, box.top, box.right, box.top + labels.getValue(node).getChildAt(0).measuredHeight)
             }
             root.children.forEach { node ->
                 emphasize(node in preferred)
-                connect(startLabel.right.toFloat(), preferredCenterY.toFloat(), boxes.getValue(node))
+                connect(4 * dp, preferredCenterY.toFloat(), header(node))
             }
-            boxes.forEach { (node, from) ->
+            boxes.forEach { (node, _) ->
+                val from = header(node)
                 if (node.children.isEmpty()) {
                     emphasize(node in preferred)
-                    connect(from.right.toFloat(), from.exactCenterY(), Rect(endLabel.left, endLabel.top, endLabel.right, endLabel.bottom))
+                    connect(from.right.toFloat(), from.exactCenterY(), Rect(endX, preferredCenterY, endX, preferredCenterY))
                 }
                 node.children.forEach { child ->
                     emphasize(node in preferred && child in preferred)
-                    connect(from.right.toFloat(), from.exactCenterY(), boxes.getValue(child))
+                    connect(from.right.toFloat(), from.exactCenterY(), header(child))
                 }
             }
             paint.color = normalColor
         }
     }
+    /** Each selected segment is a root; its alternatives branch underneath the same reading. */
+    private class BranchesView(
+        context: Context,
+        branches: List<List<SegmentChoice>>,
+        reading: String,
+        focused: SegmentChoice?,
+        textColor: Int,
+        private val compact: Boolean,
+        onSelect: (SegmentChoice) -> Unit,
+    ) : CandidateTreeLayout(context) {
+        private val dp get() = resources.displayMetrics.density
+        private val columns = branches.map { choices ->
+            choices.mapIndexed { index, choice ->
+                TextView(context).apply {
+                    text = if (compact) choice.text else choice.text + "\n" + reading.substring(choice.start, choice.end)
+                    textSize = if (compact) 12f else 13f
+                    maxLines = if (compact) 1 else 2
+                    maxWidth = (220 * dp).toInt()
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    gravity = Gravity.CENTER
+                    setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
+                    setTextColor(textColor)
+                    background = segmentBackground(choice.start, choice == focused)
+                    isSelected = choice == focused
+                    isActivated = index == 0
+                    contentDescription = context.getString(
+                        if (index == 0) R.string.segment_select_description else R.string.segment_replace_description,
+                        choice.text, reading.substring(choice.start, choice.end))
+                    isFocusable = true
+                    setOnClickListener { onSelect(choice) }
+                    addView(this)
+                }
+            }
+        }
+        private val boxes = linkedMapOf<View, Rect>()
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = textColor and 0x00ffffff or 0x66000000
+            strokeWidth = 1.5f * dp
+            style = Paint.Style.STROKE
+        }
+
+        init {
+            id = R.id.segment_tree_branches
+            layoutDirection = LAYOUT_DIRECTION_LTR
+            setWillNotDraw(false)
+        }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val unlimited = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            columns.flatten().forEach { it.measure(unlimited, unlimited) }
+            val rowHeight = maxOf(((if (compact) 32 else 62) * dp).roundToInt(),
+                (columns.flatten().maxOfOrNull { it.measuredHeight } ?: 0) + (10 * dp).roundToInt())
+            preferredCenterY = rowHeight / 2
+            boxes.clear()
+            var x = (8 * dp).roundToInt()
+            val indent = (20 * dp).roundToInt()
+            columns.forEach { column ->
+                val width = column.maxOfOrNull { it.measuredWidth } ?: 0
+                column.forEachIndexed { index, label ->
+                    label.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), unlimited)
+                    val left = x + if (index == 0) 0 else indent
+                    val top = index * rowHeight + (rowHeight - label.measuredHeight) / 2
+                    boxes[label] = Rect(left, top, left + width, top + label.measuredHeight)
+                }
+                x += width + indent + (24 * dp).roundToInt()
+            }
+            setMeasuredDimension(x, (columns.maxOfOrNull { it.size } ?: 1) * rowHeight)
+        }
+
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            boxes.forEach { (label, box) -> label.layout(box.left, box.top, box.right, box.bottom) }
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            columns.mapNotNull { it.firstOrNull() }.zipWithNext().forEach { (left, right) ->
+                canvas.drawLine(left.right.toFloat(), left.y + left.height / 2f,
+                    right.x, right.y + right.height / 2f, paint)
+            }
+            columns.forEach { column ->
+                val root = column.firstOrNull() ?: return@forEach
+                val stemX = root.left + 8 * dp
+                column.drop(1).forEach { child ->
+                    val y = child.y + child.height / 2f
+                    canvas.drawPath(Path().apply {
+                        moveTo(stemX, root.bottom.toFloat())
+                        lineTo(stemX, y - 6 * dp)
+                        quadTo(stemX, y, stemX + 6 * dp, y)
+                        lineTo(child.left.toFloat(), y)
+                    }, paint)
+                }
+            }
+        }
+    }
+
 }

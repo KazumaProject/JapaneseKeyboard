@@ -2,9 +2,7 @@
     <string name="segment_candidate_style_title">変換候補の表示方法</string>
     <string-array name="segment_candidate_style_labels"><item>従来</item><item>文節・ツリー表示</item></string-array>
     <string name="segment_candidate_help_title">文節の編集方法</string>
-    <string name="segment_candidate_help">色付きの文節を選び、境界のハンドルをドラッグすると範囲を変更できます。色付きの帯が選択中の読み、破線が変更可能な範囲を示します。文節を長押しし、別の文節へドロップすると順序を変更できます。候補やツリーの枝をタップすると、確定せずに文節を入れ替えます。確定キーで確定します。「ツリー」で候補欄の上に全文候補を開けます。</string>
-    <string name="segment_tree_open_short">ツリー\n表示</string>
-    <string name="segment_tree_open">全文候補のツリーを開く</string>
+    <string name="segment_candidate_help">色付きの文節を選び、境界のハンドルをドラッグすると範囲を変更できます。色付きの帯が選択中の読み、破線が変更可能な範囲を示します。文節を長押しし、別の文節へドロップすると順序を変更できます。候補やツリーの枝をタップすると、確定せずに文節を入れ替えます。確定キーで確定します。設定で有効にすると変換開始時にツリーを自動表示します。入力文字がある間は表示を保ちます。×で閉じ、文節のタップで再表示できます。</string>
     <string name="segment_tree_close">全文候補のツリーを閉じる</string>
     <string name="segment_select_description">文節「%1$s」、読み「%2$s」を選択</string>
     <string name="segment_replace_description">読み「%2$s」の文節を「%1$s」に入れ替える</string>
@@ -14,9 +12,12 @@
     <string name="segment_end_left">終了境界を左へ移動</string>
     <string name="segment_end_right">終了境界を右へ移動</string>
     <string name="segment_tree_enabled_title">候補ツリーのフローティングを表示</string>
-    <string name="segment_tree_enabled_summary">文節・ツリー表示でツリーボタンを表示します。候補欄から開き、編集ボタンでサイズを変更できます。</string>
+    <string name="segment_tree_enabled_summary">文節・ツリー表示の変換開始時に自動表示します。入力文字がある間は表示を保ちます。×で閉じ、文節のタップで再表示できます。編集ボタンでサイズを変更できます。</string>
     <string name="segment_move_left">文節を前へ移動</string>
     <string name="segment_move_right">文節を後ろへ移動</string>
-    <string name="segment_graph_start">開始</string>
-    <string name="segment_graph_end">終わり</string>
+    <string name="segment_tree_style_title">候補フローティングの種類</string>
+    <string-array name="segment_tree_style_labels"><item>全文候補のグラフ</item><item>文節ごとの候補ツリー</item></string-array>
+    <string name="segment_tree_scale_title">グラフの大きさ（%）</string>
+    <string name="segment_tree_scale_summary">フローティングの枠とは別にグラフの倍率を変更します。編集モードのスライダーでも調整できます。</string>
+    <string name="segment_tree_scale_value">グラフの大きさ %1$d%%</string>
 </resources>

@@ -34,7 +34,6 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
     internal var onFocusSegment: (Int) -> Unit = {}
     internal var onReorderSegment: (Int, Int) -> Unit = { _, _ -> }
     internal var onResizeSegment: (Int, Int) -> Unit = { _, _ -> }
-    internal var onToggleTree: () -> Unit = {}
     private val dp get() = resources.displayMetrics.density
     private val cards = LinearLayout(context)
     private val rail = BoundaryRail(context)
@@ -51,12 +50,6 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
     }.apply {
         id = R.id.segment_candidate_scroll
         isHorizontalScrollBarEnabled = true
-    }
-    private val toggle = TextView(context).apply {
-        gravity = Gravity.CENTER
-        textSize = 12f
-        setOnClickListener { onToggleTree() }
-        isFocusable = true
     }
     private data class SegmentDrag(val signature: List<SegmentChoice>, val reading: String, val from: Int)
     private var lastSegments: List<BunsetsuSegmentState> = emptyList()
@@ -93,15 +86,10 @@ class SegmentCandidateBar @JvmOverloads constructor(context: Context, attrs: Att
         column.addView(rail, LayoutParams(LayoutParams.MATCH_PARENT, (42 * dp).toInt()))
         scroll.addView(column)
         addView(scroll, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-        addView(toggle, LayoutParams((52 * dp).toInt(), LayoutParams.MATCH_PARENT))
         rail.onResize = { start, end -> onResizeSegment(start, end) }
     }
 
-    internal fun bind(segments: List<BunsetsuSegmentState>, focus: Int, treeOpen: Boolean, textColor: Int, treeEnabled: Boolean) {
-        toggle.visibility = if (treeEnabled && !treeOpen) VISIBLE else GONE
-        toggle.text = context.getString(R.string.segment_tree_open_short)
-        toggle.contentDescription = context.getString(R.string.segment_tree_open)
-        toggle.setTextColor(textColor)
+    internal fun bind(segments: List<BunsetsuSegmentState>, focus: Int, textColor: Int) {
         if (segments == lastSegments && focus == lastFocus && textColor == lastColor) return
         val followFocus = focus != lastFocus || segmentChoices(segments).map { it.start to it.end } !=
             segmentChoices(lastSegments).map { it.start to it.end }

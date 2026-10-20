@@ -3,9 +3,7 @@
     <string-array name="segment_candidate_style_labels"><item>Classic</item><item>Segments and candidate tree</item></string-array>
     <string-array name="segment_candidate_style_values"><item>legacy</item><item>segments</item></string-array>
     <string name="segment_candidate_help_title">Editing conversion segments</string>
-    <string name="segment_candidate_help">Select a colored segment, then drag its boundary handles. The solid colored band marks the selected reading; the dashed line shows the adjustable range. Long-press a segment and drop it onto another segment to reorder it. Tap a candidate or a tree branch to replace a segment without committing. Use the confirm key to commit. The Tree button opens full-sentence alternatives above the candidate strip.</string>
-    <string name="segment_tree_open_short">Show\ntree</string>
-    <string name="segment_tree_open">Open full-sentence candidate tree</string>
+    <string name="segment_candidate_help">Select a colored segment, then drag its boundary handles. The solid colored band marks the selected reading; the dashed line shows the adjustable range. Long-press a segment and drop it onto another segment to reorder it. Tap a candidate or a tree branch to replace a segment without committing. Use the confirm key to commit. When enabled in settings, the tree appears automatically when conversion starts. It stays visible while composing. Close it with ×; tap a segment to reopen it.</string>
     <string name="segment_tree_close">Close full-sentence candidate tree</string>
     <string name="segment_select_description">Select segment %1$s, reading %2$s</string>
     <string name="segment_replace_description">Replace segment with %1$s, reading %2$s</string>
@@ -19,7 +17,7 @@
     <item name="segment_end_left" type="id" />
     <item name="segment_end_right" type="id" />
     <string name="segment_tree_enabled_title">Show floating candidate tree</string>
-    <string name="segment_tree_enabled_summary">Show the tree button in segment display mode. Open the tree from the candidate bar; use the edit button to resize it.</string>
+    <string name="segment_tree_enabled_summary">Automatically display the tree when conversion starts in segment display mode. Close with ×, tap a segment to reopen, or use the edit button to resize.</string>
     <item name="segment_candidate_tree_panel" type="id" />
     <item name="segment_candidate_scroll" type="id" />
     <item name="segment_tree_scroll" type="id" />
@@ -27,6 +25,13 @@
     <string name="segment_move_right">Move segment later</string>
     <item name="segment_move_left" type="id" />
     <item name="segment_move_right" type="id" />
-    <string name="segment_graph_start">Start</string>
-    <string name="segment_graph_end">End</string>
+    <string name="segment_tree_style_title">Floating candidate layout</string>
+    <string-array name="segment_tree_style_labels"><item>Full-sentence candidate graph</item><item>Candidate branches for each segment</item></string-array>
+    <string-array name="segment_tree_style_values"><item>sentence</item><item>branches</item></string-array>
+    <item name="segment_tree_branches" type="id" />
+    <string name="segment_tree_scale_title">Graph size (%)</string>
+    <string name="segment_tree_scale_summary">Scale the graph independently of the floating panel. Also adjustable with the slider in editing mode.</string>
+    <string name="segment_tree_scale_value">Graph size %1$d%%</string>
+    <item name="segment_tree_zoom" type="id" />
+    <item name="segment_tree_scale_control" type="id" />
 </resources>
