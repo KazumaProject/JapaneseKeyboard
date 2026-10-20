@@ -408,7 +408,10 @@ class SegmentCandidateImeInstrumentedTest {
         val panel = treePanel()!!
         fun graphWidth(): Int {
             var width = 0
-            instrumentation.runOnMainSync { width = panel.findViewById<android.view.View>(R.id.segment_tree_zoom)?.width ?: 0 }
+            instrumentation.runOnMainSync {
+                val graph = panel.findViewById<android.view.ViewGroup>(R.id.segment_tree_zoom)?.getChildAt(0)
+                width = graph?.let { (it.width * it.scaleX).toInt() } ?: 0
+            }
             return width
         }
         await { graphWidth() > 0 }
@@ -422,6 +425,21 @@ class SegmentCandidateImeInstrumentedTest {
         val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
         await { prefs.getInt("segment_tree_scale", 85) == 50 && graphWidth() < before * .7f }
         assertSame(panel, treePanel())
+        await("scaled graph centered in its visible viewport") {
+            val viewport = scrollState(R.id.segment_tree_scroll)?.second ?: return@await false
+            var centered = false
+            instrumentation.runOnMainSync {
+                val graph = panel.findViewById<android.view.ViewGroup>(R.id.segment_tree_zoom)!!.getChildAt(0)
+                val location = IntArray(2).also(graph::getLocationOnScreen)
+                val width = graph.width * graph.scaleX
+                val height = graph.height * graph.scaleY
+                val tolerance = 2 * graph.resources.displayMetrics.density
+                centered = width <= viewport.width() && height <= viewport.height() &&
+                    kotlin.math.abs(location[0] + width / 2 - viewport.exactCenterX()) <= tolerance &&
+                    kotlin.math.abs(location[1] + height / 2 - viewport.exactCenterY()) <= tolerance
+            }
+            centered
+        }
         screenshot("zoom.png")
         clickDescription(instrumentation.targetContext.getString(R.string.composing_guide_done))
         val scaledWidth = graphWidth()
@@ -432,7 +450,10 @@ class SegmentCandidateImeInstrumentedTest {
         val reopened = treePanel()!!
         await {
             var width = 0
-            instrumentation.runOnMainSync { width = reopened.findViewById<android.view.View>(R.id.segment_tree_zoom)?.width ?: 0 }
+            instrumentation.runOnMainSync {
+                val graph = reopened.findViewById<android.view.ViewGroup>(R.id.segment_tree_zoom)?.getChildAt(0)
+                width = graph?.let { (it.width * it.scaleX).toInt() } ?: 0
+            }
             width == scaledWidth
         }
         fun isScaledAlternative(node: AccessibilityNodeInfo): Boolean {

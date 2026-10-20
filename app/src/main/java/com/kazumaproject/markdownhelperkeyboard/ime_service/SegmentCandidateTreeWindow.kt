@@ -95,11 +95,16 @@ internal class SegmentCandidateTreeWindow(
             val tree = if (branchMode) BranchesView(context, branches, reading, selected.getOrNull(focusedIndex), textColor, compact, select)
                 else TreeView(context, graph, reading, selected, selected.getOrNull(focusedIndex), textColor, compact, select)
             val zoom = ZoomLayout(context, tree, scalePercent).also { zoomView = it }
-            val horizontal = HorizontalScrollView(context).apply { id = R.id.segment_tree_scroll; addView(zoom) }
+            val horizontal = HorizontalScrollView(context).apply {
+                id = R.id.segment_tree_scroll
+                isFillViewport = true
+                addView(zoom)
+            }
             val vertical = ScrollView(context).apply {
+                isFillViewport = true
                 addView(horizontal)
                 addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                    scrollTo(0, (tree.preferredCenterY * zoom.factor - height / 2).roundToInt().coerceAtLeast(0))
+                    scrollTo(0, (zoom.graphTop + tree.preferredCenterY * zoom.factor - height / 2).roundToInt().coerceAtLeast(0))
                 }
             }
             val controls = LinearLayout(context).apply {
@@ -309,6 +314,7 @@ internal class SegmentCandidateTreeWindow(
     private class ZoomLayout(context: Context, private val graph: View, percent: Int) : ViewGroup(context) {
         var factor = percent / 100f
             private set
+        val graphTop get() = graph.top
         init {
             id = R.id.segment_tree_zoom
             addView(graph)
@@ -328,10 +334,16 @@ internal class SegmentCandidateTreeWindow(
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val unlimited = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
             graph.measure(unlimited, unlimited)
-            setMeasuredDimension((graph.measuredWidth * factor).roundToInt(), (graph.measuredHeight * factor).roundToInt())
+            val scaledWidth = (graph.measuredWidth * factor).roundToInt()
+            val scaledHeight = (graph.measuredHeight * factor).roundToInt()
+            val viewportWidth = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY) MeasureSpec.getSize(widthMeasureSpec) else 0
+            val viewportHeight = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) MeasureSpec.getSize(heightMeasureSpec) else 0
+            setMeasuredDimension(maxOf(scaledWidth, viewportWidth), maxOf(scaledHeight, viewportHeight))
         }
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-            graph.layout(0, 0, graph.measuredWidth, graph.measuredHeight)
+            val x = ((width - graph.measuredWidth * factor) / 2).roundToInt().coerceAtLeast(0)
+            val y = ((height - graph.measuredHeight * factor) / 2).roundToInt().coerceAtLeast(0)
+            graph.layout(x, y, x + graph.measuredWidth, y + graph.measuredHeight)
         }
     }
 
