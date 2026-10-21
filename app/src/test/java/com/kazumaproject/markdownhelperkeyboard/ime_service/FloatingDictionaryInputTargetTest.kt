@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.content.Context
 import android.app.Activity
+import android.view.KeyEvent
 import android.os.Looper
 import android.widget.EditText
 import android.view.inputmethod.EditorInfo
@@ -41,6 +42,11 @@ class FloatingDictionaryInputTargetTest {
     private val service = spy(IMEService()).also { service ->
         ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
             ClassParameter.from(Context::class.java, context))
+        val preferences = context.getSharedPreferences("floating-dictionary-input-target-test", Context.MODE_PRIVATE)
+        ReflectionHelpers.setField(service, "runtimeInputSharedPreferences", preferences)
+        // Mockito copies the service; replace the constructor lazy that captures the original.
+        ReflectionHelpers.setField(service, "cursorSettings\$delegate", lazyOf(
+            com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings(preferences)))
         service.zenzRuntimeClient = mock()
         service.appPreference = mock<AppPreference>().apply {
             whenever(undo_enable_preference).thenReturn(true)
@@ -103,6 +109,85 @@ class FloatingDictionaryInputTargetTest {
         service.commitText(" app", 1)
         assertEquals("background app", appEditor.text.toString())
         assertEquals("rXdingあ", field.text.toString())
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun softwareDeleteAndCursorKeyEventsReachOnlyTheLocalEditor() {
+        val reading = editor().apply { setText("abcd"); setSelection(4) }
+        activity.setContentView(reading)
+        reading.requestFocus()
+        switch(reading)
+        // ArrowKeyMovementMethod needs a laid-out field and real glyph widths.
+        reading.measure(android.view.View.MeasureSpec.makeMeasureSpec(600, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(120, android.view.View.MeasureSpec.EXACTLY))
+        reading.layout(0, 0, 600, 120)
+        service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+        assertEquals("abc", reading.text.toString())
+        service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+        assertEquals(2, reading.selectionStart)
+        service.commitText("X", 1)
+        assertEquals("abXc", reading.text.toString())
+        service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+        assertEquals(4, reading.selectionStart)
+        reading.setSelection(1, 3)
+        service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+        assertEquals("ac", reading.text.toString())
+        assertEquals("background", appEditor.text.toString())
+    }
+
+    @Test fun closedLocalConnectionCannotSendKeysAfterSwitchingEditorsOrReturningToApp() {
+        val reading = editor().apply { setText("reading"); setSelection(length()) }
+        val word = editor().apply { setText("word"); setSelection(length()) }
+        activity.setContentView(reading)
+        reading.requestFocus()
+        switch(reading)
+        val previous = service.currentInputConnection!!
+        switch(word)
+        assertFalse(previous.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL)))
+        val current = service.currentInputConnection!!
+        switch(null)
+        assertFalse(current.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL)))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("reading", reading.text.toString())
+        assertEquals("word", word.text.toString())
+        assertEquals("background", appEditor.text.toString())
+    }
+
+    @Test fun workerKeyEventIsDeliveredOnTheMainThread() {
+        val reading = editor().apply { setText("reading"); setSelection(length()) }
+        activity.setContentView(reading)
+        reading.requestFocus()
+        switch(reading)
+        val connection = service.currentInputConnection!!
+        val worker = Thread {
+            connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+            connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+        }
+        worker.start()
+        worker.join(5000)
+        assertFalse(worker.isAlive)
+        assertEquals("reading", reading.text.toString())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("readin", reading.text.toString())
+        assertEquals("background", appEditor.text.toString())
+    }
+
+    @Test fun queuedKeyEventIsDroppedWhenItsLocalInputTargetCloses() {
+        val reading = editor().apply { setText("reading"); setSelection(length()) }
+        activity.setContentView(reading)
+        reading.requestFocus()
+        switch(reading)
+        val connection = service.currentInputConnection!!
+        val worker = Thread {
+            connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+        }
+        worker.start()
+        worker.join(5000)
+        assertFalse(worker.isAlive)
+        switch(null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("reading", reading.text.toString())
+        assertEquals("background", appEditor.text.toString())
     }
 
     private val history get() = ReflectionHelpers.getField<Any>(service, "deletedBuffer")
@@ -190,12 +275,6 @@ class FloatingDictionaryInputTargetTest {
         activity.setContentView(reading)
         reading.requestFocus()
         switch(reading)
-        // Supply Android's key delivery at the framework boundary. The real local
-        // connection still supplies text/selection, and EditText performs the edit.
-        val connection = spy(service.currentInputConnection!!)
-        doAnswer { reading.dispatchKeyEvent(it.getArgument(0)) }
-            .whenever(connection).sendKeyEvent(any())
-        ReflectionHelpers.setField(service, "dictionaryInputConnection", connection)
         reading.setSelection(2)
         fun delete() {
             ReflectionHelpers.callInstanceMethod<Unit>(service, "handleDeleteAfterCursor")
