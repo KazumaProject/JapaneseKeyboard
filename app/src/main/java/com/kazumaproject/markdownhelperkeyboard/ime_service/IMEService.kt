@@ -3646,7 +3646,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         dictionaryInputEditor = editor
         if (editor != null) {
             val info = EditorInfo().apply { packageName = this@IMEService.packageName }
-            dictionaryInputConnection = editor.onCreateInputConnection(info)
+            dictionaryInputConnection = editor.onCreateInputConnection(info)?.let { connection ->
+                ImeLocalInputConnection(connection, editor) { dictionaryInputEditor === editor }
+            }
             dictionaryEditorInfo = info
         }
         editorMutationRevision.advance()
