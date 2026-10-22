@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = 'd45a1aa16bf3f6fe43c3d4e62aa5100290c30746'
-VERSION = 'v1.7.263-pre.5'
+REVISION = '647afb895c6e73a047e2372f14856aa4ba924f2b'
+VERSION = 'v1.7.266'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -44,25 +44,39 @@ def write(path, data):
     path.write_bytes(data if isinstance(data, bytes) else data.encode())
 
 def archive():
-    manifest = json.loads(fetch(RELEASE + 'dictionary-distribution-manifest.json'))
-    assert manifest['revision'] == REVISION
-    assert manifest['archiveSha256'] == 'dd3b1359ea9454829de92976e6cfd43a21e8b122e02860ec0a4ec9abe8df3920'
+    manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
+    manifest = json.loads(manifest_data)
+    archive_sha = '8e0cdcfeb69efcca56288a5e20038cdb8b5f03ec24babf51077de7ce400be9ca'
+    assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
+    licenses_sha = '7dababd4e8f080dd133216e64c7f64bca3052287dc0e47155067ee0732962a6a'
+    assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
-    assert sha(data) == manifest['archiveSha256']
+    assert sha(data) == archive_sha
     zipped = zipfile.ZipFile(io.BytesIO(data))
-    assert set(zipped.namelist()) == set(manifest['assets'])
-    for name, checksum in manifest['assets'].items():
+    assert len(zipped.namelist()) == len(set(zipped.namelist()))
+    assert set(zipped.namelist()) == set(manifest['files']) | {'dictionary-distribution-manifest.json'}
+    assert zipped.read('dictionary-distribution-manifest.json') == manifest_data
+    for name, checksum in manifest['files'].items():
         path = Path(name)
         assert name.startswith('app/src/main/assets/') and not path.is_absolute() and '..' not in path.parts, name
         assert sha(zipped.read(name)) == checksum, name
-    for name in manifest['assets']:
+    old = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())
+    for name in set(old['assets']) - set(manifest['files']):
+        path = Path(name)
+        assert name.startswith('app/src/main/assets/') and '..' not in path.parts, name
+        (ROOT / path).unlink(missing_ok=True)
+    for name in manifest['files']:
         write(ROOT / name, zipped.read(name))
-    for directory in ('person_name', 'places', 'wiki', 'neologd', 'web'):
-        path = ROOT / 'app/src/main/assets' / directory
-        if path.exists():
-            for child in path.iterdir():
-                child.unlink()
-            path.rmdir()
+    # Normalize the release's person IDs to full asset paths for every consumer.
+    for category in manifest['categories']:
+        category['id'] = str(Path(category['assetPaths'][0]).parent.relative_to('app/src/main/assets/categories'))
+    manifest['personCategoryFamily']['categoryIds'] = [
+        'person/' + ident for ident in manifest['personCategoryFamily']['categoryIds']
+    ]
+    manifest.update(revision=REVISION, version=VERSION, archiveSha256=archive_sha,
+                    upstreamManifestSha256=sha(manifest_data),
+                    licensesSha256=licenses_sha,
+                    assets=manifest.pop('files'))
     write(ROOT / 'tools/classified-dictionaries/distribution-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 
 def provenance():
@@ -84,10 +98,23 @@ def provenance():
         if status != 'classified':
             continue
         for category in categories.split(','):
+            if category == 'person':
+                continue
             for index, source in enumerate(SOURCES):
                 if pairs[(reading, surface)] & (1 << index):
                     counts[category][source] += 1
-    result = {'revision': REVISION, 'version': VERSION, 'inputSha256': manifest['inputs'],
+    person_data = fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')
+    distribution = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())
+    assert sha(person_data) == distribution['personSourceSha256']
+    person_records = []
+    for line in gzip.decompress(person_data).decode().splitlines():
+        category, reading, left, right, cost, surface, *tags = line.split('\t')
+        category = 'person/' + category
+        person_records.append('\t'.join((category, reading, left, right, cost, surface)))
+        for index, source in enumerate(SOURCES):
+            if pairs[(reading, surface)] & (1 << index):
+                counts[category][source] += 1
+    result = {'personSourceSha256': sha(person_data), 'revision': REVISION, 'version': VERSION, 'inputSha256': manifest['inputs'],
               'decisionSha256': sha(data), 'categorySourcePairs': dict(sorted(counts.items()))}
     write(ROOT / 'tools/classified-dictionaries/category-provenance.json', json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     records_path = 'src/main/classification/distribution-candidates.tsv.gz'
@@ -132,7 +159,9 @@ def provenance():
     hira = set('あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんぁぃぅぇぉゃゅょゎっゔーがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ')
     kata = set('アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォャュョヮッヴーガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ')
 
-    for line in (gzip.decompress(records_data) + gzip.decompress(specialist_records)).decode().splitlines():
+    base_records = [line for line in gzip.decompress(records_data).decode().splitlines() if not line.startswith('person\t')]
+    all_records = base_records + gzip.decompress(specialist_records).decode().splitlines() + person_records
+    for line in all_records:
         category, reading, left, right, cost, surface = line.split('\t')
         normalized_surface = unicodedata.normalize('NFKC', surface)
         sentinel = -2 if surface == reading or normalized_surface and set(normalized_surface) <= hira else -1 if normalized_surface and set(normalized_surface) <= kata else None
@@ -146,8 +175,8 @@ def provenance():
         fingerprint['count'] += 1
         if 4 <= len(reading) <= 8 and not 4 <= len(fingerprint['sample']['reading']) <= 8:
             fingerprint['sample'] = {'reading': reading, 'surface': surface}
-    assert sum(item['count'] for item in fingerprints.values()) == manifest['dictionaryRows'] + sum(specialist['categoryRows'].values())
-    assert len(fingerprints) == 30
+    assert {k: v['count'] for k, v in fingerprints.items()} == {c['id']: c['recordCount'] for c in distribution['categories']}
+    assert len(fingerprints) == 70
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
     assert not surface_overrides, surface_overrides
@@ -203,7 +232,7 @@ def notices(counts):
             key = Path(path).stem.lower()
             upstream[key] = RAW + path
             assert sha(fetch(upstream[key])) == checksum, key
-    distribution = json.loads(fetch(RELEASE + 'dictionary-distribution-manifest.json'))
+    distribution = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())
     upstream['distribution-licenses'] = RELEASE + 'DICTIONARY-LICENSES.txt'
     assert sha(fetch(upstream['distribution-licenses'])) == distribution['licensesSha256']
     snapshots = {}
@@ -215,7 +244,8 @@ def notices(counts):
         write(assets / 'sources' / (key + '.txt'), data)
         snapshots[key] = {'url': url, 'sha256': sha(data)}
     write(assets / 'notice-snapshots.json', json.dumps(snapshots, indent=2) + '\n')
-    categories = json.loads(fetch(RAW + 'src/main/classification/categories.json'))['categories']
+    categories = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())['categories']
+    categories = [dict(c, name=c['label']) for c in categories if c['id'] not in ('kampo', 'medical')]
     style = '<style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style>'
     def page(title, details, keys):
         body = '<!doctype html><meta charset="utf-8">' + style + '<title>' + html.escape(title) + '</title><h1>' + html.escape(title) + '</h1>' + details
@@ -225,6 +255,12 @@ def notices(counts):
     common = '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
     common += '<p>Classified and converted to IME binaries / 分類・IME辞書バイナリへの変換を行っています。</p>'
     common += '<p>Input acquisition revision and per-entry copyright attribution: unconfirmed. 元辞書の取得版・各語の著作権者への対応: 未確認。Below are preserved upstream notices; source-code licenses do not replace data terms. 以下は保持した出典の通知です。プログラムのライセンスはデータの条件を置き換えません。</p>'
+    person_pairs = collections.defaultdict(set)
+    for line in gzip.decompress(fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
+        category, reading, left, right, cost, surface, *tags = line.split('\t')
+        person_pairs['person/' + category].add((reading, surface))
+    for retired in ('person', 'event', 'term'):
+        (assets / 'classified' / (retired + '.html')).unlink(missing_ok=True)
     for category in categories:
         ids = set(counts[category['id']])
         keys = ['mozc', 'merge-ut']
@@ -234,8 +270,9 @@ def notices(counts):
         keys += ['cc-by-sa-4', 'apache-2']
         details = common + '<p>Frozen source inputs / 固定入力: ' + ', '.join(f'{html.escape(SOURCES[source][0])}: {counts[category["id"]][source]} pairs / 組' for source in SOURCES if source in ids) + '</p>'
         details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版の同一性は未確認です。</p>'
-        if category['id'] == 'person':
+        if category['id'].startswith('person/'):
             additions = json.loads((ROOT/'tools/classified-dictionaries/category-provenance.json').read_text())['personAdditions']
+            additions = [row for row in additions if (row['reading'], row['surface']) in person_pairs[category['id']]]
             details += '<h2>Reviewed additions / 公式資料を照合した追加</h2><p>Names/readings selected, normalized, assigned POS/cost and encoded. 氏名・読みの選定、正規化、品詞・コスト割当とバイナリ化。Source page text is not redistributed; per-entry copyright terms remain unconfirmed / 原資料本文は転載していません。各語の著作権条件は未確認。</p>'
             details += '<ul>' + ''.join('<li>' + html.escape(row['reading'] + ' / ' + row['surface']) + ': <a href="' + html.escape(row['source_url']) + '">Source / 出典</a></li>' for row in additions) + '</ul>'
         write(assets/'classified'/(category['id']+'.html'), page(category['name']+' / '+category['id'], details, keys))
