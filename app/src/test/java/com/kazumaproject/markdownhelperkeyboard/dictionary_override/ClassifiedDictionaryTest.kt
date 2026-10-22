@@ -24,8 +24,8 @@ class ClassifiedDictionaryTest {
             .reader().use { JsonParser.parseReader(it).asJsonObject }
         val distributionRevision = manifest.get("revision").asString
         assertTrue("Distribution revision must be a commit SHA", distributionRevision.matches(Regex("[0-9a-f]{40}")))
-        assertEquals(30, ClassifiedDictionaries.all.size)
-        assertEquals(30, ClassifiedDictionaries.categories.size)
+        assertEquals(70, ClassifiedDictionaries.all.size)
+        assertEquals(70, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
             val files = DictionaryFileSpecs.forCategory(spec.category)
             assertEquals(3, files.size)
@@ -40,7 +40,7 @@ class ClassifiedDictionaryTest {
         }
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/tango.dat.zip"))
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/system/tango.dat.zip"))
-        assertNull(DictionaryZipEntryNameMapper.map("categories/person/token.dat"))
+        assertNull(DictionaryZipEntryNameMapper.map("categories/person/actor/token.dat"))
         assertNull(DictionaryZipEntryNameMapper.map("tango_person_names.dat"))
     }
 
@@ -56,7 +56,7 @@ class ClassifiedDictionaryTest {
     }
 
     @Test fun labelsAreOrderedAndDoNotDependOnCandidateType() {
-        assertEquals("[人名・地名]", classifiedCandidateLabel(context, setOf(DictionaryCategory.CLASSIFIED_PLACE, DictionaryCategory.CLASSIFIED_PERSON)))
+        assertEquals("[${context.getString(com.kazumaproject.markdownhelperkeyboard.R.string.classified_label_person_actor)}・地名]", classifiedCandidateLabel(context, setOf(DictionaryCategory.CLASSIFIED_PLACE, DictionaryCategory.CLASSIFIED_PERSON_ACTOR)))
         assertEquals("", classifiedCandidateLabel(context, emptySet()))
     }
 
@@ -79,6 +79,35 @@ class ClassifiedDictionaryTest {
         reopened.removeAllOverrides()
         ClassifiedDictionaries.all.forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
 
+    }
+
+    @Test fun retiredParentFlagsNeverEnableChildrenOrOverwriteExistingChoices() {
+        val prefs = context.getSharedPreferences("classified-parent-upgrade", Context.MODE_PRIVATE)
+        prefs.edit().clear()
+            .putBoolean("optional_bundled_enabled_CLASSIFIED_PERSON", true)
+            .putBoolean("optional_bundled_enabled_CLASSIFIED_EVENT", true)
+            .putBoolean("optional_bundled_enabled_CLASSIFIED_TERM", true)
+            .putBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.CLASSIFIED_PLACE), true)
+            .apply()
+        val defaults = context.getSharedPreferences("classified-parent-defaults", Context.MODE_PRIVATE)
+        val directory = File(context.cacheDir, "classified-parent-upgrade")
+        val store = DictionaryOverrideStore(directory, prefs, defaults)
+        val children = ClassifiedDictionaries.all.filter { '/' in it.id }
+        assertEquals(43, children.size)
+        children.forEach { assertFalse(it.id, store.isOptionalBundledEnabled(it.category)) }
+        assertTrue(store.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PLACE))
+        val chosen = children.first().category
+        store.setDisableableCategoryEnabled(chosen, true, true)
+        val reopened = DictionaryOverrideStore(directory, prefs, defaults)
+        assertTrue(reopened.isOptionalBundledEnabled(chosen))
+        children.drop(1).forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
+        assertTrue(reopened.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PLACE))
+        for (retired in listOf("person", "event", "term")) {
+            assertNull(ClassifiedDictionaries.all.find { it.id == retired })
+            assertNull(DictionaryZipEntryNameMapper.map("categories/$retired/tango.dat.zip"))
+        }
+        reopened.removeAllOverrides()
+        children.forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
     }
 
     @Test fun dictionarySettingsAndSearchExposeEveryNonPersistentSwitch() {
@@ -132,8 +161,8 @@ class ClassifiedDictionaryTest {
     }
 
     @Test fun unknownCategoryCannotCollideWithSystemAndDuplicatesAreNotImported() {
-        val plan = DictionaryZipEntryPlanner.plan(listOf("categories/person/tango.dat.zip", "wrapper/categories/person/tango.dat.zip", "categories/unknown/tango.dat.zip", "system/tango.dat.zip"))
-        assertEquals(listOf(DictionaryFileKey.CLASSIFIED_PERSON_TANGO), plan.duplicateKeys.map { it.key })
+        val plan = DictionaryZipEntryPlanner.plan(listOf("categories/person/actor/tango.dat.zip", "wrapper/categories/person/actor/tango.dat.zip", "categories/unknown/tango.dat.zip", "system/tango.dat.zip"))
+        assertEquals(listOf(DictionaryFileKey.CLASSIFIED_PERSON_ACTOR_TANGO), plan.duplicateKeys.map { it.key })
         assertEquals(listOf(DictionaryFileKey.SYSTEM_TANGO), plan.importableEntries.map { it.key })
     }
 }
