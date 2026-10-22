@@ -17,7 +17,7 @@ import org.junit.Test
 import java.util.BitSet
 
 class ClassifiedExactCandidatesTest {
-    private val person = DictionaryCategory.CLASSIFIED_PERSON
+    private val person = DictionaryCategory.CLASSIFIED_PERSON_ACTOR
     private val character = DictionaryCategory.CLASSIFIED_CHARACTER
     private data class Word(val reading: String, val surface: String, val cost: Short)
 
