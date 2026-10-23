@@ -121,8 +121,11 @@ internal class ZenzFloatingWindow(
         val location = IntArray(2).also(view::getLocationOnScreen)
         val visible = Rect()
         if (!view.getGlobalVisibleRect(visible) || area.isEmpty) { dismiss(); return }
-        val availableHeight = minOf(dp(180), location[1] - dp(8) - area.top)
-        if (availableHeight < dp(40)) { dismiss(); return }
+        val spaceAbove = location[1] - dp(8) - area.top
+        // A floating keyboard can reach the screen top when its edit header is hidden.
+        // Keep the result accessible there, since it is omitted from the regular strip.
+        val availableHeight = minOf(dp(180), area.height(),
+            if (spaceAbove >= dp(40)) spaceAbove else area.height())
         val panelColors = colors()
         val panel = surface ?: ScrollView(context).apply {
             isFillViewport = false
@@ -165,7 +168,8 @@ internal class ZenzFloatingWindow(
             View.MeasureSpec.makeMeasureSpec(availableHeight, View.MeasureSpec.AT_MOST))
         val width = panel.measuredWidth
         val left = location[0].coerceIn(area.left, area.right - width)
-        val top = location[1] - dp(8) - panel.measuredHeight
+        val top = (location[1] - dp(8) - panel.measuredHeight)
+            .coerceIn(area.top, area.bottom - panel.measuredHeight)
         val layout = params ?: WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
             format = PixelFormat.TRANSLUCENT
