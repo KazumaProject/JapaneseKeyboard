@@ -27,6 +27,7 @@ object SettingSearchIndex {
         val destinations: List<SettingDestination>,
     )
     private val extraKeywordsByKey = mapOf(
+        "gemma_floating_mode" to listOf("gemma", "n-best", "nbest", "rerank", "probability", "確率", "再ランキング", "候補"),
         "floating_keyboard_hide_button_position" to listOf(
             "floating", "hide", "arrow", "position", "フローティング", "下向き矢印", "やじるし", "隠す", "位置",
         ),

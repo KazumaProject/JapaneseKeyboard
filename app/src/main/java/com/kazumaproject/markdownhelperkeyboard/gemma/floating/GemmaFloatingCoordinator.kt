@@ -13,8 +13,9 @@ internal data class GemmaFloatingInput(
     val session: Long,
     val revision: Long,
     val text: String,
-    val rule: GemmaFloatingRule,
+    val rule: GemmaFloatingRule?,
     val editorRevision: Long = 0,
+    val nbest: GemmaNbestRequest? = null,
 )
 
 /** Main-thread state, a single native inference, and one conflated pending update. */

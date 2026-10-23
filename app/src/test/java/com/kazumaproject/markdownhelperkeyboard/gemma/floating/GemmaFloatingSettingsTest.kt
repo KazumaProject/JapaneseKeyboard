@@ -30,6 +30,23 @@ class GemmaFloatingSettingsTest {
         assertTrue(settings.rules.last().instruction.contains("Translate the input into natural Japanese"))
     }
 
+    @Test fun legacyEnabledFlagMigratesToRuleModeWithoutLosingRules() {
+        preferences.edit().putBoolean(GemmaFloatingSettings.ENABLED, true).commit()
+        val settings = GemmaFloatingSettings(preferences)
+        assertEquals(GemmaFloatingMode.RULE, settings.mode)
+        settings.migrateMode()
+        settings.selectMode(GemmaFloatingMode.NBEST.value)
+        assertEquals(GemmaFloatingMode.NBEST, GemmaFloatingSettings(preferences).mode)
+        assertFalse(preferences.getBoolean(GemmaFloatingSettings.ENABLED, true))
+        assertEquals("english", settings.selectedRule?.id)
+        val backup = AppPreference.exportAllToJson()
+        preferences.edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        assertEquals(GemmaFloatingMode.NBEST, GemmaFloatingSettings(preferences).mode)
+        settings.selectMode(GemmaFloatingMode.OFF.value)
+        assertFalse(settings.enabled)
+    }
+
     @Test fun untouchedLegacyModelessMigratesAndKeepsSelectionAcrossReload() {
         val english = GemmaFloatingSettings.defaults().first()
         preferences.edit().putString(GemmaFloatingSettings.RULES, Gson().toJson(listOf(english, legacyModeless)))

@@ -1,0 +1,117 @@
+--- a/kotlin/java/com/google/ai/edge/litertlm/Engine.kt
++++ b/kotlin/java/com/google/ai/edge/litertlm/Engine.kt
+@@ -188,6 +188,12 @@
+     }
+   }
+
++  /** Renders the model-provided chat template without generating any output tokens. */
++  fun renderScoringPrompt(prompt: String): String = synchronized(lock) {
++    checkInitialized()
++    LiteRtLmJni.nativeRenderScoringPrompt(handle!!, prompt.toByteArray(Charsets.UTF_8))
++  }
++
+   /** Throws [IllegalStateException] if the engine is not initialized. */
+   private fun checkInitialized() {
+     check(isInitialized()) { "Engine is not initialized." }
+--- a/kotlin/java/com/google/ai/edge/litertlm/Session.kt
++++ b/kotlin/java/com/google/ai/edge/litertlm/Session.kt
+@@ -136,6 +136,18 @@
+     LiteRtLmJni.nativeCancelProcess(handle)
+   }
+
++  /** Independent branch sharing the already-prefilled prefix and the engine's weights. */
++  fun cloneForScoring(): Session {
++    checkIsAlive()
++    return Session(LiteRtLmJni.nativeCloneSessionForScoring(handle))
++  }
++
++  /** Returns the raw log likelihood and token count of one forced continuation. */
++  fun scoreText(text: String): FloatArray {
++    checkIsAlive()
++    return LiteRtLmJni.nativeRunTextScoring(handle, text.toByteArray(Charsets.UTF_8))
++  }
++
+   /** Throws [IllegalStateException] if the session is not alive. */
+   private fun checkIsAlive() {
+     check(isAlive) { "Session is not alive." }
+--- a/kotlin/java/com/google/ai/edge/litertlm/LiteRtLmJni.kt
++++ b/kotlin/java/com/google/ai/edge/litertlm/LiteRtLmJni.kt
+@@ -17,6 +17,11 @@
+
+ /** A wrapper for the native JNI methods. */
+ internal object LiteRtLmJni {
++
++  external fun nativeRenderScoringPrompt(enginePointer: Long, prompt: ByteArray): String
++  external fun nativeCloneSessionForScoring(sessionPointer: Long): Long
++  external fun nativeRunTextScoring(sessionPointer: Long, text: ByteArray): FloatArray
++
+
+   init {
+     NativeLibraryLoader.load()
+--- a/kotlin/java/com/google/ai/edge/litertlm/jni/litertlm.cc
++++ b/kotlin/java/com/google/ai/edge/litertlm/jni/litertlm.cc
+@@ -628,6 +628,64 @@
+ LITERTLM_JNIEXPORT void JNICALL
+ JNI_METHOD(nativeDeleteEngine)(JNIEnv* env, jclass thiz, jlong engine_pointer) {
+   delete reinterpret_cast<Engine*>(engine_pointer);
++}
++
++// The Kotlin scoring methods pass standard UTF-8 bytes, including supplementary characters.
++LITERTLM_JNIEXPORT jstring JNICALL JNI_METHOD(nativeRenderScoringPrompt)(
++    JNIEnv* env, jclass, jlong engine_pointer, jbyteArray prompt) {
++  auto* engine = reinterpret_cast<Engine*>(engine_pointer);
++  auto config = ConversationConfig::CreateDefault(*engine);
++  if (!config.ok()) {
++    ThrowLiteRtLmJniException(env, config.status().ToString());
++    return nullptr;
++  }
++  std::string text(env->GetArrayLength(prompt), '\0');
++  env->GetByteArrayRegion(prompt, 0, text.size(), reinterpret_cast<jbyte*>(text.data()));
++  if (env->ExceptionCheck()) return nullptr;
++  litert::lm::PromptTemplateInput input;
++  input.messages = nlohmann::ordered_json::array({{{"role", "user"}, {"content", text}}});
++  input.extra_context["enable_thinking"] = false;
++  auto rendered = config->GetPromptTemplate().Apply(input);
++  if (!rendered.ok()) {
++    ThrowLiteRtLmJniException(env, rendered.status().ToString());
++    return nullptr;
++  }
++  return NewStringStandardUTF(env, *rendered);
++}
++
++LITERTLM_JNIEXPORT jlong JNICALL JNI_METHOD(nativeCloneSessionForScoring)(
++    JNIEnv* env, jclass, jlong session_pointer) {
++  auto* session = reinterpret_cast<Engine::Session*>(session_pointer);
++  auto cloned = session->Clone();
++  if (!cloned.ok()) {
++    ThrowLiteRtLmJniException(env, cloned.status().ToString());
++    return 0;
++  }
++  return reinterpret_cast<jlong>(cloned->release());
++}
++
++LITERTLM_JNIEXPORT jfloatArray JNICALL JNI_METHOD(nativeRunTextScoring)(
++    JNIEnv* env, jclass, jlong session_pointer, jbyteArray target) {
++  auto* session = reinterpret_cast<Engine::Session*>(session_pointer);
++  std::string text(env->GetArrayLength(target), '\0');
++  env->GetByteArrayRegion(target, 0, text.size(), reinterpret_cast<jbyte*>(text.data()));
++  if (env->ExceptionCheck()) return nullptr;
++  // This revision accepts one target per call. Each target uses a fresh prefix branch.
++  auto response = session->RunTextScoring({text}, /*store_token_lengths=*/true);
++  if (!response.ok()) {
++    ThrowLiteRtLmJniException(env, response.status().ToString());
++    return nullptr;
++  }
++  if (response->GetScores().size() != 1 || !response->GetTokenLengths().has_value() ||
++      response->GetTokenLengths()->size() != 1) {
++    ThrowLiteRtLmJniException(env, "Missing text scoring result or token count.");
++    return nullptr;
++  }
++  const jfloat values[] = {response->GetScores()[0],
++                          static_cast<jfloat>((*response->GetTokenLengths())[0])};
++  jfloatArray result = env->NewFloatArray(2);
++  if (result != nullptr) env->SetFloatArrayRegion(result, 0, 2, values);
++  return result;
+ }
+
+ LITERTLM_JNIEXPORT jlong JNICALL JNI_METHOD(nativeCreateSession)(

@@ -6,6 +6,7 @@ import android.os.IBinder
 import java.io.File
 import java.lang.reflect.Array as ReflectArray
 import java.util.concurrent.Executors
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -35,6 +36,10 @@ class GemmaRuntimeService : Service() {
     @Volatile
     private var activeRequestId: Long = NO_REQUEST
 
+    @Volatile
+    private var scoringSession: Any? = null
+    private val cancelledRequests = ConcurrentHashMap.newKeySet<Long>()
+
     private val binder = object : IGemmaRuntime.Stub() {
         override fun initialize(
             modelPath: String,
@@ -60,9 +65,15 @@ class GemmaRuntimeService : Service() {
         }
 
         override fun cancel(requestId: Long) {
+            cancelledRequests.add(requestId)
             if (activeRequestId != requestId) return
             runCatching { conversation?.invokeNoArgs("cancelProcess") }
                 .onFailure { Timber.w(it, "Failed to cancel Gemma request %s", requestId) }
+            runCatching { scoringSession?.invokeNoArgs("cancelProcess") }
+        }
+
+        override fun scoreTexts(requestId: Long, prompt: String, targets: Array<out String>, callback: IGemmaScoringCallback) {
+            actorScope.launch { scoreTextTargets(requestId, prompt, targets, callback) }
         }
 
         override fun generatePreview(requestId: Long, prompt: String, instruction: String, callback: IGemmaRuntimeCallback) {
@@ -85,10 +96,14 @@ class GemmaRuntimeService : Service() {
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onDestroy() {
-        closeRuntime()
+        if (activeRequestId != NO_REQUEST) binder.cancel(activeRequestId)
         actorScope.cancel()
-        actorDispatcher.closeIfPossible()
-        actorExecutor.shutdownNow()
+        // Destroy native sessions only after the actor has returned from cancelled native work.
+        actorExecutor.execute {
+            closeRuntime()
+            actorDispatcher.closeIfPossible()
+            actorExecutor.shutdown()
+        }
         super.onDestroy()
     }
 
@@ -188,6 +203,10 @@ class GemmaRuntimeService : Service() {
         preview: Boolean = false,
         instruction: String = "",
     ) {
+        if (cancelledRequests.remove(requestId)) {
+            callback.safeError(requestId, "Gemma request cancelled.")
+            return
+        }
         val activeEngine = engine
         if (activeEngine == null || activeEngine.invokeNoArgs("isInitialized") != true) {
             callback.safeError(requestId, "Gemma model is not ready.")
@@ -211,6 +230,7 @@ class GemmaRuntimeService : Service() {
             .invoke(activeEngine, conversationConfig))
         conversation = activeConversation
         runCatching {
+            check(!cancelledRequests.contains(requestId)) { "Gemma request cancelled." }
             val contents = createContents(prompt, mediaPath, mediaType)
             val started = android.os.SystemClock.elapsedRealtime()
             val response = requireNotNull(activeConversation.javaClass
@@ -232,17 +252,70 @@ class GemmaRuntimeService : Service() {
 
         if (conversation === activeConversation) conversation = null
         activeConversation.invokeNoArgs("close")
+        cancelledRequests.remove(requestId)
         activeRequestId = NO_REQUEST
         callback.safeState(STATE_READY, "")
     }
 
+    private fun scoreTextTargets(requestId: Long, prompt: String, targets: Array<out String>, callback: IGemmaScoringCallback) {
+        var prefixSession: Any? = null
+        activeRequestId = requestId
+        try {
+            check(!cancelledRequests.contains(requestId)) { "Gemma request cancelled." }
+            require(targets.size in 2..4 && targets.all { it.isNotBlank() }) { "Expected two to four non-empty targets." }
+            val activeEngine = checkNotNull(engine) { "Gemma model is not ready." }
+            val rendered = activeEngine.javaClass.getMethod("renderScoringPrompt", String::class.java)
+                .invoke(activeEngine, prompt) as String
+            val samplerClass = Class.forName("com.google.ai.edge.litertlm.SamplerConfig")
+            val sampler = samplerClass.getConstructor(Int::class.javaPrimitiveType, Double::class.javaPrimitiveType,
+                Double::class.javaPrimitiveType, Int::class.javaPrimitiveType).newInstance(1, 1.0, 1.0, 0)
+            val configClass = Class.forName("com.google.ai.edge.litertlm.SessionConfig")
+            val config = configClass.getConstructor(samplerClass, Class.forName("com.google.ai.edge.litertlm.LoraConfig"))
+                .newInstance(sampler, null)
+            val prefix = requireNotNull(activeEngine.javaClass.getMethod("createSession", configClass).invoke(activeEngine, config))
+            prefixSession = prefix
+            scoringSession = prefix
+            check(!cancelledRequests.contains(requestId)) { "Gemma request cancelled." }
+            val text = Class.forName("com.google.ai.edge.litertlm.InputData\$Text")
+                .getConstructor(String::class.java).newInstance(rendered)
+            prefix.javaClass.getMethod("runPrefill", List::class.java).invoke(prefix, listOf(text))
+            val likelihoods = FloatArray(targets.size)
+            val tokenCounts = IntArray(targets.size)
+            targets.forEachIndexed { index, target ->
+                check(!cancelledRequests.contains(requestId)) { "Gemma request cancelled." }
+                val branch = requireNotNull(prefix.invokeNoArgs("cloneForScoring"))
+                try {
+                    scoringSession = branch
+                    check(!cancelledRequests.contains(requestId)) { "Gemma request cancelled." }
+                    val score = branch.javaClass.getMethod("scoreText", String::class.java).invoke(branch, target) as FloatArray
+                    check(score.size == 2 && score[0].isFinite() && score[1].isFinite() && score[1] > 0) { "Invalid Gemma likelihood result." }
+                    likelihoods[index] = score[0]
+                    tokenCounts[index] = score[1].toInt()
+                } finally {
+                    runCatching { branch.invokeNoArgs("close") }
+                }
+            }
+            check(!cancelledRequests.contains(requestId)) { "Gemma request cancelled." }
+            runCatching { callback.onScores(requestId, likelihoods, tokenCounts) }
+        } catch (error: Exception) {
+            runCatching { callback.onError(requestId, error.toRuntimeMessage()) }
+        } finally {
+            scoringSession = null
+            runCatching { prefixSession?.invokeNoArgs("close") }
+            cancelledRequests.remove(requestId)
+            activeRequestId = NO_REQUEST
+        }
+    }
+
     private fun closeRuntime() {
+        runCatching { scoringSession?.invokeNoArgs("cancelProcess") }
         runCatching { conversation?.invokeNoArgs("cancelProcess") }
         runCatching { conversation?.invokeNoArgs("close") }
         conversation = null
         activeRequestId = NO_REQUEST
         runCatching { engine?.invokeNoArgs("close") }
         engine = null
+        cancelledRequests.clear()
     }
 
     private fun newBackend(value: String): Any {

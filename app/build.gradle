@@ -1143,9 +1143,6 @@ dependencies {
     testImplementation "org.robolectric:robolectric:4.17"
 
     implementation 'com.google.code.gson:gson:2.13.1'
-    fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.14.0') {
-        transitive = false
-    }
 
     implementation "androidx.hilt:hilt-navigation-fragment:1.2.0"
 
@@ -1154,3 +1151,5 @@ dependencies {
 
 //    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
+
+apply from: 'gemma-runtime.gradle'

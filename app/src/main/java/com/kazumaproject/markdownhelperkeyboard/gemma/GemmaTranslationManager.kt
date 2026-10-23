@@ -304,6 +304,17 @@ class GemmaTranslationManager @Inject constructor(
 
     internal fun cancelFloatingText() = runtimeClient.cancelPreview()
 
+    internal suspend fun scoreFloatingCandidates(
+        request: com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaNbestRequest,
+    ): String? {
+        val scorer = com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaNbestScoring
+        val method = scorer.defaultMethod
+        val scores = runtimeClient.scorePreview(scorer.prompt(request, method), scorer.targets(request, method))
+            ?: return null // A foreground action owns the runtime; the coordinator retries later.
+        // An empty result completes this request without publishing a suggestion.
+        return scorer.alternative(request, method, scores).orEmpty()
+    }
+
     private suspend fun ensureEngineReady() {
         if (_loadState.value is GemmaLoadState.Ready) return
         if (initializeIfEnabled(forceReload = false) && _loadState.value is GemmaLoadState.Ready) return

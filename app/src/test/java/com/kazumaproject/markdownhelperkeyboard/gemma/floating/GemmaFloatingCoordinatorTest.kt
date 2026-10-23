@@ -74,6 +74,24 @@ class GemmaFloatingCoordinatorTest {
         controller.destroy()
     }
 
+    @Test fun changedNbestCandidatesInvalidateAnInFlightResultEvenWhenComposingTextIsUnchanged() = runTest {
+        val first = CompletableDeferred<String>()
+        val results = mutableListOf<String>()
+        var requests = 0
+        val controller = GemmaFloatingCoordinator(this, {
+            if (++requests == 1) first.await() else "new candidate"
+        }, {}, { _, text -> text?.let(results::add) })
+        val original = input("はし").copy(rule = null,
+            nbest = GemmaNbestRequest("はし", "", listOf("箸", "橋")))
+        controller.update(original)
+        runCurrent(); advanceTimeBy(300); runCurrent()
+        controller.update(original.copy(nbest = original.nbest!!.copy(candidates = listOf("箸", "端"))))
+        advanceTimeBy(300); runCurrent()
+        first.complete("stale candidate"); runCurrent()
+        assertEquals(listOf("new candidate"), results)
+        controller.destroy()
+    }
+
     @Test fun nativeInferenceStaysSerialAndDropsStaleResultsAcrossSessions() = runTest {
         val first = CompletableDeferred<String>()
         val requests = mutableListOf<String>()

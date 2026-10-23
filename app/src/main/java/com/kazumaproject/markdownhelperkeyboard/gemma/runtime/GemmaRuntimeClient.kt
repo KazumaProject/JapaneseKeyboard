@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaTextScores
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
@@ -51,7 +52,7 @@ class GemmaRuntimeClient @Inject constructor(
     private var initializedBinder: IBinder? = null
 
     @Volatile
-    private var activeCompletion: CompletableDeferred<String>? = null
+    private var activeCompletion: CompletableDeferred<*>? = null
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -150,13 +151,38 @@ class GemmaRuntimeClient @Inject constructor(
         if (id != NO_REQUEST) runCatching { runtime?.cancel(id) }
     }
 
-    private suspend fun generateLocked(
-        prompt: String,
-        mediaPath: String,
-        mediaType: GemmaMediaType,
-        preview: Boolean,
-        instruction: String = "",
-    ): String {
+    internal suspend fun scorePreview(prompt: String, targets: List<String>): GemmaTextScores? {
+        if (!operationMutex.tryLock()) return null
+        try {
+            val service = readyRuntime()
+            val requestId = nextRequestId.getAndIncrement()
+            val completion = CompletableDeferred<GemmaTextScores>()
+            activeRequestId = requestId
+            previewRequestId = requestId
+            activeCompletion = completion
+            val callback = object : IGemmaScoringCallback.Stub() {
+                override fun onScores(id: Long, logLikelihoods: FloatArray, tokenCounts: IntArray) {
+                    if (id == requestId) completion.complete(GemmaTextScores(logLikelihoods, tokenCounts))
+                }
+                override fun onError(id: Long, message: String) {
+                    if (id == requestId) completion.completeExceptionally(GemmaProcessException(message))
+                }
+            }
+            return try {
+                service.scoreTexts(requestId, prompt, targets.toTypedArray(), callback)
+                withTimeout(GENERATE_TIMEOUT_MS) { completion.await() }
+            } finally {
+                if (!completion.isCompleted) runCatching { service.cancel(requestId) }
+                if (previewRequestId == requestId) previewRequestId = NO_REQUEST
+                if (activeRequestId == requestId) activeRequestId = NO_REQUEST
+                if (activeCompletion === completion) activeCompletion = null
+            }
+        } finally {
+            operationMutex.unlock()
+        }
+    }
+
+    private suspend fun readyRuntime(): IGemmaRuntime {
         val service = connect()
         val binder = service.asBinder()
         if (initializedBinder !== binder || !binder.isBinderAlive) {
@@ -164,6 +190,17 @@ class GemmaRuntimeClient @Inject constructor(
                 ?: throw GemmaProcessException("Gemma runtime has not been initialized.")
             initializeLocked(service, config)
         }
+        return service
+    }
+
+    private suspend fun generateLocked(
+        prompt: String,
+        mediaPath: String,
+        mediaType: GemmaMediaType,
+        preview: Boolean,
+        instruction: String = "",
+    ): String {
+        val service = readyRuntime()
         val requestId = nextRequestId.getAndIncrement()
         activeRequestId = requestId
         if (preview) previewRequestId = requestId

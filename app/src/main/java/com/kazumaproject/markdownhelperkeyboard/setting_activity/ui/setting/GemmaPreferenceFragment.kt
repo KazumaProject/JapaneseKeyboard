@@ -53,6 +53,9 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
 
     override suspend fun preparePreferenceData(context: android.content.Context) {
         val snapshot = settingsIo(SettingsLoadStage.MODELS) {
+            com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings(
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(context),
+            ).migrateMode()
             Triple(
                 gemmaTranslationManager.installedModels(),
                 gemmaTranslationManager.selectedModel()?.file?.absolutePath,
@@ -70,6 +73,20 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
             androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()),
         )
         floatingSettings.ensureDefaults()
+        fun refreshFloatingMode() {
+            val useRule = floatingSettings.mode !=
+                com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingMode.NBEST
+            findPreference<Preference>(com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings.SELECTED)?.isEnabled = useRule
+        }
+        findPreference<ListPreference>(com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings.MODE)?.apply {
+            value = floatingSettings.mode.value
+            setOnPreferenceChangeListener { _, newValue ->
+                floatingSettings.selectMode(newValue as String)
+                refreshFloatingMode()
+                true
+            }
+        }
+        refreshFloatingMode()
         fun refreshFloatingRules() {
             findPreference<ListPreference>(com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings.SELECTED)?.apply {
                 entries = (listOf(getString(R.string.gemma_floating_none)) + floatingSettings.rules.map { it.name }).toTypedArray()

@@ -162,8 +162,9 @@ class GemmaFloatingWindowDeviceTest {
                     val input = GemmaFloatingCoordinator::class.java.getDeclaredField("current").apply { isAccessible = true }
                         .get(coordinator) as GemmaFloatingInput
                     assertEquals(settings.selectedRule, input.rule)
+                    val rule = requireNotNull(input.rule)
                     File(context.getExternalFilesDir(null), "gemma-floating-window-model.json").writeText(
-                        JSONObject().put("rule", input.rule.name).put("instruction", input.rule.instruction)
+                        JSONObject().put("rule", rule.name).put("instruction", rule.instruction)
                             .put("source", input.text).put("result", nativeResult)
                             .put("modelMultilinePassed", nativeResult == expected).toString(),
                     )

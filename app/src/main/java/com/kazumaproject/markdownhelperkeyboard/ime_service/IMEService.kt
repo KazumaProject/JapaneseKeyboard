@@ -4,6 +4,8 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSett
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingInput
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingCoordinator
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingWindow
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingMode
+import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaNbestRequest
 import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.DictionaryKind
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
@@ -1767,13 +1769,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var gemmaFloatingRevision = 0L
     private var gemmaFloatingCoordinator: GemmaFloatingCoordinator? = null
     private var gemmaFloatingWindow: GemmaFloatingWindow? = null
+    private var gemmaNbestRequest: GemmaNbestRequest? = null
+    private var gemmaNbestCandidateToken: CandidateRequestToken? = null
 
     private fun canUseGemmaFloating(): Boolean = AppVariantConfig.hasGemma &&
         isInputViewActive && !isFullscreenMode && !currentInputType.isPassword() &&
         dictionaryInputConnection == null &&
         keyboardLayoutEditState.value !is KeyboardLayoutEditState.Enabled &&
         appPreference.enable_gemma_translation_preference &&
-        runtimeInputSharedPreferences.getBoolean(GemmaFloatingSettings.ENABLED, false) &&
+        GemmaFloatingSettings.readMode(runtimeInputSharedPreferences) != GemmaFloatingMode.OFF &&
         gemmaTranslationManager.isTranslationAvailable() &&
         gemmaMediaPanelController?.isShowing != true &&
         gemmaHandwritingController?.isActive != true
@@ -1787,18 +1791,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun refreshGemmaFloating() {
         if (!::runtimeInputSharedPreferences.isInitialized) return
-        val rule = if (canUseGemmaFloating() && gemmaFloatingText.isNotBlank())
+        val mode = GemmaFloatingSettings.readMode(runtimeInputSharedPreferences)
+        val rule = if (mode == GemmaFloatingMode.RULE)
             GemmaFloatingSettings(runtimeInputSharedPreferences).selectedRule else null
-        if (rule == null) { gemmaFloatingCoordinator?.update(null); gemmaFloatingWindow?.clear(); return }
+        var nbest = if (mode == GemmaFloatingMode.NBEST && !isHenkan.get() &&
+            !bunsetusMultipleDetect && stringInTail.get().isEmpty())
+            gemmaNbestRequest?.takeIf { it.reading == inputString.value &&
+                gemmaNbestCandidateToken?.let(candidateRequestTracker::isCurrent) != false } else null
+        if (!canUseGemmaFloating() || gemmaFloatingText.isBlank() || (rule == null && nbest == null)) {
+            gemmaFloatingCoordinator?.update(null); gemmaFloatingWindow?.clear(); return
+        }
+        if (nbest != null) {
+            val composing = cursorWrittenComposing?.text.orEmpty()
+            val before = currentInputConnection?.getTextBeforeCursor(composing.length + 128, 0)?.toString().orEmpty()
+            val context = if (composing.isNotEmpty() && before.endsWith(composing)) before.dropLast(composing.length) else ""
+            nbest = nbest.copy(leftContext = context.takeLast(128))
+            gemmaNbestRequest = nbest
+        }
         val window = gemmaFloatingWindow ?: GemmaFloatingWindow(
             this, ::gemmaFloatingAnchor, ::canUseGemmaFloating, ::resolveCandidatePanelColors,
-            validInput = { it.session == gemmaInputSessionId && it.revision == gemmaFloatingRevision &&
-                editorMutationRevision.isCurrent(it.editorRevision) },
+            validInput = ::isCurrentGemmaFloatingInput,
         ) { input, result ->
-            if (!canUseGemmaFloating() || input.session != gemmaInputSessionId ||
-                input.revision != gemmaFloatingRevision || input.text != gemmaFloatingText ||
-                !editorMutationRevision.isCurrent(input.editorRevision) ||
-                input.rule != GemmaFloatingSettings(runtimeInputSharedPreferences).selectedRule ||
+            if (!canUseGemmaFloating() || !isCurrentGemmaFloatingInput(input) ||
+                input.text != gemmaFloatingText ||
+                (input.nbest == null && input.rule != GemmaFloatingSettings(runtimeInputSharedPreferences).selectedRule) ||
+                (input.nbest != null && result !in input.nbest.candidates) ||
                 composingTextArbiter.isPreviewVisible() || cursorWrittenComposing?.text != input.text
             ) false else {
                 // commitText replaces the composing region. Finishing first would append instead.
@@ -1811,18 +1828,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.also { gemmaFloatingWindow = it }
         val coordinator = gemmaFloatingCoordinator ?: GemmaFloatingCoordinator(
             scope,
-            generate = { gemmaTranslationManager.generateFloatingText(it.text, it.rule.instruction) },
+            generate = {
+                if (it.nbest != null) gemmaTranslationManager.scoreFloatingCandidates(it.nbest)
+                else gemmaTranslationManager.generateFloatingText(it.text, requireNotNull(it.rule).instruction)
+            },
             cancelGeneration = { gemmaTranslationManager.cancelFloatingText() },
             publish = { input, result -> window.show(input, result) },
-            publishProcessing = window::showProcessing,
+            publishProcessing = { if (it.nbest == null) window.showProcessing(it) },
         ).also { gemmaFloatingCoordinator = it }
         coordinator.update(GemmaFloatingInput(gemmaInputSessionId, gemmaFloatingRevision, gemmaFloatingText, rule,
-            editorMutationRevision.current()))
+            editorMutationRevision.current(), nbest))
+    }
+
+    private fun isCurrentGemmaFloatingInput(input: GemmaFloatingInput): Boolean {
+        if (input.session != gemmaInputSessionId || input.revision != gemmaFloatingRevision ||
+            !editorMutationRevision.isCurrent(input.editorRevision)) return false
+        return if (input.nbest != null) {
+            GemmaFloatingSettings.readMode(runtimeInputSharedPreferences) == GemmaFloatingMode.NBEST &&
+                input.nbest == gemmaNbestRequest && input.nbest.reading == inputString.value &&
+                gemmaNbestCandidateToken?.let(candidateRequestTracker::isCurrent) != false &&
+                !isHenkan.get() && !bunsetusMultipleDetect && stringInTail.get().isEmpty()
+        } else {
+            GemmaFloatingSettings.readMode(runtimeInputSharedPreferences) == GemmaFloatingMode.RULE
+        }
+    }
+
+    private fun updateGemmaNbestRequest(reading: String, candidates: List<Candidate>, token: CandidateRequestToken?) {
+        if (GemmaFloatingSettings.readMode(runtimeInputSharedPreferences) != GemmaFloatingMode.NBEST) return
+        // Keep the candidate snapshot during loading; the Ready event can then score it without another keypress.
+        gemmaNbestRequest = GemmaNbestRequest.from(reading, "", candidates)
+        gemmaNbestCandidateToken = token
+        refreshGemmaFloating()
     }
 
     private fun clearGemmaFloating() {
         gemmaFloatingRevision++
         gemmaFloatingText = ""
+        gemmaNbestRequest = null
+        gemmaNbestCandidateToken = null
         gemmaFloatingCoordinator?.update(null)
         gemmaFloatingWindow?.clear()
     }
@@ -19901,6 +19944,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (zenzEnableStatePreference == true) {
             filteredCandidateList = localCandidates
             lastLocalUpdatedInput.emit(insertString)
+        }
+        withContext(Dispatchers.Main.immediate) {
+            if (shouldApplyCandidateResult(insertString, token)) updateGemmaNbestRequest(insertString, displayedCandidates, token)
         }
     }
 

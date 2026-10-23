@@ -50,12 +50,17 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/gemma_floating_category">
-        <SwitchPreferenceCompat
-            android:key="gemma_floating_enabled"
-            android:defaultValue="false"
+        <ListPreference
+            android:key="gemma_floating_mode"
             android:dependency="gemma_translation_enable_preference"
-            android:title="@string/gemma_floating_enable"
-            android:summary="@string/gemma_floating_summary" />
+            android:entries="@array/gemma_floating_mode_entries"
+            android:entryValues="@array/gemma_floating_mode_values"
+            android:title="@string/gemma_floating_mode_title"
+            app:useSimpleSummaryProvider="true" />
+        <Preference
+            android:key="gemma_nbest_description"
+            android:selectable="false"
+            android:summary="@string/gemma_nbest_summary" />
         <ListPreference
             android:key="gemma_floating_selected_rule"
             android:title="@string/gemma_floating_selected" />

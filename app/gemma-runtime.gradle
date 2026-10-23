@@ -1,0 +1,23 @@
+// The upstream Android AAR omits the native scoring API. Rebuild its pinned bindings
+// with our small JNI patch; sources, intermediates and the resulting AAR stay in caches/build/.
+def gemmaNativeAbis = providers.gradleProperty("gemmaNativeAbis").orElse("arm64-v8a,x86_64")
+def gemmaRuntimeCache = providers.gradleProperty("gemmaRuntimeCacheDir")
+        .orElse(providers.environmentVariable("GEMMA_RUNTIME_CACHE_DIR"))
+        .orElse(new File(gradle.gradleUserHomeDir, "caches/gemma-scoring-runtime").absolutePath)
+def gemmaRuntimeAar = layout.buildDirectory.file("generated/gemmaRuntime/litertlm-scoring.aar")
+def prepareGemmaRuntime = tasks.register("prepareGemmaRuntime", Exec) {
+    group = "gemma"
+    description = "Builds the pinned LiteRT-LM Android bindings with real likelihood scoring."
+    inputs.files("scripts/prepare_gemma_runtime.py", "gemma-runtime-scoring.patch")
+    inputs.property("abis", gemmaNativeAbis)
+    outputs.file(gemmaRuntimeAar)
+    commandLine "python3", file("scripts/prepare_gemma_runtime.py"),
+            "--patch", file("gemma-runtime-scoring.patch"),
+            "--cache", gemmaRuntimeCache.get(),
+            "--output", gemmaRuntimeAar.get().asFile,
+            "--sdk", android.sdkDirectory,
+            "--abis", gemmaNativeAbis.get()
+}
+dependencies {
+    fullRuntimeOnly(files(gemmaRuntimeAar).builtBy(prepareGemmaRuntime))
+}

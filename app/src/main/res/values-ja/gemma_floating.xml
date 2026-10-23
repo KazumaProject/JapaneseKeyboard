@@ -13,4 +13,11 @@
     <string name="gemma_floating_name">ルール名</string>
     <string name="gemma_floating_instruction">Gemma への指示</string>
     <string name="gemma_floating_required">入力してください</string>
+    <string name="gemma_floating_mode_title">自動フローティングの動作</string>
+    <string name="gemma_nbest_summary">N-best：入力が少し止まると、選択中のGemmaで読み全体の変換候補を最大4件採点します。通常の1位と異なる場合だけ提案し、タップで確定します。候補欄の通常の順序は保持します。</string>
+    <string-array name="gemma_floating_mode_entries">
+        <item>無効</item>
+        <item>選択したルールで文章を処理</item>
+        <item>N-bestの変換候補を提案</item>
+    </string-array>
 </resources>

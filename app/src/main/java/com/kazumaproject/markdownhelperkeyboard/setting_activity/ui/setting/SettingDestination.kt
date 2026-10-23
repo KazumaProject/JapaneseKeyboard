@@ -414,7 +414,7 @@ object SettingDestinations {
                     title = "Gemma",
                     summary = context.getString(R.string.setting_route_gemma_summary),
                     category = SettingCategory.FREQUENT,
-                    keywords = listOf("gemma", "ai", "conversion", "translation"),
+                    keywords = listOf("gemma", "ai", "conversion", "translation", "n-best", "nbest", "再ランキング", "フローティング"),
                     destinationId = R.id.gemmaPreferenceFragment,
                     iconRes = CoreR.drawable.lightbulb_24dp,
                 )

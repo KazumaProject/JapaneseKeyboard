@@ -14,4 +14,14 @@
     <string name="gemma_floating_name">Rule name</string>
     <string name="gemma_floating_instruction">Instruction for Gemma</string>
     <string name="gemma_floating_required">Required</string>
+    <string name="gemma_floating_mode_title">Automatic floating suggestion mode</string>
+    <string name="gemma_nbest_summary">N-best: after a short pause, score up to four whole-input conversion candidates with the selected Gemma model. Show a suggestion only when its first choice differs. Tap to commit. The candidate strip keeps its normal order.</string>
+    <string-array name="gemma_floating_mode_entries">
+        <item>Off</item>
+        <item>Apply the selected rule</item>
+        <item>Suggest an N-best conversion candidate</item>
+    </string-array>
+    <string-array name="gemma_floating_mode_values" translatable="false">
+        <item>off</item><item>rule</item><item>nbest</item>
+    </string-array>
 </resources>

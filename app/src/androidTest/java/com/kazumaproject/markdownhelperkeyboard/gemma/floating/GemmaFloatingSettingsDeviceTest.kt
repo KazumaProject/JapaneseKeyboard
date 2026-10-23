@@ -7,7 +7,6 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
-import androidx.preference.SwitchPreferenceCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -114,7 +113,9 @@ class GemmaFloatingSettingsDeviceTest {
 
     @Test fun bothGemmaEntryPointsPersistRuleSelectionAcrossRecreation() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        assumeTrue("Use the isolated QA application ID", context.packageName == "com.kazumaproject.gemmafloatingqa")
+        assumeTrue("Use the isolated QA app or explicitly opt in on an isolated emulator",
+            context.packageName == "com.kazumaproject.gemmafloatingqa" ||
+                InstrumentationRegistry.getArguments().getString("gemmaNbestSettings") == "true")
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         for (newHome in listOf(true, false)) {
             preferences.edit().clear().putBoolean("setting_use_new_home_screen_preference", newHome).commit()
@@ -141,7 +142,12 @@ class GemmaFloatingSettingsDeviceTest {
                 awaitGemma(scenario)
                 scenario.onActivity { activity ->
                     val fragment = gemmaFragment(activity)
-                    assertFalse(fragment.findPreference<SwitchPreferenceCompat>(GemmaFloatingSettings.ENABLED)!!.isChecked)
+                    val mode = fragment.findPreference<ListPreference>(GemmaFloatingSettings.MODE)!!
+                    assertEquals(GemmaFloatingMode.OFF.value, mode.value)
+                    assertEquals(listOf("off", "rule", "nbest"), mode.entryValues.map { it.toString() })
+                    assertTrue(mode.callChangeListener(GemmaFloatingMode.NBEST.value))
+                    mode.value = GemmaFloatingMode.NBEST.value
+                    assertEquals(GemmaFloatingMode.NBEST, GemmaFloatingSettings(preferences).mode)
                     assertNotNull(fragment.findPreference<Preference>(GemmaFloatingSettings.MANAGE))
                     val selection = fragment.findPreference<ListPreference>(GemmaFloatingSettings.SELECTED)!!
                     assertEquals("english", selection.value)
@@ -154,6 +160,8 @@ class GemmaFloatingSettingsDeviceTest {
                 awaitGemma(scenario)
                 scenario.onActivity { activity ->
                     assertEquals("japanese", gemmaFragment(activity).findPreference<ListPreference>(GemmaFloatingSettings.SELECTED)!!.value)
+                    assertEquals(GemmaFloatingMode.NBEST.value,
+                        gemmaFragment(activity).findPreference<ListPreference>(GemmaFloatingSettings.MODE)!!.value)
                 }
             }
         }

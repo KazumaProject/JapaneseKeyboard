@@ -12,15 +12,25 @@ internal data class GemmaFloatingRule(
     @field:SerializedName("instruction") val instruction: String,
 )
 
+internal enum class GemmaFloatingMode(val value: String) {
+    OFF("off"), RULE("rule"), NBEST("nbest");
+}
+
 /** Uses the default preferences, so the existing settings backup includes rules and selection. */
 internal class GemmaFloatingSettings(private val preferences: SharedPreferences) {
     companion object {
         const val ENABLED = "gemma_floating_enabled"
+        const val MODE = "gemma_floating_mode"
         const val SELECTED = "gemma_floating_selected_rule"
         const val RULES = "gemma_floating_rules"
         const val MANAGE = "gemma_floating_manage_rules"
-        val keys = setOf(ENABLED, SELECTED, RULES)
+        val keys = setOf(ENABLED, MODE, SELECTED, RULES)
         private val legacyModeless = GemmaFloatingRule("modeless", "モードレス", "Convert Japanese or romaji Japanese to natural kanji/kana. Keep English words and sentences in English; never transliterate English into katakana. In mixed input, convert only Japanese portions. Preserve English names, code, URLs, numbers and formatting. Correct obvious typos without changing meaning.")
+        fun readMode(preferences: SharedPreferences): GemmaFloatingMode =
+            if (preferences.contains(MODE)) {
+                GemmaFloatingMode.entries.firstOrNull { it.value == preferences.getString(MODE, null) }
+                    ?: GemmaFloatingMode.OFF
+            } else if (preferences.getBoolean(ENABLED, false)) GemmaFloatingMode.RULE else GemmaFloatingMode.OFF
         fun defaults() = listOf(
             GemmaFloatingRule("english", "英訳", "Translate the input into natural English. Preserve its meaning, names, numbers, emoji and formatting. If already English, preserve it."),
             GemmaFloatingRule("japanese", "日本語訳", "Translate the input into natural Japanese. Preserve its meaning, names, numbers, emoji and formatting. If already Japanese, preserve it."),
@@ -28,7 +38,18 @@ internal class GemmaFloatingSettings(private val preferences: SharedPreferences)
     }
 
     private val gson = Gson()
-    val enabled get() = preferences.getBoolean(ENABLED, false)
+    val mode: GemmaFloatingMode
+        get() = readMode(preferences)
+    val enabled get() = mode != GemmaFloatingMode.OFF
+
+    fun migrateMode() {
+        if (!preferences.contains(MODE)) preferences.edit().putString(MODE, mode.value).apply()
+    }
+
+    fun selectMode(value: String) {
+        val next = GemmaFloatingMode.entries.firstOrNull { it.value == value } ?: GemmaFloatingMode.OFF
+        preferences.edit().putString(MODE, next.value).putBoolean(ENABLED, next == GemmaFloatingMode.RULE).apply()
+    }
     val rules: List<GemmaFloatingRule>
         get() {
             if (!preferences.contains(RULES)) return defaults()

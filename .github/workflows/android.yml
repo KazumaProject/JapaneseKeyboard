@@ -51,6 +51,15 @@ jobs:
           path: .zenz-model-cache
           key: ${{ runner.os }}-zenz-model-v2-4f5423f0fad41a73b1242eb96fe5c12ae4fdca83-Q5_K_M-ggml-model-Q5_K_M.gguf
 
+      - name: Install Bazelisk for Gemma likelihood scoring
+        run: npm install -g @bazel/bazelisk
+
+      - name: Cache Gemma scoring runtime
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches/gemma-scoring-runtime
+          key: ${{ runner.os }}-gemma-scoring-${{ hashFiles('app/gemma-runtime-scoring.patch', 'app/scripts/prepare_gemma_runtime.py') }}
+
       - name: Decode JKS from Base64
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
