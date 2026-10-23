@@ -31,10 +31,6 @@
             android:defaultValue="false"
             android:title="@string/zenz_floating_title"
             android:summary="@string/zenz_floating_summary" />
-        <Preference
-            android:key="zenz_floating_candidates_reset"
-            android:dependency="zenz_floating_candidates_enabled"
-            android:title="@string/zenz_floating_reset" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/zenz_generation_category">
         <Preference

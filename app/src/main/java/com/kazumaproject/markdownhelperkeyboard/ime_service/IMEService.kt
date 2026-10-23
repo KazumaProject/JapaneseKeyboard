@@ -1019,7 +1019,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.DATE_CANDIDATE_ENABLED_FORMATS_KEY,
     )
     private val runtimeInputPreferenceListener =
-        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
+            if (key == null || key == "zenz_debounce_time_preference") {
+                runOnMainThread {
+                    zenzDebounceTimePreference = preferences.getInt(
+                        "zenz_debounce_time_preference", DEFAULT_ZENZ_DEBOUNCE_MILLIS.toInt())
+                }
+            }
             if (key != null && key in runtimeInputPreferenceKeys) {
                 runOnMainThread {
                     syncRuntimeInputPreferences()
@@ -3152,7 +3158,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val callback = imeWindow.callback ?: return@let
             imeWindow.callback = object : android.view.Window.Callback by callback {
                 override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-                    if (zenzFloatingWindow?.dispatchInputWindowTouch(event) == true) return true
                     if (composingGuide?.dispatchInputWindowTouch(event) == true) return true
                     return callback.dispatchTouchEvent(event)
                 }
@@ -3691,8 +3696,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         controller.toggle(kind)
     }
 
-    private var zenzFloatingWindow: ComposingGuideWindow? = null
-    private var zenzFloatingLabel: android.widget.TextView? = null
+    private var zenzFloatingWindow: ZenzFloatingWindow? = null
+    private var zenzGeneratingRequestToken: Long? = null
     private val zenzFloatingEnabled get() = AppVariantConfig.hasZenz &&
         runtimeInputSharedPreferences.getBoolean("enable_ai_conversion_zenz_preference", false) &&
         runtimeInputSharedPreferences.getBoolean(ComposingGuideSettings.ZENZ_ENABLED, false)
@@ -3700,6 +3705,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun canUseZenzFloatingPanel(): Boolean = zenzFloatingEnabled &&
         isInputViewActive && !isFullscreenMode && !currentInputType.isPassword() &&
         keyboardLayoutEditState.value !is KeyboardLayoutEditState.Enabled
+
+    private fun zenzFloatingAnchor(): View? = gemmaFloatingAnchor()
+        ?: mainLayoutBinding?.suggestionRecyclerView
 
     private fun refreshZenzFloatingCandidates() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
@@ -3715,58 +3723,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentTarget = state != null && (state.bunsetsuTarget?.let(::isCurrentBunsetsuZenzTarget)
                 ?: (state.displayInput == inputString.value)),
             loading = state?.isLoading == true,
+            generationStarted = state != null && state.requestToken == zenzGeneratingRequestToken,
             hasCandidate = state?.candidate != null,
         )
         if (!valid) {
-            zenzFloatingWindow?.stop()
+            zenzFloatingWindow?.clear()
             return
         }
-        val host = mainLayoutBinding?.root ?: return
-        val window = zenzFloatingWindow ?: ComposingGuideWindow(
-            this, eligible = ::canUseZenzFloatingPanel,
-            onSurfaceChanged = { surface ->
-                zenzFloatingLabel = surface?.let {
-                    it.removeAllViews()
-                    android.widget.TextView(this).apply {
-                        id = R.id.zenz_floating_candidate_text
-                        textSize = 20f
-                        gravity = Gravity.CENTER_VERTICAL
-                        setPadding(applicationContext.dpToPx(8), applicationContext.dpToPx(8), applicationContext.dpToPx(8), applicationContext.dpToPx(8))
-                        setTextColor(resolveCandidatePanelColors().text)
-                        val scroll = android.widget.ScrollView(this@IMEService)
-                        scroll.addView(this)
-                        it.addView(scroll, android.widget.LinearLayout.LayoutParams(-1, -1))
-                        setOnClickListener {
-                            val current = _zenzLiveSlotState.value ?: return@setOnClickListener
-                            val candidate = current.candidate ?: return@setOnClickListener
-                            if (!zenzFloatingEnabled || current.isLoading || current.requestToken != zenzLiveRequestToken ||
-                                (current.bunsetsuTarget?.let { target -> !isCurrentBunsetsuZenzTarget(target) }
-                                    ?: (current.displayInput != inputString.value))) return@setOnClickListener
-                            mainLayoutBinding?.let { binding ->
-                                vibrate()
-                                setCandidateClick(candidate, current.displayInput, currentTenkeyInputMode(binding), 0, listOf(candidate))
-                            }
-                        }
-                    }
-                }
-            }, colors = ::resolveCandidatePanelColors,
-            minimumCandidateHeight = {
-                zenzFloatingLabel?.let { label ->
-                    kotlin.math.ceil(label.paint.fontMetrics.descent - label.paint.fontMetrics.ascent).toInt() +
-                        label.paddingTop + label.paddingBottom
-                } ?: applicationContext.dpToPx(40)
+        val current = state ?: return
+        val window = zenzFloatingWindow ?: ZenzFloatingWindow(
+            this, ::zenzFloatingAnchor,
+            windowToken = { mainLayoutBinding?.root?.windowToken },
+            eligible = { canUseZenzFloatingPanel() && !suppressSuggestions },
+            colors = ::resolveCandidatePanelColors,
+            validRequest = { token ->
+                val latest = _zenzLiveSlotState.value
+                latest != null && token == latest.requestToken && token == zenzLiveRequestToken &&
+                    shouldRequestZenzLiveGenerate(latest.displayInput, latest.source) &&
+                    (latest.bunsetsuTarget?.let(::isCurrentBunsetsuZenzTarget)
+                        ?: (latest.displayInput == inputString.value))
             },
-            profile = GuideProfile.ZENZ,
-            candidateBounds = { composingGuide?.currentCandidateBounds() },
-            profileAllowed = { zenzFloatingEnabled }
+            commit = { token, _ ->
+                val latest = _zenzLiveSlotState.value
+                val candidate = latest?.candidate
+                val binding = mainLayoutBinding
+                if (latest == null || candidate == null || binding == null ||
+                    !canUseZenzFloatingPanel() || suppressSuggestions || latest.isLoading ||
+                    token != latest.requestToken || token != zenzLiveRequestToken ||
+                    !shouldRequestZenzLiveGenerate(latest.displayInput, latest.source) ||
+                    !(latest.bunsetsuTarget?.let(::isCurrentBunsetsuZenzTarget)
+                        ?: (latest.displayInput == inputString.value))) false
+                else {
+                    vibrate()
+                    setCandidateClick(candidate, latest.displayInput, currentTenkeyInputMode(binding), 0, listOf(candidate))
+                    true
+                }
+            },
         ).also { zenzFloatingWindow = it }
-        if (zenzFloatingLabel == null) window.start(host) else window.refresh()
-        zenzFloatingLabel?.apply {
-            text = if (state?.isLoading == true) getString(R.string.zenz_floating_loading) else state?.candidate?.string.orEmpty()
-            isEnabled = state?.isLoading == false && state.candidate != null
-            setTextColor(resolveCandidatePanelColors().text)
-            KeyboardFontApplicator.apply(this, KeyboardFontApplicator.processSnapshot)
-        }
+        if (current.isLoading) window.showProcessing(current.requestToken)
+        else window.show(current.requestToken, current.candidate?.string)
     }
 
     private var composingGuide: ComposingGuideController? = null
@@ -3811,7 +3806,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         gemmaFloatingCoordinator?.destroy()
         gemmaFloatingCoordinator = null
         stopSplitKeyboard()
-        zenzFloatingWindow?.stop()
+        zenzFloatingWindow?.clear()
         composingGuide?.stop()
         Timber.d("onCreateInputView")
         // もしコンテナがすでに存在している場合、システムが再追加できるように
@@ -3869,7 +3864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cursorNativeSelectionEnd = attribute?.initialSelEnd ?: -1
         dismissKeyboardSelectionPopups()
         if (!dictionaryConfigurationChanging) clipboardFloat?.hide()
-        zenzFloatingWindow?.stop()
+        zenzFloatingWindow?.clear()
         composingGuide?.stop()
         super.onStartInput(attribute, restarting)
         resetCustomToggleState()
@@ -6583,7 +6578,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         dismissJob?.cancel()
         stopSplitKeyboard()
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
-        zenzFloatingWindow?.stop()
+        zenzFloatingWindow?.clear()
         composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
@@ -6606,7 +6601,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
-        zenzFloatingWindow?.stop()
+        zenzFloatingWindow?.clear()
         composingGuide?.stop()
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
@@ -6658,7 +6653,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         imeSwitchPopupWindow?.dismiss()
         stopSplitKeyboard()
         if (!dictionaryConfigurationChanging) dictionaryFloats?.endSession()
-        zenzFloatingWindow?.stop()
+        zenzFloatingWindow?.clear()
         composingGuide?.stop()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             inlineAutofillController?.clear()
@@ -6685,7 +6680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         dictionaryFloats = null
         clipboardFloat?.destroy()
         clipboardFloat = null
-        zenzFloatingWindow?.destroy()
+        zenzFloatingWindow?.clear()
         zenzFloatingWindow = null
         composingGuide?.destroy()
         composingGuide = null
@@ -8059,7 +8054,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (::floatingDockView.isInitialized) floatingDockView.setKeyboardFont(snapshot)
         if (::floatingPhysicalToolbarView.isInitialized) floatingPhysicalToolbarView.setKeyboardFont(snapshot)
         if (::floatingModeSwitchView.isInitialized) floatingModeSwitchView.setKeyboardFont(snapshot)
-        zenzFloatingLabel?.let { KeyboardFontApplicator.apply(it, snapshot) }
         zenzFloatingWindow?.setKeyboardFont(snapshot)
         composingGuide?.setKeyboardFont(snapshot)
         clipboardFloat?.setKeyboardFont(snapshot)
@@ -18156,6 +18150,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         _zenzLiveSlotState.value = null
+        zenzGeneratingRequestToken = null
         refreshZenzFloatingCandidates()
         zenzLiveLocalCandidatesSnapshot = emptyList()
         zenzLiveSnapshotDisplayInput = ""
@@ -18220,6 +18215,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             source = source,
             bunsetsuTarget = bunsetsuTarget
         )
+        zenzGeneratingRequestToken = null
         _zenzLiveSlotState.value = loadingState
         refreshZenzFloatingCandidates()
         if (bunsetsuTarget != null) {
@@ -18345,6 +18341,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val state = _zenzLiveSlotState.value ?: return null
         _zenzLiveSlotState.value = state.copy(requestInput = requestInput)
         zenzLiveSnapshotRequestInput = requestInput
+        // Called only after the configured debounce, or directly for an immediate request.
+        // No panel is mounted while an automatic request is still waiting.
+        zenzGeneratingRequestToken = request.requestToken
+        refreshZenzFloatingCandidates()
         return requestInput
     }
 
