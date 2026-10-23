@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.gemma.floating
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Rect
 import android.os.ParcelFileDescriptor
@@ -14,6 +15,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
+import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import java.io.File
 import org.json.JSONObject
@@ -62,7 +64,7 @@ class GemmaNbestImeDeviceTest {
 
     private fun stripTexts(): List<String> {
         fun texts(root: AccessibilityNodeInfo): List<String> = buildList {
-            root.text?.toString()?.takeIf { it.isNotBlank() }?.let(::add)
+            root.text?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
             for (index in 0 until root.childCount) root.getChild(index)?.let { addAll(texts(it)) }
         }
         return node("suggestion_recycler_view")?.let(::texts).orEmpty()
@@ -94,7 +96,7 @@ class GemmaNbestImeDeviceTest {
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val backup = AppPreference.exportAllToJson()
         val previousIme = shell("settings get secure default_input_method")
-        val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val ime = ComponentName(context, IMEService::class.java).flattenToShortString()
         val model = File(context.getExternalFilesDir(null), "gemma/gemma-4-E2B-it.litertlm")
         preferences.edit().putBoolean("gemma_translation_enable_preference", true)
             .putString("gemma_translation_model_path_preference", model.absolutePath)
@@ -119,6 +121,7 @@ class GemmaNbestImeDeviceTest {
             shell("wm dismiss-keyguard")
             shell("ime enable $ime")
             shell("ime set $ime")
+            assertEquals("The test IME was not selected", ime, shell("settings get secure default_input_method"))
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
                 scenario.onActivity { it.editText.setText(prefix); it.restartEditorInput(false) }
                 await("Romaji keyboard did not appear") { node("key_a") != null }

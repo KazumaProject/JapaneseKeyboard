@@ -1803,7 +1803,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (nbest != null) {
             val composing = cursorWrittenComposing?.text.orEmpty()
-            val before = currentInputConnection?.getTextBeforeCursor(composing.length + 128, 0)?.toString().orEmpty()
+            val before = runCatching {
+                currentInputConnection?.getTextBeforeCursor(composing.length + 128, 0)?.toString().orEmpty()
+            }.getOrDefault("")
             val context = if (composing.isNotEmpty() && before.endsWith(composing)) before.dropLast(composing.length) else ""
             nbest = nbest.copy(leftContext = context.takeLast(128))
             gemmaNbestRequest = nbest
@@ -19945,8 +19947,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             filteredCandidateList = localCandidates
             lastLocalUpdatedInput.emit(insertString)
         }
-        withContext(Dispatchers.Main.immediate) {
-            if (shouldApplyCandidateResult(insertString, token)) updateGemmaNbestRequest(insertString, displayedCandidates, token)
+        if (AppVariantConfig.hasGemma &&
+            GemmaFloatingSettings.readMode(runtimeInputSharedPreferences) == GemmaFloatingMode.NBEST) {
+            withContext(Dispatchers.Main.immediate) {
+                if (shouldApplyCandidateResult(insertString, token)) updateGemmaNbestRequest(insertString, displayedCandidates, token)
+            }
         }
     }
 
