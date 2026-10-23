@@ -25,6 +25,7 @@ object SettingTabRegistry {
     const val TAB_TEXT_MACRO = "text_macro"
     const val TAB_VOICE_INPUT = "voice_input"
     const val TAB_KANA = "kana"
+    const val TAB_MORSE = "morse"
     const val TAB_GOJUON = "gojuon"
     const val TAB_QWERTY = "qwerty"
     const val TAB_QWERTY_ENGLISH = "qwerty_english"
@@ -110,6 +111,13 @@ object SettingTabRegistry {
                 xmlRes = R.xml.pref_kana,
                 destinationId = R.id.kanaPreferenceFragment,
                 fragmentFactory = { KanaPreferenceFragment() },
+            ),
+            SettingTabSpec(
+                key = TAB_MORSE,
+                title = { it.getString(R.string.morse_title) },
+                xmlRes = R.xml.pref_morse,
+                destinationId = R.id.morsePreferenceFragment,
+                fragmentFactory = { com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferenceFragment() },
             ),
             SettingTabSpec(
                 key = TAB_GOJUON,
