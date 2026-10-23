@@ -26,12 +26,213 @@
         android:title="@string/classified_dictionary_settings_title"
         app:summary="@string/classified_dictionary_settings_summary">
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_PERSON"
-            android:title="@string/classified_dictionary_person"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <PreferenceCategory
+            android:key="classified_group_person"
+            android:title="@string/classified_dictionary_person">
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_UNCONFIRMED"
+                android:title="@string/classified_dictionary_person_surname_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_surname_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_surname_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_UNCONFIRMED"
+                android:title="@string/classified_dictionary_person_given_name_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_given_name_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_given_name_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_UNCONFIRMED"
+                android:title="@string/classified_dictionary_person_personal_name_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_personal_name_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_personal_name_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ACTOR"
+                android:title="@string/classified_dictionary_person_actor"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_VOICE_ACTOR"
+                android:title="@string/classified_dictionary_person_voice_actor"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_MUSICIAN"
+                android:title="@string/classified_dictionary_person_musician"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_IDOL"
+                android:title="@string/classified_dictionary_person_idol"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_COMEDIAN"
+                android:title="@string/classified_dictionary_person_comedian"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_BROADCASTER"
+                android:title="@string/classified_dictionary_person_broadcaster"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ONLINE_CREATOR"
+                android:title="@string/classified_dictionary_person_online_creator"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SPORTS"
+                android:title="@string/classified_dictionary_person_sports"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_COMPETITIVE_GAMES"
+                android:title="@string/classified_dictionary_person_competitive_games"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_WRITER"
+                android:title="@string/classified_dictionary_person_writer"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_MANGA_ILLUSTRATION"
+                android:title="@string/classified_dictionary_person_manga_illustration"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_FILM_GAME_CREATOR"
+                android:title="@string/classified_dictionary_person_film_game_creator"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ART_DESIGN"
+                android:title="@string/classified_dictionary_person_art_design"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERFORMING_ARTS"
+                android:title="@string/classified_dictionary_person_performing_arts"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SCIENCE_EDUCATION"
+                android:title="@string/classified_dictionary_person_science_education"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
+                android:title="@string/classified_dictionary_person_thought"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_POLITICS_PUBLIC"
+                android:title="@string/classified_dictionary_person_politics_public"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_BUSINESS"
+                android:title="@string/classified_dictionary_person_business"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ROYALTY_NOBILITY"
+                android:title="@string/classified_dictionary_person_royalty_nobility"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_OTHER_IDENTIFIED"
+                android:title="@string/classified_dictionary_person_other_identified"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_CHARACTER"
@@ -110,12 +311,65 @@
             android:persistent="false"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_EVENT"
-            android:title="@string/classified_dictionary_event"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <PreferenceCategory
+            android:key="classified_group_event"
+            android:title="@string/classified_dictionary_event">
+
+            <PreferenceCategory
+                android:key="classified_group_event_occasion"
+                android:title="@string/classified_group_event_occasion">
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_OCCASION_ORGANIZED_EVENT"
+                    android:title="@string/classified_dictionary_event_occasion_organized_event"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_OCCASION_OBSERVANCE"
+                    android:title="@string/classified_dictionary_event_occasion_observance"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_OCCASION_EXAM_QUALIFICATION"
+                    android:title="@string/classified_dictionary_event_occasion_exam_qualification"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </PreferenceCategory>
+            <PreferenceCategory
+                android:key="classified_group_event_incident"
+                android:title="@string/classified_group_event_incident">
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_INCIDENT_NATURAL_DISASTER"
+                    android:title="@string/classified_dictionary_event_incident_natural_disaster"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_INCIDENT_SOCIAL_ISSUE_LITIGATION"
+                    android:title="@string/classified_dictionary_event_incident_social_issue_litigation"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </PreferenceCategory>
+            <PreferenceCategory
+                android:key="classified_group_event_history"
+                android:title="@string/classified_group_event_history">
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_HISTORY_CONFLICT"
+                    android:title="@string/classified_dictionary_event_history_conflict"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </PreferenceCategory>
+        </PreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_AWARD"
@@ -138,12 +392,124 @@
             android:persistent="false"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_TERM"
-            android:title="@string/classified_dictionary_term"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <PreferenceCategory
+            android:key="classified_group_term"
+            android:title="@string/classified_dictionary_term">
+
+            <PreferenceCategory
+                android:key="classified_group_term_general"
+                android:title="@string/classified_group_term_general">
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_PRODUCTS_DAILY_GOODS"
+                    android:title="@string/classified_dictionary_term_general_products_daily_goods"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_FOOD_DRINK_COOKING"
+                    android:title="@string/classified_dictionary_term_general_food_drink_cooking"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_INTERNET_SLANG_CULTURE"
+                    android:title="@string/classified_dictionary_term_general_internet_slang_culture"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_NEOLOGISMS_TRENDS_YOUTH_LANGUAGE"
+                    android:title="@string/classified_dictionary_term_general_neologisms_trends_youth_language"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_OTHER_GENERAL"
+                    android:title="@string/classified_dictionary_term_general_other_general"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </PreferenceCategory>
+            <PreferenceCategory
+                android:key="classified_group_term_specialist"
+                android:title="@string/classified_group_term_specialist">
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_INFORMATION_COMMUNICATIONS"
+                    android:title="@string/classified_dictionary_term_specialist_information_communications"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_MATHEMATICS_PHYSICS"
+                    android:title="@string/classified_dictionary_term_specialist_mathematics_physics"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_CHEMISTRY_LIFE_SCIENCES"
+                    android:title="@string/classified_dictionary_term_specialist_chemistry_life_sciences"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_ENGINEERING_TECHNOLOGY"
+                    android:title="@string/classified_dictionary_term_specialist_engineering_technology"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_EARTH_ENVIRONMENT_RESOURCES"
+                    android:title="@string/classified_dictionary_term_specialist_earth_environment_resources"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_ECONOMICS_MANAGEMENT"
+                    android:title="@string/classified_dictionary_term_specialist_economics_management"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_LAW_POLITICS"
+                    android:title="@string/classified_dictionary_term_specialist_law_politics"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_HUMANITIES_SOCIAL_SCIENCES"
+                    android:title="@string/classified_dictionary_term_specialist_humanities_social_sciences"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_CULTURE_ARTS_SPORTS"
+                    android:title="@string/classified_dictionary_term_specialist_culture_arts_sports"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_TRANSPORT_SAFETY_DEFENSE"
+                    android:title="@string/classified_dictionary_term_specialist_transport_safety_defense"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </PreferenceCategory>
+        </PreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_WORK_FRANCHISE"

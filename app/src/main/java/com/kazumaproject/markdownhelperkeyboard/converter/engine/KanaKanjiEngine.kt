@@ -529,6 +529,7 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafYomi = reader.loadYomiLeafIndex(yomiKey, yomiTrie),
             succinctBitVectorTokenArray = reader.loadTokenIndex(tokenKey, tokenArray),
             succinctBitVectorTangoLBS = reader.loadTangoLbsIndex(tangoKey, tangoTrie),
+            literalSurfaces = reader.loadLiteralSurfaces(category),
         )
     }
 

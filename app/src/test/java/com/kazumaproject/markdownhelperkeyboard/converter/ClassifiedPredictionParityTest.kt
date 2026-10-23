@@ -99,7 +99,7 @@ class ClassifiedPredictionParityTest {
 
     @Test fun mergedLabelsAndPredictionGatesMatchExistingBehavior() {
         val data = dictionary(true)
-        val categories = linkedSetOf(DictionaryCategory.CLASSIFIED_PERSON, DictionaryCategory.CLASSIFIED_PLACE)
+        val categories = linkedSetOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR, DictionaryCategory.CLASSIFIED_PLACE)
         val engine = KanaKanjiEngine()
         KanaKanjiEngine::class.java.getDeclaredField("classifiedDictionaries").apply { isAccessible = true }
             .set(engine, categories.associateWith { data })

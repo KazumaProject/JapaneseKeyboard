@@ -12,6 +12,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglish
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionaryReader
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import java.security.MessageDigest
 import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.BufferedReader
@@ -68,6 +71,39 @@ class DictionaryBinaryReader @Inject constructor(
         resolver.resolveCategoryLoadState(category)
 
     val currentRevision: Long get() = store.currentRevision
+
+    private val bundledLiteralSurfaces: JsonObject by lazy {
+        runCatching {
+            resolver.openBundledAsset("categories/surface-overrides.json").bufferedReader().use {
+                JsonParser.parseReader(it).asJsonObject.getAsJsonObject("categories")
+            }
+        }.getOrElse { JsonObject() }
+    }
+
+    /** Repairs only the pinned triple; another external dictionary must keep its own spelling. */
+    fun loadLiteralSurfaces(category: DictionaryCategory): Map<String, String> {
+        val id = ClassifiedDictionaries.find(category)?.id ?: return emptyMap()
+        val repair = bundledLiteralSurfaces.getAsJsonObject(id) ?: return emptyMap()
+        return runCatching {
+            val files = DictionaryFileSpecs.forCategory(category)
+            val hashes = repair.getAsJsonObject("assets")
+            if (hashes.size() != files.size || files.any { spec ->
+                    val expected = hashes.get(spec.bundledAssetPath)?.asString
+                    val actual = resolver.openForKey(spec.key).use { input ->
+                        val digest = MessageDigest.getInstance("SHA-256")
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val size = input.read(buffer)
+                            if (size < 0) break
+                            digest.update(buffer, 0, size)
+                        }
+                        digest.digest().joinToString("") { "%02x".format(it) }
+                    }
+                    expected != actual
+                }) emptyMap()
+            else repair.getAsJsonObject("surfaces").entrySet().associate { it.key to it.value.asString }
+        }.getOrElse { emptyMap() }
+    }
 
     fun loadLouds(key: DictionaryFileKey): LOUDS {
         compactBundledDictionary(key)?.tangoTrie?.let { return it }

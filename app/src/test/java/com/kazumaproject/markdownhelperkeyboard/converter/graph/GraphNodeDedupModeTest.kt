@@ -38,9 +38,9 @@ class GraphNodeDedupModeTest {
         GraphNodeDedupMode.entries.forEach { mode ->
             val graph = mutableMapOf<Int, MutableList<Node>>()
             val builder = GraphBuilder()
-            invokeAddOrUpdate(builder, graph, node(1000).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PERSON)), mode)
+            invokeAddOrUpdate(builder, graph, node(1000).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR)), mode)
             invokeAddOrUpdate(builder, graph, node(1000).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PLACE)), mode)
-            assertEquals(setOf(DictionaryCategory.CLASSIFIED_PERSON, DictionaryCategory.CLASSIFIED_PLACE), graph.getValue(1).single().dictionaryCategories)
+            assertEquals(setOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR, DictionaryCategory.CLASSIFIED_PLACE), graph.getValue(1).single().dictionaryCategories)
             invokeAddOrUpdate(builder, graph, node(500).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_CHARACTER)), mode)
             if (mode == GraphNodeDedupMode.EXISTING_BY_TANGO_L_R) {
                 assertEquals(setOf(DictionaryCategory.CLASSIFIED_CHARACTER), graph.getValue(1).single().dictionaryCategories)
