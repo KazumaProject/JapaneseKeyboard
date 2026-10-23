@@ -146,7 +146,13 @@
                 android:clickable="true"
                 android:focusable="true" />
 
-            <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
+            <com.kazumaproject.morse_keyboard.MorseKeyboardView
+        android:id="@+id/morse_view_floating"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
                 android:id="@+id/gojuon_view_floating"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
