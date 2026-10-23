@@ -1,0 +1,4 @@
+<resources>
+    <string-array name="morse_style_entries"><item>@string/morse_paddle_a</item><item>@string/morse_paddle_b</item><item>@string/morse_tap</item><item>@string/morse_straight</item></string-array>
+    <string-array name="morse_style_values"><item>PADDLE_A</item><item>PADDLE_B</item><item>TAP</item><item>STRAIGHT</item></string-array>
+</resources>

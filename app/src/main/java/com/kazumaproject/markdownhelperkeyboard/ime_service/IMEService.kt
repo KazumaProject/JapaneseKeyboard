@@ -16,6 +16,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.Floa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings
 import com.kazumaproject.core.domain.flick.FlickTextPreviewEvent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryStore
+import com.kazumaproject.morse_keyboard.*
+import com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences
 import android.annotation.SuppressLint
 import android.Manifest
 import android.content.ClipDescription
@@ -2687,6 +2689,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun splitMode(type: KeyboardType): TenKeyQWERTYMode = when (type) {
         KeyboardType.TENKEY, KeyboardType.SPLIT -> TenKeyQWERTYMode.Default
+        KeyboardType.MORSE -> TenKeyQWERTYMode.Morse
         KeyboardType.GOJUON -> TenKeyQWERTYMode.Gojuon
         KeyboardType.QWERTY -> TenKeyQWERTYMode.TenKeyQWERTY
         KeyboardType.ROMAJI -> TenKeyQWERTYMode.TenKeyQWERTYRomaji
@@ -2718,7 +2721,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun splitInputForView(view: View): SplitInputState? = splitInputs.values.firstOrNull { state ->
         state.binding.let { view === it.keyboardViewFloating || view === it.gojuonViewFloating ||
-            view === it.qwertyViewFloating || view === it.customLayoutFloating || view === it.floatingSymbolKeyboard }
+            view === it.morseViewFloating || view === it.qwertyViewFloating || view === it.customLayoutFloating || view === it.floatingSymbolKeyboard }
     }
 
     private fun activateSplitView(view: View) {
@@ -2734,6 +2737,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             syncSplitPresentation()
             return
         }
+        activeSplitSlot?.let { splitInputs[it]?.binding?.morseViewFloating?.cancelInput() }
         activeSplitSlot?.let(::saveSplitInput)
         if (activeSplitSlot != null) finishCustomToggleForAction()
         stopAllOngoingKeyLongPresses()
@@ -3088,6 +3092,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rootView: View,
         val keyboardView: TenKey?,
         val gojuonView: GojuonKeyboardView?,
+        val morseView: MorseKeyboardView?,
         val qwertyView: QWERTYKeyboardView?,
         val customLayout: FlickKeyboardView?,
         val handwritingView: GemmaHandwritingKeyboardView?,
@@ -3857,6 +3862,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        cancelMorseInputs(clearPattern = true)
         floatingCursor?.stop()
         resetCursorInputSession()
         cursorInputTracking = cursorSettings.enabled
@@ -6165,6 +6171,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // The input view can restart without onStartInput() after returning from settings.
         // Re-read preferences that may change while the existing input session is retained.
         syncRuntimeInputPreferences()
+        mainLayoutBinding?.morseView?.let(::configureMorseView)
+        floatingKeyboardBinding?.morseViewFloating?.let(::configureMorseView)
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
@@ -6568,6 +6576,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
@@ -6590,6 +6599,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
@@ -6644,6 +6654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
         resetCursorInputSession()
@@ -6666,6 +6677,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        cancelMorseInputs(clearPattern = true)
         gemmaFloatingCoordinator?.destroy()
         gemmaFloatingWindow?.clear()
         floatingCursor?.destroy()
@@ -10214,6 +10226,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             rootView = mainView.root,
             keyboardView = mainView.keyboardView,
             gojuonView = mainView.gojuonView,
+            morseView = mainView.morseView,
             qwertyView = mainView.qwertyView,
             customLayout = mainView.customLayoutDefault,
             handwritingView = mainView.gemmaHandwritingKeyboard,
@@ -10228,6 +10241,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             rootView = floatingView.root,
             keyboardView = floatingView.keyboardViewFloating,
             gojuonView = floatingView.gojuonViewFloating,
+            morseView = floatingView.morseViewFloating,
             qwertyView = floatingView.qwertyViewFloating,
             customLayout = floatingView.customLayoutFloating,
             handwritingView = null,
@@ -10251,6 +10265,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun hideKeyboardViews(surface: KeyboardSurface) {
         surface.keyboardView?.isVisible = false
         surface.gojuonView?.isVisible = false
+        surface.morseView?.isVisible = false
         surface.qwertyView?.isVisible = false
         surface.customLayout?.isVisible = false
         surface.handwritingView?.isVisible = false
@@ -10266,13 +10281,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             when (mode) {
                 TenKeyQWERTYMode.Default -> surface.keyboardView
+                TenKeyQWERTYMode.Morse -> surface.morseView
                 TenKeyQWERTYMode.Gojuon -> surface.gojuonView
                 TenKeyQWERTYMode.TenKeyQWERTY, TenKeyQWERTYMode.TenKeyQWERTYRomaji -> surface.qwertyView
                 else -> surface.customLayout
             }
         }
         // Rendering the current mode must not cancel gestures on its already-visible surface.
-        listOfNotNull(surface.keyboardView, surface.gojuonView, surface.qwertyView,
+        listOfNotNull(surface.keyboardView, surface.gojuonView, surface.morseView, surface.qwertyView,
             surface.customLayout, surface.handwritingView)
             .filter { it !== target }.forEach { it.isVisible = false }
         if (handwritingModeActive && !isFloating) {
@@ -10284,6 +10300,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 surface.keyboardView?.isVisible = true
             }
 
+            TenKeyQWERTYMode.Morse -> {
+                if (splitController == null) {
+                    val other = if (isFloating) mainLayoutBinding?.morseView else floatingKeyboardBinding?.morseViewFloating
+                    if (other != null && other !== surface.morseView && other.signal.isNotEmpty()) {
+                        surface.morseView?.restoreSignal(other.signal)
+                        other.cancelInput(clearPattern = true)
+                    }
+                }
+                surface.morseView?.isVisible = true
+            }
             TenKeyQWERTYMode.Gojuon -> {
                 surface.gojuonView?.isVisible = true
             }
@@ -11198,6 +11224,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 configureFloatingTenKeyView(floatingView)
             }
 
+            TenKeyQWERTYMode.Morse -> { configureMorseView(floatingView.morseViewFloating) }
             TenKeyQWERTYMode.Gojuon -> {
                 configureFloatingGojuonView(floatingView, mainView)
             }
@@ -11449,7 +11476,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
-        val heightPx = (heightPref.coerceIn(60, 420) * density).toInt()
+        val minimumHeight = if (mode == TenKeyQWERTYMode.Morse) MorsePreferences(this).settings().minimumHeightDp else 60
+        val heightPx = (heightPref.coerceIn(minimumHeight, 420) * density).toInt()
         val widthPx = resolveFloatingKeyboardUpdateWidthPx(mode)
         var sizeChanged = false
         var containerHeightChanged = false
@@ -11706,9 +11734,141 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var morseRomajiComposition = false
+
+    private fun cancelMorseInputs(clearPattern: Boolean = false) {
+        if (clearPattern) morseRomajiComposition = false
+        (listOfNotNull(mainLayoutBinding?.morseView, floatingKeyboardBinding?.morseViewFloating) +
+            splitInputs.values.map { it.binding.morseViewFloating }).distinct().forEach { it.cancelInput(clearPattern) }
+    }
+
+    private fun configureMorseView(view: MorseKeyboardView) {
+        view.guideAnchor = mainLayoutBinding?.root
+        view.guideAvoidView = {
+            splitInputForView(view)?.binding?.suggestionViewParent
+                ?: if (view === mainLayoutBinding?.morseView) mainLayoutBinding?.suggestionViewParent
+                else floatingKeyboardBinding?.suggestionViewParent
+        }
+        view.guideAllowed = {
+            !isKeyboardLayoutEditModeActive() && when {
+                splitInputForView(view) != null -> !isInactiveSplitView(view)
+                splitController != null -> false
+                isKeyboardFloatingMode == true -> view === floatingKeyboardBinding?.morseViewFloating
+                else -> view === mainLayoutBinding?.morseView
+            }
+        }
+        view.protectNavigationBar = view === mainLayoutBinding?.morseView
+        val preferences = MorsePreferences(this)
+        val maps = preferences.enabledMaps()
+        val selected = if (splitInputForView(view) != null && view.hasConfiguration && maps.any { it.id == view.selectedMapId })
+            view.selectedMapId else preferences.selectedMapId
+        view.configure(preferences.settings(), maps, selected)
+        val dark = currentNightMode == Configuration.UI_MODE_NIGHT_YES
+        val custom = keyboardThemeMode == "custom"
+        view.setAppearance(keyboardSkinId,
+            if (custom) customThemeBgColor ?: Color.WHITE else if (dark) 0xff111722.toInt() else 0xfff1f4fa.toInt(),
+            if (custom) customThemeKeyColor ?: Color.WHITE else if (dark) 0xff202a3a.toInt() else Color.WHITE,
+            if (custom) customThemeKeyTextColor ?: Color.BLACK else if (dark) 0xffe2e9fa.toInt() else 0xff243049.toInt(),
+            if (custom) customThemeSpecialKeyColor ?: Color.GRAY else if (dark) 0xff192231.toInt() else 0xffe8edf6.toInt(), custom)
+        view.longPressTimeoutMs = (longPressTimeoutPreferenceValue ?: 300).toLong()
+        view.hasComposingText = inputString.value.isNotEmpty()
+        view.onDeleteRepeat = { start ->
+            if (start) { activateSplitView(view); handleDeleteLongPress() } else stopDeleteLongPress()
+        }
+        view.inputAllowed = { !isKeyboardLayoutEditModeActive() }
+        view.onInteraction = { activateSplitView(view); view.refreshGuide() }
+        view.onMapSelected = { id ->
+            preferences.selectedMapId = id
+            setCurrentInputModeForSession(if (id == MorsePresets.ENGLISH) InputMode.ModeEnglish else InputMode.ModeJapanese)
+        }
+        view.onOutput = { output ->
+            activateSplitView(view)
+            if (isKeyboardLayoutEditModeActive()) false else dispatchMorseOutput(view, output)
+        }
+        view.onCommand = command@{ command ->
+            activateSplitView(view)
+            if (isKeyboardLayoutEditModeActive()) return@command
+            if (command in setOf(MorseCommand.CONVERT, MorseCommand.COMMIT, MorseCommand.SPACE, MorseCommand.ENTER) &&
+                view.signal.isNotEmpty() && !view.finishSignal()) return@command
+            dispatchMorseCommand(view, command)
+        }
+    }
+
+    private fun flushMorseRomaji() {
+        if (!morseRomajiComposition || isHenkan.get()) return
+        val before = inputString.value
+        val after = if (isDefaultRomajiHenkanMap) romajiConverter?.flush(before)?.first ?: before
+            else customRomajiScreenConverter?.flush(before) ?: before
+        if (before != after) { _inputString.value = after; setComposingText(after + stringInTail.get(), 1) }
+        morseRomajiComposition = false
+    }
+
+    private fun dispatchMorseOutput(view: MorseKeyboardView, output: MorseOutput): Boolean {
+        if (mainLayoutBinding == null) return false
+        if (output is MorseOutput.Command) {
+            if (output.action in setOf(MorseCommand.DAKUTEN, MorseCommand.HANDAKUTEN, MorseCommand.SMALL_KANA)) {
+                val replacement = MorseKanaModifier.apply(inputString.value, output.action) ?: return false
+                _inputString.value = replacement
+                return true
+            }
+            dispatchMorseCommand(view, output.action)
+            return true
+        }
+        endCursorSelectionForInput()
+        if (isHenkan.get()) dispatchMorseCommand(view, MorseCommand.COMMIT)
+        when (output) {
+            is MorseOutput.Reading -> {
+                morseRomajiComposition = false
+                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                if (!dispatchDirectTextIfNeeded(output.text)) _inputString.value += output.text
+            }
+            is MorseOutput.Romaji -> {
+                if (dispatchDirectTextIfNeeded(output.text)) return true
+                val converter = romajiConverter ?: return false
+                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                morseRomajiComposition = true
+                val next = inputString.value + output.text
+                _inputString.value = if (isDefaultRomajiHenkanMap) converter.convertCustomLayout(next)
+                    else customRomajiScreenConverter?.convert(next) ?: next
+            }
+            is MorseOutput.LiteralText -> {
+                if (inputString.value.isNotEmpty()) dispatchMorseCommand(view, MorseCommand.COMMIT)
+                setCurrentInputModeForSession(InputMode.ModeEnglish)
+                if (!dispatchDirectTextIfNeeded(output.text)) commitText(output.text, 1)
+            }
+            else -> Unit
+        }
+        // Candidate/composing updates use the same inputString observer as the other keyboards.
+        return true
+    }
+
+    private fun dispatchMorseCommand(view: MorseKeyboardView, command: MorseCommand) {
+        val main = mainLayoutBinding ?: return
+        if (command in setOf(MorseCommand.CONVERT, MorseCommand.COMMIT, MorseCommand.SPACE, MorseCommand.ENTER)) flushMorseRomaji()
+        val text = inputString.value
+        val candidates = suggestionAdapter?.suggestions ?: emptyList()
+        when (command) {
+            MorseCommand.DELETE -> handleDeleteKeyTap(text, candidates)
+            MorseCommand.CONVERT -> handleSpaceKeyClick(false, text, candidates, main)
+            MorseCommand.COMMIT -> if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, main, text)
+            MorseCommand.SPACE -> {
+                if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, main, text)
+                if (!dispatchDirectSpaceIfNeeded()) commitText(" ", 1)
+            }
+            MorseCommand.ENTER -> if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, main, text) else handleEmptyInputEnterKey(main)
+            MorseCommand.CURSOR_LEFT -> handleLeftCursor(GestureType.Tap, text)
+            MorseCommand.CURSOR_RIGHT -> actionInRightKeyPressed(GestureType.Tap, text)
+            MorseCommand.NEXT_MAP -> view.nextMap()
+            MorseCommand.NEXT_KEYBOARD -> switchNextKeyboard()
+            MorseCommand.DAKUTEN, MorseCommand.HANDAKUTEN, MorseCommand.SMALL_KANA ->
+                MorseKanaModifier.apply(text, command)?.let { _inputString.value = it }
+        }
+    }
+
     private fun setGojuonKeyListeners(
         mainView: MainLayoutBinding
     ) {
+        configureMorseView(mainView.morseView)
         configureGojuonKeyView(mainView.gojuonView, mainView, floatingView = null)
     }
 
@@ -11716,6 +11876,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView: FloatingKeyboardLayoutBinding,
         mainView: MainLayoutBinding,
     ) {
+        configureMorseView(floatingView.morseViewFloating)
         configureGojuonKeyView(floatingView.gojuonViewFloating, mainView, floatingView)
     }
 
@@ -13643,6 +13804,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         val nextType = row.type
                         when (nextType) {
+                            KeyboardType.MORSE,
                             KeyboardType.TENKEY,
                             KeyboardType.GOJUON -> {
                                 setCurrentInputModeForSession(InputMode.ModeJapanese)
@@ -14088,6 +14250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardView.isVisible = false
             qwertyView.isVisible = false
             gojuonView.isVisible = false
+            morseView.isVisible = false
             customLayoutDefault.isVisible = false
             gemmaHandwritingKeyboard.isVisible = false
             keyboardSymbolView.isVisible = false
@@ -14187,6 +14350,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding?.apply {
             when (type) {
                 KeyboardType.SPLIT -> Unit
+                KeyboardType.MORSE -> {
+                    clearQwertySwitchNumberKeyReturnSource()
+                    _tenKeyQWERTYMode.value = TenKeyQWERTYMode.Morse
+                    setCurrentInputModeForSession(InputMode.ModeJapanese)
+                    configureMorseView(morseView)
+                    morseView.isVisible = true
+                }
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         clearQwertySwitchNumberKeyReturnSource()
@@ -14367,6 +14537,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.Custom -> {}
 
             TenKeyQWERTYMode.Default -> {}
+            TenKeyQWERTYMode.Morse -> {}
             TenKeyQWERTYMode.Gojuon -> {}
             TenKeyQWERTYMode.TenKeyQWERTY -> {}
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
@@ -14406,6 +14577,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun createNewKeyboardLayoutForSumire() {
         Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
         when (qwertyMode.value) {
+            TenKeyQWERTYMode.Morse -> Unit
             TenKeyQWERTYMode.Gojuon -> Unit
             TenKeyQWERTYMode.Custom -> {
                 when (customKeyboardMode) {
@@ -18676,7 +18848,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible ||
-                                mainView.gojuonView.isVisible || mainView.qwertyView.isVisible ||
+                                mainView.morseView.isVisible || mainView.gojuonView.isVisible || mainView.qwertyView.isVisible ||
                                 mainView.customLayoutDefault.isVisible) -> {
                             if (!suppressSuggestions) {
                                 animateSuggestionImageViewVisibility(
@@ -18686,7 +18858,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) &&
-                                (mainView.keyboardView.isVisible || mainView.gojuonView.isVisible ||
+                                (mainView.keyboardView.isVisible || mainView.morseView.isVisible || mainView.gojuonView.isVisible ||
                                         mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
@@ -18783,7 +18955,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             physicalKeyboardEnable.replayCache.firstOrNull() != true
                         val normalKeyboardSurfaceVisible =
                             mainView.keyboardView.isVisible ||
-                                mainView.gojuonView.isVisible ||
+                                mainView.morseView.isVisible || mainView.gojuonView.isVisible ||
                                 mainView.qwertyView.isVisible ||
                                 mainView.customLayoutDefault.isVisible
                         if (
@@ -18948,6 +19120,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     }
 
+                    TenKeyQWERTYMode.Morse -> { suggestionAdapter?.updateState(TenKeyQWERTYMode.Morse, emptyList()) }
                     TenKeyQWERTYMode.Gojuon -> {
                         suggestionAdapter?.updateState(TenKeyQWERTYMode.Gojuon, emptyList())
                     }
@@ -19228,6 +19401,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             inputString.collect { string ->
+                (listOfNotNull(mainLayoutBinding?.morseView, floatingKeyboardBinding?.morseViewFloating) +
+                    splitInputs.values.map { it.binding.morseViewFloating }).distinct().forEach { it.hasComposingText = string.isNotEmpty() }
+
                 refreshZenzFloatingCandidates()
                 if (string.isEmpty() && stringInTail.get().isEmpty()) composingGuide?.update(null)
                 try {
@@ -19992,6 +20168,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 2. ピクセル値の計算
         val heightPx = when {
+            qwertyMode.value == TenKeyQWERTYMode.Morse -> (prefs.heightPref.coerceIn(MorsePreferences(this).settings().minimumHeightDp, 420) * density).toInt()
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 val clampedHeight = if (isPortrait) {
                     prefs.qwertyHeightPref.coerceIn(100, 420)
@@ -20293,6 +20470,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionViewParent,
             mainView.keyboardView,
             mainView.gojuonView,
+            mainView.morseView,
             mainView.customLayoutDefault,
             mainView.qwertyView,
             mainView.gemmaHandwritingKeyboard,
@@ -20526,6 +20704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionViewParent,
             mainView.keyboardView,
             mainView.gojuonView,
+            mainView.morseView,
             mainView.customLayoutDefault,
             mainView.qwertyView,
             mainView.gemmaHandwritingKeyboard,
@@ -20626,6 +20805,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     TenKeyQWERTYMode.Number -> floatingKeyboardLayoutBinding.customLayoutFloating
 
                     TenKeyQWERTYMode.Default -> floatingKeyboardLayoutBinding.keyboardViewFloating
+                    TenKeyQWERTYMode.Morse -> floatingKeyboardLayoutBinding.morseViewFloating
                     TenKeyQWERTYMode.Gojuon -> floatingKeyboardLayoutBinding.gojuonViewFloating
                 }
                 animateViewVisibility(floatingKeyboardLayoutBinding.candidatesRowView, !isVisible)
@@ -21168,6 +21348,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         return when (qwertyMode.value) {
+            TenKeyQWERTYMode.Morse,
             TenKeyQWERTYMode.Default,
             TenKeyQWERTYMode.Gojuon,
             TenKeyQWERTYMode.Sumire,
@@ -22465,6 +22646,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ).resolvedKeyboard
         when (firstItem) {
             KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+            KeyboardType.MORSE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Morse }
             KeyboardType.GOJUON -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Gojuon }
             KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
             KeyboardType.QWERTY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
@@ -22581,7 +22763,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             adapter.setOnPhysicalKeyboardListener {
                 mainView.apply {
-                    if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || gojuonView.isVisible) {
+                    if (morseView.isVisible || keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || gojuonView.isVisible) {
                         disableKeyboardLayoutEditMode()
                         hideAllKeyboards()
                         val heightPx = dpToPx(40f)
@@ -23191,6 +23373,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.keyboardView,
                 mainView.customLayoutDefault,
                 mainView.gojuonView,
+                mainView.morseView,
                 mainView.candidatesRowView,
             ).firstOrNull { it.isVisible } ?: mainView.keyboardView
         }
@@ -29786,6 +29969,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val nextType = nextResolution.resolvedKeyboard
 
         when (nextType) {
+            KeyboardType.MORSE,
             KeyboardType.TENKEY,
             KeyboardType.GOJUON -> {
                 setCurrentInputModeForSession(InputMode.ModeJapanese)
@@ -29820,6 +30004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (qwertyMode.value == TenKeyQWERTYMode.Number) {
             val type = when (nextType) {
                 KeyboardType.TENKEY -> TenKeyQWERTYMode.Default
+                KeyboardType.MORSE -> TenKeyQWERTYMode.Morse
                 KeyboardType.GOJUON -> TenKeyQWERTYMode.Gojuon
                 KeyboardType.SUMIRE -> TenKeyQWERTYMode.Sumire
                 KeyboardType.QWERTY -> TenKeyQWERTYMode.TenKeyQWERTY
