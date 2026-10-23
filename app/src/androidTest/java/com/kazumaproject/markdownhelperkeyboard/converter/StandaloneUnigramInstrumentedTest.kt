@@ -45,7 +45,7 @@ class StandaloneUnigramInstrumentedTest {
                     for (bunsetsu in listOf(false, true)) {
                         val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), backend)
                         for (n in listOf(1, 4, 10)) {
-                            for (word in listOf("しろ", "ごと", "したい", "はいる", "みた", "なにか")) {
+                            for (word in listOf("しろ", "ごと", "したい", "はいる", "みた", "なにか", "なら")) {
                                 SystemNgramRuntime.install(full)
                                 val result = session.query(request(word, n, mode, bunsetsu))
                                 rows.appendLine("$backend\t$mode\t$bunsetsu\t$n\t$word\t${result.candidates.take(4)}")

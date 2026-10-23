@@ -140,7 +140,6 @@ object SettingDestinations {
 
     private val plainPreferenceInlineEditExceptionKeys = setOf(
         "long_press_timeout_preference",
-        "zenz_floating_candidates_reset",
     )
 
     val inlineEditExceptionKeysForTesting: Set<String>
@@ -916,10 +915,6 @@ object SettingDestinations {
         highlightPreferenceKey: String?,
     ): SettingDestinationType? =
         when (key) {
-            "zenz_floating_candidates_reset" -> SettingDestinationType.NavDestination(
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
             "long_press_timeout_preference" -> SettingDestinationType.IntPreferenceDialog(
                 preferenceKey = key,
                 min = 100,

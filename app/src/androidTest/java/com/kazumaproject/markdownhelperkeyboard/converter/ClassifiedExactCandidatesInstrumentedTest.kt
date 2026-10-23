@@ -80,7 +80,7 @@ class ClassifiedExactCandidatesInstrumentedTest {
                                 val candidate = result.candidates.first { it.string == surface }
                                 assertEquals(input, candidate.yomi)
                                 assertEquals(input.length, candidate.length.toInt())
-                                assertTrue(DictionaryCategory.CLASSIFIED_PERSON in candidate.dictionaryCategories)
+                                assertTrue(DictionaryCategory.CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_JAPANESE in candidate.dictionaryCategories)
                                 assertEquals(listOf(CandidateConversionSegment(0, input.length, surface)),
                                     result.candidateSegmentsByString[surface])
                                 if (bunsetsu) assertEquals(emptyList<Int>(), result.bunsetsuResult!!.splitPatternByCandidateString[surface])
@@ -92,7 +92,7 @@ class ClassifiedExactCandidatesInstrumentedTest {
                     }
                 }
             }
-            println("CLASSIFIED_EXACT checked=$checked all30=${dictionaries.size} homophones=48 shortAndLong=true")
+            println("CLASSIFIED_EXACT checked=$checked all77=${dictionaries.size} homophones=48 shortAndLong=true")
         } finally {
             previous.forEach { (category, enabled) -> store.setOptionalBundledEnabled(category, enabled) }
             engine.applyDictionaryOverrideState(context)
