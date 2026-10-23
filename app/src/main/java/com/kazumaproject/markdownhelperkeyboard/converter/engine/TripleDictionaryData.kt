@@ -14,10 +14,16 @@ data class TripleDictionaryData(
     val succinctBitVectorIsLeafYomi: SuccinctBitVector,
     val succinctBitVectorTokenArray: SuccinctBitVector,
     val succinctBitVectorTangoLBS: SuccinctBitVector,
+    val literalSurfaces: Map<String, String> = emptyMap(),
 ) {
-    fun surfaceFor(nodeId: Int, reading: String): String = when (nodeId) {
-        -2 -> reading
-        -1 -> reading.hiraToKata()
-        else -> tangoTrie.getLetter(nodeId, succinctBitVectorTangoLBS)
+    fun surfaceFor(nodeId: Int, reading: String): String {
+        if (nodeId < 0 && literalSurfaces.isNotEmpty()) {
+            literalSurfaces["$nodeId\t$reading"]?.let { return it }
+        }
+        return when (nodeId) {
+            -2 -> reading
+            -1 -> reading.hiraToKata()
+            else -> tangoTrie.getLetter(nodeId, succinctBitVectorTangoLBS)
+        }
     }
 }
