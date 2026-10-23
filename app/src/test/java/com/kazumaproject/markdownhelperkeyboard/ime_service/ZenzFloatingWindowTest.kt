@@ -23,6 +23,69 @@ class ZenzFloatingWindowTest {
     private fun surface(window: ZenzFloatingWindow) = ZenzFloatingWindow::class.java
         .getDeclaredField("surface").apply { isAccessible = true }.get(window) as ScrollView?
 
+    @Test fun movingNearTheScreenTopKeepsProcessingAndResultsVisibleAndSelectable() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup().visible()
+        val activity = controller.get()
+        val root = FrameLayout(activity)
+        val anchor = View(activity)
+        root.addView(anchor, FrameLayout.LayoutParams(400, 48).apply { leftMargin = 40; topMargin = 700 })
+        activity.setContentView(root)
+        fun layoutAt(top: Int) {
+            root.measure(View.MeasureSpec.makeMeasureSpec(500, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY))
+            root.layout(0, 0, 500, 1000)
+            anchor.layout(40, top, 440, top + 48)
+            root.viewTreeObserver.dispatchOnPreDraw()
+        }
+        layoutAt(700)
+        val commits = mutableListOf<String>()
+        val window = ZenzFloatingWindow(activity, { anchor }, { activity.window.decorView.windowToken }, { true },
+            { CandidatePanelColors(0, 0, 0, 0, 0, 0) }, { true }, { _, text -> commits += text; true })
+        try {
+            window.showProcessing(1L)
+            val panel = requireNotNull(surface(window))
+            // The keyboard can reach the top when its edit header is hidden.
+            layoutAt(32)
+            assertSame("Moving near the top must retain the processing panel", panel, surface(window))
+            val area = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide
+                .FloatingWindowCoordinates(activity.getSystemService(WindowManager::class.java)).safeArea(anchor)
+            fun assertInsideSafeArea() {
+                val params = panel.layoutParams as WindowManager.LayoutParams
+                // WindowManager coordinates are relative to the current display bounds.
+                val origin = activity.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
+                assertTrue(params.y + origin.top >= area.top)
+                assertTrue(params.y + origin.top + params.height <= area.bottom)
+                assertTrue(params.x + origin.left >= area.left)
+                assertTrue(params.x + origin.left + params.width <= area.right)
+                assertTrue(params.height in 1..180)
+            }
+            assertInsideSafeArea()
+            val label = panel.getChildAt(0) as TextView
+            label.performClick()
+            assertTrue(commits.isEmpty())
+            val result = "長い生成結果".repeat(200)
+            window.show(1L, result)
+            assertSame(panel, surface(window))
+            assertEquals(result, label.text.toString())
+            assertInsideSafeArea()
+            layoutAt(0)
+            assertSame(panel, surface(window))
+            assertInsideSafeArea()
+            // Moving back down restores the usual 8dp gap above the candidate strip.
+            layoutAt(700)
+            val params = panel.layoutParams as WindowManager.LayoutParams
+            val anchorPosition = IntArray(2).also(anchor::getLocationOnScreen)
+            assertEquals(anchorPosition[1] - 8, params.y + params.height)
+            assertSame(panel, surface(window))
+            label.performClick()
+            assertEquals(listOf(result), commits)
+            assertNull(surface(window))
+        } finally {
+            window.clear()
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun processingAndResultsShareTheCandidateLeftEdgeAndOnlyResultsCommit() {
         val activityController = Robolectric.buildActivity(Activity::class.java).setup().visible()
         val activity = activityController.get()
