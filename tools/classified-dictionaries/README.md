@@ -102,3 +102,30 @@ These are coarse UI observations, separate from engine latency. It selects and
 commits the candidate, then deletes a character using the actual keyboard key.
 Keep APKs, timing reports, logs and screenshots outside the repository; publish
 measured results and limitations in the PR.
+
+## Candidate order comparison
+
+`DictionaryCandidateOrderInstrumentedTest` is a separate opt-in snapshot probe
+(`dictionaryCandidateOrder=true`). Its frozen 185-input corpus combines ordinary
+readings, homophones, long sentences, literal spelling repairs and representative
+readings from the dev, v1.7.266 and v1.7.268 catalogs. Install the identical test APK
+against the isolated application APK for each version, resetting only the probe
+package before each run.
+
+For n=4 and beam=20, it saves all candidate records and the standard IME's duplicate
+merge/input-promotion result across optional dictionaries OFF/all ON, both backends,
+three query modes and bunsetsu OFF/ON. Fifteen readings also exercise incremental
+typing and delete/retype, for 5,160 snapshots per version. Learning, user dictionary,
+templates, NG words, manual order overrides and additional Romaji candidates are
+absent. Read `files/dictionary-candidate-order.jsonl` via `run-as` and keep results
+outside the repository. Compare display sequences separately from candidate
+identity: a newly added dictionary candidate may have the same spelling as an
+existing kana fallback but a different type, reading or POS.
+
+To verify an upgrade that preserves the v1.7.266 enabled switches, pass
+`dictionaryExcludeIds` with the seven new category IDs separated by commas:
+`person/thought,person/surname_origin_japanese,person/surname_origin_foreign,person/given_name_origin_japanese,person/given_name_origin_foreign,person/personal_name_origin_japanese,person/personal_name_origin_foreign`.
+The output records the excluded IDs and selected category identities. This is a
+separate comparison from enabling every v1.7.268 category: names moved into a new,
+default-OFF origin category will no longer be supplied by the old unconfirmed
+category until their new category is enabled.
