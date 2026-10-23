@@ -123,40 +123,48 @@ class GemmaNbestImeDeviceTest {
             shell("ime set $ime")
             assertEquals("The test IME was not selected", ime, shell("settings get secure default_input_method"))
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
-                scenario.onActivity { it.editText.setText(prefix); it.restartEditorInput(false) }
-                await("Romaji keyboard did not appear") { node("key_a") != null }
-                SystemClock.sleep(350)
-                for (letter in romaji) { tap(bounds("key_$letter")); SystemClock.sleep(35) }
-                val stopped = SystemClock.elapsedRealtime()
-                await("The reading was not entered as composing text") {
-                    var valid = false
-                    scenario.onActivity { valid = it.editText.text.toString() == prefix + reading }
-                    valid
+                val displayLatencies = mutableListOf<Long>()
+                // Repeat in the same IME/model session to separate startup waiting from ready-model latency.
+                repeat(2) { round ->
+                    android.util.Log.i("GemmaNbestUiTest", "Starting round $round")
+                    scenario.onActivity { it.editText.setText(prefix); it.restartEditorInput(false) }
+                    await("Romaji keyboard did not appear") { node("key_a") != null }
+                    SystemClock.sleep(350)
+                    for (letter in romaji) { tap(bounds("key_$letter")); SystemClock.sleep(35) }
+                    val stopped = SystemClock.elapsedRealtime()
+                    await("The reading was not entered as composing text") {
+                        var valid = false
+                        scenario.onActivity { valid = it.editText.text.toString() == prefix + reading }
+                        valid
+                    }
+                    await("Normal conversion candidates did not appear") {
+                        val texts = stripTexts()
+                        record.getString("normalFirst") in texts && expected in texts
+                    }
+                    val before = stripTexts()
+                    await("No differing N-best suggestion was displayed") { node("gemma_floating_result")?.isClickable == true }
+                    displayLatencies += SystemClock.elapsedRealtime() - stopped
+                    android.util.Log.i("GemmaNbestUiTest", "Round $round display latency ${displayLatencies.last()} ms")
+                    assertEquals(expected, node("gemma_floating_result")?.text?.toString())
+                    assertEquals(before, stripTexts())
+                    scenario.onActivity {
+                        assertEquals(prefix + reading, it.editText.text.toString())
+                        assertTrue(BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0)
+                    }
+                    tap(bounds("gemma_floating_result"))
+                    await("Tapping the proposal did not replace and commit the composing region") {
+                        var committed = false
+                        scenario.onActivity { committed = it.editText.text.toString() == prefix + expected &&
+                            BaseInputConnection.getComposingSpanStart(it.editText.text) < 0 }
+                        committed
+                    }
+                    assertNull(node("gemma_floating_result"))
                 }
-                await("Normal conversion candidates did not appear") {
-                    val texts = stripTexts()
-                    record.getString("normalFirst") in texts && expected in texts
-                }
-                val before = stripTexts()
-                await("No differing N-best suggestion was displayed") { node("gemma_floating_result")?.isClickable == true }
-                val displayed = SystemClock.elapsedRealtime()
-                assertEquals(expected, node("gemma_floating_result")?.text?.toString())
-                assertEquals(before, stripTexts())
-                scenario.onActivity {
-                    assertEquals(prefix + reading, it.editText.text.toString())
-                    assertTrue(BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0)
-                }
-                tap(bounds("gemma_floating_result"))
-                await("Tapping the proposal did not replace and commit the composing region") {
-                    var committed = false
-                    scenario.onActivity { committed = it.editText.text.toString() == prefix + expected &&
-                        BaseInputConnection.getComposingSpanStart(it.editText.text) < 0 }
-                    committed
-                }
-                assertNull(node("gemma_floating_result"))
                 File(context.getExternalFilesDir(null), "gemma-nbest-ime-verification.json").writeText(JSONObject()
                     .put("reading", reading).put("context", prefix).put("result", expected)
-                    .put("method", GemmaNbestScoring.defaultMethod.name).put("displayLatencyMs", displayed - stopped)
+                    .put("method", GemmaNbestScoring.defaultMethod.name)
+                    .put("displayLatencyMs", displayLatencies.first())
+                    .put("readyDisplayLatencyMs", displayLatencies.last())
                     .put("stripUnchanged", true).put("tapCommitPassed", true).toString())
             }
         } finally {
