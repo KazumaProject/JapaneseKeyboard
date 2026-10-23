@@ -36,16 +36,9 @@ class ZenzFloatingSettingsTest {
         assertEquals(SettingTabRegistry.TAB_ZENZ, legacy.legacyTarget?.tabKey)
         assertEquals(R.xml.pref_zenz, SettingTabRegistry.createTabs().first { it.key == SettingTabRegistry.TAB_ZENZ }.xmlRes)
     }
-    @Test fun resetNavigatesToTheActionInsteadOfOpeningAnEditor() {
+    @Test fun obsoletePositionResetIsNotSearchable() {
         val key = "zenz_floating_candidates_reset"
-        val items = SettingSearchIndex.destinationsForKeys(context, listOf(key))
-        if (!AppVariantConfig.hasZenz) {
-            assertTrue(items.isEmpty())
-            return
-        }
-        val item = items.first { it.key == key }
-        val action = item.destination as SettingDestinationType.NavDestination
-        assertEquals(R.id.zenzPreferenceFragment, action.destinationId)
-        assertEquals(key, action.highlightPreferenceKey)
+        assertTrue(SettingSearchIndex.destinationsForKeys(context, listOf(key)).isEmpty())
+        assertFalse(SettingSearchIndex.legacySearchable(context).any { it.key == key })
     }
 }

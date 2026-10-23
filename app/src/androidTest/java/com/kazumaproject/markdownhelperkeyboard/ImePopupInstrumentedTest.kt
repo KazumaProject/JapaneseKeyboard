@@ -194,6 +194,173 @@ class ImePopupInstrumentedTest {
         host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
     }
 
+    /** Issue #1187: use the real non-focusable panel and actual software keys. */
+    @Test @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
+    fun floatingDictionaryEditorsHandleCommittedDeleteAndCursorKeys() {
+        val template = InstrumentationRegistry.getArguments().getString("floating_kind") == "template"
+        val shortcut = if (template) "定型文フロート" else "ユーザー辞書フロート"
+        val reading = "いしゅーせんひゃくはちじゅうなな"
+        val word = "Issue 1187 keyboard regression"
+        fun string(id: Int) = ins.targetContext.getString(id)
+        fun clearFixture() = runBlocking {
+            if (template) database.userTemplateDao().getAllSuspend().filter { it.reading == reading }
+                .forEach { database.userTemplateDao().delete(it.id) }
+            else database.userWordDao().getAllSuspend().filter { it.reading == reading }
+                .forEach { database.userWordDao().delete(it.id) }
+        }
+        clearFixture()
+        try {
+            withHost { host ->
+                await {
+                    findNodeId("dock_icon")?.let { tap(it) }
+                    findNode(shortcut) ?: findNode(string(R.string.shortcut_entry_content_description))?.let {
+                        tap(it); null
+                    }
+                }.let(::tap)
+                tap(awaitNode(string(R.string.floating_dictionary_add)))
+                for (editing in listOf(false, true)) {
+                    for (field in listOf(R.string.floating_dictionary_reading, R.string.floating_dictionary_word)) {
+                        checkFloatingEditorKeys(field, "${if (template) "template" else "user"}-${if (editing) "edit" else "add"}")
+                        assertEquals("Local edits must leave the application untouched", "", text(host))
+                    }
+                    setFloatingEditorText(R.string.floating_dictionary_reading, reading)
+                    setFloatingEditorText(R.string.floating_dictionary_word, word + if (editing) " edited" else "")
+                    tap(awaitNode(string(R.string.save_string)))
+                    val row = "$reading、$word${if (editing) " edited" else ""}"
+                    val saved = awaitNode(row)
+                    if (!editing) tap(saved)
+                }
+                tap(awaitNode(string(R.string.floating_dictionary_hide)))
+                // Closing the panel must restore the application's connection.
+                tapFloatingKey("key_1")
+                tapFloatingKey("key_enter")
+                awaitText(host, "あ")
+                tapFloatingKey("key_delete")
+                awaitText(host, "")
+            }
+        } finally { clearFixture() }
+    }
+
+    // Read/seed our own views on the main thread; operations under test still use real touch events.
+    private fun windowView(predicate: (android.view.View) -> Boolean): android.view.View? {
+        fun find(view: android.view.View): android.view.View? {
+            if (predicate(view)) return view
+            if (view is android.view.ViewGroup) for (index in 0 until view.childCount) {
+                find(view.getChildAt(index))?.let { return it }
+            }
+            return null
+        }
+        return android.view.inspector.WindowInspector.getGlobalWindowViews().firstNotNullOfOrNull(::find)
+    }
+
+    private fun floatingEditor(field: Int) = checkNotNull(windowView {
+        it is android.widget.EditText && it.contentDescription?.toString() == ins.targetContext.getString(field)
+    }) as android.widget.EditText
+
+    private fun floatingEditorState(field: Int): Triple<String, Int, Int> {
+        var state = Triple("", -1, -1)
+        ins.runOnMainSync {
+            val editor = floatingEditor(field)
+            state = Triple(editor.text.toString(), editor.selectionStart, editor.selectionEnd)
+        }
+        return state
+    }
+
+    private fun screenBounds(view: android.view.View): Rect {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        check(view.width > 0 && view.height > 0)
+        return Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
+    }
+
+    private fun floatingKeyBounds(id: String): Rect {
+        val bounds = Rect()
+        ins.runOnMainSync {
+            val resource = ins.targetContext.resources.getIdentifier(id, "id", ins.targetContext.packageName)
+            check(resource != 0)
+            val view = checkNotNull(windowView { it.id == resource && it.isShown })
+            bounds.set(screenBounds(view))
+        }
+        return bounds
+    }
+
+    private fun tapFloatingKey(id: String, hold: Long = 50) {
+        val bounds = floatingKeyBounds(id)
+        touch(bounds.exactCenterX(), bounds.exactCenterY(), hold)
+    }
+
+    private fun setFloatingEditorText(field: Int, value: String, start: Int = value.length, end: Int = start) {
+        val bounds = Rect()
+        ins.runOnMainSync { bounds.set(screenBounds(floatingEditor(field))) }
+        touch(bounds.exactCenterX(), bounds.exactCenterY())
+        ins.runOnMainSync {
+            val editor = floatingEditor(field)
+            editor.setText(value)
+            editor.setSelection(start, end)
+        }
+    }
+
+    private fun checkFloatingEditorKeys(field: Int, phase: String) {
+        fun expect(value: String, cursor: Int = value.length) {
+            await {
+                (floatingEditorState(field) == Triple(value, cursor, cursor)).takeIf { it }
+            }
+        }
+        fun screenshot(action: String) {
+            val label = ins.targetContext.resources.getResourceEntryName(field)
+            val prefix = InstrumentationRegistry.getArguments().getString("evidence") ?: "fixed"
+            val directory = java.io.File(ins.targetContext.filesDir, "floating-editor-keys").apply { mkdirs() }
+            automation.takeScreenshot()?.let { bitmap ->
+                java.io.File(directory, "$prefix-$phase-$label-$action.png").outputStream().use {
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+                bitmap.recycle()
+            }
+        }
+        setFloatingEditorText(field, "あかさ")
+        screenshot("before-delete")
+        tapFloatingKey("key_delete")
+        expect("あか")
+        setFloatingEditorText(field, "あかさ")
+        tapFloatingKey("key_soft_left")
+        expect("あかさ", 2)
+        tapFloatingKey("key_4")
+        tapFloatingKey("key_enter")
+        expect("あかたさ", 3)
+        tapFloatingKey("key_move_cursor_right")
+        expect("あかたさ", 4)
+        screenshot("after-cursor-insert")
+        setFloatingEditorText(field, "あかさ", 1, 3)
+        tapFloatingKey("key_delete")
+        expect("あ")
+        setFloatingEditorText(field, "あかさたなはまやらわ")
+        val deleteBounds = floatingKeyBounds("key_delete")
+        val down = SystemClock.uptimeMillis()
+        fun injectDelete(action: Int) {
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                deleteBounds.exactCenterX(), deleteBounds.exactCenterY(), 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            check(automation.injectInputEvent(event, true))
+            event.recycle()
+        }
+        injectDelete(MotionEvent.ACTION_DOWN)
+        try {
+            // Observe repeat before releasing instead of assuming the emulator meets a fixed delay.
+            await(timeout = 10000) { (floatingEditorState(field).first.length < 9).takeIf { it } }
+        } finally { injectDelete(MotionEvent.ACTION_UP) }
+        setFloatingEditorText(field, "あ😀")
+        tapFloatingKey("key_delete")
+        expect("あ")
+        setFloatingEditorText(field, "あ かさ")
+        flick(floatingKeyBounds("key_delete"), -100f, 0f)
+        expect("あ ")
+        // Uncommitted text still follows the existing composition path.
+        setFloatingEditorText(field, "")
+        tapFloatingKey("key_1"); tapFloatingKey("key_2"); tapFloatingKey("key_3")
+        tapFloatingKey("key_delete"); tapFloatingKey("key_enter")
+        expect("あか")
+    }
+
     @Test fun keyboardPickerSelectsInternalKeyboardAndAnEnabledExternalIme() = withHost { host ->
         val manager = ins.targetContext.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
         val external = manager.enabledInputMethodList.first { it.packageName != ins.targetContext.packageName }
@@ -467,7 +634,9 @@ class ImePopupInstrumentedTest {
         }
     }
     private fun flick(id: String, dx: Float, dy: Float) {
-        val rect = Rect().also(awaitNodeId(id)::getBoundsInScreen)
+        flick(Rect().also(awaitNodeId(id)::getBoundsInScreen), dx, dy)
+    }
+    private fun flick(rect: Rect, dx: Float, dy: Float) {
         val down = SystemClock.uptimeMillis()
         for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP)) {
             val moved = action != MotionEvent.ACTION_DOWN
@@ -521,6 +690,7 @@ class ImePopupInstrumentedTest {
         SystemClock.sleep(100)
     }
     private fun allNodes(): List<AccessibilityNodeInfo> {
+        if (android.os.Build.VERSION.SDK_INT >= 33) automation.clearCache()
         val nodes = mutableListOf<AccessibilityNodeInfo>()
         fun visit(node: AccessibilityNodeInfo?) {
             if (node == null) return
@@ -575,6 +745,8 @@ class ImePopupInstrumentedTest {
             "live_conversion_preference" to false,
             "learn_dictionary_preference" to false,
             "user_template_preference" to true,
+            "delete_key_flick_left_preference" to true,
+            "long_press_timeout_preference" to 300,
             "ng_word_enable_preference" to true,
             "physical_keyboard_input_mode_preference" to "romaji",
         )
@@ -603,7 +775,7 @@ class ImePopupInstrumentedTest {
             runBlocking {
                 originalNgWordIds = database.ngWordDao().getAll().map { it.id }.toSet()
                 oldShortcuts = database.shortcutDao().getAllShortcuts()
-                database.shortcutDao().replaceAll(listOf("template", "select_date", "text_macro", "keyboard_picker", "floating_user_dictionary")
+                database.shortcutDao().replaceAll(listOf("template", "select_date", "text_macro", "keyboard_picker", "floating_user_dictionary", "floating_user_template")
                     .mapIndexed { index, type -> ShortcutItem(typeId = type, sortOrder = index) })
                 database.userTemplateDao().insert(UserTemplate(word = TEMPLATE, reading = "てすと", posIndex = 0, posScore = 0))
                 templateId = database.userTemplateDao().searchByReadingExactSuspend("てすと", 100).single { it.word == TEMPLATE }.id

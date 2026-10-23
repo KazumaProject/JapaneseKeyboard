@@ -17,7 +17,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings
-import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.GuideProfile
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -67,9 +66,8 @@ class ZenzFloatingCandidateInstrumentedTest {
     }
     private fun bounds(node: AccessibilityNodeInfo) = Rect().also(node::getBoundsInScreen)
     private fun id(value: String) = awaitNode { it.viewIdResourceName == "${ctx.packageName}:id/$value" }
-    private fun description(value: Int) = awaitNode { it.contentDescription?.toString() == ctx.getString(value) }
     private fun label() = awaitNode { it.viewIdResourceName == labelId && it.isEnabled && !it.text.isNullOrBlank() }
-    private fun touch(rect: Rect, dx: Float = 0f, dy: Float = 0f) {
+    private fun touch(rect: Rect, dx: Float = 0f, dy: Float = 0f, settleMillis: Long = 400, holdMillis: Long = 60) {
         val down = SystemClock.uptimeMillis()
         fun send(action: Int, x: Float, y: Float) {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
@@ -77,9 +75,9 @@ class ZenzFloatingCandidateInstrumentedTest {
             check(ui.injectInputEvent(event, true)); event.recycle()
         }
         val x = rect.exactCenterX(); val y = rect.exactCenterY()
-        send(MotionEvent.ACTION_DOWN, x, y); SystemClock.sleep(60)
+        send(MotionEvent.ACTION_DOWN, x, y); SystemClock.sleep(holdMillis)
         if (dx != 0f || dy != 0f) { send(MotionEvent.ACTION_MOVE, x + dx, y + dy); SystemClock.sleep(100) }
-        send(MotionEvent.ACTION_UP, x + dx, y + dy); SystemClock.sleep(400)
+        send(MotionEvent.ACTION_UP, x + dx, y + dy); SystemClock.sleep(settleMillis)
     }
     private fun withEditor(action: (FastInputHostActivity) -> Unit) {
         val until = SystemClock.uptimeMillis() + 15_000
@@ -113,6 +111,50 @@ class ZenzFloatingCandidateInstrumentedTest {
         error("Input host did not reach orientation $expected")
     }
     private fun typeReading() { touch(bounds(id("key_1"))); touch(bounds(id("key_2"))) }
+    private fun verifyConfiguredDelay(prefs: SharedPreferences, delayMillis: Int?) {
+        if (delayMillis == null) prefs.edit().remove("zenz_debounce_time_preference").commit()
+        else prefs.edit().putInt("zenz_debounce_time_preference", delayMillis).commit()
+        // Keep the same IME session to exercise a live preference update.
+        withEditor { it.editText.text.clear() }
+        awaitUi("Old panel survived empty input") { visible -> visible.none { it.viewIdResourceName == labelId } }
+        val keys = listOf(bounds(id("key_1")), bounds(id("key_2")), bounds(id("key_3")))
+        val expected = delayMillis ?: 300
+        var finalInputAt = 0L
+        keys.forEach { key ->
+            finalInputAt = SystemClock.uptimeMillis()
+            fun send(action: Int) {
+                val event = MotionEvent.obtain(finalInputAt, SystemClock.uptimeMillis(), action,
+                    key.exactCenterX(), key.exactCenterY(), 0)
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                // Queue the short burst without waiting for each frame or accessibility idle.
+                check(ui.injectInputEvent(event, false))
+                event.recycle()
+            }
+            send(MotionEvent.ACTION_DOWN)
+            SystemClock.sleep(30)
+            send(MotionEvent.ACTION_UP)
+            SystemClock.sleep(10)
+        }
+        val mounted = shell("dumpsys window windows").contains("Zenz floating result")
+        // Accessibility queries may wait for UI idleness longer than the debounce.
+        // Use WindowManager registration and check the sampling time after the query.
+        if (SystemClock.uptimeMillis() - finalInputAt < expected) {
+            assertFalse("Panel appeared during debounce ($expected ms)", mounted)
+        }
+        val deadline = SystemClock.uptimeMillis() + 60_000
+        while (!shell("dumpsys window windows").contains("Zenz floating result")) {
+            check(SystemClock.uptimeMillis() < deadline) { "Floating window never appeared" }
+            SystemClock.sleep(20)
+        }
+        val elapsed = SystemClock.uptimeMillis() - finalInputAt
+        val first = awaitNode { it.viewIdResourceName == labelId }
+        assertTrue("Panel appeared before configured delay: $elapsed < $expected", elapsed >= expected)
+        if (first.text?.toString() == "…") assertFalse(first.isEnabled)
+        label()
+        android.util.Log.i("ZenzFloatingQA", "Configured delay=$delayMillis, first observed panel after ${elapsed}ms")
+        capture("delay-${delayMillis ?: "default"}")
+    }
+
     private fun capture(name: String) {
         val directory = File(ctx.filesDir, "zenz-floating-qa").apply { mkdirs() }
         ui.takeScreenshot()?.let { bitmap ->
@@ -180,23 +222,12 @@ class ZenzFloatingCandidateInstrumentedTest {
                 assertTrue("Floating panel must not include a zenz title",
                     nodes().none { it.text?.toString()?.equals("zenz", ignoreCase = true) == true })
                 capture("portrait-generated")
-                val grip = bounds(description(R.string.composing_guide_move))
-                assertTrue("Default zenz panel overlaps the normal candidate strip",
-                    grip.bottom <= bounds(id("suggestion_item_text_view")).top)
-                touch(grip, dy = if (grip.top > 200) -60f else 60f)
-                awaitUi("Move did not move the panel") { visible ->
-                    visible.firstOrNull { it.contentDescription?.toString() == ctx.getString(R.string.composing_guide_move) }
-                        ?.let { kotlin.math.abs(bounds(it).top - grip.top) > 10 } == true
-                }
-                touch(bounds(description(R.string.composing_guide_edit)))
-                val beforeResize = bounds(description(R.string.composing_guide_move))
-                touch(bounds(description(R.string.composing_guide_resize_right)), dx = -80f)
-                val afterResize = bounds(description(R.string.composing_guide_move))
-                assertTrue("Resize did not change the width", afterResize.width() < beforeResize.width())
-                touch(bounds(description(R.string.composing_guide_done)))
-                val saved = ComposingGuideSettings(prefs).load(false, GuideProfile.ZENZ)
-                val savedGrip = bounds(description(R.string.composing_guide_move))
-                capture("portrait-moved-resized")
+                val panelBounds = bounds(candidate)
+                val stripBounds = bounds(id("suggestion_item_text_view"))
+                assertTrue("Zenz panel must be above the normal candidate strip", panelBounds.bottom < stripBounds.top)
+                assertTrue("Move handle must be absent", nodes().none {
+                    it.contentDescription?.toString() == ctx.getString(R.string.composing_guide_move)
+                })
                 touch(bounds(label()))
                 withEditor {
                     assertEquals(generated, it.editText.text.toString())
@@ -204,14 +235,13 @@ class ZenzFloatingCandidateInstrumentedTest {
                     assertTrue(it.editText.hasFocus())
                 }
                 assertFalse("Committed panel remained visible", nodes().any { it.viewIdResourceName == labelId })
+                for (delay in listOf(0, 300, 500, null)) verifyConfiguredDelay(prefs, delay)
                 withEditor { it.restartEditorInput(true) }
                 typeReading(); label()
-                assertEquals(saved, ComposingGuideSettings(prefs).load(false, GuideProfile.ZENZ))
-                assertEquals(savedGrip, bounds(description(R.string.composing_guide_move)))
-
                 prefs.edit().putBoolean(ComposingGuideSettings.ENABLED, true).commit()
                 awaitUi("Candidate and zenz panels must coexist") { visible ->
-                    visible.count { it.contentDescription?.toString() == ctx.getString(R.string.composing_guide_move) } == 2
+                    visible.any { it.viewIdResourceName == labelId } &&
+                        visible.count { it.contentDescription?.toString() == ctx.getString(R.string.composing_guide_move) } == 1
                 }
                 capture("independent-panels")
                 prefs.edit().putBoolean(ComposingGuideSettings.ZENZ_ENABLED, false).commit()
@@ -220,10 +250,6 @@ class ZenzFloatingCandidateInstrumentedTest {
                 prefs.edit().putBoolean(ComposingGuideSettings.ENABLED, false)
                     .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true).commit()
                 label()
-                ComposingGuideSettings.reset(prefs, GuideProfile.ZENZ)
-                SystemClock.sleep(700)
-                assertEquals(280f, ComposingGuideSettings(prefs).load(false, GuideProfile.ZENZ).widthDp, .01f)
-
                 shell("settings put system user_rotation 1")
                 check(ui.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90))
                 withEditor { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
@@ -231,14 +257,12 @@ class ZenzFloatingCandidateInstrumentedTest {
                 withEditor { it.restartEditorInput(true) }
                 typeReading(); label()
                 capture("landscape-generated")
-                assertEquals(280f, ComposingGuideSettings(prefs).load(true, GuideProfile.ZENZ).widthDp, .01f)
-                touch(bounds(description(R.string.composing_guide_edit)))
-                val landscapeWidth = bounds(description(R.string.composing_guide_move)).width()
-                touch(bounds(description(R.string.composing_guide_resize_right)), dx = -80f)
-                assertTrue(bounds(description(R.string.composing_guide_move)).width() < landscapeWidth)
-                touch(bounds(description(R.string.composing_guide_done)))
-                assertEquals(280f, ComposingGuideSettings(prefs).load(false, GuideProfile.ZENZ).widthDp, .01f)
-                capture("landscape-resized")
+                assertTrue("Landscape panel must be above candidates",
+                    bounds(label()).bottom < bounds(id("suggestion_item_text_view")).top)
+                prefs.edit().putBoolean("keyboard_floating_preference", true).commit()
+                withEditor { it.restartEditorInput(true) }
+                typeReading(); label()
+                capture("floating-keyboard")
                 shell("input keyevent BACK")
                 awaitUi("Hidden IME left a floating window") { visible -> visible.none { it.viewIdResourceName == labelId } }
             }
@@ -258,6 +282,63 @@ class ZenzFloatingCandidateInstrumentedTest {
             ui.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
             shell("settings put system user_rotation $oldRotation")
             shell("settings put system accelerometer_rotation $oldAutoRotation")
+        }
+    }
+
+    @Test(timeout = 120_000) fun manualFloatingRequestBypassesTheAutomaticWait() {
+        assumeTrue(AppVariantConfig.hasZenz)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
+        val original = prefs.all.toMap()
+        val oldIme = shell("settings get secure default_input_method")
+        val ime = "${ctx.packageName}/.ime_service.IMEService"
+        ui.serviceInfo = ui.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        try {
+            check(prefs.edit().clear()
+                .putString("keyboard_order_preference", "[\"TENKEY\"]")
+                .putBoolean("save_last_used_keyboard", false)
+                .putBoolean("keyboard_floating_preference", false)
+                .putBoolean("candidate_tab_visibility_preference", false)
+                .putBoolean("flick_input_only_preference", true)
+                .putBoolean("live_conversion_preference", false)
+                .putBoolean("learn_dictionary_preference", false)
+                .putInt("keyboard_height_preference", 220)
+                .putInt("candidate_view_height_dp_preference", 100)
+                .putInt("candidate_view_empty_height_dp_preference", 100)
+                .putBoolean("enable_ai_conversion_zenz_preference", true)
+                .putBoolean("conversion_key_long_press_ai_conversion_preference", true)
+                .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true)
+                // A deliberately long test delay separates manual dispatch from auto dispatch,
+                // even on a slow emulator. No timer is added to the display implementation.
+                .putInt("zenz_debounce_time_preference", 60_000)
+                .putInt("long_press_timeout_preference", 100).commit())
+            shell("ime enable $ime")
+            shell("ime set $ime")
+            ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            withEditor { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+            awaitOrientation(android.content.res.Configuration.ORIENTATION_PORTRAIT)
+            withEditor { it.restartEditorInput(true) }
+            val firstKey = bounds(id("key_1"))
+            val secondKey = bounds(id("key_2"))
+            val conversionKey = bounds(id("key_space"))
+            val typedAt = SystemClock.uptimeMillis()
+            touch(firstKey, settleMillis = 0)
+            touch(secondKey, settleMillis = 0)
+            assertFalse(shell("dumpsys window windows").contains("Zenz floating result"))
+            touch(conversionKey, settleMillis = 0, holdMillis = 650)
+            label()
+            assertTrue("Manual generation waited for the automatic debounce",
+                SystemClock.uptimeMillis() - typedAt < 60_000)
+            capture("manual-generated")
+        } finally {
+            ins.runOnMainSync {
+                androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                    .filterIsInstance<FastInputHostActivity>().forEach { it.finish() }
+            }
+            restore(prefs, original)
+            if (oldIme.isNotEmpty() && oldIme != "null") shell("ime set $oldIme")
         }
     }
 
