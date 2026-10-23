@@ -26,7 +26,7 @@ class ClassifiedDictionaryInstrumentedTest {
     private fun expected() = JSONObject(InstrumentationRegistry.getInstrumentation().context.assets
         .open("classified-expected-records.json").bufferedReader().use { it.readText() })
 
-    @Test fun all853354RecordsMatchFrozenReadingSurfacePosAndCost() {
+    @Test fun allRecordsMatchFrozenReadingSurfacePosAndCost() {
         val reader = entryPoint.dictionaryBinaryReader()
         val expected = expected()
         val digest = MessageDigest.getInstance("SHA-256")
@@ -42,7 +42,7 @@ class ClassifiedDictionaryInstrumentedTest {
             val leaf = SuccinctBitVector(yomi.isLeaf)
             val words = SuccinctBitVector(tango.LBS)
             val tokens = SuccinctBitVector(token.bitvector)
-            val dictionary = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens, words)
+            val dictionary = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens, words, reader.loadLiteralSurfaces(spec.category))
             var sum = BigInteger.ZERO
             var count = 0
             val decoded = mutableListOf<String>()
@@ -63,13 +63,13 @@ class ClassifiedDictionaryInstrumentedTest {
             assertEquals(spec.id, expected.getJSONObject(spec.id).getInt("count"), count)
             val actualDigest = sum.mod(modulus).toString(16).padStart(64, '0')
             if (actualDigest != expected.getJSONObject(spec.id).getString("digestSum")) {
-                File(context.cacheDir, "classified-decoded-${spec.id}.tsv").writeText(decoded.joinToString("\n", postfix = "\n"))
+                File(context.cacheDir, "classified-decoded-${spec.id.replace('/', '_')}.tsv").writeText(decoded.joinToString("\n", postfix = "\n"))
             }
             if (actualDigest != expected.getJSONObject(spec.id).getString("digestSum")) mismatches.add(spec.id)
             total += count
             println("CLASSIFIED_RECORDS ${spec.id}=$count")
         }
-        assertEquals(853354, total)
+        assertEquals(ClassifiedDictionaries.all.sumOf { expected.getJSONObject(it.id).getInt("count") }, total)
         assertEquals("Categories with differing decoded records", emptyList<String>(), mismatches)
     }
 
@@ -125,7 +125,7 @@ class ClassifiedDictionaryInstrumentedTest {
             val loadMs = android.os.SystemClock.elapsedRealtime() - started
             System.gc()
             val afterHeap = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
-            println("CLASSIFIED_LOAD all30ReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
+            println("CLASSIFIED_LOAD all77ReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
             assertEquals(ClassifiedDictionaries.categories, engine.loadedClassifiedCategories())
             ConversionBackend.entries.forEach { backend ->
                 val session = KanaKanjiConversionSession(engine, backend)
