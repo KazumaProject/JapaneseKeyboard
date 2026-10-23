@@ -1,11 +1,13 @@
 # Pinned classified dictionary distribution
 
-`prepare.py` imports `v1.7.266`, verifies its archive and all 244 asset
+`prepare.py` imports `v1.7.268`, verifies its archive and all 265 asset
 hashes, and derives category provenance from hash-verified frozen source data.
-The 70 categories include 22 person, 6 event and 15 term categories,
+The 77 categories include 29 person, 6 event and 15 term categories,
 Kampo (432 records) and Medical (92,683 records). New subcategories default OFF;
 retired person/event/term switches are not inherited. Other saved category
-choices are preserved. Person IDs are normalized to their full asset paths.
+choices are preserved. The seven additions since v1.7.266 also default OFF.
+Name-origin categories are grouped with their corresponding unconfirmed names;
+philosophers and thinkers use only source-verified upstream entries. Person IDs are normalized to their full asset paths.
 Specialist provenance is matched to adopted source rows; license texts include
 CC BY-SA 2.1 Japan, CC BY 4.0 and updated English-reading/CMUdict notices.
 The five original input acquisition revisions and per-record copyright attribution
@@ -16,7 +18,7 @@ python3 tools/classified-dictionaries/prepare.py
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-`ClassifiedDictionaryInstrumentedTest` compares all 846,402 decoded records
+`ClassifiedDictionaryInstrumentedTest` compares all 849,437 decoded records
 against count and SHA-256 multiset fingerprints generated from the frozen
 reading/surface/left POS/right POS/cost records. A second fixture verifies all
 5,138 English-reading pairs and costs against the pinned catalog. It also exercises category
@@ -27,11 +29,14 @@ contribute independently.
 
 ## Literal surface repair
 
-The importer derives literal surface overrides from the pinned adopted records.
-This release needs no overrides: the former `あとこしゃらか / アトコシヤラカ`
-record is explicitly excluded upstream. The sidecar is empty; the runtime guard
-for bundled and byte-identical imported triples remains available and tested.
-All 244 distributed assets remain byte-identical to the release.
+The importer derives three literal surface repairs from the hash-verified source
+records for the comedian category: `くりき / くりきひなた`, `しゅうじ / シュージ`
+and `まつだ / ﾏﾂﾀﾞ`. The packed kana sentinels cannot preserve these spellings.
+A small sidecar restores them during conversion and browsing only when all three
+selected dictionary files match the pinned SHA-256 hashes. Byte-identical external
+triples are supported; other external triples retain their own decoding.
+All 265 distributed assets remain byte-identical to the release. Tests cover the
+literal spellings and reject repairs for different external archive bytes.
 
 The standalone unigram asset now contains seven whole-input preferences, including
 `なにか` and `なら`. Instrumented tests cover all seven across modes and backends, and retain
@@ -52,7 +57,7 @@ adb shell am instrument -w \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The UI tests verify all 70 dictionary settings change handlers and their refreshed state
+The UI tests verify all 77 dictionary settings change handlers and their refreshed state
 in both the new settings screen and legacy pager,
 render every category notice offline and type through the actual
 Romaji keyboard, check the `[賞]`, `[漢方・生薬]` and `[医療]` labels, and commit candidates into an editor.
@@ -62,20 +67,34 @@ from the user's keyboard preferences.
 
 ## Release comparison probe
 
-`DictionaryReleasePerformanceInstrumentedTest` is opt-in and requires the isolated
-probe package. Use the same test APK source, corpus and build settings on both
-releases. It measures fresh conversion sessions on both backends with all 70
-categories OFF and ON, ten warmup passes and three sets of 50 samples per input.
-It records first observations, mean/p50/p95/max latency, Java/native heap and
-process PSS in `files/dictionary-release-performance.tsv`. Engine resolution and
-category reload timings are separate from IME input-to-display latency; the test
-process includes instrumentation and does not represent a release-build SLA.
+`DictionaryUpdatePerformanceInstrumentedTest` is opt-in and requires the isolated
+probe package. Install the **identical test APK** against each application APK.
+Its fixed 24-input corpus includes short readings, dictionary names, the three
+literal spelling repairs, and 16/32/64/96/128-character sentences. A corpus SHA-256
+and complete environment/settings record are emitted with each run.
+
+The probe measures both backends, three query modes, bunsetsu OFF/ON and optional
+categories OFF/all ON, with five warmups and three rounds of ten samples per input.
+Fresh-session engine latency excludes UI rendering and file reporting. Separate
+240-query workloads sample Java heap, native allocated heap and process PSS every
+20 ms; retained memory is recorded after GC. The allocation counter includes the
+instrumentation/sampler process, and sampled peaks are lower bounds on true peaks.
+
+Use fresh processes and reset **only the probe package**, run versions in A-B-B-A
+order, and retain the raw TSVs outside the repository. This compares emulated debug
+builds, not release-device end-to-end keyboard latency.
 
 ```sh
-adb shell am instrument -w -e dictionaryReleasePerf true \
-  -e class com.kazumaproject.markdownhelperkeyboard.converter.DictionaryReleasePerformanceInstrumentedTest \
+adb shell pm clear com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite
+adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.268 \
+  -e class com.kazumaproject.markdownhelperkeyboard.converter.DictionaryUpdatePerformanceInstrumentedTest \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```
+
+Read `files/dictionary-update-performance.tsv` from the probe app after each run.
+The older `DictionaryReleasePerformanceInstrumentedTest` remains a separate,
+release-specific broad corpus probe and must not be used for cross-version
+comparisons unless its corpus is frozen and its size assertions are updated.
 
 The UI test also logs the time from the final injected key-up to observing a
 category label, including its fixed 40 ms delay and up to 50 ms polling interval.

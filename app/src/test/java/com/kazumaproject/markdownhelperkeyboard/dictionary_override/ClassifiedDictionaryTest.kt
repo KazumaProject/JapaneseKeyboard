@@ -24,8 +24,8 @@ class ClassifiedDictionaryTest {
             .reader().use { JsonParser.parseReader(it).asJsonObject }
         val distributionRevision = manifest.get("revision").asString
         assertTrue("Distribution revision must be a commit SHA", distributionRevision.matches(Regex("[0-9a-f]{40}")))
-        assertEquals(70, ClassifiedDictionaries.all.size)
-        assertEquals(70, ClassifiedDictionaries.categories.size)
+        assertEquals(77, ClassifiedDictionaries.all.size)
+        assertEquals(77, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
             val files = DictionaryFileSpecs.forCategory(spec.category)
             assertEquals(3, files.size)
@@ -93,7 +93,7 @@ class ClassifiedDictionaryTest {
         val directory = File(context.cacheDir, "classified-parent-upgrade")
         val store = DictionaryOverrideStore(directory, prefs, defaults)
         val children = ClassifiedDictionaries.all.filter { '/' in it.id }
-        assertEquals(43, children.size)
+        assertEquals(50, children.size)
         children.forEach { assertFalse(it.id, store.isOptionalBundledEnabled(it.category)) }
         assertTrue(store.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PLACE))
         val chosen = children.first().category
@@ -108,6 +108,69 @@ class ClassifiedDictionaryTest {
         }
         reopened.removeAllOverrides()
         children.forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
+    }
+
+    @Test fun additionsSince266DefaultOffWhileExistingSelectionsPersist() {
+        val additions = setOf("person/thought", "person/surname_origin_japanese", "person/surname_origin_foreign",
+            "person/given_name_origin_japanese", "person/given_name_origin_foreign",
+            "person/personal_name_origin_japanese", "person/personal_name_origin_foreign")
+        val prefs = context.getSharedPreferences("classified-268-upgrade", Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        val defaults = context.getSharedPreferences("classified-268-defaults", Context.MODE_PRIVATE)
+        val directory = File(context.cacheDir, "classified-268-upgrade")
+        val store = DictionaryOverrideStore(directory, prefs, defaults)
+        ClassifiedDictionaries.all.filter { it.id !in additions }.forEach { store.setOptionalBundledEnabled(it.category, true) }
+        val reopened = DictionaryOverrideStore(directory, prefs, defaults)
+        assertEquals(7, ClassifiedDictionaries.all.count { it.id in additions })
+        ClassifiedDictionaries.all.forEach { assertEquals(it.id, it.id !in additions, reopened.isOptionalBundledEnabled(it.category)) }
+    }
+
+    @Test fun literalSurfaceRepairsApplyToBundledAndIdenticalImportedTriplesOnly() {
+        val prefs = context.getSharedPreferences("classified-literal-repairs", Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        val defaults = context.getSharedPreferences("classified-literal-defaults", Context.MODE_PRIVATE)
+        val store = DictionaryOverrideStore(File(context.cacheDir, "classified-literal-repairs"), prefs, defaults)
+        store.removeAllOverrides()
+        val reader = DictionaryBinaryReader(DictionarySourceResolver(context, store), store)
+        val category = DictionaryCategory.CLASSIFIED_PERSON_COMEDIAN
+        val expected = mapOf("-2\tくりき" to "くりきひなた", "-1\tしゅうじ" to "シュージ", "-1\tまつだ" to "ﾏﾂﾀﾞ")
+        assertEquals(expected, reader.loadLiteralSurfaces(category))
+        assertTrue(reader.loadLiteralSurfaces(DictionaryCategory.CLASSIFIED_PERSON_ACTOR).isEmpty())
+        for (spec in DictionaryFileSpecs.forCategory(category)) {
+            assertTrue(store.saveOverrideFromInputStream(spec.key, context.assets.open(spec.bundledAssetPath)).isValid)
+        }
+        store.setDisableableCategoryEnabled(category, true, true)
+        assertTrue(store.isExternalEnabledForCategory(category))
+        assertEquals(expected, reader.loadLiteralSurfaces(category))
+        val tango = DictionaryFileSpecs.forCategory(category).single { it.role == DictionaryFileRole.TANGO }
+        val payload = java.util.zip.ZipInputStream(context.assets.open(tango.bundledAssetPath)).use { input ->
+            input.nextEntry
+            input.readBytes()
+        }
+        val output = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(output).use { zip ->
+            zip.setComment("Different external dictionary archive")
+            zip.putNextEntry(java.util.zip.ZipEntry("tango.dat"))
+            zip.write(payload)
+            zip.closeEntry()
+        }
+        assertTrue(store.saveOverrideFromInputStream(tango.key, output.toByteArray().inputStream()).isValid)
+        assertTrue(reader.loadLiteralSurfaces(category).isEmpty())
+        store.setExternalEnabledForCategory(category, false)
+        assertEquals(expected, reader.loadLiteralSurfaces(category))
+    }
+
+    @Test fun dictionaryBrowserRestoresTheThreeLiteralComedianSpellings() = runBlocking {
+        val prefs = context.getSharedPreferences("classified-literal-browser", Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        val defaults = context.getSharedPreferences("classified-literal-browser-defaults", Context.MODE_PRIVATE)
+        val store = DictionaryOverrideStore(File(context.cacheDir, "classified-literal-browser"), prefs, defaults)
+        val resolver = DictionarySourceResolver(context, store)
+        val repository = DictionaryBrowserRepository(DictionaryBinaryReader(resolver, store), resolver)
+        for ((reading, surface) in listOf("くりき" to "くりきひなた", "しゅうじ" to "シュージ", "まつだ" to "ﾏﾂﾀﾞ")) {
+            val page = repository.open(DictionaryCategory.CLASSIFIED_PERSON_COMEDIAN, reading).nextPage()
+            assertTrue("$reading / $surface: ${page.rows}", page.rows.any { it.reading == reading && it.word == surface })
+        }
     }
 
     @Test fun dictionarySettingsAndSearchExposeEveryNonPersistentSwitch() {
@@ -147,8 +210,8 @@ class ClassifiedDictionaryTest {
         assertTrue(context.assets.open("licenses/english-reading.html").bufferedReader().use { it.readText() }.contains("Carnegie Mellon"))
     }
 
-    @Test fun allClassifiedDictionariesOpenWithoutSurfaceOverrideAsset() = runBlocking {
-        assertFalse(context.assets.list("categories")!!.contains("surface-overrides.json"))
+    @Test fun allClassifiedDictionariesOpenWithPinnedLiteralSurfaceRepairs() = runBlocking {
+        assertTrue(context.assets.list("categories")!!.contains("surface-overrides.json"))
         val prefs = context.getSharedPreferences("classified-no-sidecar", Context.MODE_PRIVATE)
         val defaults = context.getSharedPreferences("classified-no-sidecar-defaults", Context.MODE_PRIVATE)
         val store = DictionaryOverrideStore(File(context.cacheDir, "classified-no-sidecar"), prefs, defaults)
@@ -156,7 +219,7 @@ class ClassifiedDictionaryTest {
         val repository = DictionaryBrowserRepository(DictionaryBinaryReader(resolver, store), resolver)
         for (spec in ClassifiedDictionaries.all) {
             val page = repository.open(spec.category, "").nextPage()
-            assertTrue("${spec.id} must open without a surface override asset", page.rows.isNotEmpty())
+            assertTrue("${spec.id} must open with pinned surface repairs", page.rows.isNotEmpty())
         }
     }
 

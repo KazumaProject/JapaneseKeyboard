@@ -38,6 +38,20 @@
                 app:iconSpaceReserved="false" />
 
             <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_surname_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_surname_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
                 android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_UNCONFIRMED"
                 android:title="@string/classified_dictionary_person_given_name_origin_unconfirmed"
                 android:defaultValue="false"
@@ -45,8 +59,36 @@
                 app:iconSpaceReserved="false" />
 
             <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_given_name_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_given_name_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
                 android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_UNCONFIRMED"
                 android:title="@string/classified_dictionary_person_personal_name_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_personal_name_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_personal_name_origin_foreign"
                 android:defaultValue="false"
                 android:persistent="false"
                 app:iconSpaceReserved="false" />
@@ -152,6 +194,13 @@
             <SwitchPreferenceCompat
                 android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SCIENCE_EDUCATION"
                 android:title="@string/classified_dictionary_person_science_education"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
+                android:title="@string/classified_dictionary_person_thought"
                 android:defaultValue="false"
                 android:persistent="false"
                 app:iconSpaceReserved="false" />
