@@ -180,11 +180,6 @@
     <string name="keyboard_corner_bottom_right_preference_title">Round bottom-right corner</string>
     <string name="allow_fullscreen_mode_preference_title">Allow fullscreen input in landscape</string>
     <string name="allow_fullscreen_mode_preference_summary">Allow Android to use a fullscreen input view in landscape when needed.</string>
-    <string name="landscape_force_qwerty_preference_title">Always use QWERTY in landscape</string>
-    <string name="landscape_force_qwerty_preference_summary">When the device is in landscape, temporarily switch to a QWERTY keyboard.</string>
-    <string name="landscape_force_qwerty_romaji_preference_title">Landscape QWERTY input mode</string>
-    <string name="landscape_force_qwerty_romaji_preference_summary_on">Use Japanese mode with Romaji conversion when switching to QWERTY in landscape.</string>
-    <string name="landscape_force_qwerty_romaji_preference_summary_off">Use English mode when switching to QWERTY in landscape.</string>
     <string name="keyboard_height_fix_specific_device_title">Height Adjustment by Device</string>
     <string name="keyboard_height_fix_specific_device_summary_on">Height adjustment for certain devices is enabled (e.g., Galaxy).</string>
     <string name="keyboard_height_fix_specific_device_summary_off">Height adjustment for certain devices is disabled.</string>
@@ -1947,4 +1942,13 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">Cursor, delete, IME switch, small letters, Shift, undo and full-width toggle keys. Icon and text sizes can be adjusted separately.</string>
     <string name="gojuon_sizing_icon">Utility key icons</string>
     <string name="gojuon_sizing_special_text">Utility key text</string>
+    <string name="orientation_portrait_title">Portrait</string>
+    <string name="orientation_landscape_title">Landscape</string>
+    <string name="orientation_keyboard_title">Keyboard to display</string>
+    <string name="orientation_background_title">Background</string>
+    <string name="orientation_keyboard_default">Use normal keyboard settings</string>
+    <string name="orientation_background_common">Use shared background</string>
+    <string name="orientation_background_none">No background</string>
+    <string name="orientation_background_image">Image</string>
+    <string name="orientation_background_video">Video</string>
 </resources>

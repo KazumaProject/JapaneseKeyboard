@@ -280,10 +280,6 @@ object AppPreference {
     private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
     private val SWITCH_QWERTY_PASSWORD = Pair("switch_qwerty_keyboard_password_preference", false)
-    private val LANDSCAPE_FORCE_QWERTY_PREFERENCE =
-        Pair("landscape_force_qwerty_preference", false)
-    private val LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE =
-        Pair("landscape_force_qwerty_romaji_preference", false)
 
     private val TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tenkey_kana_english_qwerty_preference", false)
@@ -1634,15 +1630,6 @@ object AppPreference {
             it.putBoolean(SWITCH_QWERTY_PASSWORD.first, value ?: false)
         }
 
-    var landscape_force_qwerty_preference: Boolean
-        get() = preferences.getBoolean(
-            LANDSCAPE_FORCE_QWERTY_PREFERENCE.first,
-            LANDSCAPE_FORCE_QWERTY_PREFERENCE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(LANDSCAPE_FORCE_QWERTY_PREFERENCE.first, value)
-        }
-
     fun isFullscreenModeAllowed(defaultValue: Boolean): Boolean =
         preferences.getBoolean(ALLOW_FULLSCREEN_MODE_KEY, defaultValue)
 
@@ -1653,15 +1640,6 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(INLINE_SUGGESTION_ENABLED_PREFERENCE.first, value)
-        }
-
-    var landscape_force_qwerty_romaji_preference: Boolean
-        get() = preferences.getBoolean(
-            LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.first,
-            LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.first, value)
         }
 
     var qwerty_enable_flick_up_preference: Boolean?
@@ -4645,6 +4623,30 @@ object AppPreference {
                 GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.first,
                 GemmaHandwritingSettings.normalizePenColor(value),
             )
+        }
+
+    fun orientationSettings(landscape: Boolean): OrientationKeyboardSettings {
+        fun read(field: String, default: String = "") =
+            preferences.getString(OrientationKeyboardSettings.key(landscape, field), default) ?: default
+        return OrientationKeyboardSettings(
+            keyboard = read("keyboard"),
+            background = read("background", "common"),
+            imageUri = read("image_uri"),
+            videoUri = read("video_uri")
+        )
+    }
+
+    fun setOrientationBackground(landscape: Boolean, mode: String, uri: String? = null) {
+        preferences.edit {
+            it.putString(OrientationKeyboardSettings.key(landscape, "background"), mode)
+            if (uri != null) it.putString(OrientationKeyboardSettings.key(landscape, "${mode}_uri"), uri)
+        }
+    }
+
+    fun isBackgroundUriUsedByOrientation(uri: String): Boolean =
+        listOf(false, true).any {
+            val settings = orientationSettings(it)
+            settings.imageUri == uri || settings.videoUri == uri
         }
 
     var keyboard_background_image_uri: String

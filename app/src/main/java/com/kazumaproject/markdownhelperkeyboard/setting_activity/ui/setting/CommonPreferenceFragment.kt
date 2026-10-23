@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.OrientationKeyboardSettings
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
@@ -148,6 +150,105 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             }
         }
 
+    private var pendingOrientation: String? = null
+    private var pendingBackgroundMode: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        pendingOrientation = savedInstanceState?.getString("pendingOrientation")
+        pendingBackgroundMode = savedInstanceState?.getString("pendingBackgroundMode")
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("pendingOrientation", pendingOrientation)
+        outState.putString("pendingBackgroundMode", pendingBackgroundMode)
+        super.onSaveInstanceState(outState)
+    }
+
+    private val orientationBackgroundLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val orientation = pendingOrientation
+            val mode = pendingBackgroundMode
+            pendingOrientation = null
+            pendingBackgroundMode = null
+            if (uri != null && orientation != null && mode != null) {
+                runCatching {
+                    requireContext().contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val landscape = orientation == "landscape"
+                    val previous = appPreference.orientationSettings(landscape)
+                    appPreference.setOrientationBackground(landscape, mode, uri.toString())
+                    releaseUnusedBackgroundUri(if (mode == "image") previous.imageUri else previous.videoUri)
+                }.onFailure {
+                    toast(getString(
+                        if (mode == "video") R.string.keyboard_background_video_failed else R.string.keyboard_background_image_failed,
+                        it.message ?: "unknown"
+                    ))
+                }
+            }
+            configureOrientationPreferences()
+        }
+
+    private fun releaseUnusedBackgroundUri(uri: String) {
+        if (uri.isBlank() || appPreference.isBackgroundUriUsedByOrientation(uri) ||
+            appPreference.keyboard_background_image_uri == uri || appPreference.keyboard_background_video_uri == uri) return
+        runCatching {
+            requireContext().contentResolver.releasePersistableUriPermission(uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
+    private fun configureOrientationPreferences() {
+        val types = appPreference.keyboard_order
+        val labels = types.map { type ->
+            getString(when (type) {
+                KeyboardType.TENKEY -> R.string.keyboard_type_tenkey
+                KeyboardType.GOJUON -> R.string.keyboard_type_gojuon
+                KeyboardType.SUMIRE -> R.string.keyboard_type_sumire
+                KeyboardType.QWERTY -> R.string.keyboard_type_qwerty
+                KeyboardType.ROMAJI -> R.string.keyboard_type_romaji
+                KeyboardType.CUSTOM -> R.string.keyboard_type_custom
+                KeyboardType.SPLIT -> R.string.split_keyboard_title
+                KeyboardType.MORSE -> R.string.morse_title
+            })
+        }
+        listOf("portrait", "landscape").forEach { orientation ->
+            val landscape = orientation == "landscape"
+            val settings = appPreference.orientationSettings(landscape)
+            val key = OrientationKeyboardSettings.key(landscape, "keyboard")
+            findPreference<ListPreference>(key)?.apply {
+                entries = (listOf(getString(R.string.orientation_keyboard_default)) + labels).toTypedArray()
+                entryValues = (listOf("") + types.map { it.name }).toTypedArray()
+                summaryProvider = Preference.SummaryProvider<ListPreference> { preference ->
+                    preference.entry ?: getString(R.string.orientation_keyboard_default)
+                }
+            }
+            findPreference<Preference>("orientation_${orientation}_background_preference")?.apply {
+                val modes = listOf("common", "none", "image", "video")
+                val names = listOf(R.string.orientation_background_common, R.string.orientation_background_none,
+                    R.string.orientation_background_image, R.string.orientation_background_video).map { getString(it) }
+                val selected = modes.indexOf(settings.background).coerceAtLeast(0)
+                val uri = when (settings.background) { "image" -> settings.imageUri; "video" -> settings.videoUri; else -> "" }
+                summary = names[selected] + if (uri.isNotBlank()) " · ${uri.toUri().lastPathSegment}" else ""
+                setOnPreferenceClickListener {
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.orientation_background_title)
+                        .setSingleChoiceItems(names.toTypedArray(), selected) { dialog, index ->
+                            dialog.dismiss()
+                            val mode = modes[index]
+                            if (mode == "image" || mode == "video") {
+                                pendingOrientation = orientation
+                                pendingBackgroundMode = mode
+                                orientationBackgroundLauncher.launch(arrayOf("$mode/*"))
+                            } else {
+                                appPreference.setOrientationBackground(landscape, mode)
+                                configureOrientationPreferences()
+                            }
+                        }.setNegativeButton(android.R.string.cancel, null).show()
+                    true
+                }
+            }
+        }
+    }
+
     private val keyboardBackgroundImageLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@registerForActivityResult
@@ -156,7 +257,9 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
+                val oldUri = appPreference.keyboard_background_image_uri
                 appPreference.keyboard_background_image_uri = uri.toString()
+                releaseUnusedBackgroundUri(oldUri)
             }.onSuccess {
                 toast(getString(R.string.keyboard_background_image_saved))
             }.onFailure {
@@ -175,17 +278,12 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             if (uri == null) return@registerForActivityResult
             runCatching {
                 val oldUri = appPreference.keyboard_background_video_uri
-                if (oldUri.isNotBlank() && oldUri != uri.toString()) {
-                    requireContext().contentResolver.releasePersistableUriPermission(
-                        oldUri.toUri(),
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
                 requireContext().contentResolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
                 appPreference.keyboard_background_video_uri = uri.toString()
+                releaseUnusedBackgroundUri(oldUri)
             }.onSuccess {
                 toast(getString(R.string.keyboard_background_video_saved))
             }.onFailure {
@@ -253,14 +351,9 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     }
 
     private fun releaseKeyboardBackgroundUriPermissionIfNeeded() {
-        val uriString = appPreference.keyboard_background_image_uri
-        if (uriString.isBlank()) return
-        runCatching {
-            requireContext().contentResolver.releasePersistableUriPermission(
-                uriString.toUri(),
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
+        val uri = appPreference.keyboard_background_image_uri
+        appPreference.keyboard_background_image_uri = ""
+        releaseUnusedBackgroundUri(uri)
     }
 
     private fun updateKeyboardBackgroundVideoPreferenceState() {
@@ -285,14 +378,9 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     }
 
     private fun releaseKeyboardBackgroundVideoUriPermissionIfNeeded() {
-        val uriString = appPreference.keyboard_background_video_uri
-        if (uriString.isBlank()) return
-        runCatching {
-            requireContext().contentResolver.releasePersistableUriPermission(
-                uriString.toUri(),
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
+        val uri = appPreference.keyboard_background_video_uri
+        appPreference.keyboard_background_video_uri = ""
+        releaseUnusedBackgroundUri(uri)
     }
 
     private fun updateKeyboardTouchEffectPreferenceState(
@@ -409,6 +497,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     }
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        configureOrientationPreferences()
         val guidePreferences = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(guidePreferences)
         findPreference<SeekBarPreference>(FlickPreviewDelaySettings.KEY)
@@ -1079,6 +1168,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     }
 
     override fun onPreferencesResumed() {
+        configureOrientationPreferences()
         val guideSettings = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings(
             androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()))
         findPreference<ListPreference>("composing_guide_display_mode")?.isEnabled = guideSettings.textEnabled && guideSettings.enabled

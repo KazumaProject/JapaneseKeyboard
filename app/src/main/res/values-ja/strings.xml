@@ -181,11 +181,6 @@
     <string name="keyboard_corner_bottom_right_preference_title">右下を角丸にする</string>
     <string name="allow_fullscreen_mode_preference_title">横画面で全画面入力を許可</string>
     <string name="allow_fullscreen_mode_preference_summary">横画面で、Androidが必要と判断した場合に入力画面を全画面表示します。</string>
-    <string name="landscape_force_qwerty_preference_title">横画面では常に QWERTY に切り替える</string>
-    <string name="landscape_force_qwerty_preference_summary">端末が横画面のとき、一時的に QWERTY キーボードへ切り替えます。</string>
-    <string name="landscape_force_qwerty_romaji_preference_title">横画面 QWERTY の入力モード</string>
-    <string name="landscape_force_qwerty_romaji_preference_summary_on">横画面で QWERTY に切り替えるとき、日本語モードでローマ字変換を有効にします。</string>
-    <string name="landscape_force_qwerty_romaji_preference_summary_off">横画面で QWERTY に切り替えるとき、英語モードにします。</string>
     <string name="keyboard_height_fix_specific_device_title">端末別の高さ補正</string>
     <string name="keyboard_height_fix_specific_device_summary_on">一部端末向けの高さ補正は有効です（例：Galaxy）。</string>
     <string name="keyboard_height_fix_specific_device_summary_off">一部端末向けの高さ補正は無効です。</string>
@@ -1945,4 +1940,13 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">カーソル、削除、IME切替、小文字、シフト、元に戻す、全角切替などのキーです。アイコンと文字のサイズを個別に調整できます。</string>
     <string name="gojuon_sizing_icon">特殊キーのアイコン</string>
     <string name="gojuon_sizing_special_text">特殊キーの文字</string>
+    <string name="orientation_portrait_title">縦向き</string>
+    <string name="orientation_landscape_title">横向き</string>
+    <string name="orientation_keyboard_title">表示するキーボード</string>
+    <string name="orientation_background_title">背景</string>
+    <string name="orientation_keyboard_default">通常のキーボード設定を使う</string>
+    <string name="orientation_background_common">共通の背景を使う</string>
+    <string name="orientation_background_none">背景なし</string>
+    <string name="orientation_background_image">画像</string>
+    <string name="orientation_background_video">動画</string>
 </resources>

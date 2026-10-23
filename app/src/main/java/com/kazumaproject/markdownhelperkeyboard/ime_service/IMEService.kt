@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.OrientationKeyboardSettings
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingInput
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingCoordinator
@@ -2014,8 +2015,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keySoundVolumePercent: Int? = 0
     private var enabledDictionaryCategories: Set<DictionaryCategory> = emptySet()
     private var switchQWERTYPassword: Boolean? = false
-    private var landscapeForceQwertyPreference: Boolean? = false
-    private var landscapeForceQwertyRomajiPreference: Boolean? = false
+    private var portraitSettings = OrientationKeyboardSettings()
+    private var landscapeSettings = OrientationKeyboardSettings()
+    private var lastAppliedKeyboardOrientation = Configuration.ORIENTATION_UNDEFINED
     private var shortcutTollbarVisibility: Boolean? = false
     private var shortcutToolbarIntegratedInSuggestion: Boolean? = false
     private var shortcutToolbarHeightDp: Int = AppPreference.SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP
@@ -3968,6 +3970,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun syncRuntimeInputPreferences() {
         assertMainThread("syncRuntimeInputPreferences")
+        portraitSettings = appPreference.orientationSettings(false)
+        landscapeSettings = appPreference.orientationSettings(true)
 
         val readingTextSize = appPreference.live_conversion_candidate_yomi_size.toFloat()
         (listOfNotNull(suggestionAdapter, suggestionAdapterFull) + splitInputs.values.map { it.adapter })
@@ -4371,8 +4375,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             PhysicalKeyboardInputMode.fromPreferenceValue(preferences.physicalKeyboardInputMode)
         _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
         switchQWERTYPassword = preferences.switchQWERTYPassword
-        landscapeForceQwertyPreference = preferences.landscapeForceQwertyPreference
-        landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
+        portraitSettings = preferences.portraitSettings
+        landscapeSettings = preferences.landscapeSettings
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
         shortcutToolbarIntegratedInSuggestion = preferences.shortcutToolbarIntegratedInSuggestion
         shortcutToolbarHeightDp = preferences.shortcutToolbarHeightDp
@@ -4426,15 +4430,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 requestedType = null,
                 savedPosition = preferences.lastSavedKeyboardPosition,
                 source = "applyImePreferences.restoreLastShown",
-                persistNormalizedPosition = true,
-                applyOrientation = false
+                persistNormalizedPosition = true
             )
         } else {
             resolveKeyboardForDisplay(
                 requestedType = null,
                 savedPosition = null,
-                source = "applyImePreferences.firstKeyboard",
-                applyOrientation = false
+                source = "applyImePreferences.firstKeyboard"
             )
         }
         currentKeyboardOrder = keyboardSelection.resolvedIndex ?: 0
@@ -4714,7 +4716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         assertMainThread("applyKeyboardBackgroundImageToViewIfNeeded")
         val requestId = keyboardBackgroundImageRequestId.incrementAndGet()
         keyboardBackgroundImageRequestIds[imageView] = requestId
-        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_image_uri else ""
+        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) currentOrientationSettings().image(appPreference.keyboard_background_image_uri) else ""
         val displayMode = appPreference.keyboard_background_image_display_mode
         clearKeyboardBackgroundImage(imageView)
         if (uriString.isBlank()) {
@@ -4786,7 +4788,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surfaceName: String
     ): Boolean {
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_video_uri else ""
+        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) currentOrientationSettings().video(appPreference.keyboard_background_video_uri) else ""
         if (uriString.isBlank()) {
             releasePlayer()
             playerView.isVisible = false
@@ -4857,7 +4859,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView: FloatingKeyboardLayoutBinding
     ): Boolean {
         splitInputs.values.firstOrNull { it.binding === floatingView }?.let { state ->
-            val uri = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_video_uri else ""
+            val uri = if (keyboardSkinId == KeyboardSkinId.DEFAULT) currentOrientationSettings().video(appPreference.keyboard_background_video_uri) else ""
             val config = KeyboardBackgroundVideoConfig(uri, appPreference.keyboard_background_video_quality)
             if (uri.isNotBlank() && state.backgroundVideoConfig == config && state.backgroundPlayer != null) return true
             return applyKeyboardBackgroundVideoToViewIfNeeded(
@@ -4870,7 +4872,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         playerView.setKeepContentOnPlayerReset(true)
 
-        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) appPreference.keyboard_background_video_uri else ""
+        val uriString = if (keyboardSkinId == KeyboardSkinId.DEFAULT) currentOrientationSettings().video(appPreference.keyboard_background_video_uri) else ""
         if (uriString.isBlank()) {
             releaseFloatingKeyboardBackgroundVideoPlayer()
             playerView.isVisible = false
@@ -4997,6 +4999,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
         if (isBackgroundVideoApplied) {
             applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
+            keyboardBackgroundImageRequestIds.remove(mainView.keyboardBackgroundImage)
             clearKeyboardBackgroundImage(mainView.keyboardBackgroundImage)
         } else {
             applyKeyboardBackgroundImageIfNeeded(mainView)
@@ -6253,12 +6256,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             false
         }
 
+        lastAppliedKeyboardOrientation = resources.configuration.orientation
         val splitSelected = resolveKeyboardDisplay(
-            requested = null, keyboardOrder = keyboardOrder,
+            requested = currentOrientationSettings().keyboardType(keyboardOrder), keyboardOrder = keyboardOrder,
             savedPosition = if (enableShowLastShownKeyboardInRestart == true) lastSavedKeyboardPosition else null
         ).resolvedKeyboard == KeyboardType.SPLIT
         if (splitSelected) {
-            resetKeyboard()
+            resetKeyboard(applyOrientationDefault = true)
         } else if (currentInputType in passwordTypesWithOutNumber) {
             if (switchQWERTYPassword == true) {
                 Timber.d("current input type in OnStartView passwordTypesWithOutNumber: [$currentInputType] [$restarting] [${currentInputModeForSession}] [${qwertyMode.value}]")
@@ -6281,7 +6285,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             showNumberKeyboardForCurrentInputType()
         } else {
             Timber.d("current input type in OnStartView not password: [$currentInputType] [$restarting]")
-            resetKeyboard()
+            resetKeyboard(applyOrientationDefault = true)
         }
 
         if (isKeyboardFloatingMode == true) {
@@ -6811,8 +6815,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyRomajiHankakuNumberPreference = null
         qwertyRomajiHankakuSymbolPreference = null
         switchQWERTYPassword = null
-        landscapeForceQwertyPreference = null
-        landscapeForceQwertyRomajiPreference = null
         shortcutTollbarVisibility = null
         shortcutToolbarIntegratedInSuggestion = null
         shortcutToolbarHeightDp = AppPreference.SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP
@@ -7204,8 +7206,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         lastKeyboardLayoutRootView = null
         lastKeyboardLayoutOrientation = null
-        refreshKeyboardForCurrentOrientation()
+        if (lastAppliedKeyboardOrientation != newConfig.orientation) {
+            refreshKeyboardForCurrentOrientation()
+            lastAppliedKeyboardOrientation = newConfig.orientation
+        }
         mainLayoutBinding?.let { mainView ->
+            applyKeyboardBackgroundIfNeeded(mainView)
+            buildList {
+                floatingKeyboardBinding?.let(::add)
+                splitInputs.values.forEach { add(it.binding) }
+            }.distinct().forEach(::applyFloatingKeyboardBackgroundIfNeeded)
             rebindMainKeyboardInputListeners(mainView)
             scheduleMainKeyboardInputListenerRebind(mainView)
             mainView.root.post {
@@ -14265,8 +14275,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val resolution = resolveKeyboardForDisplay(
             requestedType = type,
             savedPosition = null,
-            source = source,
-            applyOrientation = true
+            source = source
         )
         showResolvedKeyboard(resolution.resolvedKeyboard)
     }
@@ -14275,28 +14284,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         requestedType: KeyboardType?,
         savedPosition: Int? = null,
         source: String,
-        persistNormalizedPosition: Boolean = false,
-        applyOrientation: Boolean = true
+        persistNormalizedPosition: Boolean = false
     ): KeyboardDisplayResolution {
         val requestedFromPosition = if (requestedType == null) {
             savedPosition?.let { keyboardOrder.getOrNull(it) }
         } else {
             requestedType
         }
-        val requestedForResolver = if (applyOrientation) {
-            requestedFromPosition?.let(::resolveKeyboardTypeForCurrentOrientation)
-        } else {
-            requestedFromPosition
-        }
         val resolution = resolveKeyboardDisplay(
-            requested = requestedForResolver,
+            requested = requestedFromPosition,
             keyboardOrder = keyboardOrder,
             savedPosition = savedPosition
         )
 
         Timber.d(
             "KeyboardDisplayResolver[$source]: requested=$requestedType " +
-                    "effectiveRequested=$requestedForResolver " +
+                    "effectiveRequested=$requestedFromPosition " +
                     "savedPosition=$savedPosition savedPositionKeyboard=${resolution.savedPositionKeyboard} " +
                     "keyboardOrder=${resolution.keyboardOrder} resolved=${resolution.resolvedKeyboard} " +
                     "resolvedIndex=${resolution.resolvedIndex}"
@@ -17422,22 +17425,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun resetKeyboard() {
+    private fun resetKeyboard(applyOrientationDefault: Boolean = false) {
         Timber.d("resetKeyboard called for showKeyboard")
+        val orientationType = if (applyOrientationDefault) currentOrientationSettings().keyboardType(keyboardOrder) else null
         val resolution = if (enableShowLastShownKeyboardInRestart == true) {
             resolveKeyboardForDisplay(
-                requestedType = null,
+                requestedType = orientationType,
                 savedPosition = lastSavedKeyboardPosition ?: 0,
                 source = "resetKeyboard.restoreLastShown",
-                persistNormalizedPosition = true,
-                applyOrientation = false
+                persistNormalizedPosition = orientationType == null
             )
         } else {
             resolveKeyboardForDisplay(
-                requestedType = null,
+                requestedType = orientationType,
                 savedPosition = null,
-                source = "resetKeyboard.firstKeyboard",
-                applyOrientation = false
+                source = "resetKeyboard.firstKeyboard"
             )
         }
         currentKeyboardOrder = resolution.resolvedIndex ?: 0
@@ -17588,24 +17590,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
-    private fun resolveKeyboardTypeForCurrentOrientation(requestedType: KeyboardType): KeyboardType {
-        if (landscapeForceQwertyPreference != true || !isLandscapeOrientation()) {
-            return requestedType
-        }
-        return if (landscapeForceQwertyRomajiPreference == true) {
-            KeyboardType.ROMAJI
-        } else {
-            KeyboardType.QWERTY
-        }
-    }
+    private fun currentOrientationSettings() =
+        if (isLandscapeOrientation()) landscapeSettings else portraitSettings
 
     private fun refreshKeyboardForCurrentOrientation() {
         val mainView = mainLayoutBinding ?: return
+        if (currentInputType in numberTypes) {
+            showNumberKeyboardForCurrentInputType()
+            return
+        }
+        if (currentInputType in passwordTypesWithOutNumber) return
         val resolution = resolveKeyboardForDisplay(
-            requestedType = keyboardOrder.getOrNull(currentKeyboardOrder),
+            requestedType = currentOrientationSettings().keyboardType(keyboardOrder) ?: keyboardOrder.getOrNull(currentKeyboardOrder),
             savedPosition = lastSavedKeyboardPosition,
-            source = "refreshKeyboardForCurrentOrientation",
-            applyOrientation = false
+            source = "refreshKeyboardForCurrentOrientation"
         )
         currentKeyboardOrder = resolution.resolvedIndex ?: 0
         showKeyboard(
@@ -22641,8 +22639,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val firstItem = resolveKeyboardForDisplay(
             requestedType = null,
             savedPosition = null,
-            source = "setFirstKeyboardType",
-            applyOrientation = false
+            source = "setFirstKeyboardType"
         ).resolvedKeyboard
         when (firstItem) {
             KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
@@ -22780,8 +22777,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val resolution = resolveKeyboardForDisplay(
                             requestedType = null,
                             savedPosition = null,
-                            source = "physicalKeyboardToggle",
-                            applyOrientation = false
+                            source = "physicalKeyboardToggle"
                         )
                         currentKeyboardOrder = resolution.resolvedIndex ?: 0
                         showKeyboard(resolution.resolvedKeyboard, source = "physicalKeyboardToggle.display")
@@ -29953,8 +29949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val currentResolution = resolveKeyboardForDisplay(
             requestedType = keyboardOrder.getOrNull(currentKeyboardOrder),
             savedPosition = null,
-            source = "switchNextKeyboard.current",
-            applyOrientation = false
+            source = "switchNextKeyboard.current"
         )
         currentKeyboardOrder = currentResolution.resolvedIndex ?: 0
 
@@ -29963,8 +29958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val nextResolution = resolveKeyboardForDisplay(
             requestedType = keyboardOrder[nextIndex],
             savedPosition = null,
-            source = "switchNextKeyboard.next",
-            applyOrientation = false
+            source = "switchNextKeyboard.next"
         )
         val nextType = nextResolution.resolvedKeyboard
 

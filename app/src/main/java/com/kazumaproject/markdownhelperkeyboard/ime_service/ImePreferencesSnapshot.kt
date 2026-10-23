@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.OrientationKeyboardSettings
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
@@ -187,8 +188,8 @@ data class ImePreferencesSnapshot(
     val conversionKeySwipePreference: Boolean,
     val physicalKeyboardInputMode: String,
     val switchQWERTYPassword: Boolean,
-    val landscapeForceQwertyPreference: Boolean,
-    val landscapeForceQwertyRomajiPreference: Boolean,
+    val portraitSettings: OrientationKeyboardSettings,
+    val landscapeSettings: OrientationKeyboardSettings,
     val shortcutTollbarVisibility: Boolean,
     val shortcutToolbarIntegratedInSuggestion: Boolean,
     val shortcutToolbarHeightDp: Int,
@@ -579,10 +580,8 @@ data class ImePreferencesSnapshot(
                     appPreference.conversion_key_swipe_cursor_move_preference,
                 physicalKeyboardInputMode = appPreference.physical_keyboard_input_mode_preference,
                 switchQWERTYPassword = appPreference.switch_qwerty_password ?: false,
-                landscapeForceQwertyPreference =
-                    appPreference.landscape_force_qwerty_preference,
-                landscapeForceQwertyRomajiPreference =
-                    appPreference.landscape_force_qwerty_romaji_preference,
+                portraitSettings = appPreference.orientationSettings(false),
+                landscapeSettings = appPreference.orientationSettings(true),
                 shortcutTollbarVisibility =
                     appPreference.shortcut_toolbar_visibility_preference,
                 shortcutToolbarIntegratedInSuggestion =
