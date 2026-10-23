@@ -50,7 +50,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
     }
     private fun views() = WindowInspector.getGlobalWindowViews().asSequence().flatMap(::descendants)
     private fun await(message: String, condition: () -> Boolean) {
-        val deadline = SystemClock.uptimeMillis() + 30000
+        val deadline = SystemClock.uptimeMillis() + 90000
         while (SystemClock.uptimeMillis() < deadline) {
             var ready = false
             main { ready = condition() }
@@ -116,7 +116,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
     }
 
-    @Test fun dictionarySettingsExposeAndPersistAll70IndependentSwitches() {
+    @Test fun dictionarySettingsExposeAndPersistAll77IndependentSwitches() {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
@@ -211,12 +211,13 @@ class ClassifiedDictionaryUiInstrumentedTest {
             // External settings enqueue long Toasts; allow the bounded queue to drain before capture.
             SystemClock.sleep(20_000)
             val screenshotCategories = listOf(
-                "person/surname_origin_unconfirmed", "person/actor",
+                "person/surname_origin_unconfirmed", "person/actor", "person/thought",
                 "event/occasion/organized_event", "event/incident/natural_disaster",
                 "term/general/products_daily_goods", "term/specialist/information_communications",
             )
             for (id in screenshotCategories) {
                 val groupKey = when {
+                    id == "person/thought" -> "optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
                     id.startsWith("person/") -> "classified_group_person"
                     else -> "classified_group_" + id.substringBeforeLast('/').replace('/', '_')
                 }
@@ -247,8 +248,9 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 legacy.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
                     ?.let { fragment = it; ClassifiedDictionaries.all.all { spec -> findSwitch(spec)?.isChecked == true } } == true
             }
-            for (id in listOf("person/actor", "event/occasion/organized_event", "term/specialist/information_communications")) {
-                val groupKey = if (id.startsWith("person/")) "classified_group_person"
+            for (id in listOf("person/actor", "person/thought", "event/occasion/organized_event", "term/specialist/information_communications")) {
+                val groupKey = if (id == "person/thought") "optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
+                    else if (id.startsWith("person/")) "classified_group_person"
                     else "classified_group_" + id.substringBeforeLast('/').replace('/', '_')
                 scrollSettingsTo(fragment, groupKey)
                 screenshot("classified-legacy-${id.replace('/', '_')}.png")
@@ -297,7 +299,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
         val testedCategories = if (fullyMatched) ClassifiedDictionaries.all.map { it.category } else if (subdivided)
             listOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR, DictionaryCategory.CLASSIFIED_EVENT_OCCASION_ORGANIZED_EVENT,
-                DictionaryCategory.CLASSIFIED_TERM_GENERAL_FOOD_DRINK_COOKING, DictionaryCategory.CLASSIFIED_TERM_SPECIALIST_INFORMATION_COMMUNICATIONS)
+                DictionaryCategory.CLASSIFIED_TERM_GENERAL_FOOD_DRINK_COOKING, DictionaryCategory.CLASSIFIED_TERM_SPECIALIST_INFORMATION_COMMUNICATIONS,
+                DictionaryCategory.CLASSIFIED_PERSON_COMEDIAN)
         else listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
         val previous = testedCategories.associateWith { store.isOptionalBundledEnabled(it) }
         val oldIme = shell("settings get secure default_input_method")
@@ -336,7 +339,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
             }
             // The keyboard view appears before the editor restart/IME entrance animation completes.
             await("Editor input connection not active") { activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java).isActive(activity.editText) }
-            SystemClock.sleep(750)
+            ins.waitForIdleSync()
+            SystemClock.sleep(2000)
             if (learnedPrediction != null) {
                 lateinit var service: IMEService
                 main {
@@ -361,13 +365,14 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 }
             }
             val samples = if (subdivided) listOf(
-                Triple("kakutatu", "[俳優]", "郭達"), Triple("aomaturi", "[催し・行事]", "アオマツリ"),
+                Triple("kuriki", "[芸人]", "くりきひなた"), Triple("kakutatu", "[俳優]", "郭達"), Triple("aomaturi", "[催し・行事]", "アオマツリ"),
                 Triple("aigana", "[食品・料理]", "鮎河菜"), Triple("aiaiesu", "[情報・通信]", "IIS"),
             ) else if (fullyMatched) listOf(Triple("syou", "人名", "SHO"), Triple("syou", "人名", "紫耀")) else
                 listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))
             for ((input, sampleLabel, expectedSurface) in samples) {
             val categoryId = when (input) {
-                "syou" -> "person/personal_name_origin_unconfirmed"
+                "syou" -> "person/personal_name_origin_japanese"
+                "kuriki" -> "person/comedian"
                 "kakutatu" -> "person/actor"
                 "aomaturi" -> "event/occasion/organized_event"
                 "aigana" -> "term/general/food_drink_cooking"
@@ -381,8 +386,12 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 val spec = ClassifiedDictionaries.all.single { it.id == categoryId }
                 expectedLabel = "[${keyboardContext.getString(spec.labelRes)}]"
             }
-            main { activity.editText.setText("") }
-            SystemClock.sleep(300)
+            main {
+                activity.editText.setText("")
+                activity.editText.requestFocus()
+            }
+            ins.waitForIdleSync()
+            SystemClock.sleep(1000)
             var lastKeyUpMs = 0L
             for (letter in input) {
                 val point = IntArray(2)

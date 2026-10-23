@@ -79,6 +79,12 @@ JapaneseCorpus由来データの原本表記は
 その他の辞書入力も、それぞれの出典・ライセンス条件に従います。この文書は、未確認の
 入力データに一律のライセンスを与えるものではありません。
 
+## 哲学者・思想家の人名データ
+
+`src/main/classification/person-additions/philosophers-2026-10-22.jsonl` の人名表記・読みは、各行の `source_url` に記録した[Web NDL Authorities](https://id.ndl.go.jp/)の典拠データを確認して採録しています。同データは国立国会図書館の出典を表示して再利用します。各行には典拠ID、原資料の表記・読み、確認箇所、確認日、典拠レスポンスのSHA-256を記録します。
+
+人物を哲学者・思想家カテゴリに分類する根拠は、各行の `classification_source_url` に記録したWikidata項目の職業記述です。Wikidataのデータは[CC0](https://creativecommons.org/publicdomain/zero/1.0/)で提供されています。分類テキストや典拠資料の本文はリポジトリへ転載しません。
+
 ## 漢方・医療辞書
 
 `src/main/specialist` のKNApSAcK KAMPO由来データと `kampo` 辞書の加工部分は
