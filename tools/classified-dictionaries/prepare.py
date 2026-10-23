@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '647afb895c6e73a047e2372f14856aa4ba924f2b'
-VERSION = 'v1.7.266'
+REVISION = '21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88'
+VERSION = 'v1.7.268'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,9 +46,9 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = '8e0cdcfeb69efcca56288a5e20038cdb8b5f03ec24babf51077de7ce400be9ca'
+    archive_sha = 'd4164f078775ede3ddb3c57827e095375721462ff061502f2899d1bdd31aa12f'
     assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = '7dababd4e8f080dd133216e64c7f64bca3052287dc0e47155067ee0732962a6a'
+    licenses_sha = 'f84420965405b2742d89da07dd6c621a753b3799c9d3b03c18b5aa8c003dcbc9'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha
@@ -156,6 +156,7 @@ def provenance():
     result['categorySourcePairs'] = dict(sorted(counts.items()))
     fingerprints = {}
     surface_overrides = {}
+    sentinel_surfaces = collections.defaultdict(set)
     hira = set('あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんぁぃぅぇぉゃゅょゎっゔーがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ')
     kata = set('アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォャュョヮッヴーガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ')
 
@@ -166,8 +167,10 @@ def provenance():
         normalized_surface = unicodedata.normalize('NFKC', surface)
         sentinel = -2 if surface == reading or normalized_surface and set(normalized_surface) <= hira else -1 if normalized_surface and set(normalized_surface) <= kata else None
         decoded = reading if sentinel == -2 else ''.join(chr(ord(c) + 96) if '\u3041' <= c <= '\u3093' or c == 'ゔ' else c for c in reading) if sentinel == -1 else surface
+        if sentinel is not None:
+            sentinel_surfaces[(category, f'{sentinel}\t{reading}')].add(surface)
         if decoded != surface:
-            key = '\t'.join((str(sentinel), reading, left, right, cost))
+            key = f'{sentinel}\t{reading}'
             surface_overrides.setdefault(category, {})[key] = surface
         fingerprint = fingerprints.setdefault(category, {'count': 0, 'sum': 0, 'sample': {'reading': reading, 'surface': surface}})
         record = '\t'.join((reading, left, right, cost, surface))
@@ -176,10 +179,19 @@ def provenance():
         if 4 <= len(reading) <= 8 and not 4 <= len(fingerprint['sample']['reading']) <= 8:
             fingerprint['sample'] = {'reading': reading, 'surface': surface}
     assert {k: v['count'] for k, v in fingerprints.items()} == {c['id']: c['recordCount'] for c in distribution['categories']}
-    assert len(fingerprints) == 70
+    assert len(fingerprints) == 77
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
-    assert not surface_overrides, surface_overrides
+    repairs = {}
+    for category, surfaces in surface_overrides.items():
+        assert all(len(sentinel_surfaces[(category, key)]) == 1 for key in surfaces), category
+        paths = next(c['assetPaths'] for c in distribution['categories'] if c['id'] == category)
+        repairs[category] = {'assets': {
+            path.removeprefix('app/src/main/assets/'): distribution['assets'][path] for path in paths
+        }, 'surfaces': surfaces}
+    surface_asset = ROOT / 'app/src/main/assets/categories/surface-overrides.json'
+    write(surface_asset, json.dumps({'revision': REVISION, 'categories': repairs}, ensure_ascii=False, indent=2) + '\n')
+    result['surfaceOverridesSha256'] = sha(surface_asset.read_bytes())
     catalog = fetch(RAW + 'docs/english-dictionary-catalog.md')
     english_rows = []
     for line in catalog.decode().splitlines():
@@ -312,6 +324,7 @@ def check():
     assert sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes()) == provenance_manifest['englishFixtureSha256']
     assert sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes()) == provenance_manifest['classifiedFixtureSha256']
     assert sha((ROOT/'app/src/main/assets/licenses/sources/distribution-licenses.txt').read_bytes()) == m['licensesSha256']
+    assert sha((ROOT/'app/src/main/assets/categories/surface-overrides.json').read_bytes()) == provenance_manifest['surfaceOverridesSha256']
     print(f"Verified {len(m['assets'])} distributed assets and all bundled notice hashes")
 
 if __name__ == '__main__':

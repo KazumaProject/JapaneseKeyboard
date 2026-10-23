@@ -149,4 +149,18 @@
     <string name="classified_group_event_history">Historical events</string>
     <string name="classified_group_term_general">General terms</string>
     <string name="classified_group_term_specialist">Specialist terms</string>
+    <string name="classified_dictionary_person_thought">Philosophers and thinkers</string>
+    <string name="classified_label_person_thought">Thinker</string>
+    <string name="classified_dictionary_person_surname_origin_japanese">Surnames (Japanese origin)</string>
+    <string name="classified_label_person_surname_origin_japanese">Surname (JP)</string>
+    <string name="classified_dictionary_person_surname_origin_foreign">Surnames (foreign origin)</string>
+    <string name="classified_label_person_surname_origin_foreign">Surname (foreign)</string>
+    <string name="classified_dictionary_person_given_name_origin_japanese">Given names (Japanese origin)</string>
+    <string name="classified_label_person_given_name_origin_japanese">Given name (JP)</string>
+    <string name="classified_dictionary_person_given_name_origin_foreign">Given names (foreign origin)</string>
+    <string name="classified_label_person_given_name_origin_foreign">Given name (foreign)</string>
+    <string name="classified_dictionary_person_personal_name_origin_japanese">Personal names (Japanese origin)</string>
+    <string name="classified_label_person_personal_name_origin_japanese">Name (JP)</string>
+    <string name="classified_dictionary_person_personal_name_origin_foreign">Personal names (foreign origin)</string>
+    <string name="classified_label_person_personal_name_origin_foreign">Name (foreign)</string>
 </resources>

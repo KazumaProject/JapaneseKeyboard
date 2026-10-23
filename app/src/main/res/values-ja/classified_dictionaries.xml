@@ -149,4 +149,18 @@
     <string name="classified_group_event_history">歴史的出来事</string>
     <string name="classified_group_term_general">一般語</string>
     <string name="classified_group_term_specialist">専門用語</string>
+    <string name="classified_dictionary_person_thought">哲学者・思想家</string>
+    <string name="classified_label_person_thought">思想家</string>
+    <string name="classified_dictionary_person_surname_origin_japanese">姓・名字（日本由来）</string>
+    <string name="classified_label_person_surname_origin_japanese">姓（日）</string>
+    <string name="classified_dictionary_person_surname_origin_foreign">姓・名字（海外由来）</string>
+    <string name="classified_label_person_surname_origin_foreign">姓（海外）</string>
+    <string name="classified_dictionary_person_given_name_origin_japanese">名・下の名前（日本由来）</string>
+    <string name="classified_label_person_given_name_origin_japanese">名（日）</string>
+    <string name="classified_dictionary_person_given_name_origin_foreign">名・下の名前（海外由来）</string>
+    <string name="classified_label_person_given_name_origin_foreign">名（海外）</string>
+    <string name="classified_dictionary_person_personal_name_origin_japanese">人名・姓名（日本由来）</string>
+    <string name="classified_label_person_personal_name_origin_japanese">人名（日）</string>
+    <string name="classified_dictionary_person_personal_name_origin_foreign">人名・姓名（海外由来）</string>
+    <string name="classified_label_person_personal_name_origin_foreign">人名（海外）</string>
 </resources>

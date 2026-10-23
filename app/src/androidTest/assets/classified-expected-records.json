@@ -72,16 +72,16 @@
     }
   },
   "event/occasion/organized_event": {
-    "count": 4058,
-    "digestSum": "a44716984c138497b29c4894484d8b04915b7a409f7aa83032be089b0c438a05",
+    "count": 4059,
+    "digestSum": "d403b00d12402e0b0ef6ec06dac8294d64a4c616e6fe11049a2f7452c1652955",
     "sample": {
       "reading": "あいしーゆーさい",
       "surface": "ICU祭"
     }
   },
   "facility": {
-    "count": 35069,
-    "digestSum": "9f2b36d0581c79a23de849102dd2fd9c00b8689b81b5a0591c4b08ca884b4d5e",
+    "count": 35070,
+    "digestSum": "6bfb285123b08ab65edbb68d1cb4fc6c0ef7a106e0a76eb9bb24ee1772183eb0",
     "sample": {
       "reading": "ああいせっくつ",
       "surface": "アアイ石窟"
@@ -112,8 +112,8 @@
     }
   },
   "organization": {
-    "count": 47482,
-    "digestSum": "6cc9e5768eb0844774d0abcd65b72848cb248d9a9b214dcd698c0111a3c99bca",
+    "count": 47484,
+    "digestSum": "d5c6ac0faeb780190d706bea563500aa47349366bf384244865725979f7d3997",
     "sample": {
       "reading": "あいあいえふ",
       "surface": "IIF"
@@ -128,8 +128,8 @@
     }
   },
   "product": {
-    "count": 9882,
-    "digestSum": "3fc32daf29de063b9c324c4ebe8710c3b6dd99298586bffe2b3fd1a1587096ca",
+    "count": 9890,
+    "digestSum": "efd43da8c5e1c3a6657fdc3c1e7aa8ea4bd7809fa1b98280f0bdf8b7a8a78e40",
     "sample": {
       "reading": "あいあいえす",
       "surface": "IIS"
@@ -152,16 +152,16 @@
     }
   },
   "term/general/internet_slang_culture": {
-    "count": 570,
-    "digestSum": "c91b250af388e4fc4440fa12d1eb66656d92edd4ef7373eeec591c6bb2434b8a",
+    "count": 573,
+    "digestSum": "3beb8e0c34910ed2dacebd845bbd4ab2d52b27aae501e612d292f71f0f9793af",
     "sample": {
       "reading": "あいしーせつぞく",
       "surface": "IC接続"
     }
   },
   "term/general/neologisms_trends_youth_language": {
-    "count": 481,
-    "digestSum": "1710a436bd1e703d7382a0252ca0db237efc373e51bfc852d1a21ea9ab1b9b06",
+    "count": 483,
+    "digestSum": "6696198fcde8261e7baf89a71d423d026a2fc0e8bf142a49d451f14511bfcc4a",
     "sample": {
       "reading": "あいこら",
       "surface": "アイコラ"
@@ -184,8 +184,8 @@
     }
   },
   "term/specialist/chemistry_life_sciences": {
-    "count": 27565,
-    "digestSum": "e15e9399b6f374007c8ad01a06a56fa2d2f302f92cb886fc1ca6d711b556a2df",
+    "count": 27566,
+    "digestSum": "3a03c0b59a4ef8e924890b267c74e721c04e17f3fca93fa846f9b9d35c9242d7",
     "sample": {
       "reading": "あいあーしぇっけ",
       "surface": "アイアーシェッケ"
@@ -200,16 +200,16 @@
     }
   },
   "term/specialist/earth_environment_resources": {
-    "count": 2109,
-    "digestSum": "3a74bb97a253fdd5274d6331271ed1c63164b529287afa94e79ce5031245185d",
+    "count": 2110,
+    "digestSum": "9fcefb0bb1e4528517197187655dd95745ad894dd3bcf97adbbe02f3329e7c6e",
     "sample": {
       "reading": "あいくちにつば",
       "surface": "匕首に鍔"
     }
   },
   "term/specialist/economics_management": {
-    "count": 5778,
-    "digestSum": "72118aca9e2e4742d236fa88986834bb0295ffb6a1960dbf64e48bf73fc61f02",
+    "count": 5779,
+    "digestSum": "5ca4ca7434adc82994bd134590d4231bc26f08d85262e72ecff1ee12b805d6c0",
     "sample": {
       "reading": "あいおーぴーえす",
       "surface": "IOPS"
@@ -232,16 +232,16 @@
     }
   },
   "term/specialist/information_communications": {
-    "count": 6063,
-    "digestSum": "629b26d5299378a54964d255f3903fd0511ce9ae0cbb22ab438f3fdb2ae8fa75",
+    "count": 6073,
+    "digestSum": "b57c94be824878b805a3bfc69e3dd28900aecafa1ea78567cc94fbfba1a6f26e",
     "sample": {
       "reading": "あいあいえす",
       "surface": "IIS"
     }
   },
   "term/specialist/law_politics": {
-    "count": 5271,
-    "digestSum": "26a8dedc23e16fa4f28bf549c9629361c0061d459604df168b4992cdae2376da",
+    "count": 5273,
+    "digestSum": "757d9b73ec26e73afe281caf5a004f1696e2deac5df6637bb03538a1ca74f18f",
     "sample": {
       "reading": "あいゆうせいど",
       "surface": "隘勇制度"
@@ -272,8 +272,8 @@
     }
   },
   "vehicle": {
-    "count": 2579,
-    "digestSum": "14e0022f7359e8ff9a845d03370ac09d600b403f27a487e886211003d15963f4",
+    "count": 2580,
+    "digestSum": "abe9df9ed271f0046752a614722e56ca52d6b0aff414489b46496d70657c4e2e",
     "sample": {
       "reading": "あいおわきゅう",
       "surface": "アイオワ級"
@@ -312,24 +312,24 @@
     }
   },
   "work_game": {
-    "count": 3151,
-    "digestSum": "cbc11ed23021d9ee0f657931d45e1950b4074fa87998edaf981c8823bec5e60c",
+    "count": 3156,
+    "digestSum": "644ca58a0fe565bbc228a3ee8d8f19e3bbec1c603b9fe7c4cec8b0b9655098fc",
     "sample": {
       "reading": "あいおん",
       "surface": "AION"
     }
   },
   "work_manga": {
-    "count": 5144,
-    "digestSum": "78e38cb0ae27eda76f58d89e9cac77a7b48338c3e28faecdb83e26ae22ac38a6",
+    "count": 5148,
+    "digestSum": "eab9ff0956f8a9347177d7d26ae6c156a3b051c235bd795e8b6dd72708a274db",
     "sample": {
       "reading": "ああいちろう",
       "surface": "ああ一郎"
     }
   },
   "work_music": {
-    "count": 10336,
-    "digestSum": "a953be85f8d5bead872719b25f6d9cdb59cc72cfdbd037da97b8b9c7323d9a3b",
+    "count": 10337,
+    "digestSum": "f5bbdae3ee1ad294296a36546d26e130219d5feb9c28350d89a6fbc3ce88a986",
     "sample": {
       "reading": "ぁまのじゃく",
       "surface": "ぁまのじゃく"
@@ -352,8 +352,8 @@
     }
   },
   "work_program": {
-    "count": 9310,
-    "digestSum": "224af3811f94bf84bf8a0b6fde747f3d23bac10e6a93a86cfe029ce9a684ecd4",
+    "count": 9311,
+    "digestSum": "0b2782f51b9ef04b3cb0521d8b16cd45645da0a5424d1f8c90e9690b13b31f44",
     "sample": {
       "reading": "ああかあさん",
       "surface": "ああ母さん"
@@ -383,180 +383,236 @@
       "surface": "ＩＩＰ"
     }
   },
-  "person/surname_origin_unconfirmed": {
-    "count": 49617,
-    "digestSum": "43251189e27def01da4a4d9edad800fedf1bfbebd80cae6a579800939a705aca",
-    "sample": {
-      "reading": "あいえだ",
-      "surface": "相枝"
-    }
-  },
-  "person/given_name_origin_unconfirmed": {
-    "count": 7163,
-    "digestSum": "c89a25c2042c013589a398104fca7148fd5a88a45608ee33be397fd5b28277af",
-    "sample": {
-      "reading": "おかかな",
-      "surface": "岡佳奈"
-    }
-  },
-  "person/personal_name_origin_unconfirmed": {
-    "count": 170660,
-    "digestSum": "f01a2eb8bb072be32c4526baad63ce867cadc548aeb0b007edb157096bbf1786",
-    "sample": {
-      "reading": "ああろん",
-      "surface": "アアロン"
-    }
-  },
   "person/actor": {
-    "count": 6450,
-    "digestSum": "46b6e9da525371ed9208cf2c9b65de66c022d7e862fad2d3d4dcd087c56ac5f6",
+    "count": 6428,
+    "digestSum": "9fe237cbfa08f940d35f8e8972cf7b953d97fdc8ce746f5670fffe1367b5448a",
     "sample": {
-      "reading": "かくたつ",
-      "surface": "郭達"
-    }
-  },
-  "person/voice_actor": {
-    "count": 579,
-    "digestSum": "02f08c2db68bcd043b7863786f49727b67e7dc31f64cb8fbba2e8025db9caf92",
-    "sample": {
-      "reading": "すがきや",
-      "surface": "須賀紀哉"
-    }
-  },
-  "person/musician": {
-    "count": 971,
-    "digestSum": "b05a4e360fca7359e3ef0a77caa4e50f75e3ef01988e1781b32d40bef0c1b010",
-    "sample": {
-      "reading": "あいがみ",
-      "surface": "藍上"
-    }
-  },
-  "person/idol": {
-    "count": 154,
-    "digestSum": "5d5c107b63003aec4c00eeceb054d02965c34d9ce6c700717d38550cc4930cae",
-    "sample": {
-      "reading": "しがりく",
-      "surface": "志賀李玖"
-    }
-  },
-  "person/comedian": {
-    "count": 55,
-    "digestSum": "a2558d140ea869a9b0ebd5e29026e4cc97a0c43fab444ee4757b9543e407f9e3",
-    "sample": {
-      "reading": "かみちぃ",
-      "surface": "かみちぃ"
-    }
-  },
-  "person/broadcaster": {
-    "count": 1308,
-    "digestSum": "72a3006e3bf350f8a63a3fb56ce752d69b5dda49ec8186bd74dc537e7c228e32",
-    "sample": {
-      "reading": "あいばん",
-      "surface": "IVAN"
-    }
-  },
-  "person/online_creator": {
-    "count": 71,
-    "digestSum": "56e3e7e1d8118d148e3c8b3a3fc001898d56a2e66896404e2fbcedfa0bad920a",
-    "sample": {
-      "reading": "ぁぃぁぃ",
-      "surface": "ぁぃぁぃ"
-    }
-  },
-  "person/sports": {
-    "count": 4626,
-    "digestSum": "9b53e50884fa5d8575b472fafe3f1a26e43c67d08ce2c83df5ff227e62628aaa",
-    "sample": {
-      "reading": "あくせる",
-      "surface": "明世流"
-    }
-  },
-  "person/competitive_games": {
-    "count": 104,
-    "digestSum": "26278a49e12f9e84433ac382c667dc34b09c846c1003efd288861fe99f200da7",
-    "sample": {
-      "reading": "おしえい",
-      "surface": "於之瑩"
-    }
-  },
-  "person/writer": {
-    "count": 1134,
-    "digestSum": "318d80f76c0212f040380fd2b7d2fa0e4f019a6a26d2d42dc8245af2c3af4f39",
-    "sample": {
-      "reading": "かしえん",
-      "surface": "夏之炎"
-    }
-  },
-  "person/manga_illustration": {
-    "count": 215,
-    "digestSum": "c28081d59f614fb9ad3402413a8ed32d7839e1d2e10b817ddb74ace7caf2bd4a",
-    "sample": {
-      "reading": "かなへい",
-      "surface": "カナヘイ"
-    }
-  },
-  "person/film_game_creator": {
-    "count": 200,
-    "digestSum": "61958d2eefb7f3efa5356b9648fea7c960a44e776d273e52003d1538a150b4bf",
-    "sample": {
-      "reading": "ぞううん",
-      "surface": "増運"
+      "reading": "あいうちなぎ",
+      "surface": "相内凪"
     }
   },
   "person/art_design": {
     "count": 922,
     "digestSum": "03ed734e57bf495d7ff3c6c37978821a42efb31b6f6f98187f45a4d801da8de8",
     "sample": {
-      "reading": "たばいも",
-      "surface": "束芋"
+      "reading": "あおいうに",
+      "surface": "あおいうに"
+    }
+  },
+  "person/broadcaster": {
+    "count": 1307,
+    "digestSum": "e109cd016ea18eb29b7617ba3f92fabaf52bc4f8bf8851019a40fa1280a3060c",
+    "sample": {
+      "reading": "あいうちゆうか",
+      "surface": "相内優香"
+    }
+  },
+  "person/business": {
+    "count": 4019,
+    "digestSum": "be0c93d01195ff6e9467a2bf1f0688a080a2298d77b6ac73fa218df825778c11",
+    "sample": {
+      "reading": "あさぢのりゆき",
+      "surface": "浅地紀幸"
+    }
+  },
+  "person/comedian": {
+    "count": 1749,
+    "digestSum": "e262419bcc3d728d0384090e0dd9156c073cc093507ed4068adde11692b3c939",
+    "sample": {
+      "reading": "あいたはやと",
+      "surface": "会田勇人"
+    }
+  },
+  "person/competitive_games": {
+    "count": 103,
+    "digestSum": "9f537d1bbf17111053141a4ea9c22af9d84f4d7485f593c5ddfebfd45734f876",
+    "sample": {
+      "reading": "あいかわはるか",
+      "surface": "相川春香"
+    }
+  },
+  "person/film_game_creator": {
+    "count": 200,
+    "digestSum": "61958d2eefb7f3efa5356b9648fea7c960a44e776d273e52003d1538a150b4bf",
+    "sample": {
+      "reading": "いけだかずお",
+      "surface": "池田一夫"
+    }
+  },
+  "person/given_name_origin_foreign": {
+    "count": 47,
+    "digestSum": "91dbc3fadabe5a6d58db465ac46633cb766eb7cfdf022940ba71fb9252978566",
+    "sample": {
+      "reading": "あぬーしゅか",
+      "surface": "アヌーシュカ"
+    }
+  },
+  "person/given_name_origin_japanese": {
+    "count": 2286,
+    "digestSum": "3c3e55c85a2a229599876cf18dd8b72e4481ca23620b009fdaf4c1698c9b11d7",
+    "sample": {
+      "reading": "おおばやしまさみ",
+      "surface": "大林雅美"
+    }
+  },
+  "person/given_name_origin_unconfirmed": {
+    "count": 4332,
+    "digestSum": "e90824cbb9addf67d7735252531fd41523a71c655eb023be3121c111b7d1f62c",
+    "sample": {
+      "reading": "おおきゆりね",
+      "surface": "おおきゆりね"
+    }
+  },
+  "person/idol": {
+    "count": 154,
+    "digestSum": "5d5c107b63003aec4c00eeceb054d02965c34d9ce6c700717d38550cc4930cae",
+    "sample": {
+      "reading": "あいかわなつ",
+      "surface": "相川なつ"
+    }
+  },
+  "person/manga_illustration": {
+    "count": 215,
+    "digestSum": "c28081d59f614fb9ad3402413a8ed32d7839e1d2e10b817ddb74ace7caf2bd4a",
+    "sample": {
+      "reading": "あいおいやよい",
+      "surface": "あいおいやよい"
+    }
+  },
+  "person/musician": {
+    "count": 971,
+    "digestSum": "b05a4e360fca7359e3ef0a77caa4e50f75e3ef01988e1781b32d40bef0c1b010",
+    "sample": {
+      "reading": "あいうちりな",
+      "surface": "愛内里菜"
+    }
+  },
+  "person/online_creator": {
+    "count": 124,
+    "digestSum": "b674341bfce67178734527d0b365f57ff0e7e505d64a0009035079e37f8d0065",
+    "sample": {
+      "reading": "ぁぃぁぃ",
+      "surface": "ぁぃぁぃ"
+    }
+  },
+  "person/other_identified": {
+    "count": 5020,
+    "digestSum": "5f58d192ffc9dcf295159f503e5b06eddba3c209521db188d3497e010d758d6c",
+    "sample": {
+      "reading": "あいうぇいうぇい",
+      "surface": "艾未未"
     }
   },
   "person/performing_arts": {
     "count": 295,
     "digestSum": "e03c19a93e574b560e92aa3aff09be8a71858065957dd62d4981b3843661faa3",
     "sample": {
-      "reading": "かおるこ",
-      "surface": "香瑠鼓"
+      "reading": "いけだみか",
+      "surface": "池田美佳"
     }
   },
-  "person/science_education": {
-    "count": 7605,
-    "digestSum": "4d91d920f9721cf32091f67f563c25d4c8905ef0dd768b681213251ecd9df589",
+  "person/personal_name_origin_foreign": {
+    "count": 1046,
+    "digestSum": "781d2fc3f083c3f01a747ca60c88ca4f06dae8efd228fc4d7b5bddaf4209b37c",
     "sample": {
-      "reading": "あいしゃ",
-      "surface": "AISHA"
+      "reading": "あんきょく",
+      "surface": "安旭"
+    }
+  },
+  "person/personal_name_origin_japanese": {
+    "count": 75946,
+    "digestSum": "f2208e13e9d48e325a52b7e6dc050c141b2ee4aa866e863db845f1192db6b3a1",
+    "sample": {
+      "reading": "あいうちかほ",
+      "surface": "相内香穂"
+    }
+  },
+  "person/personal_name_origin_unconfirmed": {
+    "count": 93650,
+    "digestSum": "d7a90791388fd665bb335343848b3e10e765013825e2ec9f7350b565d197fe8b",
+    "sample": {
+      "reading": "ああろん",
+      "surface": "アアロン"
     }
   },
   "person/politics_public": {
-    "count": 1549,
-    "digestSum": "3cb45c7ea2a6cfea89dc3a6575fa923c1cdde4e914c0bafa079742bb8ba59f45",
+    "count": 1553,
+    "digestSum": "e829916329ebe13d847b36718573b2048da1b24132267b90654b017cb8ba71dd",
     "sample": {
-      "reading": "かしゅう",
-      "surface": "賈秀"
-    }
-  },
-  "person/business": {
-    "count": 4035,
-    "digestSum": "b7858d9709390c61dff8028a22bd030c20b0133835fbc626fabfe5fc33d704a9",
-    "sample": {
-      "reading": "かじまき",
-      "surface": "鍜治真起"
+      "reading": "あいかわとうべい",
+      "surface": "相川藤兵衛"
     }
   },
   "person/royalty_nobility": {
     "count": 286,
     "digestSum": "90c9a4a65043f6e05ee82375e5da0068eaf08a8eadf7756f12edd8e9f67a8386",
     "sample": {
-      "reading": "あきひめ",
-      "surface": "阿喜姫"
+      "reading": "あいこさま",
+      "surface": "愛子さま"
     }
   },
-  "person/other_identified": {
-    "count": 5038,
-    "digestSum": "15fd14cddab4a79127988136db01b12ea8138d67c493222a556408e8c5170279",
+  "person/science_education": {
+    "count": 7585,
+    "digestSum": "5a0d59eb21f889a53be873bade3e908ffb104f48cfa6463db3a6627dfddb3198",
     "sample": {
-      "reading": "かじゆり",
-      "surface": "加治友理"
+      "reading": "あいいそまこと",
+      "surface": "相磯慥"
+    }
+  },
+  "person/sports": {
+    "count": 6571,
+    "digestSum": "7f91030191320adc3dd31a8cb4716fcaaa1e815ab323e26b49d4764e38d2cd40",
+    "sample": {
+      "reading": "あいかわしょう",
+      "surface": "相川将"
+    }
+  },
+  "person/surname_origin_foreign": {
+    "count": 57,
+    "digestSum": "f9655e7ec9c508761460cf4098770e54442302a3bcde3dcc7914ce3746375466",
+    "sample": {
+      "reading": "あるてみえふ",
+      "surface": "アルテミエフ"
+    }
+  },
+  "person/surname_origin_japanese": {
+    "count": 25012,
+    "digestSum": "d3b2890eccd503714faf32b7a35b4053148714e77cf356083dee753ba2fa86d1",
+    "sample": {
+      "reading": "ああふめす",
+      "surface": "アアフメス"
+    }
+  },
+  "person/surname_origin_unconfirmed": {
+    "count": 24182,
+    "digestSum": "0cf47339c67c75c4eae05dc82be35e386f58f0893aaf160f09b53b6134324319",
+    "sample": {
+      "reading": "あいえだ",
+      "surface": "相枝"
+    }
+  },
+  "person/thought": {
+    "count": 255,
+    "digestSum": "ae0e0c6ce0444b947a7f910616e4cec874ce2e04e912b2b2ef9d5571f61b5876",
+    "sample": {
+      "reading": "あうぐすてぃぬす",
+      "surface": "アウグスティヌス"
+    }
+  },
+  "person/voice_actor": {
+    "count": 579,
+    "digestSum": "02f08c2db68bcd043b7863786f49727b67e7dc31f64cb8fbba2e8025db9caf92",
+    "sample": {
+      "reading": "あいかわありさ",
+      "surface": "相川亜利砂"
+    }
+  },
+  "person/writer": {
+    "count": 1134,
+    "digestSum": "318d80f76c0212f040380fd2b7d2fa0e4f019a6a26d2d42dc8245af2c3af4f39",
+    "sample": {
+      "reading": "あいかわあきら",
+      "surface": "愛川晶"
     }
   }
 }

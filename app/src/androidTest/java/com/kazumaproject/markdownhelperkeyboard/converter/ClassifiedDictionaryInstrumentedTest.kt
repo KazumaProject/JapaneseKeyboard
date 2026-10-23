@@ -42,7 +42,7 @@ class ClassifiedDictionaryInstrumentedTest {
             val leaf = SuccinctBitVector(yomi.isLeaf)
             val words = SuccinctBitVector(tango.LBS)
             val tokens = SuccinctBitVector(token.bitvector)
-            val dictionary = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens, words)
+            val dictionary = TripleDictionaryData(tango, yomi, token, lbs, leaf, tokens, words, reader.loadLiteralSurfaces(spec.category))
             var sum = BigInteger.ZERO
             var count = 0
             val decoded = mutableListOf<String>()
@@ -125,7 +125,7 @@ class ClassifiedDictionaryInstrumentedTest {
             val loadMs = android.os.SystemClock.elapsedRealtime() - started
             System.gc()
             val afterHeap = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
-            println("CLASSIFIED_LOAD all70ReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
+            println("CLASSIFIED_LOAD all77ReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
             assertEquals(ClassifiedDictionaries.categories, engine.loadedClassifiedCategories())
             ConversionBackend.entries.forEach { backend ->
                 val session = KanaKanjiConversionSession(engine, backend)
