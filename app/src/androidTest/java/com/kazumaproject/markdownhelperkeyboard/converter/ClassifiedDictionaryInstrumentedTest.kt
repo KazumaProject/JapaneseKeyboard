@@ -60,17 +60,19 @@ class ClassifiedDictionaryInstrumentedTest {
                     count++
                 }
             }
-            assertEquals(spec.id, expected.getJSONObject(spec.id).getInt("count"), count)
+            val expectedCount = expected.getJSONObject(spec.id).getInt("count")
             val actualDigest = sum.mod(modulus).toString(16).padStart(64, '0')
-            if (actualDigest != expected.getJSONObject(spec.id).getString("digestSum")) {
+            if (count != expectedCount || actualDigest != expected.getJSONObject(spec.id).getString("digestSum")) {
                 File(context.cacheDir, "classified-decoded-${spec.id.replace('/', '_')}.tsv").writeText(decoded.joinToString("\n", postfix = "\n"))
             }
-            if (actualDigest != expected.getJSONObject(spec.id).getString("digestSum")) mismatches.add(spec.id)
+            if (count != expectedCount || actualDigest != expected.getJSONObject(spec.id).getString("digestSum")) {
+                mismatches.add("${spec.id}: expected=$expectedCount decoded=$count")
+            }
             total += count
             println("CLASSIFIED_RECORDS ${spec.id}=$count")
         }
-        assertEquals(ClassifiedDictionaries.all.sumOf { expected.getJSONObject(it.id).getInt("count") }, total)
         assertEquals("Categories with differing decoded records", emptyList<String>(), mismatches)
+        assertEquals(ClassifiedDictionaries.all.sumOf { expected.getJSONObject(it.id).getInt("count") }, total)
     }
 
     @Test fun all5138EnglishReadingPairsMatchPinnedCatalog() {
@@ -125,12 +127,13 @@ class ClassifiedDictionaryInstrumentedTest {
             val loadMs = android.os.SystemClock.elapsedRealtime() - started
             System.gc()
             val afterHeap = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
-            println("CLASSIFIED_LOAD all77ReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
+            println("CLASSIFIED_LOAD allCategoriesReloadMs=$loadMs javaHeapDeltaBytes=${afterHeap - beforeHeap}")
             assertEquals(ClassifiedDictionaries.categories, engine.loadedClassifiedCategories())
             ConversionBackend.entries.forEach { backend ->
                 val session = KanaKanjiConversionSession(engine, backend)
                 for (mode in listOf(CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.CONVERSION, CandidateQueryMode.PREDICTION)) {
                     for (bunsetsu in listOf(false, true)) for (spec in ClassifiedDictionaries.all) {
+                        if (expected.getJSONObject(spec.id).getInt("count") == 0) continue
                         val sample = expected.getJSONObject(spec.id).getJSONObject("sample")
                         val fullReading = sample.getString("reading")
                         val reading = if (mode == CandidateQueryMode.PREDICTION) fullReading.dropLast(1) else fullReading

@@ -1,11 +1,12 @@
 # Pinned classified dictionary distribution
 
-`prepare.py` imports `v1.7.268`, verifies its archive and all 265 asset
+`prepare.py` imports `v1.7.271`, verifies its archive and all 463 asset
 hashes, and derives category provenance from hash-verified frozen source data.
-The 77 categories include 29 person, 6 event and 15 term categories,
-Kampo (432 records) and Medical (92,683 records). New subcategories default OFF;
-retired person/event/term switches are not inherited. Other saved category
-choices are preserved. The seven additions since v1.7.266 also default OFF.
+The 143 categories include 29 person, 59 facility, 6 event, 15 term and 8 media audience categories,
+Kampo (434 records) and Medical (92,683 records). New subcategories default OFF;
+retired person/event/term/facility switches are not inherited. Other saved category
+choices are preserved. The 67 additions since v1.7.268 also default OFF. Two empty media categories remain selectable and load as empty dictionaries.
+The dictionary settings group people, facilities, events, terms, works and media audiences in collapsible headings. Groups start closed, retain their last state and expand temporarily for search navigation. External settings retain the existing layout.
 Name-origin categories are grouped with their corresponding unconfirmed names;
 philosophers and thinkers use only source-verified upstream entries. Person IDs are normalized to their full asset paths.
 Specialist provenance is matched to adopted source rows; license texts include
@@ -18,7 +19,7 @@ python3 tools/classified-dictionaries/prepare.py
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-`ClassifiedDictionaryInstrumentedTest` compares all 849,437 decoded records
+`ClassifiedDictionaryInstrumentedTest` compares all 862,354 decoded records
 against count and SHA-256 multiset fingerprints generated from the frozen
 reading/surface/left POS/right POS/cost records. A second fixture verifies all
 5,138 English-reading pairs and costs against the pinned catalog. It also exercises category
@@ -35,12 +36,22 @@ and `まつだ / ﾏﾂﾀﾞ`. The packed kana sentinels cannot preserve these 
 A small sidecar restores them during conversion and browsing only when all three
 selected dictionary files match the pinned SHA-256 hashes. Byte-identical external
 triples are supported; other external triples retain their own decoding.
-All 265 distributed assets remain byte-identical to the release. Tests cover the
+All 463 distributed assets remain byte-identical to the release. Tests cover the
 literal spellings and reject repairs for different external archive bytes.
 
 The standalone unigram asset now contains seven whole-input preferences, including
 `なにか` and `なら`. Instrumented tests cover all seven across modes and backends, and retain
 compound and corrected-input exclusions.
+
+## Final token group boundaries
+
+The v1.7.271 temple and information/communications token bitsets end exactly on
+64-bit boundaries. The reader uses the token array length as the implicit final
+separator when no padding zero exists. This preserves the final records
+`やくようしょくぶつしどうせんたー / 薬用植物指導センター` and
+`じーぴーてぃーしっくすてんいちそる / GPT-6.1 Sol` without changing release assets.
+Boundary tests cover all Japanese token accessors; record fingerprints and both
+conversion backends verify the decoded results.
 
 ## Isolated device tests
 
@@ -57,7 +68,7 @@ adb shell am instrument -w \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The UI tests verify all 77 dictionary settings change handlers and their refreshed state
+The UI tests verify all 143 dictionary settings change handlers and their refreshed state
 in both the new settings screen and legacy pager,
 render every category notice offline and type through the actual
 Romaji keyboard, check the `[賞]`, `[漢方・生薬]` and `[医療]` labels, and commit candidates into an editor.
@@ -86,7 +97,7 @@ builds, not release-device end-to-end keyboard latency.
 
 ```sh
 adb shell pm clear com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite
-adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.268 \
+adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.271 \
   -e class com.kazumaproject.markdownhelperkeyboard.converter.DictionaryUpdatePerformanceInstrumentedTest \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```

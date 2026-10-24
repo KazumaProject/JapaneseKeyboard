@@ -53,16 +53,14 @@ class TokenArray {
         rank0ArrayTokenArrayBitvector: IntArray,
         rank1ArrayTokenArrayBitvector: IntArray
     ): List<TokenEntry> {
-        val startRank = bitvector.rank1Common(
-            bitvector.select0Common(nodeId, rank0ArrayTokenArrayBitvector),
-            rank1ArrayTokenArrayBitvector
-        )
-        val endRank = bitvector.rank1Common(
-            bitvector.select0Common(
-                nodeId + 1,
-                rank0ArrayTokenArrayBitvector
-            ), rank1ArrayTokenArrayBitvector
-        )
+        val startSelect0 = bitvector.select0Common(nodeId, rank0ArrayTokenArrayBitvector)
+        if (startSelect0 < 0) return emptyList()
+        val endSelect0 = bitvector.select0Common(nodeId + 1, rank0ArrayTokenArrayBitvector)
+        val startRank = bitvector.rank1Common(startSelect0, rank1ArrayTokenArrayBitvector)
+        // A serialized BitSet can end exactly on a word boundary without a
+        // padding zero. In that case the final token group ends at the array end.
+        val endRank = if (endSelect0 < 0) posTableIndexList.size else
+            bitvector.rank1Common(endSelect0, rank1ArrayTokenArrayBitvector)
 
         val tempList2 = mutableListOf<TokenEntry>().apply {
             for (i in startRank until endRank) {
@@ -83,9 +81,10 @@ class TokenArray {
         succinctBitVector: SuccinctBitVector
     ): List<TokenEntry> {
         val startSelect0 = succinctBitVector.select0(nodeId)
+        if (startSelect0 < 0) return emptyList()
         val endSelect0 = succinctBitVector.select0(nodeId + 1)
         val startRank1 = succinctBitVector.rank1(startSelect0)
-        val endRank1 = succinctBitVector.rank1(endSelect0)
+        val endRank1 = if (endSelect0 < 0) posTableIndexList.size else succinctBitVector.rank1(endSelect0)
 
         val tempList2 = mutableListOf<TokenEntry>().apply {
             for (i in startRank1 until endRank1) {
@@ -107,9 +106,10 @@ class TokenArray {
         block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
     ) {
         val startSelect0 = succinctBitVector.select0(nodeId)
+        if (startSelect0 < 0) return
         val endSelect0 = succinctBitVector.select0(nodeId + 1)
         val startRank1 = succinctBitVector.rank1(startSelect0)
-        val endRank1 = succinctBitVector.rank1(endSelect0)
+        val endRank1 = if (endSelect0 < 0) posTableIndexList.size else succinctBitVector.rank1(endSelect0)
 
         for (i in startRank1 until endRank1) {
             block(posTableIndexList[i], wordCostList[i], nodeIdAt(i))
@@ -129,9 +129,10 @@ class TokenArray {
     ) {
         if (scratchIndices.isEmpty()) return
         val startSelect0 = succinctBitVector.select0(nodeId)
+        if (startSelect0 < 0) return
         val endSelect0 = succinctBitVector.select0(nodeId + 1)
         val startRank1 = succinctBitVector.rank1(startSelect0)
-        val endRank1 = succinctBitVector.rank1(endSelect0)
+        val endRank1 = if (endSelect0 < 0) posTableIndexList.size else succinctBitVector.rank1(endSelect0)
         var selectedCount = 0
         for (tokenIndex in startRank1 until endRank1) {
             var insertionIndex = selectedCount
@@ -166,18 +167,12 @@ class TokenArray {
         rank0ArrayTokenArrayBitvector: ShortArray,
         rank1ArrayTokenArrayBitvector: ShortArray,
     ): List<TokenEntry> {
-        val b = bitvector.rank1CommonShort(
-            bitvector.select0CommonShort(
-                nodeId,
-                rank0ArrayTokenArrayBitvector
-            ).toInt(), rank1ArrayTokenArrayBitvector
-        )
-        val c = bitvector.rank1CommonShort(
-            bitvector.select0CommonShort(
-                (nodeId + 1).toShort(),
-                rank0ArrayTokenArrayBitvector
-            ).toInt(), rank1ArrayTokenArrayBitvector
-        )
+        val startSelect0 = bitvector.select0CommonShort(nodeId, rank0ArrayTokenArrayBitvector).toInt()
+        if (startSelect0 < 0) return emptyList()
+        val endSelect0 = bitvector.select0CommonShort((nodeId + 1).toShort(), rank0ArrayTokenArrayBitvector).toInt()
+        val b = bitvector.rank1CommonShort(startSelect0, rank1ArrayTokenArrayBitvector).toInt()
+        val c = if (endSelect0 < 0) posTableIndexList.size else
+            bitvector.rank1CommonShort(endSelect0, rank1ArrayTokenArrayBitvector).toInt()
         val tempList2 = mutableListOf<TokenEntry>()
         for (i in b until c) {
             tempList2.add(
@@ -196,9 +191,10 @@ class TokenArray {
         succinctBitVector: SuccinctBitVector
     ): List<TokenEntry> {
         val startSelect0 = succinctBitVector.select0(nodeId.toInt())
+        if (startSelect0 < 0) return emptyList()
         val startRank1 = succinctBitVector.rank1(startSelect0)
         val endSelect0 = succinctBitVector.select0(nodeId + 1)
-        val endRank1 = succinctBitVector.rank1(endSelect0)
+        val endRank1 = if (endSelect0 < 0) posTableIndexList.size else succinctBitVector.rank1(endSelect0)
         val tempList2 = mutableListOf<TokenEntry>()
         for (i in startRank1 until endRank1) {
             tempList2.add(
@@ -218,9 +214,10 @@ class TokenArray {
         block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
     ) {
         val startSelect0 = succinctBitVector.select0(nodeId.toInt())
+        if (startSelect0 < 0) return
         val startRank1 = succinctBitVector.rank1(startSelect0)
         val endSelect0 = succinctBitVector.select0(nodeId + 1)
-        val endRank1 = succinctBitVector.rank1(endSelect0)
+        val endRank1 = if (endSelect0 < 0) posTableIndexList.size else succinctBitVector.rank1(endSelect0)
 
         for (i in startRank1 until endRank1) {
             block(posTableIndexList[i], wordCostList[i], nodeIdAt(i))
