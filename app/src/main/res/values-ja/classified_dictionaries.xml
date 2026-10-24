@@ -100,11 +100,11 @@
     <string name="classified_label_term_specialist_culture_arts_sports">文化・芸術</string>
     <string name="classified_dictionary_term_specialist_transport_safety_defense">交通・安全・防衛</string>
     <string name="classified_label_term_specialist_transport_safety_defense">交通・安全</string>
-    <string name="classified_dictionary_person_surname_origin_unconfirmed">姓・名字（由来未確認）</string>
+    <string name="classified_dictionary_person_surname_origin_unconfirmed">姓・名字</string>
     <string name="classified_label_person_surname_origin_unconfirmed">姓</string>
-    <string name="classified_dictionary_person_given_name_origin_unconfirmed">名・下の名前（由来未確認）</string>
+    <string name="classified_dictionary_person_given_name_origin_unconfirmed">名・下の名前</string>
     <string name="classified_label_person_given_name_origin_unconfirmed">名</string>
-    <string name="classified_dictionary_person_personal_name_origin_unconfirmed">人名・姓名（由来未確認）</string>
+    <string name="classified_dictionary_person_personal_name_origin_unconfirmed">人名・姓名</string>
     <string name="classified_label_person_personal_name_origin_unconfirmed">人名</string>
     <string name="classified_dictionary_person_actor">俳優</string>
     <string name="classified_label_person_actor">俳優</string>
