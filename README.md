@@ -244,9 +244,9 @@ Sumireは、**プライバシーを絶対に妥協しない**
 | ユーザー辞書 | ユーザー辞書 | ON |
 | ユーザー辞書 | 予測変換 | 2 |
 | 定型文 | 定型文 | ON |
-| 分類辞書 | 30カテゴリを個別に切替 | 全てON |
+| 分類辞書 | 143カテゴリをグループ表示・個別に切替 | 初期OFF（既存の選択は保持） |
 
-分類辞書は `v1.7.262-pre.3` を採用し、漢方・生薬と医療を含む30カテゴリを初期状態ですべて有効にします。「辞書」設定の「分類別辞書」で個別にON/OFFでき、外部辞書画面とも状態を共有します。移行処理は追加せず、保存済みの選択を維持します。分類候補にはカテゴリラベルを常時表示します。
+分類辞書は `v1.7.271` の143カテゴリを採用しています。「辞書」設定の「分類別辞書」でグループを展開し、各辞書を個別にON/OFFできます。開閉状態を保存し、設定検索からは対象のグループを自動展開します。新規カテゴリは初期OFFで、既存カテゴリの選択は保持します。外部辞書画面とも有効状態を共有します。候補ラベルは設定に従って表示します。
 
 #### Zenz
 
@@ -392,7 +392,7 @@ zenzModelAssetName=ggml-model-Q5_K_M.gguf
 本プロジェクトは、以下の素晴らしい技術や資料に支えられています。
 
 * **Mozc Project**: [google/mozc](https://github.com/google/mozc) (BSD-3-Clause)
-* **Classified dictionaries / 分類辞書**: 30 categories from `v1.7.262-pre.3`; mixed upstream data terms. See [dictionary notices / 辞書ライセンス](THIRD-PARTY-NOTICES.md).
+* **Classified dictionaries / 分類辞書**: 143 categories from `v1.7.271`; mixed upstream data terms. See [dictionary notices / 辞書ライセンス](THIRD-PARTY-NOTICES.md).
 * 書籍『[日本語入力を支える技術](https://www.amazon.co.jp/dp/4774149934)』
 * その他多数のオープンソースライブラリ
 
@@ -485,7 +485,7 @@ if your idea is already being discussed.
 This project stands on the shoulders of giants. Our thanks go to:
 
 * **The Mozc Project**: [google/mozc](https://github.com/google/mozc) (BSD-3-Clause)
-* **Classified dictionaries / 分類辞書**: 30 categories from `v1.7.262-pre.3`; mixed upstream data terms. See [dictionary notices / 辞書ライセンス](THIRD-PARTY-NOTICES.md).
+* **Classified dictionaries / 分類辞書**: 143 categories from `v1.7.271`; mixed upstream data terms. See [dictionary notices / 辞書ライセンス](THIRD-PARTY-NOTICES.md).
 * The book "[Gijutsu Hyoronsha](https://www.amazon.co.jp/dp/4774149934)" for its deep insights into
   Japanese input technology.
 

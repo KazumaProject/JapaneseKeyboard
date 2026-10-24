@@ -774,6 +774,7 @@ object SettingSearchIndex {
     private fun XmlResourceParser.isPreferenceCategoryOrScreen(): Boolean =
         when (name.substringAfterLast('.')) {
             "PreferenceCategory",
+            "CollapsiblePreferenceCategory",
             "PreferenceScreen" -> true
             else -> false
         }

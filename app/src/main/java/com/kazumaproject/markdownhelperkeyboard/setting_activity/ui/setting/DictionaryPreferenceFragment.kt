@@ -175,6 +175,16 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
         }
 
         applyLegacySearchResultFilterIfNeeded()
+        val targetKey = arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
+            ?.takeIf { it.isNotBlank() }
+            ?: arguments?.getString(LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_TARGET_KEY)
+        targetKey?.let { key ->
+            var parent = findPreference<Preference>(key)?.parent
+            while (parent != null) {
+                if (parent is CollapsiblePreferenceCategory) parent.setExpanded(true, persist = false)
+                parent = parent.parent
+            }
+        }
     }
 
 }

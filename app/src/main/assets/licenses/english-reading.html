@@ -1,4 +1,4 @@
-<!doctype html><meta charset="utf-8"><style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style><title>English reading dictionary / 英語読み辞書</title><h1>English reading dictionary / 英語読み辞書</h1><p>Distribution / 配布: v1.7.268 (21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88)</p><p>Classified and converted to IME binaries / 分類・IME辞書バイナリへの変換を行っています。</p><p>Input acquisition revision and per-entry copyright attribution: unconfirmed. 元辞書の取得版・各語の著作権者への対応: 未確認。Below are preserved upstream notices; source-code licenses do not replace data terms. 以下は保持した出典の通知です。プログラムのライセンスはデータの条件を置き換えません。</p><h2>converter</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88/src/main/resources/THIRD-PARTY-NOTICES.md">Source / 出典</a></p><pre># Third-party notices
+<!doctype html><meta charset="utf-8"><style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style><title>English reading dictionary / 英語読み辞書</title><h1>English reading dictionary / 英語読み辞書</h1><p>Distribution / 配布: v1.7.271 (02320777884161421eca4b03f8d7ee22f29ee650)</p><p>Classified and converted to IME binaries / 分類・IME辞書バイナリへの変換を行っています。</p><p>Input acquisition revision and per-entry copyright attribution: unconfirmed. 元辞書の取得版・各語の著作権者への対応: 未確認。Below are preserved upstream notices; source-code licenses do not replace data terms. 以下は保持した出典の通知です。プログラムのライセンスはデータの条件を置き換えません。</p><h2>converter</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/02320777884161421eca4b03f8d7ee22f29ee650/src/main/resources/THIRD-PARTY-NOTICES.md">Source / 出典</a></p><pre># Third-party notices
 
 The generated dictionaries combine data sources. The Kotlin program is MIT, but the
 generated dictionary data keeps the license and notice requirements of its
@@ -128,7 +128,7 @@ KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学)。
 [専門辞書の文書](../../../docs/specialist-dictionaries.md) と `src/main/specialist` に記録します。
 出典・著作権・条件・加工表示を保持し、漢方の継承条件を守ってください。
 配布時はライセンス全文を含む別添 `DICTIONARY-LICENSES.txt` を維持してください。
-</pre><h2>release-data</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88/LICENSE-DATA.md">Source / 出典</a></p><pre># 辞書データのライセンスと出典
+</pre><h2>release-data</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/02320777884161421eca4b03f8d7ee22f29ee650/LICENSE-DATA.md">Source / 出典</a></p><pre># 辞書データのライセンスと出典
 
 このリポジトリのプログラムコードには [MIT License](LICENSE) を適用します。
 辞書データには以下の出典ごとの条件が適用されます。MITの表記は、第三者由来の
@@ -179,6 +179,23 @@ JapaneseCorpus由来データの原本表記は
 その他の辞書入力も、それぞれの出典・ライセンス条件に従います。この文書は、未確認の
 入力データに一律のライセンスを与えるものではありません。
 
+## アニメ・漫画・架空キャラクターの対象層レビュー
+
+`src/main/classification/reviews/2026-10-23-media-demographics-complete.jsonl` の完了レビューは、
+[patelris の Anime and Manga Dataset 2026](https://www.kaggle.com/datasets/patelris/anime-and-manga-dataset-2026)
+version 6（CC BY 4.0）の `demographics`、`genres`、`rating`、MyAnimeList IDを利用します。
+架空キャラクターの名前と出典IDには
+[fadhilakbar の Anime Characters Dataset](https://huggingface.co/datasets/fadhilakbar/anime-characters-dataset)
+（CC BY 4.0）を利用します。帰属表示、取得版、入力ファイルのSHA-256、対象の参照先を各レビューに記録します。
+
+加工内容は、作品名のUnicode正規化、かな読みのローマ字照合、MyAnimeList IDを介した出典結合、
+明示タグの対象層ラベルへの対応付け、Hentai／Rx - Hentaiタグの成人向け除外です。
+キャラクターは同一の出典IDを持ち、確認できた出典アニメの対象層が一致する場合だけ分類します。
+入力CSV、作品説明、レビュー本文はリポジトリに複製しません。ライセンス表示は元データを
+CC BY 4.0の下で利用したことを示し、原作出版社による一次資料での全件確認を意味しません。
+
+`src/main/classification/reviews/2026-10-23-media-demographics-gemini.jsonl` は、出典未確認だった候補8,197組をGemini 3.5 Flash-Liteで最善推定したレビューです。送信内容は辞書候補の読み・表記などの公開語彙データです。モデルのカテゴリ選択は独立した典拠確認ではなく、成人向けと推定した34組は全配布カテゴリから除外しています。モデル名・入力とプロンプトのハッシュ・集計・トークン使用量は `src/main/classification/media-demographic-gemini-manifest.json` に記録し、生のAPI応答とキーは含めません。実行は無料枠だけを使用し、課金は有効になっていません。Googleの[Gemini API料金・利用条件](https://ai.google.dev/gemini-api/docs/pricing)では無料枠のコンテンツがGoogle製品の改善に使用され得ると記載されています。
+
 ## 哲学者・思想家の人名データ
 
 `src/main/classification/person-additions/philosophers-2026-10-22.jsonl` の人名表記・読みは、各行の `source_url` に記録した[Web NDL Authorities](https://id.ndl.go.jp/)の典拠データを確認して採録しています。同データは国立国会図書館の出典を表示して再利用します。各行には典拠ID、原資料の表記・読み、確認箇所、確認日、典拠レスポンスのSHA-256を記録します。
@@ -200,7 +217,7 @@ KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学)。
 [専門辞書の文書](docs/specialist-dictionaries.md) と `src/main/specialist` に記録します。
 出典・著作権・条件・加工表示を保持し、漢方の継承条件を守ってください。
 配布時はライセンス全文を含む別添 `DICTIONARY-LICENSES.txt` を維持してください。
-</pre><h2>jmdict</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88/src/main/resources/third-party/JMDICT-LICENSE.html">Source / 出典</a></p><pre>&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot;&gt;
+</pre><h2>jmdict</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/02320777884161421eca4b03f8d7ee22f29ee650/src/main/resources/third-party/JMDICT-LICENSE.html">Source / 出典</a></p><pre>&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot;&gt;
 &lt;HTML&gt;
 &lt;HEAD&gt;
 &lt;META HTTP-EQUIV=&quot;Content-Type&quot; CONTENT=&quot;text/html; charset=iso-8859-1&quot;&gt;
@@ -582,7 +599,7 @@ Attn: Dr Jim Breen
 &lt;!-- revised 29 Sep 2021 mention regular updates. --&gt;
 &lt;/P&gt;
 &lt;/BODY&gt;&lt;/HTML&gt;
-</pre><h2>cmudict</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88/src/main/resources/third-party/CMUDICT-LICENSE">Source / 出典</a></p><pre>Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+</pre><h2>cmudict</h2><p><a href="https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/02320777884161421eca4b03f8d7ee22f29ee650/src/main/resources/third-party/CMUDICT-LICENSE">Source / 出典</a></p><pre>Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
