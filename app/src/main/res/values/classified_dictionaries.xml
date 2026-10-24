@@ -291,12 +291,8 @@
     <string name="classified_label_media_demographic_audience_josei">女性向け（Josei）</string>
     <string name="classified_dictionary_media_demographic_audience_kids">Children</string>
     <string name="classified_label_media_demographic_audience_kids">子ども向け（Kids）</string>
-    <string name="classified_dictionary_media_demographic_audience_mixed">Multiple audiences</string>
-    <string name="classified_label_media_demographic_audience_mixed">複数対象層</string>
     <string name="classified_dictionary_media_demographic_audience_unspecified">No specified audience</string>
     <string name="classified_label_media_demographic_audience_unspecified">対象層の指定なし</string>
-    <string name="classified_dictionary_media_demographic_resolution_source_unverified">Source and audience unverified</string>
-    <string name="classified_label_media_demographic_resolution_source_unverified">出典未確認・対象層未確定</string>
     <string name="classified_group_facility">Facilities</string>
     <string name="classified_group_media_demographic">Work and character audiences</string>
     <string name="classified_group_facility_religious">Religious facilities</string>
@@ -316,7 +312,6 @@
     <string name="classified_group_facility_residential">Housing and buildings</string>
     <string name="classified_group_facility_military">Military and defense</string>
     <string name="classified_group_media_demographic_audience">Audience categories</string>
-    <string name="classified_group_media_demographic_resolution">Source matching status</string>
     <string name="classified_group_work">Works</string>
     <string name="classified_group_expanded">Expanded; tap to collapse</string>
     <string name="classified_group_collapsed">Collapsed; tap to expand</string>

@@ -22,10 +22,14 @@ class ClassifiedDictionaryTest {
     @Test fun allCategoriesHaveThreeDistinctPathMappedFiles() {
         val manifest = File("../tools/classified-dictionaries/distribution-manifest.json")
             .reader().use { JsonParser.parseReader(it).asJsonObject }
+        val populatedIds = manifest.getAsJsonArray("categories")
+            .filter { it.asJsonObject.get("recordCount").asInt > 0 }
+            .map { it.asJsonObject.get("id").asString }.toSet()
+        assertEquals(populatedIds, ClassifiedDictionaries.all.map { it.id }.toSet())
         val distributionRevision = manifest.get("revision").asString
         assertTrue("Distribution revision must be a commit SHA", distributionRevision.matches(Regex("[0-9a-f]{40}")))
-        assertEquals(143, ClassifiedDictionaries.all.size)
-        assertEquals(143, ClassifiedDictionaries.categories.size)
+        assertEquals(141, ClassifiedDictionaries.all.size)
+        assertEquals(141, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
             val files = DictionaryFileSpecs.forCategory(spec.category)
             assertEquals(3, files.size)
@@ -37,6 +41,11 @@ class ClassifiedDictionaryTest {
             val notice = context.assets.open(spec.licenseAssetPath).bufferedReader().use { it.readText() }
             assertTrue("${spec.id} notice must match the distribution manifest revision",
                 notice.contains("($distributionRevision)"))
+        }
+        for (emptyId in listOf("media_demographic/audience/mixed", "media_demographic/resolution/source_unverified")) {
+            for (file in listOf("tango", "yomi", "token")) {
+                assertNull(DictionaryZipEntryNameMapper.map("categories/$emptyId/$file.dat.zip"))
+            }
         }
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/tango.dat.zip"))
         assertNull(DictionaryZipEntryNameMapper.map("categories/unknown/system/tango.dat.zip"))
@@ -94,7 +103,7 @@ class ClassifiedDictionaryTest {
         val directory = File(context.cacheDir, "classified-parent-upgrade")
         val store = DictionaryOverrideStore(directory, prefs, defaults)
         val children = ClassifiedDictionaries.all.filter { '/' in it.id }
-        assertEquals(117, children.size)
+        assertEquals(115, children.size)
         children.forEach { assertFalse(it.id, store.isOptionalBundledEnabled(it.category)) }
         assertTrue(store.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PLACE))
         val chosen = children.first().category
@@ -122,7 +131,7 @@ class ClassifiedDictionaryTest {
         val store = DictionaryOverrideStore(directory, prefs, defaults)
         ClassifiedDictionaries.all.filter { it.category !in additions }.forEach { store.setOptionalBundledEnabled(it.category, true) }
         val reopened = DictionaryOverrideStore(directory, prefs, defaults)
-        assertEquals(67, additions.size)
+        assertEquals(65, additions.size)
         ClassifiedDictionaries.all.forEach { assertEquals(it.id, it.category !in additions, reopened.isOptionalBundledEnabled(it.category)) }
         assertTrue(DictionaryFileSpecs.forCategory(DictionaryCategory.CLASSIFIED_FACILITY).isEmpty())
     }
