@@ -100,11 +100,11 @@
     <string name="classified_label_term_specialist_culture_arts_sports">Culture</string>
     <string name="classified_dictionary_term_specialist_transport_safety_defense">Transport, safety and defense</string>
     <string name="classified_label_term_specialist_transport_safety_defense">Transport</string>
-    <string name="classified_dictionary_person_surname_origin_unconfirmed">Surnames (origin unconfirmed)</string>
+    <string name="classified_dictionary_person_surname_origin_unconfirmed">Surnames</string>
     <string name="classified_label_person_surname_origin_unconfirmed">Surname</string>
-    <string name="classified_dictionary_person_given_name_origin_unconfirmed">Given names (origin unconfirmed)</string>
+    <string name="classified_dictionary_person_given_name_origin_unconfirmed">Given names</string>
     <string name="classified_label_person_given_name_origin_unconfirmed">Given name</string>
-    <string name="classified_dictionary_person_personal_name_origin_unconfirmed">Personal names (origin unconfirmed)</string>
+    <string name="classified_dictionary_person_personal_name_origin_unconfirmed">Personal names</string>
     <string name="classified_label_person_personal_name_origin_unconfirmed">Name</string>
     <string name="classified_dictionary_person_actor">Actors</string>
     <string name="classified_label_person_actor">Actor</string>
