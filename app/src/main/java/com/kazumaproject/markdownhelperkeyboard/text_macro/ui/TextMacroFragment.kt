@@ -136,8 +136,9 @@ class TextMacroFragment : Fragment() {
     private fun awaitInitialData() {
         if (initialLoadJob?.isActive == true) return
         val ui = loadingUi ?: return
+        val model = viewModel
         initialLoadJob = viewLifecycleOwner.lifecycleScope.launch {
-            ui.load { settingsIo(SettingsLoadStage.DATABASE) { viewModel.awaitInitialLoad() } }
+            ui.load { settingsIo(SettingsLoadStage.DATABASE) { model.awaitInitialLoad() } }
         }
     }
 
