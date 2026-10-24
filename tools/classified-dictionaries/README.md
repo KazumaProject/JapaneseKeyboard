@@ -5,7 +5,9 @@ hashes, and derives category provenance from hash-verified frozen source data.
 The 143 categories include 29 person, 59 facility, 6 event, 15 term and 8 media audience categories,
 Kampo (434 records) and Medical (92,683 records). New subcategories default OFF;
 retired person/event/term/facility switches are not inherited. Other saved category
-choices are preserved. The 67 additions since v1.7.268 also default OFF. Two empty media categories remain selectable and load as empty dictionaries.
+choices are preserved. Of the 67 distribution additions since v1.7.268, 65 populated categories are selectable and default OFF.
+The two empty media categories are excluded from the app registry and settings;
+the pinned distribution and provenance remain intact.
 The dictionary settings group people, facilities, events, terms, works and media audiences in collapsible headings. Groups start closed, retain their last state and expand temporarily for search navigation. External settings retain the existing layout.
 Name-origin categories are grouped with their corresponding unconfirmed names;
 philosophers and thinkers use only source-verified upstream entries. Person IDs are normalized to their full asset paths.
@@ -68,7 +70,7 @@ adb shell am instrument -w \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The UI tests verify all 143 dictionary settings change handlers and their refreshed state
+The UI tests verify all 141 populated dictionary settings change handlers and their refreshed state
 in both the new settings screen and legacy pager,
 render every category notice offline and type through the actual
 Romaji keyboard, check the `[賞]`, `[漢方・生薬]` and `[医療]` labels, and commit candidates into an editor.

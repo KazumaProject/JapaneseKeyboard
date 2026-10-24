@@ -983,24 +983,8 @@
                     android:persistent="false"
                     app:iconSpaceReserved="false" />
                 <SwitchPreferenceCompat
-                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED"
-                    android:title="@string/classified_dictionary_media_demographic_audience_mixed"
-                    android:defaultValue="false"
-                    android:persistent="false"
-                    app:iconSpaceReserved="false" />
-                <SwitchPreferenceCompat
                     android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED"
                     android:title="@string/classified_dictionary_media_demographic_audience_unspecified"
-                    android:defaultValue="false"
-                    android:persistent="false"
-                    app:iconSpaceReserved="false" />
-            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
-            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
-                android:key="classified_group_media_demographic_resolution"
-                android:title="@string/classified_group_media_demographic_resolution">
-                <SwitchPreferenceCompat
-                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED"
-                    android:title="@string/classified_dictionary_media_demographic_resolution_source_unverified"
                     android:defaultValue="false"
                     android:persistent="false"
                     app:iconSpaceReserved="false" />
