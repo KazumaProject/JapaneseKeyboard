@@ -320,4 +320,8 @@
     <string name="classified_group_work">Works</string>
     <string name="classified_group_expanded">Expanded; tap to collapse</string>
     <string name="classified_group_collapsed">Collapsed; tap to expand</string>
+    <string name="classified_group_bulk_title">Change all dictionaries in this category</string>
+    <string name="classified_group_enable_all">Enable all</string>
+    <string name="classified_group_disable_all">Disable all</string>
+    <string name="classified_group_enabled_count">Enabled: %1$d / %2$d</string>
 </resources>
