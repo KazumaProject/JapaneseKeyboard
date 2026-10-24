@@ -291,12 +291,8 @@
     <string name="classified_label_media_demographic_audience_josei">女性向け（Josei）</string>
     <string name="classified_dictionary_media_demographic_audience_kids">子ども向け（Kids）</string>
     <string name="classified_label_media_demographic_audience_kids">子ども向け（Kids）</string>
-    <string name="classified_dictionary_media_demographic_audience_mixed">複数対象層</string>
-    <string name="classified_label_media_demographic_audience_mixed">複数対象層</string>
     <string name="classified_dictionary_media_demographic_audience_unspecified">対象層の指定なし</string>
     <string name="classified_label_media_demographic_audience_unspecified">対象層の指定なし</string>
-    <string name="classified_dictionary_media_demographic_resolution_source_unverified">出典未確認・対象層未確定</string>
-    <string name="classified_label_media_demographic_resolution_source_unverified">出典未確認・対象層未確定</string>
     <string name="classified_group_facility">施設辞書</string>
     <string name="classified_group_media_demographic">作品・キャラクターの対象層</string>
     <string name="classified_group_facility_religious">宗教施設</string>
@@ -316,7 +312,6 @@
     <string name="classified_group_facility_residential">住宅・建築施設</string>
     <string name="classified_group_facility_military">軍事・防衛施設</string>
     <string name="classified_group_media_demographic_audience">対象読者・出典タグ</string>
-    <string name="classified_group_media_demographic_resolution">出典照合状態</string>
     <string name="classified_group_work">作品</string>
     <string name="classified_group_expanded">展開中・タップして折りたたむ</string>
     <string name="classified_group_collapsed">折りたたみ中・タップして展開</string>

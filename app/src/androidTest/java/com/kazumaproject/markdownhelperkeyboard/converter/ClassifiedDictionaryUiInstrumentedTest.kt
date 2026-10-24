@@ -126,7 +126,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
     }
 
-    @Test fun dictionarySettingsExposeAndPersistAll143IndependentSwitches() {
+    @Test fun dictionarySettingsExposeAndPersistAllPopulatedIndependentSwitches() {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
