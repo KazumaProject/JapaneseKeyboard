@@ -8,17 +8,18 @@ The application's source code remains under the MIT license in `LICENSE`.
 Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 アプリのコードはMITですが、辞書データには出典ごとの条件が適用されます。
 
-## Classified dictionaries / 30カテゴリ辞書
+## Classified dictionaries / 143カテゴリ辞書
 
-Distribution: `v1.7.262-pre.3`, converter revision
-`d65dc98b023fa7ab8ca994daef2ec1640d2a1bf5`.
-The original 28 dictionaries are reclassified, filtered, and converted from the five
+Distribution: `v1.7.271`, converter revision
+`02320777884161421eca4b03f8d7ee22f29ee650`.
+The classified dictionaries are reclassified, filtered, and converted from the five
 frozen inputs in that revision. Their exact input hashes and source-pair counts
 are in `tools/classified-dictionaries/category-provenance.json`.
-A source-derived sidecar restores one literal Katakana spelling lost by the
-upstream sentinel encoding (`あとこしゃらか / アトコシヤラカ`). Published
+A source-derived sidecar restores three literal comedian spellings lost by the
+upstream sentinel encoding (`くりき / くりきひなた`, `しゅうじ / シュージ`,
+and `まつだ / ﾏﾂﾀﾞ`). Published
 binary bytes, POS IDs and costs are retained.
-The original 28 categories contain Wiki, Neologd, and their shared Web input. Some also
+The classified categories contain Wiki, Neologd, and their shared Web input. Some also
 contain personal-name or place-name input. These are source-input memberships,
 not a claim of sole authorship or an exhaustive per-record legal determination.
 
@@ -36,12 +37,13 @@ must not be mistaken for proof of the original input acquisition revisions.
 
 ## Specialist dictionaries / 漢方・医療辞書
 
-- **Kampo / 漢方・生薬** (440 records): KNApSAcK KAMPO core and herbs,
+- **Kampo / 漢方・生薬** (434 records): 432 KNApSAcK KAMPO core and herb records,
   CC BY-SA 2.1 Japan. KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学).
   The source release names the version LATEST; exact input ZIP hashes are pinned.
-- **Medical / 医療** (92,847 records): NAIST Social Computing Lab's
+  The two additional Tsumura records are described separately below.
+- **Medical / 医療** (92,683 records): NAIST Social Computing Lab's
   MANBYO_202106 and HYAKUYAKU_202107, CC BY 4.0. The official creator notices
-  and legal text are bundled offline. 2,006 missing readings were supplied using
+  and legal text are bundled offline. 2,003 missing readings were supplied using
   Gemini; the accuracy of automatic and inferred readings is unconfirmed / 未確認.
 
 Changes include field extraction, normalization, duplicate filtering, optional
@@ -52,9 +54,13 @@ The person dictionary also includes reviewed fighter names: the per-record
 source URLs and input hashes are preserved, without redistributing source page
 text. Per-entry copyright conditions for these names remain unconfirmed.
 
-The full pre.3 `DICTIONARY-LICENSES.txt` is retained in
+The full v1.7.271 `DICTIONARY-LICENSES.txt` is retained in
 `app/src/main/assets/licenses/sources/distribution-licenses.txt`, byte-identical
 and verified against the release manifest's `licensesSha256`.
+
+Two Kampo additions are backed by frozen Tsumura product fields. Source URLs and
+evidence hashes are recorded; source page bodies are not redistributed. Their
+per-entry copyright terms remain unconfirmed.
 
 ## Other bundled dictionaries / その他の同梱辞書
 

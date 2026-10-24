@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88'
-VERSION = 'v1.7.268'
+REVISION = '02320777884161421eca4b03f8d7ee22f29ee650'
+VERSION = 'v1.7.271'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,9 +46,9 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = 'd4164f078775ede3ddb3c57827e095375721462ff061502f2899d1bdd31aa12f'
+    archive_sha = '72de8fdb2b13dcc29f27116420542886b4edabff3fee96fa12a57b4a1702b532'
     assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = 'f84420965405b2742d89da07dd6c621a753b3799c9d3b03c18b5aa8c003dcbc9'
+    licenses_sha = '3f642be2385aa578f272e1b96c47def40547d128d1bcbdc3cca67152e6f83920'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha
@@ -136,12 +136,26 @@ def provenance():
         assert sha(frozen) == specialist['inputs'][path]
         original_sources[source] = {row['row']: row for row in
             (json.loads(line) for line in gzip.decompress(frozen).decode().splitlines())}
+    collected_terms = []
+    for path, checksum in specialist['inputs'].items():
+        if '/collected-terms/' not in path:
+            continue
+        frozen = fetch(RAW + path)
+        assert sha(frozen) == checksum, path
+        rows = [json.loads(line) for line in frozen.decode().splitlines()]
+        original_sources['collected/' + path.removeprefix('src/main/specialist/')] = dict(enumerate(rows, 1))
+        collected_terms.extend(rows)
     for line in gzip.decompress(specialist_provenance).decode().splitlines():
         row = json.loads(line)
         if row['status'] == 'adopted':
             original = original_sources[row['source']][row['sourceRow']]
-            assert original['reading'] == row['originalReading']
-            assert original['surface'] == row['originalSurface']
+            if row['source'].startswith('collected/'):
+                assert original == row['collectionEvidence']
+                assert original['reading'] == row['reading']
+                assert original['surface'] == row['surface']
+            else:
+                assert original['reading'] == row['originalReading']
+                assert original['surface'] == row['originalSurface']
             assert (row['reading'], row['surface']) in admitted[row['category']]
             counts[row['category']][row['source']] += 1
     assert {k: sum(v.values()) for k, v in counts.items() if k in admitted} == specialist['categoryRows']
@@ -153,6 +167,7 @@ def provenance():
         person_additions.extend(json.loads(line) for line in frozen.decode().splitlines())
     result['personAdditions'] = person_additions
     result['specialist'] = specialist
+    result['collectedTerms'] = collected_terms
     result['categorySourcePairs'] = dict(sorted(counts.items()))
     fingerprints = {}
     surface_overrides = {}
@@ -178,8 +193,10 @@ def provenance():
         fingerprint['count'] += 1
         if 4 <= len(reading) <= 8 and not 4 <= len(fingerprint['sample']['reading']) <= 8:
             fingerprint['sample'] = {'reading': reading, 'surface': surface}
+    # Empty categories are intentionally distributed for taxonomy stability.
+    for category in distribution['categories']:
+        fingerprints.setdefault(category['id'], {'count': 0, 'sum': 0, 'sample': {'reading': '', 'surface': ''}})
     assert {k: v['count'] for k, v in fingerprints.items()} == {c['id']: c['recordCount'] for c in distribution['categories']}
-    assert len(fingerprints) == 77
     expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
     write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
     repairs = {}
@@ -271,7 +288,7 @@ def notices(counts):
     for line in gzip.decompress(fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
         category, reading, left, right, cost, surface, *tags = line.split('\t')
         person_pairs['person/' + category].add((reading, surface))
-    for retired in ('person', 'event', 'term'):
+    for retired in ('person', 'event', 'term', 'facility'):
         (assets / 'classified' / (retired + '.html')).unlink(missing_ok=True)
     for category in categories:
         ids = set(counts[category['id']])
@@ -303,6 +320,10 @@ def notices(counts):
         for source in sources:
             details += '<h2>' + html.escape(source['id']) + '</h2><p>' + html.escape(source['attribution']) + '</p><p>Version / 版: ' + html.escape(source['version']) + '</p><p>License / 条件: ' + html.escape(source['license']) + '</p><p><a href="' + html.escape(source['page']) + '">Source / 元データ</a></p><p>Input ZIP SHA-256: ' + source['archiveSha256'] + '</p><p>Adopted rows / 採用行: ' + str(counts[ident][source['id']]) + '</p>'
         keys = [source['id'] for source in sources] + (['cc-by-sa-2.1-jp'] if ident == 'kampo' else ['cc-by-4.0']) + ['release-data']
+        collected = [row for row in provenance['collectedTerms'] if row['category'] == ident]
+        if collected:
+            details += '<h2>Source-backed additions / 出典を照合した追加</h2><p>Selected names and readings; original source page text is not redistributed. Per-entry copyright terms remain unconfirmed / 名称と読みを選定。原資料本文は転載していません。各語の著作権条件は未確認。</p><ul>'
+            details += ''.join('<li>' + html.escape(row['reading'] + ' / ' + row['surface']) + ': <a href="' + html.escape(row['source_url']) + '">Source / 出典</a></li>' for row in collected) + '</ul>'
         write(assets/'classified'/(ident+'.html'), page(category['name']+' / '+ident, details, keys))
     for ident, title, keys in [
         ('wiki', 'Japanese Wikipedia-derived data / 日本語Wikipedia由来の辞書データ', ['wiki','cc-by-sa-4']),

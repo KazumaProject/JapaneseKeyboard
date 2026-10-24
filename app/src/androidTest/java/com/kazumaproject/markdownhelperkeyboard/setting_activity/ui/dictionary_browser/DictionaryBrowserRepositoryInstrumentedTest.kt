@@ -35,7 +35,7 @@ class DictionaryBrowserRepositoryInstrumentedTest {
         }
     }
 
-    @Test fun all39DictionariesOpenAndFrozenCategorySamplesAreSearchableWhileDisabled() = runBlocking {
+    @Test fun allDictionariesOpenAndFrozenCategorySamplesAreSearchableWhileDisabled() = runBlocking {
         Fixture(context).use { fixture ->
             val repo = fixture.repository()
             val expected = JSONObject(InstrumentationRegistry.getInstrumentation().context.assets
@@ -45,11 +45,14 @@ class DictionaryBrowserRepositoryInstrumentedTest {
             for (spec in DictionaryBrowserCatalog.all) {
                 val start = SystemClock.elapsedRealtime()
                 val page = repo.open(spec.category, "").nextPage()
-                assertFalse(spec.category.name, page.rows.isEmpty())
+                val classified = ClassifiedDictionaries.find(spec.category)
+                val empty = classified?.let { expected.getJSONObject(it.id).getInt("count") == 0 } == true
+                assertEquals(spec.category.name, empty, page.rows.isEmpty())
                 assertTrue(page.rows.size <= 100)
                 assertEquals(page.rows.size, page.rows.distinct().size)
                 println("BROWSER_FIRST_PAGE ${spec.category} ms=${SystemClock.elapsedRealtime() - start} rows=${page.rows.size}")
                 ClassifiedDictionaries.find(spec.category)?.let { classified ->
+                    if (expected.getJSONObject(classified.id).getInt("count") == 0) return@let
                     val sample = expected.getJSONObject(classified.id).getJSONObject("sample")
                     val reading = sample.getString("reading")
                     val surface = sample.getString("surface")

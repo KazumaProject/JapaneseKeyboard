@@ -31,7 +31,8 @@ class ClassifiedExactCandidatesInstrumentedTest {
             @Suppress("UNCHECKED_CAST")
             val dictionaries = KanaKanjiEngine::class.java.getDeclaredField("classifiedDictionaries")
                 .apply { isAccessible = true }.get(engine) as Map<DictionaryCategory, TripleDictionaryData>
-            val inputs = listOf("あ", "しょう", "ほのか", "かな", "かいぞくばんせんたいせいくりっどへきさごん")
+            val inputs = listOf("あ", "しょう", "ほのか", "かな", "かいぞくばんせんたいせいくりっどへきさごん",
+                "やくようしょくぶつしどうせんたー", "じーぴーてぃーしっくすてんいちそる")
             val expected = inputs.associateWith { input ->
                 val words = linkedSetOf<String>()
                 for (data in dictionaries.values) {
@@ -48,6 +49,8 @@ class ClassifiedExactCandidatesInstrumentedTest {
             assertTrue(expected.getValue("しょう").containsAll(listOf("SHO", "紫耀")))
             assertEquals(48, expected.getValue("ほのか").size)
             assertEquals(1, expected.getValue("かな").size)
+            assertTrue(expected.getValue("やくようしょくぶつしどうせんたー").contains("薬用植物指導センター"))
+            assertTrue(expected.getValue("じーぴーてぃーしっくすてんいちそる").contains("GPT-6.1 Sol"))
             var checked = 0
             for (backend in ConversionBackend.entries) {
                 val session = KanaKanjiConversionSession(engine, backend)
@@ -92,7 +95,7 @@ class ClassifiedExactCandidatesInstrumentedTest {
                     }
                 }
             }
-            println("CLASSIFIED_EXACT checked=$checked all77=${dictionaries.size} homophones=48 shortAndLong=true")
+            println("CLASSIFIED_EXACT checked=$checked allCategories=${dictionaries.size} homophones=48 shortAndLong=true")
         } finally {
             previous.forEach { (category, enabled) -> store.setOptionalBundledEnabled(category, enabled) }
             engine.applyDictionaryOverrideState(context)
