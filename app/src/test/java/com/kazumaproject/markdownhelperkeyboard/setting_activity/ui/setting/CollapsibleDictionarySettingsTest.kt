@@ -46,7 +46,7 @@ class CollapsibleDictionarySettingsTest {
     @Test fun allLeavesRemainSearchableWhileGroupsStartCollapsed() {
         val screen = inflate()
         val groups = descendants(screen).filterIsInstance<CollapsiblePreferenceCategory>()
-        assertEquals(29, groups.size)
+        assertEquals(28, groups.size)
         groups.forEach { group ->
             assertFalse(group.key, group.isExpanded)
             for (index in 0 until group.preferenceCount) assertFalse(group.getPreference(index).isVisible)

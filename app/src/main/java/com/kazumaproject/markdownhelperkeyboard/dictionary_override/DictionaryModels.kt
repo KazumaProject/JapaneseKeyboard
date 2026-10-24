@@ -90,9 +90,7 @@ enum class DictionaryCategory {
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_SHOJO,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_JOSEI,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED,
 
     CLASSIFIED_TRANSPORT_ROUTE,
     CLASSIFIED_ORGANIZATION,
@@ -455,15 +453,9 @@ enum class DictionaryFileKey {
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS_TANGO,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS_YOMI,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS_TOKEN,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED_TANGO,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED_YOMI,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED_TOKEN,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED_TANGO,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED_YOMI,
     CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED_TOKEN,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED_TANGO,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED_YOMI,
-    CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED_TOKEN,
 
     CLASSIFIED_TRANSPORT_ROUTE_TANGO,
     CLASSIFIED_TRANSPORT_ROUTE_YOMI,
@@ -1211,15 +1203,9 @@ object DictionaryFileSpecs {
         triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS_TANGO, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS, DictionaryFileRole.TANGO, "categories/media_demographic/audience/kids/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
         triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS_YOMI, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS, DictionaryFileRole.YOMI, "categories/media_demographic/audience/kids/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
         triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS_TOKEN, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS, DictionaryFileRole.TOKEN, "categories/media_demographic/audience/kids/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
-        triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED_TANGO, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED, DictionaryFileRole.TANGO, "categories/media_demographic/audience/mixed/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
-        triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED_YOMI, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED, DictionaryFileRole.YOMI, "categories/media_demographic/audience/mixed/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
-        triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED_TOKEN, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_MIXED, DictionaryFileRole.TOKEN, "categories/media_demographic/audience/mixed/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
         triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED_TANGO, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED, DictionaryFileRole.TANGO, "categories/media_demographic/audience/unspecified/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
         triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED_YOMI, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED, DictionaryFileRole.YOMI, "categories/media_demographic/audience/unspecified/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
         triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED_TOKEN, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED, DictionaryFileRole.TOKEN, "categories/media_demographic/audience/unspecified/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
-        triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED_TANGO, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED, DictionaryFileRole.TANGO, "categories/media_demographic/resolution/source_unverified/tango.dat.zip", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
-        triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED_YOMI, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED, DictionaryFileRole.YOMI, "categories/media_demographic/resolution/source_unverified/yomi.dat.zip", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
-        triple(DictionaryFileKey.CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED_TOKEN, DictionaryCategory.CLASSIFIED_MEDIA_DEMOGRAPHIC_RESOLUTION_SOURCE_UNVERIFIED, DictionaryFileRole.TOKEN, "categories/media_demographic/resolution/source_unverified/token.dat.zip", DictionaryContentType.TOKEN_ARRAY, R.string.external_dictionary_file_token, false),
     )
 
     private val byKey = all.associateBy { it.key }
