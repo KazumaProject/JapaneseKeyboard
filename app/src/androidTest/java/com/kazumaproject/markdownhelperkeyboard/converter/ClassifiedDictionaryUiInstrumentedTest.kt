@@ -68,6 +68,16 @@ class ClassifiedDictionaryUiInstrumentedTest {
 
     private fun scrollSettingsTo(fragment: DictionaryPreferenceFragment, key: String) {
         main {
+            var parent = fragment.findPreference<androidx.preference.Preference>(key)?.parent
+            while (parent != null) {
+                if (parent is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory) {
+                    parent.setExpanded(true, persist = false)
+                }
+                parent = parent.parent
+            }
+        }
+        ins.waitForIdleSync()
+        main {
             val adapter = fragment.listView.adapter as androidx.preference.PreferenceGroup.PreferencePositionCallback
             val position = adapter.getPreferenceAdapterPosition(key)
             check(position >= 0) { "Missing preference: $key" }
@@ -116,7 +126,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
     }
 
-    @Test fun dictionarySettingsExposeAndPersistAll77IndependentSwitches() {
+    @Test fun dictionarySettingsExposeAndPersistAll143IndependentSwitches() {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
