@@ -1,32 +1,39 @@
 {
   "personSourceSha256": "8e5f9da245cff2a6b1bfa3a2093f57648bcf29cf3729338df8a5575d2559b7b0",
-  "revision": "21c31c81a32e6651eb5ee6ceb99b7aa0069c1c88",
-  "version": "v1.7.268",
+  "revision": "02320777884161421eca4b03f8d7ee22f29ee650",
+  "version": "v1.7.271",
   "inputSha256": {
     "src/main/bin/names.txt": "1f4faaa6c43a24f8d599476d10e978c5d3990ea0de26fe08f137cdb8c61b731a",
-    "src/main/bin/place.txt.zip": "bae15eb6755a2e6aa30d1d9ece7970c7d97d761b6e430c59bc11222f8e2e6f01",
-    "src/main/bin/only_wiki.txt.zip": "2c3ca451484900edee55ae4ebe79284e1301b077572f64e9100889a5755bed10",
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
+    "src/main/bin/only_wiki.txt.zip": "2c3ca451484900edee55ae4ebe79284e1301b077572f64e9100889a5755bed10",
+    "src/main/bin/place.txt.zip": "bae15eb6755a2e6aa30d1d9ece7970c7d97d761b6e430c59bc11222f8e2e6f01",
     "src/main/bin/wiki_neologd_common.txt.zip": "1b0638f24e057077c1b1471dc30e741670b547979db458eb447af5cc7221283c",
-    "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf",
-    "src/main/classification/term-additions.tsv": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b",
-    "src/main/classification/person-additions/joc-paris2024-2026-10-21.jsonl": "756f05ac434375e66f3ef023e8586cae01ceaf5493f1c64a4ce4826e472fdce5",
-    "src/main/classification/person-taxonomy.json": "cce0204d9e00d15516ae5d013f47087e993e2b7c73197d973afab481c772993f",
-    "src/main/classification/person-additions/joc-tokyo2020-2026-10-21.jsonl": "c2744d010e6a99b47e4415a99411657e8de4a3997c865f8630d9b8665f8099e3",
-    "src/main/classification/term-taxonomy.json": "890e9d1d045f10308aa32cdc39e534b5113c199de3d79404bd22be3cf796bb96",
-    "src/main/classification/term-classifications.tsv.gz": "2a1414eff371092bf5cadfd8ab9b183e750cbf8f6534fdb0e72710ee3612f45a",
-    "src/main/classification/term-classifications-manifest.json": "249f29bc46496088191861e1124392bf4a955c89ecc6912b68683a8b8d2e36b1",
-    "src/main/classification/event-taxonomy.json": "a84e0e3a84ae8700a2cd7076cb5ace14bab90890a0faff7cf742fe9a153e8d10",
-    "src/main/classification/event-classifications.tsv.gz": "976c5d281e037f9704ea86f17a40031ce30f424c8e45fad948341c336236c64b",
     "src/main/classification/event-classifications-manifest.json": "5e42d9903f24e511f948ef68f79b385329ee0131b19ead4aa2062926347e26c0",
-    "src/main/classification/person-additions/philosophers-2026-10-22.jsonl": "3b1152f50e64257ad1595e345d94b78713e8c2c4e735e338385294066b525fb4",
+    "src/main/classification/event-classifications.tsv.gz": "976c5d281e037f9704ea86f17a40031ce30f424c8e45fad948341c336236c64b",
+    "src/main/classification/event-taxonomy.json": "a84e0e3a84ae8700a2cd7076cb5ace14bab90890a0faff7cf742fe9a153e8d10",
+    "src/main/classification/media-demographic-taxonomy.json": "09678c212942d363d9bb7035630308fc4b274f2351266e0ce9f6e90d409e0822",
+    "src/main/classification/person-additions/combat-sports-2026-10-22.jsonl": "8fe4dd882d71791591a16e181174290d0ea5bee545d575d28d09460ba7b9843a",
     "src/main/classification/person-additions/comedian-2026-10-22.jsonl": "e66a986e3c0aca05afdfb33f14c2395461e95ab6514116fd3ac967f81f49d34d",
     "src/main/classification/person-additions/comedian-followup-2026-10-22.jsonl": "6524701ab8f27a8af3af74ba421c005a76d76ae70434bb119ee367501c4d6386",
     "src/main/classification/person-additions/comedian-research-2026-10-22.jsonl": "975744437fad3f6bb8644355c85c3e756cd2ba4f4ff398e124397acd4fc67200",
-    "src/main/classification/person-additions/combat-sports-2026-10-22.jsonl": "8fe4dd882d71791591a16e181174290d0ea5bee545d575d28d09460ba7b9843a",
+    "src/main/classification/person-additions/fighters-2026-10-14.jsonl": "21ba7b7db33feb7c1b55abfacb1fb6c451dd11d8a06175cfee7d36de53043eaf",
+    "src/main/classification/person-additions/github-issues-2026-10-22-category-followup.jsonl": "eeb551f4f67387b7d348e667454152c3e0bce240f2afe2b8fabd4fd838182959",
+    "src/main/classification/person-additions/github-issues-2026-10-22.jsonl": "b4d518aad86e271163243f4e9ec7e713701c89d610bb9b751a06c8bb1dd8bd91",
+    "src/main/classification/person-additions/japanese-combat-sports-jitenon-2026-10-22.jsonl": "c5569f580d8dfdb971ec601ee1cf5ac6f7edae6259e41121360a70656f47aaf0",
     "src/main/classification/person-additions/japanese-mma-2026-10-22.jsonl": "d56bf861d7478133e2e39d149f02fa4f8f94fbd2a91dff12f9073a864f2fa02e",
     "src/main/classification/person-additions/japanese-mma-gamis-2026-10-22.jsonl": "70462df28342a860d720b79e5a9bf498de8ecf0a20566be72ec1551a3f0b7d3c",
-    "src/main/classification/person-additions/japanese-combat-sports-jitenon-2026-10-22.jsonl": "c5569f580d8dfdb971ec601ee1cf5ac6f7edae6259e41121360a70656f47aaf0",
+    "src/main/classification/person-additions/joc-paris2024-2026-10-21.jsonl": "756f05ac434375e66f3ef023e8586cae01ceaf5493f1c64a4ce4826e472fdce5",
+    "src/main/classification/person-additions/joc-tokyo2020-2026-10-21.jsonl": "c2744d010e6a99b47e4415a99411657e8de4a3997c865f8630d9b8665f8099e3",
+    "src/main/classification/person-additions/philosophers-2026-10-22.jsonl": "3b1152f50e64257ad1595e345d94b78713e8c2c4e735e338385294066b525fb4",
+    "src/main/classification/person-taxonomy.json": "cce0204d9e00d15516ae5d013f47087e993e2b7c73197d973afab481c772993f",
+    "src/main/classification/term-additions.tsv": "031b9446633274363467d229074607e495abb0904061dc9b333298af6ebb339b",
+    "src/main/classification/term-classifications-manifest.json": "249f29bc46496088191861e1124392bf4a955c89ecc6912b68683a8b8d2e36b1",
+    "src/main/classification/term-classifications.tsv.gz": "2a1414eff371092bf5cadfd8ab9b183e750cbf8f6534fdb0e72710ee3612f45a",
+    "src/main/classification/term-taxonomy.json": "890e9d1d045f10308aa32cdc39e534b5113c199de3d79404bd22be3cf796bb96",
+    "src/main/classification/media-demographic-gemini-manifest.json": "449f348e10c9f3ebc74209908d3dd2363b44c8864fe2ddd545285100c2eb3f3a",
+    "src/main/classification/facility-taxonomy.json": "1e8446cdfea2470c992085bb17876496b67303cd93154fa05244f6489cd83fa7",
+    "src/main/classification/facility-classifications.tsv.gz": "d4d22ea8375cdc45a53ae423d865b02e97ed28a60b3418a7f673e73860abc341",
+    "src/main/classification/facility-classifications-manifest.json": "2cc62744ac63cb2cd465c907829348e26ca48a14552000dec1630ba57701a7d5",
     "src/main/classification/reviews/2026-10-14-001-uzumaki.jsonl": "574794d0df19f8afd09d06b66897d7b7fce97dd3652bc005674a3ecae28bb30a",
     "src/main/classification/reviews/2026-10-14-003-uzumaki-exclusions.jsonl": "5a373897bbade57c507d08e4813baa7d5975bc752a568cdaee8aaebd9d18f155",
     "src/main/classification/reviews/2026-10-16-pr128-luna-0000.jsonl": "3ab59c82e6e0645da8f513606038212b601c0c4c46273db4faf8122d6812cf1d",
@@ -70,10 +77,22 @@
     "src/main/classification/reviews/2026-10-21-aiue-organization.jsonl": "6b65e3c0092f7113000199e7dd7f530cc5e5f9911913ecb3c741a65aeef0a42b",
     "src/main/classification/reviews/2026-10-21-joc-athletes.jsonl": "7585c7afb2c8413500eab761ad429c461f139a414148c9be907442daeb141d5a",
     "src/main/classification/reviews/2026-10-22-github-issues.jsonl": "053d827a1f2c9358db0f099742b85e737ee3cdf4314f0bc41221eef837b4c730",
-    "src/main/classification/person-additions/github-issues-2026-10-22.jsonl": "b4d518aad86e271163243f4e9ec7e713701c89d610bb9b751a06c8bb1dd8bd91",
-    "src/main/classification/person-additions/github-issues-2026-10-22-category-followup.jsonl": "eeb551f4f67387b7d348e667454152c3e0bce240f2afe2b8fabd4fd838182959"
+    "src/main/classification/reviews/2026-10-23-media-demographics-complete.jsonl": "996974d5728c7660513139887a6cdec116a2d10b5680026c3d0f280ca5bb681c",
+    "src/main/classification/reviews/2026-10-23-media-demographics-gemini.jsonl": "0caeaa4aaa8b8da53a1e695b999de23fc3a98a904e3c73d4f938567e35093de9",
+    "src/main/classification/reviews/2026-10-23-media-demographics-resolution.jsonl": "9be414bfb3e0e437a616461768e00d2032124357cc52dbd9a023dd8dce754e7c",
+    "src/main/classification/reviews/2026-10-23-media-demographics.jsonl": "d326f3428b5f3afd24c6a7e13a802134561a0de0ef3b092e63f406b63b7f8137",
+    "src/main/classification/reviews/2026-10-23-media-demographics_bulk.jsonl": "259b1e1d1c68283803d79b6129ac0afedc85f0c34eb23945d6735ba4a3a4d53a",
+    "src/main/classification/reviews/2026-10-23-ramen-shops.jsonl": "a3afa7c1066bc4e10d8c97af3e8011a905f4a90cc943aa7fa06fd21d71bde3fc",
+    "src/main/classification/reviews/2026-10-23-source-correction.jsonl": "a7a4463f11a81a53ba314380864126cdcb2c1fc2bd08789a5b3a03bf57c63581",
+    "src/main/classification/reviews/2026-10-23-tokyo-kansai-ramen-shop-additions.jsonl": "4a2693a248cb87e370cb42b6830ee2b4d40c86cceee799e15bd4932f7d7f13e8",
+    "src/main/classification/reviews/2026-10-24-open-vocabulary-issues.jsonl": "921ef24efb34a74e16730ee68ad93477a231825ca603a54ac4a14cb9c5f52229",
+    "src/main/classification/reviews/2026-10-24-ramen-brand-additions.jsonl": "3e85a42fee883022a422fca243ff5c24d89aa032d5b15f3ed8edd2375cdd3982",
+    "src/main/classification/reviews/2026-10-24-ramen-brand-corrections.jsonl": "1ccfa60102dc84a525858dca55ccaf7cf227edf5f390f8446d6a98538d63e961",
+    "src/main/classification/reviews/2026-10-24-regional-ramen-shop-additions.jsonl": "6b76d94e46c90b76745508a3f550dfc34e3eb0d9a2ea38d30a3fb01da3ee9242",
+    "src/main/classification/reviews/2026-10-24-z-media-demographic-tank-chair.jsonl": "76a35fc03ba6457987b18544b07b7a0914408b78e1b88dd98d3a67e6b7e8fb25",
+    "src/main/classification/reviews/collection-cf7e87c20f1b1c28.jsonl": "0b871422af9c55e7d172b5b0bd9efcfcbae45bdcdebce43bfece67875732addb"
   },
-  "decisionSha256": "52648217449eaa546b3c4a26f1352ea738db69ad62213311ff66aa2ee417e063",
+  "decisionSha256": "30bb4ca7fcafcf559951f677f250d150fa47460b29064c8b668a1b1a2497dd58",
   "categorySourcePairs": {
     "address": {
       "place": 147777,
@@ -94,9 +113,9 @@
       "person": 1
     },
     "character": {
-      "web": 1152,
-      "neologd": 5011,
-      "wiki": 498,
+      "web": 1151,
+      "neologd": 4991,
+      "wiki": 496,
       "person": 333
     },
     "event/history/conflict": {
@@ -133,12 +152,325 @@
       "person": 1,
       "place": 1
     },
-    "facility": {
-      "wiki": 14499,
-      "neologd": 7557,
-      "web": 12966,
-      "place": 35,
-      "person": 14
+    "facility/commercial/market": {
+      "web": 51,
+      "wiki": 64,
+      "neologd": 43
+    },
+    "facility/commercial/restaurant": {
+      "wiki": 172,
+      "neologd": 208,
+      "web": 92,
+      "person": 3
+    },
+    "facility/commercial/shopping": {
+      "neologd": 261,
+      "wiki": 768,
+      "web": 256,
+      "place": 3
+    },
+    "facility/cultural/art_museum": {
+      "web": 140,
+      "wiki": 197,
+      "neologd": 40
+    },
+    "facility/cultural/library": {
+      "web": 315,
+      "wiki": 387,
+      "neologd": 47,
+      "person": 1
+    },
+    "facility/cultural/memorial": {
+      "wiki": 618,
+      "neologd": 291,
+      "web": 273,
+      "place": 1
+    },
+    "facility/cultural/museum": {
+      "wiki": 696,
+      "web": 342,
+      "neologd": 154
+    },
+    "facility/education/preschool": {
+      "wiki": 33,
+      "web": 35,
+      "neologd": 26
+    },
+    "facility/education/research": {
+      "wiki": 42,
+      "neologd": 9,
+      "web": 29
+    },
+    "facility/education/school": {
+      "web": 396,
+      "wiki": 126,
+      "neologd": 81
+    },
+    "facility/education/university": {
+      "wiki": 26,
+      "web": 21,
+      "neologd": 16
+    },
+    "facility/entertainment/amusement": {
+      "wiki": 77,
+      "neologd": 28,
+      "web": 35
+    },
+    "facility/entertainment/cinema": {
+      "wiki": 96,
+      "neologd": 31,
+      "web": 22
+    },
+    "facility/entertainment/live_venue": {
+      "web": 26,
+      "neologd": 56,
+      "wiki": 64
+    },
+    "facility/entertainment/theater": {
+      "web": 103,
+      "wiki": 217,
+      "neologd": 95
+    },
+    "facility/healthcare/care": {
+      "web": 26,
+      "neologd": 22,
+      "wiki": 47
+    },
+    "facility/healthcare/clinic": {
+      "neologd": 25,
+      "wiki": 17,
+      "web": 17
+    },
+    "facility/healthcare/hospital": {
+      "web": 578,
+      "neologd": 230,
+      "wiki": 204,
+      "place": 1
+    },
+    "facility/heritage/archaeological_site": {
+      "wiki": 128,
+      "neologd": 44,
+      "web": 60
+    },
+    "facility/heritage/castle": {
+      "wiki": 641,
+      "neologd": 140,
+      "web": 746,
+      "person": 1
+    },
+    "facility/heritage/historic_residence": {
+      "wiki": 346,
+      "web": 100,
+      "neologd": 58
+    },
+    "facility/hospitality/hot_spring": {
+      "wiki": 310,
+      "neologd": 111,
+      "web": 216
+    },
+    "facility/hospitality/hotel": {
+      "wiki": 455,
+      "neologd": 180,
+      "web": 166,
+      "place": 2,
+      "person": 1
+    },
+    "facility/hospitality/inn": {
+      "neologd": 18,
+      "web": 28,
+      "wiki": 72
+    },
+    "facility/industrial/communications": {
+      "wiki": 255,
+      "web": 243,
+      "neologd": 19
+    },
+    "facility/industrial/factory": {
+      "wiki": 199,
+      "web": 126,
+      "neologd": 65,
+      "place": 1
+    },
+    "facility/industrial/logistics": {
+      "web": 43,
+      "neologd": 24,
+      "wiki": 28,
+      "person": 2
+    },
+    "facility/industrial/power": {
+      "neologd": 100,
+      "wiki": 177,
+      "web": 154,
+      "place": 1
+    },
+    "facility/infrastructure/bridge": {
+      "wiki": 738,
+      "web": 542,
+      "neologd": 186,
+      "place": 3
+    },
+    "facility/infrastructure/dam": {
+      "wiki": 43,
+      "web": 34,
+      "neologd": 15,
+      "place": 1
+    },
+    "facility/infrastructure/tunnel": {
+      "wiki": 168,
+      "web": 164,
+      "neologd": 39
+    },
+    "facility/infrastructure/water_control": {
+      "web": 43,
+      "wiki": 43,
+      "neologd": 20,
+      "person": 1
+    },
+    "facility/military/base": {
+      "web": 113,
+      "wiki": 181,
+      "neologd": 53,
+      "person": 1
+    },
+    "facility/military/garrison": {
+      "wiki": 9,
+      "web": 5,
+      "neologd": 2
+    },
+    "facility/military/training_ground": {
+      "wiki": 28,
+      "neologd": 3,
+      "web": 9
+    },
+    "facility/public/government": {
+      "web": 152,
+      "wiki": 317,
+      "neologd": 72
+    },
+    "facility/public/judicial": {
+      "web": 64,
+      "wiki": 34,
+      "neologd": 39
+    },
+    "facility/public/police_fire": {
+      "web": 1006,
+      "wiki": 284,
+      "neologd": 9
+    },
+    "facility/public/postal": {
+      "web": 1498,
+      "wiki": 118,
+      "neologd": 10
+    },
+    "facility/recreation/outdoor_nature": {
+      "wiki": 112,
+      "neologd": 64,
+      "web": 60
+    },
+    "facility/recreation/park_garden": {
+      "wiki": 1024,
+      "web": 280,
+      "neologd": 259,
+      "place": 5
+    },
+    "facility/recreation/zoo_aquarium": {
+      "wiki": 52,
+      "web": 58,
+      "neologd": 44,
+      "person": 1
+    },
+    "facility/religious/church": {
+      "wiki": 237,
+      "web": 88,
+      "neologd": 43
+    },
+    "facility/religious/monastery": {
+      "web": 7,
+      "neologd": 5,
+      "wiki": 10
+    },
+    "facility/religious/shrine": {
+      "neologd": 1554,
+      "wiki": 1496,
+      "web": 774
+    },
+    "facility/religious/temple": {
+      "web": 1340,
+      "neologd": 1790,
+      "wiki": 870,
+      "place": 5
+    },
+    "facility/residential/condominium": {
+      "wiki": 214,
+      "web": 89,
+      "neologd": 104,
+      "place": 2
+    },
+    "facility/residential/housing_complex": {
+      "wiki": 44,
+      "web": 37,
+      "place": 4,
+      "neologd": 35
+    },
+    "facility/residential/mixed_use_building": {
+      "neologd": 22,
+      "wiki": 61,
+      "web": 6,
+      "place": 1
+    },
+    "facility/sports/aquatic": {
+      "wiki": 8,
+      "web": 1,
+      "person": 1,
+      "neologd": 1
+    },
+    "facility/sports/golf": {
+      "wiki": 29,
+      "web": 10,
+      "neologd": 8
+    },
+    "facility/sports/gymnasium": {
+      "wiki": 304,
+      "neologd": 89,
+      "web": 56,
+      "person": 1
+    },
+    "facility/sports/ski": {
+      "web": 104,
+      "wiki": 56,
+      "neologd": 32
+    },
+    "facility/sports/stadium": {
+      "wiki": 329,
+      "web": 129,
+      "neologd": 166
+    },
+    "facility/transport/airport": {
+      "web": 211,
+      "wiki": 160,
+      "neologd": 92
+    },
+    "facility/transport/harbor": {
+      "web": 284,
+      "wiki": 264,
+      "neologd": 151,
+      "place": 5
+    },
+    "facility/transport/parking": {
+      "neologd": 3,
+      "web": 2,
+      "wiki": 1
+    },
+    "facility/transport/railway_facility": {
+      "web": 385,
+      "wiki": 121,
+      "neologd": 44
+    },
+    "facility/transport/road_facility": {
+      "web": 775,
+      "wiki": 682,
+      "neologd": 180,
+      "person": 1
     },
     "initiative": {
       "neologd": 384,
@@ -147,6 +479,7 @@
       "web": 488
     },
     "kampo": {
+      "collected/collected-terms/cf7e87c20f1b1c28.jsonl": 2,
       "kampo_core": 250,
       "kampo_herb": 182
     },
@@ -154,6 +487,42 @@
       "neologd": 351,
       "web": 1049,
       "wiki": 619
+    },
+    "media_demographic/audience/josei": {
+      "web": 168,
+      "neologd": 116,
+      "wiki": 63,
+      "person": 9
+    },
+    "media_demographic/audience/kids": {
+      "neologd": 254,
+      "wiki": 93,
+      "web": 194,
+      "person": 15
+    },
+    "media_demographic/audience/seinen": {
+      "web": 951,
+      "neologd": 508,
+      "wiki": 263,
+      "person": 8
+    },
+    "media_demographic/audience/shojo": {
+      "web": 466,
+      "neologd": 238,
+      "wiki": 118,
+      "person": 4
+    },
+    "media_demographic/audience/shonen": {
+      "web": 1347,
+      "neologd": 2371,
+      "wiki": 362,
+      "person": 50
+    },
+    "media_demographic/audience/unspecified": {
+      "neologd": 2599,
+      "web": 1609,
+      "person": 272,
+      "wiki": 726
     },
     "medical": {
       "hyakuyaku": 20656,
@@ -166,10 +535,10 @@
       "person": 12
     },
     "organization": {
-      "neologd": 18710,
+      "neologd": 18711,
       "person": 1342,
       "web": 19604,
-      "wiki": 8183
+      "wiki": 8182
     },
     "person/actor": {
       "wiki": 957,
@@ -385,7 +754,7 @@
       "person": 5
     },
     "term/general/other_general": {
-      "web": 4143,
+      "web": 4142,
       "wiki": 1900,
       "neologd": 14362,
       "place": 17,
@@ -476,13 +845,13 @@
       "web": 1063
     },
     "work_anime": {
-      "neologd": 445,
+      "neologd": 439,
       "person": 8,
-      "wiki": 190,
-      "web": 465
+      "wiki": 189,
+      "web": 456
     },
     "work_book": {
-      "web": 4396,
+      "web": 4395,
       "neologd": 1481,
       "wiki": 1770,
       "person": 15
@@ -500,15 +869,15 @@
       "person": 5
     },
     "work_game": {
-      "web": 1305,
+      "web": 1304,
       "neologd": 1408,
       "wiki": 430,
       "person": 9
     },
     "work_manga": {
-      "web": 3328,
-      "neologd": 780,
-      "wiki": 1022,
+      "web": 3286,
+      "neologd": 769,
+      "wiki": 1008,
       "person": 20
     },
     "work_music": {
@@ -525,12 +894,12 @@
     },
     "work_periodical": {
       "web": 904,
-      "neologd": 684,
+      "neologd": 683,
       "wiki": 220,
       "person": 5
     },
     "work_program": {
-      "web": 5901,
+      "web": 5899,
       "neologd": 1354,
       "wiki": 2044,
       "person": 16,
@@ -73392,19 +73761,20 @@
       "src/main/specialist/notices/kampo_core.txt": "7ca7047eedec76c3a98913dc932487aee1b89c2604842db3f5e961e4c85c4496",
       "src/main/specialist/notices/kampo_herb.txt": "7ca7047eedec76c3a98913dc932487aee1b89c2604842db3f5e961e4c85c4496",
       "src/main/specialist/notices/manbyo.txt": "2ffeab722ef92e8fa0feb0df08b273e4c7522aa948052ce03a269a7475992934",
-      "src/main/classification/distribution-decisions.tsv.gz": "52648217449eaa546b3c4a26f1352ea738db69ad62213311ff66aa2ee417e063",
       "src/main/specialist/gemini-readings.jsonl.gz": "04516a0f6b282cbac9bb0325d2f864db5f84829d4c5764e846d6411bc46eb9ec",
       "src/main/specialist/gemini-run.json": "91b4925e86a3635ed342e28861be54fe7e03f72505628de41df4b48efa6a80fb",
       "src/main/specialist/reading-corrections.json": "8474db9b83c09dec59b292cf223defc3dda290a67d3bf887a7ff1abf4f5f13a5",
       "src/main/specialist/categories.json": "d03ce6563d7439cbcdcdaabf8df2529f507b2ce12abedb75e0ec1167704a0a25",
       "src/main/specialist/sources.json": "a8bbbbe3b0fce76441acc19f3d7232d6f1f53f76709ce2990c029d0bb330c9e8",
+      "src/main/specialist/collected-terms/cf7e87c20f1b1c28.jsonl": "5576452ddee809c083e52b0d0d0d41aab73abdbdfab31f9a1ff0db336087f22a",
       "src/main/specialist/sources/kampo_core.jsonl.gz": "88b4487a56159df060c58e5c020c310f7d55def773f66cc384daab7146c0ff55",
       "src/main/specialist/sources/kampo_herb.jsonl.gz": "1146440a2e946ecd4b80f3792ecc75160ce342f4ad3302e4fb0fc544158927ed",
       "src/main/specialist/sources/hyakuyaku.jsonl.gz": "bbdefe7bec466e25d333adf2971bfd32e12ebf8eccf9e5c1dbe8132eba49027b",
       "src/main/specialist/sources/manbyo.jsonl.gz": "acf4105c8bfff7d7278fb9d2298481b3dae2d6b58eda824f31b3345e6aea9492"
     },
+    "classificationExclusionsSha256": "702da8496b746509db3600b12d230de37cf7c7d6d89383023ec02cf8b4bc8630",
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "86a5ec6898a434d9175e913bc33539686eb8d06a80fda5514a7d4b301b386e5e",
+    "existingInventorySha256": "9306fbcde06a999de551aec82f2ab6de2660928f8cb3ae0beef8bcf38827e4df",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -73416,9 +73786,73 @@
       "categories/event/occasion/exam_qualification",
       "categories/event/occasion/observance",
       "categories/event/occasion/organized_event",
-      "categories/facility",
+      "categories/facility/commercial/market",
+      "categories/facility/commercial/restaurant",
+      "categories/facility/commercial/shopping",
+      "categories/facility/cultural/art_museum",
+      "categories/facility/cultural/library",
+      "categories/facility/cultural/memorial",
+      "categories/facility/cultural/museum",
+      "categories/facility/education/preschool",
+      "categories/facility/education/research",
+      "categories/facility/education/school",
+      "categories/facility/education/university",
+      "categories/facility/entertainment/amusement",
+      "categories/facility/entertainment/cinema",
+      "categories/facility/entertainment/live_venue",
+      "categories/facility/entertainment/theater",
+      "categories/facility/healthcare/care",
+      "categories/facility/healthcare/clinic",
+      "categories/facility/healthcare/hospital",
+      "categories/facility/heritage/archaeological_site",
+      "categories/facility/heritage/castle",
+      "categories/facility/heritage/historic_residence",
+      "categories/facility/hospitality/hot_spring",
+      "categories/facility/hospitality/hotel",
+      "categories/facility/hospitality/inn",
+      "categories/facility/industrial/communications",
+      "categories/facility/industrial/factory",
+      "categories/facility/industrial/logistics",
+      "categories/facility/industrial/power",
+      "categories/facility/infrastructure/bridge",
+      "categories/facility/infrastructure/dam",
+      "categories/facility/infrastructure/tunnel",
+      "categories/facility/infrastructure/water_control",
+      "categories/facility/military/base",
+      "categories/facility/military/garrison",
+      "categories/facility/military/training_ground",
+      "categories/facility/public/government",
+      "categories/facility/public/judicial",
+      "categories/facility/public/police_fire",
+      "categories/facility/public/postal",
+      "categories/facility/recreation/outdoor_nature",
+      "categories/facility/recreation/park_garden",
+      "categories/facility/recreation/zoo_aquarium",
+      "categories/facility/religious/church",
+      "categories/facility/religious/monastery",
+      "categories/facility/religious/shrine",
+      "categories/facility/religious/temple",
+      "categories/facility/residential/condominium",
+      "categories/facility/residential/housing_complex",
+      "categories/facility/residential/mixed_use_building",
+      "categories/facility/sports/aquatic",
+      "categories/facility/sports/golf",
+      "categories/facility/sports/gymnasium",
+      "categories/facility/sports/ski",
+      "categories/facility/sports/stadium",
+      "categories/facility/transport/airport",
+      "categories/facility/transport/harbor",
+      "categories/facility/transport/parking",
+      "categories/facility/transport/railway_facility",
+      "categories/facility/transport/road_facility",
       "categories/initiative",
       "categories/lineage",
+      "categories/media_demographic/audience/josei",
+      "categories/media_demographic/audience/kids",
+      "categories/media_demographic/audience/seinen",
+      "categories/media_demographic/audience/shojo",
+      "categories/media_demographic/audience/shonen",
+      "categories/media_demographic/audience/unspecified",
       "categories/mythological_figure",
       "categories/organization",
       "categories/person",
@@ -73462,8 +73896,14 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1860982,
+    "existingUniquePairs": 1861219,
     "sourceRows": {
+      "collected/collected-terms/cf7e87c20f1b1c28.jsonl": {
+        "rows": 2,
+        "dispositions": {
+          "adopted": 2
+        }
+      },
       "kampo_core": {
         "rows": 1581,
         "dispositions": {
@@ -73504,7 +73944,7 @@
       }
     },
     "dispositions": {
-      "adopted": 93115,
+      "adopted": 93117,
       "cross_category_duplicate": 106,
       "excluded_by_classification_review": 69,
       "existing_duplicate": 6504,
@@ -73514,19 +73954,20 @@
       "unsupported_kana_surface": 19
     },
     "categoryRows": {
-      "kampo": 432,
+      "kampo": 434,
       "medical": 92683
     },
-    "dictionaryRows": 93115,
-    "uniqueAdmittedPairs": 93115,
+    "dictionaryRows": 93117,
+    "uniqueAdmittedPairs": 93117,
     "readingOrigins": {
       "curated_correction": 2,
       "gemini_inferred_unverified": 2003,
+      "source_backed_collection": 2,
       "upstream_unverified": 91110
     },
     "files": {
-      "distribution-candidates.tsv.gz": "de25b742784973e59532d3ec86b670ab5dd25ed6c0558aa72d9eb2e6afb628dc",
-      "provenance.jsonl.gz": "0d7c5daf9d81383d25b06c3b48c25a29a7cbca85b751e1941b4942b44c498315"
+      "distribution-candidates.tsv.gz": "8734dda7bd19c3a1401600a751289a3062c9a2f15c7ea64a409faf40c656e5ec",
+      "provenance.jsonl.gz": "d8c3411ae205cff7a4d9b3da244d8956d8ef37b1e0fa2a9a10ed40da496448f2"
     },
     "limitations": [
       "Upstream readings include automatic readings; Gemini supplements are inferred. Neither is independently verified.",
@@ -73534,8 +73975,42 @@
       "Kana surfaces incompatible with the current sentinel encoding are withheld."
     ]
   },
-  "surfaceOverridesSha256": "49c6b7ca69b6e7ec162f2a840dea2981cba1f94fb42f37f95bade7beeb15a54d",
+  "collectedTerms": [
+    {
+      "category": "kampo",
+      "checked_on": "2026-10-23",
+      "evidence_method": "fields",
+      "reading": "けいしかりゅうこつぼれいとう",
+      "source_fields": {
+        "product_name": "ツムラ漢方桂枝加竜骨牡蠣湯エキス顆粒",
+        "product_name_kana": "けいしかりゅうこつぼれいとう"
+      },
+      "source_id": "tsumura_otc_kampo",
+      "source_reading": "けいしかりゅうこつぼれいとう",
+      "source_sha256": "c21923823aaf1731ed6377b81dab88b4ead968b8de642a89d8f9361ecc278c97",
+      "source_surface": "桂枝加竜骨牡蠣湯",
+      "source_url": "https://www.tsumura.co.jp/brand/products/json/name.json",
+      "surface": "桂枝加竜骨牡蠣湯"
+    },
+    {
+      "category": "kampo",
+      "checked_on": "2026-10-23",
+      "evidence_method": "fields",
+      "reading": "けいしぶくりょうがんかよくいにん",
+      "source_fields": {
+        "name": "ツムラ桂枝茯苓丸加薏苡仁",
+        "nameKana": "ツムラケイシブクリョウガンカヨクイニン"
+      },
+      "source_id": "tsumura_kampo",
+      "source_reading": "ケイシブクリョウガンカヨクイニン",
+      "source_sha256": "1e700458f12afc36ae9a8207bd0829ea4e258bd0f8a4f282413b836c05d93844",
+      "source_surface": "桂枝茯苓丸加薏苡仁",
+      "source_url": "https://www.tsumura.co.jp/products/json/id.json",
+      "surface": "桂枝茯苓丸加薏苡仁"
+    }
+  ],
+  "surfaceOverridesSha256": "770f2494ecac9215dcf74b396a5099f652a7793281ba196882f71eb8e90dd5de",
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "ece60b0eca9cd151a7a6a6c3660ef6c78848f27147782cf9237a27b34fa3ea36",
-  "classifiedFixtureSha256": "804ce4fe4583c2439561caf6c76c3264730418965b63985facd023a4956c7def"
+  "englishFixtureSha256": "e9b8862624e0a89f487d91fc0cfdacb79f0cc62ac871c51d1c0a6ce2f214f822",
+  "classifiedFixtureSha256": "539e3bdfda1f0b08ec09732674e729637f9f0e42ab1bfc5ecab75e0f82eca261"
 }

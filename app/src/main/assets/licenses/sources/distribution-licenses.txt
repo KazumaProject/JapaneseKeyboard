@@ -79,6 +79,23 @@ JapaneseCorpus由来データの原本表記は
 その他の辞書入力も、それぞれの出典・ライセンス条件に従います。この文書は、未確認の
 入力データに一律のライセンスを与えるものではありません。
 
+## アニメ・漫画・架空キャラクターの対象層レビュー
+
+`src/main/classification/reviews/2026-10-23-media-demographics-complete.jsonl` の完了レビューは、
+[patelris の Anime and Manga Dataset 2026](https://www.kaggle.com/datasets/patelris/anime-and-manga-dataset-2026)
+version 6（CC BY 4.0）の `demographics`、`genres`、`rating`、MyAnimeList IDを利用します。
+架空キャラクターの名前と出典IDには
+[fadhilakbar の Anime Characters Dataset](https://huggingface.co/datasets/fadhilakbar/anime-characters-dataset)
+（CC BY 4.0）を利用します。帰属表示、取得版、入力ファイルのSHA-256、対象の参照先を各レビューに記録します。
+
+加工内容は、作品名のUnicode正規化、かな読みのローマ字照合、MyAnimeList IDを介した出典結合、
+明示タグの対象層ラベルへの対応付け、Hentai／Rx - Hentaiタグの成人向け除外です。
+キャラクターは同一の出典IDを持ち、確認できた出典アニメの対象層が一致する場合だけ分類します。
+入力CSV、作品説明、レビュー本文はリポジトリに複製しません。ライセンス表示は元データを
+CC BY 4.0の下で利用したことを示し、原作出版社による一次資料での全件確認を意味しません。
+
+`src/main/classification/reviews/2026-10-23-media-demographics-gemini.jsonl` は、出典未確認だった候補8,197組をGemini 3.5 Flash-Liteで最善推定したレビューです。送信内容は辞書候補の読み・表記などの公開語彙データです。モデルのカテゴリ選択は独立した典拠確認ではなく、成人向けと推定した34組は全配布カテゴリから除外しています。モデル名・入力とプロンプトのハッシュ・集計・トークン使用量は `src/main/classification/media-demographic-gemini-manifest.json` に記録し、生のAPI応答とキーは含めません。実行は無料枠だけを使用し、課金は有効になっていません。Googleの[Gemini API料金・利用条件](https://ai.google.dev/gemini-api/docs/pricing)では無料枠のコンテンツがGoogle製品の改善に使用され得ると記載されています。
+
 ## 哲学者・思想家の人名データ
 
 `src/main/classification/person-additions/philosophers-2026-10-22.jsonl` の人名表記・読みは、各行の `source_url` に記録した[Web NDL Authorities](https://id.ndl.go.jp/)の典拠データを確認して採録しています。同データは国立国会図書館の出典を表示して再利用します。各行には典拠ID、原資料の表記・読み、確認箇所、確認日、典拠レスポンスのSHA-256を記録します。
@@ -259,6 +276,12 @@ License: CC-BY-4.0
 奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 百薬辞書 HYAKUYAKU_202107
 Source: https://sociocom.naist.jp/hyakuyaku-dic/
 License: CC-BY-4.0
+
+
+=== Additional vocabulary facts ===
+Names and explicitly published readings only; original web pages are not redistributed.
+https://www.tsumura.co.jp/brand/products/json/name.json
+https://www.tsumura.co.jp/products/json/id.json
 
 
 === CC-BY-4.0.txt ===

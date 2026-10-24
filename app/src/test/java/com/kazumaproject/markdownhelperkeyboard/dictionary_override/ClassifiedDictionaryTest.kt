@@ -24,8 +24,8 @@ class ClassifiedDictionaryTest {
             .reader().use { JsonParser.parseReader(it).asJsonObject }
         val distributionRevision = manifest.get("revision").asString
         assertTrue("Distribution revision must be a commit SHA", distributionRevision.matches(Regex("[0-9a-f]{40}")))
-        assertEquals(77, ClassifiedDictionaries.all.size)
-        assertEquals(77, ClassifiedDictionaries.categories.size)
+        assertEquals(143, ClassifiedDictionaries.all.size)
+        assertEquals(143, ClassifiedDictionaries.categories.size)
         ClassifiedDictionaries.all.forEach { spec ->
             val files = DictionaryFileSpecs.forCategory(spec.category)
             assertEquals(3, files.size)
@@ -87,13 +87,14 @@ class ClassifiedDictionaryTest {
             .putBoolean("optional_bundled_enabled_CLASSIFIED_PERSON", true)
             .putBoolean("optional_bundled_enabled_CLASSIFIED_EVENT", true)
             .putBoolean("optional_bundled_enabled_CLASSIFIED_TERM", true)
+            .putBoolean("optional_bundled_enabled_CLASSIFIED_FACILITY", true)
             .putBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.CLASSIFIED_PLACE), true)
             .apply()
         val defaults = context.getSharedPreferences("classified-parent-defaults", Context.MODE_PRIVATE)
         val directory = File(context.cacheDir, "classified-parent-upgrade")
         val store = DictionaryOverrideStore(directory, prefs, defaults)
         val children = ClassifiedDictionaries.all.filter { '/' in it.id }
-        assertEquals(50, children.size)
+        assertEquals(117, children.size)
         children.forEach { assertFalse(it.id, store.isOptionalBundledEnabled(it.category)) }
         assertTrue(store.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PLACE))
         val chosen = children.first().category
@@ -102,7 +103,7 @@ class ClassifiedDictionaryTest {
         assertTrue(reopened.isOptionalBundledEnabled(chosen))
         children.drop(1).forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
         assertTrue(reopened.isOptionalBundledEnabled(DictionaryCategory.CLASSIFIED_PLACE))
-        for (retired in listOf("person", "event", "term")) {
+        for (retired in listOf("person", "event", "term", "facility")) {
             assertNull(ClassifiedDictionaries.all.find { it.id == retired })
             assertNull(DictionaryZipEntryNameMapper.map("categories/$retired/tango.dat.zip"))
         }
@@ -110,19 +111,20 @@ class ClassifiedDictionaryTest {
         children.forEach { assertFalse(reopened.isOptionalBundledEnabled(it.category)) }
     }
 
-    @Test fun additionsSince266DefaultOffWhileExistingSelectionsPersist() {
-        val additions = setOf("person/thought", "person/surname_origin_japanese", "person/surname_origin_foreign",
-            "person/given_name_origin_japanese", "person/given_name_origin_foreign",
-            "person/personal_name_origin_japanese", "person/personal_name_origin_foreign")
-        val prefs = context.getSharedPreferences("classified-268-upgrade", Context.MODE_PRIVATE)
-        prefs.edit().clear().apply()
-        val defaults = context.getSharedPreferences("classified-268-defaults", Context.MODE_PRIVATE)
-        val directory = File(context.cacheDir, "classified-268-upgrade")
+    @Test fun additionsSince268DefaultOffWhileExistingSelectionsPersist() {
+        val additions = ClassifiedDictionaries.all.filter {
+            it.id.startsWith("facility/") || it.id.startsWith("media_demographic/")
+        }.map { it.category }.toSet()
+        val prefs = context.getSharedPreferences("classified-271-upgrade", Context.MODE_PRIVATE)
+        prefs.edit().clear().putBoolean("optional_bundled_enabled_CLASSIFIED_FACILITY", true).commit()
+        val defaults = context.getSharedPreferences("classified-271-defaults", Context.MODE_PRIVATE)
+        val directory = File(context.cacheDir, "classified-271-upgrade")
         val store = DictionaryOverrideStore(directory, prefs, defaults)
-        ClassifiedDictionaries.all.filter { it.id !in additions }.forEach { store.setOptionalBundledEnabled(it.category, true) }
+        ClassifiedDictionaries.all.filter { it.category !in additions }.forEach { store.setOptionalBundledEnabled(it.category, true) }
         val reopened = DictionaryOverrideStore(directory, prefs, defaults)
-        assertEquals(7, ClassifiedDictionaries.all.count { it.id in additions })
-        ClassifiedDictionaries.all.forEach { assertEquals(it.id, it.id !in additions, reopened.isOptionalBundledEnabled(it.category)) }
+        assertEquals(67, additions.size)
+        ClassifiedDictionaries.all.forEach { assertEquals(it.id, it.category !in additions, reopened.isOptionalBundledEnabled(it.category)) }
+        assertTrue(DictionaryFileSpecs.forCategory(DictionaryCategory.CLASSIFIED_FACILITY).isEmpty())
     }
 
     @Test fun literalSurfaceRepairsApplyToBundledAndIdenticalImportedTriplesOnly() {
@@ -219,7 +221,11 @@ class ClassifiedDictionaryTest {
         val repository = DictionaryBrowserRepository(DictionaryBinaryReader(resolver, store), resolver)
         for (spec in ClassifiedDictionaries.all) {
             val page = repository.open(spec.category, "").nextPage()
-            assertTrue("${spec.id} must open with pinned surface repairs", page.rows.isNotEmpty())
+            val manifest = File("../tools/classified-dictionaries/distribution-manifest.json")
+                .reader().use { JsonParser.parseReader(it).asJsonObject }
+            val count = manifest.getAsJsonArray("categories").single { it.asJsonObject.get("id").asString == spec.id }
+                .asJsonObject.get("recordCount").asInt
+            assertEquals("${spec.id} empty category", count == 0, page.rows.isEmpty())
         }
     }
 
