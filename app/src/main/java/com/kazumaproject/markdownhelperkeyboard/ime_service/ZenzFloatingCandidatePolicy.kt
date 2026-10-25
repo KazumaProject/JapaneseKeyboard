@@ -1,6 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-/** Only a current request may occupy the dedicated panel, after generation starts or a result is available. */
+/** Show only a completed, current result that differs from the regular first candidate. */
 internal object ZenzFloatingCandidatePolicy {
     fun shouldShow(
         enabled: Boolean,
@@ -8,7 +8,9 @@ internal object ZenzFloatingCandidatePolicy {
         currentRequest: Boolean,
         currentTarget: Boolean,
         loading: Boolean,
-        generationStarted: Boolean,
-        hasCandidate: Boolean,
-    ): Boolean = enabled && !suppressed && currentRequest && currentTarget && ((loading && generationStarted) || hasCandidate)
+        candidateText: String?,
+        firstLocalCandidateText: String?,
+    ): Boolean = enabled && !suppressed && currentRequest && currentTarget && !loading &&
+        !candidateText.isNullOrEmpty() && firstLocalCandidateText != null &&
+        candidateText != firstLocalCandidateText
 }

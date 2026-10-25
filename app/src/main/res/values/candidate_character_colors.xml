@@ -1,0 +1,5 @@
+<resources>
+    <color name="candidate_character_katakana">#00796B</color>
+    <color name="candidate_character_full_width">#7B1FA2</color>
+    <color name="candidate_character_half_width">#995500</color>
+</resources>
