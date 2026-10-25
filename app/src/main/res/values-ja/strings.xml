@@ -1943,6 +1943,19 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">カーソル、削除、IME切替、小文字、シフト、元に戻す、全角切替などのキーです。アイコンと文字のサイズを個別に調整できます。</string>
     <string name="gojuon_sizing_icon">特殊キーのアイコン</string>
     <string name="gojuon_sizing_special_text">特殊キーの文字</string>
+
+    <string name="input_style_three_stage">3段フリック</string>
+    <string name="template_three_stage_flick">かな（3段フリック）</string>
+    <string name="three_stage_state">文字の状態</string>
+    <string name="three_stage_normal">通常</string>
+    <string name="three_stage_dakuten">濁点</string>
+    <string name="three_stage_handakuten">半濁点</string>
+    <string name="three_stage_path">%1$d段目 / 最大3段  %2$s</string>
+    <string name="three_stage_back">前の段へ</string>
+    <string name="three_stage_open">次の段を開く</string>
+    <string name="three_stage_branch_label">分岐ラベル</string>
+    <string name="three_stage_add_branch">次の段を作成</string>
+    <string name="three_stage_clear">割り当てを削除</string>
     <string name="mushroom_shortcut_summary">マッシュルーム対応アプリで文字を変換・入力します</string>
     <string name="mushroom_choose_app">マッシュルーム対応アプリを選択</string>
     <string name="mushroom_unavailable">マッシュルーム対応アプリがインストールされていません</string>

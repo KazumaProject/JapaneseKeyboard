@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.HierarchicalFlickCodec
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyWithFlicks
 
 /**
@@ -119,6 +120,9 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             rowSpanUnits = this.key.rowSpanUnits,
             columnSpanUnits = this.key.columnSpanUnits,
             specialKeyColorStyle = this.key.specialKeyColorStyle,
+            hierarchicalFlick = this.key.hierarchicalFlickJson?.let {
+                HierarchicalFlickCodec.fromRuntime(HierarchicalFlickCodec.decode(it))
+            },
             textInputBehavior = this.key.textInputBehavior
         ),
         flicks = this.flicks.map {

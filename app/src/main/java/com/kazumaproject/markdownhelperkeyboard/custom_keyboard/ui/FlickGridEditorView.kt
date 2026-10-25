@@ -44,7 +44,8 @@ enum class GridMode {
     PETAL,          // 通常キーの1段フリック
     TWO_STEP,       // 通常キーの2段フリック
     SPECIAL_FLICK,  // 特殊キーの1段フリック
-    FLICK_LONG_PRESS
+    FLICK_LONG_PRESS,
+    HIERARCHICAL
 }
 
 /**
@@ -117,6 +118,8 @@ class FlickGridEditorView @JvmOverloads constructor(
     private var storedTwoStepItems: List<TwoStepMappingItem> = emptyList()
 
     var onCellSelected: ((CellMode) -> Unit)? = null
+    var onHierarchicalDirectionSelected: ((TfbiFlickDirection) -> Unit)? = null
+    private var hierarchicalSelection = TfbiFlickDirection.TAP
 
     // Paints（色はonDraw時にMaterial Themeから取得）
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -289,6 +292,7 @@ class FlickGridEditorView @JvmOverloads constructor(
     }
 
     private fun isCellSelected(pos: CellPos): Boolean {
+        if (gridMode == GridMode.HIERARCHICAL) return tfbiDirectionGrid[pos] == hierarchicalSelection
         val mode = currentCellMode ?: return false
         return when (mode) {
             is CellMode.Petal -> petalDirectionGrid[mode.direction] == pos
@@ -304,6 +308,7 @@ class FlickGridEditorView @JvmOverloads constructor(
      */
     private fun getActiveCellsOnPath(): Set<CellPos> {
         val tapPos = CellPos(1, 1)
+        if (gridMode == GridMode.HIERARCHICAL) return setOf(tapPos)
         val mode = currentCellMode ?: return emptySet()
 
         return when {
@@ -394,7 +399,7 @@ class FlickGridEditorView @JvmOverloads constructor(
                 }
             }
 
-            gridMode == GridMode.FLICK_LONG_PRESS -> {
+            gridMode == GridMode.FLICK_LONG_PRESS || gridMode == GridMode.HIERARCHICAL -> {
                 tfbiDirectionGrid.keys
                     .filter { it != tapPos }
                     .map { tapPos to it }
@@ -511,6 +516,11 @@ class FlickGridEditorView @JvmOverloads constructor(
                 invalidate()
                 onCellSelected?.invoke(newMode)
             }
+            GridMode.HIERARCHICAL -> {
+                hierarchicalSelection = tfbiDirectionGrid[pos] ?: return
+                invalidate()
+                onHierarchicalDirectionSelected?.invoke(hierarchicalSelection)
+            }
             GridMode.FLICK_LONG_PRESS -> {
                 val tappedDir = tfbiDirectionGrid[pos] ?: return
                 val newMode = CellMode.FlickLongPress(tappedDir)
@@ -574,6 +584,23 @@ class FlickGridEditorView @JvmOverloads constructor(
     }
 
     // ---- 公開API ----
+
+    fun setHierarchicalContent(
+        labels: Map<TfbiFlickDirection, String>,
+        selectedDirection: TfbiFlickDirection
+    ) {
+        gridMode = GridMode.HIERARCHICAL
+        currentCellMode = null
+        hierarchicalSelection = selectedDirection
+        cellLabels.clear()
+        cellEnabled.clear()
+        cellIconResId.clear()
+        for ((pos, direction) in tfbiDirectionGrid) {
+            cellEnabled[pos] = true
+            cellLabels[pos] = labels[direction].orEmpty()
+        }
+        invalidate()
+    }
 
     fun setPetalContent(items: List<FlickMappingItem>, displayActions: List<DisplayActionUi>, centerLabel: String = "") {
         gridMode = GridMode.PETAL
@@ -702,11 +729,18 @@ class FlickGridEditorView @JvmOverloads constructor(
      * 初期セル（TAP）を選択してコールバックを呼ぶ
      */
     fun selectInitialCell() {
+        if (gridMode == GridMode.HIERARCHICAL) {
+            hierarchicalSelection = TfbiFlickDirection.TAP
+            invalidate()
+            onHierarchicalDirectionSelected?.invoke(hierarchicalSelection)
+            return
+        }
         val initialMode: CellMode = when (gridMode) {
             GridMode.PETAL -> CellMode.Petal(FlickDirection.TAP)
             GridMode.SPECIAL_FLICK -> CellMode.SpecialFlick(FlickDirection.TAP)
             GridMode.TWO_STEP -> CellMode.TwoStepFirst(TfbiFlickDirection.TAP)
             GridMode.FLICK_LONG_PRESS -> CellMode.FlickLongPress(TfbiFlickDirection.TAP)
+            GridMode.HIERARCHICAL -> error("Handled above")
         }
         currentCellMode = initialMode
         if (gridMode == GridMode.TWO_STEP) updateTwoStepLabels(initialMode)
