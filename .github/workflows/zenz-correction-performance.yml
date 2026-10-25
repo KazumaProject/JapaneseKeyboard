@@ -13,6 +13,11 @@ on:
         default: '["time0","time1","time2","memory","runtime","feature"]'
         required: true
         type: string
+      package_run_id:
+        description: Reuse exact APK artifacts from a completed build run (empty builds both revisions)
+        default: ''
+        required: false
+        type: string
   pull_request:
     branches: [dev]
     paths:
@@ -26,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: zenz-correction-performance-${{ github.event.pull_request.number || github.ref }}-${{ inputs.phases || 'all' }}
@@ -33,6 +39,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ !inputs.package_run_id }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -89,6 +96,7 @@ jobs:
           retention-days: 14
   measure:
     needs: build
+    if: ${{ always() && (needs.build.result == 'success' || (inputs.package_run_id && needs.build.result == 'skipped')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
@@ -110,6 +118,8 @@ jobs:
         with:
           name: zenz-correction-packages
           path: ${{ env.ZENZ_PERF_PACKAGE_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.package_run_id || github.run_id }}
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
