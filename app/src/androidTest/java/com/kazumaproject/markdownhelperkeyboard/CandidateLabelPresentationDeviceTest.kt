@@ -161,7 +161,10 @@ class CandidateLabelPresentationDeviceTest {
             } }
             capture(if (baseline) "baseline-mixed" else if (enabled) "mixed-on" else "mixed-off")
             main {
-                val recycler = WindowInspector.getGlobalWindowViews().firstNotNullOf { it.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view")) }
+                val recycler = WindowInspector.getGlobalWindowViews().firstNotNullOf { root ->
+                    root.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view"))
+                        ?.takeIf { it.isShown }
+                }
                 val target = (0 until recycler.childCount).map(recycler::getChildAt).first {
                     it.findViewById<TextView>(id("suggestion_item_text_view"))?.text?.toString()?.trim() == "東京でカフェ１２３ABC"
                 }
@@ -237,14 +240,15 @@ class CandidateLabelPresentationDeviceTest {
                 navHost != null
             }
             try {
-                for ((destination, name) in listOf(
-                    id("candidateConversionPreferenceFragment") to "settings-new",
-                    id("legacyCommonPreferenceFragment") to "settings-legacy",
+                for ((destination, name, fragmentName) in listOf(
+                    Triple(id("candidateConversionPreferenceFragment"), "settings-new", "CandidateConversionPreferenceFragment"),
+                    Triple(id("legacyCommonPreferenceFragment"), "settings-legacy", "LegacyCommonPreferenceFragment"),
                 )) {
                     main { requireNotNull(navHost).navController.navigate(destination) }
                     await("Settings switch missing: $name") {
-                        (navHost?.childFragmentManager?.primaryNavigationFragment as? PreferenceFragmentCompat)
-                            ?.findPreference<androidx.preference.Preference>("candidate_character_type_indicators_preference") != null
+                        val fragment = navHost?.childFragmentManager?.primaryNavigationFragment as? PreferenceFragmentCompat
+                        fragment?.javaClass?.simpleName == fragmentName && fragment.view?.isShown == true &&
+                            fragment.findPreference<androidx.preference.Preference>("candidate_character_type_indicators_preference") != null
                     }
                     main { (navHost?.childFragmentManager?.primaryNavigationFragment as PreferenceFragmentCompat)
                         .scrollToPreference("candidate_character_type_indicators_preference") }
