@@ -88,6 +88,11 @@ class MushroomImeInstrumentedTest {
         try {
             action(activity)
         } finally {
+            // Dismiss an external plugin even when an assertion fails, before the next test starts.
+            shell("input keyevent KEYCODE_BACK")
+            SystemClock.sleep(300)
+            shell("input keyevent KEYCODE_BACK")
+            SystemClock.sleep(300)
             onHost(activity) { it.finish() }
         }
     }
@@ -123,8 +128,6 @@ class MushroomImeInstrumentedTest {
                                 .any { it.isVisibleToUser && it.text?.toString() == "a[b]c" }
                     }
                 }
-                shell("input keyevent KEYCODE_BACK")
-                shell("input keyevent KEYCODE_BACK")
             }
         } finally {
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")

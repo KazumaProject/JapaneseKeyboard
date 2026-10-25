@@ -32,6 +32,7 @@ public final class MushroomPluginActivity extends Activity {
             editor.setId(android.R.id.input);
             editor.setText("abc");
             editor.setSelection(1, 2);
+            fitSystemBars(editor);
             setContentView(editor);
             getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
             editor.requestFocus();
@@ -57,6 +58,20 @@ public final class MushroomPluginActivity extends Activity {
             });
             layout.addView(button);
         }
+        fitSystemBars(layout);
         setContentView(layout);
     }
+    private void fitSystemBars(android.view.View root) {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            root.setOnApplyWindowInsetsListener((view, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                return insets;
+            });
+        } else {
+            root.setFitsSystemWindows(true);
+        }
+    }
+
 }
