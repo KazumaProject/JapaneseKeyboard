@@ -1008,8 +1008,8 @@
     }
   },
   "person/other_identified": {
-    "count": 5020,
-    "digestSum": "5f58d192ffc9dcf295159f503e5b06eddba3c209521db188d3497e010d758d6c",
+    "count": 5011,
+    "digestSum": "ae4be990f86fc6acf7bf66ed62e38a54eb4a65c53c4a03b45d4274d216ffca29",
     "sample": {
       "reading": "あいうぇいうぇい",
       "surface": "艾未未"
@@ -1032,8 +1032,8 @@
     }
   },
   "person/personal_name_origin_japanese": {
-    "count": 75946,
-    "digestSum": "f2208e13e9d48e325a52b7e6dc050c141b2ee4aa866e863db845f1192db6b3a1",
+    "count": 75943,
+    "digestSum": "7291837e1f40fba187f5ab7631b7ae827b75e747112973381763b602122bf081",
     "sample": {
       "reading": "あいうちかほ",
       "surface": "相内香穂"
@@ -1088,8 +1088,8 @@
     }
   },
   "person/surname_origin_japanese": {
-    "count": 25012,
-    "digestSum": "d3b2890eccd503714faf32b7a35b4053148714e77cf356083dee753ba2fa86d1",
+    "count": 25011,
+    "digestSum": "2360ae2a256662282585667752cfe479ce743f5861db9b27745d41b203beec87",
     "sample": {
       "reading": "ああふめす",
       "surface": "アアフメス"
