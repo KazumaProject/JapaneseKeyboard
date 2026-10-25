@@ -9,6 +9,7 @@ import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_DIGIT_DATE
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +44,26 @@ class DictionaryWhitespaceCandidateCommitTest {
                 )
                 assertEquals(word, editor.editable.toString())
                 assertEquals(word.length, Selection.getSelectionStart(editor.editable))
+            }
+        }
+    }
+
+    @Test fun digitDateKeepsTheLegacyLengthBasedCommitPath() {
+        for (input in listOf("1231", "12311")) {
+            for (type in listOf(40.toByte(), CANDIDATE_TYPE_DIGIT_DATE)) {
+                val editor = Editor()
+                val service = spy(IMEService())
+                doReturn(editor).`when`(service).getCurrentInputConnection()
+                val candidate = Candidate("12月31日", type, 4u, 8000)
+                ReflectionHelpers.callInstanceMethod<Unit>(service, "processCandidate",
+                    ClassParameter.from(Candidate::class.java, candidate),
+                    ClassParameter.from(String::class.java, input),
+                    ClassParameter.from(InputMode::class.java, InputMode.ModeJapanese),
+                    ClassParameter.from(Int::class.javaPrimitiveType, 0),
+                )
+                assertEquals("12月31日", editor.editable.toString())
+                val tail = ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail")
+                assertEquals(if (input.length == 4) "" else "1", tail.get())
             }
         }
     }

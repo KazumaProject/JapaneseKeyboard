@@ -111,6 +111,12 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="candidate_character_type_indicators_preference"
+            android:title="@string/candidate_character_indicators_title"
+            android:summary="@string/candidate_character_indicators_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="live_conversion_preference"
             android:summaryOff="@string/live_conversion_summary_off"
             android:summaryOn="@string/live_conversion_summary_on"

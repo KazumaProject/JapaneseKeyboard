@@ -229,6 +229,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withGeneratedText
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
@@ -3235,7 +3236,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingCandidateView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
         listAdapter = FloatingCandidateListAdapter(
             pageSize = PAGE_SIZE,
-        )
+        ).apply { setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference) }
         listAdapter.onSuggestionClicked = suggestionClick@ { suggestion: CandidateItem ->
             if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
                 suggestion.sourceId?.let(::executeTextMacro)
@@ -4200,8 +4201,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         SystemNgramRuntime.setEnabled(this, preferences.systemNgramDictionaryEnabled)
         ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
             adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
         }
+        if (this::listAdapter.isInitialized) listAdapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
         suppressHentaiganaCandidates = preferences.suppressHentaiganaCandidates
         zeroQuerySuggestionPreference = preferences.zeroQuerySuggestionPreference
         if (!zeroQuerySuggestionPreference) {
@@ -13582,10 +13585,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         transformedText: String,
         resultCandidateType: Int
     ) {
-        val updatedCandidate = originalCandidate.copy(
-            string = transformedText,
-            type = resultCandidateType.toByte()
-        )
+        val updatedCandidate = originalCandidate.withGeneratedText(transformedText, resultCandidateType.toByte())
 
         currentCandidateStripCandidates = replaceCandidateInList(
             currentList = currentCandidateStripCandidates,
@@ -14068,7 +14068,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     applyFirstSuggestion(
                                         Candidate(
                                             string = insertString.hiraganaToKatakana(),
-                                            type = (3).toByte(),
+                                            type = (4).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 4000
                                         )
@@ -14097,7 +14097,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     applyFirstSuggestion(
                                         Candidate(
                                             string = insertString.hiraganaToKatakana(),
-                                            type = (3).toByte(),
+                                            type = (4).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 4000
                                         )
@@ -14133,7 +14133,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
-                                    type = (3).toByte(),
+                                    type = (4).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
                                 )
@@ -14162,7 +14162,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
-                                    type = (3).toByte(),
+                                    type = (4).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
                                 )
@@ -14197,7 +14197,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
-                                    type = (3).toByte(),
+                                    type = (4).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
                                 )
@@ -14226,7 +14226,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             applyFirstSuggestion(
                                 Candidate(
                                     string = insertString.hiraganaToKatakana(),
-                                    type = (3).toByte(),
+                                    type = (4).toByte(),
                                     length = insertString.length.toUByte(),
                                     score = 4000
                                 )
@@ -19922,6 +19922,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sourceId = sourceId,
         formulaSource = presentation?.normalizedTex,
         formulaFallbackText = commitText,
+        label = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.candidateLabelPresentation(
+            this@IMEService, this, appPreference.show_dictionary_candidate_labels_preference,
+            false, displayWord
+        ).toString(),
+        characterLabel = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.candidateLabelPresentation(
+            this@IMEService, this, appPreference.show_dictionary_candidate_labels_preference,
+            true, displayWord
+        ).toString(),
     )
 
     private fun candidateForAutomaticApplication(

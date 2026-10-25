@@ -2428,6 +2428,14 @@ object AppPreference {
             it.putBoolean(PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY, value)
         }
 
+    const val CANDIDATE_CHARACTER_INDICATORS_KEY = "candidate_character_type_indicators_preference"
+
+    var candidate_character_type_indicators_preference: Boolean
+        get() = preferences.getBoolean(CANDIDATE_CHARACTER_INDICATORS_KEY, false)
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_CHARACTER_INDICATORS_KEY, value)
+        }
+
     var show_dictionary_candidate_labels_preference: Boolean
         get() = preferences.getBoolean(
             SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE.first,

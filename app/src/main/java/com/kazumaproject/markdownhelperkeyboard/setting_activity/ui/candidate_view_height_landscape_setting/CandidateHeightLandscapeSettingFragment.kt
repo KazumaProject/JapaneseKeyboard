@@ -108,6 +108,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
         setupMenu()
         setupAdapter()
+        suggestionAdapter.setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
         suggestionAdapter.setShowDictionaryCandidateLabels(
             appPreference.show_dictionary_candidate_labels_preference
         )

@@ -9,9 +9,6 @@ import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,8 +24,6 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
-import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
@@ -53,6 +48,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrin
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FormulaView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateYomiPresentation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.candidateLabelPresentation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateCharacterTextView
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -196,6 +193,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateYomiTextSize: Float = AppPreference.DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE.toFloat()
     private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
+    private var showCharacterIndicators: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = PreviewCandidateItemColorState()
 
@@ -916,6 +914,12 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setShowCharacterIndicators(enabled: Boolean) {
+        if (showCharacterIndicators == enabled) return
+        showCharacterIndicators = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowDictionaryCandidateLabels(enabled: Boolean) {
         if (showDictionaryCandidateLabels == enabled) return
         showDictionaryCandidateLabels = enabled
@@ -1014,80 +1018,17 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             candidateTextColor ?: holder.text.currentTextColor
         )
 
-        holder.typeText.text = when (suggestion.type) {
-            (1).toByte() -> ""
-            (9).toByte() -> ""
-            (5).toByte() -> "[部]"
-            (7).toByte() -> ""
-            (10).toByte() -> ""
-            (11).toByte() -> "  "
-            (12).toByte() -> "  "
-            (13).toByte() -> {
-                when {
-                    suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
-                    suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
-                    else -> "  "
-                }
-            }
-            (14).toByte() -> "[日付]"
-            (15).toByte() -> {
-                val spannable = SpannableString("[読] ${readingCorrectionString.second}")
-                spannable.setSpan(
-                    RelativeSizeSpan(1.25f), 4, spannable.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                spannable
-            }
-            (16).toByte() -> ""
-            (17).toByte() -> ""
-            (18).toByte() -> ""
-            (19).toByte() -> ""
-            (20).toByte() -> ""
-            (21).toByte() -> when {
-                suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
-                suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
-                else -> "  "
-            }
-            (22).toByte() -> "[全]"
-            (23).toByte() -> ""
-            (24).toByte() -> ""
-            (25).toByte() -> ""
-            (26).toByte() -> ""
-            (27).toByte() -> ""
-            CANDIDATE_TYPE_USER_DICTIONARY ->
-                if (showDictionaryCandidateLabels) "ユーザー" else ""
-            (29).toByte() -> ""
-            (30).toByte() -> "[全]"
-            CANDIDATE_TYPE_TIME -> ""
-            CANDIDATE_TYPE_ERA -> ""
-            CANDIDATE_TYPE_CALCULATION ->
-                holder.itemView.context.getString(R.string.candidate_badge_calculation)
-            CANDIDATE_TYPE_UNIT_CONVERSION ->
-                holder.itemView.context.getString(R.string.candidate_badge_unit_conversion)
-            CANDIDATE_TYPE_FORMULA_UNICODE ->
-                holder.itemView.context.getString(R.string.candidate_badge_formula_unicode)
-            CANDIDATE_TYPE_FORMULA_TEX ->
-                holder.itemView.context.getString(R.string.candidate_badge_formula_tex)
-            CANDIDATE_TYPE_USER_TEMPLATE ->
-                if (showDictionaryCandidateLabels) "定型" else ""
-            CANDIDATE_TYPE_TEXT_MACRO -> "マクロ"
-            (31).toByte() -> "[半]"
-            (32).toByte() -> ""
-            (33).toByte() -> "[AI]"
-            CANDIDATE_TYPE_LEARNED_DICTIONARY ->
-                if (showDictionaryCandidateLabels) "学習" else ""
-            (35).toByte() -> "[修正]"
-            (36).toByte() -> ""
-            (37).toByte() -> "[AI]"
-            (38).toByte() -> ""
-            (39).toByte() -> ""
-            (40).toByte() -> "[AI]"
-            QWERTY_GLIDE_CANDIDATE_TYPE -> ""
-            GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE.toByte() -> "[訳]"
-            GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE.toByte() -> "[AI]"
-            GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() -> "[訳]"
-            GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte() -> "[AI]"
-            else -> ""
-        }
+        val displayedBody = if (suggestion.type == 15.toByte()) readingCorrectionString.first else suggestion.string
+        (holder.text as CandidateCharacterTextView).setCharacterIndicators(
+            displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition
+        )
+        holder.typeText.text = candidateLabelPresentation(
+            holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterIndicators, displayedBody
+        )
+        holder.typeText.contentDescription = holder.typeText.text
+        holder.typeText.maxLines = 1
+        holder.typeText.ellipsize = android.text.TextUtils.TruncateAt.END
+        holder.typeText.maxWidth = holder.itemView.resources.displayMetrics.widthPixels / 2
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)

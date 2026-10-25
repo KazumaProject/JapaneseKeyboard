@@ -6,9 +6,6 @@ import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.RelativeSizeSpan
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -26,8 +23,6 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
-import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
@@ -406,6 +401,7 @@ class SuggestionAdapter internal constructor(
     private var candidateYomiTextSize: Float = AppPreference.DEFAULT_LIVE_CONVERSION_CANDIDATE_YOMI_SIZE.toFloat()
     private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
+    private var showCharacterIndicators: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
 
@@ -443,7 +439,8 @@ class SuggestionAdapter internal constructor(
         candidateDividerColor = source.candidateDividerColor
         candidateDividerVerticalMarginDp = source.candidateDividerVerticalMarginDp
         showCandidateYomiForLiveConversion = source.showCandidateYomiForLiveConversion
-        showDictionaryCandidateLabels = source.showDictionaryCandidateLabels
+        setShowDictionaryCandidateLabels(source.showDictionaryCandidateLabels)
+        setShowCharacterIndicators(source.showCharacterIndicators)
         candidateEmptyDrawableColor = source.candidateEmptyDrawableColor
         candidateEmptyDrawableTextColor = source.candidateEmptyDrawableTextColor
         showCustomTab = false
@@ -1538,6 +1535,10 @@ class SuggestionAdapter internal constructor(
                 holder.typeText.setTextColor(if (selected) colors.selectionText else ink)
                 holder.yomiText.setTextColor(if (selected) colors.selectionText else ink)
                 holder.formulaView.setFormulaTextColor(if (selected) colors.selectionText else ink)
+                (holder.text as CandidateCharacterTextView).setCharacterIndicators(
+                    candidateText.text.toString(), showCharacterIndicators && !holder.formulaView.isVisible,
+                    selected = selected
+                )
             }
             root.findViewById<View>(R.id.candidate_divider)?.apply {
                 visibility = if (colors.cupertinoClassic) View.VISIBLE else View.GONE
@@ -2053,6 +2054,12 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setShowCharacterIndicators(enabled: Boolean) {
+        if (showCharacterIndicators == enabled) return
+        showCharacterIndicators = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowDictionaryCandidateLabels(enabled: Boolean) {
         if (showDictionaryCandidateLabels == enabled) return
         showDictionaryCandidateLabels = enabled
@@ -2180,111 +2187,17 @@ class SuggestionAdapter internal constructor(
             candidateTextColor ?: holder.text.currentTextColor
         )
 
-        holder.typeText.text = when (suggestion.type) {
-            (1).toByte() -> ""
-            /** 予測 **/
-            (9).toByte() -> ""
-            (5).toByte() -> "[部]"
-            (7).toByte() -> ""
-            /** 最長 **/
-            (10).toByte() -> ""
-            /** 絵文字 **/
-            (11).toByte() -> "  "
-            /** 顔文字 **/
-            (12).toByte() -> "  "
-            /** 記号 **/
-            (13).toByte() -> {
-                when {
-                    suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
-                    suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
-                    else -> "  "
-                }
-            }
-            /** 日付 **/
-            (14).toByte() -> "[日付]"
-            /** 修正 **/
-            (15).toByte() -> {
-                val spannable = SpannableString("[読] ${readingCorrectionString.second}")
-                spannable.setSpan(
-                    RelativeSizeSpan(1.25f), 4, spannable.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                spannable
-            }
-            /** ことわざ **/
-            (16).toByte() -> ""
-            /** 数 漢字混じり **/
-            (17).toByte() -> ""
-            /** 数 カンマあり**/
-            (18).toByte() -> ""
-            /** 数 **/
-            (19).toByte() -> ""
-            /** 学習 **/
-            (20).toByte() -> ""
-            /** 記号 **/
-            (21).toByte() -> when {
-                suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
-                suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
-                else -> "  "
-            }
-            /** 全角数字 **/
-            (22).toByte() -> "[全]"
-            /** Mozc UT Names **/
-            (23).toByte() -> ""
-            /** Mozc UT Places **/
-            (24).toByte() -> ""
-            /** Mozc UT Wiki **/
-            (25).toByte() -> ""
-            /** Mozc UT Neologd **/
-            (26).toByte() -> ""
-            /** Mozc UT Web **/
-            (27).toByte() -> ""
-            CANDIDATE_TYPE_USER_DICTIONARY ->
-                if (showDictionaryCandidateLabels) "[ユーザー]" else ""
-            /** 英語 **/
-            (29).toByte() -> ""
-            /** 全角 **/
-            (30).toByte() -> "[全]"
-            CANDIDATE_TYPE_TIME -> ""
-            CANDIDATE_TYPE_ERA -> ""
-            CANDIDATE_TYPE_CALCULATION ->
-                holder.itemView.context.getString(R.string.candidate_badge_calculation)
-            CANDIDATE_TYPE_UNIT_CONVERSION ->
-                holder.itemView.context.getString(R.string.candidate_badge_unit_conversion)
-            CANDIDATE_TYPE_FORMULA_UNICODE ->
-                holder.itemView.context.getString(R.string.candidate_badge_formula_unicode)
-            CANDIDATE_TYPE_FORMULA_TEX ->
-                holder.itemView.context.getString(R.string.candidate_badge_formula_tex)
-            CANDIDATE_TYPE_USER_TEMPLATE ->
-                if (showDictionaryCandidateLabels) "[定型]" else ""
-            CANDIDATE_TYPE_TEXT_MACRO -> "[マクロ]"
-            /** 半角 **/
-            (31).toByte() -> "[半]"
-            /** 漢数字 **/
-            (32).toByte() -> ""
-            /** Zenz **/
-            (33).toByte() -> "[AI]"
-            CANDIDATE_TYPE_LEARNED_DICTIONARY ->
-                if (showDictionaryCandidateLabels) "[学習]" else ""
-            /** Typo Correction QWERTY **/
-            (35).toByte() -> "[修正]"
-
-            (36).toByte() -> ""
-            (37).toByte() -> "[AI]"
-            (38).toByte() -> ""
-            (39).toByte() -> ""
-            (40).toByte() -> "[AI]"
-            QWERTY_GLIDE_CANDIDATE_TYPE -> ""
-            GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE.toByte() -> "[訳]"
-            GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE.toByte() -> "[AI]"
-            GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() -> "[訳]"
-            GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte() -> "[AI]"
-            else -> ""
-        }
-        val categoryLabel = classifiedCandidateLabel(holder.itemView.context, suggestion.dictionaryCategories)
-        if (categoryLabel.isNotEmpty()) {
-            holder.typeText.text = android.text.SpannableStringBuilder(holder.typeText.text)
-                .append(if (holder.typeText.text.isEmpty()) "" else " ").append(categoryLabel)
-        }
+        val displayedBody = if (suggestion.type == 15.toByte()) readingCorrectionString.first else suggestion.string
+        (holder.text as CandidateCharacterTextView).setCharacterIndicators(
+            displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition
+        )
+        holder.typeText.text = candidateLabelPresentation(
+            holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterIndicators, displayedBody
+        )
+        holder.typeText.contentDescription = holder.typeText.text
+        holder.typeText.maxLines = 1
+        holder.typeText.ellipsize = android.text.TextUtils.TruncateAt.END
+        holder.typeText.maxWidth = holder.itemView.resources.displayMetrics.widthPixels / 2
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)

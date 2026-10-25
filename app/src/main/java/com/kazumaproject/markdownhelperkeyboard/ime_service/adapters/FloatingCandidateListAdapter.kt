@@ -31,6 +31,13 @@ class FloatingCandidateListAdapter(
     private val formulaParser = FormulaParser()
     private var candidateTextSizeSp: Float = 14f
     private var candidateTextColor: Int? = null
+    private var showCharacterIndicators = false
+
+    fun setShowCharacterIndicators(enabled: Boolean) {
+        if (showCharacterIndicators == enabled) return
+        showCharacterIndicators = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
 
     fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
         keyboardFontSnapshot = snapshot
@@ -39,7 +46,10 @@ class FloatingCandidateListAdapter(
 
     private fun applyKeyboardFont(holder: RecyclerView.ViewHolder) {
         when (holder) {
-            is SuggestionViewHolder -> KeyboardFontApplicator.apply(holder.fontTarget, keyboardFontSnapshot)
+            is SuggestionViewHolder -> {
+                KeyboardFontApplicator.apply(holder.fontTarget, keyboardFontSnapshot)
+                KeyboardFontApplicator.apply(holder.labelView, keyboardFontSnapshot)
+            }
             is FormulaViewHolder -> KeyboardFontApplicator.apply(holder.badgeView, keyboardFontSnapshot)
             is PagerViewHolder -> KeyboardFontApplicator.apply(holder.fontTarget, keyboardFontSnapshot)
         }
@@ -95,6 +105,7 @@ class FloatingCandidateListAdapter(
     // --- Suggestion ViewHolder ---
     inner class SuggestionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val textView: TextView = view.findViewById(R.id.text_view_item)
+        private val defaultTextColors = textView.textColors
         val fontTarget: TextView get() = textView
 
         init {
@@ -105,8 +116,19 @@ class FloatingCandidateListAdapter(
             }
         }
 
-        fun bind(text: String) {
-            textView.text = text
+        val labelView: TextView = view.findViewById(R.id.floating_candidate_label)
+
+        fun bind(item: CandidateItem, selected: Boolean) {
+            textView.text = item.word
+            textView.textSize = candidateTextSizeSp
+            if (candidateTextColor != null) textView.setTextColor(requireNotNull(candidateTextColor))
+            else textView.setTextColor(defaultTextColors)
+            (textView as CandidateCharacterTextView).setCharacterIndicators(item.word, showCharacterIndicators, selected = selected)
+            val label = if (showCharacterIndicators) item.characterLabel else item.label
+            labelView.text = label
+            labelView.visibility = if (label.isEmpty()) View.GONE else View.VISIBLE
+            labelView.setTextColor(textView.currentTextColor)
+            labelView.contentDescription = label
         }
     }
 
@@ -207,7 +229,7 @@ class FloatingCandidateListAdapter(
 
         val currentItem = getItem(position)
         when (holder) {
-            is SuggestionViewHolder -> holder.bind(currentItem.word)
+            is SuggestionViewHolder -> holder.bind(currentItem, position == highlightedPosition)
             is FormulaViewHolder -> holder.bind(currentItem)
             is PagerViewHolder -> holder.bind(currentItem.word)
         }
