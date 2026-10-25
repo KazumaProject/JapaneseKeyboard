@@ -24,6 +24,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -84,9 +85,8 @@ class ThreeStageFlickDeviceTest {
 
     @Test fun savedAndRestoredCustomHierarchyInputsThroughTheRealIme() = runBlocking<Unit> {
         val context = instrumentation.targetContext
-        check(context.packageName.startsWith("com.kazumaproject.threestagetest")) {
-            "Use an isolated threestagetest application ID"
-        }
+        assumeTrue("Use an isolated threestagetest application ID",
+            context.packageName.startsWith("com.kazumaproject.threestagetest"))
         val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val oldIme = shell("settings get secure default_input_method").trim()
         val wasEnabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
