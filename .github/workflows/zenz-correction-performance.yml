@@ -28,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: zenz-correction-performance-${{ github.event.pull_request.number || github.ref }}
+  group: zenz-correction-performance-${{ github.event.pull_request.number || github.ref }}-${{ inputs.phases || 'all' }}
   cancel-in-progress: true
 
 jobs:
