@@ -19,6 +19,7 @@ internal object FrequentSettingFilters {
             SettingCategory.KEYBOARD_DISPLAY,
             SettingCategory.INPUT_METHOD,
             SettingCategory.MORSE,
+            SettingCategory.GESTURE,
             SettingCategory.VOICE_INPUT,
             SettingCategory.CANDIDATE_CONVERSION,
             SettingCategory.CONVERSION_ENGINE,
@@ -98,6 +99,7 @@ internal object FrequentSettingFilters {
                 -> SettingCategory.INPUT_METHOD
 
             R.id.morsePreferenceFragment, R.id.morseLayoutFragment, R.id.morseMapListFragment, R.id.morseMapEditorFragment -> SettingCategory.MORSE
+            R.id.gesturePreferenceFragment, R.id.gestureLayoutFragment, R.id.gestureSetListFragment, R.id.gestureSetEditorFragment, R.id.gestureEntryEditorFragment -> SettingCategory.GESTURE
             R.id.voiceInputPreferenceFragment -> SettingCategory.VOICE_INPUT
 
             R.id.candidateConversionPreferenceFragment,

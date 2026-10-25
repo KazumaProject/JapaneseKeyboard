@@ -626,4 +626,9 @@
     <fragment android:id="@+id/morseLayoutFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.morse.MorseLayoutFragment"
         android:label="@string/morse_key_layout_title" />
+    <fragment android:id="@+id/gesturePreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.gesture.GesturePreferenceFragment" android:label="@string/gesture_title" />
+    <fragment android:id="@+id/gestureLayoutFragment" android:name="com.kazumaproject.markdownhelperkeyboard.gesture.GestureLayoutFragment" android:label="@string/gesture_controls_title" />
+    <fragment android:id="@+id/gestureSetListFragment" android:name="com.kazumaproject.markdownhelperkeyboard.gesture.GestureSetListFragment" android:label="@string/gesture_sets_title" />
+    <fragment android:id="@+id/gestureSetEditorFragment" android:name="com.kazumaproject.markdownhelperkeyboard.gesture.GestureSetEditorFragment" android:label="@string/gesture_sets_title" />
+    <fragment android:id="@+id/gestureEntryEditorFragment" android:name="com.kazumaproject.markdownhelperkeyboard.gesture.GestureEntryEditorFragment" android:label="@string/gesture_sets_title" />
 </navigation>
