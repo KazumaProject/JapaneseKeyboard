@@ -60,6 +60,39 @@ build "$head_root" after
     -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
     > "$artifact_dir/logs/related-lite-tests-and-build.txt" 2>&1
 
+# Reproduce failures seen in the broad suite without modifying unrelated fixtures.
+# Keep them outside the scoped gate, but fail if the proposed code introduces new failures.
+for label in before after; do
+    root="$head_root"; if [[ "$label" == before ]]; then root="$baseline_root"; fi
+    audit_status=0
+    (cd "$root" && ./gradlew :app:testFullStandardDebugUnitTest \
+        --tests '*CustomDirectInputTransitionTest' --tests '*IMEServiceCupertinoCandidateAppearanceTest' \
+        --tests '*IMEServiceFloatingCursorRegressionTest' --tests '*QwertyEnglishSpaceInputTest' \
+        --tests '*SplitKeyboardServiceSyncTest' --tests '*DictionaryBrowserTest' \
+        --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g \
+        -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
+        > "$artifact_dir/logs/$label-baseline-audit.txt" 2>&1 || audit_status=$?
+    mkdir -p "$artifact_dir/$label/audit"
+    echo "$audit_status" > "$artifact_dir/$label/audit/exit-status.txt"
+    cp "$root"/app/build/test-results/testFullStandardDebugUnitTest/TEST-*.xml "$artifact_dir/$label/audit/"
+done
+python3 - "$artifact_dir" <<'PY'
+from pathlib import Path
+import json,sys,xml.etree.ElementTree as ET
+root=Path(sys.argv[1])
+def failures(label):
+    result=set()
+    for file in (root/label/'audit').glob('TEST-*.xml'):
+        for case in ET.parse(file).iter('testcase'):
+            if case.find('failure') is not None or case.find('error') is not None:
+                result.add(case.attrib['classname']+'#'+case.attrib['name'])
+    return result
+before,after=failures('before'),failures('after')
+report=dict(before=sorted(before),after=sorted(after),new_failures=sorted(after-before))
+(root/'baseline-test-audit.json').write_text(json.dumps(report,indent=2))
+assert not report['new_failures'], report['new_failures']
+PY
+
 apk() {
     python3 - "$1" "$2" <<'PY'
 from pathlib import Path

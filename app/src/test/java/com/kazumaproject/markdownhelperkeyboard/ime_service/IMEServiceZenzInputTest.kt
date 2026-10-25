@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
@@ -34,6 +35,8 @@ class IMEServiceZenzInputTest {
     private val service = IMEService().also {
         ReflectionHelpers.callInstanceMethod<Unit>(it, "attachBaseContext", ClassParameter.from(Context::class.java, ApplicationProvider.getApplicationContext<Context>()))
         it.appPreference = mock<AppPreference>()
+        it.zenzRuntimeClient = mock()
+        ReflectionHelpers.setField(it, "runtimeInputSharedPreferences", mock<SharedPreferences>())
         ReflectionHelpers.setField(it, "zenzEnableStatePreference", true)
         ReflectionHelpers.setField(it, "zenzEnableLongPressConversionPreference", true)
         ReflectionHelpers.setField(it, "isOmissionSearchEnable", true)
