@@ -45,7 +45,7 @@ class MushroomImeInstrumentedTest {
             ?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
     }
 
-    @Test fun returnsToExternalEditorWhenKeyboardAppAlreadyHasATask() {
+    @Test(timeout = 180_000) fun returnsToExternalEditorWhenKeyboardAppAlreadyHasATask() {
         assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
         val targetIme = "${context.packageName}/${IMEService::class.java.name}"
         val oldIme = shell("settings get secure default_input_method").trim()
@@ -92,7 +92,7 @@ class MushroomImeInstrumentedTest {
         }
     }
 
-    @Test fun externalPluginRoundTripCancellationMissingResultAndChangedTarget() {
+    @Test(timeout = 180_000) fun externalPluginRoundTripCancellationMissingResultAndChangedTarget() {
         // Keep the user's installed keyboard and preferences separate from device tests.
         assumeTrue("Run with an isolated applicationId containing mushroomtest",
             context.packageName.contains("mushroomtest"))
