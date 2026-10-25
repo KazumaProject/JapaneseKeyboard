@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
@@ -778,6 +779,7 @@ class GraphBuilder {
                                 graph,
                                 endIndex,
                                 Node(
+                                    correctionMask = ConversionCorrection.JAPANESE_FLICK,
                                     l = localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
                                     r = localSystemUserTokenArray.rightIds[posTableIndex.toInt()],
                                     score = cost,
@@ -844,6 +846,7 @@ class GraphBuilder {
                                 graph,
                                 endIndex,
                                 Node(
+                                    correctionMask = ConversionCorrection.OMISSION,
                                     l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
                                     r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
                                     score = token.wordCost.toInt() + scoreOffset,
@@ -1030,6 +1033,7 @@ class GraphBuilder {
                             graph,
                             endIndex,
                             Node(
+                                correctionMask = ConversionCorrection.JAPANESE_FLICK,
                                 l = tokenArray.leftIds[posTableIndex.toInt()],
                                 r = tokenArray.rightIds[posTableIndex.toInt()],
                                 score = cost,
@@ -1087,6 +1091,7 @@ class GraphBuilder {
                             }
                             val scoreOffset = if (didOmit) omissionSearchOffSetScore else 0
                             val node = Node(
+                                correctionMask = ConversionCorrection.OMISSION,
                                 l = tokenArray.leftIds[token.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[token.posTableIndex.toInt()],
                                 score = token.wordCost.toInt() + scoreOffset,

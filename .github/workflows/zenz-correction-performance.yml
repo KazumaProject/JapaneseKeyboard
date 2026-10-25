@@ -1,0 +1,147 @@
+name: Zenz correction performance
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: Baseline revision to compare with this workflow revision
+        default: dev
+        required: true
+        type: string
+      phases:
+        description: JSON array of measurement phases to run
+        default: '["time0","time1","time2","memory","runtime","feature"]'
+        required: true
+        type: string
+  pull_request:
+    branches: [dev]
+    paths:
+      - app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/ZenzInputPolicy.kt
+      - app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/candidate/ConversionCorrection.kt
+      - app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/converter/ZenzCorrectionPerformanceInstrumentedTest.kt
+      - app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/zenz/ZenzFloatingCandidateInstrumentedTest.kt
+      - app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/zenz/ZenzRuntimeInstrumentedTest.kt
+      - .github/scripts/run-zenz-correction-performance.sh
+      - .github/workflows/zenz-correction-performance.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zenz-correction-performance-${{ github.event.pull_request.number || github.ref }}-${{ inputs.phases || 'all' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ZENZ_DEBUG_NATIVE_ABIS: x86_64
+      ZENZ_PERF_PHASE: build
+      ZENZ_PERF_BASELINE_REF: ${{ inputs.baseline_ref || github.event.pull_request.base.sha || 'dev' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          submodules: recursive
+      - name: Prepare external artifact paths
+        run: |
+          echo "ZENZ_MODEL_CACHE_DIR=$RUNNER_TEMP/zenz-model-cache" >> "$GITHUB_ENV"
+          echo "ZENZ_PERF_ARTIFACT_DIR=$RUNNER_TEMP/zenz-correction-artifacts" >> "$GITHUB_ENV"
+          echo "ZENZ_PERF_PACKAGE_DIR=$RUNNER_TEMP/zenz-correction-packages" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-37.0" "ndk;29.0.14206865" "cmake;3.22.1"
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-zenz-correction-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-keyboard-size-gradle-
+            ${{ runner.os }}-gradle-
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.ZENZ_MODEL_CACHE_DIR }}
+          key: ${{ runner.os }}-zenz-model-v2-4f5423f0fad41a73b1242eb96fe5c12ae4fdca83-Q5_K_M-ggml-model-Q5_K_M.gguf
+      - name: Build and validate both revisions
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: bash .github/scripts/run-zenz-correction-performance.sh
+      - name: Share the exact APKs with measurement jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: zenz-correction-packages
+          path: ${{ env.ZENZ_PERF_PACKAGE_DIR }}
+          retention-days: 1
+      - name: Upload measurements and validation logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zenz-correction-${{ env.ZENZ_PERF_PHASE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.ZENZ_PERF_ARTIFACT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
+  measure:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: ${{ fromJSON(inputs.phases || '["time0","time1","time2","memory","runtime","feature"]') }}
+    env:
+      ZENZ_PERF_PHASE: ${{ matrix.phase }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Prepare external artifact paths
+        run: |
+          echo "ZENZ_PERF_ARTIFACT_DIR=$RUNNER_TEMP/zenz-correction-artifacts" >> "$GITHUB_ENV"
+          echo "ZENZ_PERF_PACKAGE_DIR=$RUNNER_TEMP/zenz-correction-packages" >> "$GITHUB_ENV"
+      - uses: android-actions/setup-android@v4
+      - uses: actions/download-artifact@v8
+        with:
+          name: zenz-correction-packages
+          path: ${{ env.ZENZ_PERF_PACKAGE_DIR }}
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Measure baseline and proposed correction handling
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6_pro
+          cores: 2
+          ram-size: 3072M
+          heap-size: 512M
+          disk-size: 8192M
+          enable-hw-keyboard: false
+          disable-animations: false
+          disable-spellchecker: true
+          pre-emulator-launch-script: >-
+            avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
+            sed -i '/^[[:space:]]*hw\.keyboard[[:space:]]*=/d' "$avd_config" &&
+            printf '%s\n' 'hw.keyboard=no' >> "$avd_config"
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -no-snapshot
+            -noaudio -no-boot-anim -camera-back none
+          script: bash .github/scripts/run-zenz-correction-performance.sh
+      - name: Upload measurements and validation logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zenz-correction-${{ env.ZENZ_PERF_PHASE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.ZENZ_PERF_ARTIFACT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
