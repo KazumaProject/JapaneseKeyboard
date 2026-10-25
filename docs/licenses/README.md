@@ -9,7 +9,7 @@ This index separates application code, dictionaries/data, dependencies and optio
 | アプリ本体のコード | [MIT LICENSE](../../LICENSE): Copyright (c) 2024 Kazuma Naka |
 | 全143カテゴリ辞書・その他の同梱辞書・共通資源 | [辞書ライセンス対応表](DICTIONARIES.md) |
 | 辞書の全23通知・ライセンス原文・出典URL | [原文索引](DICTIONARIES.md#保持した全通知ライセンス全文)、[ハッシュと固定URL](../../app/src/main/assets/licenses/notice-snapshots.json) |
-| v1.7.271の全ライセンス文書 | [公開添付と同じ原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) |
+| v1.7.275の全ライセンス文書 | [公開添付と同じ原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) |
 | Lite/Full Standard Debugの全139外部依存モジュール | [依存ライブラリ一覧](DEPENDENCIES.md)、[版・POM・照合情報](dependency-metadata.json) |
 | 全体の第三者通知 | [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md) |
 | Full版のモデル・ネイティブコード、外部入力 | 以下の一覧 |
