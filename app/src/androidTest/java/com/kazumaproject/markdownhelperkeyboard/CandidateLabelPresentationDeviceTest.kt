@@ -312,19 +312,31 @@ class CandidateLabelPresentationDeviceTest {
                             fragment.findPreference<androidx.preference.Preference>("candidate_character_type_indicators_preference") != null
                     }
                     main { (navHost?.childFragmentManager?.primaryNavigationFragment as PreferenceFragmentCompat)
-                        .scrollToPreference("candidate_character_type_indicators_preference") }
+                        .scrollToPreference("candidate_indicator_style_settings") }
                     val title = main { requireNotNull(navHost).requireContext().getString(
-                        context.resources.getIdentifier("candidate_character_indicators_title", "string", context.packageName)
+                        context.resources.getIdentifier("candidate_indicator_settings", "string", context.packageName)
                     ) }
+                    var stableRect: android.graphics.Rect? = null
+                    var stableSince = 0L
                     await("Settings row was not drawn: $name") {
-                        val list = (navHost?.childFragmentManager?.primaryNavigationFragment as? PreferenceFragmentCompat)?.listView
-                        fun containsTitle(view: View): Boolean = (view as? TextView)?.let {
-                            it.text.toString() == title &&
-                                it.isShown && it.getGlobalVisibleRect(android.graphics.Rect())
-                        } == true || (view as? android.view.ViewGroup)?.let { group ->
-                            (0 until group.childCount).any { containsTitle(group.getChildAt(it)) }
-                        } == true
-                        list?.let(::containsTitle) == true
+                        val fragment = navHost?.childFragmentManager?.primaryNavigationFragment as? PreferenceFragmentCompat
+                        // Async settings can restore their scroll after publishing the hierarchy.
+                        // Keep the requested entry in view until its actual position is stable.
+                        fragment?.scrollToPreference("candidate_indicator_style_settings")
+                        fun findTitle(view: View): TextView? = if (view is TextView && view.text.toString() == title && view.isShown) view
+                            else (view as? android.view.ViewGroup)?.let { group ->
+                                (0 until group.childCount).firstNotNullOfOrNull { findTitle(group.getChildAt(it)) }
+                            }
+                        val rowTitle = fragment?.listView?.let(::findTitle)
+                        val rect = android.graphics.Rect()
+                        if (rowTitle == null || !rowTitle.getGlobalVisibleRect(rect) || rect.height() < rowTitle.height) {
+                            stableRect = null
+                            false
+                        } else if (rect != stableRect) {
+                            stableRect = rect
+                            stableSince = SystemClock.uptimeMillis()
+                            false
+                        } else SystemClock.uptimeMillis() - stableSince >= 750
                     }
                     capture(name)
                     main {
