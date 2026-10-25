@@ -3702,7 +3702,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var zenzFloatingWindow: ZenzFloatingWindow? = null
-    private var zenzGeneratingRequestToken: Long? = null
     private val zenzFloatingEnabled get() = AppVariantConfig.hasZenz &&
         runtimeInputSharedPreferences.getBoolean("enable_ai_conversion_zenz_preference", false) &&
         runtimeInputSharedPreferences.getBoolean(ComposingGuideSettings.ZENZ_ENABLED, false)
@@ -3714,23 +3713,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun zenzFloatingAnchor(): View? = gemmaFloatingAnchor()
         ?: mainLayoutBinding?.suggestionRecyclerView
 
+    private fun shouldShowZenzFloatingCandidate(state: ZenzLiveSlotState?): Boolean {
+        if (state == null) return false
+        val target = state.bunsetsuTarget
+        val localCandidates = if (target != null) {
+            bunsetsuConversionSession?.segments?.getOrNull(target.segmentIndex)?.candidates.orEmpty()
+        } else {
+            zenzLiveLocalCandidatesSnapshot.takeIf {
+                zenzLiveSnapshotDisplayInput == state.displayInput
+            }.orEmpty()
+        }
+        val firstLocalCandidate = localCandidates.firstOrNull { !it.isZenzLiveSlot(state.displayInput) }
+        return ZenzFloatingCandidatePolicy.shouldShow(
+            enabled = canUseZenzFloatingPanel(),
+            suppressed = suppressSuggestions,
+            currentRequest = state.requestToken == zenzLiveRequestToken &&
+                shouldRequestZenzLiveGenerate(state.displayInput, state.source),
+            currentTarget = target?.let(::isCurrentBunsetsuZenzTarget)
+                ?: (state.displayInput == inputString.value),
+            loading = state.isLoading,
+            candidateText = state.candidate?.let(::getCandidateCommitString),
+            firstLocalCandidateText = firstLocalCandidate?.let(::getCandidateCommitString),
+        )
+    }
+
     private fun refreshZenzFloatingCandidates() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             mainHandler.post { refreshZenzFloatingCandidates() }
             return
         }
         val state = _zenzLiveSlotState.value
-        val valid = ZenzFloatingCandidatePolicy.shouldShow(
-            enabled = canUseZenzFloatingPanel(),
-            suppressed = suppressSuggestions,
-            currentRequest = state != null && state.requestToken == zenzLiveRequestToken &&
-                shouldRequestZenzLiveGenerate(state.displayInput, state.source),
-            currentTarget = state != null && (state.bunsetsuTarget?.let(::isCurrentBunsetsuZenzTarget)
-                ?: (state.displayInput == inputString.value)),
-            loading = state?.isLoading == true,
-            generationStarted = state != null && state.requestToken == zenzGeneratingRequestToken,
-            hasCandidate = state?.candidate != null,
-        )
+        val valid = shouldShowZenzFloatingCandidate(state)
         if (!valid) {
             zenzFloatingWindow?.clear()
             return
@@ -3743,21 +3756,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colors = ::resolveCandidatePanelColors,
             validRequest = { token ->
                 val latest = _zenzLiveSlotState.value
-                latest != null && token == latest.requestToken && token == zenzLiveRequestToken &&
-                    shouldRequestZenzLiveGenerate(latest.displayInput, latest.source) &&
-                    (latest.bunsetsuTarget?.let(::isCurrentBunsetsuZenzTarget)
-                        ?: (latest.displayInput == inputString.value))
+                latest != null && token == latest.requestToken && shouldShowZenzFloatingCandidate(latest)
             },
             commit = { token, _ ->
                 val latest = _zenzLiveSlotState.value
                 val candidate = latest?.candidate
                 val binding = mainLayoutBinding
                 if (latest == null || candidate == null || binding == null ||
-                    !canUseZenzFloatingPanel() || suppressSuggestions || latest.isLoading ||
-                    token != latest.requestToken || token != zenzLiveRequestToken ||
-                    !shouldRequestZenzLiveGenerate(latest.displayInput, latest.source) ||
-                    !(latest.bunsetsuTarget?.let(::isCurrentBunsetsuZenzTarget)
-                        ?: (latest.displayInput == inputString.value))) false
+                    token != latest.requestToken || !shouldShowZenzFloatingCandidate(latest)) false
                 else {
                     vibrate()
                     setCandidateClick(candidate, latest.displayInput, currentTenkeyInputMode(binding), 0, listOf(candidate))
@@ -3765,8 +3771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             },
         ).also { zenzFloatingWindow = it }
-        if (current.isLoading) window.showProcessing(current.requestToken)
-        else window.show(current.requestToken, current.candidate?.string)
+        window.show(current.requestToken, current.candidate?.string)
     }
 
     private var composingGuide: ComposingGuideController? = null
@@ -18165,6 +18170,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         state: ZenzLiveSlotState,
         candidate: Candidate
     ): Boolean {
+        if (canUseZenzFloatingPanel()) return false
         if (suppressSuggestions) return false
         if (inputString.value != state.displayInput) return false
         if (state.requestToken != zenzLiveRequestToken) return false
@@ -18322,7 +18328,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         _zenzLiveSlotState.value = null
-        zenzGeneratingRequestToken = null
         refreshZenzFloatingCandidates()
         zenzLiveLocalCandidatesSnapshot = emptyList()
         zenzLiveSnapshotDisplayInput = ""
@@ -18387,7 +18392,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             source = source,
             bunsetsuTarget = bunsetsuTarget
         )
-        zenzGeneratingRequestToken = null
         _zenzLiveSlotState.value = loadingState
         refreshZenzFloatingCandidates()
         if (bunsetsuTarget != null) {
@@ -18513,10 +18517,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val state = _zenzLiveSlotState.value ?: return null
         _zenzLiveSlotState.value = state.copy(requestInput = requestInput)
         zenzLiveSnapshotRequestInput = requestInput
-        // Called only after the configured debounce, or directly for an immediate request.
-        // No panel is mounted while an automatic request is still waiting.
-        zenzGeneratingRequestToken = request.requestToken
-        refreshZenzFloatingCandidates()
         return requestInput
     }
 
@@ -19867,6 +19867,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             zenzLiveLocalCandidatesSnapshot = localCandidates
             zenzLiveSnapshotDisplayInput = insertString
+            refreshZenzFloatingCandidates()
         }
         val displayedCandidatesWithZenz = buildDisplayedCandidatesWithZenzSlot(
             localCandidates = localCandidates,
@@ -25389,8 +25390,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     displayText = displayTextFromCandidate(candidate),
                     overrideDisplayCandidate = candidate
                 )
-                bunsetsuConversionSession = session.copy(segments = updatedSegments)
-                renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+                val updatedSession = session.copy(segments = updatedSegments)
+                bunsetsuConversionSession = updatedSession
+                if (canUseZenzFloatingPanel()) {
+                    commitBunsetsuConversionUntilFocusedSegment(mainView, updatedSession)
+                } else {
+                    renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+                }
                 Timber.d(
                     "Bunsetsu Zenz result selected: focusedIndex=%d segmentReading=%s result=%s",
                     focusedIndex,
