@@ -60,7 +60,7 @@ class RomajiBehaviorPersistenceTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "romaji-migration-${System.nanoTime()}.db"
         fun open() = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(AppDatabase.MIGRATION_47_48).allowMainThreadQueries().build()
+            .addMigrations(AppDatabase.MIGRATION_47_48, AppDatabase.MIGRATION_48_49).allowMainThreadQueries().build()
         suspend fun withDatabase(block: suspend (AppDatabase) -> Unit) {
             val database = open()
             try { block(database) } finally { database.close() }
@@ -73,6 +73,7 @@ class RomajiBehaviorPersistenceTest {
                 val data = """{"pp":{"first":"っ","second":2}}"""
                 db.execSQL("INSERT INTO romaji_maps VALUES (1, 'custom', ?, 1, 1)", arrayOf(data))
                 db.execSQL("INSERT INTO romaji_maps VALUES (2, 'default', ?, 0, 0)", arrayOf(data))
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN hierarchicalFlickJson")
                 db.execSQL("PRAGMA user_version = 47")
             }
             withDatabase { database ->

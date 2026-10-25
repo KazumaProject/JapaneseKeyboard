@@ -589,6 +589,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             binding.outputModeChipGroup.check(R.id.chip_normal_output)
         }
 
+        binding.textOutputModeTitle.isVisible = true
+        binding.outputModeChipGroup.isVisible = true
         binding.keyLabelLayout.isVisible = true
         binding.customKeyboardTargetLayout.isVisible = false
         binding.flickGridEditorView.isVisible = true
@@ -1965,6 +1967,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             findNavController().popBackStack()
         }
     }
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()

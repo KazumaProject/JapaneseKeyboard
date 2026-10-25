@@ -1945,6 +1945,19 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">Cursor, delete, IME switch, small letters, Shift, undo and full-width toggle keys. Icon and text sizes can be adjusted separately.</string>
     <string name="gojuon_sizing_icon">Utility key icons</string>
     <string name="gojuon_sizing_special_text">Utility key text</string>
+
+    <string name="input_style_three_stage">3-stage flick</string>
+    <string name="template_three_stage_flick">Kana (3-stage flick)</string>
+    <string name="three_stage_state">Character state</string>
+    <string name="three_stage_normal">Normal</string>
+    <string name="three_stage_dakuten">Voiced</string>
+    <string name="three_stage_handakuten">Semi-voiced</string>
+    <string name="three_stage_path">Stage %1$d / 3  %2$s</string>
+    <string name="three_stage_back">Previous stage</string>
+    <string name="three_stage_open">Open next stage</string>
+    <string name="three_stage_branch_label">Branch label</string>
+    <string name="three_stage_add_branch">Create next stage</string>
+    <string name="three_stage_clear">Remove assignment</string>
     <string name="mushroom_shortcut_summary">Use a Mushroom app to transform or insert text</string>
     <string name="mushroom_choose_app">Choose a Mushroom app</string>
     <string name="mushroom_unavailable">No Mushroom apps are installed</string>
