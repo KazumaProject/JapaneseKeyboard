@@ -115,6 +115,11 @@ class IMEServiceZenzInputTest {
         }
         try {
             assertNull(ReflectionHelpers.getField<StateFlow<*>>(service, "_zenzLiveSlotState").value)
+            // Preparation replaces the immutable session while preserving its logical target.
+            val prepared = sessionClass.declaredConstructors.single { it.parameterCount == 9 }
+                .apply { isAccessible = true }
+                .newInstance(input.value, input.value, listOf(segment), 0L, null, "", 0, emptyList<List<Int>>(), 0)
+            ReflectionHelpers.setField(service, "bunsetsuConversionSession", prepared)
         } finally {
             mutex.unlock()
         }

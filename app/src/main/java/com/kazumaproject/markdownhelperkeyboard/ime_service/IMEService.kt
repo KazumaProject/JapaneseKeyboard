@@ -18701,12 +18701,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         // Preparation and segment navigation use this same mutex. Capture only a completed
         // segment query, then release the lock before inference so navigation stays responsive.
+        val requestedSession = bunsetsuConversionSession ?: return false
+        val context = currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
         val request = bunsetsuOperationMutex.withLock {
             val session = bunsetsuConversionSession ?: return@withLock null
+            if (session.generation != requestedSession.generation ||
+                session.conversionInput != requestedSession.conversionInput ||
+                session.focusedIndex != requestedSession.focusedIndex ||
+                context != currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
+            ) return@withLock null
             if (bunsetsuSeparation != true || !isBunsetsuCursorMoveSessionActive()) return@withLock null
             if (session.segments.isEmpty()) return@withLock null
             val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
-            val context = currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
             val prepared = loadCandidatesForBunsetsuSegment(session, focusedIndex)
             if (bunsetsuConversionSession !== session ||
                 context != currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
