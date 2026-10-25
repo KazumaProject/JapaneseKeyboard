@@ -31,7 +31,26 @@ class MushroomImeInstrumentedTest {
             if (condition()) return
             SystemClock.sleep(100)
         }
-        fail(message)
+        val focus = shell("dumpsys window windows").lineSequence()
+            .filter { "mCurrentFocus" in it || "mFocusedApp" in it }.take(2).joinToString()
+        fail("$message; defaultIme=${shell("settings get secure default_input_method").trim()}; $focus")
+    }
+    private fun prepareIme(target: String) {
+        ins.uiAutomation.serviceInfo = ins.uiAutomation.serviceInfo.apply {
+            flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        }
+        shell("input keyevent KEYCODE_WAKEUP")
+        shell("wm dismiss-keyguard")
+        await("IME registered") { shell("ime list -s").lineSequence().any { it.trim() == target } }
+        shell("ime enable $target")
+        shell("ime set $target")
+        await("IME selected") { shell("settings get secure default_input_method").trim() == target }
+    }
+    private fun roots(): List<AccessibilityNodeInfo> = ins.uiAutomation.windows.mapNotNull { it.root }
+        .ifEmpty { listOfNotNull(ins.uiAutomation.rootInActiveWindow) }
+    private fun hasText(text: String): Boolean = roots().any { root ->
+        root.findAccessibilityNodeInfosByText(text).any { it.isVisibleToUser }
     }
     private fun service(): IMEService? = WindowInspector.getGlobalWindowViews().asSequence()
         .flatMap { root ->
@@ -39,8 +58,8 @@ class MushroomImeInstrumentedTest {
             generateSequence(view.context) { (it as? ContextWrapper)?.baseContext }
         }.filterIsInstance<IMEService>().firstOrNull()
     private fun click(text: String): Boolean {
-        val node = ins.uiAutomation.rootInActiveWindow?.findAccessibilityNodeInfosByText(text)
-            ?.firstOrNull() ?: return false
+        val node = roots().flatMap { it.findAccessibilityNodeInfosByText(text) }
+            .firstOrNull { it.isVisibleToUser } ?: return false
         return generateSequence(node) { it.parent }.firstOrNull { it.isClickable }
             ?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
     }
@@ -49,44 +68,43 @@ class MushroomImeInstrumentedTest {
         assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
         val targetIme = "${context.packageName}/${IMEService::class.java.name}"
         val oldIme = shell("settings get secure default_input_method").trim()
-        ins.uiAutomation.serviceInfo = ins.uiAutomation.serviceInfo.apply {
-            flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-        }
         try {
-            shell("ime enable $targetIme")
-            shell("ime set $targetIme")
-            // Keep an existing task belonging to the keyboard app behind the external editor.
-            context.startActivity(Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            await("Keyboard app task opened") {
-                ins.uiAutomation.rootInActiveWindow?.packageName?.toString() == context.packageName
-            }
-            shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true")
-            await("External editor connected") {
-                var ready = false
-                ins.runOnMainSync {
-                    val ime = service()
-                    val text = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
-                    ready = ime != null && text != null && ime.currentInputEditorInfo?.packageName == ins.context.packageName &&
-                        ime.isInputViewShown && text.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+            prepareIme(targetIme)
+            val hostIntent = Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ActivityScenario.launch<FastInputHostActivity>(hostIntent).use { host ->
+                await("Keyboard app task focused") {
+                    var focused = false
+                    host.onActivity { focused = it.hasWindowFocus() }
+                    focused
                 }
-                ready
-            }
-            ins.runOnMainSync {
-                IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
-            }
-            await("Plugin chooser") { click("Mushroom test plugin") }
-            await("Plugin opened") {
-                ins.uiAutomation.rootInActiveWindow?.findAccessibilityNodeInfosByText("Return result")?.isNotEmpty() == true
-            }
-            assertTrue(click("Return result"))
-            await("Returned to the external editor with the replacement") {
-                val root = ins.uiAutomation.rootInActiveWindow
-                root != null && root.packageName?.toString() == ins.context.packageName &&
-                    root.findAccessibilityNodeInfosByViewId("android:id/input").any { it.text?.toString() == "a[b]c" }
+                shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true")
+                await("External editor connected") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val text = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime != null && text != null && ime.currentInputEditorInfo?.packageName == ins.context.packageName &&
+                            ime.isInputViewShown && text.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+                    }
+                    ready
+                }
+                ins.runOnMainSync {
+                    IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
+                }
+                await("Plugin chooser") { click("Mushroom test plugin") }
+                await("Plugin opened") { hasText("Return result") }
+                assertTrue(click("Return result"))
+                await("Returned to the external editor with the replacement") {
+                    roots().any { root ->
+                        root.packageName?.toString() == ins.context.packageName &&
+                            root.findAccessibilityNodeInfosByViewId("android:id/input")
+                                .any { it.isVisibleToUser && it.text?.toString() == "a[b]c" }
+                    }
+                }
+                shell("input keyevent KEYCODE_BACK")
+                shell("input keyevent KEYCODE_BACK")
             }
         } finally {
-            shell("input keyevent KEYCODE_BACK")
-            shell("input keyevent KEYCODE_BACK")
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             shell("ime disable $targetIme")
         }
@@ -99,10 +117,14 @@ class MushroomImeInstrumentedTest {
         val targetIme = "${context.packageName}/${IMEService::class.java.name}"
         val oldIme = shell("settings get secure default_input_method").trim()
         try {
-            shell("ime enable $targetIme")
-            shell("ime set $targetIme")
+            prepareIme(targetIme)
             val intent = Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             ActivityScenario.launch<FastInputHostActivity>(intent).use { scenario ->
+                await("Host window focused") {
+                    var focused = false
+                    scenario.onActivity { focused = it.hasWindowFocus() }
+                    focused
+                }
                 fun editor(text: String, start: Int, end: Int = start) {
                     scenario.onActivity {
                         it.editText.setText(text)
@@ -146,7 +168,7 @@ class MushroomImeInstrumentedTest {
                     }
                     await("Plugin chooser") { click("Mushroom test plugin") }
                     await("Plugin opened") {
-                        ins.uiAutomation.rootInActiveWindow?.findAccessibilityNodeInfosByText("Return result")?.isNotEmpty() == true
+                        hasText("Return result")
                     }
                 }
                 fun textIs(expected: String) = await("Editor should contain $expected") {
@@ -162,7 +184,7 @@ class MushroomImeInstrumentedTest {
                 }
                 editor("abc", 1, 2)
                 launch()
-                assertTrue(ins.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("Source: b").isNotEmpty())
+                assertTrue(hasText("Source: b"))
                 assertTrue(click("Return result"))
                 textIs("a[b]c")
 
@@ -181,7 +203,7 @@ class MushroomImeInstrumentedTest {
 
                 editor("前後", 1)
                 launch("かな")
-                assertTrue(ins.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("Source: かな").isNotEmpty())
+                assertTrue(hasText("Source: かな"))
                 assertTrue(click("Return result"))
                 textIs("前[かな]後")
 
