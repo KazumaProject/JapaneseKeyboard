@@ -234,7 +234,7 @@ case "$phase" in
         ;;
     confirm)
         # Recheck p50/p95 outliers after a longer warm-up, retaining every result.
-        for spec in qwerty:hello both:かつこう omission:とえけい; do
+        for spec in qwerty:hello both:かつこう omission:とえけい none:かつこう; do
             condition="${spec%%:*}"; input="${spec#*:}"
             backends=LEGACY
             if [[ "$condition" == qwerty ]]; then backends=LEGACY,INCREMENTAL_SESSION; fi
