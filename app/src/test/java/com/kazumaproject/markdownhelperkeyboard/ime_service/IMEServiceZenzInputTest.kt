@@ -77,7 +77,7 @@ class IMEServiceZenzInputTest {
         val request = request(manual = true, record = false)
         val pendingClass = IMEService::class.java.declaredClasses.single { it.simpleName == "PendingZenzReading" }
         val completion = CompletableDeferred<Any>()
-        val pending = pendingClass.declaredConstructors.single().apply { isAccessible = true }
+        val pending = pendingClass.declaredConstructors.single { it.parameterCount == 3 }.apply { isAccessible = true }
             .newInstance(latestToken, latestContext, completion)
         ReflectionHelpers.setField(service, "pendingZenzReading", pending)
         val reading = async(start = CoroutineStart.UNDISPATCHED) { resolve(request) }

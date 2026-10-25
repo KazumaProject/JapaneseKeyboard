@@ -7,6 +7,20 @@ baseline_root="${RUNNER_TEMP:?}/zenz-correction-baseline"
 artifact_dir="${ZENZ_PERF_ARTIFACT_DIR:?}"
 baseline_ref="${ZENZ_PERF_BASELINE_REF:-dev}"
 mkdir -p "$artifact_dir/logs"
+collect_unit_results() {
+    local kind="${1:-latest}" label root edition directory
+    for label in before after; do
+        root="$head_root"; if [[ "$label" == before ]]; then root="$baseline_root"; fi
+        for edition in Full Lite; do
+            directory="$root/app/build/test-results/test${edition}StandardDebugUnitTest"
+            if [[ -d "$directory" ]]; then
+                mkdir -p "$artifact_dir/$label/$kind/$edition"
+                cp "$directory"/TEST-*.xml "$artifact_dir/$label/$kind/$edition/" 2>/dev/null || true
+            fi
+        done
+    done
+}
+trap collect_unit_results EXIT
 export IME_EMULATOR_LOG_DIR="$artifact_dir/logs"
 export IME_EMULATOR_READINESS_LOG="$artifact_dir/logs/android-readiness.log"
 source "$head_root/.github/scripts/ime-emulator-common.sh"
@@ -59,6 +73,8 @@ build "$head_root" after
     --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g \
     -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
     > "$artifact_dir/logs/related-lite-tests-and-build.txt" 2>&1
+
+collect_unit_results related
 
 # Reproduce failures seen in the broad suite without modifying unrelated fixtures.
 # Keep them outside the scoped gate, but fail if the proposed code introduces new failures.
