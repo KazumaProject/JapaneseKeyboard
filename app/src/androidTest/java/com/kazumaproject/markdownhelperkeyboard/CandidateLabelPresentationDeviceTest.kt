@@ -20,6 +20,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -32,7 +33,16 @@ import java.io.File
 class CandidateLabelPresentationDeviceTest {
     private val ins = InstrumentationRegistry.getInstrumentation()
     private val context = ins.targetContext
+    private var previousIme: String? = null
     private fun id(name: String): Int = context.resources.getIdentifier(name, "id", context.packageName)
+
+    private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+        ins.uiAutomation.executeShellCommand(command)
+    ).use { it.readBytes().toString(Charsets.UTF_8).trim() }
+
+    @After fun restoreInputMethod() {
+        previousIme?.takeIf { it.isNotBlank() && it != "null" }?.let { shell("ime set $it") }
+    }
 
     private fun <T> main(block: () -> T): T {
         if (Looper.myLooper() == Looper.getMainLooper()) return block()
@@ -105,9 +115,7 @@ class CandidateLabelPresentationDeviceTest {
         val dark = InstrumentationRegistry.getArguments().getString("candidate_label_dark") == "true"
         val floating = InstrumentationRegistry.getArguments().getString("candidate_label_floating") == "true"
         val landscape = InstrumentationRegistry.getArguments().getString("candidate_label_landscape") == "true"
-        android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.uiAutomation.executeShellCommand(
-            "cmd uimode night ${if (dark) "yes" else "no"}"
-        )).use { it.readBytes() }
+        shell("cmd uimode night ${if (dark) "yes" else "no"}")
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         prefs.edit().clear()
             .putString("keyboard_order_preference", "[\"TENKEY\"]")
@@ -123,6 +131,11 @@ class CandidateLabelPresentationDeviceTest {
             .putBoolean("clipboard_preview_enable_preference", false)
             .putBoolean("inline_suggestion_enabled_preference", false)
             .putBoolean("candidate_character_type_indicators_preference", false).commit()
+        previousIme = shell("settings get secure default_input_method")
+        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        shell("ime enable $targetIme")
+        shell("ime set $targetIme")
+        assertEquals("Test IME was not selected", targetIme, shell("settings get secure default_input_method"))
         context.startActivity(Intent(context, CandidateHeightTestHostActivity::class.java)
             .putExtra("landscape", landscape).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         await("Editor/IME did not start") { service() != null && CandidateHeightTestHostActivity.current.get()?.hasWindowFocus() == true }
