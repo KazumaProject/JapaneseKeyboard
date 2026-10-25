@@ -1,0 +1,96 @@
+name: Mushroom Regression
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mushroom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-37.0"
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-mushroom-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-ime-layout-gradle-
+            ${{ runner.os }}-gradle-
+      - name: Isolate the keyboard and test provider identities
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/mushroom.init.gradle" <<'GRADLE'
+          gradle.afterProject { project ->
+              if (project.path == ':app') {
+                  project.android.defaultConfig.applicationId = 'com.kazumaproject.mushroomtest'
+                  def manifest = project.file('src/androidTest/AndroidManifest.xml')
+                  def isolated = project.layout.buildDirectory.file('generated/mushroom-test/AndroidManifest.xml').get().asFile
+                  isolated.parentFile.mkdirs()
+                  isolated.text = manifest.text
+                      .replace('com.kazumaproject.markdownhelperkeyboard.lite.localfonttest', '${applicationId}.localfonttest')
+                      .replace('com.kazumaproject.markdownhelperkeyboard.settingsbackuptest', '${applicationId}.settingsbackuptest')
+                  project.android.sourceSets.androidTest.manifest.srcFile(isolated)
+              }
+          }
+          GRADLE
+      - name: Build Lite APKs and run focused unit tests
+        run: >-
+          ./gradlew -I "$RUNNER_TEMP/mushroom.init.gradle"
+          -x :app:generateMozcSegmenterData
+          :app:testLiteStandardDebugUnitTest
+          --tests '*MushroomTargetTest'
+          --tests '*ShortcutToolbarPresentationPolicyTest'
+          --tests '*SettingsBackupRepositoryTest'
+          :app:assembleLiteStandardDebug
+          :app:assembleLiteStandardDebugAndroidTest
+          --max-workers=2
+          -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8'
+          -Pkotlin.compiler.execution.strategy=in-process
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test Mushroom round trips on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6_pro
+          ram-size: 2048M
+          heap-size: 512M
+          cores: 2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell settings put secure show_ime_with_hard_keyboard 1
+            ./gradlew -I "$RUNNER_TEMP/mushroom.init.gradle" -x :app:generateMozcSegmenterData :app:connectedLiteStandardDebugAndroidTest --max-workers=2 -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8' -Pkotlin.compiler.execution.strategy=in-process -Pandroid.testInstrumentationRunnerArguments.class=com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomImeInstrumentedTest
+      - name: Upload test reports and test APKs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mushroom-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/tests/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            app/build/outputs/apk/liteStandard/debug/
+            app/build/outputs/apk/androidTest/liteStandard/debug/
+          if-no-files-found: warn
+          retention-days: 7
