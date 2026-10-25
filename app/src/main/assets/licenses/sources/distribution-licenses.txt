@@ -102,6 +102,28 @@ CC BY 4.0の下で利用したことを示し、原作出版社による一次�
 
 人物を哲学者・思想家カテゴリに分類する根拠は、各行の `classification_source_url` に記録したWikidata項目の職業記述です。Wikidataのデータは[CC0](https://creativecommons.org/publicdomain/zero/1.0/)で提供されています。分類テキストや典拠資料の本文はリポジトリへ転載しません。
 
+## 2026-10-25の著名人の人名データ
+
+`src/main/classification/person-additions/notable-people-2026-10-25.jsonl` は、
+[JLPGA](https://www.lpga.or.jp/)、[日本棋院](https://www.nihonkiin.or.jp/)、
+[日本プロ麻雀協会](https://npm2001.com/)、各プロ野球球団、
+[国立国会図書館「近代日本人の肖像」](https://www.ndl.go.jp/portrait/)、
+[Web NDL Authorities](https://id.ndl.go.jp/)、[京都賞](https://www.kyotoprize.org/)、
+[日本学士院](https://www.japan-acad.go.jp/)、文学賞の公式資料、
+[青二プロダクション](https://www.aoni.co.jp/)、[賢プロダクション](https://www.kenproduction.co.jp/)、
+[スターダストプロモーション](https://www.stardust.co.jp/)、[UUUM](https://uuum.jp/)、
+[UNIVERSAL MUSIC JAPAN](https://www.universal-music.co.jp/)の公開資料で確認した
+氏名・公表活動名と明示的なかな読みを採録しています。各行に実際の出典URL、原表記・原読み、
+確認箇所、確認日、取得原本のSHA-256を記録し、分類確認に別資料を用いた場合もその出典を示します。
+
+加工は空白の除去、かなの機械的なひらがな化（半角かなの濁点等の結合を含む）、
+分類、既存辞書との重複除外、品詞・コストの割当です。英字からの推測読みや非公開の別名は追加していません。
+プロフィール本文、写真、名簿ページ、検索結果そのものは転載しません。
+第三者資料の権利は各提供元に帰属し、この記載によりそれらにMIT等のライセンスを付与するものではありません。
+国立国会図書館のデータは出典を表示して利用します。
+
+`src/main/classification/person-additions/board-sports-2026-10-25.jsonl` の氏名・読みは、[AJSA公認プロスケートボーダー](https://ajsa.jp/professional-skateboarder/)、[X Games Japan選手一覧](https://xgamesjapan.com/athletes/)、[JOC公式オリンピック・ユース五輪・アジア冬季大会名鑑と結果](https://www.joc.or.jp/)、[日本ダンススポーツ連盟（JDSF）公式資料](https://www.jdsf.or.jp/)で確認しています。各候補行に参照URL、原表記・原読み、確認箇所と取得ページのSHA-256を記録します。公式かな表記だけを採録し、英字から読みを推定しません。名簿・プロフィール・結果表の本文は転載せず、第三者資料の権利は各提供元に帰属します。
+
 ## 漢方・医療辞書
 
 `src/main/specialist` のKNApSAcK KAMPO由来データと `kampo` 辞書の加工部分は
