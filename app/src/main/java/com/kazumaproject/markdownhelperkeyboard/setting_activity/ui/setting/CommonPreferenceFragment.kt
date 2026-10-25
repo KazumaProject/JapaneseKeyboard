@@ -1037,6 +1037,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
 
     private fun setupRoutePreferences() {
         val routeTargets = mapOf(
+            "candidate_indicator_style_settings" to R.id.candidateIndicatorPreferenceFragment,
             "date_candidate_settings_preference" to R.id.dateCandidateSettingsFragment,
             "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
             "setting_route_input_method" to R.id.inputMethodPreferenceFragment,

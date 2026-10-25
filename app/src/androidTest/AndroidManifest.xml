@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name="com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomPluginActivity"
+            android:label="Mushroom test plugin" android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="com.adamrocker.android.simeji.ACTION_INTERCEPT" />
+                <category android:name="com.adamrocker.android.simeji.REPLACE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <provider
             android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.SettingsBackupTestProvider"
             android:authorities="com.kazumaproject.markdownhelperkeyboard.settingsbackuptest"
