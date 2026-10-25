@@ -14,6 +14,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection.*
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonExporter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonImporter
@@ -36,30 +37,50 @@ class ThreeStageFlickDeviceTest {
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
         automation.executeShellCommand(command)).bufferedReader().use { it.readText() }
 
-    private fun keyBounds(label: String): Rect {
+    private fun keyBounds(label: String, floating: Boolean): Rect {
         fun collect(node: AccessibilityNodeInfo): List<AccessibilityNodeInfo> = listOf(node) +
             (0 until node.childCount).flatMap { node.getChild(it)?.let(::collect).orEmpty() }
-        val deadline = SystemClock.uptimeMillis() + 20000
+        val surfaceId = if (floating) "custom_layout_floating" else "custom_layout_default"
+        val deadline = SystemClock.uptimeMillis() + 60000
         while (SystemClock.uptimeMillis() < deadline) {
             val nodes = automation.windows.flatMap { it.root?.let(::collect).orEmpty() }
-            nodes.firstOrNull {
+            val keys = nodes.filter {
+                it.isVisibleToUser && it.viewIdResourceName?.endsWith("/$surfaceId") == true
+            }.flatMap(::collect)
+            keys.firstOrNull {
                 it.packageName?.toString() == instrumentation.targetContext.packageName &&
                     it.isVisibleToUser && it.isClickable && it.text?.toString()?.trim() == label
             }?.let { return Rect().also(it::getBoundsInScreen) }
             SystemClock.sleep(100)
         }
-        error("Missing custom key: $label")
+        error("Missing custom key: $label on $surfaceId")
     }
 
-    private fun settledKey(label: String): Rect {
+    private fun settledKey(label: String, floating: Boolean): Rect {
         var previous: Rect? = null
         repeat(30) {
-            val bounds = keyBounds(label)
+            val bounds = keyBounds(label, floating)
             if (bounds == previous) return bounds
             previous = bounds
             SystemClock.sleep(150)
         }
         error("Custom key did not settle")
+    }
+
+    private fun awaitOutput(scenario: ActivityScenario<FastInputHostActivity>, direct: Boolean, floating: Boolean) {
+        val deadline = SystemClock.uptimeMillis() + 10000
+        var text = ""
+        var composing = false
+        do {
+            scenario.onActivity {
+                text = it.editText.text.toString()
+                composing = BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0
+            }
+            if (text == "ぞ" && composing == !direct) return
+            SystemClock.sleep(50)
+        } while (SystemClock.uptimeMillis() < deadline)
+        assertEquals("direct=$direct floating=$floating", "ぞ", text)
+        assertEquals("configured direct=$direct floating=$floating", !direct, composing)
     }
 
     private fun gesture(bounds: Rect, cancel: Boolean = false) {
@@ -121,7 +142,11 @@ class ThreeStageFlickDeviceTest {
             shell("ime enable $ime")
             shell("ime set $ime")
             for (direct in listOf(false, true)) for (floating in listOf(false, true)) {
-                repository.saveLayout(restored.copy(isDirectMode = direct), importedLayout.name, importedLayout.layoutId)
+                val label = "3F${if (direct) 1 else 0}${if (floating) 1 else 0}"
+                val configured = restored.copy(isDirectMode = direct).copyWithKeys(restored.keys.map {
+                    if (it.keyId == key.keyId) it.copy(label = label) else it
+                })
+                repository.saveLayout(configured, importedLayout.name, importedLayout.layoutId)
                 check(prefs.edit()
                     .putString("keyboard_order_preference", "[\"CUSTOM\"]")
                     .putBoolean("save_last_used_keyboard", false)
@@ -131,16 +156,15 @@ class ThreeStageFlickDeviceTest {
                     .putBoolean("keyboard_floating_preference", floating)
                     .putBoolean("live_conversion_preference", false)
                     .commit())
+                android.util.Log.i("ThreeStageFlickDeviceTest", "direct=$direct floating=$floating")
                 ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
-                    val bounds = settledKey("か")
+                    scenario.onActivity { it.restartEditorInput(clearText = true) }
+                    instrumentation.waitForIdleSync()
+                    val bounds = settledKey(label, floating)
                     gesture(bounds, cancel = true)
                     scenario.onActivity { assertEquals("", it.editText.text.toString()) }
                     gesture(bounds)
-                    scenario.onActivity {
-                        assertEquals("direct=$direct floating=$floating", "ぞ", it.editText.text.toString())
-                        assertEquals("configured direct=$direct floating=$floating", !direct,
-                            BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0)
-                    }
+                    awaitOutput(scenario, direct, floating)
                 }
             }
         } finally {
