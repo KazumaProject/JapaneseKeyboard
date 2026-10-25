@@ -12,7 +12,6 @@ import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.core.app.ActivityScenario
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -223,11 +222,20 @@ class CandidateLabelPresentationDeviceTest {
                 } == true
             } }
             capture("ruby-on")
-            ActivityScenario.launch(com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity::class.java).use { scenario ->
-                var navHost: NavHostFragment? = null
-                scenario.onActivity { activity ->
-                    navHost = activity.supportFragmentManager.findFragmentById(id("nav_host_fragment_activity_main")) as NavHostFragment
-                }
+            // ActivityScenario waits for global main-queue idleness before launch.
+            // A running IME need not become idle; await the actual settings window instead.
+            context.startActivity(Intent(context, com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            var navHost: NavHostFragment? = null
+            await("Settings activity did not start") {
+                val activity = WindowInspector.getGlobalWindowViews().asSequence().flatMap { root ->
+                    generateSequence(root.context) { (it as? ContextWrapper)?.baseContext }
+                }.filterIsInstance<com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity>()
+                    .firstOrNull { it.hasWindowFocus() }
+                navHost = activity?.supportFragmentManager?.findFragmentById(id("nav_host_fragment_activity_main")) as? NavHostFragment
+                navHost != null
+            }
+            try {
                 for ((destination, name) in listOf(
                     id("candidateConversionPreferenceFragment") to "settings-new",
                     id("legacyCommonPreferenceFragment") to "settings-legacy",
@@ -254,6 +262,8 @@ class CandidateLabelPresentationDeviceTest {
                     }
                     capture(name)
                 }
+            } finally {
+                main { navHost?.activity?.finish() }
             }
         }
     }
