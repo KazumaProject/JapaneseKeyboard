@@ -86,6 +86,7 @@ object SettingSearchIndex {
 
     private val highlightableDestinations = setOf(
         R.id.morsePreferenceFragment,
+        R.id.gesturePreferenceFragment,
         R.id.splitKeyboardPreferenceFragment,
         R.id.keyboardDisplayPreferenceFragment,
         R.id.inputMethodPreferenceFragment,
@@ -352,6 +353,7 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
+        add(PreferenceXmlSource(R.xml.pref_gesture, R.id.gesturePreferenceFragment, SettingCategory.GESTURE))
         add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
@@ -403,6 +405,7 @@ object SettingSearchIndex {
             SettingTabRegistry.TAB_DICTIONARY -> SettingCategory.DICTIONARY
             SettingTabRegistry.TAB_TEXT_MACRO -> SettingCategory.TEXT_MACRO
             SettingTabRegistry.TAB_MORSE -> SettingCategory.MORSE
+            SettingTabRegistry.TAB_GESTURE -> SettingCategory.GESTURE
             SettingTabRegistry.TAB_VOICE_INPUT -> SettingCategory.VOICE_INPUT
             SettingTabRegistry.TAB_ZENZ,
             SettingTabRegistry.TAB_GEMMA -> SettingCategory.AI_CONVERSION

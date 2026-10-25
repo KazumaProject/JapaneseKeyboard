@@ -1,0 +1,13 @@
+<resources>
+    <string name="gesture_title">Gesture input</string>
+    <string name="gesture_summary">Draw a single stroke to enter a character</string>
+    <string name="gesture_controls_title">Special key layout</string>
+    <string name="gesture_controls_summary">Drag keys to move them; tap to edit or delete</string>
+    <string name="gesture_sets_title">Gesture sets</string>
+    <string name="gesture_sets_summary">Create, copy and edit gesture assignments</string>
+    <string name="gesture_left_set">Left drawing area</string>
+    <string name="gesture_right_set">Right drawing area</string>
+    <string name="gesture_show_guide">Show gesture guide in menu</string>
+    <string name="gesture_tolerance">Recognition tolerance</string>
+    <string name="gesture_invalid_data">Saved gesture data is invalid. Standard settings are being used. The original data has been retained.</string>
+</resources>

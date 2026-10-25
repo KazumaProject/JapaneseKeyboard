@@ -12,7 +12,7 @@ enum class SplitCandidatePlacement { BOTH, MAIN, SUB;
 }
 data class SplitKeyboardSelection(val type: KeyboardType = KeyboardType.TENKEY, val customStableId: String = "") {
     fun resolved(availableIds: Set<String>): SplitKeyboardSelection =
-        if (type == KeyboardType.SPLIT || (type == KeyboardType.CUSTOM && customStableId !in availableIds))
+        if (type == KeyboardType.SPLIT || type == KeyboardType.GESTURE || (type == KeyboardType.CUSTOM && customStableId !in availableIds))
             SplitKeyboardSelection() else this
 }
 /** Width/height describe the keyboard body; candidate and editing chrome are separate. */
@@ -24,11 +24,11 @@ data class SplitPlacement(val x: Float, val y: Float, val widthDp: Float, val he
 class SplitKeyboardSettings(private val prefs: SharedPreferences) {
     fun selection(slot: SplitSlot): SplitKeyboardSelection {
         val type = runCatching { KeyboardType.valueOf(prefs.getString(typeKey(slot), "TENKEY")!!) }.getOrDefault(KeyboardType.TENKEY)
-        return SplitKeyboardSelection(if (type == KeyboardType.SPLIT) KeyboardType.TENKEY else type,
+        return SplitKeyboardSelection(if (type == KeyboardType.SPLIT || type == KeyboardType.GESTURE) KeyboardType.TENKEY else type,
             prefs.getString(customKey(slot), "").orEmpty())
     }
     fun saveSelection(slot: SplitSlot, value: SplitKeyboardSelection) {
-        require(value.type != KeyboardType.SPLIT)
+        require(value.type != KeyboardType.SPLIT && value.type != KeyboardType.GESTURE)
         prefs.edit().putString(typeKey(slot), value.type.name).putString(customKey(slot), value.customStableId).apply()
     }
     val candidates: SplitCandidatePlacement get() = runCatching {

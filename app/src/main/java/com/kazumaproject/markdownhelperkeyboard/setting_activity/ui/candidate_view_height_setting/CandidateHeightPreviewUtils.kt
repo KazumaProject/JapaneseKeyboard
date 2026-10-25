@@ -138,7 +138,14 @@ internal data class CandidateKeyboardPreviewViews(
     val morse: com.kazumaproject.morse_keyboard.MorseKeyboardView,
     val qwerty: QWERTYKeyboardView,
     val flick: FlickKeyboardView
-)
+) {
+    val gesture: com.kazumaproject.gesture_keyboard.GestureKeyboardView by lazy {
+        com.kazumaproject.gesture_keyboard.GestureKeyboardView(container.context).also {
+            it.inputAllowed = { false }
+            container.addView(it, FrameLayout.LayoutParams(morse.layoutParams as FrameLayout.LayoutParams))
+        }
+    }
+}
 
 internal fun renderCandidateKeyboardPreview(
     fragment: Fragment,
@@ -162,6 +169,7 @@ internal fun renderCandidateKeyboardPreview(
     views.tenKey.isVisible = false
     views.gojuon.isVisible = false
     views.morse.isVisible = false
+    views.gesture.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
@@ -245,10 +253,16 @@ private fun renderNonCustomKeyboardPreviewType(
     views.tenKey.isVisible = false
     views.gojuon.isVisible = false
     views.morse.isVisible = false
+    views.gesture.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
     when (type) {
+        KeyboardType.GESTURE -> {
+            val prefs = com.kazumaproject.markdownhelperkeyboard.gesture.GesturePreferences(fragment.requireContext())
+            views.gesture.configure(prefs.sets(), prefs.session(), prefs.layout(), prefs.showGuide(), prefs.maxDistance())
+            views.gesture.isVisible = true
+        }
         KeyboardType.MORSE -> {
             val prefs = com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences(fragment.requireContext())
             views.morse.configure(prefs.settings().copy(sound = false, vibration = false), prefs.enabledMaps(), prefs.selectedMapId)
