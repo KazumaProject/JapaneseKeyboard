@@ -45,6 +45,53 @@ class MushroomImeInstrumentedTest {
             ?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
     }
 
+    @Test fun returnsToExternalEditorWhenKeyboardAppAlreadyHasATask() {
+        assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
+        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        ins.uiAutomation.serviceInfo = ins.uiAutomation.serviceInfo.apply {
+            flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        try {
+            shell("ime enable $targetIme")
+            shell("ime set $targetIme")
+            // Keep an existing task belonging to the keyboard app behind the external editor.
+            context.startActivity(Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            await("Keyboard app task opened") {
+                ins.uiAutomation.rootInActiveWindow?.packageName?.toString() == context.packageName
+            }
+            shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true")
+            await("External editor connected") {
+                var ready = false
+                ins.runOnMainSync {
+                    val ime = service()
+                    val text = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                    ready = ime != null && text != null && ime.currentInputEditorInfo?.packageName == ins.context.packageName &&
+                        ime.isInputViewShown && text.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+                }
+                ready
+            }
+            ins.runOnMainSync {
+                IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
+            }
+            await("Plugin chooser") { click("Mushroom test plugin") }
+            await("Plugin opened") {
+                ins.uiAutomation.rootInActiveWindow?.findAccessibilityNodeInfosByText("Return result")?.isNotEmpty() == true
+            }
+            assertTrue(click("Return result"))
+            await("Returned to the external editor with the replacement") {
+                val root = ins.uiAutomation.rootInActiveWindow
+                root != null && root.packageName?.toString() == ins.context.packageName &&
+                    root.findAccessibilityNodeInfosByViewId("android:id/input").any { it.text?.toString() == "a[b]c" }
+            }
+        } finally {
+            shell("input keyevent KEYCODE_BACK")
+            shell("input keyevent KEYCODE_BACK")
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            shell("ime disable $targetIme")
+        }
+    }
+
     @Test fun externalPluginRoundTripCancellationMissingResultAndChangedTarget() {
         // Keep the user's installed keyboard and preferences separate from device tests.
         assumeTrue("Run with an isolated applicationId containing mushroomtest",

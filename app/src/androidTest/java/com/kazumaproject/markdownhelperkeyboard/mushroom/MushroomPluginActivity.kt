@@ -9,8 +9,28 @@ import android.widget.TextView
 
 /** Deterministic external plugin, included only in the instrumentation APK. */
 class MushroomPluginActivity : Activity() {
+    private var editor: android.widget.EditText? = null
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) editor?.let {
+            getSystemService(android.view.inputmethod.InputMethodManager::class.java).showSoftInput(it, 0)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent.getBooleanExtra("editor", false)) {
+            editor = android.widget.EditText(this).apply {
+                id = android.R.id.input
+                setText("abc")
+                setSelection(1, 2)
+            }
+            setContentView(editor)
+            window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+            editor?.requestFocus()
+            return
+        }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(this@MushroomPluginActivity).apply {

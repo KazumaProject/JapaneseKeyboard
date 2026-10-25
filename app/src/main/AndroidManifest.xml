@@ -52,6 +52,7 @@
 
         <activity
             android:name=".mushroom.MushroomActivity"
+            android:taskAffinity=""
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.MarkdownKeyboard.PhotoPickerBridge" />
