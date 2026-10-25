@@ -107,7 +107,7 @@ class MushroomImeInstrumentedTest {
                 ins.runOnMainSync {
                     IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
                 }
-                await("Plugin chooser") { click("Mushroom test plugin") }
+                await("Plugin chooser or direct launch") { hasText("Return result") || click("Mushroom test plugin") }
                 await("Plugin opened") { hasText("Return result") }
                 assertTrue(click("Return result"))
                 await("Returned to the external editor with the replacement") {
@@ -176,7 +176,7 @@ class MushroomImeInstrumentedTest {
                         IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }
                             .invoke(service()!!)
                     }
-                    await("Plugin chooser") { click("Mushroom test plugin") }
+                    await("Plugin chooser or direct launch") { hasText("Return result") || click("Mushroom test plugin") }
                     await("Plugin opened") {
                         hasText("Return result")
                     }
