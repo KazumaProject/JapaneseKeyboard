@@ -14,6 +14,8 @@ on:
       - app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/ZenzInputPolicy.kt
       - app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/candidate/ConversionCorrection.kt
       - app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/converter/ZenzCorrectionPerformanceInstrumentedTest.kt
+      - app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/zenz/ZenzFloatingCandidateInstrumentedTest.kt
+      - app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/zenz/ZenzRuntimeInstrumentedTest.kt
       - .github/scripts/run-zenz-correction-performance.sh
       - .github/workflows/zenz-correction-performance.yml
 

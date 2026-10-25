@@ -51,6 +51,14 @@ build "$head_root" after
     -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
     > "$artifact_dir/logs/related-unit-tests.txt" 2>&1
 
+# Verify the edition without zenz as well, using the same scoped unit-test selection.
+(cd "$head_root" && ./gradlew :app:testLiteStandardDebugUnitTest :app:assembleLiteStandardDebug \
+    --tests '*Zenz*Test' --tests '*KanaKanjiConversionSessionParityTest' \
+    --tests '*CandidateCorrectionPolicyTest' --tests '*EnglishCandidateCaseResolverTest' \
+    --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g \
+    -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
+    > "$artifact_dir/logs/related-lite-tests-and-build.txt" 2>&1
+
 apk() {
     python3 - "$1" "$2" <<'PY'
 from pathlib import Path
@@ -91,6 +99,7 @@ assert json.loads((root/'before-apk.json').read_text())['assets'] == json.loads(
 PY
 adb -s "$serial" shell getprop > "$artifact_dir/device-properties.txt"
 free -h > "$artifact_dir/runner-memory.txt"
+lscpu > "$artifact_dir/runner-cpu.txt"
 
 install_build() {
     local root="$1"
@@ -157,6 +166,7 @@ for label in before after; do
     run_probe "$label" generation "$native" zenz-generation-perf.txt false -e zenzGenerationPerf true
     run_probe "$label" generation-memory "$native" zenz-generation-perf.txt true -e zenzGenerationPerf true
     run_probe "$label" floating "$floating" zenz-floating-perf.txt false -e zenzFloatingPerf true
+    run_probe "$label" floating-memory "$floating" zenz-floating-perf.txt true -e zenzFloatingPerf true
 done
 install_build "$head_root"
 run_probe after selection "$core" zenz-correction-perf.txt false \
