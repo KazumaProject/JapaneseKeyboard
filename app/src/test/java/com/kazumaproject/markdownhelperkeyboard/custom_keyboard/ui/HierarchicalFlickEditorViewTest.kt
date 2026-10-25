@@ -1,64 +1,88 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
-import android.content.DialogInterface
-import android.os.Looper
 import android.view.ContextThemeWrapper
+import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection.*
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.Shadows.shadowOf
-import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class HierarchicalFlickEditorViewTest {
-    private fun View.descendants(): List<View> = listOf(this) +
-        if (this is ViewGroup) (0 until childCount).flatMap { getChildAt(it).descendants() } else emptyList()
+    private fun editor() = HierarchicalFlickEditorView(ContextThemeWrapper(
+        ApplicationProvider.getApplicationContext(),
+        com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar))
 
-    @Test fun editThreeStagesUsingTheVisibleGridAndDialogs() {
-        val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext(),
-            com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)
-        val view = HierarchicalFlickEditorView(context)
+    private fun HierarchicalFlickEditorView.select(direction: TfbiFlickDirection) {
+        val directions = listOf(UP_LEFT, UP, UP_RIGHT, LEFT, TAP, RIGHT, DOWN_LEFT, DOWN, DOWN_RIGHT)
+        val index = directions.indexOf(direction)
+        val density = resources.displayMetrics.density
+        val event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_UP,
+            (4 + index % 3 * 74 + 28) * density,
+            (4 + index / 3 * 74 + 28) * density, 0)
+        findViewById<FlickGridEditorView>(R.id.hierarchical_grid).onTouchEvent(event)
+        event.recycle()
+    }
+
+    @Test fun editThreeStagesUsingTheSharedGridAndInlineInput() {
+        val view = editor()
         view.setDefinition(TfbiFlickNode.StatefulKey(mapOf(TAP to TfbiFlickNode.Input("base")), label = "key"))
+        val input = view.findViewById<EditText>(R.id.hierarchical_input)
+        val branch = view.findViewById<View>(R.id.hierarchical_branch)
+        assertEquals("base", input.text.toString())
         var changes = 0
         view.onDefinitionChanged = { changes++ }
-        fun click(direction: com.kazumaproject.custom_keyboard.view.TfbiFlickDirection) {
-            view.descendants().filterIsInstance<Button>().single {
-                it.text.toString().lineSequence().first() == FlickDirectionMapper.toDisplayName(direction, context)
-            }.performClick()
-        }
-        fun choose(textRes: Int) {
-            val dialog = ShadowDialog.getLatestDialog() as AlertDialog
-            val list = dialog.listView
-            val index = (0 until list.adapter.count).single { list.adapter.getItem(it) == context.getString(textRes) }
-            list.performItemClick(null, index, index.toLong())
-        }
-        click(RIGHT); choose(R.string.three_stage_add_branch)
-        click(DOWN); choose(R.string.three_stage_add_branch)
-        click(LEFT); choose(R.string.three_stage_output)
-        val dialog = ShadowDialog.getLatestDialog() as AlertDialog
-        dialog.window!!.decorView.descendants().filterIsInstance<EditText>().single().setText("third😀")
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
-        shadowOf(Looper.getMainLooper()).idle()
+        view.select(RIGHT)
+        assertEquals("", input.text.toString())
+        branch.performClick()
+        view.select(DOWN)
+        branch.performClick()
+        view.select(LEFT)
+        input.setText("third😀")
         val stage2 = view.definition.normalMap[RIGHT] as TfbiFlickNode.SubMenu
         val stage3 = stage2.nextMap[DOWN] as TfbiFlickNode.SubMenu
         assertEquals(TfbiFlickNode.Input("third😀"), stage3.nextMap[LEFT])
         assertEquals(3, changes)
         assertTrue(view.hasOutput())
-        click(UP)
-        val choices = (ShadowDialog.getLatestDialog() as AlertDialog).listView.adapter
-        assertFalse((0 until choices.count).any { choices.getItem(it) == context.getString(R.string.three_stage_add_branch) })
+        view.select(UP)
+        assertEquals(View.GONE, branch.visibility)
+        view.select(LEFT)
+        assertEquals("third😀", input.text.toString())
+        input.setText("")
+        assertTrue(view.hasOutput()) // The root TAP output remains intact.
+        assertFalse(((view.definition.normalMap[RIGHT] as TfbiFlickNode.SubMenu)
+            .nextMap[DOWN] as TfbiFlickNode.SubMenu).nextMap.containsKey(LEFT))
+    }
+
+    @Test fun branchLabelNavigationAndDeletionPreserveSiblingOutputs() {
+        val view = editor()
+        val nested = TfbiFlickNode.SubMenu(mapOf(UP to TfbiFlickNode.Input("nested")), label = "branch")
+        view.setDefinition(TfbiFlickNode.StatefulKey(mapOf(
+            TAP to TfbiFlickNode.Input("base"), RIGHT to nested), label = "key"))
+        val input = view.findViewById<EditText>(R.id.hierarchical_input)
+        view.select(RIGHT)
+        assertEquals("branch", input.text.toString())
+        input.setText("renamed")
+        view.findViewById<View>(R.id.hierarchical_branch).performClick()
+        view.select(UP)
+        assertEquals("nested", input.text.toString())
+        input.setText("updated")
+        view.findViewById<View>(R.id.hierarchical_back).performClick()
+        assertEquals("renamed", input.text.toString())
+        val branch = view.definition.normalMap[RIGHT] as TfbiFlickNode.SubMenu
+        assertEquals(TfbiFlickNode.Input("updated"), branch.nextMap[UP])
+        view.findViewById<View>(R.id.hierarchical_clear).performClick()
+        assertFalse(view.definition.normalMap.containsKey(RIGHT))
+        assertEquals(TfbiFlickNode.Input("base"), view.definition.normalMap[TAP])
+        assertEquals(View.GONE, view.findViewById<View>(R.id.hierarchical_back).visibility)
     }
 }

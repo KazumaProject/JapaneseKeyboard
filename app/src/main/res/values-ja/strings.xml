@@ -1954,10 +1954,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="three_stage_handakuten">半濁点</string>
     <string name="three_stage_path">%1$d段目 / 最大3段  %2$s</string>
     <string name="three_stage_back">前の段へ</string>
-    <string name="three_stage_unassigned">未割り当て</string>
     <string name="three_stage_open">次の段を開く</string>
-    <string name="three_stage_branch_label">分岐ラベルを編集</string>
-    <string name="three_stage_output">出力を編集</string>
+    <string name="three_stage_branch_label">分岐ラベル</string>
     <string name="three_stage_add_branch">次の段を作成</string>
     <string name="three_stage_clear">割り当てを削除</string>
 </resources>

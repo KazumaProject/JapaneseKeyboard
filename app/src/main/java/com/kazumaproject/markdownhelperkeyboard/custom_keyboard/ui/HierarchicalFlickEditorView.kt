@@ -1,193 +1,141 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.content.Context
-import android.content.res.ColorStateList
-import android.graphics.Typeface
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
-import android.text.style.RelativeSizeSpan
-import android.text.style.StyleSpan
 import android.util.AttributeSet
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
-import android.widget.Spinner
-import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.color.MaterialColors
-import com.google.android.material.shape.CornerFamily
-import com.google.android.material.shape.ShapeAppearanceModel
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
+import androidx.core.view.isVisible
+import androidx.core.widget.doAfterTextChanged
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
+import com.kazumaproject.markdownhelperkeyboard.databinding.ViewHierarchicalFlickEditorBinding
 
 class HierarchicalFlickEditorView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : LinearLayout(context, attrs) {
     private var state = HierarchicalFlickEditorState(TfbiFlickNode.StatefulKey(emptyMap(), label = ""))
+    private val binding = ViewHierarchicalFlickEditorBinding.inflate(LayoutInflater.from(context), this)
+    private var selectedDirection = TfbiFlickDirection.TAP
+    private var updatingInput = false
     var onDefinitionChanged: (() -> Unit)? = null
     val definition: TfbiFlickNode.StatefulKey get() = state.definition
 
-    init { orientation = VERTICAL }
+    init {
+        orientation = VERTICAL
+        binding.hierarchicalGrid.onHierarchicalDirectionSelected = { direction ->
+            selectedDirection = direction
+            renderSelection()
+        }
+        binding.hierarchicalInput.doAfterTextChanged {
+            if (!updatingInput) {
+                val value = it.toString()
+                if (state.currentMap()[selectedDirection] is TfbiFlickNode.SubMenu) {
+                    state.setBranchLabel(selectedDirection, value)
+                } else {
+                    state.setOutput(selectedDirection, value)
+                }
+                renderGrid()
+                onDefinitionChanged?.invoke()
+            }
+        }
+        binding.hierarchicalBack.setOnClickListener {
+            val parentDirection = state.path.lastOrNull() ?: return@setOnClickListener
+            state.back()
+            selectedDirection = parentDirection
+            render()
+        }
+        binding.hierarchicalBranch.setOnClickListener {
+            if (state.currentMap()[selectedDirection] !is TfbiFlickNode.SubMenu) {
+                state.makeBranch(selectedDirection)
+                onDefinitionChanged?.invoke()
+            }
+            state.open(selectedDirection)
+            selectedDirection = TfbiFlickDirection.TAP
+            render()
+        }
+        binding.hierarchicalClear.setOnClickListener {
+            state.delete(selectedDirection)
+            render()
+            onDefinitionChanged?.invoke()
+        }
+    }
 
     fun setDefinition(value: TfbiFlickNode.StatefulKey) {
         state = HierarchicalFlickEditorState(value)
+        selectedDirection = TfbiFlickDirection.TAP
+        val modes = state.availableModes
+        binding.hierarchicalMode.onItemSelectedListener = null
+        binding.hierarchicalMode.isVisible = modes.size > 1
+        binding.hierarchicalMode.adapter = ArrayAdapter(context,
+            android.R.layout.simple_spinner_dropdown_item, modes.map {
+                context.getString(when (it) {
+                    KeyMode.NORMAL -> R.string.three_stage_normal
+                    KeyMode.DAKUTEN -> R.string.three_stage_dakuten
+                    KeyMode.HANDAKUTEN -> R.string.three_stage_handakuten
+                })
+            })
+        binding.hierarchicalMode.setSelection(0)
+        binding.hierarchicalMode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (state.mode != modes[position]) {
+                    state.selectMode(modes[position])
+                    selectedDirection = TfbiFlickDirection.TAP
+                    render()
+                }
+            }
+        }
         render()
     }
 
     fun hasOutput(): Boolean = state.hasNormalOutput()
 
     private fun render() {
-        removeAllViews()
-        setPadding(dp(4), dp(4), dp(4), dp(4))
-        val modes = state.availableModes
-        if (modes.size > 1) {
-            addView(Spinner(context).apply {
-                contentDescription = context.getString(R.string.three_stage_state)
-                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
-                    modes.map { context.getString(when (it) {
-                        KeyMode.NORMAL -> R.string.three_stage_normal
-                        KeyMode.DAKUTEN -> R.string.three_stage_dakuten
-                        KeyMode.HANDAKUTEN -> R.string.three_stage_handakuten
-                    }) })
-                setSelection(modes.indexOf(state.mode))
-                onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                    override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-                    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                        if (parent?.parent === this@HierarchicalFlickEditorView && state.mode != modes[position]) {
-                            state.selectMode(modes[position])
-                            render()
-                        }
-                    }
-                }
-            }, LayoutParams(LayoutParams.MATCH_PARENT, dp(48)))
-        }
-        addView(TextView(context).apply {
-            text = context.getString(R.string.three_stage_path, state.path.size + 1,
-                state.path.joinToString(" → ") { FlickDirectionMapper.toDisplayName(it, context) })
-            textSize = 14f
-            setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
-            setPadding(dp(4), dp(10), dp(4), dp(12))
+        binding.hierarchicalPath.text = context.getString(R.string.three_stage_path,
+            state.path.size + 1, state.path.joinToString(" → ") {
+                FlickDirectionMapper.toDisplayName(it, context)
+            })
+        binding.hierarchicalBack.isVisible = state.path.isNotEmpty()
+        renderGrid()
+        renderSelection()
+    }
+
+    private fun renderGrid() {
+        binding.hierarchicalGrid.setHierarchicalContent(state.currentMap().mapValues { (_, node) ->
+            when (node) {
+                is TfbiFlickNode.Input -> node.char
+                is TfbiFlickNode.SubMenu -> node.label.orEmpty() + " ›"
+                else -> ""
+            }
+        }, selectedDirection)
+    }
+
+    private fun renderSelection() {
+        val node = state.currentMap()[selectedDirection]
+        val isBranch = node is TfbiFlickNode.SubMenu
+        binding.hierarchicalSelectedDirection.text = context.getString(R.string.direction_action_label,
+            FlickDirectionMapper.toDisplayName(selectedDirection, context))
+        binding.hierarchicalInputLayout.hint = context.getString(
+            if (isBranch) R.string.three_stage_branch_label else R.string.two_step_output_label)
+        updatingInput = true
+        binding.hierarchicalInput.setText(when (node) {
+            is TfbiFlickNode.Input -> node.char
+            is TfbiFlickNode.SubMenu -> node.label.orEmpty()
+            else -> ""
         })
-        if (state.path.isNotEmpty()) {
-            addView(MaterialButton(context).apply {
-                text = context.getString(R.string.three_stage_back)
-                isAllCaps = false
-                cornerRadius = dp(10)
-                insetTop = 0
-                insetBottom = dp(4)
-                setPadding(dp(12), 0, dp(12), 0)
-                val surface = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface)
-                backgroundTintList = ColorStateList.valueOf(surface)
-                setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
-                strokeColor = ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
-                elevation = 0f
-                setOnClickListener { state.back(); render() }
-            }, LayoutParams(LayoutParams.WRAP_CONTENT, dp(44)))
-        }
-        val directions = listOf(
-            TfbiFlickDirection.UP_LEFT, TfbiFlickDirection.UP, TfbiFlickDirection.UP_RIGHT,
-            TfbiFlickDirection.LEFT, TfbiFlickDirection.TAP, TfbiFlickDirection.RIGHT,
-            TfbiFlickDirection.DOWN_LEFT, TfbiFlickDirection.DOWN, TfbiFlickDirection.DOWN_RIGHT
-        )
-        val map = state.currentMap()
-        directions.chunked(3).forEach { row ->
-            addView(LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                row.forEach { direction ->
-                    val node = map[direction]
-                    val output = when (node) {
-                        is TfbiFlickNode.Input -> node.char
-                        is TfbiFlickNode.SubMenu -> (node.label ?: "") + "  ›"
-                        else -> "—"
-                    }
-                    addView(MaterialButton(context).apply {
-                        val directionLabel = FlickDirectionMapper.toDisplayName(direction, context)
-                        val directionColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant)
-                        text = SpannableString("$directionLabel\n$output").apply {
-                            setSpan(RelativeSizeSpan(.72f), 0, directionLabel.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            setSpan(ForegroundColorSpan(directionColor), 0, directionLabel.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            if (node != null) setSpan(StyleSpan(Typeface.BOLD), directionLabel.length + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        }
-                        isAllCaps = false
-                        minWidth = 0
-                        maxLines = 3
-                        textSize = 14f
-                        insetTop = dp(3)
-                        insetBottom = dp(3)
-                        cornerRadius = dp(12)
-                        strokeWidth = dp(1)
-                        shapeAppearanceModel = ShapeAppearanceModel.builder()
-                            .setAllCorners(CornerFamily.ROUNDED, dp(12).toFloat()).build()
-                        val assigned = node != null
-                        val surface = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface)
-                        val outline = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOutline)
-                        val primaryContainer = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSecondaryContainer)
-                        val onPrimaryContainer = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSecondaryContainer)
-                        backgroundTintList = ColorStateList.valueOf(if (assigned) primaryContainer else surface)
-                        setTextColor(if (assigned) onPrimaryContainer else outline)
-                        strokeColor = ColorStateList.valueOf(if (assigned) primaryContainer else outline)
-                        elevation = 0f
-                        contentDescription = "$directionLabel, ${if (node == null) context.getString(R.string.three_stage_unassigned) else output}"
-                        setOnClickListener { editSlot(direction) }
-                    }, LayoutParams(0, dp(76), 1f).apply {
-                        setMargins(dp(3), dp(3), dp(3), dp(3))
-                    })
-                }
-            }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        }
+        binding.hierarchicalInput.setSelection(binding.hierarchicalInput.length())
+        updatingInput = false
+        binding.hierarchicalBranch.isVisible = isBranch || (
+            selectedDirection != TfbiFlickDirection.TAP &&
+                selectedDirection != state.path.lastOrNull() && state.path.size < 2)
+        binding.hierarchicalBranch.setText(
+            if (isBranch) R.string.three_stage_open else R.string.three_stage_add_branch)
+        binding.hierarchicalClear.isVisible = isBranch
     }
-
-    private fun editSlot(direction: TfbiFlickDirection) {
-        val node = state.currentMap()[direction]
-        val choices = mutableListOf<Pair<Int, () -> Unit>>()
-        if (node is TfbiFlickNode.SubMenu) {
-            choices += R.string.three_stage_open to { state.open(direction); render() }
-            choices += R.string.three_stage_branch_label to {
-                editText(node.label.orEmpty(), R.string.three_stage_branch_label) { state.setBranchLabel(direction, it); changed() }
-            }
-        }
-        choices += R.string.three_stage_output to {
-            editText((node as? TfbiFlickNode.Input)?.char.orEmpty()) {
-                state.setOutput(direction, it); changed()
-            }
-        }
-        if (node !is TfbiFlickNode.SubMenu && direction != TfbiFlickDirection.TAP && direction != state.path.lastOrNull() && state.path.size < 2) {
-            choices += R.string.three_stage_add_branch to {
-                state.makeBranch(direction)
-                state.open(direction)
-                changed()
-            }
-        }
-        if (node != null) choices += R.string.three_stage_clear to { state.delete(direction); changed() }
-        AlertDialog.Builder(context)
-            .setTitle(FlickDirectionMapper.toDisplayName(direction, context))
-            .setItems(choices.map { context.getString(it.first) }.toTypedArray()) { _, index -> choices[index].second() }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun editText(value: String, titleRes: Int = R.string.three_stage_output, save: (String) -> Unit) {
-        val input = TextInputEditText(context).apply { setText(value); setSelection(value.length) }
-        val layout = TextInputLayout(context).apply {
-            setPadding(dp(24), dp(8), dp(24), 0)
-            addView(input)
-        }
-        AlertDialog.Builder(context)
-            .setTitle(titleRes)
-            .setView(layout)
-            .setPositiveButton(android.R.string.ok) { _, _ -> save(input.text.toString()) }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun changed() { render(); onDefinitionChanged?.invoke() }
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

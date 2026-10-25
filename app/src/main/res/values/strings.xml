@@ -1956,10 +1956,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="three_stage_handakuten">Semi-voiced</string>
     <string name="three_stage_path">Stage %1$d / 3  %2$s</string>
     <string name="three_stage_back">Previous stage</string>
-    <string name="three_stage_unassigned">Unassigned</string>
     <string name="three_stage_open">Open next stage</string>
-    <string name="three_stage_branch_label">Edit branch label</string>
-    <string name="three_stage_output">Edit output</string>
+    <string name="three_stage_branch_label">Branch label</string>
     <string name="three_stage_add_branch">Create next stage</string>
     <string name="three_stage_clear">Remove assignment</string>
 </resources>
