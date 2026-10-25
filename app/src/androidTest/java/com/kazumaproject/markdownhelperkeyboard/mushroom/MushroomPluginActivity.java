@@ -19,6 +19,7 @@ public final class MushroomPluginActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus && editor != null) {
+            android.util.Log.i("MushroomFixture", "editor=" + editor.getText() + " selection=" + editor.getSelectionStart() + ":" + editor.getSelectionEnd());
             getSystemService(InputMethodManager.class).showSoftInput(editor, 0);
         }
     }
@@ -38,6 +39,7 @@ public final class MushroomPluginActivity extends Activity {
         }
         String value = getIntent().getStringExtra(REPLACE_KEY);
         final String source = value == null ? "" : value;
+        android.util.Log.i("MushroomFixture", "source=" + source);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         TextView description = new TextView(this);
@@ -47,6 +49,7 @@ public final class MushroomPluginActivity extends Activity {
             Button button = new Button(this);
             button.setText(label);
             button.setOnClickListener(view -> {
+                android.util.Log.i("MushroomFixture", "action=" + label + " source=" + source);
                 Intent result = new Intent();
                 if (label.equals("Return result")) result.putExtra(REPLACE_KEY, "[" + source + "]");
                 setResult(label.equals("Cancel") ? RESULT_CANCELED : RESULT_OK, result);

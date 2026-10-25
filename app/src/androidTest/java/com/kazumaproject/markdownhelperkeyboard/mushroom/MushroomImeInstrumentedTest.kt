@@ -33,7 +33,7 @@ class MushroomImeInstrumentedTest {
         }
         val focus = shell("dumpsys window").lineSequence()
             .filter { "mCurrentFocus" in it || "mFocusedApp" in it }.take(2).joinToString()
-        fail("$message; defaultIme=${shell("settings get secure default_input_method").trim()}; $focus")
+        fail("$message; defaultIme=${shell("settings get secure default_input_method").trim()}; $focus; visible=${visibleText()}")
     }
     private fun prepareIme(target: String) {
         ins.uiAutomation.serviceInfo = ins.uiAutomation.serviceInfo.apply {
@@ -49,6 +49,12 @@ class MushroomImeInstrumentedTest {
     }
     private fun roots(): List<AccessibilityNodeInfo> = ins.uiAutomation.windows.mapNotNull { it.root }
         .ifEmpty { listOfNotNull(ins.uiAutomation.rootInActiveWindow) }
+    private fun visibleText(): String {
+        fun collect(node: AccessibilityNodeInfo): List<String> =
+            (if (node.isVisibleToUser) listOfNotNull(node.text?.toString()) else emptyList()) +
+                (0 until node.childCount).flatMap { node.getChild(it)?.let(::collect).orEmpty() }
+        return roots().flatMap(::collect).joinToString(" | ")
+    }
     private fun hasText(text: String): Boolean = roots().any { root ->
         root.findAccessibilityNodeInfosByText(text).any { it.isVisibleToUser }
     }
@@ -196,7 +202,7 @@ class MushroomImeInstrumentedTest {
                 }
                 editor("abc", 1, 2)
                 launch()
-                assertTrue(hasText("Source: b"))
+                await("Plugin received selected text b") { hasText("Source: b") }
                 assertTrue(click("Return result"))
                 textIs("a[b]c")
 
@@ -215,7 +221,7 @@ class MushroomImeInstrumentedTest {
 
                 editor("前後", 1)
                 launch("かな")
-                assertTrue(hasText("Source: かな"))
+                await("Plugin received preedit かな") { hasText("Source: かな") }
                 assertTrue(click("Return result"))
                 textIs("前[かな]後")
 
