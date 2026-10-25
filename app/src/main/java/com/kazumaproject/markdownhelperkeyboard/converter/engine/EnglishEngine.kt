@@ -1,6 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
-import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
@@ -676,9 +675,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                             surface,
                             typoType,
                             surface.length.toUByte(),
-                            entry.wordCost.toInt() + casePenalty + penalty,
-                            correctionReading = readingStr,
-                            correctionMask = ConversionCorrection.ENGLISH_QWERTY,
+                            entry.wordCost.toInt() + casePenalty + penalty
                         )
                     }
                 }

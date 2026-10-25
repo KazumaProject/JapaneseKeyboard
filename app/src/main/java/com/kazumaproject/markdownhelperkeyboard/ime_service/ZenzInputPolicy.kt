@@ -7,14 +7,12 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateC
 internal object ZenzInputPolicy {
     fun enabledMask(options: CandidateCorrectionOptions): Int =
         (if (options.omissionEnabled) ConversionCorrection.OMISSION else 0) or
-            (if (options.japaneseFlickEnabled) ConversionCorrection.JAPANESE_FLICK else 0) or
-            (if (options.englishQwertyEnabled) ConversionCorrection.ENGLISH_QWERTY else 0)
+            (if (options.japaneseFlickEnabled) ConversionCorrection.JAPANESE_FLICK else 0)
 
     fun reading(input: String, bestNBestCandidate: Candidate?, options: CandidateCorrectionOptions): String {
         val candidate = bestNBestCandidate ?: return input
         if (candidate.correctionMask and enabledMask(options) == 0) return input
-        return candidate.correctionReading?.takeIf { it.isNotEmpty() }
-            ?: candidate.yomi?.takeIf { it.isNotEmpty() }
+        return candidate.yomi?.takeIf { it.isNotEmpty() }
             ?: input
     }
 }

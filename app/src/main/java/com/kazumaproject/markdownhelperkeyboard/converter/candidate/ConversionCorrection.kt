@@ -5,7 +5,6 @@ object ConversionCorrection {
     const val NONE = 0
     const val OMISSION = 1
     const val JAPANESE_FLICK = 2
-    const val ENGLISH_QWERTY = 4
 }
 
 /** Captures N-best before prediction, utility candidates, or display ordering are applied. */

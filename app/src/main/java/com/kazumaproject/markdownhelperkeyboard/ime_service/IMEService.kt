@@ -4245,7 +4245,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val correctionPreferencesChanged =
             isOmissionSearchEnable != preferences.isOmissionSearchEnable ||
                 enableTypoCorrectionJapaneseFlickKeyboardPreference != preferences.enableTypoCorrectionJapaneseFlickKeyboardPreference ||
-                enableTypoCorrectionQwertyEnglishKeyboardPreference != preferences.enableTypoCorrectionQwertyEnglishKeyboardPreference ||
                 omissionSearchOffsetScorePreference != preferences.omissionSearchOffsetScorePreference ||
                 enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference != preferences.enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
         if (correctionPreferencesChanged) {

@@ -58,18 +58,11 @@ class ZenzCorrectionPerformanceInstrumentedTest {
         val sets = args.getString("sets")?.toInt() ?: 3
         val memoryOnly = args.getString("memoryOnly") == "true"
         val selectionOnly = args.getString("selectionOnly") == "true"
-        fun filter(name: String) = args.getString(name)?.split(",")?.toSet()
-        val selectedConditions = filter("conditions")
-        val selectedBackends = filter("backends")
-        val selectedInputs = filter("inputs")
-        val selectedOperations = filter("operations")
-        val conditions = listOf("none", "omission", "flick", "both", "qwerty")
-        report.appendLine("filters: conditions=$selectedConditions,backends=$selectedBackends,inputs=$selectedInputs,operations=$selectedOperations")
+        val conditions = listOf("none", "omission", "flick", "both")
         report.appendLine("device=${android.os.Build.MODEL},api=${android.os.Build.VERSION.SDK_INT},warmups=$warmups,iterations=$iterations,sets=$sets,memoryOnly=$memoryOnly")
-        for (condition in conditions.filter { selectedConditions == null || it in selectedConditions }) {
-            val inputs = if (condition == "qwerty") listOf("hello", "hellp", "keyboarf")
-                else listOf("きょう", "かつこう", "とえけい", "このあぷりのへんかんこうほをこうそくにしたい")
-            for (backend in ConversionBackend.entries.filter { selectedBackends == null || it.name in selectedBackends }) {
+        for (condition in conditions) {
+            val inputs = listOf("きょう", "かつこう", "とえけい", "このあぷりのへんかんこうほをこうそくにしたい")
+            for (backend in ConversionBackend.entries) {
                 val session = KanaKanjiConversionSession(engine, backend)
                 if (selectionOnly) session.enablePerformanceProbe()
                 fun request(input: String) = KanaKanjiQueryRequest(
@@ -77,14 +70,13 @@ class ZenzCorrectionPerformanceInstrumentedTest {
                     n=4, userDictionaryRepository=repository, learnRepository=null,
                     omissionSearchEnabled=condition == "omission" || condition == "both",
                     typoCorrectionJapaneseFlickEnabled=condition == "flick" || condition == "both",
-                    typoCorrectionQwertyEnglishEnabled=condition == "qwerty",
+                    typoCorrectionQwertyEnglishEnabled=false,
                     typoCorrectionOffsetScore=3000, omissionSearchOffsetScore=1900, beamWidth=20,
                 )
-                for (input in inputs.filter { selectedInputs == null || it in selectedInputs }) {
+                for (input in inputs) {
                     val sequence = (1..input.length).map { input.take(it) } +
                         (input.length-1 downTo 1).map { input.take(it) }
-                    for ((kind, commands) in listOf("single" to listOf(input), "edit" to sequence)
-                        .filter { selectedOperations == null || it.first in selectedOperations }) {
+                    for ((kind, commands) in listOf("single" to listOf(input), "edit" to sequence)) {
                         repeat(warmups) { for (command in commands) session.query(request(command)) }
                         val samples = ArrayList<Long>()
                         val selectionSamples = ArrayList<Long>()

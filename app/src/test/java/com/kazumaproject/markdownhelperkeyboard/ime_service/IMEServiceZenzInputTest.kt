@@ -77,6 +77,17 @@ class IMEServiceZenzInputTest {
             .invoke(service, input.value, latestToken, latestContext, KanaKanjiQueryResult(listOf(corrected), bestNBestCandidate = corrected))
     }
 
+    @Test fun englishPreeditIsNotEligibleForAutomaticOrManualZenz() {
+        val sourceClass = IMEService::class.java.declaredClasses.single { it.simpleName == "ZenzRequestSource" }
+        val method = IMEService::class.java.declaredMethods.single { it.name == "shouldRequestZenzLiveGenerate" }
+            .apply { isAccessible = true }
+        for (name in listOf("AutoLive", "ManualConvertLongPress")) {
+            val source = sourceClass.enumConstants.single { (it as Enum<*>).name == name }
+            assertFalse(method.invoke(service, "hellp", source) as Boolean)
+            assertTrue(method.invoke(service, "かつこう", source) as Boolean)
+        }
+    }
+
     @Test fun manualRequestAwaitsTheInFlightLocalQuery() = runBlocking {
         val request = request(manual = true, record = false)
         val pendingClass = IMEService::class.java.declaredClasses.single { it.simpleName == "PendingZenzReading" }

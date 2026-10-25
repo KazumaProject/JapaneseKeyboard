@@ -43,23 +43,12 @@ class ZenzInputPolicyTest {
         val cases = listOf(
             ConversionCorrection.OMISSION to CandidateCorrectionOptions(true, false, false),
             ConversionCorrection.JAPANESE_FLICK to CandidateCorrectionOptions(false, true, false),
-            ConversionCorrection.ENGLISH_QWERTY to CandidateCorrectionOptions(false, false, true),
         )
         for ((mask, options) in cases) {
             assertEquals("がっこう", ZenzInputPolicy.reading("かつこう", candidate(1, mask), options))
             assertEquals("かつこう", ZenzInputPolicy.reading("かつこう", candidate(1, mask), CandidateCorrectionOptions(false, false, false)))
         }
         assertEquals("かつこう", ZenzInputPolicy.reading("かつこう", candidate(1, ConversionCorrection.JAPANESE_FLICK), cases[0].second))
-    }
-
-    @Test fun englishCorrectionReadingDoesNotChangeTheNormalCandidateYomi() {
-        val candidate = Candidate(
-            string = "Hello", type = 35, length = 5u, score = 9000,
-            correctionMask = ConversionCorrection.ENGLISH_QWERTY, correctionReading = "hello",
-        )
-        assertNull(candidate.yomi)
-        assertEquals("hello", ZenzInputPolicy.reading("hellp", candidate, CandidateCorrectionOptions(false, false, true)))
-        assertEquals("hellp", ZenzInputPolicy.reading("hellp", candidate, CandidateCorrectionOptions(false, false, false)))
     }
 
     @Test fun differentReadingWithoutCorrectionProvenanceIsNotEnough() {

@@ -29,6 +29,4 @@ data class Candidate(
     val standaloneUnigramMatched: Boolean = false,
     val dictionaryCategories: Set<DictionaryCategory> = emptySet(),
     val correctionMask: Int = 0,
-    /** Corrected source reading without changing the candidate's normal reading presentation. */
-    val correctionReading: String? = null,
 )

@@ -56,7 +56,7 @@ build "$baseline_root" before
 build "$head_root" after
 (cd "$head_root" && ./gradlew :app:testFullStandardDebugUnitTest \
     --tests '*Zenz*Test' --tests '*KanaKanjiConversionSessionParityTest' \
-    --tests '*CandidateCorrectionPolicyTest' --tests '*EnglishCandidateCaseResolverTest' \
+    --tests '*CandidateCorrectionPolicyTest' \
     --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g \
     -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
     > "$artifact_dir/logs/related-unit-tests.txt" 2>&1
@@ -64,7 +64,7 @@ build "$head_root" after
 # Verify the edition without zenz as well, using the same scoped unit-test selection.
 (cd "$head_root" && ./gradlew :app:testLiteStandardDebugUnitTest \
     --tests '*Zenz*Test' --tests '*KanaKanjiConversionSessionParityTest' \
-    --tests '*CandidateCorrectionPolicyTest' --tests '*EnglishCandidateCaseResolverTest' \
+    --tests '*CandidateCorrectionPolicyTest' \
     :app:assembleLiteStandardDebug \
     --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g \
     -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
@@ -162,7 +162,6 @@ runner="$package.test/androidx.test.runner.AndroidJUnitRunner"
 adb -s "$serial" shell getprop > "$artifact_dir/device-properties-$phase.txt"
 free -h > "$artifact_dir/runner-memory-$phase.txt"
 lscpu > "$artifact_dir/runner-cpu-$phase.txt"
-sha256sum "$package_dir"/*/*.apk > "$artifact_dir/apk-sha-$phase.txt"
 install_build() {
     adb -s "$serial" install -r -t "$package_dir/$1/app.apk" > /dev/null
     adb -s "$serial" install -r -t "$package_dir/$1/test.apk" > /dev/null
@@ -231,46 +230,6 @@ case "$phase" in
             install_build "$label"
             run_probe "$label" "time-set$set" "$core" zenz-correction-perf.txt false \
                 -e zenzCorrectionPerf true -e sets 1 -e iterations 100 -e warmups 20
-        done
-        ;;
-    confirm)
-        # Recheck p50/p95 outliers after a longer warm-up, retaining every result.
-        for spec in qwerty:hello both:かつこう omission:とえけい none:かつこう; do
-            condition="${spec%%:*}"; input="${spec#*:}"
-            backends=LEGACY
-            if [[ "$condition" == qwerty ]]; then backends=LEGACY,INCREMENTAL_SESSION; fi
-            for set in 0 1 2; do
-                order=(before after)
-                if ((set % 2)); then order=(after before); fi
-                for label in "${order[@]}"; do
-                    install_build "$label"
-                    run_probe "$label" "confirm-$condition-set$set" "$core" zenz-correction-perf.txt false \
-                        -e zenzCorrectionPerf true -e sets 1 -e iterations 1000 -e warmups 1000 \
-                        -e conditions "$condition" -e backends "$backends" -e inputs "$input" -e operations single
-                done
-            done
-        done
-        ;;
-    control)
-        # Separate AOT/fresh-data diagnosis from the original Debug/JIT measurements.
-        for kind in pair same-apk; do
-            for set in 0 1 2; do
-                order=(before after)
-                if ((set % 2)); then order=(after before); fi
-                for label in "${order[@]}"; do
-                    source="$label"
-                    if [[ "$kind" == same-apk ]]; then source=after; fi
-                    install_build "$source"
-                    adb -s "$serial" shell pm clear "$package" > "$artifact_dir/$kind-$set-$label-clear.txt"
-                    adb -s "$serial" shell cmd package compile --reset "$package" > "$artifact_dir/$kind-$set-$label-reset.txt"
-                    adb -s "$serial" shell cmd package compile -m speed -f "$package" > "$artifact_dir/$kind-$set-$label-compile.txt"
-                    grep -q Success "$artifact_dir/$kind-$set-$label-compile.txt"
-                    adb -s "$serial" shell dumpsys package "$package" > "$artifact_dir/$kind-$set-$label-package.txt"
-                    run_probe "$label" "$kind-set$set" "$core" zenz-correction-perf.txt false \
-                        -e zenzCorrectionPerf true -e sets 1 -e iterations 1000 -e warmups 1000 \
-                        -e conditions qwerty -e backends LEGACY,INCREMENTAL_SESSION -e inputs hello -e operations single
-                done
-            done
         done
         ;;
     memory)
