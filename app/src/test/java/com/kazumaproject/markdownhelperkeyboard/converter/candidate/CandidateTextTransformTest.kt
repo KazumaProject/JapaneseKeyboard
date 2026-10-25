@@ -36,6 +36,14 @@ class CandidateTextTransformTest {
         assertTrue(translated.dictionaryOrigins.isEmpty())
         assertTrue(translated.dictionaryCategories.isEmpty())
         assertTrue(translated.conversionSegments.isEmpty())
+        assertNull(translated.yomi)
+        assertFalse(com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateYomiPresentation(
+            showCandidateYomiForLiveConversion = true,
+            isFirstCandidate = true,
+            suggestion = translated,
+            readingTextSize = 12f,
+            readingMode = "whole",
+        ).isVisible)
         assertNull(translated.sourceId)
     }
 

@@ -28,6 +28,7 @@ internal fun Candidate.transformLiteralText(transform: (String) -> String): Cand
 internal fun Candidate.withGeneratedText(text: String, resultType: Byte): Candidate =
     withLiteralText(text).copy(
         type = resultType,
+        yomi = null,
         dictionaryOrigins = emptySet(),
         dictionaryCategories = emptySet(),
         presentation = null,
