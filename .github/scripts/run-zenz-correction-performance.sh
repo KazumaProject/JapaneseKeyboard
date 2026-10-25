@@ -6,6 +6,8 @@ head_root="$(pwd)"
 baseline_root="${RUNNER_TEMP:?}/zenz-correction-baseline"
 artifact_dir="${ZENZ_PERF_ARTIFACT_DIR:?}"
 baseline_ref="${ZENZ_PERF_BASELINE_REF:-dev}"
+phase="${ZENZ_PERF_PHASE:-build}"
+package_dir="${ZENZ_PERF_PACKAGE_DIR:?}"
 mkdir -p "$artifact_dir/logs"
 collect_unit_results() {
     local kind="${1:-latest}" label root edition directory
@@ -20,14 +22,8 @@ collect_unit_results() {
         done
     done
 }
+if [[ "$phase" == build ]]; then
 trap collect_unit_results EXIT
-export IME_EMULATOR_LOG_DIR="$artifact_dir/logs"
-export IME_EMULATOR_READINESS_LOG="$artifact_dir/logs/android-readiness.log"
-source "$head_root/.github/scripts/ime-emulator-common.sh"
-ime_emulator_prepare
-serial="$IME_EMULATOR_SERIAL"
-package=com.kazumaproject.markdownhelperkeyboard
-runner="$package.test/androidx.test.runner.AndroidJUnitRunner"
 
 # Use identical benchmark sources with the baseline converter. The feature-specific
 # device assertion needs the new API and is deliberately not copied into baseline.
@@ -147,14 +143,28 @@ from pathlib import Path
 root=Path(sys.argv[1])
 assert json.loads((root/'before-apk.json').read_text())['assets'] == json.loads((root/'after-apk.json').read_text())['assets'], 'Packaged dictionary/model assets differ'
 PY
-adb -s "$serial" shell getprop > "$artifact_dir/device-properties.txt"
-free -h > "$artifact_dir/runner-memory.txt"
-lscpu > "$artifact_dir/runner-cpu.txt"
+for label in before after; do
+    root="$head_root"; if [[ "$label" == before ]]; then root="$baseline_root"; fi
+    mkdir -p "$package_dir/$label"
+    cp "$(apk "$root" app)" "$package_dir/$label/app.apk"
+    cp "$(apk "$root" test)" "$package_dir/$label/test.apk"
+done
+exit 0
+fi
 
+export IME_EMULATOR_LOG_DIR="$artifact_dir/logs"
+export IME_EMULATOR_READINESS_LOG="$artifact_dir/logs/android-readiness.log"
+source "$head_root/.github/scripts/ime-emulator-common.sh"
+ime_emulator_prepare
+serial="$IME_EMULATOR_SERIAL"
+package=com.kazumaproject.markdownhelperkeyboard
+runner="$package.test/androidx.test.runner.AndroidJUnitRunner"
+adb -s "$serial" shell getprop > "$artifact_dir/device-properties-$phase.txt"
+free -h > "$artifact_dir/runner-memory-$phase.txt"
+lscpu > "$artifact_dir/runner-cpu-$phase.txt"
 install_build() {
-    local root="$1"
-    adb -s "$serial" install -r -t "$(apk "$root" app)" > /dev/null
-    adb -s "$serial" install -r -t "$(apk "$root" test)" > /dev/null
+    adb -s "$serial" install -r -t "$package_dir/$1/app.apk" > /dev/null
+    adb -s "$serial" install -r -t "$package_dir/$1/test.apk" > /dev/null
 }
 run_probe() {
     local label="$1" name="$2" test="$3" output="$4" sample="$5"
@@ -162,6 +172,7 @@ run_probe() {
     local directory="$artifact_dir/$label"
     mkdir -p "$directory"
     adb -s "$serial" shell am force-stop "$package"
+    adb -s "$serial" shell run-as "$package" rm -f "files/$output"
     local stop_file="$directory/$name-sampling-finished" sampler=""
     rm -f "$stop_file"
     if [[ "$sample" == true ]]; then
@@ -176,11 +187,24 @@ run_probe() {
         sampler=$!
     fi
     echo "Running $label/$name"
+    local report_sampler
+    (
+        while [[ ! -f "$stop_file" ]]; do
+            if adb -s "$serial" exec-out run-as "$package" cat "files/$output" > "$directory/$name-report.tmp" 2>/dev/null; then
+                mv "$directory/$name-report.tmp" "$directory/$name-report.txt"
+            fi
+            sleep 15
+        done
+    ) &
+    report_sampler=$!
     local result=0
     timeout 7200 adb -s "$serial" shell am instrument -w -r -e class "$test" "$@" "$runner" \
         > "$directory/$name-instrumentation.txt" 2>&1 || result=$?
     touch "$stop_file"
     if [[ -n "$sampler" ]]; then wait "$sampler" || true; fi
+    kill "$report_sampler" 2>/dev/null || true
+    wait "$report_sampler" 2>/dev/null || true
+    rm -f "$directory/$name-report.tmp"
     rm -f "$stop_file"
     adb -s "$serial" exec-out run-as "$package" cat "files/$output" \
         > "$directory/$name-report.txt" 2> "$directory/$name-pull-errors.txt" || true
@@ -193,33 +217,44 @@ core="$package.converter.ZenzCorrectionPerformanceInstrumentedTest#measureCorrec
 native="$package.zenz.ZenzRuntimeInstrumentedTest#measureGenerationPerformance"
 floating="$package.zenz.ZenzFloatingCandidateInstrumentedTest#measureFloatingResultLatency"
 
-# Alternate order for each set, with fresh processes and the same warm-up each time.
-for set in 0 1 2; do
-    order=(before after)
-    if ((set % 2)); then order=(after before); fi
-    for label in "${order[@]}"; do
-        root="$head_root"; if [[ "$label" == before ]]; then root="$baseline_root"; fi
-        install_build "$root"
-        run_probe "$label" "time-set$set" "$core" zenz-correction-perf.txt false \
-            -e zenzCorrectionPerf true -e sets 1 -e iterations 100 -e warmups 20
-    done
-done
-for label in before after; do
-    root="$head_root"; if [[ "$label" == before ]]; then root="$baseline_root"; fi
-    install_build "$root"
-    run_probe "$label" memory "$core" zenz-correction-perf.txt true \
-        -e zenzCorrectionPerf true -e memoryOnly true -e sets 1 -e iterations 100 -e warmups 20
-    for cold in 0 1 2 3 4; do
-        run_probe "$label" "cold$cold" "$core" zenz-correction-perf.txt false -e zenzCorrectionPerf true -e coldOnly true
-        run_probe "$label" "zenz-cold$cold" "$native" zenz-generation-perf.txt false -e zenzGenerationPerf true -e coldOnly true
-    done
-    run_probe "$label" generation "$native" zenz-generation-perf.txt false -e zenzGenerationPerf true
-    run_probe "$label" generation-memory "$native" zenz-generation-perf.txt true -e zenzGenerationPerf true
-    run_probe "$label" floating "$floating" zenz-floating-perf.txt false -e zenzFloatingPerf true
-    run_probe "$label" floating-memory "$floating" zenz-floating-perf.txt true -e zenzFloatingPerf true
-done
-install_build "$head_root"
-run_probe after selection "$core" zenz-correction-perf.txt false \
-    -e zenzCorrectionPerf true -e selectionOnly true -e sets 1 -e iterations 100 -e warmups 20
-run_probe after correction-ime "$package.zenz.ZenzFloatingCandidateInstrumentedTest#correctionSettingsAutomaticallySelectTheMinimumNBestReading" \
-    zenz-correction-ime.txt false -e zenzCorrectionImeProbe true
+# Each timing pair shares one runner/emulator; alternate the before/after order.
+case "$phase" in
+    time[012])
+        set="${phase#time}"
+        order=(before after)
+        if ((set % 2)); then order=(after before); fi
+        for label in "${order[@]}"; do
+            install_build "$label"
+            run_probe "$label" "time-set$set" "$core" zenz-correction-perf.txt false \
+                -e zenzCorrectionPerf true -e sets 1 -e iterations 100 -e warmups 20
+        done
+        ;;
+    memory)
+        for label in before after; do
+            install_build "$label"
+            run_probe "$label" memory "$core" zenz-correction-perf.txt true \
+                -e zenzCorrectionPerf true -e memoryOnly true -e sets 1 -e iterations 100 -e warmups 20
+        done
+        ;;
+    runtime)
+        for label in before after; do
+            install_build "$label"
+            for cold in 0 1 2 3 4; do
+                run_probe "$label" "cold$cold" "$core" zenz-correction-perf.txt false -e zenzCorrectionPerf true -e coldOnly true
+                run_probe "$label" "zenz-cold$cold" "$native" zenz-generation-perf.txt false -e zenzGenerationPerf true -e coldOnly true
+            done
+            run_probe "$label" generation "$native" zenz-generation-perf.txt false -e zenzGenerationPerf true
+            run_probe "$label" generation-memory "$native" zenz-generation-perf.txt true -e zenzGenerationPerf true
+            run_probe "$label" floating "$floating" zenz-floating-perf.txt false -e zenzFloatingPerf true
+            run_probe "$label" floating-memory "$floating" zenz-floating-perf.txt true -e zenzFloatingPerf true
+        done
+        ;;
+    feature)
+        install_build after
+        run_probe after selection "$core" zenz-correction-perf.txt false \
+            -e zenzCorrectionPerf true -e selectionOnly true -e sets 1 -e iterations 100 -e warmups 20
+        run_probe after correction-ime "$package.zenz.ZenzFloatingCandidateInstrumentedTest#correctionSettingsAutomaticallySelectTheMinimumNBestReading" \
+            zenz-correction-ime.txt false -e zenzCorrectionImeProbe true
+        ;;
+    *) echo "Unknown measurement phase: $phase" >&2; exit 2 ;;
+esac
