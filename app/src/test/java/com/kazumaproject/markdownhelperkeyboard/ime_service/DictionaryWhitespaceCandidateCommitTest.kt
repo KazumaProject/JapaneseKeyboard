@@ -53,6 +53,13 @@ class DictionaryWhitespaceCandidateCommitTest {
             for (type in listOf(40.toByte(), CANDIDATE_TYPE_DIGIT_DATE)) {
                 val editor = Editor()
                 val service = spy(IMEService())
+                val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+                com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.init(context)
+                service.appPreference = com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+                ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
+                    ClassParameter.from(android.content.Context::class.java, context))
+                ReflectionHelpers.setField(service, "runtimeInputSharedPreferences",
+                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(context))
                 doReturn(editor).`when`(service).getCurrentInputConnection()
                 val candidate = Candidate("12月31日", type, 4u, 8000)
                 ReflectionHelpers.callInstanceMethod<Unit>(service, "processCandidate",
