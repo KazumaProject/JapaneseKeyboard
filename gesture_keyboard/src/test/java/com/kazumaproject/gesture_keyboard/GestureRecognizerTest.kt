@@ -6,7 +6,7 @@ import org.junit.Test
 class GestureRecognizerTest {
     @Test fun everyOriginalPresetRecognizesAndToleratesTranslationAndUniformScale() {
         val sets = GesturePresets.sets()
-        assertEquals(listOf(49, 26, 10), sets.map { it.entries.size })
+        assertEquals(listOf(49, 26, 10, 26), sets.map { it.entries.size })
         sets.forEach { set ->
             set.validate()
             val recognizer = GestureRecognizer.Prepared(set)

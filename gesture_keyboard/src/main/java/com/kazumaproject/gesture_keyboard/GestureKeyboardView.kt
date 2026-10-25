@@ -16,9 +16,13 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.PopupWindow
 import android.view.WindowManager
 import android.app.Activity
 import java.util.concurrent.Executors
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import androidx.core.graphics.drawable.DrawableCompat
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.skin.SkinKeyRole
@@ -27,10 +31,13 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     var inputAllowed: () -> Boolean = { true }
     var onInteraction: () -> Unit = {}
     var onOutput: (GestureOutput) -> Boolean = { false }
-    var onCommand: (GestureCommand) -> Unit = {}
+    var onCommand: (KeyAction) -> Unit = {}
     var onOpenSettings: () -> Unit = {}
     /** Floating windows are subwindows; attach dialogs to the original IME window. */
     var dialogToken: () -> android.os.IBinder? = { windowToken }
+    var menuAnchor: () -> View = { this }
+    var onBeforeStateChange: () -> Unit = {}
+    var onPadBoundsChanged: ((String, GestureBounds) -> Unit)? = null
     var onStateChanged: (GestureSessionState) -> Unit = {}
     var onControlSelected: ((String) -> Unit)? = null
     var onControlMove: ((String, GestureSide, Int) -> Unit)? = null
@@ -40,8 +47,9 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     var session = GestureSessionState()
         private set
     val isEditing: Boolean get() = onControlSelected != null
-    val leftPad = GesturePadView(context)
-    val rightPad = GesturePadView(context)
+    private val canvas = GestureCanvasView(context)
+    val leftPad get() = canvas.pads.values.first()
+    val rightPad get() = canvas.pads.values.elementAtOrNull(1) ?: leftPad
     private val ja get() = resources.configuration.locales[0].language == "ja"
     private val main = Handler(Looper.getMainLooper())
     private var epoch = 0L
@@ -52,6 +60,7 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     private var showGuide = true
     private var renderedEditing = false
     private var dialog: AlertDialog? = null
+    private var popup: PopupWindow? = null
     private var prepared = emptyMap<String, GestureRecognizer.Prepared>()
     private var bg = 0xfff1f4fa.toInt()
     private var keyBg = Color.WHITE
@@ -59,10 +68,10 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     private var special = 0xffe8edf6.toInt()
     private var skinId = KeyboardSkinId.DEFAULT
     private val body = LinearLayout(context)
-    private val middle = LinearLayout(context)
+    private val middle = canvas
     private val preview = TextView(context)
     private val controls = mutableMapOf<String, Button>()
-    private val titles = mutableMapOf<GestureSide, Button>()
+
     private var repeatTask: Runnable? = null
 
     init {
@@ -79,9 +88,9 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
                   guide: Boolean = true, distance: Float = GestureRecognizer.DEFAULT_MAX_DISTANCE) {
         val nextSets = available.ifEmpty { GesturePresets.sets(ja) }
         val ids = nextSets.map { it.id }.toSet()
-        val safeState = state.copy(
-            leftSetId = state.leftSetId.takeIf { it in ids } ?: nextSets.first().id,
-            rightSetId = state.rightSetId.takeIf { it in ids } ?: nextSets.last().id)
+        val safeState = state.copy(pads = state.pads.map { pad ->
+            if (pad.setId in ids) pad else pad.copy(setId = nextSets.first().id, romajiOverride = null)
+        })
         if (sets == nextSets && session == safeState && layout == controls && showGuide == guide && maxDistance == distance && renderedEditing == isEditing) return
         cancelInput()
         sets = nextSets; session = safeState; layout = controls; showGuide = guide; maxDistance = distance
@@ -101,55 +110,34 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     }
     fun cancelInput() {
         epoch++
-        leftPad.cancelStroke(); rightPad.cancelStroke()
+        canvas.pads.values.forEach { it.cancelStroke() }
         main.removeCallbacksAndMessages(null); repeatTask = null
     }
     private fun rebuild() {
         cancelInput()
-        body.removeAllViews(); middle.removeAllViews(); controls.clear(); titles.clear()
+        body.removeAllViews(); controls.clear()
         setBackgroundColor(bg)
         KeyboardSkinRegistry.find(skinId)?.let { background = it.keyboardDrawable(resources) }
         preview.setTextColor(fg)
         body.addView(controlColumn(GestureSide.LEFT), LayoutParams(if (isEditing || layout.leftKeys.isNotEmpty()) dp(48) else 0, -1))
         body.addView(middle, LayoutParams(0, -1, 1f))
-        body.addView(controlColumn(GestureSide.RIGHT), LayoutParams(if (isEditing || layout.rightKeys.isNotEmpty()) dp(48) else 0, -1))
-        middle.orientation = HORIZONTAL
-        GestureSide.entries.forEach { side ->
-            val column = LinearLayout(context).apply { orientation = VERTICAL }
-            val header = LinearLayout(context)
-            val set = sets.firstOrNull { it.id == session.setId(side) } ?: sets.first()
-            val title = button(set.name).apply {
-                id = if (side == GestureSide.LEFT) R.id.gesture_set_left else R.id.gesture_set_right
-                textSize = 12f
-                setOnClickListener { selectSet(side) }
-                contentDescription = (if (side == GestureSide.LEFT) { if (ja) "左: " else "Left: " } else { if (ja) "右: " else "Right: " }) + set.name
-            }
-            titles[side] = title
-            header.addView(title, LayoutParams(0, -1, 1f))
-            if (set.id == GesturePresets.LATIN) header.addView(button(if (session.uppercase(side)) "A" else "a").apply {
-                setOnClickListener { cancelInput(); session = session.toggleCase(side); onStateChanged(session); rebuild() }
-            }, LayoutParams(dp(32), -1))
-            val menu = button("⋮").apply { contentDescription = if (ja) "メニュー" else "Menu"; setOnClickListener { menu(side) } }
-            header.addView(menu, LayoutParams(dp(28), -1))
-            column.addView(header, LayoutParams(-1, dp(40)))
-            val pad = if (side == GestureSide.LEFT) leftPad else rightPad
-            pad.id = if (side == GestureSide.LEFT) R.id.gesture_pad_left else R.id.gesture_pad_right
-            (pad.parent as? android.view.ViewGroup)?.removeView(pad)
-            pad.inkColor = fg
-            pad.background = KeyboardSkinRegistry.find(skinId)?.keyDrawable(resources, role = SkinKeyRole.CHARACTER) ?: background(keyBg)
-            pad.captureAllowed = { !isEditing && inputAllowed() }
-            pad.onStart = { onInteraction() }
-            pad.onStroke = { stroke -> recognize(side, stroke) }
-            column.addView(pad, LayoutParams(-1, 0, 1f))
-            middle.addView(column, LayoutParams(0, -1, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
-        }
+        body.addView(controlColumn(GestureSide.RIGHT), LayoutParams(dp(48), -1))
+        canvas.onBoundsChanged = { id, bounds -> onPadBoundsChanged?.invoke(id, bounds) }
+        canvas.configure(session, sets, isEditing, fg,
+            { KeyboardSkinRegistry.find(skinId)?.keyDrawable(resources, role = SkinKeyRole.CHARACTER) ?: background(keyBg) },
+            { inputAllowed() },
+            { id ->
+                if (session.activePadId != id) { session = session.copy(activePadId = id); onStateChanged(session); refreshSelection() }
+                onInteraction()
+            }, ::recognize)
         refreshSelection()
     }
-    private fun recognize(side: GestureSide, stroke: List<GesturePoint>) {
+    private fun recognize(padId: String, stroke: List<GesturePoint>) {
         if (!inputAllowed() || isEditing) return
         val generation = epoch
-        val matcher = prepared[session.setId(side)] ?: GestureRecognizer.Prepared(sets.first { it.id == session.setId(side) })
-        val uppercase = session.uppercase(side) && session.setId(side) == GesturePresets.LATIN
+        val pad = session.pads.first { it.id == padId }
+        val set = sets.first { it.id == pad.setId }
+        val matcher = prepared[set.id] ?: GestureRecognizer.Prepared(set)
         val threshold = maxDistance
         worker.execute {
             val match = matcher.recognize(stroke, threshold)
@@ -158,42 +146,110 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
                 if (match == null) {
                     preview.text = if (ja) "認識できません。もう一度描いてください" else "Not recognized. Please try again."
                 } else {
-                    val output = match.entry.output.let {
-                        if (uppercase && it is GestureOutput.LiteralText) it.copy(text = it.text.uppercase(java.util.Locale.ROOT)) else it
+                    val raw = match.entry.output
+                    val text = when (raw) { is GestureOutput.LiteralText -> raw.text; is GestureOutput.Reading -> raw.text; else -> null }
+                    val output = when {
+                        raw is GestureOutput.Command -> raw
+                        pad.direct && text != null -> GestureOutput.LiteralText(if (pad.uppercase || pad.shift) text.uppercase(java.util.Locale.ROOT) else text)
+                        raw is GestureOutput.LiteralText && (pad.romajiOverride ?: set.isRomaji) && raw.text.all { it in 'a'..'z' || it in 'A'..'Z' } -> GestureOutput.Romaji(raw.text)
+                        raw is GestureOutput.LiteralText && (pad.uppercase || pad.shift) -> raw.copy(text = raw.text.uppercase(java.util.Locale.ROOT))
+                        else -> raw
                     }
-                    preview.text = GestureLabels.output(output, ja)
-                    if (output is GestureOutput.Command) onCommand(output.action) else onOutput(output)
+                    preview.text = GestureLabels.output(output, context)
+                    if (output is GestureOutput.Command) { session = session.copy(activePadId = padId); onCommand(output.action) }
+                    else onOutput(output)
+                    if (pad.shift && output !is GestureOutput.Command) { session = session.update(padId) { it.copy(shift = false) }; onStateChanged(session); refreshSelection() }
                 }
             }
         }
     }
-    private fun selectSet(side: GestureSide) {
-        cancelInput()
-        showDialog(AlertDialog.Builder(context).setTitle(if (ja) "文字セット" else "Gesture set")
-            .setItems(sets.map { it.name }.toTypedArray()) { _, index ->
-                session = session.withSet(side, sets[index].id); onStateChanged(session); rebuild()
-            })
+    fun handlePadAction(action: KeyAction): Boolean {
+        val id = session.activePadId
+        val pad = session.activePad()
+        val set = sets.first { it.id == pad.setId }
+        val next = when (action) {
+            KeyAction.SwitchToKanaLayout -> session.withSet(id, GesturePresets.KANA)
+            KeyAction.SwitchToEnglishLayout -> session.withSet(id, GesturePresets.LATIN)
+            KeyAction.SwitchToNumberLayout -> session.withSet(id, GesturePresets.DIGITS)
+            KeyAction.ShiftKey -> session.update(id) { it.copy(shift = !it.shift) }
+            KeyAction.CapLockKey -> session.update(id) { it.copy(uppercase = !it.uppercase, shift = false) }
+            KeyAction.SwitchDirectMode -> session.update(id) { it.copy(direct = !it.direct) }
+            KeyAction.SwitchRomajiEnglish -> session.update(id) { it.copy(romajiOverride = !(it.romajiOverride ?: set.isRomaji)) }
+            else -> return false
+        }
+        // Keep already queued key actions alive; these state changes do not change geometry.
+        canvas.pads.values.forEach { it.cancelStroke() }
+        session = next; onStateChanged(session)
+        session.pads.forEachIndexed { index, area ->
+            canvas.pads[area.id]?.contentDescription = "${index + 1}: ${sets.first { it.id == area.setId }.name}"
+        }
+        refreshSelection()
+        return true
     }
-    private fun menu(side: GestureSide) {
+    private fun selectSet(padId: String) {
         cancelInput()
-        val options = mutableListOf<String>()
-        if (showGuide) options.add(if (ja) "文字表・描き方" else "Gesture guide")
-        options.add(if (ja) "設定" else "Settings")
-        options.add(if (ja) "次のキーボード" else "Next keyboard")
-        showDialog(AlertDialog.Builder(context).setItems(options.toTypedArray()) { _, selected ->
-            when {
-                showGuide && selected == 0 -> showSetGuide(side)
-                selected == options.size - 2 -> if (!isEditing) onOpenSettings()
-                else -> if (!isEditing && inputAllowed()) enqueueCommand(GestureCommand.NEXT_KEYBOARD)
+        showChoices(if (ja) "文字セット" else "Gesture set", sets.map { it.name }) { index ->
+            onBeforeStateChange()
+            session = session.withSet(padId, sets[index].id); onStateChanged(session); rebuild()
+        }
+    }
+    private fun menu() {
+        cancelInput()
+        val options = session.pads.mapIndexed { index, pad ->
+            "${index + 1} · ${sets.first { it.id == pad.setId }.name}" +
+                (if (pad.uppercase) " · CAPS" else if (pad.shift) " · Shift" else "") +
+                (if (pad.direct) (if (ja) " · 直接入力" else " · Direct") else "")
+        }
+        showChoices(if (ja) "入力領域" else "Drawing areas", options + (if (ja) "設定" else "Settings")) { index ->
+            if (index == options.size) { if (!isEditing) onOpenSettings() }
+            else {
+                val pad = session.pads[index]
+                val actions = mutableListOf(if (ja) "文字セットを変更" else "Change gesture set")
+                if (showGuide) actions.add(if (ja) "文字表・描き方" else "Gesture guide")
+                showChoices(options[index], actions) { item ->
+                    if (item == 0) selectSet(pad.id) else showSetGuide(pad.id)
+                }
             }
-        })
+        }
     }
-    private fun showSetGuide(side: GestureSide) {
-        val set = sets.first { it.id == session.setId(side) }
+    /** Choices need touch input only. Keeping editor focus avoids an IME restart on each submenu. */
+    private fun showChoices(title: String, choices: List<String>, choose: (Int) -> Unit) {
+        popup?.dismiss()
+        val content = LinearLayout(context).apply {
+            orientation = VERTICAL; setBackgroundColor(bg)
+            addView(TextView(context).apply {
+                text = title; textSize = 16f; setTextColor(fg); gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(16), 0, dp(16), 0)
+            }, LayoutParams(-1, dp(48)))
+        }
+        val scroll = ScrollView(context)
+        val list = LinearLayout(context).apply { orientation = VERTICAL }
+        choices.forEachIndexed { index, label -> list.addView(button(label).apply {
+            setPadding(dp(12), 0, dp(12), 0)
+            setOnClickListener { popup?.dismiss(); choose(index) }
+        }, LayoutParams(-1, dp(48))) }
+        scroll.addView(list)
+        content.addView(scroll, LayoutParams(-1, 0, 1f))
+        val popupWidth = minOf(width, dp(360)).coerceAtLeast(dp(120))
+        val popupHeight = minOf(dp((choices.size + 1) * 48), (resources.displayMetrics.heightPixels * .65f).toInt())
+        val next = PopupWindow(content, popupWidth, popupHeight, false).apply {
+            isOutsideTouchable = true
+            inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
+            setBackgroundDrawable(background(bg)); elevation = dp(8).toFloat()
+        }
+        popup = next
+        next.setOnDismissListener { if (popup === next) popup = null }
+        val location = IntArray(2).also(::getLocationOnScreen)
+        next.showAtLocation(menuAnchor(), Gravity.TOP or Gravity.LEFT,
+            (location[0] + (width - popupWidth) / 2).coerceAtLeast(0),
+            location[1].coerceIn(0, (resources.displayMetrics.heightPixels - popupHeight).coerceAtLeast(0)))
+    }
+    private fun showSetGuide(padId: String) {
+        val set = sets.first { it.id == session.pads.first { pad -> pad.id == padId }.setId }
         val content = LinearLayout(context).apply { orientation = VERTICAL }
         set.entries.forEach { entry ->
             val row = LinearLayout(context)
-            row.addView(TextView(context).apply { text = GestureLabels.output(entry.output, ja); gravity = Gravity.CENTER; textSize = 22f }, LayoutParams(dp(64), dp(100)))
+            row.addView(TextView(context).apply { text = GestureLabels.output(entry.output, context); gravity = Gravity.CENTER; textSize = 22f }, LayoutParams(dp(64), dp(100)))
             row.addView(GesturePadView(context).apply { guide = entry.samples.first(); inkColor = Color.DKGRAY; captureAllowed = { false } }, LayoutParams(0, dp(100), 1f))
             content.addView(row)
         }
@@ -222,11 +278,12 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         fun gap() { val marker = View(context).apply { setBackgroundColor(Color.TRANSPARENT) }; gaps.add(marker); column.addView(marker, LayoutParams(-1, dp(3))) }
         gap()
         keys.forEach { key ->
-            val label = key.labelOverride?.takeIf { it.isNotBlank() } ?: GestureLabels.glyph(key.action)
+            val label = key.labelOverride?.takeIf { it.isNotBlank() } ?: GestureLabels.command(key.action, context)
             var repeated = false
             val button = button(label).apply {
+                if (key.labelOverride.isNullOrBlank()) applyActionIcon(this, key.action)
                 textSize = if (label.length > 3) 10f else 18f
-                contentDescription = key.labelOverride ?: GestureLabels.command(key.action, ja)
+                contentDescription = key.labelOverride ?: GestureLabels.command(key.action, context)
                 setOnClickListener {
                     if (isEditing) onControlSelected?.invoke(key.id)
                     else if (inputAllowed()) { onInteraction(); enqueueCommand(key.action) }
@@ -234,7 +291,7 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
                 if (isEditing) setOnLongClickListener {
                     onControlSelected?.invoke(key.id)
                     startDragAndDrop(ClipData.newPlainText("gesture-key", key.id), DragShadowBuilder(this), key.id, 0)
-                } else if (key.action in setOf(GestureCommand.DELETE, GestureCommand.CURSOR_LEFT, GestureCommand.CURSOR_RIGHT)) {
+                } else if (key.action in setOf(KeyAction.Delete, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight)) {
                     setOnTouchListener { view, event ->
                         when (event.actionMasked) {
                             MotionEvent.ACTION_DOWN -> {
@@ -266,6 +323,12 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
             contentDescription = if (ja) (if (side == GestureSide.LEFT) "左にキーを追加" else "右にキーを追加")
                 else if (side == GestureSide.LEFT) "Add left key" else "Add right key"
             setOnClickListener { onControlAdd?.invoke(side) }
+        }, LayoutParams(-1, dp(48)))
+        if (side == GestureSide.RIGHT) column.addView(button("").apply {
+            id = R.id.gesture_menu
+            contentDescription = if (ja) "ジェスチャーメニュー" else "Gesture menu"
+            setIcon(this, com.kazumaproject.core.R.drawable.more_vert_24px)
+            setOnClickListener { menu() }
         }, LayoutParams(-1, dp(48)))
         if (isEditing) {
             var insertion = 0
@@ -301,9 +364,13 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         return scroll
     }
     private fun refreshSelection() {
-        controls.forEach { (id, button) -> button.background = background(if (id == selectedControlId) special else keyBg, id == selectedControlId) }
+        controls.forEach { (id, button) ->
+            button.background = background(if (id == selectedControlId) special else keyBg, id == selectedControlId)
+            val key = (layout.leftKeys + layout.rightKeys).first { it.id == id }
+            if (key.labelOverride.isNullOrBlank()) applyActionIcon(button, key.action)
+        }
     }
-    private fun enqueueCommand(command: GestureCommand) {
+    private fun enqueueCommand(command: KeyAction) {
         val generation = epoch
         // This barrier follows earlier stroke recognition tasks on the same worker.
         worker.execute {
@@ -312,7 +379,36 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
             }
         }
     }
-    private fun button(label: String) = Button(context).apply {
+    private fun applyActionIcon(button: Button, action: KeyAction) {
+        val pad = session.activePad()
+        val icon = when (action) {
+            KeyAction.ShiftKey -> if (pad.shift) com.kazumaproject.core.R.drawable.shift_fill_24px else com.kazumaproject.core.R.drawable.shift_24px
+            KeyAction.CapLockKey -> if (pad.uppercase) com.kazumaproject.core.R.drawable.caps_lock else com.kazumaproject.core.R.drawable.caps_lock_outline
+            KeyAction.SwitchDirectMode -> if (pad.direct) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px else com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            KeyAction.SwitchRomajiEnglish -> if (pad.romajiOverride ?: sets.first { it.id == pad.setId }.isRomaji)
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px else com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+            else -> KeyActionMapper.iconResIdForAction(action)
+        }
+        icon?.let { button.text = ""; setIcon(button, it) }
+    }
+    private fun setIcon(button: Button, resource: Int) {
+        val drawable = context.getDrawable(resource)?.mutate() ?: return
+        DrawableCompat.setTint(drawable, fg)
+        drawable.setBounds(0, 0, dp(24), dp(24))
+        button.setCompoundDrawables(null, drawable, null, null)
+        button.gravity = Gravity.CENTER
+    }
+    private fun button(label: String) = object : Button(context) {
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            val icon = compoundDrawables[1]
+            if (text.isEmpty() && icon != null) {
+                canvas.save()
+                canvas.translate((width - icon.bounds.width()) / 2f, (height - icon.bounds.height()) / 2f)
+                icon.draw(canvas)
+                canvas.restore()
+            } else super.onDraw(canvas)
+        }
+    }.apply {
         text = label; isAllCaps = false; setPadding(0, 0, 0, 0); minWidth = 0; minimumWidth = 0; minHeight = 0; minimumHeight = 0
         maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
         setTextColor(fg); background = background(keyBg)
@@ -339,10 +435,10 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         // Android can call this from the superclass constructor before fields are initialized.
-        if (visibility != VISIBLE && childCount > 0) { cancelInput(); dialog?.dismiss(); dialog = null }
+        if (visibility != VISIBLE && childCount > 0) { cancelInput(); dialog?.dismiss(); dialog = null; popup?.dismiss(); popup = null }
     }
-    override fun onWindowVisibilityChanged(visibility: Int) { super.onWindowVisibilityChanged(visibility); if (visibility != VISIBLE && childCount > 0) { cancelInput(); dialog?.dismiss(); dialog = null } }
-    override fun onDetachedFromWindow() { cancelInput(); dialog?.dismiss(); dialog = null; main.removeCallbacksAndMessages(null); super.onDetachedFromWindow() }
+    override fun onWindowVisibilityChanged(visibility: Int) { super.onWindowVisibilityChanged(visibility); if (visibility != VISIBLE && childCount > 0) { cancelInput(); dialog?.dismiss(); dialog = null; popup?.dismiss(); popup = null } }
+    override fun onDetachedFromWindow() { cancelInput(); dialog?.dismiss(); dialog = null; popup?.dismiss(); popup = null; main.removeCallbacksAndMessages(null); super.onDetachedFromWindow() }
     companion object {
         // One queue preserves the order of strokes from both pads.
         private val worker = Executors.newSingleThreadExecutor { task -> Thread(task, "gesture-recognition").apply { isDaemon = true } }

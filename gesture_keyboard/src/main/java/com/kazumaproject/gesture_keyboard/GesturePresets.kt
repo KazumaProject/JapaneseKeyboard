@@ -8,6 +8,7 @@ package com.kazumaproject.gesture_keyboard
 object GesturePresets {
     const val KANA = "builtin_kana"
     const val LATIN = "builtin_latin"
+    const val ROMAJI = "builtin_romaji"
     const val DIGITS = "builtin_digits"
     fun path(value: String): List<GesturePoint> = value.trim().split(Regex("\\s+")).map { pair ->
         val (x, y) = pair.split(",").map(String::toFloat); GesturePoint(x, y)
@@ -108,6 +109,7 @@ object GesturePresets {
     fun sets(ja: Boolean = false) = listOf(
         GestureSet(KANA, if (ja) "かな" else "Kana", kanaSketches.map { entry(it.key, it.value, true) }, true),
         GestureSet(LATIN, if (ja) "英字" else "Alphabet", latinSketches.map { entry(it.key, it.value, false) }, true),
-        GestureSet(DIGITS, if (ja) "数字" else "Numbers", digitSketches.map { entry(it.key, it.value, false) }, true)
+        GestureSet(DIGITS, if (ja) "数字" else "Numbers", digitSketches.map { entry(it.key, it.value, false) }, true),
+        GestureSet(ROMAJI, if (ja) "ローマ字" else "Romaji", latinSketches.map { entry(it.key, it.value, false) }, true, isRomaji = true)
     )
 }

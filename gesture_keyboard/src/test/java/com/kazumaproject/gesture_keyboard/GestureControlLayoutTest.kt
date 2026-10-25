@@ -1,12 +1,14 @@
 package com.kazumaproject.gesture_keyboard
 
+import com.kazumaproject.custom_keyboard.data.KeyAction
+
 import org.junit.Assert.*
 import org.junit.Test
 
 class GestureControlLayoutTest {
-    private val a = GestureControlKey("a", GestureCommand.DELETE)
-    private val b = GestureControlKey("b", GestureCommand.DELETE)
-    private val c = GestureControlKey("c", GestureCommand.ENTER)
+    private val a = GestureControlKey("a", KeyAction.Delete)
+    private val b = GestureControlKey("b", KeyAction.Delete)
+    private val c = GestureControlKey("c", KeyAction.Enter)
     @Test fun insertionWithinColumnPreservesIdentityAndOtherOrder() {
         val layout = GestureControlLayout(listOf(a, b, c), emptyList())
         assertEquals(listOf(b, c, a), layout.move("a", GestureSide.LEFT, 3).leftKeys)

@@ -41,7 +41,7 @@ class GestureSetListFragment : GestureScreenFragment() {
             .setNegativeButton(android.R.string.cancel, null).setPositiveButton(android.R.string.ok, null).create()
         dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val set = if (rename) source!!.copy(name = field.text.toString().trim())
-                else GestureSet(UUID.randomUUID().toString(), field.text.toString().trim(), source?.entries.orEmpty())
+                else GestureSet(UUID.randomUUID().toString(), field.text.toString().trim(), source?.entries.orEmpty(), isRomaji = source?.isRomaji ?: false)
             if (attempt { store.saveSet(set) }) { dialog.dismiss(); render() }
         } }
         dialog.show()

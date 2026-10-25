@@ -1,5 +1,7 @@
 package com.kazumaproject.gesture_keyboard
 
+import com.kazumaproject.custom_keyboard.data.KeyAction
+
 import android.content.Context
 import android.view.MotionEvent
 import android.view.View
@@ -37,7 +39,7 @@ class GesturePadViewTest {
         var selected: String? = null; var commands = 0
         view.onControlSelected = { selected = it }
         view.onCommand = { commands++ }
-        val key = GestureControlKey("custom-id", GestureCommand.DELETE, "Selected key")
+        val key = GestureControlKey("custom-id", KeyAction.Delete, "Selected key")
         view.configure(GesturePresets.sets(), GestureSessionState(), GestureControlLayout(listOf(key), emptyList()))
         fun buttons(parent: android.view.ViewGroup): List<Button> = (0 until parent.childCount).flatMap {
             when (val child = parent.getChildAt(it)) {
@@ -57,8 +59,36 @@ class GesturePadViewTest {
         try {
             manager.applicationLocales = android.os.LocaleList(java.util.Locale.JAPANESE)
             val view = GestureKeyboardView(context)
-            assertEquals("かな", view.findViewById<Button>(R.id.gesture_set_left).text)
+            assertEquals("1: かな", view.leftPad.contentDescription)
+            assertNull(view.findViewById<Button>(R.id.gesture_set_left))
         } finally { manager.applicationLocales = previous }
+    }
+    @Test fun sharedModeActionsOnlyChangeTheActiveAreaAndUseDrawableIcons() {
+        val view = GestureKeyboardView(ApplicationProvider.getApplicationContext())
+        val state = GestureSessionState().withCount(4).copy(activePadId = "pad_3")
+        val controls = GestureControlLayout(emptyList(), listOf(GestureControlKey("delete", KeyAction.Delete)))
+        view.configure(GesturePresets.sets(), state, controls)
+        assertTrue(view.handlePadAction(KeyAction.ShiftKey))
+        assertTrue(view.session.pads[2].shift)
+        assertFalse(view.session.pads[0].shift)
+        assertTrue(view.handlePadAction(KeyAction.SwitchDirectMode))
+        assertTrue(view.session.pads[2].direct)
+        assertFalse(view.session.pads[3].direct)
+        assertTrue(view.handlePadAction(KeyAction.SwitchToNumberLayout))
+        assertEquals(GesturePresets.DIGITS, view.session.pads[2].setId)
+        assertFalse(view.handlePadAction(KeyAction.Delete))
+        fun buttons(parent: android.view.ViewGroup): List<Button> = (0 until parent.childCount).flatMap {
+            when (val child = parent.getChildAt(it)) {
+                is Button -> listOf(child)
+                is android.view.ViewGroup -> buttons(child)
+                else -> emptyList()
+            }
+        }
+        val delete = buttons(view).single { it.contentDescription == GestureLabels.command(KeyAction.Delete, view.context) }
+        assertEquals("", delete.text.toString())
+        assertNotNull(delete.compoundDrawables[1])
+        assertNull(view.findViewById<Button>(R.id.gesture_set_left))
+        assertNotNull(view.findViewById<Button>(R.id.gesture_menu))
     }
     @Test fun enterTapCannotOvertakeTheStrokeThatWasJustReleased() {
         val controller = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().visible()
@@ -67,8 +97,8 @@ class GesturePadViewTest {
             val view = GestureKeyboardView(activity)
             val entry = GestureEntry("one", GestureOutput.Reading("あ"), listOf(GesturePresets.path("0,0 10,10 20,0")))
             val set = GestureSet("one", "One", listOf(entry))
-            val controls = GestureControlLayout(emptyList(), listOf(GestureControlKey("enter", GestureCommand.ENTER)))
-            view.configure(listOf(set), GestureSessionState("one", "one"), controls)
+            val controls = GestureControlLayout(emptyList(), listOf(GestureControlKey("enter", KeyAction.Enter)))
+            view.configure(listOf(set), GestureSessionState().withSet("pad_1", "one").withSet("pad_2", "one"), controls)
             activity.setContentView(view)
             view.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY))
             view.layout(0, 0, 1080, 600)

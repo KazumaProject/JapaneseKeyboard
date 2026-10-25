@@ -24,16 +24,20 @@ class GesturePreferenceFragment : AsyncPreferenceFragment() {
     private fun refreshSets() {
         val store = GesturePreferences(requireContext())
         val sets = store.sets()
-        GestureSide.entries.forEach { side ->
-            findPreference<ListPreference>(if (side == GestureSide.LEFT) "gesture_left_set" else "gesture_right_set")?.apply {
-                isPersistent = false
+        val category = findPreference<androidx.preference.PreferenceCategory>("gesture_pad_assignments") ?: return
+        category.removeAll()
+        store.session().pads.forEachIndexed { index, pad ->
+            category.addPreference(ListPreference(requireContext()).apply {
+                key = "gesture_pad_" + pad.id; isPersistent = false
+                title = if (resources.configuration.locales[0].language == "ja") "入力領域 ${index + 1}" else "Drawing area ${index + 1}"
+                summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
                 entries = sets.map { it.name }.toTypedArray(); entryValues = sets.map { it.id }.toTypedArray()
-                value = store.session().setId(side)
+                value = pad.setId
                 setOnPreferenceChangeListener { _, id ->
-                    runCatching { store.saveSession(store.session().withSet(side, id as String)) }
+                    runCatching { store.saveSession(store.session().withSet(pad.id, id as String)) }
                         .onFailure { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() }.isSuccess
                 }
-            }
+            })
         }
         if (store.invalidData()) Toast.makeText(requireContext(), R.string.gesture_invalid_data, Toast.LENGTH_LONG).show()
     }

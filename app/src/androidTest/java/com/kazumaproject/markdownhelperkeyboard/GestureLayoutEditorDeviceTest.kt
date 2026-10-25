@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard
 
+import com.kazumaproject.custom_keyboard.data.KeyAction
+
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.PointF
 import android.os.Bundle
@@ -59,8 +61,8 @@ class GestureLayoutEditorDeviceTest {
         val old = prefs.getString(GesturePreferences.LAYOUT, null)
         val store = GesturePreferences(context)
         prefs.edit().remove(GesturePreferences.LAYOUT).commit()
-        store.saveLayout(GestureControlLayout(listOf(GestureControlKey("a", GestureCommand.DELETE, "A"),
-            GestureControlKey("b", GestureCommand.SPACE, "B")), emptyList()))
+        store.saveLayout(GestureControlLayout(listOf(GestureControlKey("a", KeyAction.Delete, "A"),
+            GestureControlKey("b", KeyAction.CommitAndInsertSpace, "B")), emptyList()))
         ui.serviceInfo = ui.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
         try {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -97,14 +99,14 @@ class GestureLayoutEditorDeviceTest {
                     views(activity.window.decorView).filterIsInstance<Button>().first { it.text.toString() in label }.performClick()
                 }
                 click(setOf("A")); click(setOf("Edit", "編集"))
-                node { it.className?.toString() == "android.widget.Spinner" }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                node { it.text?.toString() == "Enter" }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                node { it.className?.toString() == "android.widget.Button" && it.text?.toString() in setOf("Delete", "削除") }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                node { it.text?.toString() in setOf("Enter", "エンター") }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 node { it.className?.toString() == "android.widget.EditText" }.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,
                     Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "Edited") })
                 node { it.viewIdResourceName == "android:id/button1" }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 await("Edited key was not saved") { store.layout().rightKeys.singleOrNull()?.labelOverride == "Edited" }
                 assertEquals("a", store.layout().rightKeys.single().id)
-                assertEquals(GestureCommand.ENTER, store.layout().rightKeys.single().action)
+                assertEquals(KeyAction.Enter, store.layout().rightKeys.single().action)
                 click(setOf("Edited")); click(setOf("Delete", "削除"))
                 await("Delete did not preserve the empty right column") { store.layout().rightKeys.isEmpty() }
                 click(setOf("Undo", "元に戻す"))
