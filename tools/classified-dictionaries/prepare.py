@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '02320777884161421eca4b03f8d7ee22f29ee650'
-VERSION = 'v1.7.271'
+REVISION = 'ac6ce20e2f43b56f8bbed240008a8e88f1f30091'
+VERSION = 'v1.7.275'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,9 +46,9 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = '72de8fdb2b13dcc29f27116420542886b4edabff3fee96fa12a57b4a1702b532'
+    archive_sha = '416659d97907cf4bf48acfcc3b7c72447f752bf874290521c837b24a9c0c0d60'
     assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = '3f642be2385aa578f272e1b96c47def40547d128d1bcbdc3cca67152e6f83920'
+    licenses_sha = '053f81437611b301b16e6583d4916be5249982734b7ae9ed246a0f2f8c6354c3'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha

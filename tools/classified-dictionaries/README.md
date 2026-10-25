@@ -1,6 +1,6 @@
 # Pinned classified dictionary distribution
 
-`prepare.py` imports `v1.7.271`, verifies its archive and all 463 asset
+`prepare.py` imports `v1.7.275`, verifies its archive and all 463 asset
 hashes, and derives category provenance from hash-verified frozen source data.
 The 143 categories include 29 person, 59 facility, 6 event, 15 term and 8 media audience categories,
 Kampo (434 records) and Medical (92,683 records). New subcategories default OFF;
@@ -21,7 +21,7 @@ python3 tools/classified-dictionaries/prepare.py
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-`ClassifiedDictionaryInstrumentedTest` compares all 862,354 decoded records
+`ClassifiedDictionaryInstrumentedTest` compares all 865,681 decoded records
 against count and SHA-256 multiset fingerprints generated from the frozen
 reading/surface/left POS/right POS/cost records. A second fixture verifies all
 5,138 English-reading pairs and costs against the pinned catalog. It also exercises category
@@ -99,7 +99,7 @@ builds, not release-device end-to-end keyboard latency.
 
 ```sh
 adb shell pm clear com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite
-adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.271 \
+adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.275 \
   -e class com.kazumaproject.markdownhelperkeyboard.converter.DictionaryUpdatePerformanceInstrumentedTest \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```
