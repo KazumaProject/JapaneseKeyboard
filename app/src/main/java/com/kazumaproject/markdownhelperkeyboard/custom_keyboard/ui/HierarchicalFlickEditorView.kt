@@ -84,6 +84,11 @@ class HierarchicalFlickEditorView @JvmOverloads constructor(
                 insetTop = 0
                 insetBottom = dp(4)
                 setPadding(dp(12), 0, dp(12), 0)
+                val surface = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface)
+                backgroundTintList = ColorStateList.valueOf(surface)
+                setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
+                strokeColor = ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
+                elevation = 0f
                 setOnClickListener { state.back(); render() }
             }, LayoutParams(LayoutParams.WRAP_CONTENT, dp(44)))
         }
@@ -101,7 +106,7 @@ class HierarchicalFlickEditorView @JvmOverloads constructor(
                     val output = when (node) {
                         is TfbiFlickNode.Input -> node.char
                         is TfbiFlickNode.SubMenu -> (node.label ?: "") + "  ›"
-                        else -> context.getString(R.string.three_stage_unassigned)
+                        else -> "—"
                     }
                     addView(MaterialButton(context).apply {
                         val directionLabel = FlickDirectionMapper.toDisplayName(direction, context)
@@ -130,7 +135,7 @@ class HierarchicalFlickEditorView @JvmOverloads constructor(
                         setTextColor(if (assigned) onPrimaryContainer else outline)
                         strokeColor = ColorStateList.valueOf(if (assigned) primaryContainer else outline)
                         elevation = 0f
-                        contentDescription = text
+                        contentDescription = "$directionLabel, ${if (node == null) context.getString(R.string.three_stage_unassigned) else output}"
                         setOnClickListener { editSlot(direction) }
                     }, LayoutParams(0, dp(76), 1f).apply {
                         setMargins(dp(3), dp(3), dp(3), dp(3))
