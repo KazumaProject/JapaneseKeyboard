@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.content.DialogInterface
+import android.os.Looper
 import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
@@ -17,6 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
@@ -49,6 +51,7 @@ class HierarchicalFlickEditorViewTest {
         val dialog = ShadowDialog.getLatestDialog() as AlertDialog
         dialog.window!!.decorView.descendants().filterIsInstance<EditText>().single().setText("third😀")
         dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         val stage2 = view.definition.normalMap[RIGHT] as TfbiFlickNode.SubMenu
         val stage3 = stage2.nextMap[DOWN] as TfbiFlickNode.SubMenu
         assertEquals(TfbiFlickNode.Input("third😀"), stage3.nextMap[LEFT])
