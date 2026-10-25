@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.NBestCandidateCollector
 import android.content.Context
 import android.os.Build
 import androidx.core.text.isDigitsOnly
@@ -868,6 +869,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -916,6 +918,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -1361,6 +1364,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1411,6 +1415,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -1883,6 +1888,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1933,6 +1939,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -2388,6 +2395,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2436,6 +2444,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -2877,6 +2886,7 @@ class KanaKanjiEngine {
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         isOmissionSearchEnable: Boolean = false,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2925,6 +2935,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -3360,6 +3371,7 @@ class KanaKanjiEngine {
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         isOmissionSearchEnable: Boolean = false,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -3410,6 +3422,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {

@@ -342,6 +342,193 @@ class ZenzFloatingCandidateInstrumentedTest {
         }
     }
 
+    @Test(timeout = 600_000)
+    fun correctionSettingsAutomaticallySelectTheMinimumNBestReading() {
+        assumeTrue(AppVariantConfig.hasZenz && android.os.Build.VERSION.SDK_INT >= 29)
+        assumeTrue(InstrumentationRegistry.getArguments().getString("zenzCorrectionImeProbe") == "true")
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
+        val original = prefs.all.toMap()
+        val oldIme = shell("settings get secure default_input_method")
+        val oldFlags = ui.serviceInfo.flags
+        ui.serviceInfo = ui.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        val ime = "${ctx.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val report = StringBuilder()
+        var sawCorrectedMinimum = false
+        try {
+            shell("input keyevent WAKEUP"); shell("wm dismiss-keyguard")
+            prefs.edit().clear().putString("keyboard_order_preference", "[\"TENKEY\"]")
+                .putBoolean("save_last_used_keyboard", false)
+                .putBoolean("candidate_tab_visibility_preference", false)
+                .putBoolean("learn_dictionary_preference", false)
+                .putBoolean("live_conversion_preference", false)
+                .putBoolean("enable_ai_conversion_zenz_preference", true)
+                .putInt("zenz_debounce_time_preference", 0)
+                .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true).commit()
+            shell("ime enable $ime"); shell("ime set $ime")
+            ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            fun field(owner: Any, name: String): Any? = owner.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(owner)
+            for (oldValue in listOf(false, true)) for (enabled in listOf(false, true)) {
+                prefs.edit().putBoolean("enable_ai_conversion_zenzai_preference", oldValue)
+                    .putBoolean("omission_search_preference", enabled)
+                    .putBoolean("enable_typo_correction_japanese_flick_keyboard_preference", enabled).commit()
+                for (reading in listOf("かつこう", "とえけい")) {
+                    withEditor { it.restartEditorInput(true) }
+                    id("key_1")
+                    SystemClock.sleep(400)
+                    lateinit var service: com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
+                    ins.runOnMainSync {
+                        val keyId = ctx.resources.getIdentifier("key_1", "id", ctx.packageName)
+                        val contexts = android.view.inspector.WindowInspector.getGlobalWindowViews().mapNotNull {
+                            it.findViewById<android.view.View>(keyId)?.context
+                        }
+                        service = contexts.mapNotNull { initial ->
+                            var current: android.content.Context? = initial
+                            val seen = mutableSetOf<android.content.Context>()
+                            while (current != null && seen.add(current)) {
+                                if (current is com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService) return@mapNotNull current
+                                current = (current as? android.content.ContextWrapper)?.baseContext
+                            }
+                            null
+                        }.first()
+                        @Suppress("UNCHECKED_CAST")
+                        val input = field(service, "_inputString") as kotlinx.coroutines.flow.MutableStateFlow<String>
+                        input.value = reading
+                    }
+                    val generated = label()
+                    val snapshot = (field(service, "zenzReadingSnapshot") as kotlinx.coroutines.flow.StateFlow<*>).value!!
+                    val best = field(snapshot, "bestCandidate") as com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+                    val expected = if (enabled && best.correctionMask != 0) best.yomi ?: reading else reading
+                    if (enabled && best.correctionMask != 0) sawCorrectedMinimum = true
+                    assertEquals(expected, field(service, "zenzLiveSnapshotRequestInput"))
+                    assertEquals(1, nodes().count { it.viewIdResourceName == labelId })
+                    report.appendLine("old=$oldValue,enabled=$enabled,input=$reading,score=${best.score},mask=${best.correctionMask},zenzInput=$expected,result=${generated.text}")
+                    File(ctx.filesDir, "zenz-correction-ime.txt").writeText(report.toString())
+                    val committed = generated.text.toString()
+                    touch(bounds(generated))
+                    withEditor { assertEquals(committed, it.editText.text.toString()) }
+                }
+            }
+            assertTrue("The fixture must exercise an actually corrected minimum", sawCorrectedMinimum)
+        } finally {
+            ins.runOnMainSync {
+                androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                    .filterIsInstance<FastInputHostActivity>().forEach { it.finish() }
+            }
+            restore(prefs, original)
+            ui.serviceInfo = ui.serviceInfo.apply { flags = oldFlags }
+            if (oldIme.isNotEmpty() && oldIme != "null") shell("ime set $oldIme")
+        }
+    }
+
+    @Test(timeout = 900_000)
+    fun measureFloatingResultLatency() {
+        assumeTrue(AppVariantConfig.hasZenz && android.os.Build.VERSION.SDK_INT >= 29)
+        assumeTrue(InstrumentationRegistry.getArguments().getString("zenzFloatingPerf") == "true")
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
+        val original = prefs.all.toMap()
+        val oldIme = shell("settings get secure default_input_method")
+        val ime = "${ctx.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val report = StringBuilder()
+        val oldFlags = ui.serviceInfo.flags
+        ui.serviceInfo = ui.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        try {
+            shell("input keyevent WAKEUP")
+            shell("wm dismiss-keyguard")
+            prefs.edit().clear()
+                .putString("keyboard_order_preference", "[\"TENKEY\"]")
+                .putBoolean("save_last_used_keyboard", false)
+                .putBoolean("candidate_tab_visibility_preference", false)
+                .putBoolean("learn_dictionary_preference", false)
+                .putBoolean("flick_input_only_preference", true)
+                .putBoolean("tenkey_kana_english_qwerty_preference", false)
+                .putBoolean("omission_search_preference", true)
+                .putBoolean("enable_ai_conversion_zenz_preference", true)
+                .putBoolean("enable_ai_conversion_zenzai_preference", false)
+                .putBoolean("enable_zenz_rerank_preference", false)
+                .putBoolean("keyboard_floating_preference", false)
+                .putBoolean("live_conversion_preference", false)
+                .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true).commit()
+            shell("ime enable $ime")
+            shell("ime set $ime")
+            ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            for (debounce in listOf(0, 300)) {
+                prefs.edit().putInt("zenz_debounce_time_preference", debounce).commit()
+                repeat(23) { iteration ->
+                    withEditor { it.restartEditorInput(true) }
+                    touch(bounds(id("key_1")))
+                    val done = java.util.concurrent.CountDownLatch(1)
+                    val started = java.util.concurrent.atomic.AtomicLong(0)
+                    val drawn = java.util.concurrent.atomic.AtomicLong(0)
+                    val observers = mutableMapOf<android.view.View, android.view.ViewTreeObserver.OnDrawListener>()
+                    lateinit var frame: android.view.Choreographer.FrameCallback
+                    val choreographer = arrayOfNulls<android.view.Choreographer>(1)
+                    ins.runOnMainSync {
+                        choreographer[0] = android.view.Choreographer.getInstance()
+                        frame = android.view.Choreographer.FrameCallback {
+                            for (root in android.view.inspector.WindowInspector.getGlobalWindowViews()) {
+                                if (root !in observers) {
+                                    val listener = android.view.ViewTreeObserver.OnDrawListener {
+                                        val label = root.findViewById<android.widget.TextView>(R.id.zenz_floating_candidate_text)
+                                        if (started.get() != 0L && label?.isShown == true && label.isEnabled &&
+                                            !label.text.isNullOrBlank() && label.text.toString() != ctx.getString(R.string.zenz_floating_loading)) {
+                                            if (drawn.compareAndSet(0, SystemClock.elapsedRealtimeNanos())) done.countDown()
+                                        }
+                                    }
+                                    observers[root] = listener
+                                    root.viewTreeObserver.addOnDrawListener(listener)
+                                }
+                            }
+                            if (done.count != 0L) choreographer[0]!!.postFrameCallback(frame)
+                        }
+                        choreographer[0]!!.postFrameCallback(frame)
+                    }
+                    try {
+                        val key = bounds(id("key_2"))
+                        val down = SystemClock.uptimeMillis()
+                        fun send(action: Int) {
+                            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, key.exactCenterX(), key.exactCenterY(), 0)
+                            event.source = InputDevice.SOURCE_TOUCHSCREEN
+                            check(ui.injectInputEvent(event, true)); event.recycle()
+                        }
+                        send(MotionEvent.ACTION_DOWN)
+                        SystemClock.sleep(30)
+                        started.set(SystemClock.elapsedRealtimeNanos())
+                        send(MotionEvent.ACTION_UP)
+                        assertTrue("Floating result did not draw", done.await(90, java.util.concurrent.TimeUnit.SECONDS))
+                        val elapsed = drawn.get()-started.get()
+                        report.appendLine("floating,debounceMs=$debounce,warmup=${iteration<3},ns=$elapsed")
+                        File(ctx.filesDir, "zenz-floating-perf.txt").writeText(report.toString())
+                        val candidate = label()
+                        val expected = candidate.text.toString()
+                        touch(bounds(candidate))
+                        withEditor { assertEquals(expected, it.editText.text.toString()) }
+                    } finally {
+                        ins.runOnMainSync {
+                            choreographer[0]!!.removeFrameCallback(frame)
+                            observers.forEach { (root, listener) ->
+                                if (root.viewTreeObserver.isAlive) root.viewTreeObserver.removeOnDrawListener(listener)
+                            }
+                        }
+                    }
+                }
+            }
+        } finally {
+            ins.runOnMainSync {
+                androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                    .filterIsInstance<FastInputHostActivity>().forEach { it.finish() }
+            }
+            restore(prefs, original)
+            ui.serviceInfo = ui.serviceInfo.apply { flags = oldFlags }
+            if (oldIme.isNotEmpty() && oldIme != "null") shell("ime set $oldIme")
+        }
+    }
+
     private fun restore(prefs: SharedPreferences, values: Map<String, *>) {
         prefs.edit().clear().apply {
             values.forEach { (key, value) -> when (value) {

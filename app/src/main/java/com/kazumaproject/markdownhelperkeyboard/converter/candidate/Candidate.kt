@@ -28,4 +28,5 @@ data class Candidate(
     /** Whole-input standalone unigram match with the original literal input. Never changes score. */
     val standaloneUnigramMatched: Boolean = false,
     val dictionaryCategories: Set<DictionaryCategory> = emptySet(),
+    val correctionMask: Int = 0,
 )

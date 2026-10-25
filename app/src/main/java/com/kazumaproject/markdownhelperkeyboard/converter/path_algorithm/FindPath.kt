@@ -1224,6 +1224,7 @@ class FindPath(
                         ),
                         dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
+                        correctionMask = correctionMaskFromPath(element),
                         length = length.toUByte(),
                         score = element.priorityCost,
                         leftId = element.next?.node?.l,
@@ -1954,6 +1955,7 @@ class FindPath(
                         length = length.toUByte(),
                         dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
+                        correctionMask = correctionMaskFromPath(element),
                         score = totalCost,
                         leftId = element.next?.node?.l,
                         rightId = element.next?.node?.r,
@@ -2158,6 +2160,7 @@ class FindPath(
                         ),
                         dictionaryCategories = categoriesFromNode(node.first),
                         yomi = yomiUsedFromNode,
+                        correctionMask = correctionMaskFromNode(node.first),
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
                             node.second + 2000
@@ -2642,6 +2645,26 @@ class FindPath(
         private fun overflowSet(): LinkedHashSet<String> = overflow ?: LinkedHashSet<String>().also {
             overflow = it
         }
+    }
+
+    private fun correctionMaskFromPath(path: PathQueueElement): Int {
+        var mask = 0
+        var current: PathQueueElement? = path
+        while (current != null) {
+            mask = mask or current.node.correctionMask
+            current = current.next
+        }
+        return mask
+    }
+
+    private fun correctionMaskFromNode(node: Node): Int {
+        var mask = 0
+        var current: Node? = node
+        while (current != null) {
+            mask = mask or current.correctionMask
+            current = current.next
+        }
+        return mask
     }
 
     private fun getYomiUsedFromPath(path: PathQueueElement): String {
