@@ -378,6 +378,9 @@ class ZenzFloatingCandidateInstrumentedTest {
                     .putBoolean("omission_search_preference", enabled)
                     .putBoolean("enable_typo_correction_japanese_flick_keyboard_preference", enabled).commit()
                 for (reading in listOf("かつこう", "とえけい", "あらがとう")) {
+                    // Zero is a supported user setting; retain the default for the other fixtures.
+                    val flickOffset = if (reading == "あらがとう") 0 else 3000
+                    prefs.edit().putInt("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", flickOffset).commit()
                     withEditor { it.restartEditorInput(true) }
                     id("key_1")
                     SystemClock.sleep(400)
@@ -411,7 +414,7 @@ class ZenzFloatingCandidateInstrumentedTest {
                     }
                     assertEquals(expected, field(service, "zenzLiveSnapshotRequestInput"))
                     assertEquals(1, nodes().count { it.viewIdResourceName == labelId })
-                    report.appendLine("old=$oldValue,enabled=$enabled,input=$reading,score=${best.score},mask=${best.correctionMask},zenzInput=$expected,result=${generated.text}")
+                    report.appendLine("old=$oldValue,enabled=$enabled,flickOffset=$flickOffset,input=$reading,score=${best.score},mask=${best.correctionMask},zenzInput=$expected,result=${generated.text}")
                     File(ctx.filesDir, "zenz-correction-ime.txt").writeText(report.toString())
                     val committed = generated.text.toString()
                     touch(bounds(generated))
