@@ -677,7 +677,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                             typoType,
                             surface.length.toUByte(),
                             entry.wordCost.toInt() + casePenalty + penalty,
-                            yomi = readingStr,
+                            correctionReading = readingStr,
                             correctionMask = ConversionCorrection.ENGLISH_QWERTY,
                         )
                     }

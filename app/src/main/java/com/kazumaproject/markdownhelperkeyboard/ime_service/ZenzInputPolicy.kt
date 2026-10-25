@@ -13,6 +13,8 @@ internal object ZenzInputPolicy {
     fun reading(input: String, bestNBestCandidate: Candidate?, options: CandidateCorrectionOptions): String {
         val candidate = bestNBestCandidate ?: return input
         if (candidate.correctionMask and enabledMask(options) == 0) return input
-        return candidate.yomi?.takeIf { it.isNotEmpty() } ?: input
+        return candidate.correctionReading?.takeIf { it.isNotEmpty() }
+            ?: candidate.yomi?.takeIf { it.isNotEmpty() }
+            ?: input
     }
 }
