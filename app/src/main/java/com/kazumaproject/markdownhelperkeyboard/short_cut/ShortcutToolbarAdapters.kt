@@ -247,6 +247,7 @@ fun ShortcutType.summary(context: android.content.Context): String =
         ShortcutType.SELECT_ALL -> context.getString(R.string.shortcut_toolbar_summary_select_all)
         ShortcutType.COPY -> context.getString(R.string.shortcut_toolbar_summary_copy)
         ShortcutType.PASTE -> context.getString(R.string.shortcut_toolbar_summary_paste)
+        ShortcutType.MUSHROOM -> context.getString(R.string.mushroom_shortcut_summary)
         ShortcutType.DATE_PICKER -> context.getString(R.string.shortcut_toolbar_summary_date_picker)
         ShortcutType.VOICE_INPUT -> context.getString(R.string.shortcut_toolbar_summary_voice_input)
         ShortcutType.GEMMA_IMAGE -> context.getString(R.string.shortcut_toolbar_summary_gemma_image)

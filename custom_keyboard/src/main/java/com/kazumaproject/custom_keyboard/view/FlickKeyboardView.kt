@@ -2643,7 +2643,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.HIERARCHICAL_FLICK -> {
-                val statefulNode = layout.hierarchicalFlickMaps[keyData.label]
+                val statefulNode = layout.hierarchicalFlickMaps[keyData.keyId]
+                    ?: layout.hierarchicalFlickMaps[keyData.label]
 
                 if (statefulNode != null) {
                     if (keyView is AutoSizeButton) {

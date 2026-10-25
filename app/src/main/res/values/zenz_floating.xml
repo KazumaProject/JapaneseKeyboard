@@ -3,7 +3,7 @@
     <item name="zenz_floating_candidate_text" type="id" />
     <string name="zenz_floating_category">Candidate display</string>
     <string name="zenz_floating_title">Show zenz candidates in a floating panel</string>
-    <string name="zenz_floating_summary">Show generated candidates above the candidate strip. The panel appears when generation starts after your configured generation delay.</string>
+    <string name="zenz_floating_summary">Show a generated candidate only when it differs from the regular first candidate. Live conversion uses regular candidates; tap the floating candidate to switch and commit.</string>
     <string name="zenz_floating_loading">Generating…</string>
     <string name="zenz_generation_category">Model and generation</string>
 </resources>
