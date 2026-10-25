@@ -52,9 +52,10 @@ build "$head_root" after
     > "$artifact_dir/logs/related-unit-tests.txt" 2>&1
 
 # Verify the edition without zenz as well, using the same scoped unit-test selection.
-(cd "$head_root" && ./gradlew :app:testLiteStandardDebugUnitTest :app:assembleLiteStandardDebug \
+(cd "$head_root" && ./gradlew :app:testLiteStandardDebugUnitTest \
     --tests '*Zenz*Test' --tests '*KanaKanjiConversionSessionParityTest' \
     --tests '*CandidateCorrectionPolicyTest' --tests '*EnglishCandidateCaseResolverTest' \
+    :app:assembleLiteStandardDebug \
     --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g \
     -Pkotlin.compiler.execution.strategy=in-process --console=plain) \
     > "$artifact_dir/logs/related-lite-tests-and-build.txt" 2>&1
