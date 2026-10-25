@@ -17,6 +17,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -84,6 +88,38 @@ class IMEServiceZenzInputTest {
         assertFalse("Manual conversion must await the original query", reading.isCompleted)
         recordCurrentReading()
         assertEquals("がっこう", reading.await())
+    }
+
+    @Test fun segmentRequestWaitsForPreparationAndUsesThatSegmentsNBest() = runBlocking {
+        input.value = "かつこう"
+        ReflectionHelpers.setField(service, "bunsetsuSeparation", true)
+        ReflectionHelpers.setField(service, "bunsetsuCursorMove", true)
+        ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicBoolean>(service, "isHenkan").set(true)
+        val segment = BunsetsuSegmentState(
+            reading = input.value, displayText = "学校", candidates = listOf(corrected),
+            candidatesLoaded = true, bestNBestCandidate = corrected,
+        )
+        val sessionClass = IMEService::class.java.declaredClasses.single { it.simpleName == "BunsetsuConversionSession" }
+        val session = sessionClass.declaredConstructors.single { it.parameterCount == 9 }.apply { isAccessible = true }
+            .newInstance(input.value, input.value, listOf(segment), 0L, null, "", 0, emptyList<List<Int>>(), 0)
+        ReflectionHelpers.setField(service, "bunsetsuConversionSession", session)
+        val mutex: Mutex = ReflectionHelpers.getField(service, "bunsetsuOperationMutex")
+        val requests: SharedFlow<Any> = ReflectionHelpers.getField(service, "zenzRequest")
+        val emitted = async(start = CoroutineStart.UNDISPATCHED) { requests.first() }
+        mutex.lock()
+        val dispatched = async(start = CoroutineStart.UNDISPATCHED) {
+            suspendCoroutineUninterceptedOrReturn<Boolean> { continuation ->
+                IMEService::class.java.declaredMethods.single { it.name == "requestZenzForCurrentBunsetsuSegmentIfNeeded" }
+                    .apply { isAccessible = true }.invoke(service, false, continuation)
+            }
+        }
+        try {
+            assertNull(ReflectionHelpers.getField<StateFlow<*>>(service, "_zenzLiveSlotState").value)
+        } finally {
+            mutex.unlock()
+        }
+        assertTrue(dispatched.await())
+        assertEquals("がっこう", resolve(emitted.await()))
     }
 
     private suspend fun resolve(request: Any): String? = suspendCoroutineUninterceptedOrReturn { continuation ->

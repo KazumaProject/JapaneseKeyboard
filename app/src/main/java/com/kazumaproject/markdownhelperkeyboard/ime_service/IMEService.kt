@@ -18699,27 +18699,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun requestZenzForCurrentBunsetsuSegmentIfNeeded(
         immediate: Boolean
     ): Boolean {
-        val session = bunsetsuConversionSession ?: return false
-        if (bunsetsuSeparation != true) return false
-        if (!isBunsetsuCursorMoveSessionActive()) return false
-        if (session.segments.isEmpty()) return false
-
-        val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
-        val segment = session.segments[focusedIndex]
-        if (!shouldRequestZenzLiveGenerate(segment.reading, ZenzRequestSource.BunsetsuSegment)) return false
-        val target = currentBunsetsuZenzTargetOrNull() ?: return false
-        val request = beginZenzLiveRequest(
-            displayInput = segment.reading,
-            localCandidates = segment.candidates,
-            source = ZenzRequestSource.BunsetsuSegment,
-            bunsetsuTarget = target
-        ) ?: return false
+        // Preparation and segment navigation use this same mutex. Capture only a completed
+        // segment query, then release the lock before inference so navigation stays responsive.
+        val request = bunsetsuOperationMutex.withLock {
+            val session = bunsetsuConversionSession ?: return@withLock null
+            if (bunsetsuSeparation != true || !isBunsetsuCursorMoveSessionActive()) return@withLock null
+            if (session.segments.isEmpty()) return@withLock null
+            val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+            val context = currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
+            val prepared = loadCandidatesForBunsetsuSegment(session, focusedIndex)
+            if (bunsetsuConversionSession !== session ||
+                context != currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
+            ) return@withLock null
+            bunsetsuConversionSession = prepared
+            val segment = prepared.segments[focusedIndex]
+            if (!shouldRequestZenzLiveGenerate(segment.reading, ZenzRequestSource.BunsetsuSegment)) return@withLock null
+            val target = currentBunsetsuZenzTargetOrNull() ?: return@withLock null
+            beginZenzLiveRequest(
+                displayInput = segment.reading,
+                localCandidates = segment.candidates,
+                source = ZenzRequestSource.BunsetsuSegment,
+                bunsetsuTarget = target
+            )
+        } ?: return false
 
         if (immediate) {
             val requestInput = resolveZenzLiveRequestInput(request) ?: return true
             val candidates = performZenzRequest(
                 insertString = requestInput,
-                leftContextOverride = target.leftContext
+                leftContextOverride = request.bunsetsuTarget?.leftContext
             )
             publishZenzLiveResult(
                 request = request,
