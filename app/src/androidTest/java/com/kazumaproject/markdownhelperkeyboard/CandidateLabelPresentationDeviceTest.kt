@@ -12,6 +12,8 @@ import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -228,9 +230,8 @@ class CandidateLabelPresentationDeviceTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             var navHost: NavHostFragment? = null
             await("Settings activity did not start") {
-                val activity = WindowInspector.getGlobalWindowViews().asSequence().flatMap { root ->
-                    generateSequence(root.context) { (it as? ContextWrapper)?.baseContext }
-                }.filterIsInstance<com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity>()
+                val activity = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity>()
                     .firstOrNull { it.hasWindowFocus() }
                 navHost = activity?.supportFragmentManager?.findFragmentById(id("nav_host_fragment_activity_main")) as? NavHostFragment
                 navHost != null
