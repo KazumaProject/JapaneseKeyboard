@@ -384,6 +384,8 @@ import com.kazumaproject.markdownhelperkeyboard.repository.NgWordRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.PhysicalKeyboardShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
+import com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomActivity
+import com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomTarget
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.TextMacroRepository
@@ -6561,6 +6563,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ensurePhysicalKeyboardPopupWindows()
         }
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
+        mainHandler.post { consumeMushroomResult() }
         consumePendingGemmaPickedImage()
     }
 
@@ -6572,6 +6575,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 applyFloatingModeState(true)
             }
         }
+        mainHandler.post { consumeMushroomResult() }
         consumePendingGemmaPickedImage()
     }
 
@@ -23932,6 +23936,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 pasteAction()
             }
 
+            ShortcutType.MUSHROOM -> launchMushroom()
+
             ShortcutType.DATE_PICKER -> {
                 showCurrentDateListPopup()
             }
@@ -23964,6 +23970,98 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 finishComposingText()
                 setComposingText("", 0)
             }
+        }
+    }
+
+    private var mushroomTarget: MushroomTarget? = null
+    private var mushroomResult: String? = null
+    private data class MushroomEditor(
+        val token: android.os.IBinder?,
+        val packageName: String?,
+        val fieldId: Int,
+        val fieldName: String?,
+        val inputType: Int,
+    )
+    private var mushroomEditor: MushroomEditor? = null
+    private fun currentMushroomEditor(): MushroomEditor? = currentInputEditorInfo?.let {
+        MushroomEditor(inputBinding?.connectionToken, it.packageName, it.fieldId, it.fieldName, it.inputType)
+    }
+
+    private fun launchMushroom() {
+        if (mushroomResult != null && currentMushroomEditor() != mushroomEditor) {
+            mushroomTarget = null
+            mushroomResult = null
+        }
+        if (mushroomTarget != null) return
+        if (currentInputType.isPassword() || dictionaryInputConnection != null) {
+            showToastMessage(getString(R.string.mushroom_unsupported))
+            return
+        }
+        val connection = currentInputConnection ?: return
+        flickInputPreviewCoordinator.cancel(restore = true)
+        val target = MushroomTarget.capture(
+            connection, inputString.value + stringInTail.get(), cursorNativeComposingRange,
+            cursorWrittenComposing?.text ?: (inputString.value + stringInTail.get()),
+        ) ?: run {
+            showToastMessage(getString(R.string.mushroom_unsupported))
+            return
+        }
+        // Keep the original characters in the editor while the external app owns the screen.
+        finishComposingText()
+        _inputString.value = ""
+        stringInTail.set("")
+        isHenkan.set(false)
+        requestCandidateRefresh(CandidateShowFlag.Idle)
+        mushroomTarget = target
+        mushroomEditor = currentMushroomEditor()
+        mushroomResult = null
+        val receiver = object : ResultReceiver(mainHandler) {
+            override fun onReceiveResult(code: Int, data: Bundle?) {
+                if (mushroomTarget !== target) return
+                if (code == android.app.Activity.RESULT_OK) {
+                    mushroomResult = data?.getString(MushroomActivity.REPLACE_KEY)
+                    if (mushroomResult == null) mushroomTarget = null
+                    mainHandler.post { consumeMushroomResult() }
+                } else {
+                    mushroomTarget = null
+                    mushroomResult = null
+                    when (code) {
+                        MushroomActivity.RESULT_UNAVAILABLE ->
+                            showToastMessage(getString(R.string.mushroom_unavailable))
+                        MushroomActivity.RESULT_FAILED ->
+                            showToastMessage(getString(R.string.mushroom_failed))
+                    }
+                }
+            }
+        }
+        val intent = Intent(this, MushroomActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(MushroomActivity.REPLACE_KEY, target.source)
+            putExtra(MushroomActivity.EXTRA_RECEIVER, receiver)
+        }
+        try {
+            startActivity(intent)
+        } catch (_: android.content.ActivityNotFoundException) {
+            mushroomTarget = null
+            showToastMessage(getString(R.string.mushroom_failed))
+        } catch (_: SecurityException) {
+            mushroomTarget = null
+            showToastMessage(getString(R.string.mushroom_failed))
+        }
+    }
+
+    private fun consumeMushroomResult() {
+        val result = mushroomResult ?: return
+        val target = mushroomTarget ?: return
+        if (!isInputViewActive || currentMushroomEditor() != mushroomEditor) return
+        mushroomTarget = null
+        mushroomResult = null
+        val canReconnect = (mushroomEditor?.fieldId ?: 0) > 0 && mushroomEditor?.token != null
+        val applied = target.apply(currentInputConnection, result, sameEditorAfterRestart = canReconnect) {
+            commitText(it, 1)
+        }
+        if (!applied) {
+            showToastMessage(getString(R.string.mushroom_target_changed))
         }
     }
 

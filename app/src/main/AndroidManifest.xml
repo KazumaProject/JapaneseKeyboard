@@ -10,6 +10,10 @@
 
     <queries>
         <intent>
+            <action android:name="com.adamrocker.android.simeji.ACTION_INTERCEPT" />
+            <category android:name="com.adamrocker.android.simeji.REPLACE" />
+        </intent>
+        <intent>
             <action android:name="android.view.InputMethod" />
         </intent>
     </queries>
@@ -44,6 +48,12 @@
             android:name=".gemma.media.GemmaImagePickerActivity"
             android:excludeFromRecents="true"
             android:exported="false"
+            android:theme="@style/Theme.MarkdownKeyboard.PhotoPickerBridge" />
+
+        <activity
+            android:name=".mushroom.MushroomActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
             android:theme="@style/Theme.MarkdownKeyboard.PhotoPickerBridge" />
 
         <activity-alias
