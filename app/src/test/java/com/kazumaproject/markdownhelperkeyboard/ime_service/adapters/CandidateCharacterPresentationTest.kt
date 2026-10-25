@@ -53,6 +53,10 @@ class CandidateCharacterPresentationTest {
         assertEquals("[全]", candidateLabelPresentation(context, Candidate("１２３４", 13, 4u, 0), false, false).toString())
         assertEquals("[日付]", candidateLabelPresentation(context, Candidate("12月31日", CANDIDATE_TYPE_DIGIT_DATE, 4u, 0), false, false).toString())
         assertEquals("[AI]", candidateLabelPresentation(context, Candidate("AI候補", CANDIDATE_TYPE_ZENZ_REGENERATED, 4u, 0), false, false).toString())
+        assertEquals("[AI]", candidateLabelPresentation(context, Candidate("生成結果", CANDIDATE_TYPE_ZENZ_WHOLE_RESULT, 4u, 0), false, false).toString())
+        for (type in listOf(CANDIDATE_TYPE_ZENZ_PASS, CANDIDATE_TYPE_ZENZ_LOCAL_FALLBACK, CANDIDATE_TYPE_ZENZ_ERROR_FALLBACK)) {
+            assertEquals("", candidateLabelPresentation(context, Candidate("辞書候補", type, 4u, 0), false, false).toString())
+        }
     }
 
     @Test fun indicatorsActuallyDrawWithoutMovingTextAndDisappearWhenDisabled() {

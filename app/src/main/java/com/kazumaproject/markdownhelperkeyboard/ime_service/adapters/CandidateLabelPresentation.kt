@@ -38,7 +38,7 @@ internal fun candidateLabelPresentation(
                 if (length > prefix.length) setSpan(RelativeSizeSpan(1.25f), prefix.length, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
-        CANDIDATE_TYPE_ZENZ, CANDIDATE_TYPE_ZENZ_LOCAL_FALLBACK,
+        CANDIDATE_TYPE_ZENZ, CANDIDATE_TYPE_ZENZ_WHOLE_RESULT,
         CANDIDATE_TYPE_ZENZ_REGENERATED, 42.toByte(), 44.toByte() -> label(R.string.candidate_label_ai)
         41.toByte(), 43.toByte() -> label(R.string.candidate_label_translation)
         CANDIDATE_TYPE_ENGLISH_CORRECTION -> label(R.string.candidate_label_correction)
